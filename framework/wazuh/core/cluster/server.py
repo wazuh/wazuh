@@ -8,8 +8,7 @@ import functools
 import inspect
 import itertools
 import logging
-import os
-import ssl
+import re
 import traceback
 from time import perf_counter
 from typing import Tuple, Dict
@@ -139,20 +138,20 @@ class AbstractServerHandler(c_common.Handler):
         bytes
             Response message.
         """
-        self.name = data.decode()
-        if self.name in self.server.clients:
-            self.name = ''
-            raise exception.WazuhClusterError(3028, extra_message=data.decode())
-
-        if self.name == self.server.configuration['node_name']:
+        node_name = data.decode()
+        if not re.fullmatch(r'[A-Za-z0-9_-]+', node_name):
+            raise exception.WazuhClusterError(3060, extra_message=node_name)
+        elif node_name in self.server.clients:
+            raise exception.WazuhClusterError(3028, extra_message=node_name)
+        elif node_name == self.server.configuration['node_name']:
             raise exception.WazuhClusterError(3029)
-
-        self.server.clients[self.name] = self
-        self.tag = f'{self.tag} {self.name}'
-        context_tag.set(self.tag)
-        self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
-
-        return b'ok', f'Client {self.name} added'.encode()
+        else:
+            self.name = node_name
+            self.server.clients[self.name] = self
+            self.tag = f'{self.tag} {self.name}'
+            context_tag.set(self.tag)
+            self.handler_tasks.append(self.loop.create_task(self.broadcast_reader()))
+            return b'ok', f'Client {self.name} added'.encode()
 
     def process_response(self, command: bytes, payload: bytes) -> bytes:
         """Define response commands for servers.
@@ -251,7 +250,7 @@ class AbstractServer:
     NO_RESULT = 'no_result'
 
     def __init__(self, performance_test: int, concurrency_test: int, configuration: Dict, cluster_items: Dict,
-                 enable_ssl: bool, logger: logging.Logger = None, tag: str = "Abstract Server"):
+                 logger: logging.Logger = None, tag: str = "Abstract Server"):
         """Class constructor.
 
         Parameters
@@ -264,8 +263,6 @@ class AbstractServer:
             wazuh-manager.conf cluster configuration.
         cluster_items : dict
             cluster.json cluster internal configuration.
-        enable_ssl : bool
-            Whether to enable asyncio's SSL support.
         logger : Logger object
             Logger to use.
         tag : str
@@ -276,7 +273,6 @@ class AbstractServer:
         self.concurrency = concurrency_test
         self.configuration = configuration
         self.cluster_items = cluster_items
-        self.enable_ssl = enable_ssl
         self.tag = tag
         self.logger = logging.getLogger('wazuh') if not logger else logger
         # logging tag
@@ -541,19 +537,12 @@ class AbstractServer:
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         self.loop.set_exception_handler(c_common.asyncio_exception_handler)
 
-        if self.enable_ssl:
-            ssl_context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
-            ssl_context.load_cert_chain(certfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.cert'),
-                                        keyfile=os.path.join(common.WAZUH_PATH, 'etc', 'sslmanager.key'))
-        else:
-            ssl_context = None
-
         try:
             server = await self.loop.create_server(
                 protocol_factory=lambda: self.handler_class(server=self, loop=self.loop, logger=self.logger,
                                                             fernet_key=self.configuration['key'],
                                                             cluster_items=self.cluster_items),
-                host=self.configuration['bind_addr'], port=self.configuration['port'], ssl=ssl_context)
+                host=self.configuration['bind_addr'], port=self.configuration['port'])
         except OSError as e:
             self.logger.error(f"Could not start master: {e}")
             raise KeyboardInterrupt

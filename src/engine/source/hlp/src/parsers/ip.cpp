@@ -24,7 +24,7 @@ Mapper getMapper(std::string_view parsed, std::string_view targetField)
 
 SemParser getSemParser(const std::string& targetField)
 {
-    return [targetField](std::string_view parsed) -> std::variant<Mapper, base::Error>
+    return [targetField](std::string_view parsed, bool enableTrace) -> std::variant<Mapper, base::Error>
     {
         struct in_addr ip;
         struct in6_addr ip6;
@@ -32,7 +32,11 @@ SemParser getSemParser(const std::string& targetField)
         if (!inet_pton(AF_INET, std::string(parsed).c_str(), &ip)
             && !inet_pton(AF_INET6, std::string(parsed).c_str(), &ip6))
         {
-            return base::Error {"Invalid IPv4 or IPv6 address"};
+            if (enableTrace)
+            {
+                return base::Error {"Invalid IPv4 or IPv6 address"};
+            }
+            return base::Error {};
         }
 
         if (targetField.empty())

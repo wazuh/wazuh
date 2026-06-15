@@ -206,7 +206,7 @@ int execute_firewall_chain(
                 snprintf(log_msg, OS_MAXSTR - 1,
                          "IP %s successfully %s",
                          srcip,
-                         action == ADD_COMMAND ? "blocked" : "unblocked");
+                         action == ENABLE_COMMAND ? "blocked" : "unblocked");
                 log_firewall_action(argv0, LOG_LEVEL_INFO, methods[i].name, "success", log_msg);
                 write_debug_file(argv0, "Ended");
                 return OS_SUCCESS;  // Early exit on first success

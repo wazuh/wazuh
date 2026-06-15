@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from engine_test.conf.integration import CollectModes, IntegrationConf
+from engine_test.conf.integration import CollectModes, IntegrationConf, COLLECT_MODE_DEFAULTS
 from engine_test.conf.store import ConfigDatabase
 
 
@@ -32,6 +32,13 @@ def check_args(args):
     if queue_set ^ loc_set:
         raise argparse.ArgumentTypeError(
             "Arguments -q/--queue and -o/--location must both be set or both be omitted.")
+
+    # Auto-fill queue and location from defaults when both are omitted
+    if not queue_set and not loc_set:
+        defaults = COLLECT_MODE_DEFAULTS.get(args['collect_mode'])
+        if defaults:
+            args['queue'] = defaults['queue']
+            args['location'] = defaults['location']
 
 def run(args):
     try:

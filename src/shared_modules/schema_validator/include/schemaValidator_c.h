@@ -46,8 +46,8 @@ EXPORTED bool schema_validator_is_initialized(void);
  * @return true if message is valid, false if invalid
  */
 EXPORTED bool schema_validator_validate(const char* indexPattern,
-                                          const char* message,
-                                          char** errorMessage);
+                                        const char* message,
+                                        char** errorMessage);
 
 #ifdef __cplusplus
 }

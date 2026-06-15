@@ -76,17 +76,20 @@ outputs:
 
 ## File
 
-The `file` output sends alerts to a file. This output supports compression and rotation.
+The `file` output sends events to a file. This output supports compression and rotation.
+Each policy's `originSpace` is prepended to the channel name so that different spaces
+write to isolated streamlog channels (e.g., `standard-wazuh-events-v5`).
 
 ### Signature
 
 ```yaml
-file: "alerts"
+file: "wazuh-events-v5"
 ```
 
 ### Parameters
 
-Only support "alerts" as a parameter, this writes alerts to `alerts.json` file.
+The parameter is a base channel name. The effective streamlog channel is derived as
+`{originSpace}-{channelName}`, where `originSpace` comes from the policy definition.
 
 ### Asset example
 
@@ -108,7 +111,7 @@ metadata:
     - ""
 
 outputs:
-  - file: "alerts"
+  - file: "wazuh-events-v5"
 ```
 
 ## Indexer

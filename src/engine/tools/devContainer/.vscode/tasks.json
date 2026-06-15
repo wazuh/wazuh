@@ -33,7 +33,7 @@
         {
             "label": "Python venv: Install dependencies",
             "type": "shell",
-            "command": ". ${env:TMP_PY_VENV}/bin/activate && pip install ${env:ENGINE_PYTHONPATH_API} ${env:ENGINE_PYTHONPATH_SUITE} ${env:ENGINE_PYTHONPATH_TEST} ${env:ENGINE_PYTHONPATH_HELPER} ${env:ENGINE_PYTHONPATH_IT}",
+            "command": ". ${env:TMP_PY_VENV}/bin/activate && pip install ${env:ENGINE_PYTHONPATH_API} ${env:ENGINE_PYTHONPATH_SUITE} ${env:ENGINE_PYTHONPATH_TEST} ${env:ENGINE_PYTHONPATH_HELPER} ${env:ENGINE_PYTHONPATH_METRICS} ${env:ENGINE_PYTHONPATH_IT}",
             "args": [],
             "problemMatcher": []
         },
@@ -59,17 +59,54 @@
             "problemMatcher": []
         },
         {
-            "label": "E2E Scripts: Init setup (certs && pkg)",
+            "label": "E2E Scripts: [Manager] Init setup (certs && pkg)",
             "type": "shell",
             "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/init.sh",
             "args": [],
             "problemMatcher": []
         },
-                {
-            "label": "E2E Scripts: Copy wazuh-manager certs",
+        {
+            "label": "E2E Scripts: [Manager] Copy wazuh-manager certs",
             "type": "shell",
             "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/wazuh_copy_certs.sh",
             "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Agent] Init setup (download pkgs)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/init.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Agent] Up (reset & start containers)",
+            "type": "shell",
+            "command": "docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/docker-compose.yml down -v && docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/agents/docker-compose.yml up -d",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "E2E Scripts: [Manager] Up (reset & start containers)",
+            "type": "shell",
+            "command": "docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/docker-compose.yml down -v && docker compose -f ${env:WAZUH_DEV_SCRIPTS}/../e2e/docker-compose.yml up -d",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "PR: clang-format (format)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/pr-clang.sh",
+            "args": [],
+            "problemMatcher": []
+        },
+        {
+            "label": "PR: clang-format (check)",
+            "type": "shell",
+            "command": "${env:WAZUH_DEV_SCRIPTS}/pr-clang.sh",
+            "args": [
+                "--check"
+            ],
             "problemMatcher": []
         },
         {
@@ -184,7 +221,7 @@
                 "--directory=${env:WAZUH_REPO}/src",
                 "deps",
                 "TARGET=manager",
-                "-j1"
+                "-j"
             ],
             "group": "build",
             "problemMatcher": []
@@ -294,6 +331,19 @@
             ],
             "group": "build",
             "problemMatcher": []
+        },
+        {
+            "label": "Clean unused containers (interactive)",
+            "type": "shell",
+            "command": "bash ${env:WAZUH_DEV_SCRIPTS}/clean-unused-containers.sh",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "detail": "Lists stopped containers with last used date and size, then interactively asks which to delete."
         }
     ]
 }

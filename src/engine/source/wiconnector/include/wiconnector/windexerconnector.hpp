@@ -1,8 +1,10 @@
 #ifndef _WINDEXER_CONNECTOR_HPP
 #define _WINDEXER_CONNECTOR_HPP
 
+#include <atomic>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <shared_mutex>
 #include <stdexcept>
 #include <string>
@@ -10,10 +12,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <wiconnector/iindexerConnectorAsync.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
-
-// Forward declaration
-class IndexerConnectorAsync;
 
 namespace wiconnector
 {
@@ -55,15 +55,18 @@ class WIndexerConnector : public IWIndexerConnector
 {
 
 private:
-    std::unique_ptr<IndexerConnectorAsync> m_indexerConnectorAsync;
+    std::unique_ptr<IIndexerConnectorAsync> m_indexerConnectorAsync;
     std::shared_mutex m_mutex;
-    std::size_t m_maxHitsPerRequest {100};
+    std::size_t m_maxHitsPerRequest;
+    std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal in-flight pagination loops to abort
 
-    std::size_t queryByBatches(std::string_view indexName,
-                               std::string_view query,
-                               std::size_t batchSize,
-                               const std::function<void(const json::Json&)>& onDocument,
-                               const std::optional<std::string_view>& sourceFilter = std::nullopt);
+    std::optional<std::size_t>
+    queryByBatches(std::string_view indexName,
+                   std::string_view query,
+                   std::size_t batchSize,
+                   const std::function<void(const json::Json&)>& onDocument,
+                   const std::optional<std::string_view>& sourceFilter = std::nullopt,
+                   const std::optional<std::string_view>& consumerIdToValidate = std::nullopt);
 
     bool existsIndex(std::string_view indexName);
 
@@ -76,15 +79,27 @@ public:
      *
      * @param config The configuration object containing settings for the indexer connector
      * @param logFunction The logging function to be used for output and error reporting
+     * @param maxHitsPerRequest The maximum number of hits per request
+     * @throws std::runtime_error if the configuration is invalid or if the indexer connector fails to initialize
      */
-    WIndexerConnector(const Config&, const LogFunctionType& logFunction);
+    WIndexerConnector(const Config&, const LogFunctionType& logFunction, const std::size_t maxHitsPerRequest);
 
     /**
      * @brief Constructs a WIndexerConnector instance using a JSON OSSEC configuration string.
      *
      * @param jsonOssecConfig The JSON string containing the OSSEC configuration for the indexer connector
+     * @param maxHitsPerRequest The maximum number of hits per request
+     * @throws std::runtime_error if the JSON configuration is invalid or empty
      */
-    WIndexerConnector(std::string_view jsonOssecConfig);
+    WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest);
+
+    /**
+     * @brief Test-only constructor: inject a custom IIndexerConnectorAsync (e.g. a gMock).
+     *
+     * @param async Owned implementation of IIndexerConnectorAsync used for every backend call.
+     * @param maxHitsPerRequest Maximum number of hits per paginated request (clamped to 1 if zero).
+     */
+    WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async, const std::size_t maxHitsPerRequest);
 
     /**
      * @copydoc IWIndexerConnector::index
@@ -94,12 +109,16 @@ public:
     /**
      * @copydoc IWIndexerConnector::getPolicy
      */
-    PolicyResources getPolicy(std::string_view space) override;
+    std::optional<PolicyResources>
+    getPolicy(std::string_view space,
+              const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
 
     /**
-     * @copydoc IWIndexerConnector::getPolicyHash
+     * @copydoc IWIndexerConnector::getPolicyHashAndEnabled
      */
-    std::pair<std::string, bool> getPolicyHashAndEnabled(std::string_view space) override;
+    std::optional<std::pair<std::string, bool>>
+    getPolicyHashAndEnabled(std::string_view space,
+                            const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
 
     /**
      * @copydoc IWIndexerConnector::existsPolicy
@@ -114,30 +133,37 @@ public:
     /**
      * @copydoc IWIndexerConnector::getIocTypeHashes
      */
-    std::unordered_map<std::string, std::string> getIocTypeHashes() override;
+    std::optional<std::unordered_map<std::string, std::string>>
+    getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
 
     /**
      * @copydoc IWIndexerConnector::streamIocsByType
      */
-    std::size_t
-    streamIocsByType(std::string_view iocType, std::size_t batchSize, const IocRecordCallback& onIoc) override;
+    std::optional<std::size_t>
+    streamIocsByType(std::string_view iocType,
+                     std::size_t batchSize,
+                     const IocRecordCallback& onIoc,
+                     const std::optional<std::string_view>& consumerIdToValidate = std::nullopt) override;
 
     /**
-     * @brief Retrieves normalized remote engine configuration from wazuh-indexer.
-     *
-     * Implements IWIndexerConnector::getEngineRemoteConfig by reading one document
-     * from `.wazuh-settings`, extracting `/_source/engine`, validating it is an object,
-     * and returning only that object.
-     *
-     * @return json::Json Engine settings object with runtime key/value pairs.
-     * @throws std::exception on connector/search failures or invalid payload shape.
+     * @copydoc IWIndexerConnector::getEngineRemoteConfig
      */
     json::Json getEngineRemoteConfig() override;
+
+    /**
+     * @copydoc IWIndexerConnector::isConsumerReadyForSync
+     */
+    bool isConsumerReadyForSync(std::string_view consumerId) override;
 
     /**
      * @copydoc IWIndexerConnector::getQueueSize
      */
     uint64_t getQueueSize() override;
+
+    /**
+     * @copydoc IWIndexerConnector::getDroppedEvents
+     */
+    uint64_t getDroppedEvents() override;
 
     /**
      * @brief Shuts down the indexer connector, releasing resources and stopping operations.
@@ -146,6 +172,21 @@ public:
      * shut down and that all associated resources are released.
      */
     void shutdown();
+
+    /**
+     * @brief Requests a graceful shutdown of in-flight pagination operations.
+     *
+     * Sets an internal flag checked between batches in @ref getPolicy and @ref queryByBatches
+     * (used by @ref streamIocsByType and @ref getIocTypeHashes). This allows long-running
+     * synchronization operations to abort promptly without waiting for full pagination to
+     * complete. Unlike @ref shutdown, this method is non-destructive: it only signals intent
+     * and does not destroy the underlying async connector.
+     *
+     * Intended to be invoked before @ref shutdown so that worker threads holding shared locks
+     * can release them quickly, allowing @ref shutdown to acquire the exclusive lock without
+     * blocking on long pagination loops.
+     */
+    void requestShutdown();
 };
 }; // namespace wiconnector
 

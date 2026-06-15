@@ -172,7 +172,8 @@ TEST_F(DBTestFixture, TestFimDBWithUTF8Path)
         "size":4925, "uid":"0", "owner":"utf8User", "version":1, "sync":0}]
     })"_json;
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         const auto fileUTF8 {std::make_unique<FileItem>(utf8_insert["data"].front())};
         auto result = fim_db_file_update(fileUTF8->toFimEntry(), callback_data_added);
         ASSERT_EQ(result, FIMDB_OK);
@@ -192,7 +193,8 @@ TEST_F(DBTestFixture, TestFimDBGetCountFileEntry)
     const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
     const auto fileFIMTest3 {std::make_unique<FileItem>(insertStatement3["data"].front())};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto count = fim_db_get_count_file_entry();
         ASSERT_EQ(count, 0);
         auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
@@ -212,7 +214,8 @@ TEST_F(DBTestFixture, TestFimDBGetCountFileInode)
     const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
     const auto fileFIMTest3 {std::make_unique<FileItem>(insertStatement3["data"].front())};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto count = fim_db_get_count_file_inode();
         ASSERT_EQ(count, 0);
         auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
@@ -232,7 +235,8 @@ TEST_F(DBTestFixture, TestFimDBFileInodeSearch)
     const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
     const auto fileFIMTest3 {std::make_unique<FileItem>(insertStatement3["data"].front())};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
@@ -262,7 +266,8 @@ TEST_F(DBTestFixture, TestFimDBFilePatternSearch)
     const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
     const auto fileFIMTest3 {std::make_unique<FileItem>(insertStatement3["data"].front())};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
@@ -289,7 +294,8 @@ TEST_F(DBTestFixture, TestFimDBFilePatternSearchNullParameters)
     callback_context_t callback_data {};
     callback_data.callback = callbackTestSearch;
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "Invalid parameters")).Times(testing::AtLeast(2));
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         ASSERT_EQ(fim_db_file_pattern_search(nullptr, callback_data), FIMDB_ERR);
         callback_data.callback = nullptr;
         ASSERT_EQ(fim_db_file_pattern_search("", callback_data), FIMDB_ERR);
@@ -306,7 +312,8 @@ TEST_F(DBTestFixture, TestFimDBFileINodeSearchNullParameter)
 TEST_F(DBTestFixture, TestFimDBGetPathNullParameters)
 {
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "Invalid parameters")).Times(testing::AtLeast(1));
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         callback_context_t callback_data {};
         ASSERT_EQ(fim_db_get_path("/etc/wgetrc", callback_data, false), FIMDB_ERR);
         callback_data.callback = callBackTestFIMEntry;
@@ -319,9 +326,75 @@ TEST_F(DBTestFixture, TestFimDBFileUpdateNullParameters)
     const auto fileFIMTest {std::make_unique<FileItem>(insertStatement1["data"].front())};
     EXPECT_CALL(*mockLog, loggingFunction(LOG_ERROR, "Invalid parameters")).Times(testing::AtLeast(2));
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         ASSERT_EQ(fim_db_file_update(nullptr, callback_data_added), FIMDB_ERR);
         ASSERT_EQ(fim_db_file_update(fileFIMTest->toFimEntry(), callback_null), FIMDB_ERR);
+    });
+}
+
+// Test callback to validate inode conversion to string
+static void callbackValidateInodeStringConversion(ReturnTypeCallback result_type,
+                                                  const cJSON* result_json,
+                                                  void* user_data)
+{
+    ASSERT_TRUE(result_json != NULL);
+    ASSERT_TRUE(user_data != NULL);
+
+    // Assert that we received a MODIFIED event (not INSERTED/DELETED)
+    ASSERT_EQ(result_type, ReturnTypeCallback::MODIFIED)
+            << "Expected MODIFIED event, but got type: " << static_cast<int>(result_type);
+
+    // For MODIFIED events, both "old" and "new" objects must be present
+    cJSON* old_obj = cJSON_GetObjectItem(result_json, "old");
+    ASSERT_TRUE(old_obj != NULL) << "MODIFIED event must contain 'old' object";
+
+    cJSON* new_obj = cJSON_GetObjectItem(result_json, "new");
+    ASSERT_TRUE(new_obj != NULL) << "MODIFIED event must contain 'new' object";
+
+    // Validate "old" object has inode as string
+    cJSON* old_inode = cJSON_GetObjectItem(old_obj, "inode");
+    ASSERT_TRUE(old_inode != NULL) << "old object must contain 'inode' field";
+    ASSERT_TRUE(cJSON_IsString(old_inode)) << "old.inode should be a string, but got type: "
+                                           << old_inode->type;
+    // Verify the value is correct
+    const char* old_inode_str = cJSON_GetStringValue(old_inode);
+    ASSERT_TRUE(old_inode_str != NULL);
+    ASSERT_STREQ(old_inode_str, "18277083") << "old.inode string value mismatch";
+
+    // Validate "new" object has inode as string
+    cJSON* new_inode = cJSON_GetObjectItem(new_obj, "inode");
+    ASSERT_TRUE(new_inode != NULL) << "new object must contain 'inode' field";
+    ASSERT_TRUE(cJSON_IsString(new_inode)) << "new.inode should be a string, but got type: "
+                                           << new_inode->type;
+    // Verify the value is correct
+    const char* new_inode_str = cJSON_GetStringValue(new_inode);
+    ASSERT_TRUE(new_inode_str != NULL);
+    ASSERT_STREQ(new_inode_str, "18457083") << "new.inode string value mismatch";
+}
+
+TEST_F(DBTestFixture, TestFimDBFileUpdateInodeConversion)
+{
+    // This test validates that fim_db_file_update converts inode fields
+    // from integer to string in both "old" and "new" JSON objects when
+    // processing MODIFIED events.
+
+    const auto fileFIMTest {std::make_unique<FileItem>(insertStatement1["data"].front())};
+    const auto fileFIMTestUpdated {std::make_unique<FileItem>(updateStatement1["data"].front())};
+
+    EXPECT_NO_THROW(
+    {
+        // First insert the file (INSERTED event)
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        // Now update the file (MODIFIED event) with custom callback
+        callback_context_t callback_inode_validation;
+        callback_inode_validation.callback_txn = callbackValidateInodeStringConversion;
+        callback_inode_validation.context = &ctx1;
+
+        result = fim_db_file_update(fileFIMTestUpdated->toFimEntry(), callback_inode_validation);
+        ASSERT_EQ(result, FIMDB_OK);
     });
 }
 
@@ -329,15 +402,15 @@ TEST_F(DBTestFixture, TestFimDBGetPathNoFile)
 {
     callback_context_t callback_data {callBackTestFIMEntry, nullptr};
     EXPECT_CALL(*mockLog, loggingFunction(LOG_DEBUG_VERBOSE, "No entry found for /etc/wgetrc"))
-        .Times(testing::AtLeast(1));
+    .Times(testing::AtLeast(1));
     EXPECT_NO_THROW({ ASSERT_EQ(fim_db_get_path("/etc/wgetrc", callback_data, false), FIMDB_ERR); });
 }
 
 TEST_F(DBTestFixture, TestFimDBInvalidSearchPath)
 {
     EXPECT_THROW(
-        { DB::instance().searchFile(std::make_tuple(static_cast<FILE_SEARCH_TYPE>(-1), "", "", ""), nullptr); },
-        std::runtime_error);
+    { DB::instance().searchFile(std::make_tuple(static_cast<FILE_SEARCH_TYPE>(-1), "", "", ""), nullptr); },
+    std::runtime_error);
 }
 
 TEST_F(DBTestFixture, TestFimDBFileInodeSearchWithBigInode)
@@ -346,7 +419,8 @@ TEST_F(DBTestFixture, TestFimDBFileInodeSearchWithBigInode)
     const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement4["data"].front())};
     const auto fileFIMTest3 {std::make_unique<FileItem>(insertStatement3["data"].front())};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
@@ -372,7 +446,8 @@ TEST_F(DBTestFixture, TestFimDBFileInodeSearchWithBigInode)
 
 TEST_F(DBTestFixture, TestFimDBGetMaxVersionFileEmptyDB)
 {
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto maxVersion = fim_db_get_max_version_file();
         ASSERT_EQ(maxVersion, 0);
     });
@@ -384,7 +459,8 @@ TEST_F(DBTestFixture, TestFimDBGetMaxVersionFileWithEntries)
     const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
     const auto fileFIMTest3 {std::make_unique<FileItem>(insertStatement3["data"].front())};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
@@ -407,7 +483,8 @@ TEST_F(DBTestFixture, TestFimDBSetVersionFile)
 {
     const auto fileFIMTest1 {std::make_unique<FileItem>(insertStatement1["data"].front())};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
         ASSERT_EQ(result, FIMDB_OK);
 
@@ -427,7 +504,8 @@ TEST_F(DBTestFixture, TestFimDBSetVersionFileMultipleTimes)
     const auto fileFIMTest1 {std::make_unique<FileItem>(insertStatement1["data"].front())};
     const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
@@ -461,7 +539,8 @@ TEST_F(DBTestFixture, TestFimDBSetVersionFileWithFileEntries)
     const auto fileFIMTest1 {std::make_unique<FileItem>(insertStatement1["data"].front())};
     const auto fileFIMTest2 {std::make_unique<FileItem>(insertStatement2["data"].front())};
 
-    EXPECT_NO_THROW({
+    EXPECT_NO_THROW(
+    {
         auto result = fim_db_file_update(fileFIMTest1->toFimEntry(), callback_data_added);
         ASSERT_EQ(result, FIMDB_OK);
         result = fim_db_file_update(fileFIMTest2->toFimEntry(), callback_data_added);
@@ -475,5 +554,109 @@ TEST_F(DBTestFixture, TestFimDBSetVersionFileWithFileEntries)
 
         maxVersion = fim_db_get_max_version_file();
         ASSERT_EQ(maxVersion, 100);
+    });
+}
+
+static void callbackTestDeleted(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data)
+{
+    ASSERT_EQ(result_type, ReturnTypeCallback::DELETED);
+    ASSERT_NE(result_json, nullptr);
+    ASSERT_EQ(user_data, nullptr);
+}
+
+const auto insertSpecialCharsPayload = R"({
+        "table": "file_entry",
+        "data":[{"attributes":"10", "checksum":"abc123", "device":1234, "gid":"0", "group_":"root",
+        "hash_md5":"deadbeefdeadbeefdeadbeefdeadbeef", "hash_sha1":"abc", "hash_sha256":"abc",
+        "inode":77777, "mtime":1578075431,
+        "path":"/tmp/evil\"UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17--",
+        "permissions":"-rw-rw-r--", "size":100, "uid":"0", "owner":"root", "version":1, "sync":0}]
+    })"_json;
+
+TEST_F(DBTestFixture, TestFimDBGetPathWithSpecialCharsInPath)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertSpecialCharsPayload["data"].front())};
+
+    EXPECT_NO_THROW(
+    {
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        callback_context_t callback_data;
+        callback_data.callback = callBackTestFIMEntry;
+        callback_data.context = fileFIMTest->toFimEntry();
+
+        result = fim_db_get_path(
+                     "/tmp/evil\"UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17--",
+                     callback_data,
+                     false);
+        ASSERT_EQ(result, FIMDB_OK);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBGetPathWithSpecialCharsReturnsNoExtraRows)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertStatement1["data"].front())};
+
+    EXPECT_NO_THROW(
+    {
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        callback_context_t callback_data;
+        callback_data.callback = callBackTestFIMEntry;
+        callback_data.context = nullptr;
+
+        result = fim_db_get_path(
+                     "\" UNION SELECT path,checksum,device,inode,size,permissions,attributes,uid,gid,owner,group_,hash_md5,hash_sha1,hash_sha256,mtime,version,sync FROM file_entry--",
+                     callback_data, false);
+        ASSERT_EQ(result, FIMDB_ERR);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBPatternSearchWithSpecialCharsInPath)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertStatement1["data"].front())};
+
+    EXPECT_NO_THROW(
+    {
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        callback_context_t callback_data;
+        callback_data.callback = callbackTestSearch;
+        callback_data.context = nullptr;
+
+        result = fim_db_file_pattern_search(
+                     "\" UNION SELECT path FROM file_entry--",
+                     callback_data);
+        ASSERT_EQ(result, FIMDB_OK);
+    });
+}
+
+TEST_F(DBTestFixture, TestFimDBDeletePathWithSpecialCharsInPath)
+{
+    const auto fileFIMTest {std::make_unique<FileItem>(insertSpecialCharsPayload["data"].front())};
+
+    EXPECT_NO_THROW(
+    {
+        auto result = fim_db_file_update(fileFIMTest->toFimEntry(), callback_data_added);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        auto count = fim_db_get_count_file_entry();
+        ASSERT_EQ(count, 1);
+
+        callback_context_t callback_data;
+        callback_data.callback = callBackTestFIMEntry;
+        callback_data.callback_txn = callbackTestDeleted;
+        callback_data.context = nullptr;
+
+        result = fim_db_get_path(
+                     "/tmp/evil\"UNION SELECT 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17--",
+                     callback_data, true);
+        ASSERT_EQ(result, FIMDB_OK);
+
+        count = fim_db_get_count_file_entry();
+        ASSERT_EQ(count, 0);
     });
 }

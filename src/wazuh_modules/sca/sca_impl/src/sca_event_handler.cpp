@@ -7,6 +7,7 @@
 #include <stringHelper.h>
 #include <timeHelper.h>
 
+#include <array>
 #include <sstream>
 
 #include "logging_helper.hpp"
@@ -37,11 +38,15 @@ static const std::map<ReturnTypeCallback, Operation_t> OPERATION_STATES_MAP
 SCAEventHandler::SCAEventHandler(std::shared_ptr<IDBSync> dBSync,
                                  std::function<int(const std::string&)> pushStatelessMessage,
                                  std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage,
-                                 std::shared_ptr<SCASyncManager> syncManager)
+                                 std::shared_ptr<SCASyncManager> syncManager,
+                                 bool allowStatefulMessages,
+                                 bool allowStatelessMessages)
     : m_pushStatelessMessage(std::move(pushStatelessMessage))
     , m_pushStatefulMessage(std::move(pushStatefulMessage))
     , m_dBSync(std::move(dBSync))
-    , m_syncManager(std::move(syncManager)) {};
+    , m_syncManager(std::move(syncManager))
+    , m_allowStatefulMessages(allowStatefulMessages)
+    , m_allowStatelessMessages(allowStatelessMessages) {};
 
 void SCAEventHandler::ReportPoliciesDelta(
     const std::unordered_map<std::string, nlohmann::json>& modifiedPoliciesMap,
@@ -96,7 +101,6 @@ void SCAEventHandler::ReportPoliciesDelta(
 
     for (const auto& event : events)
     {
-        // Validate and handle stateful message
         nlohmann::json checkDataForDelete = extractCheckData(event);
         const std::string checkId = extractCheckId(checkDataForDelete);
 
@@ -123,34 +127,40 @@ void SCAEventHandler::ReportPoliciesDelta(
             }
         }
 
-        const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
-
-        const bool validationPassed = ValidateAndHandleStatefulMessage(
-                                          processedStatefulEvent,
-                                          "policy/check event",
-                                          checkDataForDelete,
-                                          &failedChecks
-                                      );
-
-        if (validationPassed && shouldPushStateful)
+        if (m_allowStatefulMessages)
         {
-            PushStateful(processedStatefulEvent, operation, version);
+            const auto [processedStatefulEvent, operation, version] = ProcessStateful(event);
+
+            const bool validationPassed = ValidateAndHandleStatefulMessage(
+                                              processedStatefulEvent,
+                                              "policy/check event",
+                                              checkDataForDelete,
+                                              &failedChecks
+                                          );
+
+            if (validationPassed && shouldPushStateful)
+            {
+                PushStateful(processedStatefulEvent, operation, version);
+            }
         }
 
         const auto processedStatelessEvent = ProcessStateless(event);
 
-        if (!processedStatelessEvent.empty())
+        if (m_allowStatelessMessages && !processedStatelessEvent.empty())
         {
             PushStateless(processedStatelessEvent);
         }
 
-        if (!promotedIds.empty())
+        if (m_allowStatefulMessages && !promotedIds.empty())
         {
             ProcessPromotedChecks(promotedIds, &failedChecks);
         }
     }
 
-    HandleFailedChecks(std::move(failedChecks));
+    if (m_allowStatefulMessages)
+    {
+        HandleFailedChecks(std::move(failedChecks));
+    }
 
     if (m_syncManager)
     {
@@ -161,7 +171,7 @@ void SCAEventHandler::ReportPoliciesDelta(
 
 void SCAEventHandler::ReportDemotedChecks(const std::vector<std::string>& demotedIds) const
 {
-    if (demotedIds.empty())
+    if (demotedIds.empty() || !m_allowStatefulMessages)
     {
         return;
     }
@@ -254,23 +264,26 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                 shouldPushStateful = m_syncManager->shouldSyncModify(dataForDelete);
             }
 
-            const auto [stateful, operation, version] = ProcessStateful(event);
-
-            const bool validationPassed = ValidateAndHandleStatefulMessage(
-                                              stateful,
-                                              "checkId: " + checkId,
-                                              dataForDelete,
-                                              &failedChecks
-                                          );
-
-            if (validationPassed && shouldPushStateful)
+            if (m_allowStatefulMessages)
             {
-                PushStateful(stateful, operation, version);
+                const auto [stateful, operation, version] = ProcessStateful(event);
+
+                const bool validationPassed = ValidateAndHandleStatefulMessage(
+                                                  stateful,
+                                                  "checkId: " + checkId,
+                                                  dataForDelete,
+                                                  &failedChecks
+                                              );
+
+                if (validationPassed && shouldPushStateful)
+                {
+                    PushStateful(stateful, operation, version);
+                }
             }
 
             const auto stateless = ProcessStateless(event);
 
-            if (!stateless.empty())
+            if (m_allowStatelessMessages && !stateless.empty())
             {
                 PushStateless(stateless);
             }
@@ -283,7 +296,10 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
 
     m_dBSync->syncRow(updateResultQuery.query(), callback);
 
-    HandleFailedChecks(std::move(failedChecks));
+    if (m_allowStatefulMessages)
+    {
+        HandleFailedChecks(std::move(failedChecks));
+    }
 
     if (m_syncManager)
     {
@@ -502,6 +518,15 @@ std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::Proces
             {
                 check = event["check"];
             }
+
+            const auto resultIt = check.find("result");
+
+            if (resultIt != check.end() &&
+                    resultIt->is_string() &&
+                    resultIt->get<std::string>() == "Not run")
+            {
+                return {{}, SELECTED, 0};
+            }
         }
         else
         {
@@ -563,6 +588,12 @@ std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::Proces
 
 nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) const
 {
+    if (event.contains("result") &&
+            static_cast<ReturnTypeCallback>(event["result"]) == DELETED)
+    {
+        return {};
+    }
+
     nlohmann::json check;
     nlohmann::json policy;
     nlohmann::json changedFields = nlohmann::json::array();
@@ -586,9 +617,45 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                 check.erase("sync");
             }
 
+            // "Not run" means either (a) the check has not been executed yet in this
+            // scan cycle (DB placeholder), or (b) the check was attempted but did not
+            // complete (e.g. command timeout). Never emit a stateless event for a check
+            // in this state, regardless of the operation type (INSERTED, MODIFIED, DELETED).
+            {
+                const auto resultIt = check.find("result");
+
+                if (resultIt != check.end() &&
+                        resultIt->is_string() &&
+                        resultIt->get<std::string>() == "Not run")
+                {
+                    return {};
+                }
+            }
+
             if (event["check"].contains("old") && event["check"]["old"].is_object())
             {
                 const auto& old = event["check"]["old"];
+
+                // For MODIFIED events, stateless is only meaningful for transitions
+                // between real executed results. Transitions where the old result was
+                // "Not run" (placeholder being replaced by first real result, or a
+                // timeout recovering) don't generate alerts. Metadata-only changes
+                // (no result change) also don't constitute a transition worth alerting on.
+                // Note: new result == "Not run" is already caught above.
+                if (static_cast<ReturnTypeCallback>(event["result"]) == MODIFIED)
+                {
+                    const auto oldResultIt = old.find("result");
+                    const bool resultChanged = oldResultIt != old.end();
+                    const bool oldResultIsNotRun = resultChanged &&
+                                                   oldResultIt->is_string() &&
+                                                   oldResultIt->get<std::string>() == "Not run";
+
+                    if (!resultChanged || oldResultIsNotRun)
+                    {
+                        return {};
+                    }
+                }
+
                 nlohmann::json previous;
 
                 for (auto& [key, value] : old.items())
@@ -598,11 +665,15 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                         continue;
                     }
 
-                    previous[key] = value;
-                    changedFields.push_back("check." + key);
+                    const auto normalizedKey = (key == "title") ? "name" : key;
+                    previous[normalizedKey] = value;
+                    changedFields.push_back("check." + normalizedKey);
                 }
 
-                check["previous"] = previous;
+                if (!previous.empty())
+                {
+                    check["previous"] = previous;
+                }
             }
         }
         else
@@ -634,8 +705,9 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                         continue;
                     }
 
-                    previous[key] = value;
-                    changedFields.push_back("policy." + key);
+                    const auto normalizedKey = (key == "title") ? "name" : key;
+                    previous[normalizedKey] = value;
+                    changedFields.push_back("policy." + normalizedKey);
                 }
 
                 policy["previous"] = previous;
@@ -644,6 +716,13 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
         else
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "Stateless event does not contain policy");
+            return {};
+        }
+
+        // Drop MODIFIED events whose only pseudo-change was the "Not run" default
+        // being replaced by a real scan result: nothing user-visible changed.
+        if (static_cast<ReturnTypeCallback>(event["result"]) == MODIFIED && changedFields.empty())
+        {
             return {};
         }
 
@@ -689,6 +768,11 @@ std::string SCAEventHandler::CalculateHashId(const nlohmann::json& data) const
 
 void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallback operation, uint64_t version) const
 {
+    if (!m_allowStatefulMessages)
+    {
+        return;
+    }
+
     if (!m_pushStatefulMessage)
     {
         throw std::runtime_error("PushStatefulMessage function not set, cannot send message.");
@@ -701,6 +785,11 @@ void SCAEventHandler::PushStateful(const nlohmann::json& event, ReturnTypeCallba
 
 void SCAEventHandler::PushStateless(const nlohmann::json& event) const
 {
+    if (!m_allowStatelessMessages)
+    {
+        return;
+    }
+
     if (!m_pushStatelessMessage)
     {
         throw std::runtime_error("PushStatelessMessage function not set, cannot send message.");
@@ -733,6 +822,16 @@ nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) cons
 
 void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 {
+    if (!check.contains("name") && check.contains("title") && check["title"].is_string())
+    {
+        check["name"] = check["title"];
+    }
+
+    if (check.contains("title"))
+    {
+        check.erase("title");
+    }
+
     if (check.contains("refs") && check["refs"].is_string())
     {
         check["references"] = StringToJsonArray(check["refs"].get<std::string>());
@@ -758,6 +857,36 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
             check["mitre"] = nlohmann::json::parse(check["mitre"].get<std::string>());
         }
         catch (const nlohmann::json::parse_error&)
+        {
+            check.erase("mitre");
+        }
+    }
+
+    if (check.contains("mitre") && check["mitre"].is_object())
+    {
+        static const std::array<const char*, 3> MITRE_FIELDS = {"tactic", "technique", "subtechnique"};
+
+        for (const auto* field : MITRE_FIELDS)
+        {
+            if (!check["mitre"].contains(field))
+            {
+                continue;
+            }
+
+            auto& mitreField = check["mitre"][field];
+
+            if (mitreField.is_string())
+            {
+                mitreField = StringToJsonArray(mitreField.get<std::string>());
+            }
+            else if (!mitreField.is_array())
+            {
+                // Keep schema alignment by dropping invalid mitre subfield types.
+                check["mitre"].erase(field);
+            }
+        }
+
+        if (check["mitre"].empty())
         {
             check.erase("mitre");
         }
@@ -794,6 +923,16 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 
 void SCAEventHandler::NormalizePolicy(nlohmann::json& policy) const
 {
+    if (!policy.contains("name") && policy.contains("title") && policy["title"].is_string())
+    {
+        policy["name"] = policy["title"];
+    }
+
+    if (policy.contains("title"))
+    {
+        policy.erase("title");
+    }
+
     if (policy.contains("refs") && policy["refs"].is_string())
     {
         policy["references"] = StringToJsonArray(policy["refs"].get<std::string>());
@@ -828,7 +967,10 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(const nlohmann::json& sta
 
     if (!validator)
     {
-        return true;
+        // No validator for this index: be restrictive and discard the message.
+        LoggingHelper::getInstance().log(LOG_WARNING,
+                                         "No schema validator found for index: " + std::string(SCA_SYNC_INDEX) + ". Discarding message.");
+        return false;
     }
 
     std::string statefulData = statefulEvent.dump();
@@ -931,7 +1073,7 @@ void SCAEventHandler::HandleFailedChecks(std::vector<nlohmann::json> failedCheck
 void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& promotedIds,
                                             std::vector<nlohmann::json>* failedChecks) const
 {
-    if (promotedIds.empty())
+    if (promotedIds.empty() || !m_allowStatefulMessages)
     {
         return;
     }
@@ -1000,7 +1142,7 @@ void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& prom
 void SCAEventHandler::ProcessDemotedChecks(const std::vector<std::string>& demotedIds,
                                            std::vector<nlohmann::json>* failedChecks) const
 {
-    if (demotedIds.empty())
+    if (demotedIds.empty() || !m_allowStatefulMessages)
     {
         return;
     }

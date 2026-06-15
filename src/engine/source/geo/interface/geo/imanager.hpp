@@ -142,13 +142,18 @@ public:
     remoteUpsert(const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath) = 0;
 
     /**
+     * @brief Requests graceful shutdown for in-flight or future sync operations.
+     */
+    virtual void requestShutdown() = 0;
+
+    /**
      * @brief Get a locator for querying the given type of database.
      *
      * @param type The type of the database.
      * @return base::RespOrError<std::shared_ptr<ILocator>> A locator for querying the database or an error if the
      * locator could not be retrieved.
      */
-    virtual base::RespOrError<std::shared_ptr<ILocator>> getLocator(Type type) const = 0;
+    virtual Result<std::shared_ptr<ILocator>> getLocator(Type type) const = 0;
 };
 
 } // namespace geo

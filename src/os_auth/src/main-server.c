@@ -713,7 +713,7 @@ static void process_message(struct client *client) {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "OSSEC K:'%s %s %s %s'", client->new_id, client->agentname, client->ip, new_key);
         client->write_len = strlen(client->write_buffer);
 
-        minfo("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
+        mdebug1("Agent key generated for '%s' (requested by %s)", client->agentname, client->ip);
     } else {
         snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "%s. %s", response, "Unable to add agent");
         client->write_len = strlen(client->write_buffer);
@@ -838,14 +838,19 @@ void enqueue_pending_key(int ret, uint32_t index_client) {
                 merror("Agent key not saved for %s", g_client_pool[index_client]->agentname);
                 ERR_print_errors_fp(stderr);
                 w_mutex_lock(&mutex_keys);
-                OS_DeleteKey(&keys, keys.keyentries[keys.keysize - 1]->id, 1);
+                if (g_client_pool[index_client]->new_id) {
+                    OS_DeleteKey(&keys, g_client_pool[index_client]->new_id, 1);
+                }
                 w_mutex_unlock(&mutex_keys);
             } else {
                 /* Add pending key to write */
                 w_mutex_lock(&mutex_keys);
-                add_insert(keys.keyentries[keys.keysize - 1], g_client_pool[index_client]->centralized_group);
-                write_pending = 1;
-                w_cond_signal(&cond_pending);
+                int key_index = OS_IsAllowedID(&keys, g_client_pool[index_client]->new_id);
+                if (key_index >= 0) {
+                    add_insert(keys.keyentries[key_index], g_client_pool[index_client]->centralized_group);
+                    write_pending = 1;
+                    w_cond_signal(&cond_pending);
+                }
                 w_mutex_unlock(&mutex_keys);
             }
         }

@@ -74,7 +74,7 @@ void syscollector_init(const unsigned int inverval,
         }
     };
 
-    DBSync::initialize(callbackErrorLogWrapper);
+    DBSync::initialize(std::move(callbackErrorLogWrapper));
 
     try
     {
@@ -103,7 +103,7 @@ void syscollector_init(const unsigned int inverval,
     }
     catch (const std::exception& ex)
     {
-        callbackErrorLogWrapper(ex.what());
+        callbackLog(LOG_ERROR, ex.what(), WM_SYS_LOGTAG);
         // DO NOT re-throw - this is called from C code which cannot catch C++ exceptions
         // The module will be in a failed state and subsequent calls will be no-ops
     }
@@ -136,7 +136,12 @@ void syscollector_start()
 
 void syscollector_stop()
 {
-    Syscollector::instance().destroy();
+    Syscollector::instance().quiesce();
+}
+
+void syscollector_release_resources()
+{
+    Syscollector::instance().releaseResources();
 }
 
 void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,
@@ -265,6 +270,11 @@ void syscollector_lock_scan_mutex()
 void syscollector_unlock_scan_mutex()
 {
     Syscollector::instance().unlockScanMutex();
+}
+
+bool syscollector_is_scanning()
+{
+    return Syscollector::instance().isScanning();
 }
 
 void syscollector_run_recovery_process()

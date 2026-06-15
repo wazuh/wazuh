@@ -23,6 +23,7 @@
 #include "dbsync.hpp"
 #include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
+#include "asyncFlushController.hpp"
 #include "iagent_sync_protocol.hpp"
 
 // Define EXPORTED for any platform
@@ -84,6 +85,8 @@ class EXPORTED Syscollector final
         void setAgentdQueryFunction(AgentdQueryFunc queryFunc);
 
         void start();
+        void quiesce();
+        void releaseResources();
         void destroy();
 
         // Sync protocol methods
@@ -103,6 +106,10 @@ class EXPORTED Syscollector final
         // Mutex access for external synchronization (e.g., from wm_sync_module)
         void lockScanMutex();
         void unlockScanMutex();
+        bool isScanning() const
+        {
+            return m_scanning.load();
+        }
 
         // Recovery functions
         void runRecoveryProcess();
@@ -144,11 +151,14 @@ class EXPORTED Syscollector final
         std::vector<std::string> getDataContextTables(Operation operation, const std::string& index);
 
         /**
-         * @brief Checks if the first VD sync has been completed
+         * @brief Checks if the first VD sync has been completed.
+         * @details The state is persisted in @c table_metadata under the
+         *          @c vd_first_sync_completed key as an epoch-seconds timestamp;
+         *          any value > 0 means the first VD sync already completed.
          * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
          */
-        bool isVDFirstSyncDone() const;
-
+        bool isVDFirstSyncDone();
+        void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
         /**
          * @brief Processes VD DataContext after scan completes
          * @details Queries the VD sync protocol database for pending DataValue items,
@@ -198,6 +208,7 @@ class EXPORTED Syscollector final
         bool pause();
         void resume();
         int flush();
+        int executeFlushSync();
         int getMaxVersion();
         int setVersion(int version);
 
@@ -437,6 +448,7 @@ class EXPORTED Syscollector final
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;
+        std::unique_ptr<Utils::AsyncFlushController>                             m_asyncFlushController;
         std::vector<std::pair<std::string, nlohmann::json>>*                     m_failedItems;  // Pointer to list of items that failed validation (for deferred deletion)
         std::vector<std::pair<std::string, nlohmann::json>>*                     m_itemsToUpdateSync;  // Pointer to list of items that passed limit check (for deferred sync=1 update)
 

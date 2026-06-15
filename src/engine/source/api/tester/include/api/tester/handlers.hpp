@@ -20,7 +20,8 @@ adapter::RouteHandler tableGet(const std::shared_ptr<::router::ITesterAPI>& test
                                const std::shared_ptr<cm::store::ICMStore>& store);
 // Use of session
 adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& tester,
-                              const base::eventParsers::ProtocolHandler& protocolHandler);
+                              const base::eventParsers::ProtocolHandler& protocolHandler,
+                              const std::shared_ptr<schemf::IValidator>& schemaValidator);
 adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>& tester,
                                     const base::eventParsers::PublicProtocolHandler& protocolHandler,
                                     const std::shared_ptr<schemf::IValidator>& schemaValidator);
@@ -33,18 +34,21 @@ inline void registerHandlers(const std::shared_ptr<::router::ITesterAPI>& tester
                              const std::shared_ptr<schemf::IValidator>& schemaValidator,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
-    server->addRoute(httpsrv::Method::POST, "/tester/session/post", sessionPost(tester));
-    server->addRoute(httpsrv::Method::POST, "/tester/session/delete", sessionDelete(tester));
-    server->addRoute(httpsrv::Method::POST, "/tester/session/get", sessionGet(tester, store));
-    server->addRoute(httpsrv::Method::POST, "/tester/session/reload", sessionReload(tester));
+    server->addRoute(httpsrv::Method::POST, "/_internal/tester/session/post", sessionPost(tester));
+    server->addRoute(httpsrv::Method::POST, "/_internal/tester/session/delete", sessionDelete(tester));
+    server->addRoute(httpsrv::Method::POST, "/_internal/tester/session/get", sessionGet(tester, store));
+    server->addRoute(httpsrv::Method::POST, "/_internal/tester/session/reload", sessionReload(tester));
 
-    server->addRoute(httpsrv::Method::POST, "/tester/table/get", tableGet(tester, store));
+    server->addRoute(httpsrv::Method::POST, "/_internal/tester/table/get", tableGet(tester, store));
 
     // Add Legacy Event parser
-    server->addRoute(httpsrv::Method::POST, "/tester/run/post", runPost(tester, base::eventParsers::parseLegacyEvent));
+    server->addRoute(httpsrv::Method::POST,
+                     "/_internal/tester/run/post",
+                     runPost(tester, base::eventParsers::parseLegacyEvent, schemaValidator));
 
-    server->addRoute(
-        httpsrv::Method::POST, "/logtest", publicRunPost(tester, base::eventParsers::parsePublicEvent, schemaValidator));
+    server->addRoute(httpsrv::Method::POST,
+                     "/logtest",
+                     publicRunPost(tester, base::eventParsers::parsePublicEvent, schemaValidator));
 
     server->addRoute(httpsrv::Method::DELETE, "/logtest", logtestDelete(tester, store));
 }

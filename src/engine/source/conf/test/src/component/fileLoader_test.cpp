@@ -8,8 +8,7 @@
 
 static std::filesystem::path mkTempFile(const char* prefix)
 {
-    std::filesystem::path p = std::filesystem::temp_directory_path() /
-                              (std::string(prefix) + "XXXXXX");
+    std::filesystem::path p = std::filesystem::temp_directory_path() / (std::string(prefix) + "XXXXXX");
     std::string s = p.string();
     std::vector<char> buf(s.begin(), s.end());
     buf.push_back('\0');
@@ -33,10 +32,7 @@ protected:
         writeToFile(path, content);
     }
 
-    void TearDown() override
-    {
-        std::filesystem::remove(path);
-    }
+    void TearDown() override { std::filesystem::remove(path); }
 
     void writeToFile(const std::filesystem::path& p, const std::string& content)
     {
@@ -137,8 +133,8 @@ INSTANTIATE_TEST_SUITE_P(
         std::make_tuple("=\nanalysisd.mode=active\n", makeMap({{"analysisd.mode", "active"}})),
 
         // Case 20: inline comment after value is ignored
-        std::make_tuple("analysisd.archiver_enabled=false # This is a comment\n",
-                        makeMap({{"analysisd.archiver_enabled", "false"}})),
+        std::make_tuple("analysisd.dumper_enabled=false # This is a comment\n",
+                        makeMap({{"analysisd.dumper_enabled", "false"}})),
 
         // Case 21: literal '#' in value using escape
         std::make_tuple("analysisd.note=value\\#literal # comment\n", makeMap({{"analysisd.note", "value#literal"}})),

@@ -299,8 +299,12 @@ void agent_info_stop()
     if (g_agent_info_impl)
     {
         g_agent_info_impl->stop();
-        g_agent_info_impl.reset();
     }
+}
+
+void agent_info_cleanup()
+{
+    g_agent_info_impl.reset();
 }
 
 void agent_info_init_sync_protocol(const char* module_name, const MQ_Functions* mq_funcs)

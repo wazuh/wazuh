@@ -1290,6 +1290,19 @@ void fim_file_scan() {
         dir_it = node_it->data;
         char *path = fim_get_real_path(dir_it);
 
+#ifndef WIN32
+        if ((dir_it->options & CHECK_FOLLOW) == 0
+                && !dir_it->symlink_warned
+                && IsLink(path) == 0) {
+            char *link_target = realpath(path, NULL);
+            if (link_target) {
+                minfo(FIM_WARN_SYMLINK_NOFOLLOW, path, link_target, link_target);
+                os_free(link_target);
+            }
+            dir_it->symlink_warned = true;
+        }
+#endif
+
         fim_checker(path, &evt_data, dir_it, db_transaction_handle, &txn_ctx);
 
 #ifndef WIN32

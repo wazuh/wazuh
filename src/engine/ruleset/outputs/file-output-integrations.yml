@@ -16,4 +16,4 @@ metadata:
     - ""
 
 outputs:
-  - file: "alerts"
+  - file: "wazuh-events-v5"

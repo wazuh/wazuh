@@ -13,15 +13,10 @@ DIR=`dirname $PWD`;
 PLIST=${DIR}/bin/.process_list;
 WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
 
-# Ensure the correct lib dir is used when agent/manager are co-hosted.
-export LD_LIBRARY_PATH="${DIR}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-
 # Installation info
 VERSION="v5.0.0"
-REVISION="alpha0"
+REVISION="beta3"
 TYPE="manager"
-WAZUH_ENGINE_GROUP="${WAZUH_ENGINE_GROUP:-wazuh-manager}"
-export WAZUH_ENGINE_GROUP
 
 ###  Do not modify below here ###
 
@@ -285,7 +280,7 @@ get_wazuh_engine_pid()
 wait_for_wazuh_engine_ready()
 {
     local attempts=0
-    local max_attempts=240 # TODO Improve this value
+    local max_attempts=120
 
     ENGINE_PID=$(get_wazuh_engine_pid)
     if [ $? -ne 0 ]; then
@@ -294,17 +289,17 @@ wait_for_wazuh_engine_ready()
     fi
 
     while [ $attempts -lt $max_attempts ]; do
-        curl --silent --unix-socket ${DIR}/queue/sockets/analysis \
+        curl --silent --fail --unix-socket ${DIR}/queue/sockets/analysis \
             -X POST -H "Content-Type: application/json" \
-            -d '{"name":"default"}' \
-            http://localhost/router/route/get \
+            -d '{}' \
+            http://localhost/_internal/event-dumper/status \
             > /dev/null 2>&1
         if [ $? -eq 0 ]; then
             return 0
         fi
 
         if ! kill -0 "$ENGINE_PID" 2>/dev/null; then
-            echo "wazuh-manager-analysisd died during route check."
+            echo "wazuh-manager-analysisd died during event dumper check."
             return 1
         fi
 

@@ -79,8 +79,10 @@ void* wm_aws_main(wm_aws *aws_config) {
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_AWS_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
-            w_sleep_until(next_scan_time);
+            wm_sleep_until_interruptible(next_scan_time);
+            if (wm_shutdown_requested) break;
         }
+        if (wm_shutdown_requested) break;
         mtinfo(WM_AWS_LOGTAG, "Starting fetching of logs.");
 
         for (cur_bucket = aws_config->buckets; cur_bucket; cur_bucket = cur_bucket->next) {
@@ -200,7 +202,7 @@ void* wm_aws_main(wm_aws *aws_config) {
 
         mtinfo(WM_AWS_LOGTAG, "Fetching logs finished.");
 
-    } while (FOREVER());
+    } while (FOREVER() && !wm_shutdown_requested);
 
 #ifdef WIN32
     return 0;

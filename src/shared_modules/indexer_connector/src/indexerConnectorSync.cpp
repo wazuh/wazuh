@@ -23,10 +23,8 @@ private:
     IndexerConnectorSyncImpl<TServerSelector<HTTPRequest>, HTTPRequest> m_impl;
 
 public:
-    Impl(const nlohmann::json& config,
-         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-             logFunction)
-        : m_impl(config, logFunction)
+    Impl(const nlohmann::json& config, LoggingContext logging)
+        : m_impl(config, std::move(logging.second), nullptr, nullptr, std::move(logging.first))
     {
     }
 
@@ -94,6 +92,11 @@ public:
         m_impl.flush();
     }
 
+    void invokePendingCallbacks()
+    {
+        m_impl.invokePendingCallbacks();
+    }
+
     [[nodiscard]] std::unique_lock<std::mutex> scopeLock()
     {
         return m_impl.scopeLock();
@@ -104,17 +107,19 @@ public:
         m_impl.registerNotify(std::move(callback));
     }
 
+    void refresh(std::string_view indexPattern)
+    {
+        m_impl.refresh(indexPattern);
+    }
+
     bool isAvailable() const
     {
         return m_impl.isAvailable();
     }
 };
 
-IndexerConnectorSync::IndexerConnectorSync(
-    const nlohmann::json& config,
-    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-        logFunction)
-    : m_impl(std::make_unique<Impl>(config, logFunction))
+IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging)
+    : m_impl(std::make_unique<Impl>(config, std::move(logging)))
 {
 }
 
@@ -189,6 +194,11 @@ void IndexerConnectorSync::flush()
     m_impl->flush();
 }
 
+void IndexerConnectorSync::invokePendingCallbacks()
+{
+    m_impl->invokePendingCallbacks();
+}
+
 [[nodiscard]] std::unique_lock<std::mutex> IndexerConnectorSync::scopeLock()
 {
     return m_impl->scopeLock();
@@ -197,6 +207,11 @@ void IndexerConnectorSync::flush()
 void IndexerConnectorSync::registerNotify(std::function<void()> callback)
 {
     m_impl->registerNotify(std::move(callback));
+}
+
+void IndexerConnectorSync::refresh(std::string_view indexPattern)
+{
+    m_impl->refresh(indexPattern);
 }
 
 bool IndexerConnectorSync::isAvailable() const

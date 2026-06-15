@@ -9,6 +9,11 @@
  * Foundation.
  */
 
+// Required for pthread_timedjoin_np on Linux (GNU extension)
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "wmodules.h"
 #include <sys/types.h>
 #include "startup_gate_op.h"
@@ -109,11 +114,26 @@ int main(int argc, char **argv)
     // triggers graceful cleanup even when modules are blocked.
     wm_signals_configure();
 
+    // wm_control provides the control socket used by agentd to trigger
+    // reloads that resolve the startup gate — start it before blocking.
+    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (cur_module->tag && strcmp(cur_module->tag, "control") == 0) {
+            if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
+                merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
+            }
+            mdebug2("Created new thread for the '%s' module.", cur_module->tag);
+            break;
+        }
+    }
+
     startup_gate_wait_for_ready(ARGV0);
 
     // Run modules
 
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
+        if (cur_module->tag && strcmp(cur_module->tag, "control") == 0) {
+            continue;  // already started above
+        }
         if (CreateThreadJoinable(&cur_module->thread, cur_module->context->start, cur_module->data) < 0) {
             merror_exit("CreateThreadJoinable() for '%s': %s", cur_module->tag, strerror(errno));
         }
@@ -123,10 +143,13 @@ int main(int argc, char **argv)
     // Start com request thread
     w_create_thread(wmcom_main, NULL);
 
-    // Wait for threads
-
-    for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
-        pthread_join(cur_module->thread, NULL);
+    // Modules run until a shutdown signal arrives. The SIGTERM/SIGINT handler
+    // performs the orderly stop + timed-join + exit, so the main thread must NOT
+    // also join the module threads: two concurrent joins of the same thread
+    // return EINVAL/ESRCH, which were misreported as shutdown timeouts. Idle here
+    // until the handler exits the process.
+    for (;;) {
+        pause();
     }
 
     return EXIT_SUCCESS;
@@ -247,14 +270,42 @@ void wm_handler(int signum)
     case SIGHUP:
     case SIGINT:
     case SIGTERM:
-        // For the moment only gracefull shutdown will be for syscollector, in the future
-        // it will be modified for all wmodules, modifying the mainloop of each thread.
         mdebug1("Shutting down Wazuh modules.");
+
+        // Signal all module loops to exit before calling their stop() callbacks
+        // so that modules blocked in wm_sleep_interruptible / wm_select_interruptible
+        // wake up immediately.
+        wm_shutdown_requested = 1;
+
         for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
             if (cur_module->context->stop) {
                 cur_module->context->stop(cur_module->data);
             }
         }
+
+        // Wait for all module threads to finish cleanly, with a shared 30-second
+        // total budget. This prevents RocksDB lock leaks and other resource
+        // corruption caused by abrupt thread termination.
+        {
+            struct timespec deadline;
+            clock_gettime(CLOCK_REALTIME, &deadline);
+            deadline.tv_sec += 30;
+
+            for (cur_module = wmodules; cur_module && cur_module->context && cur_module->context->name; cur_module = cur_module->next) {
+                if (cur_module->thread == (pthread_t)0) continue;
+                if (cur_module->thread == pthread_self()) continue;
+#ifdef __linux__
+                int join_rc = pthread_timedjoin_np(cur_module->thread, NULL, &deadline);
+                if (join_rc != 0) {
+                    mwarn("Module '%s' did not stop within the shutdown timeout. (rc=%d: %s)",
+                          cur_module->context->name, join_rc, strerror(join_rc));
+                }
+#else
+                pthread_join(cur_module->thread, NULL);
+#endif
+            }
+        }
+
         exit(EXIT_SUCCESS);
     default:
         merror("unknown signal (%d)", signum);

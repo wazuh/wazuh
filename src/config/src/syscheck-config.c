@@ -116,7 +116,7 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->sync_interval                   = 300;
     syscheck->sync_end_delay                  = 1;
     syscheck->sync_response_timeout           = 60;
-    syscheck->sync_max_eps                    = 50;
+    syscheck->sync_max_eps                    = 75;
     syscheck->integrity_interval              = 24 * 60 * 60;  // 24 hours
     syscheck->max_eps                         = 50;
     syscheck->notify_first_scan               = 0; // Default value, no notification on first scan
@@ -201,6 +201,9 @@ OSList *fim_copy_directory_list(const OSList *source) {
     OSListNode *node_it;
     w_rwlock_rdlock((pthread_rwlock_t *)&source->wr_mutex);
 
+    /* source->first_node is protected by source->wr_mutex (rwlock),
+     * not by source->mutex. The rdlock above is the correct guard for this field. */
+    // coverity[missing_lock]
     for (node_it = source->first_node; node_it != NULL; node_it = node_it->next) {
         directory_t *dir = (directory_t *)node_it->data;
         directory_t *dir_copy = fim_copy_directory(dir);
@@ -2154,7 +2157,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             syscheck->max_files_per_second = atoi(node[i]->content);
 
         } else {
-            mwarn(XML_INVELEM, node[i]->element);
+            minfo(XML_INVELEM, node[i]->element);
         }
     }
 

@@ -1,6 +1,5 @@
 import sys
 import json
-from google.protobuf import json_format
 from api_communication.client import APIClient
 import api_communication.proto.engine_pb2 as engine
 import api_communication.proto.crud_pb2 as crud
@@ -16,16 +15,19 @@ def run(args):
     if not content:
         content = sys.stdin.read()
 
-    req = crud.policyValidate_Request()
-    data = json.loads(content)
-    json_format.ParseDict(data, req.full_policy)
-    req.load_in_tester = args['load_in_tester']
-    req.space = args['space']
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError as e:
+        sys.exit(f"Invalid JSON input: {e.msg} (line {e.lineno}, col {e.colno})")
+
+    if not isinstance(data, dict):
+        sys.exit("Policy must be a JSON object (top-level must be an object).")
 
     # Create the api request
     try:
         client = APIClient(api_socket)
-        error, response = client.send(req, engine.GenericStatus_Response())
+        json_body = {"load_in_tester": args["load_in_tester"], "full_policy": data, "space": args["space"]}
+        error, _ = client.jsend(json_body, crud.policyValidate_Request(), engine.GenericStatus_Response())
 
         if error:
             sys.exit(f'Error validating policy: {error}')

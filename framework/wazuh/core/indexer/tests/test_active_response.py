@@ -402,18 +402,6 @@ class TestActiveResponseBuilder:
             assert builder._ars == []
             assert builder._bookmark_file is bookmark
 
-    class TestGetTargetAgents:
-        """Tests for get_target_agents."""
-
-        def test_returns_active_agents(self):
-            builder = ActiveResponseBuilder(
-                logger=MagicMock(),
-                active_agents=["1", "2"],
-                bookmark_file=MagicMock(),
-            )
-
-            assert builder.get_target_agents() == ["1", "2"]
-
     class TestFetchArs:
         """Tests for fetch_ars."""
 

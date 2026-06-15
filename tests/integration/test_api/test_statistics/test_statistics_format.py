@@ -99,7 +99,6 @@ def test_cluster_statistics_format(test_metadata, load_wazuh_basic_configuration
             - Request the statistics of a particular daemon from the API
             - Compare the obtained statistics with the json schema
         - teardown:
-            - Restore initial configuration
             - Stop wazuh-manager
 
     wazuh_min_version: 4.4.0

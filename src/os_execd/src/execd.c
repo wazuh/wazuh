@@ -291,7 +291,7 @@ void ExecdRun(char *exec_msg, int *childcount)
     }
 
     /* Add command field for AR script protocol compatibility */
-    cJSON_AddStringToObject(json_root, "command", ADD_ENTRY);
+    cJSON_AddStringToObject(json_root, "command", ENABLE_ENTRY);
     cmd_parameters = cJSON_PrintUnformatted(json_root);
 
     /* Execute command */
@@ -423,12 +423,12 @@ void ExecdRun(char *exec_msg, int *childcount)
 #endif
             /* If it wasn't added before, do it now */
             if (!added_before) {
-                /* Timeout parameters - change command to delete */
+                /* Timeout parameters - change command to disable */
                 cJSON *existing_command = cJSON_GetObjectItem(json_root, "command");
                 if (existing_command) {
-                    cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DELETE_ENTRY));
+                    cJSON_ReplaceItemInObject(json_root, "command", cJSON_CreateString(DISABLE_ENTRY));
                 } else {
-                    cJSON_AddStringToObject(json_root, "command", DELETE_ENTRY);
+                    cJSON_AddStringToObject(json_root, "command", DISABLE_ENTRY);
                 }
 
                 /* Create the timeout entry */

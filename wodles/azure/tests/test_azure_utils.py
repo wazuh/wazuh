@@ -219,6 +219,21 @@ def test_send_message(mock_connect, mock_send, mock_close):
     mock_close.assert_called_once()
 
 
+@patch('azure_utils.logging.warning')
+@patch('azure_utils.socket.close')
+@patch('azure_utils.socket.send')
+@patch('azure_utils.socket.connect')
+def test_send_message_logs_warning_when_event_exceeds_max_size(mock_connect, mock_send, mock_close, mock_warning):
+    """Test send_message logs a warning when the encoded message exceeds MAX_EVENT_SIZE."""
+    from azure_utils import MAX_EVENT_SIZE
+    oversized_message = 'x' * (MAX_EVENT_SIZE + 1)
+    send_message(oversized_message)
+    mock_warning.assert_called_once()
+    warning_msg = mock_warning.call_args[0][0]
+    assert 'WARNING' in warning_msg
+    assert str(MAX_EVENT_SIZE) in warning_msg
+
+
 @pytest.mark.parametrize('error_code', [111, 90, 1])
 @patch('azure_utils.logging.error')
 @patch('azure_utils.socket.close')

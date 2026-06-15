@@ -3,14 +3,11 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import os
-
 import jsonschema as js
 import pytest
 
 from api.validator import (
     check_exp,
-    check_xml,
     _alphanumeric_param,
     _hashes,
     _names,
@@ -34,8 +31,6 @@ from api.validator import (
     _wpk_path,
 )
 from wazuh import WazuhError
-
-test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "data")
 
 
 @pytest.mark.parametrize(
@@ -135,27 +130,6 @@ def test_validation_check_exp_ok(exp, regex_name):
 def test_validation_check_exp_ko(exp, regex_name):
     """Verify that check_exp() returns False with incorrect params"""
     assert not check_exp(exp, regex_name)
-
-
-@pytest.mark.parametrize(
-    "xml_file", [(os.path.join(test_data_path, "test_xml_1.xml")), (os.path.join(test_data_path, "test_xml_2.xml"))]
-)
-def test_validation_xml_ok(xml_file):
-    """Verify that check_xml() returns True with well-formed XML files."""
-    with open(xml_file) as f:
-        xml_content = f.read()
-    assert check_xml(xml_content)
-
-
-@pytest.mark.parametrize(
-    "xml_file",
-    [(os.path.join(test_data_path, "test_xml_ko_1.xml")), (os.path.join(test_data_path, "test_xml_ko_2.xml"))],
-)
-def test_validation_xml_ko(xml_file):
-    """Verify that check_xml() returns True with malformed XML files."""
-    with open(xml_file) as f:
-        xml_content = f.read()
-    assert not check_xml(xml_content)
 
 
 def test_allowed_fields():

@@ -33,17 +33,43 @@ auto customRefExpected(json::Json jValue)
     };
 }
 
+auto schemaRefExpected(schemf::Type sType)
+{
+    return [=](const BuildersMocks& mocks)
+    {
+        EXPECT_CALL(*mocks.ctx, validator()).Times(testing::AtLeast(1));
+        EXPECT_CALL(*mocks.validator, hasField(DotPath("ref"))).WillOnce(testing::Return(true));
+        EXPECT_CALL(*mocks.validator, getType(DotPath("ref"))).WillOnce(testing::Return(sType));
+        return None {};
+    };
+}
+
 } // namespace
 
 namespace mapbuildtest
 {
-INSTANTIATE_TEST_SUITE_P(Builders,
-                         MapBuilderTest,
-                         testing::Values(MapT({}, opBuilderHelperToBool, FAILURE()),
-                                         MapT({makeValue(R"("true")")}, opBuilderHelperToBool, FAILURE()),
-                                         MapT({makeRef("ref")}, opBuilderHelperToBool, SUCCESS()),
-                                         MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperToBool, FAILURE())),
-                         testNameFormatter<MapBuilderTest>("ToBool"));
+INSTANTIATE_TEST_SUITE_P(
+    Builders,
+    MapBuilderTest,
+    testing::Values(
+        MapT({}, opBuilderHelperToBool, FAILURE()),
+        MapT({makeValue(R"("true")")}, opBuilderHelperToBool, FAILURE()),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, SUCCESS()),
+        MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperToBool, FAILURE()),
+        /*** Schema type validation (getType -> typeToJType -> Number) ***/
+        MapT({makeRef("ref")}, opBuilderHelperToBool, SUCCESS(schemaRefExpected(schemf::Type::INTEGER))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, SUCCESS(schemaRefExpected(schemf::Type::SHORT))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, SUCCESS(schemaRefExpected(schemf::Type::LONG))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, SUCCESS(schemaRefExpected(schemf::Type::FLOAT))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, SUCCESS(schemaRefExpected(schemf::Type::DOUBLE))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, SUCCESS(schemaRefExpected(schemf::Type::SCALED_FLOAT))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, FAILURE(schemaRefExpected(schemf::Type::BOOLEAN))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, FAILURE(schemaRefExpected(schemf::Type::KEYWORD))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, FAILURE(schemaRefExpected(schemf::Type::TEXT))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, FAILURE(schemaRefExpected(schemf::Type::OBJECT))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, FAILURE(schemaRefExpected(schemf::Type::DATE))),
+        MapT({makeRef("ref")}, opBuilderHelperToBool, FAILURE(schemaRefExpected(schemf::Type::IP)))),
+    testNameFormatter<MapBuilderTest>("ToBool"));
 }
 
 namespace mapoperatestest

@@ -64,12 +64,30 @@
       "type": "keyword"
     },
     "check.mitre.subtechnique": {
+      "type": "object"
+    },
+    "check.mitre.subtechnique.id": {
+      "type": "keyword"
+    },
+    "check.mitre.subtechnique.name": {
       "type": "keyword"
     },
     "check.mitre.tactic": {
+      "type": "object"
+    },
+    "check.mitre.tactic.id": {
+      "type": "keyword"
+    },
+    "check.mitre.tactic.name": {
       "type": "keyword"
     },
     "check.mitre.technique": {
+      "type": "object"
+    },
+    "check.mitre.technique.id": {
+      "type": "keyword"
+    },
+    "check.mitre.technique.name": {
       "type": "keyword"
     },
     "check.name": {
@@ -769,30 +787,6 @@
       "type": "keyword"
     },
     "email.x_mailer": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.confidence": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.first_seen": {
-      "type": "date"
-    },
-    "enrichments.indicator.last_seen": {
-      "type": "date"
-    },
-    "enrichments.indicator.name": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.provider": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.reference": {
-      "type": "keyword"
-    },
-    "enrichments.indicator.type": {
-      "type": "keyword"
-    },
-    "enrichments.source": {
       "type": "keyword"
     },
     "error.code": {
@@ -1723,12 +1717,30 @@
       "type": "keyword"
     },
     "mitre.subtechnique": {
+      "type": "object"
+    },
+    "mitre.subtechnique.id": {
+      "type": "keyword"
+    },
+    "mitre.subtechnique.name": {
       "type": "keyword"
     },
     "mitre.tactic": {
+      "type": "object"
+    },
+    "mitre.tactic.id": {
+      "type": "keyword"
+    },
+    "mitre.tactic.name": {
       "type": "keyword"
     },
     "mitre.technique": {
+      "type": "object"
+    },
+    "mitre.technique.id": {
+      "type": "keyword"
+    },
+    "mitre.technique.name": {
       "type": "keyword"
     },
     "network.application": {
@@ -3270,13 +3282,73 @@
     "rule.category": {
       "type": "keyword"
     },
+    "rule.compliance.cmmc": {
+      "type": "keyword"
+    },
+    "rule.compliance.fedramp": {
+      "type": "keyword"
+    },
+    "rule.compliance.gdpr": {
+      "type": "keyword"
+    },
+    "rule.compliance.hipaa": {
+      "type": "keyword"
+    },
+    "rule.compliance.iso_27001": {
+      "type": "keyword"
+    },
+    "rule.compliance.nis2": {
+      "type": "keyword"
+    },
+    "rule.compliance.nist_800_171": {
+      "type": "keyword"
+    },
+    "rule.compliance.nist_800_53": {
+      "type": "keyword"
+    },
+    "rule.compliance.pci_dss": {
+      "type": "keyword"
+    },
+    "rule.compliance.tsc": {
+      "type": "keyword"
+    },
     "rule.description": {
       "type": "keyword"
     },
     "rule.id": {
       "type": "keyword"
     },
+    "rule.level": {
+      "type": "keyword"
+    },
     "rule.license": {
+      "type": "keyword"
+    },
+    "rule.mitre.subtechnique": {
+      "type": "object"
+    },
+    "rule.mitre.subtechnique.id": {
+      "type": "keyword"
+    },
+    "rule.mitre.subtechnique.name": {
+      "type": "keyword"
+    },
+    "rule.mitre.tactic": {
+      "type": "object"
+    },
+    "rule.mitre.tactic.id": {
+      "type": "keyword"
+    },
+    "rule.mitre.tactic.name": {
+      "type": "keyword"
+    },
+    "rule.mitre.technique": {
+      "type": "object"
+    },
+    "rule.mitre.technique.id": {
+      "type": "keyword"
+    },
+    "rule.mitre.technique.name": {
       "type": "keyword"
     },
     "rule.name": {
@@ -3286,6 +3358,18 @@
       "type": "keyword"
     },
     "rule.ruleset": {
+      "type": "keyword"
+    },
+    "rule.sigma_id": {
+      "type": "keyword"
+    },
+    "rule.status": {
+      "type": "keyword"
+    },
+    "rule.tags": {
+      "type": "keyword"
+    },
+    "rule.title": {
       "type": "keyword"
     },
     "rule.uuid": {
@@ -3610,7 +3694,7 @@
       "type": "keyword"
     },
     "threat.enrichments": {
-      "type": "nested"
+      "type": "object"
     },
     "threat.enrichments.indicator": {
       "type": "object"
@@ -3628,6 +3712,9 @@
       "type": "keyword"
     },
     "threat.enrichments.indicator.email.address": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.feed.name": {
       "type": "keyword"
     },
     "threat.enrichments.indicator.file.accessed": {
@@ -4050,6 +4137,9 @@
     "threat.enrichments.indicator.geo.timezone": {
       "type": "keyword"
     },
+    "threat.enrichments.indicator.id": {
+      "type": "keyword"
+    },
     "threat.enrichments.indicator.ip": {
       "type": "ip"
     },
@@ -4103,6 +4193,21 @@
     },
     "threat.enrichments.indicator.sightings": {
       "type": "long"
+    },
+    "threat.enrichments.indicator.software": {
+      "type": "object"
+    },
+    "threat.enrichments.indicator.software.alias": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.software.name": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.software.type": {
+      "type": "keyword"
+    },
+    "threat.enrichments.indicator.tags": {
+      "type": "keyword"
     },
     "threat.enrichments.indicator.type": {
       "type": "keyword"
@@ -4273,7 +4378,7 @@
       "type": "keyword"
     },
     "threat.indicator.confidence": {
-      "type": "keyword"
+      "type": "short"
     },
     "threat.indicator.description": {
       "type": "keyword"
@@ -5421,10 +5526,34 @@
     "vulnerability.category": {
       "type": "keyword"
     },
+    "vulnerability.classification": {
+      "type": "keyword"
+    },
+    "vulnerability.description": {
+      "type": "keyword"
+    },
+    "vulnerability.detected_at": {
+      "type": "date"
+    },
+    "vulnerability.enumeration": {
+      "type": "keyword"
+    },
     "vulnerability.id": {
       "type": "keyword"
     },
+    "vulnerability.published_at": {
+      "type": "date"
+    },
+    "vulnerability.report_id": {
+      "type": "keyword"
+    },
+    "vulnerability.scanner.condition": {
+      "type": "keyword"
+    },
     "vulnerability.scanner.reference": {
+      "type": "keyword"
+    },
+    "vulnerability.scanner.source": {
       "type": "keyword"
     },
     "vulnerability.scanner.vendor": {
@@ -5433,11 +5562,20 @@
     "vulnerability.score.base": {
       "type": "float"
     },
+    "vulnerability.score.environmental": {
+      "type": "float"
+    },
+    "vulnerability.score.temporal": {
+      "type": "float"
+    },
     "vulnerability.score.version": {
       "type": "keyword"
     },
     "vulnerability.severity": {
       "type": "keyword"
+    },
+    "vulnerability.under_evaluation": {
+      "type": "boolean"
     },
     "wazuh.agent.build.original": {
       "type": "keyword"
@@ -5637,6 +5775,9 @@
     "wazuh.cluster.node": {
       "type": "keyword"
     },
+    "wazuh.event.id": {
+      "type": "keyword"
+    },
     "wazuh.integration.category": {
       "type": "keyword"
     },
@@ -5662,6 +5803,1254 @@
       "type": "boolean"
     },
     "wazuh.space.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments": {
+      "type": "object"
+    },
+    "wazuh.threat.enrichments.indicator": {
+      "type": "object"
+    },
+    "wazuh.threat.enrichments.indicator.as.number": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.as.organization.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.confidence": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.description": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.email.address": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.feed.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.accessed": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.file.attributes": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.digest_algorithm": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.exists": {
+      "type": "boolean"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.flags": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.signing_id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.status": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.subject_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.team_id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.thumbprint_sha256": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.timestamp": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.trusted": {
+      "type": "boolean"
+    },
+    "wazuh.threat.enrichments.indicator.file.code_signature.valid": {
+      "type": "boolean"
+    },
+    "wazuh.threat.enrichments.indicator.file.created": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.file.ctime": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.file.device": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.directory": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.drive_letter": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.architecture": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.byte_order": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.cpu_type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.creation_date": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.exports": {
+      "type": "flat_object"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.go_import_hash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.go_imports": {
+      "type": "flat_object"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.go_imports_names_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.go_imports_names_var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.go_stripped": {
+      "type": "boolean"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.header.abi_version": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.header.class": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.header.data": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.header.entrypoint": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.header.object_version": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.header.os_abi": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.header.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.header.version": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.import_hash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.imports": {
+      "type": "flat_object"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.imports_names_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.imports_names_var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections": {
+      "type": "nested"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections.chi2": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections.entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections.flags": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections.physical_offset": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections.physical_size": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections.var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections.virtual_address": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.sections.virtual_size": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.segments": {
+      "type": "nested"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.segments.sections": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.segments.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.shared_libraries": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.elf.telfhash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.extension": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.fork_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.gid": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.group": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.hash.cdhash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.hash.md5": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.hash.sha1": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.hash.sha256": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.hash.sha384": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.hash.sha512": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.hash.ssdeep": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.hash.tlsh": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.inode": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.mime_type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.mode": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.mtime": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.file.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.origin_referrer_url": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.origin_url": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.owner": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.path": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.architecture": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.company": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.description": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.file_version": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.go_import_hash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.go_imports": {
+      "type": "flat_object"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.go_imports_names_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.go_imports_names_var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.go_stripped": {
+      "type": "boolean"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.imphash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.import_hash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.imports": {
+      "type": "flat_object"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.imports_names_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.imports_names_var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.original_file_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.pehash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.product": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.sections": {
+      "type": "nested"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.sections.entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.sections.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.sections.physical_size": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.sections.var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.pe.sections.virtual_size": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.size": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.target_path": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.uid": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.alternative_names": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.issuer.common_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.issuer.country": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.issuer.distinguished_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.issuer.locality": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.issuer.organization": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.issuer.organizational_unit": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.issuer.state_or_province": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.not_after": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.not_before": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.public_key_algorithm": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.public_key_curve": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.public_key_exponent": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.public_key_size": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.serial_number": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.signature_algorithm": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.subject.common_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.subject.country": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.subject.distinguished_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.subject.locality": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.subject.organization": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.subject.organizational_unit": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.subject.state_or_province": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.file.x509.version_number": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.first_seen": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.geo.city_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.geo.continent_code": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.geo.continent_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.geo.country_iso_code": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.geo.country_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.geo.location": {
+      "type": "geo_point"
+    },
+    "wazuh.threat.enrichments.indicator.geo.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.geo.postal_code": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.geo.region_iso_code": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.geo.region_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.geo.timezone": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.ip": {
+      "type": "ip"
+    },
+    "wazuh.threat.enrichments.indicator.last_seen": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.marking.tlp": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.marking.tlp_version": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.modified_at": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.port": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.provider": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.reference": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.registry.data.bytes": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.registry.data.strings": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.registry.data.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.registry.hive": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.registry.key": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.registry.path": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.registry.value": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.scanner_stats": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.sightings": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.software": {
+      "type": "object"
+    },
+    "wazuh.threat.enrichments.indicator.software.alias": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.software.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.software.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.tags": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.alternative_names": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.issuer.common_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.issuer.country": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.issuer.distinguished_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.issuer.locality": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.issuer.organization": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.issuer.organizational_unit": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.issuer.state_or_province": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.not_after": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.x509.not_before": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.indicator.x509.public_key_algorithm": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.public_key_curve": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.public_key_exponent": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.x509.public_key_size": {
+      "type": "long"
+    },
+    "wazuh.threat.enrichments.indicator.x509.serial_number": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.signature_algorithm": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.subject.common_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.subject.country": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.subject.distinguished_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.subject.locality": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.subject.organization": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.subject.organizational_unit": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.subject.state_or_province": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.indicator.x509.version_number": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.matched.atomic": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.matched.field": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.matched.id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.matched.index": {
+      "type": "keyword"
+    },
+    "wazuh.threat.enrichments.matched.occurred": {
+      "type": "date"
+    },
+    "wazuh.threat.enrichments.matched.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.feed.dashboard_id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.feed.description": {
+      "type": "keyword"
+    },
+    "wazuh.threat.feed.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.feed.reference": {
+      "type": "keyword"
+    },
+    "wazuh.threat.framework": {
+      "type": "keyword"
+    },
+    "wazuh.threat.group.alias": {
+      "type": "keyword"
+    },
+    "wazuh.threat.group.id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.group.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.group.reference": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.as.number": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.as.organization.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.confidence": {
+      "type": "short"
+    },
+    "wazuh.threat.indicator.description": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.email.address": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.accessed": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.file.attributes": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.code_signature.digest_algorithm": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.code_signature.exists": {
+      "type": "boolean"
+    },
+    "wazuh.threat.indicator.file.code_signature.flags": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.code_signature.signing_id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.code_signature.status": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.code_signature.subject_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.code_signature.team_id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.code_signature.thumbprint_sha256": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.code_signature.timestamp": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.file.code_signature.trusted": {
+      "type": "boolean"
+    },
+    "wazuh.threat.indicator.file.code_signature.valid": {
+      "type": "boolean"
+    },
+    "wazuh.threat.indicator.file.created": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.file.ctime": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.file.device": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.directory": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.drive_letter": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.architecture": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.byte_order": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.cpu_type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.creation_date": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.file.elf.exports": {
+      "type": "flat_object"
+    },
+    "wazuh.threat.indicator.file.elf.go_import_hash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.go_imports": {
+      "type": "flat_object"
+    },
+    "wazuh.threat.indicator.file.elf.go_imports_names_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.go_imports_names_var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.go_stripped": {
+      "type": "boolean"
+    },
+    "wazuh.threat.indicator.file.elf.header.abi_version": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.header.class": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.header.data": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.header.entrypoint": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.header.object_version": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.header.os_abi": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.header.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.header.version": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.import_hash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.imports": {
+      "type": "flat_object"
+    },
+    "wazuh.threat.indicator.file.elf.imports_names_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.imports_names_var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.sections": {
+      "type": "nested"
+    },
+    "wazuh.threat.indicator.file.elf.sections.chi2": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.sections.entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.sections.flags": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.sections.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.sections.physical_offset": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.sections.physical_size": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.sections.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.sections.var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.sections.virtual_address": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.sections.virtual_size": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.elf.segments": {
+      "type": "nested"
+    },
+    "wazuh.threat.indicator.file.elf.segments.sections": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.segments.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.shared_libraries": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.elf.telfhash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.extension": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.fork_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.gid": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.group": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.hash.cdhash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.hash.md5": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.hash.sha1": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.hash.sha256": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.hash.sha384": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.hash.sha512": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.hash.ssdeep": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.hash.tlsh": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.inode": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.mime_type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.mode": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.mtime": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.file.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.origin_referrer_url": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.origin_url": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.owner": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.path": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.architecture": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.company": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.description": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.file_version": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.go_import_hash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.go_imports": {
+      "type": "flat_object"
+    },
+    "wazuh.threat.indicator.file.pe.go_imports_names_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.pe.go_imports_names_var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.pe.go_stripped": {
+      "type": "boolean"
+    },
+    "wazuh.threat.indicator.file.pe.imphash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.import_hash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.imports": {
+      "type": "flat_object"
+    },
+    "wazuh.threat.indicator.file.pe.imports_names_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.pe.imports_names_var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.pe.original_file_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.pehash": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.product": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.sections": {
+      "type": "nested"
+    },
+    "wazuh.threat.indicator.file.pe.sections.entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.pe.sections.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.pe.sections.physical_size": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.pe.sections.var_entropy": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.pe.sections.virtual_size": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.size": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.target_path": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.uid": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.alternative_names": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.issuer.common_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.issuer.country": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.issuer.distinguished_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.issuer.locality": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.issuer.organization": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.issuer.organizational_unit": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.issuer.state_or_province": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.not_after": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.file.x509.not_before": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.file.x509.public_key_algorithm": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.public_key_curve": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.public_key_exponent": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.x509.public_key_size": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.file.x509.serial_number": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.signature_algorithm": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.subject.common_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.subject.country": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.subject.distinguished_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.subject.locality": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.subject.organization": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.subject.organizational_unit": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.subject.state_or_province": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.file.x509.version_number": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.first_seen": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.geo.city_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.geo.continent_code": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.geo.continent_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.geo.country_iso_code": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.geo.country_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.geo.location": {
+      "type": "geo_point"
+    },
+    "wazuh.threat.indicator.geo.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.geo.postal_code": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.geo.region_iso_code": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.geo.region_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.geo.timezone": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.ip": {
+      "type": "ip"
+    },
+    "wazuh.threat.indicator.last_seen": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.marking.tlp": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.marking.tlp_version": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.modified_at": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.port": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.provider": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.reference": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.registry.data.bytes": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.registry.data.strings": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.registry.data.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.registry.hive": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.registry.key": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.registry.path": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.registry.value": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.scanner_stats": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.sightings": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.alternative_names": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.issuer.common_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.issuer.country": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.issuer.distinguished_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.issuer.locality": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.issuer.organization": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.issuer.organizational_unit": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.issuer.state_or_province": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.not_after": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.x509.not_before": {
+      "type": "date"
+    },
+    "wazuh.threat.indicator.x509.public_key_algorithm": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.public_key_curve": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.public_key_exponent": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.x509.public_key_size": {
+      "type": "long"
+    },
+    "wazuh.threat.indicator.x509.serial_number": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.signature_algorithm": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.subject.common_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.subject.country": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.subject.distinguished_name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.subject.locality": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.subject.organization": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.subject.organizational_unit": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.subject.state_or_province": {
+      "type": "keyword"
+    },
+    "wazuh.threat.indicator.x509.version_number": {
+      "type": "keyword"
+    },
+    "wazuh.threat.software.alias": {
+      "type": "keyword"
+    },
+    "wazuh.threat.software.id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.software.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.software.platforms": {
+      "type": "keyword"
+    },
+    "wazuh.threat.software.reference": {
+      "type": "keyword"
+    },
+    "wazuh.threat.software.type": {
+      "type": "keyword"
+    },
+    "wazuh.threat.tactic.id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.tactic.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.tactic.reference": {
+      "type": "keyword"
+    },
+    "wazuh.threat.technique.id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.technique.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.technique.reference": {
+      "type": "keyword"
+    },
+    "wazuh.threat.technique.subtechnique.id": {
+      "type": "keyword"
+    },
+    "wazuh.threat.technique.subtechnique.name": {
+      "type": "keyword"
+    },
+    "wazuh.threat.technique.subtechnique.reference": {
       "type": "keyword"
     }
   },

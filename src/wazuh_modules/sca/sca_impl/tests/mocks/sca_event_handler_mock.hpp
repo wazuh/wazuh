@@ -17,8 +17,15 @@ namespace sca_event_handler
         public:
             SCAEventHandlerMock(const std::shared_ptr<MockDBSync>& mockDB,
                                 std::function<int(const std::string&)> pushStatelessMessage = nullptr,
-                                std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage = nullptr)
-                : SCAEventHandler(mockDB, pushStatelessMessage, pushStatefulMessage)
+                                std::function<int(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> pushStatefulMessage = nullptr,
+                                bool allowStatefulMessages = true,
+                                bool allowStatelessMessages = true)
+                : SCAEventHandler(mockDB,
+                                  pushStatelessMessage,
+                                  pushStatefulMessage,
+                                  nullptr,
+                                  allowStatefulMessages,
+                                  allowStatelessMessages)
                 , mockDBSync(mockDB)
             {
             }

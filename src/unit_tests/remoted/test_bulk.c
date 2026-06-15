@@ -186,6 +186,125 @@ static void test_append_fmt_chain_small_then_large(void **state) {
     bulk_free(&b);
 }
 
+/* ===== bulk_append_indented tests ===== */
+
+/**
+ * @brief Local copy of bulk_append_indented for unit testing.
+ *
+ * The production version is static in secure.c.  We replicate it here
+ * so that the test links cleanly against bulk.o only.
+ */
+static int bulk_append_indented(bulk_t *b, const char *raw, size_t len) {
+    const char *p = raw;
+    const char *end = raw + len;
+
+    while (p < end) {
+        const char *nl = (const char *)memchr(p, '\n', (size_t)(end - p));
+        if (!nl) {
+            return bulk_append(b, p, (size_t)(end - p));
+        }
+        size_t chunk = (size_t)(nl - p) + 1;
+        if (bulk_append(b, p, chunk) < 0) return -1;
+        if (nl + 1 < end) {
+            if (bulk_append(b, " ", 1) < 0) return -1;
+        }
+        p = nl + 1;
+    }
+    return 0;
+}
+
+/*
+ * Test: test_append_indented_single_line
+ * Purpose: A payload without newlines is appended unchanged.
+ */
+static void test_append_indented_single_line(void **state) {
+    (void)state;
+    bulk_t b;
+    bulk_init(&b, 0);
+
+    const char *raw = "1:/var/log/syslog:hello world";
+    assert_int_equal(bulk_append_indented(&b, raw, strlen(raw)), 0);
+    assert_int_equal(b.len, strlen(raw));
+    assert_memory_equal(b.buf, raw, b.len);
+
+    bulk_free(&b);
+}
+
+/*
+ * Test: test_append_indented_multiline_adds_space
+ * Purpose: Each continuation line after a '\n' gets a leading space.
+ */
+static void test_append_indented_multiline_adds_space(void **state) {
+    (void)state;
+    bulk_t b;
+    bulk_init(&b, 0);
+
+    const char *raw = "START\nline2\nline3";
+    const char *expected = "START\n line2\n line3";
+    assert_int_equal(bulk_append_indented(&b, raw, strlen(raw)), 0);
+    assert_int_equal(b.len, strlen(expected));
+    assert_memory_equal(b.buf, expected, b.len);
+
+    bulk_free(&b);
+}
+
+/*
+ * Test: test_append_indented_line_starting_with_E_space
+ * Purpose: A continuation line starting with "E " becomes " E " on the wire,
+ *          preventing false delimiter matches.
+ */
+static void test_append_indented_line_starting_with_E_space(void **state) {
+    (void)state;
+    bulk_t b;
+    bulk_init(&b, 0);
+
+    const char *raw = "START\nE this is dangerous\nend";
+    const char *expected = "START\n E this is dangerous\n end";
+    assert_int_equal(bulk_append_indented(&b, raw, strlen(raw)), 0);
+    assert_int_equal(b.len, strlen(expected));
+    assert_memory_equal(b.buf, expected, b.len);
+
+    bulk_free(&b);
+}
+
+/*
+ * Test: test_append_indented_trailing_newline_no_extra_space
+ * Purpose: A trailing '\n' at the end of the payload does NOT add a space
+ *          (there is no continuation after it).
+ */
+static void test_append_indented_trailing_newline_no_extra_space(void **state) {
+    (void)state;
+    bulk_t b;
+    bulk_init(&b, 0);
+
+    const char *raw = "line1\nline2\n";
+    const char *expected = "line1\n line2\n";
+    assert_int_equal(bulk_append_indented(&b, raw, strlen(raw)), 0);
+    assert_int_equal(b.len, strlen(expected));
+    assert_memory_equal(b.buf, expected, b.len);
+
+    bulk_free(&b);
+}
+
+/*
+ * Test: test_append_indented_preserves_existing_leading_space
+ * Purpose: A continuation line that already starts with a space gets an
+ *          additional space (the receiver strips exactly one).
+ */
+static void test_append_indented_preserves_existing_leading_space(void **state) {
+    (void)state;
+    bulk_t b;
+    bulk_init(&b, 0);
+
+    const char *raw = "first\n second";
+    const char *expected = "first\n  second";  // two spaces: one added + one original
+    assert_int_equal(bulk_append_indented(&b, raw, strlen(raw)), 0);
+    assert_int_equal(b.len, strlen(expected));
+    assert_memory_equal(b.buf, expected, b.len);
+
+    bulk_free(&b);
+}
+
 /*
  * Test runner
  */
@@ -199,6 +318,12 @@ int main(void) {
         cmocka_unit_test(test_append_fmt_small_uses_stack_tmp),
         cmocka_unit_test(test_append_fmt_large_allocates_and_appends),
         cmocka_unit_test(test_append_fmt_chain_small_then_large),
+        // bulk_append_indented tests
+        cmocka_unit_test(test_append_indented_single_line),
+        cmocka_unit_test(test_append_indented_multiline_adds_space),
+        cmocka_unit_test(test_append_indented_line_starting_with_E_space),
+        cmocka_unit_test(test_append_indented_trailing_newline_no_extra_space),
+        cmocka_unit_test(test_append_indented_preserves_existing_leading_space),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

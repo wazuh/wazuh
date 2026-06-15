@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+from wazuh.core.exception import WazuhClusterError
 import ast
 import asyncio
 import base64
@@ -38,6 +39,12 @@ _ALLOWED_PREFIXES = (
 )
 
 ALLOWED_CALLABLES_PACKAGES = ["wazuh", "api"]
+
+MAX_TOTAL_SIZE = 268435456  # maximum total size of the message to receive in bytes (256 MiB)
+
+MAX_CHUNK_SIZE = 10485760  # maximum chunk size of the message to receive in bytes (10 MiB)
+
+MAX_CONCURRENT_DIVIDED_MSGS = 10  # maximum number of concurrent divided messages being received. This is used to mitigate DoS attacks with many divided messages.
 
 class Response:
     """
@@ -83,6 +90,8 @@ class InBuffer:
         total : int
             Size of the payload buffer in bytes.
         """
+        if total > MAX_TOTAL_SIZE:
+            raise exception.WazuhClusterError(3050, extra_message=str(total))
         self.payload = bytearray(total)  # array to store the message's data
         self.total = total  # total of bytes to receive
         self.received = 0  # number of received bytes
@@ -114,6 +123,8 @@ class InBuffer:
 
         # Command is the first 11 B of command without dashes (in case they were added)
         self.cmd = cmd[:-1].split(b' ')[0]
+        if self.total > MAX_TOTAL_SIZE :
+            raise exception.WazuhClusterError(3050, extra_message=f"Header total size out of range: {self.total}")
         self.payload = bytearray(self.total)
         return header[header_size:]
 
@@ -783,35 +794,58 @@ class Handler(asyncio.Protocol):
             Received data.
         """
         self.in_buffer += message
-        for command, counter, payload, flag_divided in self.get_messages():
-            # If the message is a divided one
-            if flag_divided == InBuffer.divide_flag:
-                try:
-                    self.div_msg_box[counter] = self.div_msg_box[counter] + payload
-                except KeyError:
-                    self.div_msg_box[counter] = payload
-            else:
-                # If the message is the last part of a division, join it.
-                if counter in self.div_msg_box:
-                    payload = self.div_msg_box[counter] + payload
-                    del self.div_msg_box[counter]
-                    # Decrypt the joined payload
-                    try:
-                        payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet is not \
-                                                                            None else bytes(payload)
-                    except cryptography.fernet.InvalidToken:
-                        raise exception.WazuhClusterError(3025)
+        try:
+            for command, counter, payload, flag_divided in self.get_messages():
+                # If the message is a divided one
+                if flag_divided == InBuffer.divide_flag:
+                    # Check number of concurrent divided messages
+                    if len(self.div_msg_box) >= MAX_CONCURRENT_DIVIDED_MSGS and counter not in self.div_msg_box:
+                        raise WazuhClusterError(3051, extra_message=str(len(self.div_msg_box)))
 
-                # If the message is the response of a previously sent request.
-                if counter in self.box:
-                    if self.box[counter] is None:
-                        # Delete entry for previously expired request, just in case is received too late.
-                        del self.box[counter]
-                    else:
-                        self.box[counter].write(self.process_response(command, payload))
-                # If the message is not related to any previously sent request.
+                    current_size = len(self.div_msg_box.get(counter, b''))
+                    if current_size + len(payload) > MAX_TOTAL_SIZE:
+                        raise WazuhClusterError(3050, extra_message=str(current_size + len(payload)))
+                    try:
+                        self.div_msg_box[counter] = self.div_msg_box[counter] + payload
+                    except KeyError:
+                        self.div_msg_box[counter] = payload
+
                 else:
-                    self.dispatch(command, counter, payload)
+                    # If the message is the last part of a division, join it.
+                    if counter in self.div_msg_box:
+                        payload = self.div_msg_box[counter] + payload
+                        del self.div_msg_box[counter]
+                        # Decrypt the joined payload
+                        try:
+                            payload = self.my_fernet.decrypt(bytes(payload)) if self.my_fernet else bytes(payload)
+                        except cryptography.fernet.InvalidToken:
+                            raise exception.WazuhClusterError(3025)
+                    # If the message is the response of a previously sent request.
+                    if counter in self.box:
+                        if self.box[counter] is None:
+                            # Delete entry for previously expired request, just in case is received too late.
+                            del self.box[counter]
+                        else:
+                            # If the message is not related to any previously sent request.
+                            self.box[counter].write(self.process_response(command, payload))
+                    else:
+                        self.dispatch(command, counter, payload)
+
+        except exception.WazuhClusterError as e:
+            if e.code == 3050:
+                self.logger.warning(
+                    f"[Cluster] Payload too large. Possible DoS attempt. "
+                    f"Details: {e.message} bytes received, but the maximum allowed is {MAX_TOTAL_SIZE} bytes. "
+                    f"Closing connection."
+                )
+                if self.transport:
+                    self.close()
+                return
+            else:
+                raise e
+
+        except Exception:
+            self.logger.exception("[Cluster] Unexpected error in data_received")
 
     def dispatch(self, command: bytes, counter: int, payload: bytes) -> None:
         """Process a received message and send a response.
@@ -1059,8 +1093,14 @@ class Handler(asyncio.Protocol):
         bytes
             String ID.
         """
+        requested_size = int(data)
+
+        if requested_size > MAX_TOTAL_SIZE:
+            return b"error", b"Requested size exceeds maximum allowed limit"
+
         name = str(random.SystemRandom().randint(0, 2 ** 32 - 1)).encode()
-        self.in_str[name] = InBuffer(total=int(data))
+        self.in_str[name] = InBuffer(total=requested_size)
+
         return b"ok", name
 
     def str_upd(self, data: bytes) -> Tuple[bytes, bytes]:
@@ -1312,18 +1352,19 @@ class WazuhCommon:
             Response message.
         """
         task_id, filename = task_and_file_names.split(' ', 1)
+
+        safe_path = os.path.realpath(os.path.join(common.WAZUH_PATH, filename.lstrip("/")))
+
+        if not any(os.path.commonpath([safe_path, root]) == root for root in _ALLOWED_PREFIXES):
+            self.get_logger(logger_tag).error(f"Write path not allowed")
+            raise exception.WazuhClusterError(3027, extra_message=task_id)
+
         if task_id not in self.sync_tasks:
-            # Remove filename if task_id does not exist, before raising exception.
-            if os.path.exists(os.path.join(common.WAZUH_PATH, filename)):
-                try:
-                    os.remove(os.path.join(common.WAZUH_PATH, filename))
-                except Exception as e:
-                    self.get_logger(logger_tag).error(
-                        f"Attempt to delete file {os.path.join(common.WAZUH_PATH, filename)} failed: {e}")
+            self.get_logger(logger_tag).error(f"Task {task_id} not found in sync_tasks")
             raise exception.WazuhClusterError(3027, extra_message=task_id)
 
         # Set full path to file for task 'task_id' and notify it is ready to be read, so the lock is released.
-        self.sync_tasks[task_id].filename = os.path.join(common.WAZUH_PATH, filename)
+        self.sync_tasks[task_id].filename = safe_path
         self.sync_tasks[task_id].received_information.set()
         return b'ok', b'File correctly received'
 
@@ -1994,7 +2035,7 @@ class IndexerTaskManager:
                 await asyncio.sleep(base_delay)
 
             except Exception as e:
-                self.logger.warning(f"Indexer is not configured or unavailable:\n{e}.")
+                self.logger.warning(f"Indexer is not configured or unavailable: {e}.")
 
                 if active_tasks:
                     await self._stop_indexer_tasks(active_tasks)

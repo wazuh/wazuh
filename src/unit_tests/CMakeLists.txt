@@ -41,7 +41,6 @@ include_directories(${SRC_FOLDER}/external/audit-userspace/lib)
 include_directories(${SRC_FOLDER}/external/bzip2)
 include_directories(${SRC_FOLDER}/external/sqlite/)
 include_directories(${SRC_FOLDER}/external/cJSON)
-include_directories(${SRC_FOLDER}/external/msgpack/include)
 include_directories(${SRC_FOLDER}/shared_modules)
 include_directories(${SRC_FOLDER}/shared_modules/common)
 include_directories(${SRC_FOLDER}/shared_modules/router/include/)
@@ -215,38 +214,96 @@ if(NOT GENHTML_PATH)
   message(FATAL_ERROR "genhtml not found! Aborting...")
 endif()
 
+# Target-specific extra exclusions for the lcov --remove pass.
+# These paths exist in the source tree of every target but only matter to the
+# manager/server flow, so we drop them only from the agent report. The manager
+# report keeps measuring them as before.
+#   - wazuh_modules/src/wm_database.c: server-only module bridge. Has a cmocka
+#     test in manager (test_wm_database) so it stays in the manager report.
+#   - config/src/{authd-config,remote-config,wazuh_db-config}.c: server-only config
+#     parsers. Compiled in the agent binary because they are not in config/CMakeLists.txt
+#     REMOVE_ITEM list, but never exercised because the corresponding subsystems
+#     (authd, remoted, wazuh-db) are not part of the agent runtime. Manager has
+#     cmocka tests for all three (test_authd-config, test_remote-config,
+#     test_wazuh_db-config).
+#   - shared/os_crypto/shared/: msgs.c has #ifdef CLIENT branches that diverge from
+#     the manager flow the tests were written against; tests stay manager-only.
+set(TARGET_LCOV_EXTRA_REMOVE)
+if(${TARGET} STREQUAL "agent")
+  list(APPEND TARGET_LCOV_EXTRA_REMOVE
+       --remove coverage.total "*wazuh_modules/src/wm_database.c"
+       --remove coverage.total "*config/src/authd-config.c"
+       --remove coverage.total "*config/src/remote-config.c"
+       --remove coverage.total "*config/src/wazuh_db-config.c"
+       --remove coverage.total "*shared/os_crypto/shared/*")
+endif()
+
 add_custom_target(
   coverage
   # Cleanup lcov
   COMMAND ${LCOV_PATH} --gcov-tool ${GCOV_PATH} -directory ${SRC_FOLDER} --rc
-          lcov_branch_coverage=1 --ignore-errors mismatch --zerocounters
+          branch_coverage=1 --ignore-errors mismatch,mismatch --zerocounters
   # Create baseline to make sure untouched files show up in the report
   COMMAND ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -c -i -d ${SRC_FOLDER} --rc
-          lcov_branch_coverage=1 --ignore-errors mismatch -o coverage.base
+          branch_coverage=1 --ignore-errors mismatch,mismatch -o coverage.base
   # Run tests
   COMMAND ctest
   # Capturing lcov counters and generating report
   COMMAND
     ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} --directory ${SRC_FOLDER} --capture
-    --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file
+    --rc branch_coverage=1 --ignore-errors mismatch,mismatch --output-file
     coverage.info
   # Add baseline counters
   COMMAND
     ${LCOV_PATH} -q --gcov-tool ${GCOV_PATH} -a coverage.base -a coverage.info
-    --rc lcov_branch_coverage=1 --ignore-errors mismatch --output-file
+    --rc branch_coverage=1 --ignore-errors mismatch,mismatch --output-file
     coverage.total
+  # Globally excluded paths (apply to every target):
+  #   - external/, unit_tests/, data_provider/, shared_modules/, syscollector/,
+  #     syscheckd/src/db/, syscheckd/src/ebpf/: out of scope for legacy UT coverage.
+  #   - */include/c++/*  /usr/include/*  *usr/share/mingw-w64/*: libstdc++,
+  #     glibc and mingw-w64 system headers (template instantiations and inline
+  #     definitions inflate the function/branch denominator without representing
+  #     project code).
+  #   - engine/: wazuh-engine has its own coverage workflow (5_testunit_engine.yml);
+  #     legacy UT cmocka does not exercise any of its sources.
+  #   - wazuh_modules/{agent_info,sca,vulnerability_scanner,router,inventory_sync,
+  #     content_manager,indexer_connector}/: C++ modules with their own coverage
+  #     workflow (5_testunit_<module>.yml + coverage_cpp action); legacy UT cmocka
+  #     does not exercise them in any target.
+  #   - wazuh_modules/src/wm_{router,content_manager,inventory_sync,
+  #     vulnerability_scanner}.c: C bridge files for the above C++ modules. Their
+  #     wm_*_read() entry points are registered only under #ifndef CLIENT, but no
+  #     cmocka test exercises them in either target — the logic is covered by each
+  #     module's dedicated workflow.
+  # Target-specific exclusions live in TARGET_LCOV_EXTRA_REMOVE (set above).
   COMMAND
     ${LCOV_PATH} --gcov-tool ${GCOV_PATH} --remove coverage.total "*external/*"
     --remove coverage.total "*unit_tests/*" --remove coverage.total
     "*data_provider/*" --remove coverage.total "*shared_modules/*" --remove
     coverage.total "*syscollector/*" --remove coverage.total
-    "*syscheckd/src/db/*" --rc lcov_branch_coverage=1 --ignore-errors mismatch
-    --output-file coverage.info.cleaned
+    "*syscheckd/src/db/*" --remove coverage.total "*syscheckd/src/ebpf/*"
+    --remove coverage.total "*/include/c++/*" --remove coverage.total
+    "/usr/include/*" --remove coverage.total "*usr/share/mingw-w64/*"
+    --remove coverage.total "*engine/*"
+    --remove coverage.total "*wazuh_modules/agent_info/*" --remove coverage.total
+    "*wazuh_modules/sca/*" --remove coverage.total
+    "*wazuh_modules/vulnerability_scanner/*" --remove coverage.total
+    "*wazuh_modules/router/*" --remove coverage.total
+    "*wazuh_modules/inventory_sync/*" --remove coverage.total
+    "*wazuh_modules/content_manager/*" --remove coverage.total
+    "*wazuh_modules/indexer_connector/*" --remove coverage.total
+    "*wazuh_modules/src/wm_router.c" --remove coverage.total
+    "*wazuh_modules/src/wm_content_manager.c" --remove coverage.total
+    "*wazuh_modules/src/wm_inventory_sync.c" --remove coverage.total
+    "*wazuh_modules/src/wm_vulnerability_scanner.c"
+    ${TARGET_LCOV_EXTRA_REMOVE} --rc branch_coverage=1
+    --ignore-errors mismatch,mismatch,unused,unused --output-file coverage.info.cleaned
   # Generate HTML report
   COMMAND
     ${GENHTML_PATH} -q --output-directory coverage-report --title
-    "WAZUH unit-tests coverage" --rc lcov_branch_coverage=1 --ignore-errors
-    mismatch --legend coverage.info.cleaned
+    "WAZUH unit-tests coverage" --rc branch_coverage=1 --ignore-errors
+    mismatch,mismatch --legend coverage.info.cleaned
   # Clean counters
   COMMAND ${CMAKE_COMMAND} -E remove coverage.base coverage.total
           coverage.info.cleaned)

@@ -43,7 +43,8 @@ cluster_items = {'node': 'master-node',
                                           'timeout_extra_valid': 0, 'process_pool_size': 10,
                                           'recalculate_integrity': 0, 'sync_agent_groups': 1,
                                           'agent_group_start_delay': 1}},
-                 "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
+                 "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"},
+                           "queue/testing/": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
 
 fernet_key = "0" * 32
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -57,7 +58,7 @@ def get_master_handler():
                                                                       'port': 1111},
                                                        cluster_items={'node': 'master-node',
                                                                       'intervals': {'worker': {'connection_retry': 1}}},
-                                                       enable_ssl=False, performance_test=False, logger=None,
+                                                       performance_test=False, logger=None,
                                                        concurrency_test=False, file='None', string=20)
 
     return master.MasterHandler(server=abstract_client, loop=loop, fernet_key=fernet_key, cluster_items=cluster_items)
@@ -69,7 +70,7 @@ def get_master():
         return master.Master(performance_test=False, concurrency_test=False,
                              configuration={'node_name': 'master', 'nodes': ['master'],
                                             'port': 1111, 'node_type': 'master'},
-                             cluster_items=cluster_items, enable_ssl=False)
+                             cluster_items=cluster_items)
 
 
 # Test ReceiveIntegrityTask class
@@ -1291,6 +1292,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                 basename_mock.assert_has_calls([call('data'), call('/file/path')])
                 path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                                  call(common.WAZUH_PATH, '/file/path'),
+                                                 call(common.WAZUH_PATH, 'queue/testing/'),
                                                  call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
@@ -1312,6 +1314,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                 basename_mock.assert_has_calls([call('data'), call('/file/path')])
                 path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                                  call(common.WAZUH_PATH, '/file/path'),
+                                                 call(common.WAZUH_PATH, 'queue/testing/'),
                                                  call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
@@ -1333,11 +1336,12 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                                   worker_name=worker_name,
                                                                   timeout=timeout)
 
-                assert result == {'errors_per_folder': defaultdict(list, {'queue/testing/': ["'queue/testing/'"]}),
-                                  'generic_errors': [], 'total_updated': 0}
+                assert result == {'errors_per_folder': defaultdict(list),
+                                  'generic_errors': [], 'total_updated': 1}
                 basename_mock.assert_has_calls([call('data'), call('/file/path')])
                 path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                                  call(common.WAZUH_PATH, '/file/path'),
+                                                 call(common.WAZUH_PATH, 'queue/testing/'),
                                                  call(common.WAZUH_PATH, 'queue', 'cluster', 'wazuh',
                                                       '/os/path/basename')])
                 unmerge_info_mock.assert_called_once_with('type', decompressed_files_path, 'name')
@@ -1381,9 +1385,10 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                       worker_name=worker_name,
                                                       timeout=timeout)
 
-    assert result == {'errors_per_folder': defaultdict(list, {'queue/testing/': ["'queue/testing/'"]}),
+    assert result == {'errors_per_folder': defaultdict(list),
                       'generic_errors': [], 'total_updated': 0}
     path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
+                                     call(common.WAZUH_PATH, 'queue/testing/'),
                                      call(decompressed_files_path, 'data')])
 
     safe_move_mock.side_effect = TimeoutError
@@ -1393,8 +1398,8 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                       worker_name=worker_name,
                                                       timeout=timeout)
 
-    assert result == {'errors_per_folder': defaultdict(list, {'queue/testing/': ["'queue/testing/'"]}),
-                      'generic_errors': [], 'total_updated': 0}
+    assert result == {'errors_per_folder': defaultdict(list),
+                      'generic_errors': ['Timeout processing extra-valid files.'], 'total_updated': 0}
 
     safe_move_mock.side_effect = Exception
     result = master_handler.process_files_from_worker(files_metadata=files_metadata,
@@ -1403,7 +1408,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                       worker_name=worker_name,
                                                       timeout=timeout)
 
-    assert result == {'errors_per_folder': defaultdict(list, {'queue/testing/': ["'queue/testing/'"]}),
+    assert result == {'errors_per_folder': defaultdict(list, {'queue/testing/': ['']}),
                       'generic_errors': [], 'total_updated': 0}
 
 
@@ -1485,7 +1490,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
                                  cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 )
 
     assert master_class.integrity_control == {}
     assert master_class.handler_class == master.MasterHandler
@@ -1504,7 +1509,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
                                  cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 )
 
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
                                         "'/dev/shm' must be accessible by the 'wazuh-manager' user. Check that this file has "
@@ -1517,7 +1522,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
     master_class = master.Master(performance_test=False, concurrency_test=False,
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111},
                                  cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 )
 
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
                                         "'/dev/shm' must be accessible by the 'wazuh-manager' user. Check that this file has "
@@ -1536,7 +1541,7 @@ def test_master_to_dict(get_running_loop_mock):
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                                 "node_type": "master"},
                                  cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 )
 
     assert master_class.to_dict() == {
         'info': {'name': master_class.configuration['node_name'], 'type': master_class.configuration['node_type'],
@@ -1680,7 +1685,7 @@ async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                                 "node_type": "master"},
                                  cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 )
     master_class.tasks_event.set()
 
     class LoggerMock:
@@ -1752,7 +1757,7 @@ def test_master_get_health(get_running_loop_mock, get_agent_overview_mock):
     master_class = MockMaster(performance_test=False, concurrency_test=False,
                               configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                              'node_type': 'master'},
-                              cluster_items=cluster_items, enable_ssl=False)
+                              cluster_items=cluster_items)
     master_class.clients = {'1': MockDict({'testing': 'dict'})}
 
     assert master_class.get_health({'jey': 'value', 'hoy': 'value'}) == {'n_connected_nodes': 0, 'nodes': {}}
@@ -1772,7 +1777,7 @@ def test_master_get_node(get_running_loop_mock):
                                  configuration={'node_name': 'master', 'nodes': ['master'], 'port': 1111,
                                                 "node_type": "master", "name": "master"},
                                  cluster_items=cluster_items,
-                                 enable_ssl=False)
+                                 )
 
     assert master_class.get_node() == {'type': master_class.configuration['node_type'],
                                        'cluster': master_class.configuration['name'],
@@ -1912,3 +1917,51 @@ async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wd
             await task.run_agent_groups_sync()
 
     server_mock.setup_task_logger.return_value.info.assert_called()
+
+
+@patch("os.path.basename")
+@patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
+@patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
+@patch("wazuh.core.cluster.master.utils.safe_move")
+def test_master_handler_process_files_from_worker_validates_non_merged_path(safe_move_mock, gid_mock, uid_mock,
+                                                                             basename_mock):
+    """Test that process_files_from_worker validates path confinement for non-merged files."""
+    master_handler = get_master_handler()
+
+    basename_mock.return_value = "file.txt"
+    files_metadata = {"queue/testing/file.txt": {"merged": False, "cluster_item_key": "queue/testing/"}}
+    result = master_handler.process_files_from_worker(
+        files_metadata=files_metadata,
+        decompressed_files_path='/decompressed',
+        cluster_items=cluster_items,
+        worker_name='worker1',
+        timeout=0
+    )
+    assert result['errors_per_folder'] == defaultdict(list)
+
+    files_metadata = {"etc/ossec.conf": {"merged": False, "cluster_item_key": "queue/testing/"}}
+    result = master_handler.process_files_from_worker(
+        files_metadata=files_metadata,
+        decompressed_files_path='/decompressed',
+        cluster_items=cluster_items,
+        worker_name='worker1',
+        timeout=0
+    )
+    assert len(result['errors_per_folder']['queue/testing/']) > 0
+    assert any('outside allowed directory' in str(e) or '3022' in str(e)
+              for e in result['errors_per_folder']['queue/testing/'])
+
+    basename_mock.return_value = "excluded.txt"
+    cluster_items_with_excluded = dict(cluster_items)
+    cluster_items_with_excluded['files'] = {**cluster_items['files'], 'excluded_files': ['excluded.txt']}
+    files_metadata = {"queue/testing/excluded.txt": {"merged": False, "cluster_item_key": "queue/testing/"}}
+    result = master_handler.process_files_from_worker(
+        files_metadata=files_metadata,
+        decompressed_files_path='/decompressed',
+        cluster_items=cluster_items_with_excluded,
+        worker_name='worker1',
+        timeout=0
+    )
+    assert len(result['errors_per_folder']['queue/testing/']) > 0
+    assert any('excluded list' in str(e) or '3022' in str(e)
+              for e in result['errors_per_folder']['queue/testing/'])

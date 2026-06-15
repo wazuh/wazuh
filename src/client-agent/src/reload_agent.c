@@ -22,7 +22,7 @@
 
 static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
 
-void * reloadAgent() {
+bool reloadAgent(void) {
 
 	char req[] = "reload";
 
@@ -33,35 +33,49 @@ void * reloadAgent() {
 
 	int sock = -1;
 	char sockname[PATH_MAX + 1];
+	const int max_retries = 30;
+	const int retry_delay_s = 1;
+	int attempt;
 
 	strcpy(sockname, CONTROL_SOCK);
 
-	if (sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR), sock < 0) {
-		switch (errno) {
-		case ECONNREFUSED:
-			merror("Could not auto-reload agent. Could not connect to control socket '%s'.", sockname);
+	for (attempt = 0; attempt < max_retries; attempt++) {
+		sock = OS_ConnectUnixDomain(sockname, SOCK_STREAM, OS_MAXSTR);
+		if (sock >= 0) {
 			break;
+		}
 
-		default:
+		if (errno == ENOENT || errno == ECONNREFUSED) {
+			mdebug1("Control socket '%s' not yet available (attempt %d/%d), retrying...", sockname, attempt + 1, max_retries);
+			sleep(retry_delay_s);
+		} else {
 			merror("At reloadAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+			return false;
 		}
-	} else {
-		if (OS_SendSecureTCP(sock, length, req)) {
-			merror("OS_SendSecureTCP(): %s", strerror(errno));
-		}
-
-		close(sock);
 	}
+
+	if (sock < 0) {
+		merror("Could not auto-reload agent. Could not connect to control socket '%s' after %d attempts.", sockname, max_retries);
+		return false;
+	}
+
+	if (OS_SendSecureTCP(sock, length, req)) {
+		merror("OS_SendSecureTCP(): %s", strerror(errno));
+		close(sock);
+		return false;
+	}
+
+	close(sock);
+	return true;
 
 	#else
 
 	char *output = NULL;
 	control_dispatch(req, &output);
 	if (output) free(output);
+	return true;
 
 	#endif
-
-	return NULL;
 }
 
 int verifyRemoteConf(){

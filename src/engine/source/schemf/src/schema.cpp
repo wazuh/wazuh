@@ -2,6 +2,7 @@
 #include "validator.hpp"
 
 #include <stdexcept>
+#include <unordered_set>
 
 #include <fmt/format.h>
 
@@ -194,12 +195,12 @@ Field Schema::entryToField(const std::string& name, const json::Json& entry) con
 
     Field::Parameters params;
 
-    auto type = entry.getString("/type");
-    if (!type)
+    std::string typeStr;
+    if (entry.getString(typeStr, "/type") != json::RetGet::Success)
     {
         throw std::runtime_error(fmt::format("Field '{}' must have a type", name));
     }
-    params.type = strToType(type.value());
+    params.type = strToType(typeStr);
 
     Field field;
     try
@@ -233,6 +234,11 @@ void Schema::load(const json::Json& json)
         auto field = entryToField(key, value);
         addField(key, field);
     }
+}
+
+std::unordered_set<json::Json::Type> Schema::getJsonTypes(const DotPath& name) const
+{
+    return m_validator->getJsonTypes(name);
 }
 
 base::RespOrError<ValidationResult> Schema::validate(const DotPath& name, const ValidationToken& token) const

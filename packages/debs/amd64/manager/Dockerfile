@@ -18,7 +18,7 @@ RUN /usr/local/bin/retry.sh --attempts 5 --delay 10 --backoff 2 --max-delay 40 -
     apt-get install -y --force-yes \
     curl g++ bzip2 debhelper gcc rename make sudo wget expect gnupg perl-base perl \
     libc-bin libc6 libc6-dev build-essential dpkg-dev\
-    cdbs devscripts equivs automake autoconf libtool libaudit-dev selinux-basics \
+    cdbs devscripts equivs automake autoconf libtool libaudit-dev \
     libdb5.3 libdb5.3-dev libssl1.0.0 libssl-dev procps git gawk libsigsegv2
 
 RUN echo "deb-src http://archive.debian.org/debian jessie contrib main non-free" >> /etc/apt/sources.list

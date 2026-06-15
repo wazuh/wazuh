@@ -17,17 +17,8 @@ namespace
 const base::Name STORE_NAME_CMSYNC {"cmsync/status/0"};          ///< Name of the internal store document
 const cm::store::NamespaceId DUMMY_NAMESPACE_ID {"dummy_ns_id"}; ///< Dummy namespace ID
 constexpr std::string_view COMPONENT_NAME = "CMSync";            ///< Component name for logging
-
-/**
- * @brief Generate a route name for the given origin space
- *
- * @param originSpace Origin space name
- * @return std::string Generated route name
- */
-std::string generateRouteName(std::string_view originSpace)
-{
-    return fmt::format("cmsync_{}", originSpace);
-}
+constexpr std::string_view STANDARD_SPACE_NAME = "standard";     ///< Standard space name
+constexpr std::string_view CUSTOM_SPACE_NAME = "custom";       ///< Custom space name
 
 /**
  * @brief Generate a random namespace ID for the given origin space
@@ -51,12 +42,14 @@ namespace cm::sync
 class SyncedNamespace
 {
 private:
-    std::string m_originSpace;     ///< Origin space in the indexer
-    std::string m_routeName;       ///< Route name in the router
-    cm::store::NamespaceId m_nsId; ///< Destination namespace ID in the local store
+    std::string m_originSpace;               ///< Origin space in the indexer
+    std::string m_routeName;                 ///< Route name in the router
+    cm::store::NamespaceId m_nsId;           ///< Destination namespace ID in the local store
+    std::optional<std::string> m_consumerId; ///< Optional CTI consumer doc ID to validate during sync
 
     static constexpr std::string_view JPATH_ORIGIN = "/origin_space";       ///< JSON path for origin space
     static constexpr std::string_view JPATH_NAMESPACE_ID = "/namespace_id"; ///< JSON path for namespace ID
+    static constexpr std::string_view JPATH_CONSUMER_ID = "/consumer_id";   ///< JSON path for consumer ID
 
     /**
      * @brief Generate a route name for the given origin space
@@ -75,11 +68,13 @@ public:
      * This constructor is used to create a dummy SyncedNamespace with only the origin space, used when adding a new
      * space to sync before the first synchronization.
      * @param originSpace Origin space name
+     * @param consumerId Optional consumer document ID for CTI validation
      */
-    explicit SyncedNamespace(std::string_view originSpace)
+    explicit SyncedNamespace(std::string_view originSpace, std::optional<std::string> consumerId = std::nullopt)
         : m_originSpace(originSpace)
         , m_routeName(generateRouteName(originSpace))
         , m_nsId(DUMMY_NAMESPACE_ID)
+        , m_consumerId(std::move(consumerId))
     {
     }
 
@@ -88,11 +83,15 @@ public:
      *
      * @param originSpace Origin space name
      * @param nsId Destination namespace ID in the local store
+     * @param consumerId Optional consumer document ID for CTI validation
      */
-    SyncedNamespace(std::string_view originSpace, cm::store::NamespaceId nsId)
+    SyncedNamespace(std::string_view originSpace,
+                    cm::store::NamespaceId nsId,
+                    std::optional<std::string> consumerId = std::nullopt)
         : m_originSpace(originSpace)
         , m_routeName(generateRouteName(originSpace))
         , m_nsId(std::move(nsId))
+        , m_consumerId(std::move(consumerId))
     {
     }
 
@@ -100,7 +99,9 @@ public:
     const std::string& getOriginSpace() const { return m_originSpace; }
     const cm::store::NamespaceId& getNamespaceId() const { return m_nsId; }
     const std::string& getRouteName() const { return m_routeName; }
+    const std::optional<std::string>& getConsumerId() const { return m_consumerId; }
     void setNamespaceId(const cm::store::NamespaceId& nsId) { m_nsId = nsId; }
+    void setConsumerId(const std::optional<std::string>& consumerId) { m_consumerId = consumerId; }
 
     /**
      * @brief Serialize the SyncedNamespace to a JSON object
@@ -112,6 +113,10 @@ public:
         json::Json j {};
         j.setString(m_originSpace, JPATH_ORIGIN);
         j.setString(m_nsId.toStr(), JPATH_NAMESPACE_ID);
+        if (m_consumerId.has_value())
+        {
+            j.setString(*m_consumerId, JPATH_CONSUMER_ID);
+        }
         return j;
     }
 
@@ -124,33 +129,42 @@ public:
      */
     static SyncedNamespace fromJson(const json::Json& j)
     {
-        auto optOrigin = j.getString(JPATH_ORIGIN);
-        if (!optOrigin.has_value() || optOrigin->empty())
+        std::string origin;
+        if (j.getString(origin, JPATH_ORIGIN) != json::RetGet::Success || origin.empty())
         {
-            throw std::runtime_error("NsSyncState::fromJson: Missin/empty origin_space field");
+            throw std::runtime_error("NsSyncState::fromJson: Missing/empty origin_space field");
         }
 
-        auto optNsId = j.getString(JPATH_NAMESPACE_ID);
-        if (!optNsId.has_value())
+        std::string nsId;
+        if (j.getString(nsId, JPATH_NAMESPACE_ID) != json::RetGet::Success)
         {
             throw std::runtime_error("NsSyncState::fromJson: Missing namespace_id field");
         }
 
-        return {*optOrigin, cm::store::NamespaceId(*optNsId)};
+        std::optional<std::string> consumerId = std::nullopt;
+        std::string consumerIdStr;
+        if (j.getString(consumerIdStr, JPATH_CONSUMER_ID) == json::RetGet::Success && !consumerIdStr.empty())
+        {
+            consumerId = std::move(consumerIdStr);
+        }
+
+        return {origin, cm::store::NamespaceId(nsId), std::move(consumerId)};
     }
 };
 
 CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
                const std::shared_ptr<cm::crud::ICrudService>& cmcrudPt,
                const std::shared_ptr<::store::IStore>& storePtr,
-               const std::shared_ptr<router::IRouterAPI>& routerPtr)
+               const std::shared_ptr<router::IRouterAPI>& routerPtr,
+               const size_t attempts,
+               const size_t waitSeconds)
     : m_indexerPtr(indexerPtr)
     , m_cmcrudPtr(cmcrudPt)
     , m_store(storePtr)
     , m_router(routerPtr)
     , m_mutex()
-    , m_attemps(3)
-    , m_waitSeconds(5)
+    , m_attempts(attempts)
+    , m_waitSeconds(waitSeconds)
 {
     // Check if is the first setup
     if (storePtr->existsDoc(STORE_NAME_CMSYNC))
@@ -159,10 +173,12 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
         return;
     }
 
-    LOG_INFO("[CMSync] First setup detected, initializing default sync spaces");
+    LOG_DEBUG("[CMSync] First setup detected, initializing default sync spaces");
 
-    addSpaceToSync("standard");
-    addSpaceToSync("custom");
+    // Populate directly and dump once to avoid multiple unnecessary store writes
+    m_namespacesState.emplace_back(STANDARD_SPACE_NAME,
+                                   std::optional<std::string>(std::string(wiconnector::STANDARD_RULESET_CONSUMER_ID)));
+    m_namespacesState.emplace_back(CUSTOM_SPACE_NAME);
     dumpStateToStore();
 }
 
@@ -173,33 +189,44 @@ bool CMSync::existSpaceInRemote(std::string_view space)
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
-                                         fmt::format("{}::exist()", COMPONENT_NAME),
+                                         fmt::format("{}", COMPONENT_NAME),
                                          fmt::format("Check '{}' space in wazuh-indexer", space),
-                                         m_attemps,
-                                         m_waitSeconds);
+                                         m_attempts,
+                                         m_waitSeconds,
+                                         m_shutdownRequested);
 }
 
-void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace)
+bool CMSync::downloadNamespace(std::string_view originSpace,
+                               const cm::store::NamespaceId& dstNamespace,
+                               const std::optional<std::string_view>& consumerId)
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
     auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrudService");
 
-    // Download policy from wazuh-indexer
-    auto policyResource =
-        base::utils::executeWithRetry([&indexerPtr, originSpace]() { return indexerPtr->getPolicy(originSpace); },
-                                      fmt::format("{}::downloadNamespace()", COMPONENT_NAME),
-                                      fmt::format("Download '{}' space from wazuh-indexer", originSpace),
-                                      m_attemps,
-                                      m_waitSeconds);
+    // Download policy from wazuh-indexer (with optional consumer validation in PIT)
+    auto policyResource = base::utils::executeWithRetry(
+        [&indexerPtr, originSpace, &consumerId]() { return indexerPtr->getPolicy(originSpace, consumerId); },
+        fmt::format("{}::downloadNamespace()", COMPONENT_NAME),
+        fmt::format("Download '{}' space from wazuh-indexer", originSpace),
+        m_attempts,
+        m_waitSeconds,
+        m_shutdownRequested);
+
+    // If consumer is not idle, getPolicy returns nullopt
+    if (!policyResource.has_value())
+    {
+        return false;
+    }
 
     // Create destNamespace
     try
     {
         cmcrudPtr->importNamespace(dstNamespace,
-                                   policyResource.kvdbs,
-                                   policyResource.decoders,
-                                   policyResource.integration,
-                                   policyResource.policy,
+                                   policyResource->kvdbs,
+                                   policyResource->decoders,
+                                   policyResource->filters,
+                                   policyResource->integration,
+                                   policyResource->policy,
                                    /*softValidation=*/true);
     }
     catch (const std::exception& e)
@@ -217,21 +244,26 @@ void CMSync::downloadNamespace(std::string_view originSpace, const cm::store::Na
         throw std::runtime_error(
             fmt::format("Failed to store resources in namespace '{}': {}", dstNamespace.toStr(), e.what()));
     }
+
+    return true;
 }
 
-std::pair<std::string, bool> CMSync::getPolicyHashAndEnabledFromRemote(std::string_view space)
+std::optional<std::pair<std::string, bool>>
+CMSync::getPolicyHashAndEnabledFromRemote(std::string_view space, const std::optional<std::string_view>& consumerId)
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
     return base::utils::executeWithRetry(
-        [&indexerPtr, space]() { return indexerPtr->getPolicyHashAndEnabled(space); },
+        [&indexerPtr, space, &consumerId]() { return indexerPtr->getPolicyHashAndEnabled(space, consumerId); },
         fmt::format("{}::getInfoFromRemote()", COMPONENT_NAME),
         fmt::format("Get policy hash and enabled status for '{}' space from wazuh-indexer", space),
-        m_attemps,
-        m_waitSeconds);
+        m_attempts,
+        m_waitSeconds,
+        m_shutdownRequested);
 }
 
-cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view originSpace)
+std::optional<cm::store::NamespaceId>
+CMSync::downloadAndEnrichNamespace(std::string_view originSpace, const std::optional<std::string_view>& consumerId)
 {
 
     auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
@@ -247,7 +279,10 @@ cm::store::NamespaceId CMSync::downloadAndEnrichNamespace(std::string_view origi
         return tempNsId;
     }();
 
-    downloadNamespace(originSpace, newNs);
+    if (!downloadNamespace(originSpace, newNs, consumerId))
+    {
+        return std::nullopt; // Consumer not idle
+    }
 
     // Enrich the namespace with local-only assets
     /*
@@ -311,7 +346,6 @@ void CMSync::syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::stor
             if (usedPriorities.find(priority) == usedPriorities.end())
             {
                 return priority;
-                ;
             }
         }
         throw std::runtime_error("No available priority for new route");
@@ -340,12 +374,10 @@ void CMSync::addSpaceToSync(std::string_view space)
         }
     }
 
-    // Add the new space to the sync list
+    // Add the new space to the sync list (constructor already sets DUMMY_NAMESPACE_ID)
     m_namespacesState.emplace_back(space);
-    // SET Dummy namespace id
-    m_namespacesState.back().setNamespaceId(DUMMY_NAMESPACE_ID);
 
-    LOG_INFO("[CMSync] Added space '{}' to the sync list", space);
+    LOG_DEBUG("[CMSync] Added space '{}' to the sync list", space);
 
     dumpStateToStore();
 }
@@ -438,19 +470,66 @@ void CMSync::synchronize()
 
     for (auto& nsState : m_namespacesState)
     {
+        // Check abort at the start of each namespace iteration
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO("[CMSync] Synchronization aborted during namespace iteration");
+            return;
+        }
+
         try
         {
             LOG_DEBUG("[CMSync] Synchronizing namespace for space '{}'", nsState.getOriginSpace());
 
             if (!existSpaceInRemote(nsState.getOriginSpace()))
             {
-                LOG_WARNING("[CMSync] Space '{}' does not exist in remote indexer, skipping synchronization",
+                LOG_WARNING("[CMSync] Space '{}' does not exist in wazuh-indexer, skipping synchronization",
                             nsState.getOriginSpace());
                 continue;
             }
 
-            // Get remote policy hash and enabled status
-            const auto [remoteHash, remoteEnabled] = getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace());
+            // Get remote policy hash and enabled status (with consumer validation in PIT if configured)
+            if (m_shutdownRequested.load(std::memory_order_relaxed))
+            {
+                LOG_INFO("[CMSync] Synchronization aborted before getting policy info for space '{}'",
+                         nsState.getOriginSpace());
+                return;
+            }
+
+            // Pre-flight check: verify consumer is idle and has data (local_offset != 0)
+            if (nsState.getConsumerId().has_value())
+            {
+                auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
+                const bool ready = base::utils::executeWithRetry(
+                    [&indexerPtr, &consumerId = nsState.getConsumerId().value()]()
+                    { return indexerPtr->isConsumerReadyForSync(consumerId); },
+                    fmt::format("{}", COMPONENT_NAME),
+                    fmt::format("Check consumer readiness for space '{}'", nsState.getOriginSpace()),
+                    m_attempts,
+                    m_waitSeconds,
+                    m_shutdownRequested);
+
+                if (!ready)
+                {
+                    LOG_INFO("[CMSync] Synchronization skipped for space '{}' because wazuh-indexer consumer '{}' is "
+                             "not ready for sync (might be updating or no data)",
+                             nsState.getOriginSpace(),
+                             nsState.getConsumerId().value());
+                    continue;
+                }
+            }
+
+            const auto hashResult =
+                getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace(), nsState.getConsumerId());
+            if (!hashResult.has_value())
+            {
+                LOG_INFO("[CMSync] Synchronization skipped for space '{}' because wazuh-indexer is updating the policy "
+                         "or consumer is not idle (consumer ID: '{}')",
+                         nsState.getOriginSpace(),
+                         nsState.getConsumerId().value_or("unknown"));
+                continue;
+            }
+            const auto& [remoteHash, remoteEnabled] = *hashResult;
 
             // Check the current route/ns configuration to avoid unnecessary synchronization.
             const auto routeConfig = [&]() -> std::optional<std::tuple<bool, cm::store::NamespaceId, std::string>>
@@ -534,8 +613,23 @@ void CMSync::synchronize()
             // Cases 3 and 4: Changes detected, perform synchronization
             LOG_INFO("[CMSync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
 
-            // Download and enrich the namespace
-            const auto newNsId = downloadAndEnrichNamespace(nsState.getOriginSpace());
+            // Check abort before download (most expensive operation)
+            if (m_shutdownRequested.load(std::memory_order_relaxed))
+            {
+                LOG_INFO("[CMSync] Synchronization aborted before downloading namespace for space '{}'",
+                         nsState.getOriginSpace());
+                return;
+            }
+
+            // Download and enrich the namespace (consumer validated again within PIT)
+            const auto newNsIdOpt = downloadAndEnrichNamespace(nsState.getOriginSpace(), nsState.getConsumerId());
+            if (!newNsIdOpt.has_value())
+            {
+                LOG_INFO("[CMSync] Download skipped for space '{}' because consumer is not idle",
+                         nsState.getOriginSpace());
+                continue;
+            }
+            const auto& newNsId = *newNsIdOpt;
 
             // Sync the namespace in the router
             try
@@ -570,7 +664,6 @@ void CMSync::synchronize()
             // Delete old namespace if it exists and is different from the new one
             if (oldNsId != DUMMY_NAMESPACE_ID && oldNsId != newNsId)
             {
-                auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
                 try
                 {
                     cmcrudPtr->deleteNamespace(oldNsId);
@@ -594,6 +687,12 @@ void CMSync::synchronize()
     }
 
     LOG_DEBUG("[CMSync] Finished synchronization of spaces");
+}
+
+void CMSync::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[CMSync] Shutdown requested");
 }
 
 } // namespace cm::sync

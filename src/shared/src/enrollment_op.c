@@ -457,6 +457,10 @@ static int w_enrollment_process_agent_key(char *buffer) {
 
     *tmpstr = '\0';
     char **entrys = OS_StrBreak(' ', keys, 4);
+    if (!entrys) {
+        merror("Invalid keys format received: failed to split key fields.");
+        return ret;
+    }
     if (OS_IsValidID(entrys[ENTRY_ID]) && OS_IsValidName(entrys[ENTRY_NAME]) &&
             OS_IsValidIP(entrys[ENTRY_IP], NULL) && OS_IsValidName(entrys[ENTRY_KEY])) {
         if( !w_enrollment_store_key_entry(keys) ) {

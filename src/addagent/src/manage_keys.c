@@ -20,10 +20,6 @@
 
 #define DEFAULT_ID   132512
 
-/* Prototypes */
-static char *trimwhitespace(char *str);
-
-
 static char *trimwhitespace(char *str)
 {
     char *end;
@@ -33,7 +29,7 @@ static char *trimwhitespace(char *str)
         return NULL;
 
     /* Trim leading space */
-    while (isspace(*str)) {
+    while (isspace((unsigned char)*str)) {
         str++;
     }
 
@@ -43,7 +39,7 @@ static char *trimwhitespace(char *str)
 
     /* Trim trailing space */
     end = str + strlen(str) - 1;
-    while (end > str && isspace(*end)) {
+    while (end > str && isspace((unsigned char)*end)) {
         end--;
     }
 
@@ -119,61 +115,59 @@ int k_import(const char *cmdimport)
             printf("\n");
             printf(AGENT_INFO, b64_dec, name, ip);
 
-            while (1) {
-                printf(ADD_CONFIRM);
-                fflush(stdout);
+            printf(ADD_CONFIRM);
+            fflush(stdout);
 
-                user_input = getenv("OSSEC_ACTION_CONFIRMED");
-                if (user_input == NULL) {
-                    user_input = read_from_user();
+            user_input = getenv("OSSEC_ACTION_CONFIRMED");
+            if (user_input == NULL) {
+                user_input = read_from_user();
+            }
+
+            if (user_input[0] == 'y' || user_input[0] == 'Y') {
+                if (mkstemp_ex(tmp_path)) {
+                    merror_exit(MKSTEMP_ERROR, tmp_path, errno, strerror(errno));
                 }
-
-                if (user_input[0] == 'y' || user_input[0] == 'Y') {
-                    if (mkstemp_ex(tmp_path)) {
-                        merror_exit(MKSTEMP_ERROR, tmp_path, errno, strerror(errno));
-                    }
 
 #ifndef WIN32
-                    if (chmod(tmp_path, 0640) == -1) {
-                        if (unlink(tmp_path)) {
-                            minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
-                        }
-
-                        merror_exit(CHMOD_ERROR, tmp_path, errno, strerror(errno));
+                if (chmod(tmp_path, 0640) == -1) {
+                    if (unlink(tmp_path)) {
+                        minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
                     }
+
+                    merror_exit(CHMOD_ERROR, tmp_path, errno, strerror(errno));
+                }
 #endif
 
-                    fp = wfopen(tmp_path, "w");
-                    if (!fp) {
-                        if (unlink(tmp_path)) {
-                            minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
-                        }
-
-                        merror_exit(FOPEN_ERROR, tmp_path, errno, strerror(errno));
-                    }
-                    fprintf(fp, "%s\n", line_read);
-                    fclose(fp);
-
-                    if (rename_ex(tmp_path, KEYS_FILE)) {
-                        if (unlink(tmp_path)) {
-                            minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
-                        }
-
-                        merror_exit(RENAME_ERROR, tmp_path, KEYS_FILE, errno, strerror(errno));
+                fp = wfopen(tmp_path, "w");
+                if (!fp) {
+                    if (unlink(tmp_path)) {
+                        minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
                     }
 
-                    /* Remove sender counter */
-                    OS_RemoveCounter("sender");
-
-                    printf(ADDED);
-                    free(b64_dec);
-                    return (1);
-                } else { /* if(user_input[0] == 'n' || user_input[0] == 'N') */
-                    printf("%s", ADD_NOT);
-
-                    free(b64_dec);
-                    return (0);
+                    merror_exit(FOPEN_ERROR, tmp_path, errno, strerror(errno));
                 }
+                fprintf(fp, "%s\n", line_read);
+                fclose(fp);
+
+                if (rename_ex(tmp_path, KEYS_FILE)) {
+                    if (unlink(tmp_path)) {
+                        minfo(DELETE_ERROR, tmp_path, errno, strerror(errno));
+                    }
+
+                    merror_exit(RENAME_ERROR, tmp_path, KEYS_FILE, errno, strerror(errno));
+                }
+
+                /* Remove sender counter */
+                OS_RemoveCounter("sender");
+
+                printf(ADDED);
+                free(b64_dec);
+                return (1);
+            } else { /* if(user_input[0] == 'n' || user_input[0] == 'N') */
+                printf("%s", ADD_NOT);
+
+                free(b64_dec);
+                return (0);
             }
         }
     }

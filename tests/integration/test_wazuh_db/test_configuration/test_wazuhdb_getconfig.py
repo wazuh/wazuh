@@ -4,9 +4,8 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
            This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 type: integration
 brief: Wazuh-db is the daemon in charge of the databases with all the Wazuh persistent information, exposing a socket
-       to receive requests and provide information. The Wazuh core uses list-based databases to store information
-       related to agent keys, and FIM/Rootcheck event data.
-       This test checks the usage of the wazuhdb getconfig command used to get the current configuration
+       to receive requests and provide information. This test checks the wazuhdb getconfig command used to get the
+       current configuration.
 
 tier: 0
 
@@ -49,8 +48,6 @@ tags:
 '''
 from pathlib import Path
 import pytest
-from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
-from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.utils import configuration
 
@@ -63,27 +60,23 @@ pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_wazuhdb_getconfig.yaml')
 t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
-receiver_sockets_params = [(WAZUH_DB_SOCKET_PATH, 'AF_UNIX', 'TCP')]
-monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True)]
-receiver_sockets = None  # Set in the fixtures
+# Test daemons to restart.
+daemons_handler_configuration = {'all_daemons': True}
 
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_sync_agent_groups(configure_sockets_environment_module, connect_to_sockets_module, test_metadata):
+def test_wazuhdb_getconfig(test_metadata, daemons_handler_module):
     '''
     description: Check that commands about wazuhdb getconfig works properly.
-    wazuh_min_version: 4.4.0
+    wazuh_min_version: 5.0.0
     parameters:
-        - configure_sockets_environment_module:
-            type: fixture
-            brief: Configure environment for sockets and MITM.
-        - connect_to_sockets_module:
-            type: fixture
-            brief: Module scope version of 'connect_to_sockets' fixture.
         - test_metadata:
             type: dict
             brief: Test case metadata.
+        - daemons_handler_module:
+            type: fixture
+            brief: Handler of Wazuh daemons.
     assertions:
         - Verify that the socket response matches the expected output.
     input_description:

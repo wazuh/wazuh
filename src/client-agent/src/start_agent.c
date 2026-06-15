@@ -13,6 +13,7 @@
 #include "sendmsg.h"
 #include "os_net.h"
 #include "../os_crypto/md5/md5_op.h"
+#include "metadata_provider.h"
 #include <ctype.h>
 
 #ifdef WAZUH_UNIT_TESTING
@@ -347,7 +348,7 @@ bool connect_server(int server_id, bool verbose)
 
         if (agt->server[agt->rip_id].rip) {
             if (verbose) {
-                minfo("Closing connection to server ([%s]:%d/%s).",
+                mdebug1("Closing connection to server ([%s]:%d/%s).",
                     agt->server[agt->rip_id].rip,
                     agt->server[agt->rip_id].port,
                     "tcp");
@@ -370,9 +371,9 @@ bool connect_server(int server_id, bool verbose)
     if (ip_address == NULL || *ip_address == '\0') {
         if (agt->server[server_id].rip != NULL) {
             const int rip_l = strlen(agt->server[server_id].rip);
-            minfo("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
+            mdebug1("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
         } else {
-            minfo("Could not resolve hostname");
+            mdebug1("Could not resolve hostname");
         }
         os_free(ip_address);
         return false;
@@ -452,7 +453,7 @@ void start_agent(int is_startup)
         /* If there is a next server, try it */
         if (agt->server[current_server_id + 1].rip) {
             current_server_id++;
-            minfo("Trying next server ip in the line: '%s'.", agt->server[current_server_id].rip);
+            mdebug1("Trying next server ip in the line: '%s'.", agt->server[current_server_id].rip);
         } else {
             current_server_id = 0;
             mwarn("Unable to connect to any server.");
@@ -511,7 +512,7 @@ static void w_agentd_keys_init (void) {
 
     /* Set the crypto method for the agent */
     os_set_agent_crypto_method(&keys, W_METH_AES);
-    minfo("Using AES as encryption method.");
+    mdebug1("Using AES as encryption method.");
 }
 
 /**
@@ -551,7 +552,7 @@ static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
                     break;
                 default:
                     if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
-                        minfo("Unable to receive start response: Timeout reached");
+                        mdebug1("Unable to receive start response: Timeout reached");
                     } else {
                         #ifdef WIN32
                             mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
@@ -569,7 +570,7 @@ int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
     int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip, network_interface);
     if (enroll_result == 0) {
         /* Wait for key update on agent side */
-        minfo("Waiting %ld seconds before server connection", (long)agt->enrollment_cfg->delay_after_enrollment);
+        mdebug1("Waiting %ld seconds before server connection", (long)agt->enrollment_cfg->delay_after_enrollment);
         sleep(agt->enrollment_cfg->delay_after_enrollment);
         /* Successfull enroll, read keys */
         OS_UpdateKeys(&keys);
@@ -577,6 +578,104 @@ int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
         os_set_agent_crypto_method(&keys, W_METH_AES);
     }
     return enroll_result;
+}
+
+/* Populate shared memory with agent metadata so the first keepalive
+ * already contains full agent info. All data is local and available
+ * immediately after the handshake completes. */
+static void populate_early_metadata(void)
+{
+    agent_metadata_t metadata = {0};
+
+#ifdef WIN32
+    os_info *os = get_win_version();
+#else
+    os_info *os = get_unix_version();
+#endif
+
+    /* Agent identity */
+    if (keys.keysize > 0 && keys.keyentries[0]) {
+        strncpy(metadata.agent_id, keys.keyentries[0]->id, sizeof(metadata.agent_id) - 1);
+        strncpy(metadata.agent_name, keys.keyentries[0]->name, sizeof(metadata.agent_name) - 1);
+    }
+    strncpy(metadata.agent_version, __wazuh_version, sizeof(metadata.agent_version) - 1);
+
+    /* OS info */
+    if (os) {
+        if (os->os_name) {
+            strncpy(metadata.os_name, os->os_name, sizeof(metadata.os_name) - 1);
+        }
+        if (os->os_version) {
+            strncpy(metadata.os_version, os->os_version, sizeof(metadata.os_version) - 1);
+        }
+        if (os->os_platform) {
+            strncpy(metadata.os_platform, os->os_platform, sizeof(metadata.os_platform) - 1);
+        }
+        if (os->machine) {
+            strncpy(metadata.architecture, os->machine, sizeof(metadata.architecture) - 1);
+        }
+        if (os->nodename) {
+            strncpy(metadata.hostname, os->nodename, sizeof(metadata.hostname) - 1);
+        }
+        free_osinfo(os);
+    }
+
+    /* OS type (compile-time constant) */
+#ifdef WIN32
+    strncpy(metadata.os_type, "windows", sizeof(metadata.os_type) - 1);
+#elif defined(__MACH__)
+    strncpy(metadata.os_type, "macos", sizeof(metadata.os_type) - 1);
+#else
+    strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+#endif
+
+    /* Cluster info from handshake */
+    strncpy(metadata.cluster_name, agent_cluster_name, sizeof(metadata.cluster_name) - 1);
+    strncpy(metadata.cluster_node, agent_cluster_node, sizeof(metadata.cluster_node) - 1);
+
+    /* Groups from handshake */
+    if (agent_agent_groups[0] != '\0') {
+        /* Count groups (comma-separated) */
+        size_t count = 1;
+        for (const char *p = agent_agent_groups; *p; p++) {
+            if (*p == ',') {
+                count++;
+            }
+        }
+
+        metadata.groups = (char **)calloc(count, sizeof(char *));
+        if (metadata.groups) {
+            char groups_copy[OS_SIZE_65536];
+            strncpy(groups_copy, agent_agent_groups, sizeof(groups_copy) - 1);
+            groups_copy[sizeof(groups_copy) - 1] = '\0';
+
+            size_t i = 0;
+            char *saveptr = NULL;
+            char *token = strtok_r(groups_copy, ",", &saveptr);
+            while (token && i < count) {
+                if (token[0] != '\0') {
+                    metadata.groups[i] = strdup(token);
+                    i++;
+                }
+                token = strtok_r(NULL, ",", &saveptr);
+            }
+            metadata.groups_count = i;
+        }
+    }
+
+    if (metadata_provider_update(&metadata) == 0) {
+        mdebug1("Early metadata populated into shared memory");
+    } else {
+        mdebug1("Failed to populate early metadata");
+    }
+
+    /* Free groups */
+    if (metadata.groups) {
+        for (size_t i = 0; i < metadata.groups_count; i++) {
+            free(metadata.groups[i]);
+        }
+        free(metadata.groups);
+    }
 }
 
 /**
@@ -639,7 +738,7 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                                       cluster_node_buffer, sizeof(cluster_node_buffer),
                                                       agent_groups_buffer, sizeof(agent_groups_buffer),
                                                       merged_sum_buffer, sizeof(merged_sum_buffer)) == 0) {
-                                minfo("Module limits received from manager");
+                                mdebug1("Module limits received from manager");
 
                                 mdebug2("Received FIM limits: file=%d, registry_key=%d, registry_value=%d",
                                         agent_module_limits.fim.file, agent_module_limits.fim.registry_key,
@@ -665,17 +764,22 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 /* Store cluster_name in global for agent-info module to query via agcom */
                                 strncpy(agent_cluster_name, cluster_name_buffer, sizeof(agent_cluster_name) - 1);
                                 agent_cluster_name[sizeof(agent_cluster_name) - 1] = '\0';
-                                minfo("Connected to cluster: %s", agent_cluster_name);
+                                mdebug1("Connected to cluster: %s", agent_cluster_name);
 
                                 /* Store cluster_node in global for agent-info module to query via agcom */
                                 strncpy(agent_cluster_node, cluster_node_buffer, sizeof(agent_cluster_node) - 1);
                                 agent_cluster_node[sizeof(agent_cluster_node) - 1] = '\0';
-                                minfo("Connected to node: %s", agent_cluster_node);
+                                mdebug1("Connected to node: %s", agent_cluster_node);
 
                                 /* Store agent_groups in global for agent-info module to query via agcom */
                                 strncpy(agent_agent_groups, agent_groups_buffer, sizeof(agent_agent_groups) - 1);
                                 agent_agent_groups[sizeof(agent_agent_groups) - 1] = '\0';
-                                minfo("Agent groups: %s", agent_agent_groups);
+                                mdebug1("Agent groups: %s", agent_agent_groups);
+
+                                /* Populate shared memory before opening the startup gate so that
+                                 * any module that starts immediately after has full metadata
+                                 * (OS, hostname, groups, cluster info) available. */
+                                populate_early_metadata();
 
                                 startup_gate_process_handshake(is_startup, merged_sum_buffer);
 
@@ -683,10 +787,10 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 if (previous_limits.limits_received &&
                                     module_limits_changed(&previous_limits, &agent_module_limits)) {
                                     if (agt->flags.auto_restart) {
-                                        minfo("Agent is reloading due to document limits changes.");
+                                        mdebug1("Agent is reloading due to document limits changes.");
                                         reloadAgent();
                                     } else {
-                                        minfo("Document limits have been updated.");
+                                        mdebug1("Document limits have been updated.");
                                     }
                                 }
 
@@ -695,7 +799,8 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 return false;
                             }
                         } else {
-                            minfo("No handshake JSON after ACK, using defaults");
+                            mdebug1("No handshake JSON after ACK, using defaults");
+                            populate_early_metadata();
                             startup_gate_process_handshake(is_startup, NULL);
                         }
 
@@ -734,14 +839,20 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
  * */
 STATIC void send_msg_on_startup(void) {
 
-    char msg[OS_MAXSTR + 2] = { '\0' };
     char fmsg[OS_MAXSTR + 1] = { '\0' };
+    char timestamp[32];
 
-    /* Send log message about start up */
-    snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
-            atoi(keys.keyentries[0]->id),
-            keys.keyentries[0]->name);
-    os_snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", msg);
+    get_iso8601_utc_time(timestamp, sizeof(timestamp));
+
+    cJSON *event = cJSON_CreateObject();
+    cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
+    cJSON_AddStringToObject(event, "event.action", "agent-start");
+    cJSON_AddStringToObject(event, "event.start", timestamp);
+    char *json_str = cJSON_PrintUnformatted(event);
+    cJSON_Delete(event);
+
+    os_snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);
+    os_free(json_str);
 
     send_msg(fmsg, -1);
 }

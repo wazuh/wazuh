@@ -1,5 +1,5 @@
-#ifndef _BUILDER2_BUILDER_HPP
-#define _BUILDER2_BUILDER_HPP
+#ifndef BUILDER2_BUILDER_HPP
+#define BUILDER2_BUILDER_HPP
 
 #include <memory>
 
@@ -11,8 +11,8 @@
 #include <logpar/logpar.hpp>
 #include <schemf/ischema.hpp>
 #include <schemf/ivalidator.hpp>
-#include <streamlog/ilogger.hpp>
 #include <store/istore.hpp>
+#include <streamlog/ilogger.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
 
 #include <builder/iallowedFields.hpp>
@@ -27,13 +27,14 @@ namespace builder
  */
 struct BuilderDeps
 {
-    size_t logparDebugLvl = 0;                                       ///< Debug level for the log parser.
-    std::shared_ptr<hlp::logpar::Logpar> logpar = nullptr;           ///< Log parser instance.
-    std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;            ///< KVDB manager.
-    std::shared_ptr<ioc::kvdb::IKVDBManager> kvdbIocManager;           ///< KVDB IOC manager.
-    std::shared_ptr<geo::IManager> geoManager;                       ///< Geo-location manager.
-    std::shared_ptr<streamlog::ILogManager> logManager;              ///< Stream log manager.
-    std::weak_ptr<wiconnector::IWIndexerConnector> iConnector;       ///< Wazuh-Indexer connector.
+    size_t logparDebugLvl = 0;                                 ///< Debug level for the log parser.
+    std::shared_ptr<hlp::logpar::Logpar> logpar = nullptr;     ///< Log parser instance.
+    std::shared_ptr<kvdbstore::IKVDBManager> kvdbManager;      ///< KVDB manager.
+    std::shared_ptr<ioc::kvdb::IKVDBManager> kvdbIocManager;   ///< KVDB IOC manager.
+    std::shared_ptr<geo::IManager> geoManager;                 ///< Geo-location manager.
+    std::shared_ptr<streamlog::ILogManager> logManager;        ///< Stream log manager.
+    streamlog::RotationConfig fileOutputConfig {};             ///< Base config for file output channels.
+    std::weak_ptr<wiconnector::IWIndexerConnector> iConnector; ///< Wazuh-Indexer connector.
 };
 
 /**
@@ -79,12 +80,7 @@ public:
      * @copydoc IBuilder::buildPolicy
      */
     std::shared_ptr<IPolicy>
-    buildPolicy(const cm::store::NamespaceId& namespaceId, bool trace = false, bool sandbox = false) const override;
-
-    /**
-     * @copydoc IBuilder::buildAsset
-     */
-    base::Expression buildAsset(const base::Name& name, const cm::store::NamespaceId& namespaceId) const override;
+    buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const override;
 
     /**
      * @copydoc IValidator::softIntegrationValidate
@@ -112,4 +108,4 @@ public:
 
 } // namespace builder
 
-#endif // _BUILDER2_BUILDER_HPP
+#endif // BUILDER2_BUILDER_HPP

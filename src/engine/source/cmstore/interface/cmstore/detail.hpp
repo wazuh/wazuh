@@ -95,17 +95,17 @@ inline json::Json adaptDecoder(const json::Json& document)
     // TODO: In the future this will be from /payload/document/metadata/title
     if (document.exists("/name"))
     {
-        auto nameOpt = document.getString("/name");
-        if (nameOpt.has_value())
+        std::string name;
+        if (document.getString(name, "/name") == json::RetGet::Success)
         {
-            result.setString(*nameOpt, "/name");
+            result.setString(name, "/name");
         }
         else
         {
             throw std::runtime_error("Decoder document /name is not a string");
         }
 
-        checkAssetName(*nameOpt, "decoder");
+        checkAssetName(name, "decoder");
     }
 
     // parents
@@ -233,12 +233,12 @@ inline json::Json adaptDecoder(const json::Json& document)
     // 6. id
     if (document.exists("/id"))
     {
-        auto idOpt = document.getString("/id");
-        if (!idOpt.has_value())
+        std::string id;
+        if (document.getString(id, "/id") != json::RetGet::Success)
         {
             throw std::runtime_error("Decoder document /id is not a string");
         }
-        result.setString(*idOpt, "/id");
+        result.setString(id, "/id");
     }
     return result;
 }
@@ -254,16 +254,16 @@ inline json::Json adaptFilter(const json::Json& document)
     // TODO: In the future this will be from /payload/document/metadata/title
     if (document.exists("/name"))
     {
-        auto nameOpt = document.getString("/name");
-        if (nameOpt.has_value())
+        std::string name;
+        if (document.getString(name, "/name") == json::RetGet::Success)
         {
-            result.setString(*nameOpt, "/name");
+            result.setString(name, "/name");
         }
         else
         {
             throw std::runtime_error("Filter document /name is not a string");
         }
-        checkAssetName(*nameOpt, "filter");
+        checkAssetName(name, "filter");
     }
 
     // 2. parents
@@ -283,12 +283,12 @@ inline json::Json adaptFilter(const json::Json& document)
     }
 
     // 4. type
-    auto typeOpt = document.getString("/type");
-    if (!typeOpt.has_value())
+    std::string type;
+    if (document.getString(type, "/type") != json::RetGet::Success)
     {
         throw std::runtime_error("Filter document /type is not a string or does not exist");
     }
-    result.setString(*typeOpt, "/type");
+    result.setString(type, "/type");
 
     // 5. Copy /check
     if (document.exists("/check"))
@@ -311,12 +311,12 @@ inline json::Json adaptFilter(const json::Json& document)
     // 7. id
     if (document.exists("/id"))
     {
-        auto idOpt = document.getString("/id");
-        if (!idOpt.has_value())
+        std::string id;
+        if (document.getString(id, "/id") != json::RetGet::Success)
         {
             throw std::runtime_error("Filter document /id is not a string");
         }
-        result.setString(*idOpt, "/id");
+        result.setString(id, "/id");
     }
     return result;
 }
@@ -331,16 +331,16 @@ inline json::Json adaptOutput(const json::Json& document)
     // 1. name (from /name)
     if (document.exists("/name"))
     {
-        auto nameOpt = document.getString("/name");
-        if (nameOpt.has_value())
+        std::string name;
+        if (document.getString(name, "/name") == json::RetGet::Success)
         {
-            result.setString(*nameOpt, "/name");
+            result.setString(name, "/name");
         }
         else
         {
             throw std::runtime_error("Output document /name is not a string");
         }
-        checkAssetName(*nameOpt, "output");
+        checkAssetName(name, "output");
     }
 
     // 2. parents
@@ -442,12 +442,12 @@ inline json::Json adaptOutput(const json::Json& document)
     // 6. id (optional)
     if (document.exists("/id"))
     {
-        auto idOpt = document.getString("/id");
-        if (!idOpt.has_value())
+        std::string id;
+        if (document.getString(id, "/id") != json::RetGet::Success)
         {
             throw std::runtime_error("Output document /id is not a string");
         }
-        result.setString(*idOpt, "/id");
+        result.setString(id, "/id");
     }
 
     return result;

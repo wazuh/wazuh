@@ -90,13 +90,13 @@ void wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_con
         pthread_exit(NULL);
     }
 
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
+    mtinfo(WM_AGENT_UPGRADE_LOGTAG, STARTUP_MSG, (int)getpid());
 
     // Initialize task hashmap
     wm_agent_upgrade_init_task_map();
 
-    // Initialize upgrade queue
-    wm_agent_upgrade_init_upgrade_queue();
+    // Initialize upgrade queue (also initializes the dispatcher semaphore)
+    wm_agent_upgrade_init_upgrade_queue(manager_configs->max_threads);
 
     // Start listener
     wm_agent_upgrade_listen_messages(manager_configs);
@@ -118,7 +118,11 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
     }
 
     // Wait a few seconds until the task manager starts
-    sleep(WM_AGENT_UPGRADE_START_WAIT_TIME);
+    wm_sleep_interruptible(WM_AGENT_UPGRADE_START_WAIT_TIME);
+    if (wm_shutdown_requested) {
+        close(sock);
+        return;
+    }
 
     // Cancel pending upgrade tasks since they were lost
     wm_agent_upgrade_cancel_pending_upgrades();
@@ -129,22 +133,19 @@ STATIC void wm_agent_upgrade_listen_messages(const wm_manager_configs* manager_c
     // Start router subscriber thread
     w_create_thread(wm_agent_upgrade_router_subscriber_thread, NULL);
 
-    while (1) {
+    while (!wm_shutdown_requested) {
         // listen - wait connection
         fd_set fdset;
-        FD_ZERO(&fdset);
-        FD_SET(sock, &fdset);
 
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
+        switch (wm_select_interruptible(sock, &fdset)) {
         case -1:
-            if (errno != EINTR) {
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SELECT_ERROR, strerror(errno));
-                close(sock);
-                return;
-            }
-            continue;
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SELECT_ERROR, strerror(errno));
+            close(sock);
+            return;
         case 0:
             continue;
+        default:
+            break;
         }
 
         //Accept
@@ -277,7 +278,7 @@ STATIC bool initialize_router_functions(void) {
 }
 
 STATIC void* wm_agent_upgrade_router_subscriber_thread(void) {
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Starting router subscriber thread for upgrade notifications");
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Starting router subscriber thread for upgrade notifications");
 
     if (!initialize_router_functions()) {
         mterror(WM_AGENT_UPGRADE_LOGTAG, "Failed to initialize router functions");
@@ -303,7 +304,7 @@ STATIC void* wm_agent_upgrade_router_subscriber_thread(void) {
         return NULL;
     }
 
-    mtinfo(WM_AGENT_UPGRADE_LOGTAG, "Successfully subscribed to router topic '%s'", topic_name);
+    mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Successfully subscribed to router topic '%s'", topic_name);
 
     // Register cleanup handlers for thread cancellation/exit
     pthread_cleanup_push((void(*)(void*))router_subscriber_destroy_ptr, subscriber_handle);

@@ -1,6 +1,8 @@
 {
   "global": {
     "exclude_trees": [
+      "wazuh.threat.indicator",
+      "wazuh.threat.enrichments",
       "threat.indicator",
       "threat.enrichments"
     ]
@@ -44,7 +46,8 @@
         ],
         "explicit_fields": [
           "host.name",
-          "host.hostname"
+          "host.hostname",
+          "dns.question.name"
         ],
         "by_description_exact": {
           "enabled": true,

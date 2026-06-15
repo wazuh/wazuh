@@ -16,7 +16,7 @@
 bool needs_config_reload = false;
 void reload_handler(int signum) {
     if (signum == SIGUSR1) {
-        minfo("SIGNAL [(%d)-(%s)] Received. Reload agentd.", signum, strsignal(signum));
+        mdebug1("SIGNAL [(%d)-(%s)] Received. Reload agentd.", signum, strsignal(signum));
         needs_config_reload = true;
     }
 }
@@ -118,7 +118,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
         w_create_thread(dispatch_buffer, (void *)NULL);
     } else {
-        minfo(DISABLED_BUFFER);
+        mdebug1(DISABLED_BUFFER);
     }
 
     /* Configure and start statistics */
@@ -206,7 +206,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
             if (agt->flags.remote_conf) {
                 ReadConfig(CBUFFER | CAGENT_CONFIG, AGENTCONFIG, NULL, agt);
-                minfo("Buffer agent.conf updated, enable: %i size: %i ", agt->buffer, agt->buflength);
+                mdebug1("Buffer agent.conf updated, enable: %i size: %i ", agt->buffer, agt->buflength);
             }
 
             //  Buffer was enabled, needs to be disabled
@@ -222,6 +222,11 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             }
 
             mdebug2("Buffer updated, enable: %i size: %i ", agt->buffer, agt->buflength);
+
+            // wazuh-control reload sends SIGUSR1 after new processes are started.
+            // Release the startup gate now so modules blocked in
+            // startup_gate_wait_for_ready() can proceed with the new config.
+            startup_gate_refresh_from_local_hash();
         }
 
         /* Connect to the execd queue */
@@ -239,7 +244,7 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
                 merror(LOST_ERROR);
                 os_setwait();
                 start_agent(0);
-                minfo(SERVER_UP);
+                mdebug1(SERVER_UP);
                 os_delwait();
                 w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
             }
@@ -266,12 +271,12 @@ bool check_uninstall_permission(const char *token, const char *host, bool ssl_ve
 
     if (response) {
         if (response->status_code == 200) {
-            minfo(AG_UNINSTALL_VALIDATION_GRANTED);
+            mdebug1(AG_UNINSTALL_VALIDATION_GRANTED);
             wurl_free_response(response);
             os_free(headers[0]);
             return false;
         } else if (response->status_code == 403) {
-            minfo(AG_UNINSTALL_VALIDATION_DENIED);
+            mdebug1(AG_UNINSTALL_VALIDATION_DENIED);
         } else {
             merror(AG_API_ERROR_CODE, response->status_code);
         }
@@ -309,7 +314,7 @@ char* authenticate_and_get_token(const char *userpass, const char *host, bool ss
 bool package_uninstall_validation(const char *uninstall_auth_token, const char *uninstall_auth_login, const char *uninstall_auth_host, bool ssl_verify) {
     bool validate_result = true;
 
-    minfo(AG_UNINSTALL_VALIDATION_START);
+    mdebug1(AG_UNINSTALL_VALIDATION_START);
     if (uninstall_auth_token) {
         validate_result = check_uninstall_permission(uninstall_auth_token, uninstall_auth_host, ssl_verify);
         if (validate_result) {

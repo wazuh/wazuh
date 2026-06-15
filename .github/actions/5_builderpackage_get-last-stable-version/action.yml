@@ -26,20 +26,23 @@ runs:
   - name: Get previous last stable release
     id: latest-stable-release
     shell: bash
+    env:
+      INPUT_REPO_OWNER: ${{ inputs.repo_owner }}
+      INPUT_REPO_NAME: ${{ inputs.repo_name }}
+      INPUT_TESTING_VERSION: ${{ inputs.testing_version }}
+      INPUT_TOKEN: ${{ inputs.token }}
     run: |
       if [ -d "venv" ]; then
-        echo "Using Python venv"
         source venv/bin/activate
         python3 -m pip install requests packaging
       else
-        echo "Using global Python"
-        python3 -m pip install --break-system-packages requests packaging
+        python3 -m pip install --break-system-packages requests packaging 2>/dev/null \
+          || python3 -m pip install requests packaging
       fi
-      script_path=$(find . -name "get_last_stable_version.py")
-      version=$($script_path \
-          -o "${{ inputs.repo_owner }}" \
-          -r "${{ inputs.repo_name }}" \
-          -v "${{ inputs.testing_version }}" \
-          -t "${{ inputs.token }}"
+      VERSION=$(python3 "${{ github.action_path }}/get_last_stable_version.py" \
+          -o "$INPUT_REPO_OWNER" \
+          -r "$INPUT_REPO_NAME" \
+          -v "$INPUT_TESTING_VERSION" \
+          -t "$INPUT_TOKEN"
       )
-      echo latest-stable-release=$version >> $GITHUB_OUTPUT
+      echo "latest-stable-release=$VERSION" >> "$GITHUB_OUTPUT"

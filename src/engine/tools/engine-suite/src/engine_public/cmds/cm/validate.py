@@ -1,6 +1,5 @@
 import sys
 import json
-from google.protobuf import json_format
 from api_communication.client import APIClient
 import api_communication.proto.engine_pb2 as engine
 import api_communication.proto.crud_pb2 as crud
@@ -25,15 +24,12 @@ def _read_resource_json(args) -> dict:
 def run(args):
     api_socket: str = args["api_socket"]
 
-    req = crud.resourceValidate_Request()
-    req.type = args["type"]
-
     resource_obj = _read_resource_json(args)
-    json_format.ParseDict(resource_obj, req.resource)
 
     try:
         client = APIClient(api_socket)
-        error, _ = client.send(req, engine.GenericStatus_Response())
+        json_body = {"type": args["type"], "resource": resource_obj}
+        error, _ = client.jsend(json_body, crud.resourceValidate_Request(), engine.GenericStatus_Response())
         if error:
             sys.exit(f"Error validating resource: {error}")
     except Exception as e:

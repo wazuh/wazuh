@@ -40,11 +40,11 @@ info:
     <SecurityDefinitions />
 
   version: '5.0.0'
-  x-revision: 'alpha0'
+  x-revision: 'beta3'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/main/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -363,7 +363,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/main/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -430,7 +430,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of requests per minute reached"
             remediation: "This limit can be changed in api.yaml file. More information here:
-            https://documentation.wazuh.com/5.0/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/main/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -443,7 +443,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/main/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -855,15 +855,17 @@ components:
           properties:
             major:
               type: string
+            minor:
+              type: string
             name:
               type: string
             platform:
               type: string
+            type:
+              type: string
             version:
               type: string
             arch:
-              type: string
-            minor:
               type: string
           description: "Agent OS information"
         status_code:
@@ -1269,10 +1271,6 @@ components:
                                     type: integer
                                     format: int32
                                     description: "Events coming from the ms-graph module (this agent)"
-                                  osquery:
-                                    type: integer
-                                    format: int32
-                                    description: "Events coming from the OSQuery module (this agent)"
                                   rootcheck:
                                     type: integer
                                     format: int32
@@ -1316,10 +1314,6 @@ components:
                             type: integer
                             format: int32
                             description: "Alerts written in archives log file (this agent)"
-                          firewall:
-                            type: integer
-                            format: int32
-                            description: "Alerts written in firewall log file (this agent)"
 
     ## Group models
     GroupID:
@@ -2172,10 +2166,6 @@ components:
                       type: integer
                       format: int32
                       description: "Alerts written in archives log file"
-                    firewall:
-                      type: integer
-                      format: int32
-                      description: "Alerts written in firewall log file"
                     fts:
                       type: integer
                       format: int32
@@ -2231,17 +2221,6 @@ components:
                       type: integer
                       format: int32
                       description: "Current usage of the eventchannel queue (percentage)"
-                firewall:
-                  type: object
-                  properties:
-                    size:
-                      type: integer
-                      format: int32
-                      description: "Firewall messages queue size"
-                    usage:
-                      type: integer
-                      format: int32
-                      description: "Current usage of the firewall queue (percentage)"
                 fts:
                   type: object
                   properties:
@@ -2740,10 +2719,6 @@ components:
     WazuhManagerConfiguration:
       type: object
       properties:
-        active-response:
-          type: array
-          items:
-            type: object
         alerts:
           type: object
         auth:
@@ -2937,6 +2912,9 @@ components:
                     type: string
                     format: alphanumeric_symbols
                   platform:
+                    type: string
+                    format: alphanumeric_symbols
+                  type:
                     type: string
                     format: alphanumeric_symbols
                   version:
@@ -3821,6 +3799,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    os.type:
+      in: query
+      name: os.type
+      description: "Filter by OS family (Linux, Windows, Unix, ...)"
+      schema:
+        type: string
+        format: alphanumeric
     os.platform:
       in: query
       name: os.platform
@@ -3835,6 +3820,27 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
+    os.major:
+      in: query
+      name: os.major
+      description: "Filter by OS major version"
+      schema:
+        type: string
+        format: numbers
+    os.minor:
+      in: query
+      name: os.minor
+      description: "Filter by OS minor version"
+      schema:
+        type: string
+        format: numbers
+    os.arch:
+      in: query
+      name: os.arch
+      description: "Filter by OS architecture"
+      schema:
+        type: string
+        format: alphanumeric
     older_than:
       in: query
       name: older_than
@@ -3999,9 +4005,9 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.5.0"
-                revision: 'beta1'
+                revision: 'beta3'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/main/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -4022,8 +4028,12 @@ paths:
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4085,8 +4095,12 @@ paths:
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4117,6 +4131,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '001'
@@ -4137,6 +4152,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '002'
@@ -4157,6 +4173,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '003'
@@ -4654,7 +4671,6 @@ paths:
                               written_breakdown:
                                 alerts: 191
                                 archives: 0
-                                firewall: 0
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
@@ -4774,8 +4790,12 @@ paths:
         - $ref: '#/components/parameters/force'
         - $ref: '#/components/parameters/package_type'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4829,8 +4849,12 @@ paths:
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4882,8 +4906,12 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -5482,6 +5510,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2024-02-26T12:40:40Z'
                       id: '001'
@@ -5502,6 +5531,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2024-02-26T12:40:40Z'
                       id: '002'
@@ -5575,8 +5605,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/main/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/main/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -5686,8 +5716,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/main/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/main/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -6091,6 +6121,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       mergedSum: 2c769b2ea138d472ee8f1ba23412b5d4
                       node_name: worker1
@@ -6112,6 +6143,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       node_name: worker1
@@ -6133,6 +6165,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       node_name: worker2
@@ -6789,16 +6822,6 @@ paths:
                           block_time: 300
                           max_request_per_minute: 300
                         upload_configuration:
-                          remote_commands:
-                            localfile:
-                              allow: true
-                              exceptions: []
-                            wodle_command:
-                              allow: true
-                              exceptions: []
-                          limits:
-                            eps:
-                              allow: true
                           agents:
                             allow_higher_versions:
                               allow: true
@@ -6836,16 +6859,6 @@ paths:
                           block_time: 300
                           max_request_per_minute: 300
                         upload_configuration:
-                          remote_commands:
-                            localfile:
-                              allow: true
-                              exceptions: []
-                            wodle_command:
-                              allow: true
-                              exceptions: []
-                          limits:
-                            eps:
-                              allow: true
                           agents:
                             allow_higher_versions:
                               allow: true
@@ -6883,16 +6896,6 @@ paths:
                           block_time: 300
                           max_request_per_minute: 300
                         upload_configuration:
-                          remote_commands:
-                            localfile:
-                              allow: true
-                              exceptions: []
-                            wodle_command:
-                              allow: true
-                              exceptions: []
-                          limits:
-                            eps:
-                              allow: true
                           agents:
                             allow_higher_versions:
                               allow: true
@@ -9922,6 +9925,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: "20.04.02 LTS"
                       node_name: worker1
                       lastKeepAlive: "2021-05-31T10:56:52Z"
@@ -10104,4 +10108,4 @@ paths:
 
 externalDocs:
   description: "Learn more about the Wazuh API"
-  url: 'https://documentation.wazuh.com/5.0/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/main/user-manual/api/index.html'

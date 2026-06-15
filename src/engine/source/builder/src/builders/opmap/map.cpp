@@ -10,9 +10,9 @@ MapOp mapValue(const Value& value, const std::shared_ptr<const IBuildCtx>& build
     auto jValue(value.value());
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
     return
-        [successTrace, runState = buildCtx->runState(), jValue = std::move(jValue)](base::ConstEvent event) -> MapResult
+        [successTrace, isTestMode = buildCtx->isTestMode(), jValue = std::move(jValue)](base::ConstEvent event) -> MapResult
     {
-        RETURN_SUCCESS(runState, json::Json(jValue), successTrace);
+        RETURN_SUCCESS(isTestMode, json::Json(jValue), successTrace);
     };
 }
 
@@ -21,17 +21,17 @@ MapOp mapReference(const Reference& reference, const std::shared_ptr<const IBuil
     auto referenceNotFound =
         fmt::format("{} -> Reference '{}' not found", buildCtx->context().opName, reference.dotPath());
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
-    return [successTrace, runState = buildCtx->runState(), referenceNotFound, referencePath = reference.jsonPath()](
+    return [successTrace, isTestMode = buildCtx->isTestMode(), referenceNotFound, referencePath = reference.jsonPath()](
                base::ConstEvent event) -> MapResult
     {
         if (!event->exists(referencePath))
         {
-            RETURN_FAILURE(runState, json::Json(), referenceNotFound);
+            RETURN_FAILURE(isTestMode, json::Json(), referenceNotFound);
         }
 
         auto jValue = event->getJson(referencePath).value();
 
-        RETURN_SUCCESS(runState, jValue, successTrace);
+        RETURN_SUCCESS(isTestMode, jValue, successTrace);
     };
 }
 } // namespace

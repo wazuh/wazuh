@@ -58,6 +58,7 @@ add_executable(hlp_utest
   ${UNIT_SRC_DIR}/dsv_csv_test.cpp
 )
 
+target_compile_definitions(hlp_utest PRIVATE HLP_TEST_TZDB_PATH="${CMAKE_SOURCE_DIR}/external/tzdata")
 target_link_libraries(hlp_utest PRIVATE hlp GTest::gtest_main GTest::gtest)
 gtest_discover_tests(hlp_utest PROPERTIES TEST_DISCOVERY_TIMEOUT 3600)
 

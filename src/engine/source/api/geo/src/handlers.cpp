@@ -35,26 +35,26 @@ adapter::RouteHandler getDb(const std::shared_ptr<::geo::IManager>& geoManager)
         // Get all data for the IP from CITY database
         std::string cityJsonStr = "{}";
         const auto cityLocatorResult = geoManager->getLocator(::geo::Type::CITY);
-        if (!base::isError(cityLocatorResult))
+        if (!cityLocatorResult.isError())
         {
-            auto cityLocator = base::getResponse(cityLocatorResult);
+            auto cityLocator = cityLocatorResult.value();
             const auto cityJsonResult = cityLocator->getAll(ip);
-            if (!base::isError(cityJsonResult))
+            if (!cityJsonResult.isError())
             {
-                cityJsonStr = base::getResponse(cityJsonResult).str();
+                cityJsonStr = cityJsonResult.value().str();
             }
         }
 
         // Get all data for the IP from ASN database
         std::string asnJsonStr = "{}";
         const auto asnLocatorResult = geoManager->getLocator(::geo::Type::ASN);
-        if (!base::isError(asnLocatorResult))
+        if (!asnLocatorResult.isError())
         {
-            auto asnLocator = base::getResponse(asnLocatorResult);
+            auto asnLocator = asnLocatorResult.value();
             const auto asnJsonResult = asnLocator->getAll(ip);
-            if (!base::isError(asnJsonResult))
+            if (!asnJsonResult.isError())
             {
-                asnJsonStr = base::getResponse(asnJsonResult).str();
+                asnJsonStr = asnJsonResult.value().str();
             }
         }
 

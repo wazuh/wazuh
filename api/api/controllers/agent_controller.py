@@ -82,7 +82,7 @@ async def delete_agents(pretty: bool = False, wait_for_complete: bool = False, a
                 }
 
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = request.query_params.get(field, None)
 
@@ -173,7 +173,7 @@ async def get_agents(pretty: bool = False, wait_for_complete: bool = False, agen
                 'distinct': distinct
                 }
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = request.query_params.get(field, None)
 
@@ -615,7 +615,7 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
                 }
 
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = request.query_params.get(field, None)
 
@@ -688,7 +688,7 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
                 }
 
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = request.query_params.get(field, None)
 
@@ -750,7 +750,7 @@ async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_
                 }
 
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = request.query_params.get(field, None)
 

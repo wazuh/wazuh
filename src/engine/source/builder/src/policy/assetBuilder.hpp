@@ -1,5 +1,5 @@
-#ifndef _BUILDER_POLICY_ASSETBUILDER_HPP
-#define _BUILDER_POLICY_ASSETBUILDER_HPP
+#ifndef BUILDER_POLICY_ASSETBUILDER_HPP
+#define BUILDER_POLICY_ASSETBUILDER_HPP
 
 #include <base/name.hpp>
 #include <defs/idefinitions.hpp>
@@ -88,15 +88,15 @@ public:
      */
     void setAvailableKvdbs(std::unordered_map<std::string, bool>&& kvdbs) override
     {
-        m_buildCtx->context().availableKvdbs = std::move(kvdbs);
+        m_buildCtx->context().integration.availableKvdbs = std::move(kvdbs);
     }
 
     /**
-     * @copydoc IAssetBuilder::clearAvailableKvdbs
+     * @copydoc IAssetBuilder::clearIntegrationData
      */
-    void clearAvailableKvdbs() override { m_buildCtx->context().availableKvdbs = std::nullopt; }
+    void clearIntegrationData() override { m_buildCtx->context().integration = {}; }
 };
 
 } // namespace builder::policy
 
-#endif // _BUILDER_POLICY_ASSETBUILDER_HPP
+#endif // BUILDER_POLICY_ASSETBUILDER_HPP

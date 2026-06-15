@@ -123,10 +123,9 @@ public:
     static Integration fromJson(const json::Json& integrationJson, bool requireUUID)
     {
 
-        const auto uuidOpt = integrationJson.getString(jsonintegration::PATH_KEY_ID);
         std::string uuid {};
 
-        if (!uuidOpt.has_value())
+        if (integrationJson.getString(uuid, jsonintegration::PATH_KEY_ID) != json::RetGet::Success)
         {
             if (requireUUID)
             {
@@ -134,18 +133,14 @@ public:
             }
             // requireUUID == false => uuid does not exist, will be generated later
         }
-        else
-        {
-            uuid = *uuidOpt;
-        }
 
         if (requireUUID && !base::utils::generators::isValidUUIDv4(uuid))
         {
             throw std::runtime_error("Integration UUID is not a valid UUIDv4: " + uuid);
         }
 
-        auto nameOpt = integrationJson.getString(jsonintegration::PATH_KEY_NAME);
-        if (!nameOpt.has_value())
+        std::string name;
+        if (integrationJson.getString(name, jsonintegration::PATH_KEY_NAME) != json::RetGet::Success)
         {
             throw std::runtime_error("Integration JSON must have a valid name");
         }
@@ -156,8 +151,8 @@ public:
             throw std::runtime_error("Integration JSON must have a valid enabled flag");
         }
 
-        auto categoryOpt = integrationJson.getString(jsonintegration::PATH_KEY_CATEGORY);
-        if (!categoryOpt.has_value())
+        std::string category;
+        if (integrationJson.getString(category, jsonintegration::PATH_KEY_CATEGORY) != json::RetGet::Success)
         {
             throw std::runtime_error("Integration JSON must have a valid category");
         }
@@ -168,12 +163,13 @@ public:
 
         for (std::size_t i = 0; i < decoderCount; ++i)
         {
-            auto decoderOpt = integrationJson.getString(fmt::format("{}/{}", jsonintegration::PATH_KEY_DECODERS, i));
-            if (!decoderOpt.has_value())
+            std::string decoder;
+            if (integrationJson.getString(decoder, fmt::format("{}/{}", jsonintegration::PATH_KEY_DECODERS, i))
+                != json::RetGet::Success)
             {
                 throw std::runtime_error(fmt::format("Decoder at index {} is not a valid string", i));
             }
-            decoders.push_back(decoderOpt.value());
+            decoders.push_back(std::move(decoder));
         }
 
         std::size_t kvdbCount = integrationJson.size(jsonintegration::PATH_KEY_KVDBS);
@@ -182,33 +178,35 @@ public:
 
         for (std::size_t i = 0; i < kvdbCount; ++i)
         {
-            auto kvdbOpt = integrationJson.getString(fmt::format("{}/{}", jsonintegration::PATH_KEY_KVDBS, i));
-            if (!kvdbOpt.has_value())
+            std::string kvdb;
+            if (integrationJson.getString(kvdb, fmt::format("{}/{}", jsonintegration::PATH_KEY_KVDBS, i))
+                != json::RetGet::Success)
             {
                 throw std::runtime_error(fmt::format("KVDB at index {} is not a valid string", i));
             }
-            kvdbs.push_back(kvdbOpt.value());
+            kvdbs.push_back(std::move(kvdb));
         }
 
         std::optional<std::string> defaultParent = std::nullopt;
-        if (auto defaultParentOpt = integrationJson.getString(jsonintegration::PATH_KEY_DEFAULT_PARENT);
-            defaultParentOpt.has_value())
+        std::string defaultParentStr;
+        if (integrationJson.getString(defaultParentStr, jsonintegration::PATH_KEY_DEFAULT_PARENT)
+            == json::RetGet::Success)
         {
-            if (defaultParentOpt->empty())
+            if (defaultParentStr.empty())
             {
                 throw std::runtime_error("Integration default parent cannot be empty");
             }
-            if (!base::utils::generators::isValidUUIDv4(*defaultParentOpt))
+            if (!base::utils::generators::isValidUUIDv4(defaultParentStr))
             {
-                throw std::runtime_error("Integration default parent is not a valid UUIDv4: " + *defaultParentOpt);
+                throw std::runtime_error("Integration default parent is not a valid UUIDv4: " + defaultParentStr);
             }
-            defaultParent = defaultParentOpt.value();
+            defaultParent = defaultParentStr;
         }
 
         return {std::move(uuid),
-                std::move(*nameOpt),
+                std::move(name),
                 *enabledOpt,
-                std::move(*categoryOpt),
+                std::move(category),
                 std::move(defaultParent),
                 std::move(kvdbs),
                 std::move(decoders),
@@ -250,7 +248,7 @@ public:
     // getters
     const std::string& getCategory() const { return m_category; }
     const std::optional<std::string>& getDefaultParent() const { return m_defaultParent; }
-    const bool hasDefaultParent() const { return m_defaultParent.has_value(); }
+    bool hasDefaultParent() const { return m_defaultParent.has_value(); }
     const std::vector<std::string>& getKVDBsByUUID() const { return m_kvdbsByUUID; }
     const std::vector<std::string>& getDecodersByUUID() const { return m_decodersByUUID; }
     const std::string& getName() const { return m_name; }

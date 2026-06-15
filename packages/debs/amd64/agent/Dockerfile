@@ -51,6 +51,24 @@ RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
     cd / && rm -rf gcc-9.4.0*
 
 # -------------------------------------------------------------------
+# Binutils 2.41 (stock debian:7 ships 2.22, which predates
+# R_X86_64_REX_GOTPCRELX and .note.gnu.property — both emitted by
+# GCC 14.3 and required to link externals built on this image).
+# -------------------------------------------------------------------
+RUN apt-get update -y && \
+    apt-get install -y --force-yes flex bison && \
+    curl -OL https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz && \
+    tar xzf binutils-2.41.tar.gz && rm -f binutils-2.41.tar.gz && \
+    cd binutils-2.41 && mkdir build && cd build && \
+    ../configure --disable-gdb --disable-werror --disable-zlib \
+        --disable-gprofng --disable-gdbserver --disable-gdbsupport \
+        --disable-gnulib --disable-gold --disable-gprof --disable-texinfo \
+        --disable-binutils --disable-sim && \
+    make MAKEINFO=true -j$(nproc) && make MAKEINFO=true install && \
+    cd / && rm -rf binutils-2.41 && \
+    ln -fs /usr/local/bin/ld /usr/bin/ld
+
+# -------------------------------------------------------------------
 # GCC 14.3.0 (set as final compiler)
 # -------------------------------------------------------------------
 RUN curl -OL https://ftp.fu-berlin.de/unix/languages/gcc/releases/gcc-14.3.0/gcc-14.3.0.tar.gz && \

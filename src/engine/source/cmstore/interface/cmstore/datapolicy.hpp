@@ -1,6 +1,7 @@
-#ifndef _ICMSTORE_DATA_POLICY
-#define _ICMSTORE_DATA_POLICY
+#ifndef ICMSTORE_DATA_POLICY
+#define ICMSTORE_DATA_POLICY
 
+#include <regex>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -23,6 +24,7 @@
  *   {
  *     "title": "Development 0.0.1",
  *   },
+ *   "enabled": true,
  *   "root_decoder": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
  *   "origin_space": "space1", -> optional, default value "UNDEFINED"
  *   "index_unclassified_events": true, -> optional, default value false
@@ -38,7 +40,9 @@
  *     "f61133f5-90b9-49ed-b1d5-0b88cb04355e",
  *     "369c3128-9715-4a30-9ff9-22fcac87688b",
  *   ],
- *   "outputs": [] -> opcional.
+ *   "outputs": [], -> optional.
+ *   "hash": "7ab287...5180", -> "optional hash value for integrity verification"
+ *   "id": "eb5c2519-feff-4789-8542-9a0453cc8690" -> "uuid for the policy"
  * }
  *
  */
@@ -61,12 +65,9 @@ constexpr std::string_view PATH_KEY_HASH = "/hash";
 constexpr std::string_view PATH_KEY_INDEX_DISCARDED_EVENTS = "/index_discarded_events";
 constexpr std::string_view PATH_KEY_CLEANUP_DECODER_VARIABLES = "/cleanup_decoder_variables";
 
-} // namespace jsonpolicy
-
-namespace
-{
 constexpr std::string_view DEFAULT_ORIGIN_SPACE = "UNDEFINED"; ///< Default origin space when not specified
-}
+
+} // namespace jsonpolicy
 
 /**
  * @brief Policy class representing a policy in wazuh-engine
@@ -89,6 +90,16 @@ private:
     bool m_indexUnclassifiedEvents; ///< Flag indicating whether to index unclassified events
     bool m_indexDiscardedEvents;    ///< Flag to control discarded event indexing
     bool m_cleanupDecoderVariables; ///< Flag to control cleanup of temporary decoder variables
+
+    void validateOriginSpace(std::string_view value) const
+    {
+        if (!std::regex_match(value.begin(), value.end(), std::regex("^[a-zA-Z0-9_]+$")))
+        {
+            throw std::runtime_error(fmt::format(
+                "'origin_space' contains invalid characters: '{}'. Only alphanumeric and underscores are allowed.",
+                value));
+        }
+    }
 
 public:
     ~Policy() = default;
@@ -122,6 +133,10 @@ public:
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
         cm::store::detail::findDuplicateOrInvalidUUID(m_filters, "Filter");
+        if (m_originSpace != jsonpolicy::DEFAULT_ORIGIN_SPACE)
+        {
+            validateOriginSpace(m_originSpace);
+        }
     }
 
     // Dumper and loader
@@ -133,14 +148,14 @@ public:
         }
 
         // Get title
-        std::string title = [&]() -> auto
+        std::string title = [&]() -> std::string
         {
-            auto titleOpt = policyJson.getString(jsonpolicy::PATH_KEY_TITLE);
-            if (!titleOpt.has_value() || titleOpt->empty())
+            std::string title;
+            if (policyJson.getString(title, jsonpolicy::PATH_KEY_TITLE) != json::RetGet::Success || title.empty())
             {
-                return std::string{"Untitled Policy"};
+                return std::string {"Untitled Policy"};
             }
-            return titleOpt.value();
+            return title;
         }();
 
         // Get enabled
@@ -157,12 +172,12 @@ public:
         // Get root decoder
         auto rootDecoder = [&]()
         {
-            auto rootDecoderOpt = policyJson.getString(jsonpolicy::PATH_KEY_ROOT_PARENT);
-            if (!rootDecoderOpt.has_value())
+            std::string rootDecoder;
+            if (policyJson.getString(rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT) != json::RetGet::Success)
             {
                 throw std::runtime_error("Policy JSON must have a 'root_decoder' field");
             }
-            return rootDecoderOpt.value();
+            return rootDecoder;
         }();
 
         // Get integrations
@@ -179,18 +194,19 @@ public:
 
             for (std::size_t i = 0; i < integrationCount; ++i)
             {
-                auto integrationOpt = policyJson.getString(fmt::format("{}/{}", jsonpolicy::PATH_KEY_INTEGRATIONS, i));
-                if (!integrationOpt.has_value())
+                std::string integration;
+                if (policyJson.getString(integration, fmt::format("{}/{}", jsonpolicy::PATH_KEY_INTEGRATIONS, i))
+                    != json::RetGet::Success)
                 {
                     throw std::runtime_error(fmt::format("Integration at index {} is not a valid string", i));
                 }
 
-                integrations.push_back(integrationOpt.value());
+                integrations.push_back(std::move(integration));
             }
             return integrations;
         }();
 
-        // filters
+        // Get filters
         std::vector<std::string> filters = [&]() -> auto
         {
             std::vector<std::string> filters;
@@ -200,12 +216,13 @@ public:
                 filters.reserve(filtersCount);
                 for (std::size_t i = 0; i < filtersCount; ++i)
                 {
-                    auto filterOpt = policyJson.getString(fmt::format("{}/{}", jsonpolicy::PATH_KEY_FILTERS, i));
-                    if (!filterOpt.has_value())
+                    std::string filter;
+                    if (policyJson.getString(filter, fmt::format("{}/{}", jsonpolicy::PATH_KEY_FILTERS, i))
+                        != json::RetGet::Success)
                     {
                         throw std::runtime_error(fmt::format("Filter at index {} is not a valid string", i));
                     }
-                    filters.push_back(filterOpt.value());
+                    filters.push_back(std::move(filter));
                 }
             }
             else
@@ -215,7 +232,7 @@ public:
             return filters;
         }();
 
-        // enrichments
+        // Get enrichments
         std::vector<std::string> enrichments = [&]() -> auto
         {
             std::vector<std::string> enrichments;
@@ -225,16 +242,15 @@ public:
                 enrichments.reserve(enrichmentsCount);
                 for (std::size_t i = 0; i < enrichmentsCount; ++i)
                 {
-                    auto enrichmentOpt =
-                        policyJson.getString(fmt::format("{}/{}", jsonpolicy::PATH_KEY_ENRICHMENTS, i));
-                    if (!enrichmentOpt.has_value())
+                    std::string enrichment;
+                    if (policyJson.getString(enrichment, fmt::format("{}/{}", jsonpolicy::PATH_KEY_ENRICHMENTS, i))
+                        != json::RetGet::Success)
                     {
                         throw std::runtime_error(fmt::format("Enrichment at index {} is not a valid string", i));
                     }
-                    enrichments.push_back(enrichmentOpt.value());
+                    enrichments.push_back(std::move(enrichment));
                 }
             }
-            // TODO: Uncomment when enrichments are mandatory
             else
             {
                 throw std::runtime_error("Policy JSON must have an 'enrichments' array");
@@ -252,13 +268,14 @@ public:
                 outputs.reserve(outputsCount);
                 for (std::size_t i = 0; i < outputsCount; ++i)
                 {
-                    auto outputOpt = policyJson.getString(fmt::format("{}/{}", jsonpolicy::PATH_KEY_OUTPUTS, i));
-                    if (!outputOpt.has_value())
+                    std::string output;
+                    if (policyJson.getString(output, fmt::format("{}/{}", jsonpolicy::PATH_KEY_OUTPUTS, i))
+                        != json::RetGet::Success)
                     {
                         throw std::runtime_error(fmt::format("Output at index {} is not a valid string", i));
                     }
 
-                    outputs.push_back(outputOpt.value());
+                    outputs.push_back(std::move(output));
                 }
             }
             return outputs;
@@ -267,24 +284,28 @@ public:
         // optional origin_space
         auto originSpace = [&]() -> std::string
         {
-            auto originSpaceOpt = policyJson.getString(jsonpolicy::PATH_KEY_ORIGIN_SPACE);
-            if (!originSpaceOpt.has_value() || originSpaceOpt->empty())
+            std::string originSpace;
+            if (policyJson.getString(originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE) != json::RetGet::Success
+                || originSpace.empty())
             {
-                return std::string(DEFAULT_ORIGIN_SPACE);
+                return std::string(jsonpolicy::DEFAULT_ORIGIN_SPACE);
             }
-            return originSpaceOpt.value();
+
+            return originSpace;
         }();
 
+        // optional hash
         auto policyHash = [&]() -> std::string
         {
-            auto hashOpt = policyJson.getString(jsonpolicy::PATH_KEY_HASH);
-            if (!hashOpt.has_value() || hashOpt->empty())
+            std::string hash;
+            if (policyJson.getString(hash, jsonpolicy::PATH_KEY_HASH) != json::RetGet::Success || hash.empty())
             {
                 return "";
             }
-            return hashOpt.value();
+            return hash;
         }();
 
+        // Get index_unclassified_events flag
         auto indexUnclassifiedEvents = [&]() -> bool
         {
             auto indexOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_UNCLASSIFIED_EVENTS);
@@ -295,6 +316,7 @@ public:
             return indexOpt.value();
         }();
 
+        // Get index_discarded_events flag
         bool indexDiscardedEvents = [&]() -> bool
         {
             auto indexDiscardedOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_DISCARDED_EVENTS);
@@ -302,9 +324,10 @@ public:
             {
                 throw std::runtime_error("Policy JSON must have a boolean 'index_discarded_events' field");
             }
-            return indexDiscardedOpt.value_or(false);
+            return indexDiscardedOpt.value();
         }();
 
+        // Get cleanup_decoder_variables flag
         bool cleanupDecoderVariables = [&]() -> bool
         {
             auto cleanupDecoderVariablesOpt = policyJson.getBool(jsonpolicy::PATH_KEY_CLEANUP_DECODER_VARIABLES);
@@ -385,7 +408,11 @@ public:
 
     // Getters and setters of optional values
     const std::string& getOriginSpace() const { return m_originSpace; }
-    void setOriginSpace(std::string_view originSpace) { m_originSpace = originSpace; }
+    void setOriginSpace(std::string_view originSpace)
+    {
+        validateOriginSpace(originSpace);
+        m_originSpace = originSpace;
+    }
     bool shouldIndexUnclassifiedEvents() const { return m_indexUnclassifiedEvents; }
     bool shouldIndexDiscardedEvents() const { return m_indexDiscardedEvents; }
     bool shouldCleanupDecoderVariables() const { return m_cleanupDecoderVariables; }
@@ -393,4 +420,4 @@ public:
 
 } // namespace cm::store::dataType
 
-#endif // _ICMSTORE_DATA_POLICY
+#endif // ICMSTORE_DATA_POLICY

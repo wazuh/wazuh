@@ -2,7 +2,7 @@
 
 ## Details
 
-The [Indexer Downloader](../../src/components/IndexerDownloader.hpp) stage is part of the Content Manager orchestration and downloads content directly from the Wazuh Indexer using Point-In-Time (PIT) pagination. It is used by the Vulnerability Detection module to fetch CVE data from the `.cti-cves` index, replacing the CTI API as the CVE data source.
+The [Indexer Downloader](../../src/components/IndexerDownloader.hpp) stage is part of the Content Manager orchestration and downloads content directly from the Wazuh Indexer using Point-In-Time (PIT) pagination. It is used by the Vulnerability Detection module to fetch CVE data from the `.wazuh-threatintel-vulnerabilities` index, replacing the CTI API as the CVE data source.
 
 Content is delivered synchronously to the `fileProcessingCallback` as structured `nlohmann::json` objects page by page.
 
@@ -21,6 +21,17 @@ If the index returns zero documents (not yet populated), the downloader retries 
 Triggered on subsequent runs. Downloads only documents whose `offset` field is strictly greater than the stored cursor, using a range query `{ "range": { "offset": { "gt": <lastCursor> } } }` with the same PIT + `search_after` pagination.
 
 If the range query returns zero documents, the cycle completes without triggering a rescan on the consumer side (see [Completion signal](#completion-signal) below).
+
+### Consumer readiness gate
+
+If `consumerStatusIndex` and `consumerStatusId` are configured, the downloader polls the consumer status document before opening the PIT on the feed index:
+
+- missing document: wait 1 minute and retry
+- empty `status`: wait 1 minute and retry
+- `status = updating`: wait 1 minute and retry
+- `status = idle`: start the download
+
+This gate answers only one question: whether it is safe to start reading from Indexer. It does not replace the consumer-side validation of the downloaded local feed.
 
 ### PIT pagination
 
@@ -90,7 +101,9 @@ The `indexer` sub-object must be present under `configData` when `contentSource`
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `index` | string | Target index name (e.g. `.cti-cves`) |
+| `index` | string | Target index name (e.g. `.wazuh-threatintel-vulnerabilities`) |
+| `consumerStatusIndex` | string | Index containing the consumer status document to poll before downloading (optional) |
+| `consumerStatusId` | string | Consumer status document id to poll before downloading (optional) |
 | `pageSize` | integer | Documents per page. Default: `250` |
 | `numSlices` | integer | Number of parallel PIT slices for initial load. Default: `2`. Set to `1` for sequential mode. Higher values can increase memory usage with limited time savings |
 | `hosts` | array | Indexer host URLs (e.g. `["https://localhost:9200"]`) |
@@ -110,7 +123,7 @@ Example:
     "configData": {
         "consumerName": "Wazuh VulnerabilityDetector",
         "contentSource": "indexer",
-        "databasePath": "queue/vd_updater/rocksdb",
+        "databasePath": "queue/vd/vd_updater/rocksdb",
         "offset": 0,
         "indexer": {
             "hosts": ["https://localhost:9200"],
@@ -121,7 +134,9 @@ Example:
                 "certificate": "",
                 "key": ""
             },
-            "index": ".cti-cves",
+            "index": ".wazuh-threatintel-vulnerabilities",
+            "consumerStatusIndex": ".wazuh-cti-consumers",
+            "consumerStatusId": "cti:catalog:consumer:vulnerabilities",
             "pageSize": 250,
             "numSlices": 2
         }

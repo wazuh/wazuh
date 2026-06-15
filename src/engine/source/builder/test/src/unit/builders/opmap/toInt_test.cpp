@@ -49,25 +49,39 @@ auto schemaRefExpected(schemf::Type sType)
 
 namespace mapbuildtest
 {
-INSTANTIATE_TEST_SUITE_P(Builders,
-                         MapBuilderTest,
-                         testing::Values(
-                             /*** to_int ***/
-                             MapT({}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeValue(R"("true")")}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeRef("ref")}, opBuilderHelperToInt, SUCCESS()),
-                             MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeRef("ref"), makeValue(R"(1)")}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeRef("ref"), makeValue(R"(1.1)")}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeRef("ref"), makeValue(R"(true)")}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeRef("ref"), makeValue(R"(null)")}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeRef("ref"), makeValue(R"([1,2,3,4])")}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeRef("ref"), makeValue(R"("c")")}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeRef("ref"), makeRef(R"("truncate")")}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeRef("ref"), makeRef(R"("round")")}, opBuilderHelperToInt, FAILURE()),
-                             MapT({makeRef("ref"), makeValue(R"("truncate")")}, opBuilderHelperToInt, SUCCESS()),
-                             MapT({makeRef("ref"), makeValue(R"("round")")}, opBuilderHelperToInt, SUCCESS())),
-                         testNameFormatter<MapBuilderTest>("ToInt"));
+INSTANTIATE_TEST_SUITE_P(
+    Builders,
+    MapBuilderTest,
+    testing::Values(
+        /*** to_int ***/
+        MapT({}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeValue(R"("true")")}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, SUCCESS()),
+        MapT({makeRef("ref"), makeRef("ref")}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"(1)")}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"(1.1)")}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"(true)")}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"(null)")}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"([1,2,3,4])")}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"("c")")}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeRef("ref"), makeRef(R"("truncate")")}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeRef("ref"), makeRef(R"("round")")}, opBuilderHelperToInt, FAILURE()),
+        MapT({makeRef("ref"), makeValue(R"("truncate")")}, opBuilderHelperToInt, SUCCESS()),
+        MapT({makeRef("ref"), makeValue(R"("round")")}, opBuilderHelperToInt, SUCCESS()),
+        /*** Schema type validation (getType -> typeToJType -> Number) ***/
+        MapT({makeRef("ref")}, opBuilderHelperToInt, SUCCESS(schemaRefExpected(schemf::Type::INTEGER))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, SUCCESS(schemaRefExpected(schemf::Type::SHORT))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, SUCCESS(schemaRefExpected(schemf::Type::LONG))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, SUCCESS(schemaRefExpected(schemf::Type::FLOAT))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, SUCCESS(schemaRefExpected(schemf::Type::DOUBLE))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, SUCCESS(schemaRefExpected(schemf::Type::SCALED_FLOAT))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, FAILURE(schemaRefExpected(schemf::Type::BOOLEAN))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, FAILURE(schemaRefExpected(schemf::Type::KEYWORD))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, FAILURE(schemaRefExpected(schemf::Type::TEXT))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, FAILURE(schemaRefExpected(schemf::Type::OBJECT))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, FAILURE(schemaRefExpected(schemf::Type::DATE))),
+        MapT({makeRef("ref")}, opBuilderHelperToInt, FAILURE(schemaRefExpected(schemf::Type::IP)))),
+    testNameFormatter<MapBuilderTest>("ToInt"));
 } // namespace mapbuildtest
 
 namespace mapoperatestest

@@ -28,6 +28,33 @@ static gid_t wm_gid;               // Group ID.
 int wm_max_eps;             // Maximum events per second
 int wm_kill_timeout;        // Time for a process to quit before killing it
 int wm_debug_level;
+volatile sig_atomic_t wm_shutdown_requested = 0;
+
+void wm_sleep_interruptible(int seconds) {
+    for (int i = 0; i < seconds && !wm_shutdown_requested; i++) {
+        sleep(1);
+    }
+}
+
+void wm_sleep_until_interruptible(time_t abs_time) {
+    while (time(NULL) < abs_time && !wm_shutdown_requested) {
+        sleep(1);
+    }
+}
+
+int wm_select_interruptible(int sock, fd_set *fdset) {
+    struct timeval tv;
+    int r;
+    while (!wm_shutdown_requested) {
+        FD_ZERO(fdset);
+        FD_SET(sock, fdset);
+        tv = (struct timeval){ .tv_sec = 1, .tv_usec = 0 };
+        r = select(sock + 1, fdset, NULL, NULL, &tv);
+        if (r > 0) return r;
+        if (r < 0 && errno != EINTR) return r;
+    }
+    return 0;
+}
 
 
 /**

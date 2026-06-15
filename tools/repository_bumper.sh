@@ -15,6 +15,7 @@ PATTERN_STAGE='^(alpha|beta|rc)[0-9]{1,2}$'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 date_time=$(date '+%Y-%m-%d_%H-%M-%S')
 LOG_FILE="${SCRIPT_DIR}/repository_bumper_${date_time}.log"
+skip_urls=""
 
 log_action() {
     local message="$1"
@@ -315,6 +316,7 @@ update_file_api() {
     local new_stage="$2"
     local setup_file="${DIR_API}/setup.py"
     local spec_file="${DIR_API}/api/spec/spec.yaml"
+    local api_reference_file="${DIR_ROOT}/docs/ref/modules/server-api/api-reference.md"
 
     [[ -z "$new_version" && -z "$new_stage" ]] && return
 
@@ -325,13 +327,7 @@ update_file_api() {
             | sed -E "s/^[[:space:]]*version='([^']+)'.*/\1/"
         )
 
-        local current_spec_version
-        current_spec_version=$(
-            grep -E "^[[:space:]]*version:[[:space:]]*'" "$spec_file" \
-            | sed -E "s/^[[:space:]]*version:[[:space:]]*'([0-9]+\.[0-9]+\.[0-9]+)'.*/\1/"
-        )
-
-        # Only if the version in setup.py does NOT match new_version, we apply changes
+        # Only if the version in setup.py does NOT match new_version, update version fields
         if [[ "$current_setup_version" != "$new_version" ]]; then
             sed -i -E \
                 "s|^([[:space:]]*version=')[^']+(',)|\1${new_version}\2|" \
@@ -341,17 +337,37 @@ update_file_api() {
                 "s|^([[:space:]]*version:[[:space:]]*')[0-9]+\.[0-9]+\.[0-9]+(')|\1${new_version}\2|" \
                 "$spec_file"
 
-            sed -i -E \
-                "s|(\/v)[0-9]+\.[0-9]+\.[0-9]+(/)|\1${new_version}\2|g" \
-                "$spec_file"
-
-            local version_short
-            version_short=$(echo "$new_version" | awk -F. '{print $1 "." $2}')
-            sed -i -E \
-                "s|(com/)[0-9]+\.[0-9]+(/)|\1${version_short}\2|g" \
-                "$spec_file"
-
             log_action "Updated version to '${new_version}' in: $setup_file and $spec_file"
+        fi
+
+        if [[ -f "$api_reference_file" ]]; then
+            sed -i -E \
+                "s|(\"api_version\":[[:space:]]*\")[0-9]+\.[0-9]+\.[0-9]+(\")|\1${new_version}\2|" \
+                "$api_reference_file"
+        fi
+
+        # URL updates run independently of setup.py version to support two-step bump flow:
+        # step 1 (--set-as-main) updates version values only, skipping all URL rewrites;
+        # step 2 (no flag) replaces all URL refs (main or versioned) even when setup.py
+        # already has the target version.
+        local version_short
+        version_short=$(echo "$new_version" | awk -F. '{print $1 "." $2}')
+        if [[ -z "$skip_urls" ]]; then
+            # Build the target Git ref for blob/ URLs. Pre-release stages tag as
+            # vMAJOR.MINOR.PATCH-STAGE (e.g. v5.0.0-beta2), so without the stage
+            # suffix the URL would point to a tag that does not exist yet.
+            local tag_ref="v${new_version}"
+            [[ -n "$new_stage" ]] && tag_ref="${tag_ref}-${new_stage}"
+
+            # blob/ paths: match main, vMAJOR.MINOR.PATCH, and vMAJOR.MINOR.PATCH-STAGE
+            # so subsequent stage bumps can replace an existing tagged ref.
+            sed -i -E \
+                "s~(blob/)(v?main|v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+[0-9]+)?)(/)~\1${tag_ref}\4~g" \
+                "$spec_file"
+            # documentation URLs use 2-part version without v prefix (e.g. wazuh.com/5.0/)
+            sed -i -E \
+                "s~(wazuh\.com/)(main|[0-9]+\.[0-9]+)(/)~\1${version_short}\3~g" \
+                "$spec_file"
         fi
     fi
 
@@ -368,7 +384,29 @@ update_file_api() {
                 "s|^([[:space:]]*x-revision:[[:space:]]*')[^']+(')|\1${new_stage}\2|" \
                 "$spec_file"
 
+            # Also update inline `revision:` values in example response blocks so
+            # the example payload reflects the current stage instead of going stale.
+            sed -i -E \
+                "s|^([[:space:]]+revision:[[:space:]]*')[^']+(')|\1${new_stage}\2|" \
+                "$spec_file"
+
             log_action "Updated revision to '${new_stage}' in: $spec_file"
+        fi
+
+        if [[ -f "$api_reference_file" ]]; then
+            local current_api_ref_stage
+            current_api_ref_stage=$(
+                grep -E '"revision":[[:space:]]*"' "$api_reference_file" \
+                | head -n1 \
+                | sed -E 's/.*"revision":[[:space:]]*"([^"]+)".*/\1/'
+            )
+
+            if [[ "$current_api_ref_stage" != "$new_stage" ]]; then
+                sed -i -E \
+                    "s|(\"revision\":[[:space:]]*\")[^\"]+(\")|\1${new_stage}\2|" \
+                    "$api_reference_file"
+                log_action "Updated revision to '${new_stage}' in: $api_reference_file"
+            fi
         fi
     fi
 }
@@ -387,72 +425,46 @@ update_file_packages() {
     formatted_date=$(date -d "$new_date" +"%a, %d %b %Y 00:00:00 +0000")
     spec_date=$(date -d "$new_date" +"%a %b %d %Y")
 
-    # Update .spec files
-    for spec_file in $(find "$DIR_PACKAGE" -type f -name "*.spec"); do
-        local existing_line
-        existing_line=$(grep -E "^\\* .+ - ${final_version}$" "$spec_file" || true)
+    local version_dashed="${final_version//./-}"
 
-        if [[ -n "$existing_line" ]]; then
-            sed -i -E \
-                "s|^\* .+ - ${final_version}$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" \
-                "$spec_file"
-            log_action "Updated changelog date for version ${final_version} in: $spec_file"
-        else
-            sed -i -E \
-                "/^%changelog\s*$/a * ${spec_date} support <info@wazuh.com> - ${final_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html" \
-                "$spec_file"
-            log_action "Prepended changelog entry for version ${final_version} in: $spec_file"
-        fi
+    # Update .spec files - always update the first changelog entry in place
+    for spec_file in $(find "$DIR_PACKAGE" -type f -name "*.spec"); do
+        sed -i -E \
+            "0,/^\* .+ support <info@wazuh\.com> - [0-9]+\.[0-9]+\.[0-9]+$/s|^\* .+ support <info@wazuh\.com> - [0-9]+\.[0-9]+\.[0-9]+$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" \
+            "$spec_file"
+        sed -i -E \
+            "0,/^- More info: https:\/\/documentation\.wazuh\.com\/current\/release-notes\/release-[0-9]+-[0-9]+-[0-9]+\.html$/s|^- More info: .*$|- More info: https://documentation.wazuh.com/current/release-notes/release-${version_dashed}.html|" \
+            "$spec_file"
+        log_action "Updated changelog entry for version ${final_version} in: $spec_file"
     done
 
-    # Update changelog files (prepend entry)
+    # Update changelog files - always update the first entry in place
     for changelog_file in $(find "$DIR_PACKAGE" -type f -name "changelog"); do
         local INSTALL_TYPE
         INSTALL_TYPE=$(basename "$(dirname "$(dirname "$changelog_file")")")
-        local changelog_entry
-        changelog_entry="$(
-cat <<EOF
-${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
 
-  * More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
+        awk -v pkg="$INSTALL_TYPE" -v new_ver="$final_version" -v new_url="https://documentation.wazuh.com/current/release-notes/release-${version_dashed}.html" -v new_date="$formatted_date" '
+        BEGIN { header_done = 0; url_done = 0; date_done = 0 }
+        {
+            if (!header_done && $0 ~ ("^" pkg " \\([0-9]+\\.[0-9]+\\.[0-9]+-RELEASE\\) stable; urgency=low$")) {
+                print pkg " (" new_ver "-RELEASE) stable; urgency=low"
+                header_done = 1
+                next
+            }
+            if (!url_done && $0 ~ /^  \* More info: https:\/\/documentation\.wazuh\.com\/current\/release-notes\/release-[0-9]+-[0-9]+-[0-9]+\.html$/) {
+                print "  * More info: " new_url
+                url_done = 1
+                next
+            }
+            if (!date_done && $0 ~ /^ -- Wazuh, Inc <info@wazuh\.com>  /) {
+                print " -- Wazuh, Inc <info@wazuh.com>  " new_date
+                date_done = 1
+                next
+            }
+            print
+        }' "$changelog_file" > "${changelog_file}.tmp" && mv "${changelog_file}.tmp" "$changelog_file"
 
- -- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
-
-EOF
-)"
-        local version_pattern_grep
-        local version_pattern_awk
-        version_pattern_grep="^${INSTALL_TYPE} \(${final_version//./\\.}-RELEASE\) stable; urgency=low"
-        version_pattern_awk="^${INSTALL_TYPE} [(]${final_version//./.}-RELEASE[)] stable; urgency=low"
-
-        if grep -qE "$version_pattern_grep" "$changelog_file"; then
-            awk -v version_regex="$version_pattern_awk" -v new_date="$formatted_date" '
-            BEGIN { inside_match = 0 }
-            {
-                if ($0 ~ version_regex) {
-                    inside_match = 1
-                    print
-                    next
-                }
-                if (inside_match && $0 ~ /^ -- Wazuh, Inc <info@wazuh.com>  /) {
-                    print " -- Wazuh, Inc <info@wazuh.com>  " new_date
-                    inside_match = 0
-                    next
-                }
-                print
-            }' "$changelog_file" > "${changelog_file}.tmp" && mv "${changelog_file}.tmp" "$changelog_file"
-
-            log_action "Updated changelog date for version ${final_version} in: $changelog_file"
-        else
-            local tmp_file
-            tmp_file=$(mktemp)
-            {
-                printf "%s\n\n" "$changelog_entry"
-                cat "$changelog_file"
-            } > "$tmp_file" && mv "$tmp_file" "$changelog_file"
-
-            log_action "Prepended changelog entry for version ${final_version} in: $changelog_file"
-        fi
+        log_action "Updated changelog entry for version ${final_version} in: $changelog_file"
     done
 
     # Update copyright files
@@ -548,10 +560,11 @@ update_version() {
 }
 
 usage() {
-    echo "Usage: $0 --version VERSION --stage STAGE --date DATE"
+    echo "Usage: $0 --version VERSION --stage STAGE --date DATE [--set-as-main]"
     echo "  --version VERSION   Version number (e.g., 4.9.1)"
     echo "  --stage STAGE       Stage name (e.g., alpha, beta, rc)"
     echo "  --date DATE         Release date in format YYYY-MM-DD (e.g., 2025-04-14)"
+    echo "  --set-as-main       Update version values only, skipping all URL rewrites"
 }
 
 parse_args() {
@@ -568,6 +581,10 @@ parse_args() {
         --date)
             new_date="$2"
             shift 2
+            ;;
+        --set-as-main)
+            skip_urls=true
+            shift
             ;;
         *)
             echo "Unknown option: $1"

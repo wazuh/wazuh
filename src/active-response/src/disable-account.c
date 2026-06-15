@@ -19,7 +19,7 @@ int main (int argc, char **argv) {
     struct utsname uname_buffer;
 
     action = setup_and_check_message(argv, &input_json);
-    if ((action != ADD_COMMAND) && (action != DELETE_COMMAND)) {
+    if ((action != ENABLE_COMMAND) && (action != DISABLE_COMMAND)) {
         return OS_INVALID;
     }
 
@@ -31,7 +31,7 @@ int main (int argc, char **argv) {
         return OS_INVALID;
     }
 
-    if (action == ADD_COMMAND) {
+    if (action == ENABLE_COMMAND) {
         char **keys = NULL;
         int action2 = OS_INVALID;
 
@@ -80,7 +80,7 @@ int main (int argc, char **argv) {
         }
 
         memset(args, '\0', COMMANDSIZE_4096);
-        if (action == ADD_COMMAND) {
+        if (action == ENABLE_COMMAND) {
             snprintf(args, COMMANDSIZE_4096 -1, "-l");
         } else {
             snprintf(args, COMMANDSIZE_4096 -1, "-u");

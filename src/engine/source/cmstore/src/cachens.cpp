@@ -46,9 +46,13 @@ void CacheNS::deserialize(const json::Json& j)
             throw std::runtime_error("Invalid JSON format for CacheNS deserialization: missing required fields");
         }
 
-        std::string uuid = entry.getString(KEY_PATH_UUID).value();
-        std::string name = entry.getString(KEY_PATH_NAME).value();
-        ResourceType type = resourceTypeFromString(entry.getString(KEY_PATH_TYPE).value());
+        std::string uuid;
+        entry.getString(uuid, KEY_PATH_UUID);
+        std::string name;
+        entry.getString(name, KEY_PATH_NAME);
+        std::string typeStr;
+        entry.getString(typeStr, KEY_PATH_TYPE);
+        ResourceType type = resourceTypeFromString(typeStr);
         // Add entry directly without acquiring lock
         NameType nameType = std::make_tuple(name, type);
         if (m_uuidToEntryMap.find(uuid) != m_uuidToEntryMap.end())

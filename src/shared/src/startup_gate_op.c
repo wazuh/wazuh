@@ -122,7 +122,7 @@ void startup_gate_wait_for_ready(const char *module_name) {
         got_status = startup_gate_query_status(&ready, reason, sizeof(reason));
         if (got_status && ready) {
             if (waiting_logged) {
-                minfo("Startup hash gate released for '%s' (%s).", name, reason[0] ? reason : "unknown");
+                mdebug1("Startup hash gate released for '%s' (%s).", name, reason[0] ? reason : "unknown");
             }
             return;
         }

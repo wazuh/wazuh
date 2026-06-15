@@ -1,6 +1,7 @@
 #include "builders/baseBuilders_test.hpp"
 
 #include "builders/opfilter/opBuilderHelperFilter.hpp"
+#include "syntax.hpp"
 
 namespace
 {
@@ -24,14 +25,46 @@ auto contextExpected(bool indexUnclassified)
 
 namespace filterbuildtest
 {
-INSTANTIATE_TEST_SUITE_P(Builders,
-                         FilterBuilderTest,
-                         testing::Values(
-                             /*** Index Unclassified Events ***/
-                             FilterT({}, opfilter::opBuilderHelperIndexUnclassifiedEvents, SUCCESS()),
-                             FilterT({makeValue(R"(1)")}, opfilter::opBuilderHelperIndexUnclassifiedEvents, FAILURE()),
-                             FilterT({makeRef("ref")}, opfilter::opBuilderHelperIndexUnclassifiedEvents, FAILURE())),
-                         testNameFormatter<FilterBuilderTest>("IndexUnclassifiedEvents"));
+class IndexUnclassifiedEventsBuildTest : public BaseBuilderTest
+{
+};
+
+TEST_F(IndexUnclassifiedEventsBuildTest, BuildsWithCategoryField)
+{
+    Reference targetField {"wazuh.integration.category"};
+
+    contextExpected(true)(*mocks);
+    expectBuildSuccess();
+
+    ASSERT_NO_THROW(opfilter::opBuilderHelperIndexUnclassifiedEvents(targetField, {}, mocks->ctx));
+}
+
+TEST_F(IndexUnclassifiedEventsBuildTest, RejectsUnexpectedTargetField)
+{
+    // Any field other than wazuh.integration.category must be rejected at build-time.
+    for (const auto& path : {"targetField", "wazuh.integration.decoders", "wazuh.integration.name"})
+    {
+        Reference targetField {path};
+        ASSERT_THROW(opfilter::opBuilderHelperIndexUnclassifiedEvents(targetField, {}, mocks->ctx), std::exception)
+            << "Expected throw for target field: " << path;
+    }
+}
+
+TEST_F(IndexUnclassifiedEventsBuildTest, RejectsValueArgument)
+{
+    Reference targetField {"wazuh.integration.category"};
+
+    ASSERT_THROW(opfilter::opBuilderHelperIndexUnclassifiedEvents(targetField, {makeValue(R"(1)")}, mocks->ctx),
+                 std::exception);
+}
+
+TEST_F(IndexUnclassifiedEventsBuildTest, RejectsReferenceArgument)
+{
+    Reference targetField {"wazuh.integration.category"};
+
+    ASSERT_THROW(opfilter::opBuilderHelperIndexUnclassifiedEvents(targetField, {makeRef("ref")}, mocks->ctx),
+                 std::exception);
+}
 } // namespace filterbuildtest
 
 namespace filteroperatestest
@@ -40,60 +73,66 @@ INSTANTIATE_TEST_SUITE_P(Builders,
                          FilterOperationTest,
                          testing::Values(
                              /*** Index Unclassified Events - Tests with policy disabled (default) ***/
-                             // Policy disabled, array size 1 - should fail
-                             FilterT(R"({"target": ["decoder1"]})",
+                             // Policy disabled, category unclassified - should fail
+                             FilterT(R"({"wazuh": {"integration": {"category": "unclassified"}}})",
                                      opfilter::opBuilderHelperIndexUnclassifiedEvents,
-                                     "target",
+                                     "wazuh.integration.category",
                                      {},
                                      FAILURE(contextExpected(false))),
-                             // Policy disabled, array size 2 - should fail
-                             FilterT(R"({"target": ["decoder1", "decoder2"]})",
+                             // Policy disabled, category security - should fail
+                             FilterT(R"({"wazuh": {"integration": {"category": "security"}}})",
                                      opfilter::opBuilderHelperIndexUnclassifiedEvents,
-                                     "target",
+                                     "wazuh.integration.category",
                                      {},
                                      FAILURE(contextExpected(false))),
-                             // Policy disabled, empty array - should fail
-                             FilterT(R"({"target": []})",
+                             // Policy disabled, category missing - should fail
+                             FilterT(R"({"wazuh": {"integration": {}}})",
                                      opfilter::opBuilderHelperIndexUnclassifiedEvents,
-                                     "target",
+                                     "wazuh.integration.category",
                                      {},
                                      FAILURE(contextExpected(false))),
                              /*** Index Unclassified Events - Tests with policy enabled ***/
-                             // Policy enabled, array size 1 - should succeed
-                             FilterT(R"({"target": ["decoder1"]})",
+                             // Policy enabled, category unclassified - should succeed
+                             FilterT(R"({"wazuh": {"integration": {"category": "unclassified"}}})",
                                      opfilter::opBuilderHelperIndexUnclassifiedEvents,
-                                     "target",
+                                     "wazuh.integration.category",
                                      {},
                                      SUCCESS(contextExpected(true))),
-                             // Policy enabled, array size 2 - should fail
-                             FilterT(R"({"target": ["decoder1", "decoder2"]})",
+                             // Policy enabled, category security - should fail
+                             FilterT(R"({"wazuh": {"integration": {"category": "security"}}})",
                                      opfilter::opBuilderHelperIndexUnclassifiedEvents,
-                                     "target",
+                                     "wazuh.integration.category",
                                      {},
                                      FAILURE(contextExpected(true))),
-                             // Policy enabled, empty array - should fail
-                             FilterT(R"({"target": []})",
+                             // Policy enabled, category system-activity - should fail
+                             FilterT(R"({"wazuh": {"integration": {"category": "system-activity"}}})",
                                      opfilter::opBuilderHelperIndexUnclassifiedEvents,
-                                     "target",
-                                     {},
-                                     FAILURE(contextExpected(true))),
-                             // Policy enabled, array size 3 - should fail
-                             FilterT(R"({"target": ["d1", "d2", "d3"]})",
-                                     opfilter::opBuilderHelperIndexUnclassifiedEvents,
-                                     "target",
+                                     "wazuh.integration.category",
                                      {},
                                      FAILURE(contextExpected(true))),
                              /*** Index Unclassified Events - Error cases ***/
-                             // Test with non-existent field (policy enabled)
-                             FilterT(R"({"other": ["decoder"]})",
+                             // Policy enabled, category field missing - should fail (not found)
+                             FilterT(R"({"wazuh": {"integration": {}}})",
                                      opfilter::opBuilderHelperIndexUnclassifiedEvents,
-                                     "target",
+                                     "wazuh.integration.category",
                                      {},
                                      FAILURE(contextExpected(true))),
-                             // Test with non-array field (policy enabled)
-                             FilterT(R"({"target": "decoder"})",
+                             // Policy enabled, completely unrelated event - should fail (not found)
+                             FilterT(R"({"other": "x"})",
                                      opfilter::opBuilderHelperIndexUnclassifiedEvents,
-                                     "target",
+                                     "wazuh.integration.category",
+                                     {},
+                                     FAILURE(contextExpected(true))),
+                             // Policy enabled, category is not a string (number) - should fail (wrong type)
+                             FilterT(R"({"wazuh": {"integration": {"category": 123}}})",
+                                     opfilter::opBuilderHelperIndexUnclassifiedEvents,
+                                     "wazuh.integration.category",
+                                     {},
+                                     FAILURE(contextExpected(true))),
+                             // Policy enabled, category is not a string (array) - should fail (wrong type)
+                             FilterT(R"({"wazuh": {"integration": {"category": ["unclassified"]}}})",
+                                     opfilter::opBuilderHelperIndexUnclassifiedEvents,
+                                     "wazuh.integration.category",
                                      {},
                                      FAILURE(contextExpected(true)))),
                          testNameFormatter<FilterOperationTest>("IndexUnclassifiedEvents"));

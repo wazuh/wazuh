@@ -2,13 +2,19 @@ name: 5.X - macOS compilation test
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - "src/**"
       - ".github/workflows/5_testcomponent_build-macos.yml"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-sonoma:
-    runs-on: macos-14
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: macos-15
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

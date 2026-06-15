@@ -17,7 +17,7 @@
 
 #define COMMANDSIZE_4096 4096
 
-#define VERSION 1
+#define AR_VERSION 1
 #define AR_MODULE_NAME "active-response"
 #define CHECK_KEYS_ENTRY "check_keys"
 
@@ -25,8 +25,8 @@
  * Enumeration of the available commands
  * */
 typedef enum _ar_command_list {
-    ADD_COMMAND = 0,
-    DELETE_COMMAND,
+    ENABLE_COMMAND = 0,
+    DISABLE_COMMAND,
     CONTINUE_COMMAND,
     ABORT_COMMAND
 } ar_command_list;

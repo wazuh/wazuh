@@ -21,8 +21,29 @@ case "$1" in
     GROUP="wazuh-manager"
     WAZUH_GLOBAL_TMP_DIR="${DIR}/packages_files"
     WAZUH_TMP_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_config_files"
+    WAZUH_PRESERVE_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_upgrade_preserve"
     OSMYSHELL="/sbin/nologin"
     SCRIPTS_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_installation_scripts"
+
+    restore_upgrade_preserve() {
+        if [ -d "${WAZUH_PRESERVE_DIR}/etc" ]; then
+            mkdir -p "${DIR}/etc"
+            cp -a "${WAZUH_PRESERVE_DIR}/etc/." "${DIR}/etc/"
+        fi
+
+        if [ -d "${WAZUH_PRESERVE_DIR}/data" ]; then
+            mkdir -p "${DIR}/data"
+
+            for DATA_ENTRY in "${WAZUH_PRESERVE_DIR}/data/"* "${WAZUH_PRESERVE_DIR}/data/."[!.]* "${WAZUH_PRESERVE_DIR}/data/"..?*; do
+                [ -e "${DATA_ENTRY}" ] || continue
+                cp -a "${DATA_ENTRY}" "${DIR}/data/"
+            done
+        fi
+
+        if [ -d "${WAZUH_PRESERVE_DIR}" ]; then
+            rm -rf "${WAZUH_PRESERVE_DIR}"
+        fi
+    }
 
     if [ -d /run/systemd/system ]; then
         rm -f /etc/init.d/wazuh-manager
@@ -97,9 +118,6 @@ case "$1" in
     # Remove Vuln-detector database
     rm -f ${DIR}/queue/vulnerabilities/cve.db || true
 
-    # Remove groups backup files
-    rm -rf ${DIR}/backup/groups
-
     # Generation auto-signed certificate if not exists
     if [ ! -f "${DIR}/etc/sslmanager.key" ] && [ ! -f "${DIR}/etc/sslmanager.cert" ]; then
         ${DIR}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/sslmanager.key -X ${DIR}/etc/sslmanager.cert 2>/dev/null
@@ -107,31 +125,19 @@ case "$1" in
 
     chmod 640 ${DIR}/etc/sslmanager.cert ${DIR}/etc/sslmanager.key > /dev/null 2>&1 || true
 
-    # For the etc dir
-    if [ -f /etc/localtime ]; then
-        cp -pL /etc/localtime ${DIR}/etc/;
-        chmod 640 ${DIR}/etc/localtime
-        chown root:root ${DIR}/etc/localtime
-    fi
+    if [ -z "$2" ]; then
+        # For the etc dir
+        if [ -f /etc/localtime ]; then
+            cp -pL /etc/localtime ${DIR}/etc/;
+            chmod 640 ${DIR}/etc/localtime
+            chown root:${GROUP} ${DIR}/etc/localtime
+        fi
 
-    if [ -f /etc/TIMEZONE ]; then
-        cp -p /etc/TIMEZONE ${DIR}/etc/;
-        chmod 640 ${DIR}/etc/TIMEZONE
-        chown root:root ${DIR}/etc/TIMEZONE
-    fi
-
-    # Restore client.keys configuration
-    if [ -f ${WAZUH_TMP_DIR}/client.keys ]; then
-        mv ${WAZUH_TMP_DIR}/client.keys ${DIR}/etc/client.keys
-    fi
-    # Restore manager internal options configuration
-    if [ -f ${WAZUH_TMP_DIR}/wazuh-manager-internal-options.conf ]; then
-        mv ${WAZUH_TMP_DIR}/wazuh-manager-internal-options.conf ${DIR}/etc/wazuh-manager-internal-options.conf
-    fi
-
-    # Restore wazuh-manager.conf configuration
-    if [ -f ${WAZUH_TMP_DIR}/wazuh-manager.conf ]; then
-        mv ${WAZUH_TMP_DIR}/wazuh-manager.conf ${DIR}/etc/wazuh-manager.conf
+        if [ -f /etc/TIMEZONE ]; then
+            cp -p /etc/TIMEZONE ${DIR}/etc/;
+            chmod 640 ${DIR}/etc/TIMEZONE
+            chown root:root ${DIR}/etc/TIMEZONE
+        fi
     fi
 
     for BIN in agent_groups agent_upgrade cluster_control rbac_control \
@@ -159,16 +165,6 @@ case "$1" in
     chmod 660 ${DIR}/etc/wazuh-manager.conf > /dev/null 2>&1 || true
     chown root:${GROUP} ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
     chmod 640 ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
-    # Restore group files
-    if [ -d ${WAZUH_TMP_DIR}/group ]; then
-        cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared
-        rm -rf ${WAZUH_TMP_DIR}/group/
-    fi
-
-    # Restore agent-groups files
-    if [ -d ${WAZUH_TMP_DIR}/agent-groups ]; then
-        mv ${WAZUH_TMP_DIR}/agent-groups ${DIR}/queue/
-    fi
 
     # Restore RBAC database
     if [ -f ${WAZUH_TMP_DIR}/rbac.db ]; then
@@ -193,16 +189,11 @@ case "$1" in
     chown ${USER}:${GROUP} ${DIR}/logs/wazuh-manager.json
     chmod 0660 ${DIR}/logs/wazuh-manager.json
 
-    # Set merged.mg permissions to new ones
-    find ${DIR}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
+    # Restore preserved etc/ and data/ as the last content-restore/overwrite
+    # step for those trees, matching the RPM %posttrans ordering and the
+    # strict "etc/ MUST NOT be overwritten" contract from the upgrade rules.
+    restore_upgrade_preserve
 
-    # Check if SELinux is installed and enabled
-    if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
-        if [ $(getenforce) !=  "Disabled" ]; then
-            semodule -i ${DIR}/var/selinux/wazuh.pp
-            semodule -e wazuh
-        fi
-    fi
 
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true

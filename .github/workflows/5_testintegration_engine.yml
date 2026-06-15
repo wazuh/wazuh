@@ -1,13 +1,12 @@
 name: 5.X - Engine - Integration tests - Helper functions and API endpoints
 
 on:
-  # Triggers the workflow on pull request but only changes in the src/engine/ directory.
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - 'src/engine/**'
+  workflow_dispatch:
 
-# Ensures only one instance of this workflow is running per PR
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -17,8 +16,9 @@ env:
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build Server
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
 
@@ -56,11 +56,9 @@ jobs:
             src/external/rocksdb/build/librocksdb.so.8.3.2
 
   helper_tests:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Helper Functions Test
-
-    # Only runs if the PR status is different to Draft
-    if: ${{ !github.event.pull_request.draft }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     timeout-minutes: 60
     env:
@@ -124,11 +122,9 @@ jobs:
       run: engine-helper-test -e /tmp/actions generate-doc --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_docs/
 
   api_tests:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: API Endpoints Test
-
-    # Only runs if the PR status is different to Draft
-    if: ${{ !github.event.pull_request.draft }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     timeout-minutes: 60
     env:

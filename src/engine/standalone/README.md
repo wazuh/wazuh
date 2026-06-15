@@ -53,3 +53,37 @@ The standalone engine will create the following directory structure:
     the default security policy, this file will be created by the engine if it does not exist.
 - **sockets**: Used for engine sockets
     - **sockets/engine-api.sock**: Engine HTTP server socket.
+
+## Configuration variables
+
+The engine's behaviour can be tuned via environment variables before launching `run_engine.sh`.
+
+### General
+
+| Variable | Default | Description |
+|---|---|---|
+| `WAZUH_STANDALONE_LOG_LEVEL` | `info` | Log verbosity level |
+| `WAZUH_SERVER_ENABLE_EVENT_PROCESSING` | `false` | Enable/disable event processing |
+| `WAZUH_SERVER_API_MAX_RESOURCE_PAYLOAD_SIZE` | `50000` | Max payload size (bytes) for API resource requests |
+| `WAZUH_SERVER_API_MAX_RESOURCE_KVDB_PAYLOAD_SIZE` | `100000` | Max payload size (bytes) for KVDB API requests |
+
+### Log file and rotation
+
+These variables map to the Log4j2 configuration used internally by the engine:
+
+| Variable | Default | Log4j2 equivalent |
+|---|---|---|
+| `WAZUH_STANDALONE_LOG_FILE_PATH` | `/var/log/wazuh-indexer/wazuh-engine.log` (production) or `logs/wazuh-engine.log` (dev/CI) | `<RollingFile fileName="...">` |
+| `WAZUH_STANDALONE_LOG_ROTATION_HOUR` | `0` (midnight) | `<TimeBasedTriggeringPolicy interval="1" modulate="true"/>` |
+| `WAZUH_STANDALONE_LOG_ROTATION_MINUTE` | `0` | same as above |
+| `WAZUH_STANDALONE_LOG_MAX_FILE_SIZE` | `134217728` (128 MB) | `<SizeBasedTriggeringPolicy size="128 MB"/>` |
+| `WAZUH_STANDALONE_LOG_MAX_FILES` | `7` | `<DefaultRolloverStrategy max="7">` |
+| `WAZUH_STANDALONE_LOG_MAX_ACCUMULATED_SIZE` | `2147483648` (2 GB) | `<IfAccumulatedFileSize exceeds="2 GB"/>` |
+
+The following variables are custom extensions with no direct Log4j2 equivalent:
+
+| Variable | Default | Description |
+|---|---|---|
+| `WAZUH_STANDALONE_LOG_ROTATION_ENABLED` | `true` | Enable/disable the entire log rotation subsystem |
+| `WAZUH_STANDALONE_LOG_COMPRESSION_ENABLED` | `true` | Enable gzip compression of rotated files. Compression runs asynchronously; the active log file is never compressed |
+| `WAZUH_STANDALONE_LOG_COMPRESSION_LEVEL` | `5` | zlib compression level: `0` = store only, `1` = fastest, `9` = maximum compression |

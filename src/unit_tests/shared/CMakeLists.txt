@@ -302,6 +302,12 @@ list(APPEND shared_tests_flags "-Wl,--wrap,w_get_file_content -Wl,--wrap,cJSON_P
                                 -Wl,--wrap,fread -Wl,--wrap,remove \
                                 -Wl,--wrap,fseek -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
 
+# audit_op.c is compiled only when ENABLE_AUDIT is set (Linux agent only), so its
+# unit test must be gated the same way. Without this guard the manager build
+# (audit disabled) links test_audit_op against audit_* symbols that audit_op.c
+# never emitted -> undefined references. audit_op coverage still runs in the
+# Linux agent job. See #36247.
+if(ENABLE_AUDIT)
 list(APPEND shared_tests_names "test_audit_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,audit_send -Wl,--wrap,popen \
                                 -Wl,--wrap,select -Wl,--wrap,audit_get_reply -Wl,--wrap,wpopenv -Wl,--wrap,fgets \
@@ -312,6 +318,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,audit_send -Wl,--wrap,popen \
                                 -Wl,--wrap,fflush -Wl,--wrap,fprintf -Wl,--wrap,fread -Wl,--wrap,fseek \
                                 -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
                                 -Wl,--wrap,get_binary_path ${DEBUG_OP_WRAPPERS}")
+endif()
 
 list(APPEND shared_tests_names "test_privsep_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid")
@@ -326,12 +333,6 @@ list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 endif()
 
 if(${TARGET} STREQUAL "manager")
-list(APPEND shared_tests_names "test_json-queue")
-list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,wfopen \
-                                -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
-                                -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell \
-                                -Wl,--wrap,fgetpos -Wl,--wrap,fgetc,--wrap,stat,--wrap,sleep,--wrap,getpid,--wrap,clearerr -Wl,--wrap,popen")
-
 list(APPEND shared_tests_names "test_bqueue")
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2")
 

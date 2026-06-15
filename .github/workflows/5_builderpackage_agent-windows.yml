@@ -7,7 +7,11 @@ on:
     paths:
       - "src/**"
       - "packages/**"
+      - "ruleset/**"
+      - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-windows.yml"
+      - ".github/test-modules-windows.json"
+      - ".github/workflows/5_testintegration_windows-integration-tests.yml"
   workflow_dispatch:
     inputs:
       revision:
@@ -30,10 +34,37 @@ on:
           Default is 'false'.
         required: false
         default: false
-# ===================== JOBS =====================
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
+  detect-changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    name: Detect changed Windows test modules
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      any_matched: ${{ steps.detect.outputs.any_matched }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed modules
+        id: detect
+        uses: ./.github/actions/5_testintegration_detect-changes
+        with:
+          modules-config: .github/test-modules-windows.json
+          none-matrix: '{"include":[{"name":"none","shard_name":"none","pytest_target":"test_none\\","pytest_extra_args":"","pytest_tier_args":"","pytest_ignore_args":"","start_service":false,"skip_tests":true}]}'
+          field-defaults: '{"pytest_extra_args":"","pytest_ignore_args":"","start_service":false,"skip_tests":false}'
+
   build-windows-i686:
-    runs-on: ubuntu-latest
+    needs: detect-changes
+    runs-on: wz-linux-amd64
     timeout-minutes: 60
     name: Build Windows agent binaries
     outputs:
@@ -291,7 +322,7 @@ jobs:
   upload-windows-i686-to-s3:
     needs: [package-windows-i686, test-windows-i686]
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 15
     name: Upload MSI to S3
 
@@ -382,4 +413,27 @@ jobs:
     with:
       base_branch: ''
       platform: 'windows'
+    secrets: inherit
+
+  run-integration-tests:
+    needs: [smoke-test-windows, detect-changes]
+    if: >
+      success() &&
+      github.event_name == 'pull_request'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
+    name: ${{ matrix.skip_tests && 'IT Windows - no relevant changes' || format('IT Windows - {0} ({1})', matrix.name, matrix.shard_name) }}
+    uses: ./.github/workflows/5_testintegration_windows-integration-tests.yml
+    with:
+      base_branch: ${{ github.event.pull_request.base.ref }}
+      build_run_id: ${{ github.run_id }}
+      module_name: ${{ matrix.name }}
+      shard_name: ${{ matrix.shard_name }}
+      pytest_target: ${{ matrix.pytest_target }}
+      pytest_extra_args: ${{ matrix.pytest_extra_args }}
+      pytest_tier_args: ${{ matrix.pytest_tier_args }}
+      pytest_ignore_args: ${{ matrix.pytest_ignore_args }}
+      start_service: ${{ matrix.start_service }}
+      skip_tests: ${{ matrix.skip_tests }}
     secrets: inherit

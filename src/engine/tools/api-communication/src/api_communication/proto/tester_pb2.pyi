@@ -37,7 +37,7 @@ class PublicRunPost_Request(_message.Message):
     def __init__(self, queue: _Optional[int] = ..., location: _Optional[str] = ..., metadata: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., event: _Optional[str] = ..., trace_level: _Optional[str] = ..., space: _Optional[str] = ...) -> None: ...
 
 class Result(_message.Message):
-    __slots__ = ["asset_traces", "output"]
+    __slots__ = ["asset_traces", "output", "validation"]
     class AssetTrace(_message.Message):
         __slots__ = ["asset", "success", "traces"]
         ASSET_FIELD_NUMBER: _ClassVar[int]
@@ -47,11 +47,31 @@ class Result(_message.Message):
         success: bool
         traces: _containers.RepeatedScalarFieldContainer[str]
         def __init__(self, asset: _Optional[str] = ..., success: bool = ..., traces: _Optional[_Iterable[str]] = ...) -> None: ...
+    class Validation(_message.Message):
+        __slots__ = ["errors", "valid"]
+        ERRORS_FIELD_NUMBER: _ClassVar[int]
+        VALID_FIELD_NUMBER: _ClassVar[int]
+        errors: _containers.RepeatedCompositeFieldContainer[Result.ValidationError]
+        valid: bool
+        def __init__(self, valid: bool = ..., errors: _Optional[_Iterable[_Union[Result.ValidationError, _Mapping]]] = ...) -> None: ...
+    class ValidationError(_message.Message):
+        __slots__ = ["actual", "expected", "kind", "path"]
+        ACTUAL_FIELD_NUMBER: _ClassVar[int]
+        EXPECTED_FIELD_NUMBER: _ClassVar[int]
+        KIND_FIELD_NUMBER: _ClassVar[int]
+        PATH_FIELD_NUMBER: _ClassVar[int]
+        actual: str
+        expected: str
+        kind: str
+        path: str
+        def __init__(self, path: _Optional[str] = ..., kind: _Optional[str] = ..., expected: _Optional[str] = ..., actual: _Optional[str] = ...) -> None: ...
     ASSET_TRACES_FIELD_NUMBER: _ClassVar[int]
     OUTPUT_FIELD_NUMBER: _ClassVar[int]
+    VALIDATION_FIELD_NUMBER: _ClassVar[int]
     asset_traces: _containers.RepeatedCompositeFieldContainer[Result.AssetTrace]
     output: _struct_pb2.Struct
-    def __init__(self, output: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., asset_traces: _Optional[_Iterable[_Union[Result.AssetTrace, _Mapping]]] = ...) -> None: ...
+    validation: Result.Validation
+    def __init__(self, output: _Optional[_Union[_struct_pb2.Struct, _Mapping]] = ..., asset_traces: _Optional[_Iterable[_Union[Result.AssetTrace, _Mapping]]] = ..., validation: _Optional[_Union[Result.Validation, _Mapping]] = ...) -> None: ...
 
 class RunPost_Request(_message.Message):
     __slots__ = ["agent_metadata", "asset_trace", "event", "name", "trace_level"]

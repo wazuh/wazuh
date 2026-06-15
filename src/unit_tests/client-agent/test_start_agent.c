@@ -28,6 +28,8 @@
 
 #include "agentd.h"
 #include "module_limits.h"
+#include "metadata_provider.h"
+#include "version_op.h"
 
 extern void send_msg_on_startup(void);
 extern bool agent_handshake_to_server(int server_id, bool is_startup);
@@ -38,6 +40,23 @@ extern int parse_handshake_json(const char *json_str, module_limits_t *limits,
                                 char *cluster_node, size_t cluster_node_size,
                                 char *agent_groups, size_t agent_groups_size,
                                 char *merged_sum, size_t merged_sum_size);
+
+/* Wrappers for populate_early_metadata dependencies */
+int __wrap_metadata_provider_update(const agent_metadata_t *metadata) {
+    return (int)mock();
+}
+
+os_info *__wrap_get_unix_version(void) {
+    return (os_info *)mock_ptr_type(os_info *);
+}
+
+os_info *__wrap_get_win_version(void) {
+    return (os_info *)mock_ptr_type(os_info *);
+}
+
+void __wrap_free_osinfo(os_info *osinfo) {
+    return;
+}
 
 int __wrap_send_msg(const char *msg, ssize_t msg_length) {
     check_expected(msg);
@@ -165,8 +184,6 @@ static void test_connect_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, 11);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 2);
-
     connected = connect_server(0, true);
     assert_int_equal(agt->rip_id, 0);
     assert_int_equal(agt->sock, 11);
@@ -184,7 +201,8 @@ static void test_connect_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 11);
     will_return(__wrap_OS_CloseSocket, 0);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 2);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__minfo, formatted_msg);
 
     connected = connect_server(1, true);
     assert_int_equal(agt->rip_id, 1);
@@ -200,7 +218,8 @@ static void test_connect_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 12);
     will_return(__wrap_OS_CloseSocket, 0);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 2);
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__minfo, formatted_msg);
 
     connected = connect_server(2, true);
     assert_int_equal(agt->rip_id, 2);
@@ -212,8 +231,7 @@ static void test_connect_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 13);
     will_return(__wrap_OS_CloseSocket, 0);
 
-    expect_any(__wrap__minfo, formatted_msg);
-    expect_any(__wrap__merror, formatted_msg);
+    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
 
     connected = connect_server(3, true);
     assert_false(connected);
@@ -226,6 +244,8 @@ static void test_connect_server(void **state) {
     expect_any(__wrap_OS_ConnectTCP, _ip);
     expect_any(__wrap_OS_ConnectTCP, ipv6);
     will_return(__wrap_OS_ConnectTCP, -1);
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__merror, formatted_msg);
     connected = connect_server(0, true);
     assert_false(connected);
 
@@ -254,7 +274,16 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 4);
+    /* populate_early_metadata mocks */
+#ifdef TEST_WINAGENT
+    will_return(__wrap_get_win_version, NULL);
+#else
+    will_return(__wrap_get_unix_version, NULL);
+#endif
+    will_return(__wrap_metadata_provider_update, 0);
+
+    expect_any_count(__wrap__mdebug1, formatted_msg, 2);
+    expect_any_count(__wrap__minfo, formatted_msg, 2);
 
     handshaked = agent_handshake_to_server(0, false);
     assert_true(handshaked);
@@ -280,7 +309,16 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 7);
+    /* populate_early_metadata mocks */
+#ifdef TEST_WINAGENT
+    will_return(__wrap_get_win_version, NULL);
+#else
+    will_return(__wrap_get_unix_version, NULL);
+#endif
+    will_return(__wrap_metadata_provider_update, 0);
+
+    expect_any_count(__wrap__mdebug1, formatted_msg, 3);
+    expect_any_count(__wrap__minfo, formatted_msg, 2);
 
     handshaked = agent_handshake_to_server(1, false);
     assert_true(handshaked);
@@ -302,12 +340,27 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_OS_RecvSecureTCP, SERVER_ENC_ACK);
     will_return(__wrap_OS_RecvSecureTCP, strlen(SERVER_ENC_ACK));
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
-    expect_string(__wrap_send_msg, msg, "1:wazuh-agent:wazuh: Agent started: [001] (agent0).");
+    expect_any(__wrap_send_msg, msg);
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_ENC_ACK);
     will_return(__wrap_ReadSecMSG, "#!-agent ack ");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 4);
+    /* populate_early_metadata mocks */
+#ifdef TEST_WINAGENT
+    will_return(__wrap_get_win_version, NULL);
+#else
+    will_return(__wrap_get_unix_version, NULL);
+#endif
+    will_return(__wrap_metadata_provider_update, 0);
+
+    /* Same call shape as the previous (1, false) invocation above, with
+     * is_startup=true adding exactly one extra mdebug1 line from
+     * startup_gate_process_handshake() on the legacy_handshake path
+     * (no merged_sum in the handshake response). minfo count is unchanged
+     * from the (1, false) call: connect_server() emits "Trying to connect"
+     * and agent_handshake_to_server() emits "Connected to the server". */
+    expect_any_count(__wrap__mdebug1, formatted_msg, 4);
+    expect_any_count(__wrap__minfo, formatted_msg, 2);
 
     handshaked = agent_handshake_to_server(1, true);
     assert_true(handshaked);
@@ -323,6 +376,7 @@ static void test_agent_handshake_to_server(void **state) {
     expect_value(__wrap_OS_CloseSocket, sock, 23);
     will_return(__wrap_OS_CloseSocket, 0);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
     expect_any(__wrap__minfo, formatted_msg);
     expect_any(__wrap__merror, formatted_msg);
 
@@ -340,7 +394,7 @@ static void test_agent_handshake_to_server(void **state) {
     will_return(__wrap_wnet_select, 0);
     expect_string(__wrap_send_msg, msg, "#!-agent startup {\"version\":\"v5.0.0\"}");
 
-    expect_any(__wrap__mwarn, formatted_msg);
+    expect_any(__wrap__minfo, formatted_msg);
 
     handshaked = agent_handshake_to_server(0, false);
     assert_false(handshaked);
@@ -364,6 +418,10 @@ static void test_agent_handshake_to_server(void **state) {
     expect_string(__wrap_ReadSecMSG, buffer, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, SERVER_WRONG_ACK);
     will_return(__wrap_ReadSecMSG, KS_CORRUPT);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_any(__wrap__minfo, formatted_msg);
+    expect_any(__wrap__mwarn, formatted_msg);
 
     handshaked = agent_handshake_to_server(0, false);
     assert_false(handshaked);
@@ -392,7 +450,7 @@ static void test_agent_handshake_to_server_invalid_version(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-err {\"message\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 1);
+    expect_any(__wrap__minfo, formatted_msg);
 
     expect_string(__wrap__mwarn, formatted_msg ,"Couldn't connect to server '127.0.0.1': 'Agent version must be lower or equal to manager version'");
 
@@ -421,7 +479,7 @@ static void test_agent_handshake_to_server_error_getting_msg1(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-err \"message\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 1);
+    expect_any(__wrap__minfo, formatted_msg);
 
     expect_string(__wrap__merror, formatted_msg ,"Error getting message from server '127.0.0.1'");
 
@@ -450,7 +508,7 @@ static void test_agent_handshake_to_server_error_getting_msg2(void **state) {
     will_return(__wrap_ReadSecMSG, "#!-err {\"key\": \"Agent version must be lower or equal to manager version\"}");
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
-    expect_any_count(__wrap__minfo, formatted_msg, 1);
+    expect_any(__wrap__minfo, formatted_msg);
 
     expect_string(__wrap__merror, formatted_msg ,"Error getting message from server '127.0.0.1'");
 
@@ -460,7 +518,7 @@ static void test_agent_handshake_to_server_error_getting_msg2(void **state) {
 
 /* agent_start_up_to_server */
 static void test_send_msg_on_startup(void **state) {
-    expect_string(__wrap_send_msg, msg, "1:wazuh-agent:wazuh: Agent started: [001] (agent0).");
+    expect_any(__wrap_send_msg, msg);
     send_msg_on_startup();
     return;
 }

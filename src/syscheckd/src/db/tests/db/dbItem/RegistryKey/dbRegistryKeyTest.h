@@ -16,14 +16,14 @@
 
 class RegistryKeyTest : public testing::Test
 {
-protected:
-    RegistryKeyTest() = default;
-    virtual ~RegistryKeyTest() = default;
+    protected:
+        RegistryKeyTest() = default;
+        virtual ~RegistryKeyTest() = default;
 
-    void SetUp() override;
-    void TearDown() override;
-    fim_entry* fimEntryTest;
-    const nlohmann::json expectedValue = R"(
+        void SetUp() override;
+        void TearDown() override;
+        fim_entry* fimEntryTest;
+        const nlohmann::json expectedValue = R"(
             {
                 "data":[{"architecture":"[x64]","checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a","gid":"0","group_":"root",
                 "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE","permissions":"-rw-rw-r--",
@@ -31,7 +31,7 @@ protected:
             }
         )"_json;
 
-    const nlohmann::json inputJson = R"(
+        const nlohmann::json inputJson = R"(
         {
             "checksum":"a2fbef8f81af27155dcee5e3927ff6243593b91a", "gid":"0", "group_":"root", "architecture":1,
             "mtime":1578075431, "path":"HKEY_LOCAL_MACHINE\\SOFTWARE", "permissions":"-rw-rw-r--",

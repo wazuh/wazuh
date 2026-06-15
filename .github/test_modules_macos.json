@@ -1,0 +1,36 @@
+{
+  "modules": [
+    {
+      "name": "fim",
+      "pytest_target": "test_fim/",
+      "tiers": ["0", "1"],
+      "timeout_minutes": 120,
+      "paths": [
+        ".github/workflows/5_testintegration_macos-integration-tests.yml",
+        ".github/test_modules_macos.json",
+        "src/config/src/syscheck-config.c",
+        "src/config/include/syscheck-config.h",
+        "src/syscheckd/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_fim/**"
+      ]
+    },
+    {
+      "name": "logcollector",
+      "pytest_target": "test_logcollector/",
+      "tiers": ["0 1"],
+      "timeout_minutes": 120,
+      "paths": [
+        ".github/workflows/5_testintegration_macos-integration-tests.yml",
+        ".github/test_modules_macos.json",
+        "src/config/src/localfile-config.c",
+        "src/config/include/localfile-config.h",
+        "src/logcollector/**",
+        "src/Makefile",
+        "tests/integration/conftest.py",
+        "tests/integration/test_logcollector/**"
+      ]
+    }
+  ]
+}

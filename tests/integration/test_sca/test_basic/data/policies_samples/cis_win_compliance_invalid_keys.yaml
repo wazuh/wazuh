@@ -8,7 +8,7 @@ policy:
   regex_type: pcre2
 
 requirements:
-  title: "Check Windows family platform."
+  name: "Check Windows family platform."
   description: "Requirements for running the SCA scan against Windows family"
   condition: any
   rules:
@@ -17,7 +17,7 @@ requirements:
 checks:
 
   - id: 99010
-    title: "Test check with mixed valid and invalid compliance keys"
+    name: "Test check with mixed valid and invalid compliance keys"
     description: "This check includes both valid and invalid compliance keys."
     rationale: "Validates that invalid keys are rejected with a warning while valid keys are kept."
     remediation: "No remediation needed."

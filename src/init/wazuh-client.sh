@@ -10,12 +10,9 @@ cd ${LOCAL}
 PWD=`pwd`
 DIR=`dirname $PWD`;
 
-# Ensure the correct lib dir is used when agent/manager are co-hosted.
-export LD_LIBRARY_PATH="${DIR}/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-
 # Installation info
 VERSION="v5.0.0"
-REVISION="alpha0"
+REVISION="beta3"
 TYPE="agent"
 
 ###  Do not modify below here ###
@@ -132,15 +129,15 @@ testconfig()
 # Check folders
 check_folders()
 {
-    ALERTS_FOLDER="../queue/alerts"
+    SOCKETS_FOLDER="../queue/sockets"
 
-    if [ ! -d $ALERTS_FOLDER ]
+    if [ ! -d $SOCKETS_FOLDER ]
     then
-        if rm -rf $ALERTS_FOLDER && mkdir -p $ALERTS_FOLDER && chown wazuh:wazuh $ALERTS_FOLDER && chmod 770 $ALERTS_FOLDER
+        if rm -rf $SOCKETS_FOLDER && mkdir -p $SOCKETS_FOLDER && chown wazuh:wazuh $SOCKETS_FOLDER && chmod 770 $SOCKETS_FOLDER
         then
-            echo "WARNING: missing folder 'queue/alerts'. Restored back."
+            echo "WARNING: missing folder 'queue/sockets'. Restored back."
         else
-            echo "ERROR: missing folder 'queue/alerts', and could not restore back."
+            echo "ERROR: missing folder 'queue/sockets', and could not restore back."
             exit 1
         fi
     fi

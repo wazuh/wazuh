@@ -23,27 +23,83 @@ paths:
     post:
       tags:
         - Events
-      summary: Ingest enriched events (NDJSON)
+      summary: Ingest enriched events (H/E batch protocol)
       description: |
-        Accepts a newline-delimited JSON (NDJSON) stream of enriched events over HTTP via Unix domain socket.
+        Accepts a batch of events using the H/E wire protocol over HTTP via Unix domain socket.
         Socket path: /var/wazuh-manager/queue/sockets/queue-http.sock
+
+        ## Wire Format
+
+        ```
+        H <json-metadata>\n
+        E <queue>:<location>:<message>\n
+        E <queue>:<location>:<message>\n
+        ```
+
+        - **Header line** (`H `): JSON object with agent and cluster metadata.
+        - **Event lines** (`E `): Legacy event format `<queue_byte>:<location>:<message>`.
+        - **Event delimiter**: The 3-byte sequence `\nE ` (newline + E + space) separates events.
+
+        ## Multi-line Events (Continuation-line Indentation)
+
+        When an event payload contains embedded newlines (e.g., multi-line logs, command
+        outputs), continuation lines are **indented with a single leading space** by the
+        sender to prevent false delimiter matches.
+
+        The receiver strips exactly one leading space from each continuation line to
+        recover the original payload.
+
+        ### Quick example
+
+        ```
+        H {"wazuh":{"agent":{"id":"001","name":"srv1"}}}
+        E 1:/var/log/app.log:START
+         continuation (indented with a space)
+         E this line starts with E+space (not a delimiter)
+        E 2:/var/log/syslog:single-line event
+        ```
+
+        See the `examples` section below for more detailed scenarios.
+
       requestBody:
         required: true
         content:
           application/x-ndjson:
             schema:
               type: string
-              description: Newline-delimited JSON; one JSON object per line.
+              description: |
+                H/E batch protocol. First line is the header (`H <json>`),
+                followed by one or more event lines (`E <queue>:<location>:<message>`).
+                Multi-line event payloads use continuation-line indentation (one leading space).
             examples:
-              sample:
+              singleLineEvents:
+                summary: Two single-line events
                 value: |-
-                  {"ts":"2025-09-01T10:00:00Z","rule_id":1001,"agent_id":"001","data":{"k":"v"}}
-                  {"ts":"2025-09-01T10:00:01Z","rule_id":1002,"agent_id":"001","data":{"k2":"v2"}}
+                  H {"wazuh":{"agent":{"id":"001","name":"srv1"},"cluster":{"name":"wazuh","node":"node01"}}}
+                  E 1:/var/log/syslog:May 07 10:00:00 srv1 sshd: Accepted publickey
+                  E 2:/var/log/auth.log:session opened for user root
+              multiLineEvent:
+                summary: Multi-line event with indented continuations
+                value: "H {\"wazuh\":{\"agent\":{\"id\":\"001\",\"name\":\"srv1\"}}}\nE 1:/var/log/app.log:START\n line2\n E this starts with E+space\n line4\nE 2:/var/log/syslog:next event\n"
+              mixedBatch:
+                summary: Mixed batch (multiline, single, multiline, single)
+                value: "H {\"wazuh\":{\"agent\":{\"id\":\"001\",\"name\":\"srv1\"}}}\nE 1:/var/log/app.log:BEGIN\n continuation1\n continuation2\nE 2:/var/log/auth.log:single line event\nE 3:/var/log/daemon.log:MULTI\n E looks like delimiter but isn't\n last line\nE 1:/etc/passwd:another single\n"
+              commandOutput:
+                summary: Command output with multi-line result (netstat)
+                value: "H {\"wazuh\":{\"agent\":{\"id\":\"001\",\"name\":\"srv1\"}}}\nE 1:netstat listening ports:ossec: output: 'netstat listening ports':\n tcp 0.0.0.0:22 0.0.0.0:* 534/sshd\n tcp6 :::22 :::* 534/sshd\n udp 0.0.0.0:68 0.0.0.0:* 1362/dhclient\n"
+              continuationWithLeadingSpace:
+                summary: Payload line that already starts with a space (two spaces on wire)
+                value: "H {\"wazuh\":{\"agent\":{\"id\":\"001\",\"name\":\"srv1\"}}}\nE 1:/var/log/app.log:yaml block:\n   key: value\n   nested: true\n"
+              vulnerabilityScannerEvent:
+                summary: Vulnerability Scanner event (single-line JSON, no indentation needed)
+                value: |-
+                  H {"wazuh":{"agent":{"id":"001","name":"srv1"},"cluster":{"name":"wazuh","node":"node01"}}}
+                  E v:vulnerability-scanner:{"collector":"packages","module":"vulnerability-scanner","data":{"event":{"created":"2026-05-07T10:00:00Z","type":"upsert"},"vulnerability":{"id":"CVE-2024-1234"}}}
       responses:
         "200":
           description: Events accepted. (Empty body)
         "400":
-          description: Invalid NDJSON payload.
+          description: Invalid payload.
           content:
             application/json:
               schema:
@@ -55,12 +111,12 @@ paths:
                     type: integer
                 required: [error, code]
               examples:
-                emptyBatch:
-                  value: {"error":"NDJson parser error, empty batch","code":400}
-                emptyLine:
-                  value: {"error":"NDJson parser error, empty line","code":400}
-                invalidLine:
-                  value: {"error":"NDJson parser error, invalid ndjson line or event: '...'", "code":400}
+                missingHeader:
+                  value: {"error":"NDJson parser error, Missing newline after header","code":400}
+                invalidHeader:
+                  value: {"error":"NDJson parser error, Invalid header format, expected 'H {json}'","code":400}
+                invalidEvent:
+                  value: {"error":"NDJson parser error, Invalid format: event must be at least 5 bytes (\"<byte>:<location>:<message>\")","code":400}
         "500":
           description: Internal server error.
           content:

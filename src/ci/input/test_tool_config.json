@@ -81,6 +81,14 @@
             "args": []
         }
     ],
+    "shared_modules/schema_validator":
+    [
+        {
+            "test_tool_name": "schema_validator_test_tool",
+            "is_smoke_with_configuration": false,
+            "args": []
+        }
+    ],
     "data_provider":
     [
         {

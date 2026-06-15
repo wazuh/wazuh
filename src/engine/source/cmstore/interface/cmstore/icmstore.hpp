@@ -2,6 +2,7 @@
 #define _CMSTORE_ICMSTORE
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <base/json.hpp>
@@ -132,11 +133,16 @@ public:
     virtual json::Json getAssetByUUID(const std::string& uuid) const = 0;
 
     /**
-     * @brief Get the Default Outputs Integration object
+     * @brief Get the output definitions for a production policy space.
      *
-     * @return dataType::Integration
+     * The store resolves outputs using the local outputs path:
+     * - if a directory exists for the given space key, outputs are loaded from that directory
+     * - otherwise, outputs are loaded from the `default/` directory
+     *
+     * @param spaceKey The policy space key, typically origin_space or a namespace fallback
+     * @return std::vector<json::Json> Output definitions loaded from the selected directory
      */
-    virtual const std::vector<json::Json> getDefaultOutputs() const = 0;
+    virtual const std::vector<json::Json> getOutputsForSpace(std::string_view spaceKey) const = 0;
 
     /*********************************** Resources ***************************************/
 
@@ -220,33 +226,33 @@ public:
      *
      * @param name Name of the resource to create
      * @param type Type of the resource to create
-     * @param ymlContent YAML content of the resource
+     * @param content JSON content of the resource
      * @return std::string UUID of the created resource
      * @throw std::runtime_error if a resource with the same name and type already exists or any error occurs
-     * @warning This method not validate the content of the YML has the correct schema for the resource type
+     * @warning This method does not validate that the JSON content matches the schema for the resource type
      */
-    virtual std::string createResource(const std::string& name, ResourceType type, const std::string& ymlContent) = 0;
+    virtual std::string createResource(const std::string& name, ResourceType type, const json::Json& content) = 0;
 
     /**
      * @brief Update a resource in the namespace by its name and type
      *
      * @param name Name of the resource to update
      * @param type Type of the resource to update
-     * @param ymlContent New YAML content of the resource
+     * @param content New JSON content of the resource
      * @throw std::runtime_error if the resource does not exist or any error occurs
-     * @warning This method not validate the content of the YML has the correct schema for the resource type
+     * @warning This method does not validate that the JSON content matches the schema for the resource type
      */
-    virtual void updateResourceByName(const std::string& name, ResourceType type, const std::string& ymlContent) = 0;
+    virtual void updateResourceByName(const std::string& name, ResourceType type, const json::Json& content) = 0;
 
     /**
      * @brief Update a resource in the namespace by its UUID
      *
      * @param uuid UUID of the resource to update
-     * @param ymlContent New YAML content of the resource
+     * @param content New JSON content of the resource
      * @throw std::runtime_error if the resource does not exist or any error occurs
-     * @warning This method not validate the content of the YML has the correct schema for the resource type
+     * @warning This method does not validate that the JSON content matches the schema for the resource type
      */
-    virtual void updateResourceByUUID(const std::string& uuid, const std::string& ymlContent) = 0;
+    virtual void updateResourceByUUID(const std::string& uuid, const json::Json& content) = 0;
 
     /**
      * @brief Delete a resource in the namespace by its name and type

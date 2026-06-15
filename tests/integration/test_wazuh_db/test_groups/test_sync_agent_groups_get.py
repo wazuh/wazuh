@@ -63,15 +63,15 @@ daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_sync_agent_groups(daemons_handler, test_metadata, create_groups, pre_insert_agents_into_group,
+def test_sync_agent_groups(daemons_handler_module, test_metadata, create_groups, pre_insert_agents_into_group,
                            clean_databases):
     '''
-    description: Check that commands about sync_aget_groups_get works properly.
-    wazuh_min_version: 4.4.0
+    description: Check that commands about sync-agent-groups-get works properly.
+    wazuh_min_version: 5.0.0
     parameters:
-        - daemons_handler:
+        - daemons_handler_module:
             type: fixture
-            brief: Handler of Wazuh daemons.
+            brief: Handler of Wazuh daemons (module scope).
         - test_metadata:
             type: dict
             brief: Test case metadata.
@@ -111,7 +111,7 @@ def test_sync_agent_groups(daemons_handler, test_metadata, create_groups, pre_in
     response = query_wdb(test_metadata["input"])
 
     # Validate response
-    assert str(response) == output, "Did not get expected response: {output}, recieved: {response}"
+    assert str(response) == output, f"Did not get expected response: {output}, received: {response}"
 
     # Validate if the status of the group has change
     if "new_status" in test_metadata:

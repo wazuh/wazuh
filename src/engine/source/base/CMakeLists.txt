@@ -34,6 +34,8 @@ target_link_libraries(base
     Threads::Threads
     OpenSSL::SSL
     OpenSSL::Crypto
+    ZLIB::ZLIB
+    Minizip::Minizip
     ${CMAKE_DL_LIBS}
 )
 
@@ -113,6 +115,7 @@ add_library(base::bench ALIAS base_bench)
 
 add_executable(base_benchmark
     ${BENCH_SRC_DIR}/eventParser_bench.cpp
+    ${BENCH_SRC_DIR}/json_bench.cpp
 )
 target_include_directories(base_benchmark
     PRIVATE

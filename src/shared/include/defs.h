@@ -109,8 +109,13 @@ https://www.gnu.org/licenses/gpl.html\n"
 
 #define ROOT_GID (0)
 
-// Wazuh home environment variable
-#define WAZUH_HOME_ENV "WAZUH_HOME"
+// Wazuh home environment variable (target-specific to avoid clashes on
+// co-hosted manager + agent installs).
+#ifdef CLIENT
+#define WAZUH_HOME_ENV "WAZUH_AGENT_HOME"
+#else
+#define WAZUH_HOME_ENV "WAZUH_MANAGER_HOME"
+#endif
 
 /* Default queue */
 #define DEFAULTQUEUE "queue/sockets/queue"
@@ -130,7 +135,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define MON_LOCAL_SOCK     "queue/sockets/monitor"
 #define CLUSTER_SOCK       "queue/cluster/c-internal.sock"
 #define CONTROL_SOCK       "queue/sockets/control"
-#define LOGTEST_SOCK       "queue/sockets/logtest"
 #define AGENT_UPGRADE_SOCK "queue/sockets/upgrade"
 
 // Tasks socket
@@ -158,10 +162,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 #endif
 
 /* Exec queue */
-#define EXECQUEUE "queue/alerts/execq"
+#define EXECQUEUE "queue/sockets/execq"
 
 /* Active Response queue */
-#define ARQUEUE "queue/alerts/ar"
+#define ARQUEUE "queue/sockets/ar"
 
 /* Agent groups location */
 #define GROUPS_DIR "queue/agent-groups"
@@ -251,16 +255,6 @@ https://www.gnu.org/licenses/gpl.html\n"
 #define WAZUH_DEFINES  "internal_options.conf"
 #define WAZUH_LDEFINES "local_internal_options.conf"
 #endif
-
-/* Log directories */
-#define EVENTS           "logs/archives"
-#define EVENTS_DAILY     "logs/archives/archives.log"
-#define ALERTS           "logs/alerts"
-#define ALERTS_DAILY     "logs/alerts/alerts.log"
-#define ALERTSJSON_DAILY "logs/alerts/alerts.json"
-#define FWLOGS           "logs/firewall"
-#define FWLOGS_DAILY     "logs/firewall/firewall.log"
-#define EVENTSJSON_DAILY "logs/archives/archives.json"
 
 /* Authentication keys file */
 #ifndef WIN32

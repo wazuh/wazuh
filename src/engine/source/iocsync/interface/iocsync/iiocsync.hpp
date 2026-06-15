@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-
 namespace ioc::sync
 {
 
-class IIocSync {
+class IIocSync
+{
 public:
     virtual ~IIocSync() = default;
 
@@ -16,7 +16,7 @@ public:
      * @brief Perform synchronization of all configured IOC databases
      *
      * This method iterates through all IOC types configured for synchronization,
-     * checking for updates in the remote indexer. If changes are detected, it
+     * checking for updates in the wazuh-indexer. If changes are detected, it
      * downloads the updated IOCs, creates a new database, and performs an atomic
      * hot-swap to ensure readers transparently switch to the new data.
      *
@@ -29,6 +29,11 @@ public:
      * @throws std::runtime_error if any step of the synchronization process fails
      */
     virtual void synchronize() = 0;
+
+    /**
+     * @brief Requests graceful shutdown for in-flight or future sync operations.
+     */
+    virtual void requestShutdown() = 0;
 };
 
 } // namespace ioc::sync

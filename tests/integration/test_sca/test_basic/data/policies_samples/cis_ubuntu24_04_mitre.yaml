@@ -8,7 +8,7 @@ policy:
   regex_type: pcre2
 
 requirements:
-  title: "Check Linux platform."
+  name: "Check Linux platform."
   description: "Requirements for running the SCA scan against Linux systems"
   condition: any
   rules:
@@ -17,7 +17,7 @@ requirements:
 
 checks:
   - id: 1
-    title: "Test_1"
+    name: "Test_1"
     description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
     rationale: "Test_1"
     remediation: "Run the following script to unload and disable the cramfs module."

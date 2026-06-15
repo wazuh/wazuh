@@ -4831,6 +4831,191 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     os_free(message);
 }
 
+void test_save_controlmsg_json_keepalive_incomplete(void **state)
+{
+    int wdb_sock = -1;
+    // Minimal/incomplete JSON keepalive without host metadata
+    char r_msg[OS_SIZE_512] = {0};
+    strcpy(r_msg, "{\"version\":\"1.0\",\"agent\":{\"merged_sum\":\"112359\"}}");
+
+    bool is_startup = false;
+    bool is_shutdown = false;
+    bool post_startup = true; // Simulating post_startup
+
+    keyentry key;
+    keyentry_init(&key, "TEST_AGENT", "003", "172.18.0.5", "test_key");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t* data;
+    os_calloc(1, sizeof(struct pending_data_t), data);
+    char* message = strdup("different message");
+    data->changed = false;
+    data->message = message;
+    memset(&data->merged_sum, 0, sizeof(os_md5));
+    snprintf(data->merged_sum, 7, "112359");
+
+    groups = (OSHash*)10;
+    multi_groups = (OSHash*)10;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "003");
+    will_return(__wrap_OSHash_Get, data);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Processing JSON keepalive from agent '003'");
+    expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting '{\"version\":\"1.0\",\"agent\":{\"merged_sum\":\"112359\"}}'");
+
+    char* group_name = NULL;
+    w_strdup("default", group_name);
+    expect_value(__wrap_wdb_get_agent_group, id, 3);
+    will_return(__wrap_wdb_get_agent_group, group_name);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '003' group is 'default'");
+
+    group_t* group = NULL;
+    os_calloc(1, sizeof(group_t), group);
+    group->name = strdup("default");
+    snprintf(group->merged_sum, 7, "112359");
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "default");
+    will_return(__wrap_OSHash_Get_ex, group);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    agent_info_data* agent_data;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    agent_data->id = 3;
+    os_strdup("112359", agent_data->merged_sum);  // Match the group merged_sum
+
+    expect_string(__wrap_parse_json_keepalive, json_str, "{\"version\":\"1.0\",\"agent\":{\"merged_sum\":\"112359\"}}");
+    will_return(__wrap_parse_json_keepalive, agent_data);
+    will_return(__wrap_parse_json_keepalive, OS_SUCCESS);
+
+    // Expect incomplete keepalive debug message
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent '003' sent incomplete keepalive, deferring cluster sync (syncreq) until complete metadata is received");
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_any(__wrap_wdb_update_agent_data, agent_data);
+    will_return(__wrap_wdb_update_agent_data, OS_SUCCESS);
+
+    os_strdup("worker1", node_name);
+    logr.worker_node = true;
+
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
+
+    // post_startup should still be true because keepalive was incomplete
+    assert_true(post_startup);
+
+    logr.worker_node = false;
+    os_free(node_name);
+    os_free(group->name);
+    os_free(group);
+    os_free(agent_data);
+    free_keyentry(&key);
+    os_free(data->message);
+    os_free(data->group);
+    os_free(data);
+}
+
+void test_save_controlmsg_json_keepalive_complete(void **state)
+{
+    int wdb_sock = -1;
+    // Complete JSON keepalive with host metadata
+    char r_msg[OS_SIZE_1024] = {0};
+    strcpy(r_msg, "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"merged_sum\":\"abc123\"},"
+                  "\"host\":{\"hostname\":\"wazuh-agent3\",\"os\":{\"name\":\"Ubuntu\"}}}");
+
+    bool is_startup = false;
+    bool is_shutdown = false;
+    bool post_startup = true; // Simulating post_startup after HC_STARTUP
+
+    keyentry key;
+    keyentry_init(&key, "TEST_AGENT", "003", "172.18.0.5", "test_key");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t* data;
+    os_calloc(1, sizeof(struct pending_data_t), data);
+    char* message = strdup("different message");
+    data->changed = false;
+    data->message = message;
+    memset(&data->merged_sum, 0, sizeof(os_md5));
+    snprintf(data->merged_sum, 7, "abc123");
+
+    groups = (OSHash*)10;
+    multi_groups = (OSHash*)10;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "003");
+    will_return(__wrap_OSHash_Get, data);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Processing JSON keepalive from agent '003'");
+    expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting '{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"merged_sum\":\"abc123\"},\"host\":{\"hostname\":\"wazuh-agent3\",\"os\":{\"name\":\"Ubuntu\"}}}'");
+
+    char* group_name = NULL;
+    w_strdup("default", group_name);
+    expect_value(__wrap_wdb_get_agent_group, id, 3);
+    will_return(__wrap_wdb_get_agent_group, group_name);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '003' group is 'default'");
+
+    group_t* group = NULL;
+    os_calloc(1, sizeof(group_t), group);
+    group->name = strdup("default");
+    snprintf(group->merged_sum, 7, "abc123");
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "default");
+    will_return(__wrap_OSHash_Get_ex, group);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    agent_info_data* agent_data;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    agent_data->id = 3;
+    os_strdup("v5.0.0", agent_data->version);
+    os_strdup("abc123", agent_data->merged_sum);
+
+    expect_string(__wrap_parse_json_keepalive, json_str, "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"merged_sum\":\"abc123\"},\"host\":{\"hostname\":\"wazuh-agent3\",\"os\":{\"name\":\"Ubuntu\"}}}");
+    will_return(__wrap_parse_json_keepalive, agent_data);
+    will_return(__wrap_parse_json_keepalive, OS_SUCCESS);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_any(__wrap_wdb_update_agent_data, agent_data);
+    will_return(__wrap_wdb_update_agent_data, OS_SUCCESS);
+
+    os_strdup("worker1", node_name);
+    logr.worker_node = true;
+
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
+
+    // post_startup should be false because complete keepalive was processed
+    assert_false(post_startup);
+
+    logr.worker_node = false;
+    os_free(node_name);
+    os_free(group->name);
+    os_free(group);
+    os_free(agent_data);
+    free_keyentry(&key);
+    os_free(data->message);
+    os_free(data->group);
+    os_free(data);
+}
+
 /* build_handshake_json tests */
 
 static void test_build_handshake_json_default_values(void **state) {
@@ -5283,6 +5468,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_save_controlmsg_startup, setup_globals, teardown_globals),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown, setup_globals, teardown_globals),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown_wdb_fail, setup_globals, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_json_keepalive_incomplete, setup_globals, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_json_keepalive_complete, setup_globals, teardown_globals),
         // Tests build_handshake_json
         cmocka_unit_test(test_build_handshake_json_default_values),
         cmocka_unit_test_setup_teardown(test_build_handshake_json_custom_values, setup_cluster_globals, teardown_cluster_globals),

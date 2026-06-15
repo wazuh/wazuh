@@ -40,7 +40,19 @@ def file_to_monitor(test_metadata: dict) -> Any:
 
     yield path
 
-    file.remove_file(path)
+    if sys.platform == WINDOWS:
+        max_retries = 10
+        retry_delay = 0.5
+        for attempt in range(max_retries):
+            try:
+                file.remove_file(path)
+                break
+            except PermissionError:
+                if attempt == max_retries - 1:
+                    raise
+                sleep(retry_delay)
+    else:
+        file.remove_file(path)
 
 
 @pytest.fixture()

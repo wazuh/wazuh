@@ -58,6 +58,12 @@ int receive_msg(void);
 int receiver_messages(void);
 #endif
 
+/* Message stored in the event buffer. */
+typedef struct {
+    void *data;
+    size_t size;
+} buffered_message;
+
 /* Initialize agent buffer */
 void buffer_init();
 
@@ -198,7 +204,13 @@ void * req_receiver(void * arg);
 #endif
 
 // Reload agent
-void * reloadAgent();
+/* Trigger the reload chain via modulesd's control socket.
+ * Returns true if the "reload" command was dispatched successfully
+ * (Linux) or the detached restart process was spawned (Windows).
+ * Returns false on Linux if the control socket could not be reached
+ * after all retries — callers can use this as the signal to apply
+ * a fallback (e.g. release the startup hash gate directly). */
+bool reloadAgent(void);
 
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();
@@ -220,6 +232,9 @@ void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);
 
 // Query startup gate state.
 bool startup_gate_is_ready(void);
+
+// Check if local hash matches expected without updating gate state.
+bool startup_gate_check_hash_match(void);
 
 size_t agcom_dispatch(char * command, char ** output);
 size_t agcom_getconfig(const char * section, char ** output);

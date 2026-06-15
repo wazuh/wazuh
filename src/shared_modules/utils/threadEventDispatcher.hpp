@@ -96,6 +96,7 @@ public:
             {
                 // Increment discard counter
                 const auto discarded = ++m_discardedCount;
+                ++m_totalDiscardedCount;
                 const auto now = std::chrono::steady_clock::now();
 
                 // Log the first discard immediately
@@ -161,6 +162,7 @@ public:
             {
                 // Increment discard counter
                 const auto discarded = ++m_discardedCount;
+                ++m_totalDiscardedCount;
                 const auto now = std::chrono::steady_clock::now();
 
                 // Log the first discard immediately
@@ -244,6 +246,11 @@ public:
             static_assert(std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>,
                           "This method is not supported for this queue type");
         }
+    }
+
+    uint64_t getDroppedEvents() const
+    {
+        return m_totalDiscardedCount.load();
     }
 
     size_t size(std::string_view prefix) const
@@ -354,9 +361,11 @@ private:
     const size_t m_retryDelay;
     const size_t m_flushInterval;
 
-    // Rate limiting for discard warnings
-    std::atomic<size_t> m_discardedCount {0};
-    std::atomic<size_t> m_lastDiscardedCount {0};
+    std::atomic<size_t> m_discardedCount {0}; // Number of events discarded since the last time the queue was normalized
+                                              // (reset to 0 when queue resumes accepting events)
+    std::atomic<size_t> m_lastDiscardedCount {
+        0}; // Number of events discarded at the time of the last periodic summary log (used for interval reporting)
+    std::atomic<size_t> m_totalDiscardedCount {0}; // Global accumulator
     std::atomic_bool m_firstDiscardLogged {false};
     std::chrono::steady_clock::time_point m_lastSummaryLog;
     const size_t m_summaryInterval {30}; // Log summary every 30 seconds

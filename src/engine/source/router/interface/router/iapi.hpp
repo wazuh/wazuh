@@ -37,7 +37,8 @@ public:
      * @return base::OptError Error if the route "name" does not exist or
      * the new namespace is invalid.
      */
-    virtual base::OptError hotSwapNamespace(const std::string& name, const cm::store::NamespaceId& newNamespace) = 0;
+    virtual base::OptError hotSwapNamespace(const std::string& name,
+                                            const cm::store::NamespaceId& newNamespace) = 0;
 
     virtual bool existsEntry(const std::string& name) const = 0;
 

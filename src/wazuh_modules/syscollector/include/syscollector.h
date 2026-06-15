@@ -79,6 +79,7 @@ EXPORTED void syscollector_init(const unsigned int inverval,
                                 const bool notifyOnFirstScan);
 
 EXPORTED void syscollector_stop();
+EXPORTED void syscollector_release_resources();
 EXPORTED void syscollector_start();
 
 // Sync protocol C wrapper functions
@@ -98,6 +99,7 @@ EXPORTED size_t syscollector_query(const char* query, char** output);
 // Mutex access functions for external synchronization
 EXPORTED void syscollector_lock_scan_mutex();
 EXPORTED void syscollector_unlock_scan_mutex();
+EXPORTED bool syscollector_is_scanning();
 
 // Recovery process function
 EXPORTED void syscollector_run_recovery_process();
@@ -138,6 +140,7 @@ typedef void(*syscollector_init_func)(const unsigned int inverval,
 
 typedef void(*syscollector_start_func)();
 typedef void(*syscollector_stop_func)();
+typedef void(*syscollector_release_resources_func)();
 
 // Sync protocol C wrapper functions
 typedef void(*syscollector_init_sync_func)(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,

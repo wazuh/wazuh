@@ -9,19 +9,22 @@ import subprocess
 import pytest
 import sys
 
+from wazuh_testing.constants.platforms import WINDOWS, MACOS
 from py.xml import html
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths import ROOT_PREFIX
+from wazuh_testing.constants.paths.variables import VAR_RUN_PATH
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import (
     WAZUH_LOG_PATH,
     ALERTS_JSON_PATH,
+    ARCHIVES_LOG_PATH,
     WAZUH_API_LOG_FILE_PATH,
     WAZUH_API_JSON_LOG_FILE_PATH,
 )
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, SHARED_CONFIGURATIONS_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, SHARED_CONFIGURATIONS_PATH, WAZUH_CONF_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
@@ -322,6 +325,7 @@ def truncate_monitored_files_implementation() -> None:
         log_files = [
             WAZUH_LOG_PATH,
             ALERTS_JSON_PATH,
+            ARCHIVES_LOG_PATH,
             WAZUH_API_LOG_FILE_PATH,
             WAZUH_API_JSON_LOG_FILE_PATH,
             WAZUH_CLIENT_KEYS_PATH,
@@ -395,9 +399,10 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
             services.control_service("restart")
         else:
             for daemon in daemons:
-                logger.debug(f"Restarting {daemon}")
-                # Restart daemon instead of starting due to legacy used fixture in the test suite.
-                services.control_service("restart", daemon=daemon)
+                if daemon is not None:
+                    logger.debug(f"Restarting {daemon}")
+                    # Restart daemon instead of starting due to legacy used fixture in the test suite.
+                    services.control_service("restart", daemon=daemon)
 
     except ValueError as value_error:
         logger.error(f"{str(value_error)}")
@@ -417,8 +422,9 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         if daemons == API_DAEMONS_REQUIREMENTS:
             daemons.reverse()  # Stop in reverse, otherwise the next start will fail
         for daemon in daemons:
-            logger.debug(f"Stopping {daemon}")
-            services.control_service("stop", daemon=daemon)
+            if daemon is not None:
+                logger.debug(f"Stopping {daemon}")
+                services.control_service("stop", daemon=daemon)
 
 
 @pytest.fixture()
@@ -528,53 +534,129 @@ def configure_sockets_environment_implementation(
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
     """
+
     monitored_sockets_params = getattr(request.module, "monitored_sockets_params")
 
-    # Stop wazuh-service and ensure all daemons are stopped
-    services.control_service("stop")
-    services.wait_expected_daemon_status(running_condition=False)
-
     monitored_sockets = list()
-    mitm_list = list()
+    started_mitms = list()
+    started_daemons = list()
 
-    # Start selected daemons and monitored sockets MITM
-    for daemon, mitm, daemon_first in monitored_sockets_params:
-        not daemon_first and mitm is not None and mitm.start()
-        services.control_service("start", daemon=daemon, debug_mode=True)
-        services.wait_expected_daemon_status(
-            running_condition=True,
-            target_daemon=daemon,
-            extra_sockets=[mitm.listener_socket_address]
-            if mitm is not None and mitm.family == "AF_UNIX"
-            else [],
-        )
-        daemon_first and mitm is not None and mitm.start()
-        if mitm is not None:
-            monitored_sockets.append(
-                queue_monitor.QueueMonitor(monitored_object=mitm.queue)
+    try:
+        # Stop wazuh-service and ensure all daemons are stopped
+        try:
+            services.control_service("stop")
+        except Exception as e:
+            logger.error(f"Setup step failed: {e}")
+            raise
+
+        try:
+            services.wait_expected_daemon_status(running_condition=False)
+        except Exception as e:
+            logger.error(f"Setup step failed: {e}")
+            raise
+
+
+        # Clean leftover daemons. Missing files are the expected case when the
+        # previous teardown ran cleanly, so swallow FileNotFoundError silently.
+        for daemon, mitm, daemon_first in monitored_sockets_params:
+
+            if daemon is not None:
+                pid_file = os.path.join(VAR_RUN_PATH, f"{daemon}.pid")
+                try:
+                    os.unlink(pid_file)
+                except FileNotFoundError:
+                    pass
+
+            if mitm is not None and mitm.family == "AF_UNIX":
+                try:
+                    os.unlink(mitm.listener_socket_address)
+                except FileNotFoundError:
+                    pass
+
+                try:
+                    os.unlink(f"{mitm.listener_socket_address}.original")
+                except FileNotFoundError:
+                    pass
+
+                mitm.event.clear()
+
+        # Start selected daemons and monitored sockets MITM
+        for daemon, mitm, daemon_first in monitored_sockets_params:
+            if not daemon_first and mitm is not None:
+                mitm.start()
+                started_mitms.append(mitm)
+
+            services.control_service("start", daemon=daemon, debug_mode=True)
+
+            if daemon is not None:
+                started_daemons.append(daemon)
+
+            # Use a 60s timeout (vs the framework default of 10s) because
+            # test_authd_key_request_worker has been observed to need >30s for
+            # wazuh-authd to publish its pid file when started right after the
+            # previous module killed wazuh-authd (likely TIME_WAIT on port 1515
+            # or post-fork init taking longer than expected). If the timeout
+            # still hits, the next step is to capture /var/ossec/logs/ossec.log
+            # to see what wazuh-authd is doing after goDaemon().
+            services.wait_expected_daemon_status(
+                target_daemon=daemon,
+                running_condition=True,
+                timeout=60,
+                extra_sockets=[mitm.listener_socket_address]
+                if mitm is not None and mitm.family == "AF_UNIX"
+                else [],
             )
-            mitm_list.append(mitm)
 
-    setattr(request.module, "monitored_sockets", monitored_sockets)
+            if daemon_first and mitm is not None:
+                mitm.start()
+                started_mitms.append(mitm)
 
-    yield
+            if mitm is not None:
+                monitored_sockets.append(
+                    queue_monitor.QueueMonitor(monitored_object=mitm.queue)
+                )
 
-    # Stop daemons and monitored sockets MITM
-    for daemon, mitm, _ in monitored_sockets_params:
-        mitm is not None and mitm.shutdown()
-        services.control_service("stop", daemon=daemon)
-        services.wait_expected_daemon_status(
-            running_condition=False,
-            target_daemon=daemon,
-            extra_sockets=[mitm.listener_socket_address]
-            if mitm is not None and mitm.family == "AF_UNIX"
-            else [],
-        )
+        setattr(request.module, "monitored_sockets", monitored_sockets)
 
-    # Delete all db
-    database.delete_dbs()
+        yield
+    finally:
+        # Stop daemons and monitored sockets MITM
+        for daemon, mitm, _ in monitored_sockets_params:
+            if mitm is not None and mitm in started_mitms:
+                try:
+                    mitm.shutdown()
+                except Exception as e:
+                    logger.warning(f"Cleanup step failed: {e}")
 
-    services.control_service("start")
+            if daemon in started_daemons:
+                try:
+                    services.control_service("stop", daemon=daemon)
+                except Exception as e:
+                    logger.warning(f"Cleanup step failed: {e}")
+
+                try:
+                    services.wait_expected_daemon_status(
+                        running_condition=False,
+                        target_daemon=daemon,
+                        extra_sockets=[mitm.listener_socket_address]
+                        if mitm is not None and mitm.family == "AF_UNIX"
+                        else [],
+                    )
+                except Exception as e:
+                    logger.warning(f"Cleanup step failed: {e}")
+
+        # Delete all db
+        try:
+            database.delete_dbs()
+        except Exception as e:
+            logger.error(f"Cleanup step failed: {e}")
+            raise
+
+        try:
+            services.control_service("start")
+        except Exception as e:
+            logger.error(f"Cleanup step failed: {e}")
+            raise
 
 
 @pytest.fixture(scope="module")
@@ -864,11 +946,39 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
 def simulate_agents(test_metadata):
 
     agents_amount = test_metadata.get("agents_number", 1)
-    agents = create_agents(agents_amount, "localhost")
+    agents = create_agents(agents_amount, "localhost", retry_enrollment=True)
 
     yield agents
 
     # Delete simulated agents
     control_service("start")
-    remove_agents([a.id for a in agents], "manage_agents")
+    remove_agents([a.id for a in agents], "api")
     control_service("stop")
+
+@pytest.fixture(scope="session", autouse=True)
+def fix_ossec_conf_multiple_roots():
+    """Temporary fix: DEB/RPM packages install ossec.conf with two <ossec_config> root
+    blocks. The test framework's XML parser only supports a single root element, so we
+    merge both blocks by removing the closing tag of the first block and the opening tag
+    of the second block before the test session begins.
+    """
+    if sys.platform == WINDOWS:
+        return
+
+    try:
+        with open(WAZUH_CONF_PATH, 'r') as f:
+            content = f.read()
+
+        # Only act when two root blocks are present
+        if content.count('</ossec_config>') < 2:
+            return
+
+        # Remove the boundary between the two blocks: </ossec_config>...<ossec_config>
+        import re
+        fixed = re.sub(r'</ossec_config>\s*<ossec_config>', '', content, count=1)
+
+        with open(WAZUH_CONF_PATH, 'w') as f:
+            f.write(fixed)
+    except OSError:
+        # Not installed or no permission — tests will fail on their own if needed
+        pass

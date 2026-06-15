@@ -54,7 +54,7 @@ typedef struct {
 /**
  * Firewall method function pointer type
  * @param srcip Source IP address to block/unblock
- * @param action ADD_COMMAND or DELETE_COMMAND
+ * @param action ENABLE_COMMAND or DISABLE_COMMAND
  * @param ip_version 4 for IPv4, 6 for IPv6
  * @param argv0 Program name for logging
  * @return firewall_result_t indicating operation result
@@ -145,7 +145,7 @@ const char* firewall_result_to_string(firewall_result_t result);
  * @brief Execute a chain of firewall methods with fallback
  * @param methods NULL-terminated array of firewall methods
  * @param srcip Source IP address to block/unblock
- * @param action ADD_COMMAND or DELETE_COMMAND
+ * @param action ENABLE_COMMAND or DISABLE_COMMAND
  * @param ip_version 4 for IPv4, 6 for IPv6
  * @param argv0 Program name for logging
  * @return OS_SUCCESS (always, to avoid retry loops in execd)

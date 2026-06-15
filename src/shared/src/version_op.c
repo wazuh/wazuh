@@ -990,7 +990,8 @@ int compare_wazuh_versions(const char *version1, const char *version2, bool comp
     int result = 0;
 
     if (version1) {
-        strncpy(ver1, version1, 9);
+        strncpy(ver1, version1, sizeof(ver1) - 1);
+        ver1[sizeof(ver1) - 1] = '\0';
 
         if (tmp_v1 = strchr(ver1, 'v'), tmp_v1) {
             tmp_v1++;
@@ -1012,7 +1013,8 @@ int compare_wazuh_versions(const char *version1, const char *version2, bool comp
     }
 
     if (version2) {
-        strncpy(ver2, version2, 9);
+        strncpy(ver2, version2, sizeof(ver2) - 1);
+        ver2[sizeof(ver2) - 1] = '\0';
 
         if (tmp_v2 = strchr(ver2, 'v'), tmp_v2) {
             tmp_v2++;

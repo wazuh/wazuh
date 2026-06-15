@@ -226,14 +226,23 @@ WazuhUpgrade()
             find $PREINSTALLEDDIR -group $OSSEC_GROUP -exec chown $file_permissions:$file_permissions {} \;
         fi
     fi
-    ./src/init/delete-oldusers.sh $OSSEC_GROUP
 
     # Set merged.mg permissions to new ones
     find $PREINSTALLEDDIR/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
-    # Remove unnecessary `execa` socket
-    if [ -f "$DIRECTORY/queue/alerts/execa" ]; then
-        rm -f $DIRECTORY/queue/alerts/execa
+    # Removing  execq socket if exists
+    if [ -S "$PREINSTALLEDDIR/queue/alerts/execq" ]; then
+        rm -f $PREINSTALLEDDIR/queue/alerts/execq
+    fi
+
+    # Remove deprecated cfgaq socket
+    if [ -S "$PREINSTALLEDDIR/queue/alerts/cfgaq" ]; then
+        rm -f $PREINSTALLEDDIR/queue/alerts/cfgaq
+    fi
+
+    # Remove old alerts queue
+    if [ -d "$PREINSTALLEDDIR/queue/alerts" ]; then
+        rm -rf $PREINSTALLEDDIR/queue/alerts
     fi
 
 }

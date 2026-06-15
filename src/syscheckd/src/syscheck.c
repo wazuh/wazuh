@@ -148,6 +148,44 @@ void process_pending_sync_updates(char* table_name, OSList *pending_items) {
 }
 
 /**
+ * @brief Drop documents whose path is no longer covered by the current FIM configuration.
+ *
+ * Run before promoting file_entry rows at startup: if a directory was removed from the
+ * configuration since the last run (e.g. an agent group with a realtime FIM rule was
+ * unassigned), the persisted rows for files under that path can no longer build a
+ * stateful event — build_stateful_event_file would fail and log a spurious ERROR.
+ * The scheduled scan that follows fim_initialize emits the real DELETE for these
+ * rows via handle_orphaned_delete, so dropping them here is safe.
+ *
+ * Only applies to file_entry; registry tables use a different config model.
+ *
+ * @param table_name Name of the table the documents belong to.
+ * @param docs cJSON array of documents about to be promoted. Modified in place.
+ * @return Number of documents dropped.
+ */
+int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs) {
+    if (!docs || !cJSON_IsArray(docs) || strcmp(table_name, FIMDB_FILE_TABLE_NAME) != 0) {
+        return 0;
+    }
+
+    int dropped = 0;
+    for (int i = cJSON_GetArraySize(docs) - 1; i >= 0; i--) {
+        const cJSON* item = cJSON_GetArrayItem(docs, i);
+        const cJSON* path_json = cJSON_GetObjectItem(item, "path");
+        const char* path = cJSON_GetStringValue(path_json);
+        if (path == NULL) {
+            continue;
+        }
+        if (fim_configuration_directory(path, false, syscheck.directories) == NULL) {
+            mdebug2("Skipping promotion of orphaned path (no active configuration): %s", path);
+            cJSON_DeleteItemFromArray(docs, i);
+            dropped++;
+        }
+    }
+    return dropped;
+}
+
+/**
  * @brief Extract primary keys from full document for sync flag update
  *
  * @param table_name Name of the table
@@ -401,6 +439,15 @@ bool fetch_document_limits_from_agentd(){
 }
 
 void fim_initialize() {
+    // Initialize the coordination atomics first, before any early return below.
+    // On Windows (winpthreads) PTHREAD_MUTEX_INITIALIZER is a non-zero sentinel,
+    // so a zero-initialized global mutex is invalid: if fim_db_init() fails and we
+    // return early, the disabled path in start_daemon() would call atomic_int_set()
+    // on an uninitialized mutex and abort. They are also read by the syscom thread.
+    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+
     // Create store data
 #ifndef WIN32
     FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
@@ -444,8 +491,6 @@ void fim_initialize() {
 #else
     w_mutex_init(&syscheck.fim_symlink_mutex, NULL);
 #endif
-    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
-    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
 
     notify_scan = syscheck.notify_first_scan;
 
@@ -486,6 +531,11 @@ void fim_initialize() {
             synced_docs_ptr = &synced_docs_registry_values;
         }
 
+        if (synced_docs_ptr == NULL) {
+            mwarn("fim_initialize: unknown table name '%s', skipping limit check.", table_name);
+            continue;
+        }
+
         *synced_docs_ptr = fim_db_count_synced_docs(table_name);
         if (*synced_docs_ptr != 0) { // No need to check if no scans have been run
             if (limit == 0) { // If moving from limited agent to unlimited, promote everything
@@ -496,8 +546,13 @@ void fim_initialize() {
                 cJSON* docs_to_promote = fim_db_get_documents_to_promote(table_name, document_count);
 
                 if (docs_to_promote) { // Limit has increased
+                    // Drop rows whose path is no longer covered by the current FIM
+                    // configuration (e.g. a group with a realtime rule was removed).
+                    // The scheduled scan that follows handles them via the orphan-delete path.
+                    drop_orphaned_promoted_documents(table_name, docs_to_promote);
+
                     // Send promoted documents to persistent queue as CREATE events
-                    minfo("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", *synced_docs_ptr, limit, table_name, *synced_docs_ptr + cJSON_GetArraySize(docs_to_promote));
+                    mdebug1("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", *synced_docs_ptr, limit, table_name, *synced_docs_ptr + cJSON_GetArraySize(docs_to_promote));
                     persist_sync_documents(table_name, docs_to_promote, OPERATION_CREATE);
 
                     OSList* pending_sync_updates = OSList_Create();
@@ -554,7 +609,7 @@ void fim_initialize() {
     // Initialize schema validator from embedded resources
     if (!schema_validator_is_initialized()) {
         if (schema_validator_initialize()) {
-            minfo("Schema validator initialized successfully from embedded resources");
+            mdebug1("Schema validator initialized successfully from embedded resources");
         } else {
             mwarn("Failed to initialize schema validator. Schema validation will be disabled.");
         }
@@ -652,7 +707,7 @@ int Start_win32_Syscheck() {
             dir_it = node_it->data;
             char optstr[ 1024 ];
 
-            minfo(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
+            mdebug1(FIM_MONITORING_DIRECTORY, dir_it->path, syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
 
             if (dir_it->tag != NULL) {
                 mdebug2(FIM_TAG_ADDED, dir_it->tag, dir_it->path);
@@ -679,47 +734,47 @@ int Start_win32_Syscheck() {
         /* Print ignores. */
         if(syscheck.ignore)
             for (r = 0; syscheck.ignore[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
+                mdebug1(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
 
         /* Print sregex ignores. */
         if(syscheck.ignore_regex)
             for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
+                mdebug1(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
         /* Print registry ignores. */
         if(syscheck.key_ignore)
             for (r = 0; syscheck.key_ignore[r].entry != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.key_ignore[r].entry);
+                mdebug1(FIM_PRINT_IGNORE_ENTRY, "registry", syscheck.key_ignore[r].entry);
 
         /* Print sregex registry ignores. */
         if(syscheck.key_ignore_regex)
             for (r = 0; syscheck.key_ignore_regex[r].regex != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.key_ignore_regex[r].regex->raw);
+                mdebug1(FIM_PRINT_IGNORE_SREGEX, "registry", syscheck.key_ignore_regex[r].regex->raw);
 
         if(syscheck.value_ignore)
             for (r = 0; syscheck.value_ignore[r].entry != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_ENTRY, "value", syscheck.value_ignore[r].entry);
+                mdebug1(FIM_PRINT_IGNORE_ENTRY, "value", syscheck.value_ignore[r].entry);
 
         /* Print sregex registry ignores. */
         if(syscheck.value_ignore_regex)
             for (r = 0; syscheck.value_ignore_regex[r].regex != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_SREGEX, "value", syscheck.value_ignore_regex[r].regex->raw);
+                mdebug1(FIM_PRINT_IGNORE_SREGEX, "value", syscheck.value_ignore_regex[r].regex->raw);
 
         /* Print registry values with nodiff. */
         if(syscheck.registry_nodiff)
             for (r = 0; syscheck.registry_nodiff[r].entry != NULL; r++)
-                minfo(FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
+                mdebug1(FIM_NO_DIFF_REGISTRY, "registry value", syscheck.registry_nodiff[r].entry);
 
         /* Print sregex registry values with nodiff. */
         if(syscheck.registry_nodiff_regex)
             for (r = 0; syscheck.registry_nodiff_regex[r].regex != NULL; r++)
-                minfo(FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
+                mdebug1(FIM_NO_DIFF_REGISTRY, "registry sregex", syscheck.registry_nodiff_regex[r].regex->raw);
 
         /* Print files with no diff. */
         if (syscheck.nodiff){
             r = 0;
             while (syscheck.nodiff[r] != NULL) {
-                minfo(FIM_NO_DIFF, syscheck.nodiff[r]);
+                mdebug1(FIM_NO_DIFF, syscheck.nodiff[r]);
                 r++;
             }
         }

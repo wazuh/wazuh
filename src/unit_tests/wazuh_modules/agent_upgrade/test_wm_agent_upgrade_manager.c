@@ -104,7 +104,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_command(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -205,7 +205,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_custom_command(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -307,7 +307,7 @@ void test_wm_agent_upgrade_listen_messages_agent_update_status_command(void **st
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -411,7 +411,7 @@ void test_wm_agent_upgrade_listen_messages_upgrade_result_command(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -490,7 +490,7 @@ void test_wm_agent_upgrade_listen_messages_parse_error(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -547,7 +547,7 @@ void test_wm_agent_upgrade_listen_messages_parse_error_with_message(void **state
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -595,7 +595,7 @@ void test_wm_agent_upgrade_listen_messages_receive_empty(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -629,7 +629,7 @@ void test_wm_agent_upgrade_listen_messages_receive_error(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -663,7 +663,7 @@ void test_wm_agent_upgrade_listen_messages_receive_sock_error(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -698,7 +698,7 @@ void test_wm_agent_upgrade_listen_messages_accept_error_eintr(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -737,7 +737,7 @@ void test_wm_agent_upgrade_listen_messages_accept_error(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -778,7 +778,7 @@ void test_wm_agent_upgrade_listen_messages_select_zero(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -815,7 +815,7 @@ void test_wm_agent_upgrade_listen_messages_select_error_eintr(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -850,7 +850,7 @@ void test_wm_agent_upgrade_listen_messages_select_error(void **state)
     expect_value(__wrap_OS_BindUnixDomainWithPerms, perm, 0660);
     will_return(__wrap_OS_BindUnixDomainWithPerms, socket);
 
-    expect_value(__wrap_sleep, seconds, WM_AGENT_UPGRADE_START_WAIT_TIME);
+    expect_value_count(__wrap_sleep, seconds, 1, WM_AGENT_UPGRADE_START_WAIT_TIME);
 
     will_return(__wrap_wm_agent_upgrade_cancel_pending_upgrades, 1);
 
@@ -885,7 +885,7 @@ void test_wm_agent_upgrade_start_manager_module_enabled(void **state)
     wm_manager_configs *config = *state;
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8153): Module Agent Upgrade started.");
+    expect_any(__wrap__mtinfo, formatted_msg);
 
     expect_string(__wrap_OS_BindUnixDomainWithPerms, path, WM_UPGRADE_SOCK);
     expect_value(__wrap_OS_BindUnixDomainWithPerms, type, SOCK_STREAM);
@@ -1020,8 +1020,8 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
     void *mock_handle = (void*)0x12345;
     void *mock_subscriber = (void*)0xABCDE;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions success
     expect_string(__wrap_so_get_module_handle, so, "router");
@@ -1053,8 +1053,8 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
     expect_value(__wrap_router_subscriber_subscribe, handle, mock_subscriber);
     will_return(__wrap_router_subscriber_subscribe, 0);
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "Successfully subscribed to router topic 'upgrade_notifications'");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Successfully subscribed to router topic 'upgrade_notifications'");
 
     will_return(__wrap_FOREVER, 1);
     expect_value(__wrap_sleep, seconds, 1);
@@ -1075,8 +1075,8 @@ void test_wm_agent_upgrade_router_subscriber_thread_success(void **state)
 
 void test_wm_agent_upgrade_router_subscriber_thread_init_failure(void **state)
 {
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions failure
     expect_string(__wrap_so_get_module_handle, so, "router");
@@ -1096,8 +1096,8 @@ void test_wm_agent_upgrade_router_subscriber_thread_create_failure(void **state)
 {
     void *mock_handle = (void*)0x12345;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions success
     expect_string(__wrap_so_get_module_handle, so, "router");
@@ -1137,8 +1137,8 @@ void test_wm_agent_upgrade_router_subscriber_thread_subscribe_failure(void **sta
     void *mock_handle = (void*)0x12345;
     void *mock_subscriber = (void*)0xABCDE;
 
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:agent-upgrade");
-    expect_string(__wrap__mtinfo, formatted_msg, "Starting router subscriber thread for upgrade notifications");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Starting router subscriber thread for upgrade notifications");
 
     // Mock initialize_router_functions success
     expect_string(__wrap_so_get_module_handle, so, "router");

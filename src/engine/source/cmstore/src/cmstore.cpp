@@ -16,10 +16,7 @@ namespace cm::store
 {
 
 const std::vector<NamespaceId> FORBIDDEN_NAMESPACES = {
-    NamespaceId("output"),
-    NamespaceId("system"),
-    NamespaceId("default")
-};
+    NamespaceId("output"), NamespaceId("system"), NamespaceId("default")};
 
 CMStore::~CMStore() = default;
 
@@ -91,16 +88,14 @@ void CMStore::loadAllNamespacesFromDisk()
             continue;
         }
 
+        // Get namespace ID from directory name
+        NamespaceId nsId(dirEntry.path().filename().string());
+
         // Ignore forbidden namespaces
-        NamespaceId nsIdCandidate(dirEntry.path().filename().string());
-        if (std::find(FORBIDDEN_NAMESPACES.begin(), FORBIDDEN_NAMESPACES.end(), nsIdCandidate)
-            != FORBIDDEN_NAMESPACES.end())
+        if (std::find(FORBIDDEN_NAMESPACES.begin(), FORBIDDEN_NAMESPACES.end(), nsId) != FORBIDDEN_NAMESPACES.end())
         {
             continue;
         }
-
-        // Get namespace ID from directory name
-        NamespaceId nsId(dirEntry.path().filename().string());
 
         // Load namespace
         auto nsInstance = std::make_shared<CMStoreNS>(nsId, dirEntry.path(), m_defaultOutputsPath);

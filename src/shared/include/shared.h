@@ -223,8 +223,6 @@ extern const char *__local_name;
 #include "os_ip.h"
 #include "validate_op.h"
 #include "agent_validate_op.h"
-#include "file-queue.h"
-#include "json-queue.h"
 #include "read-agents.h"
 #include "string_op.h"
 #include "randombytes.h"

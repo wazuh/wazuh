@@ -1,18 +1,21 @@
 name: 5.X - Content Manager - Unit tests
 
 on:
-  workflow_dispatch:
   pull_request:
-  # Pull request events
     types: [synchronize, opened, reopened, ready_for_review]
-  # Path filtering
     paths:
       - ".github/workflows/5_testunit_contentmanager.yml"
       - "src/shared_modules/utils/**"
       - "src/shared_modules/content_manager/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   contentmanager-modules:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     steps:
       - name: Cancel previous runs
@@ -51,10 +54,8 @@ jobs:
           threshold: "65"
 
   contentmanager-asan:
-    strategy:
-      matrix:
-        os: [ ubuntu-24.04, ubuntu-22.04 ]
-    runs-on: ${{ matrix.os }}
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

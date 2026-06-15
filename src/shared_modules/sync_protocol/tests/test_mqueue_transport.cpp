@@ -116,24 +116,6 @@ TEST_F(MQueueTransportTest, ConstructorInitializesCorrectly)
 }
 
 /**
- * @brief Test shutdown does nothing
- */
-TEST_F(MQueueTransportTest, ShutdownDoesNothing)
-{
-    auto mqFuncs = createMockMqFunctions();
-    auto logger = createMockLogger();
-
-    MQueueTransport transport("test_module", mqFuncs, logger);
-
-    transport.shutdown();
-
-    // Constructor should not call any MQ functions yet
-    EXPECT_EQ(mqStartCalls, 0);
-    EXPECT_EQ(mqSendCalls, 0);
-    EXPECT_TRUE(logMessages.empty());
-}
-
-/**
  * @brief Test checkStatus succeeds when queue is available
  */
 TEST_F(MQueueTransportTest, CheckStatusSucceedsWhenQueueAvailable)
@@ -346,29 +328,4 @@ TEST_F(MQueueTransportTest, SendMessageFailsWhenQueueReinitFails)
     EXPECT_EQ(logMessages.size(), 2u);
     EXPECT_TRUE(logMessages[0].find("attempting to reinitialize queue") != std::string::npos);
     EXPECT_TRUE(logMessages[1].find("Failed to send message after retry") != std::string::npos);
-}
-
-
-// Test to cover ISyncMessageTransport D0 destructor (delete through base pointer)
-TEST(InterfaceDestructorTest, ISyncMessageTransportDeletingDestructor)
-{
-    // Create concrete implementation through base interface pointer
-    ISyncMessageTransport* transport = nullptr;
-
-    MQ_Functions mockMq
-    {
-        [](const char*, short, short) { return 1; },
-        [](int, const void*, size_t, const char*, char)
-        {
-            return 0;
-        }
-    };
-
-    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-
-    // Create MQueueTransport through base interface pointer
-    transport = new MQueueTransport("test_module", mockMq, testLogger);
-
-    // Delete through base pointer - this calls D0 destructor
-    delete transport;
 }

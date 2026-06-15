@@ -46,7 +46,7 @@ int ClientConf(const char *cfgfile)
     agt->profile = NULL;
     agt->buffer = 1;
     agt->buflength = 5000;
-    agt->events_persec = 500;
+    agt->events_persec = 600;
     agt->flags.auto_restart = 1;
     agt->notify_time = 0;
     agt->max_time_reconnect_try = 0;

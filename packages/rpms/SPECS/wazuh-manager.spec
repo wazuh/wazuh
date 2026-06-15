@@ -58,7 +58,7 @@ make clean
 
 # Build Wazuh sources
 make deps TARGET=manager
-make -j%{_threads} TARGET=manager USE_SELINUX=yes DEBUG=%{_debugenabled}
+make -j%{_threads} TARGET=manager DEBUG=%{_debugenabled}
 
 popd
 
@@ -122,7 +122,7 @@ exit 0
 # ============================================================
 # HARD BLOCK: Prevent upgrade from 4.X to 5.X
 # ============================================================
-if [ $1 = 2 ]; then
+if [ "$1" -eq 2 ]; then
   # Check if this is an upgrade from 4.X
   if [ -f %{_sysconfdir}/ossec-init.conf ]; then
     . %{_sysconfdir}/ossec-init.conf
@@ -159,7 +159,7 @@ if ! getent passwd wazuh-manager > /dev/null 2>&1; then
 fi
 
 # Validate upgrade constraints for Manager (only during upgrade)
-if [ $1 = 2 ]; then
+if [ "$1" -eq 2 ]; then
   # Get version information
   if [ -f "%{_localstatedir}/bin/wazuh-manager-control" ]; then
     OLD_VERSION=`%{_localstatedir}/bin/wazuh-manager-control info -v 2>/dev/null`
@@ -209,7 +209,7 @@ EOF
 fi
 
 # Stop the services to upgrade the package
-if [ $1 = 2 ]; then
+if [ "$1" -eq 2 ]; then
   if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
     systemctl stop wazuh-manager.service > /dev/null 2>&1
     touch %{_localstatedir}/tmp/wazuh.restart
@@ -225,9 +225,37 @@ if [ $1 = 2 ]; then
   elif [ -x %{_localstatedir}/bin/wazuh-control ]; then
     %{_localstatedir}/bin/wazuh-control stop > /dev/null 2>&1
   fi
-fi
-if pgrep -f wazuh-manager-authd > /dev/null 2>&1; then
+  if pgrep -f wazuh-manager-authd > /dev/null 2>&1; then
     kill -15 $(pgrep -f wazuh-manager-authd)
+  fi
+
+  UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
+  (
+    set -e
+    if [ -e "${UPGRADE_PRESERVE_DIR}" ]; then
+      echo "ERROR: Existing manager upgrade preserve backup found at ${UPGRADE_PRESERVE_DIR}." >&2
+      echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
+      exit 1
+    fi
+    mkdir -p "${UPGRADE_PRESERVE_DIR}"
+
+    if [ -d "%{_localstatedir}/etc" ]; then
+      cp -a "%{_localstatedir}/etc" "${UPGRADE_PRESERVE_DIR}/"
+    fi
+
+    if [ -d "%{_localstatedir}/data" ]; then
+      mkdir -p "${UPGRADE_PRESERVE_DIR}/data"
+      for DATA_ENTRY in "%{_localstatedir}/data/"* "%{_localstatedir}/data/."[!.]* "%{_localstatedir}/data/"..?*; do
+        [ -e "${DATA_ENTRY}" ] || continue
+        DATA_NAME=$(basename "${DATA_ENTRY}")
+        [ "${DATA_NAME}" = "tzdb" ] && continue
+        cp -a "${DATA_ENTRY}" "${UPGRADE_PRESERVE_DIR}/data/"
+      done
+    fi
+  ) || {
+    echo "ERROR: Could not prepare manager upgrade preserve backup at ${UPGRADE_PRESERVE_DIR}." >&2
+    exit 1
+  }
 fi
 
 # Remove/relocate existing SQLite databases
@@ -255,7 +283,7 @@ if [ -d %{_localstatedir}/queue/agent-info ]; then
 fi
 
 # Delete old API backups
-if [ $1 = 2 ]; then
+if [ "$1" -eq 2 ]; then
   if [ -d %{_localstatedir}/~api ]; then
     rm -rf %{_localstatedir}/~api
   fi
@@ -291,7 +319,7 @@ fi
 %post
 
 # Upgrade install code block
-if [ $1 = 2 ]; then
+if [ "$1" -eq 2 ]; then
   if [ -d %{_localstatedir}/logs/ossec ]; then
     rm -rf %{_localstatedir}/logs/wazuh
     cp -rp %{_localstatedir}/logs/ossec %{_localstatedir}/logs/wazuh
@@ -305,7 +333,7 @@ if [ $1 = 2 ]; then
 fi
 
 # Fresh install code block
-if [ $1 = 1 ]; then
+if [ "$1" -eq 1 ]; then
 
   . %{_localstatedir}/packages_files/manager_installation_scripts/src/init/dist-detect.sh
 
@@ -339,23 +367,12 @@ rm -f %{_localstatedir}/etc/shared/merged.mg  >/dev/null 2>&1
 # Set merged.mg permissions to new ones
 find %{_localstatedir}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
 
-# Add the SELinux policy
-if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
-  if [ $(getenforce) != "Disabled" ]; then
-    semodule -i %{_localstatedir}/var/selinux/wazuh.pp
-    semodule -e wazuh
-  fi
-fi
-
 # Restore wazuh-manager.conf permissions after upgrading
 chown root:wazuh-manager %{_localstatedir}/etc/wazuh-manager.conf
 chmod 0660 %{_localstatedir}/etc/wazuh-manager.conf
 
 # Delete the installation files used to configure the manager
 rm -rf %{_localstatedir}/packages_files
-
-# Remove unnecessary files from default group
-rm -f %{_localstatedir}/etc/shared/default/*.rpmnew
 
 # Remove old ossec user and group if exists and change ownwership of files
 
@@ -392,15 +409,6 @@ if [ $1 = 0 ]; then
   fi
   %{_localstatedir}/bin/wazuh-manager-control stop > /dev/null 2>&1
 
-  # Remove the SELinux policy
-  if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
-    if [ $(getenforce) != "Disabled" ]; then
-      if (semodule -l | grep wazuh > /dev/null); then
-        semodule -r wazuh > /dev/null
-      fi
-    fi
-  fi
-
 fi
 
 %postun
@@ -436,26 +444,41 @@ if [ $1 = 0 ];then
   rm -rf %{_localstatedir}/queue/
   rm -rf %{_localstatedir}/framework/
   rm -rf %{_localstatedir}/api/
-  rm -rf %{_localstatedir}/active-response/
   rm -rf %{_localstatedir}/stats/
   rm -rf %{_localstatedir}/var/
   rm -rf %{_localstatedir}/bin/
   rm -rf %{_localstatedir}/logs/
   rm -rf %{_localstatedir}/tmp
-  rm -rf %{_localstatedir}/wodles/
   rm -rf %{_localstatedir}/data
-
-  # Delete audisp wazuh plugin if exists
-  if [ -e /etc/audit/plugins.d/af_wazuh.conf ]; then
-    rm -f -- /etc/audit/plugins.d/af_wazuh.conf
-  fi
-  if [ -e /etc/audisp/plugins.d/af_wazuh.conf ]; then
-    rm -f -- /etc/audisp/plugins.d/af_wazuh.conf
-  fi
 fi
 
 # posttrans code is the last thing executed in a install/upgrade
 %posttrans
+UPGRADE_PRESERVE_DIR="%{_localstatedir}/tmp/manager_upgrade_preserve"
+
+if [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
+  (
+    set -e
+    if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
+      mkdir -p "%{_localstatedir}/etc"
+      cp -a "${UPGRADE_PRESERVE_DIR}/etc/." "%{_localstatedir}/etc/"
+    fi
+
+    if [ -d "${UPGRADE_PRESERVE_DIR}/data" ]; then
+      mkdir -p "%{_localstatedir}/data"
+
+      for DATA_ENTRY in "${UPGRADE_PRESERVE_DIR}/data/"* "${UPGRADE_PRESERVE_DIR}/data/."[!.]* "${UPGRADE_PRESERVE_DIR}/data/"..?*; do
+        [ -e "${DATA_ENTRY}" ] || continue
+        cp -a "${DATA_ENTRY}" "%{_localstatedir}/data/"
+      done
+    fi
+  ) || {
+    echo "ERROR: Could not restore manager upgrade preserve backup; contents left at ${UPGRADE_PRESERVE_DIR}." >&2
+    exit 1
+  }
+  rm -rf "${UPGRADE_PRESERVE_DIR}"
+fi
+
 if [ -f %{_sysconfdir}/systemd/system/wazuh-manager.service ]; then
   rm -rf %{_sysconfdir}/systemd/system/wazuh-manager.service
   systemctl daemon-reload > /dev/null 2>&1
@@ -481,12 +504,9 @@ if [ -d %{_localstatedir}/queue/ossec ]; then
   rm -rf %{_localstatedir}/queue/ossec/
 fi
 
-# Remove groups backup files
-rm -rf %{_localstatedir}/backup/groups
-
 %triggerin -- glibc
 [ -r %{_sysconfdir}/localtime ] && cp -fpL %{_sysconfdir}/localtime %{_localstatedir}/etc
- chown root:root %{_localstatedir}/etc/localtime
+ chown root:wazuh-manager %{_localstatedir}/etc/localtime
  chmod 0640 %{_localstatedir}/etc/localtime
 
 %clean
@@ -507,8 +527,6 @@ rm -fr %{buildroot}
 %attr(640, root, wazuh-manager) %{_localstatedir}/api/scripts/*.py
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/backup
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/backup/db
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/backup/agents
-%dir %attr(750, root, wazuh-manager) %{_localstatedir}/backup/shared
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/bin
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/agent_groups
 %attr(750, root, wazuh-manager) %{_localstatedir}/bin/agent_upgrade
@@ -529,15 +547,16 @@ rm -fr %{buildroot}
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.cert
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.key
-%attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/client.keys
-%attr(640, root, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
-%attr(640, root, root) %{_localstatedir}/etc/localtime
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/etc/shared
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/agent-template.conf
-%attr(660, wazuh-manager, wazuh-manager) %config(noreplace) %{_localstatedir}/etc/shared/default/*
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/*.yml
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/shared/default/*
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
+%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default
+%attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default/*.yml
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
@@ -572,10 +591,7 @@ rm -fr %{buildroot}
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.log
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/wazuh-manager.json
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/api
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/archives
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/alerts
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/cluster
-%dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/firewall
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/logs/wazuh
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files
 %dir %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts
@@ -593,7 +609,6 @@ rm -fr %{buildroot}
 %attr(750, root, root) %config(missingok) %{_localstatedir}/packages_files/manager_installation_scripts/etc/templates/config/rhel/*
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/agents-timestamp
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/alerts
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/cluster
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/db
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/queue/rids
@@ -635,16 +650,16 @@ rm -fr %{buildroot}
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/download
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/var/multigroups
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/run
-%dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/selinux
-%attr(640, root, wazuh-manager) %{_localstatedir}/var/selinux/*
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/var/upgrade
 
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
-* Sun Apr 12 2026 support <info@wazuh.com> - 5.0.0
+* Wed Jun 24 2026 support <info@wazuh.com> - 5.0.0
 - More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
-* Sat Apr 11 2026 support <info@wazuh.com> - 4.14.5
+* Thu May 14 2026 support <info@wazuh.com> - 4.14.6
+- More info: https://documentation.wazuh.com/current/release-notes/release-4-14-6.html
+* Thu Apr 23 2026 support <info@wazuh.com> - 4.14.5
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-5.html
 * Tue Mar 17 2026 support <info@wazuh.com> - 4.14.4
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-4.html

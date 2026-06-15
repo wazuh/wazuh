@@ -64,7 +64,7 @@ client.connect()
         if error:
             sys.exit(f'Error getting asset or collection: {error}')
 
-        print(response['content'])
+        print(json.dumps(response['jsonContent'], indent=4))
 
     except Exception as e:
         sys.exit(f'Error getting asset or collection: {e}')

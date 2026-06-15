@@ -9,7 +9,7 @@
 namespace file_system
 {
     FileSystemUtils::FileSystemUtils(std::shared_ptr<IFileSystemWrapper> fsWrapper)
-        : m_fsWrapper(fsWrapper ? fsWrapper : std::make_shared<FileSystemWrapper>())
+        : m_fsWrapper(fsWrapper ? std::move(fsWrapper) : std::make_shared<FileSystemWrapper>())
     {
     }
 
@@ -93,7 +93,7 @@ namespace file_system
                 }
                 else if (Utils::patternMatch(baseDir, pattern))
                 {
-                    output.push_back(baseDir);
+                    output.push_back(std::move(baseDir));
                 }
             }
         }

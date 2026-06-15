@@ -109,6 +109,18 @@ INSTANTIATE_TEST_SUITE_P(
                    FAILURE(jTypeRefExpected(json::Json::Type::Number))),
         TransformT({makeRef("ref"), makeValue(R"("a")")},
                    opBuilderHelperAppendSplitString,
+                   FAILURE(jTypeRefExpected(json::Json::Type::Boolean))),
+        TransformT({makeRef("ref"), makeValue(R"("a")")},
+                   opBuilderHelperAppendSplitString,
+                   FAILURE(jTypeRefExpected(json::Json::Type::Object))),
+        TransformT({makeRef("ref"), makeValue(R"("a")")},
+                   opBuilderHelperAppendSplitString,
+                   FAILURE(jTypeRefExpected(json::Json::Type::Array))),
+        TransformT({makeRef("ref"), makeValue(R"("a")")},
+                   opBuilderHelperAppendSplitString,
+                   FAILURE(jTypeRefExpected(json::Json::Type::Null))),
+        TransformT({makeRef("ref"), makeValue(R"("a")")},
+                   opBuilderHelperAppendSplitString,
                    FAILURE(
                        [](const auto& mocks)
                        {

@@ -3,6 +3,7 @@ name: 5.X - Running RTR. Module syscollector and its dependencies for agent/wina
 on:
   workflow_dispatch:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - "src/ci/**"
       - "src/build.py"
@@ -13,14 +14,18 @@ on:
       - ".github/workflows/5_testcomponent_syscollector-rtr.yml"
       - ".github/actions/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   rtr:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     strategy:
           fail-fast: false
           matrix:
               module: [wazuh_modules/syscollector, shared_modules/dbsync, data_provider]
               target: [agent, winagent]
-    # We don't use ubuntu-latest because the install_build_deps action adds a fixed repository for Wine
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo

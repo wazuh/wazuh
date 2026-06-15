@@ -1,6 +1,7 @@
-#ifndef _GEO_MANAGER_HPP
-#define _GEO_MANAGER_HPP
+#ifndef GEO_MANAGER_HPP
+#define GEO_MANAGER_HPP
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <shared_mutex>
@@ -34,6 +35,9 @@ private:
 
     std::shared_ptr<store::IStore> m_store;    ///< The store used to store the MMDB hash.
     std::shared_ptr<IDownloader> m_downloader; ///< The downloader used to download the MMDB database.
+
+    std::shared_ptr<std::atomic<bool>> m_shouldRun {std::make_shared<std::atomic<bool>>(
+        true)}; ///< Flag for graceful shutdown; false signals sync operations to stop.
 
     /**
      * @brief Upsert the internal store entry for a local database (computes hash from file).
@@ -69,15 +73,6 @@ private:
     base::OptError addDbUnsafe(const std::string& path, const std::string& hash, const int64_t createdAt, Type type);
 
     /**
-     * @brief Write the MMDB database to the filesystem.
-     *
-     * @param path Path to store the database.
-     * @param content The content of the database.
-     * @return base::OptError An error if the database could not be written.
-     */
-    base::OptError writeDb(const std::string& path, const std::string& content);
-
-    /**
      * @brief Process a single database type from the manifest (download, validate, extract, load).
      *
      * @param path Path to store the database.
@@ -110,10 +105,20 @@ public:
     void remoteUpsert(const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath) override;
 
     /**
+     * @copydoc IManager::requestShutdown
+     */
+    void requestShutdown() override;
+
+    /**
+     * @brief Get a shared pointer to the should-run flag for sharing with the downloader.
+     */
+    std::shared_ptr<const std::atomic<bool>> shouldRunFlag() const { return m_shouldRun; }
+
+    /**
      * @copydoc IManager::getLocator
      */
-    base::RespOrError<std::shared_ptr<ILocator>> getLocator(Type type) const override;
+    Result<std::shared_ptr<ILocator>> getLocator(Type type) const override;
 };
 
 } // namespace geo
-#endif // _GEO_MANAGER_HPP
+#endif // GEO_MANAGER_HPP

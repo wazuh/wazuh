@@ -76,7 +76,7 @@ The configuration file (`wazuh-manager-internal-options.conf`) uses a simple `se
 analysisd.debug=0
 analysisd.store_path=/var/wazuh-manager/data/store
 analysisd.indexer_hosts=host1,host2
-analysisd.archiver_enabled=false  # inline comment
+analysisd.dumper_enabled=false  # inline comment
 analysisd.note=value\#with-hash   # escaped '#' in value
 ```
 

@@ -35,7 +35,7 @@ typedef struct callback_ctx
  * @param directories_list The OSList of directory_t objects to search in (must not be NULL)
  * @return Returns a pointer to the configuration associated with the provided path, NULL if the path is not found
  */
-directory_t* fim_configuration_directory(const char* key, bool notify_not_found, const OSList *directories_list);
+directory_t* fim_configuration_directory(const char* key, bool notify_not_found, const OSList* directories_list);
 
 /**
  * @brief Evaluates the depth of the directory or file to check if it exceeds the configured max_depth value
@@ -53,7 +53,7 @@ int fim_check_depth(const char* path, const directory_t* configuration);
  * @param path_type Indicates if the path is a file (FIM REGULAR) or directory (FIM DIRECTORY)
  * @return 1 if it has been configured to be ignored, 0 if not
  */
-int fim_check_ignore(const char *file_name, mode_t path_type);
+int fim_check_ignore(const char* file_name, mode_t path_type);
 
 /**
  * @brief Checks if a specific folder has been configured to be checked with a specific restriction
@@ -92,7 +92,7 @@ void init_fim_data_entry(fim_file_data* data);
  *
  * @param data A fim_file_data object to be free'd.
  */
-void free_file_data(fim_file_data * data);
+void free_file_data(fim_file_data* data);
 
 /**
  * @brief Get data from file
@@ -167,7 +167,7 @@ void fim_process_missing_entry(char* pathname, fim_event_mode mode, whodata_evt*
  *
  * @param config Directory configuration.
  */
-void fim_link_delete_range(directory_t *config);
+void fim_link_delete_range(directory_t* config);
 
 /**
  * @brief Create a delete event and removes the entry from the database.
@@ -188,9 +188,9 @@ void fim_generate_delete_event(const char* file_path, const void* evt_data, cons
  * @param to_delete Flag indicating if the entry should be deleted from the database.
  * @param fallback_cb Flag indicating if a fallback callback should be used.
  */
-void fim_handle_delete_by_path(const char *path,
-                               const event_data_t *evt_data,
-                               const directory_t *config,
+void fim_handle_delete_by_path(const char* path,
+                               const event_data_t* evt_data,
+                               const directory_t* config,
                                bool to_delete,
                                bool fallback_cb);
 
@@ -198,6 +198,16 @@ void fim_handle_delete_by_path(const char *path,
  * @brief Main scheduled algorithm for file scan
  */
 void fim_file_scan();
+
+/**
+ * @brief Convert a Unix epoch timestamp to ISO8601 format (%Y-%m-%dT%H:%M:%S.000Z).
+ *
+ * @param timestamp Unix epoch timestamp (seconds).
+ * @param buffer Output buffer to write the formatted string.
+ * @param buffer_size Size of the output buffer (must be >= 25).
+ * @return true on success, false if the conversion fails.
+ */
+bool fim_epoch_to_iso8601(time_t timestamp, char* buffer, size_t buffer_size);
 
 /**
  * @brief Create file attribute set JSON from a FIM entry structure
@@ -227,7 +237,7 @@ cJSON* fim_audit_json(const whodata_evt* w_evt);
  * @param changed_attributes JSON Array where the changed attributes will be stored.
  * @param old_attributes JSON where the old attributes will be stored.
  */
-void fim_calculate_dbsync_difference(const directory_t *configuration,
+void fim_calculate_dbsync_difference(const directory_t* configuration,
                                      const cJSON* old_data,
                                      cJSON* changed_attributes,
                                      cJSON* old_attributes);
@@ -243,6 +253,6 @@ void fim_calculate_dbsync_difference(const directory_t *configuration,
  * @param directories_list The OSList of directory_t objects to use for configuration lookup (must not be NULL)
  * @return Complete stateful event cJSON object (must be freed by caller)
  */
-cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON *dbsync_event, const fim_file_data *file_data, const OSList *directories_list);
+cJSON* build_stateful_event_file(const char* path, const char* sha1_hash, const uint64_t document_version, const cJSON* dbsync_event, const fim_file_data* file_data, const OSList* directories_list);
 
 #endif

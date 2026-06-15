@@ -109,7 +109,8 @@ typedef struct _event_data_s
 typedef struct fim_tmp_file
 {
     union
-    { // type_storage
+    {
+        // type_storage
         FILE* fd;
         W_Vector* list;
     };
@@ -135,7 +136,7 @@ typedef struct diff_data
 // Stores items that need their sync flag changed
 typedef struct pending_sync_item
 {
-    cJSON *json; // Contains the fields of the table's primary key and the current version of the document
+    cJSON* json; // Contains the fields of the table's primary key and the current version of the document
     int sync_value;
 } pending_sync_item_t;
 
@@ -326,7 +327,7 @@ void send_syscheck_msg(const cJSON* msg) __attribute__((nonnull));
  * @param _msg The message to be persisted
  * @param version The document version (64-bit unsigned integer)
  */
-void persist_syscheck_msg(const char *id, Operation_t operation, const char *index, const cJSON* _msg, uint64_t version) __attribute__((nonnull(1,3,4)));
+void persist_syscheck_msg(const char* id, Operation_t operation, const char* index, const cJSON* _msg, uint64_t version) __attribute__((nonnull(1, 3, 4)));
 
 /**
  * @brief Validate and persist a FIM event with schema validation
@@ -362,7 +363,7 @@ bool validate_and_persist_fim_event(
     OSList* failed_list,
     void* failed_item_data,
     int sync_flag
-) __attribute__((nonnull(1,2,4,6)));
+) __attribute__((nonnull(1, 2, 4, 6)));
 
 /**
  * @brief Clean up files that failed schema validation by deleting them from DBSync
@@ -392,21 +393,21 @@ void cleanup_failed_registry_values(OSList* failed_values);
  * @param json The JSON object containing path and version.
  * @param sync_value The sync flag value to set (0 or 1).
  */
-void add_pending_sync_item(OSList *pending_items, const cJSON *json, int sync_value);
+void add_pending_sync_item(OSList* pending_items, const cJSON* json, int sync_value);
 
 /**
  * @brief Free function for pending_sync_item_t.
  *
  * @param data Pointer to a pending_sync_item_t structure.
  */
-void free_pending_sync_item(void *data);
+void free_pending_sync_item(void* data);
 
 /**
  * @brief Process pending sync flag updates after transaction commit.
  *
  * @param pending_items OSList of pending_sync_item_t to update sync flags.
  */
-void process_pending_sync_updates(char* table_name, OSList *pending_items);
+void process_pending_sync_updates(char* table_name, OSList* pending_items);
 
 /**
  * @brief Send a log message
@@ -481,7 +482,7 @@ void audit_set_db_consistency(void);
  * @param [out] out_code The variable where to store the version code
  * @return 0 on success, -1 on error
  */
-int get_audit_version_code(unsigned *out_code);
+int get_audit_version_code(unsigned* out_code);
 
 /**
  * @brief Check if the Audit daemon is installed and running

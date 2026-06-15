@@ -28,12 +28,15 @@ typedef struct _ctrl_msgs_t
 
 typedef struct _recv_msgs_t
 {
-    uint64_t evt_count;
+    uint64_t events_count;
     uint64_t ctrl_count;
+    uint64_t states_count;
+    uint32_t upgrade_ack_count;
     uint32_t ping_count;
     uint32_t unknown_count;
     uint32_t dequeued_count;
     uint32_t discarded_count;
+    uint32_t events_failed_count;
     ctrl_msgs_t ctrl_breakdown;
 } recv_msgs_t;
 
@@ -68,8 +71,10 @@ typedef struct _remoted_state_t
 typedef struct _remoted_agent_state_t
 {
     uint64_t uptime;
-    uint64_t recv_evt_count;
+    uint64_t recv_events_count;
     uint64_t recv_ctrl_count;
+    uint64_t recv_states_count;
+    uint32_t recv_upgrade_ack_count;
     ctrl_msgs_t ctrl_breakdown;
     sent_msgs_t sent_breakdown;
 } remoted_agent_state_t;
@@ -106,13 +111,35 @@ void rem_add_recv(unsigned long bytes);
  * @brief Increment received event messages counter
  * @param agent_id Id of the agent that corresponds to the message
  */
-void rem_inc_recv_evt(const char* agent_id);
+void rem_inc_recv_events(const char* agent_id);
 
 /**
  * @brief Increment received control messages counter
  * @param agent_id Id of the agent that corresponds to the message
  */
 void rem_inc_recv_ctrl(const char* agent_id);
+
+/**
+ * @brief Increment received state messages counter
+ * @param agent_id Id of the agent that corresponds to the message
+ */
+void rem_inc_recv_states(const char* agent_id);
+
+/**
+ * @brief Increment received upgrade-ack messages counter
+ * @param agent_id Id of the agent that corresponds to the message
+ */
+void rem_inc_recv_upgrade_ack(const char* agent_id);
+
+/**
+ * @brief Increment failed-event messages counter
+ *
+ * Counts events that were accepted from the agent but could not be
+ * delivered to analysisd, either because the batch queue refused the
+ * enqueue or because the analysisd dispatcher dropped the item (POST
+ * failed or connection unavailable).
+ */
+void rem_inc_recv_events_failed();
 
 /**
  * @brief Increment received ping messages counter

@@ -2,6 +2,8 @@
 
 #include <base/baseTypes.hpp>
 #include <base/behaviour.hpp>
+#include <fastmetrics/mockManager.hpp>
+#include <fastmetrics/registry.hpp>
 #include <store/mockStore.hpp>
 
 #include "definitions.hpp"
@@ -12,6 +14,7 @@ using namespace base::test;
 
 namespace
 {
+
 bool evalExpression(const base::Expression& expression, const base::Event& event)
 {
     if (expression == nullptr)
@@ -117,7 +120,7 @@ TEST_P(BuildPolicy, Doc)
 
         NamespaceId nsId(namespaceId);
         ASSERT_NO_THROW({
-            auto policy = m_spBuilder->buildPolicy(nsId, false, true);
+            auto policy = m_spBuilder->buildPolicy(nsId, true);
             ASSERT_NE(policy, nullptr);
             EXPECT_EQ(policy->name().toStr(), nsId.toStr());
         });
@@ -128,7 +131,7 @@ TEST_P(BuildPolicy, Doc)
 
         NamespaceId nsId(namespaceId);
         ASSERT_THROW(
-            try { m_spBuilder->buildPolicy(nsId, false, true); } catch (const std::exception& e) {
+            try { m_spBuilder->buildPolicy(nsId, true); } catch (const std::exception& e) {
                 EXPECT_TRUE(std::string(e.what()).find(errorMsg) != std::string::npos);
                 throw;
             },
@@ -190,7 +193,7 @@ INSTANTIATE_TEST_SUITE_P(
 
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
                       EXPECT_CALL(*reader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
-                      EXPECT_CALL(*reader, getDefaultOutputs())
+                      EXPECT_CALL(*reader, getOutputsForSpace(testing::_))
                           .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
                       return None {};
                   }})),
@@ -245,7 +248,7 @@ INSTANTIATE_TEST_SUITE_P(
                       EXPECT_CALL(*reader, getAssetByUUID("550e8400-e29b-41d4-a716-446655440003"))
                           .WillRepeatedly(testing::Return(rootDecoder));
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
-                      EXPECT_CALL(*reader, getDefaultOutputs())
+                      EXPECT_CALL(*reader, getOutputsForSpace(testing::_))
                           .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
                       return None {};
                   }})),
@@ -303,7 +306,7 @@ INSTANTIATE_TEST_SUITE_P(
                           .WillRepeatedly(testing::Return(rootDecoder));
 
                       EXPECT_CALL(*reader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
-                      EXPECT_CALL(*reader, getDefaultOutputs())
+                      EXPECT_CALL(*reader, getOutputsForSpace(testing::_))
                           .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
                       return None {};
                   }}))));
@@ -334,11 +337,6 @@ TEST_P(BuildAsset, Doc)
         }
 
         NamespaceId nsId(namespaceId);
-        ASSERT_NO_THROW({
-            auto expression = m_spBuilder->buildAsset(assetName, nsId);
-            ASSERT_NE(expression, nullptr);
-            EXPECT_EQ(expression->getName(), assetName);
-        });
     }
 }
 
@@ -394,6 +392,8 @@ protected:
 
     void SetUp() override
     {
+        SingletonLocator::registerManager<fastmetrics::IManager,
+                                          base::PtrSingleton<fastmetrics::IManager, fastmetrics::MockManager>>();
         m_mocks = std::make_shared<Mocks>();
         m_mocks->m_spStore = std::make_shared<MockICMstore>();
         m_mocks->m_spNSReader = std::make_shared<MockICMStoreNSReader>();
@@ -445,6 +445,8 @@ protected:
                                               builderDeps,
                                               mockStore);
     }
+
+    void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
 };
 
 TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
@@ -529,11 +531,11 @@ TEST_F(BuildPolicyTest, BuildPolicySuccessfully)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
 
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     // Build policy
-    auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, true);
 
     // Verify results - policy should be created without error
     ASSERT_NE(builtPolicy, nullptr);
@@ -609,200 +611,14 @@ TEST_F(BuildPolicyTest, BuildPolicyWithDisabledIntegration)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
 
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     // Build policy - should succeed: disabled integration is skipped, enabled integration provides root decoder
-    auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, true);
 
     ASSERT_NE(builtPolicy, nullptr);
     EXPECT_EQ(builtPolicy->name().toStr(), namespaceId.toStr());
-}
-
-class BuildAssetTest : public ::testing::Test
-{
-protected:
-    std::shared_ptr<Mocks> m_mocks;
-    std::shared_ptr<Builder> m_builder;
-
-    void SetUp() override
-    {
-        m_mocks = std::make_shared<Mocks>();
-        m_mocks->m_spStore = std::make_shared<MockICMstore>();
-        m_mocks->m_spNSReader = std::make_shared<MockICMStoreNSReader>();
-        m_mocks->m_spSchemf = std::make_shared<schemf::mocks::MockSchema>();
-        m_mocks->m_spDefBuilder = std::make_shared<defs::mocks::MockDefinitionsBuilder>();
-        m_mocks->m_spDef = std::make_shared<defs::mocks::MockDefinitions>();
-
-        BuilderDeps builderDeps;
-        builderDeps.logparDebugLvl = 0;
-
-        ON_CALL(*m_mocks->m_spSchemf, hasField(DotPath("wazuh.message"))).WillByDefault(testing::Return(true));
-        ON_CALL(*m_mocks->m_spSchemf, hasField(DotPath("event.code"))).WillByDefault(testing::Return(true));
-        ON_CALL(*m_mocks->m_spSchemf, hasField(DotPath("source.ip"))).WillByDefault(testing::Return(true));
-
-        builderDeps.logpar =
-            std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_mocks->m_spSchemf);
-        builderDeps.kvdbManager = nullptr;
-
-        auto emptyAllowedFields = std::make_shared<AllowedFields>();
-        auto mockStore = std::make_shared<store::mocks::MockStore>();
-
-        // Configure MockStore to return a valid GeoIP configuration
-        auto geoConfig = json::Json(R"({
-            "source.ip": {
-                "geo_field": "source.geo",
-                "as_field": "source.as"
-            }
-        })");
-        EXPECT_CALL(*mockStore, readDoc(base::Name("enrichment/geo/0")))
-            .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(geoConfig)));
-
-        // Configure MockStore to return a valid IOC configuration
-        auto iocConfig = json::Json(R"({
-            "hash_md5": {"sources": []},
-            "hash_sha1": {"sources": []},
-            "hash_sha256": {"sources": []},
-            "url_domain": {"sources": []},
-            "url_full": {"sources": []},
-            "connection": {"sources": []}
-        })");
-        EXPECT_CALL(*mockStore, readDoc(base::Name("enrichment/ioc/0")))
-            .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(iocConfig)));
-
-        m_builder = std::make_shared<Builder>(m_mocks->m_spStore,
-                                              m_mocks->m_spSchemf,
-                                              m_mocks->m_spDefBuilder,
-                                              emptyAllowedFields,
-                                              builderDeps,
-                                              mockStore);
-    }
-};
-
-TEST_F(BuildAssetTest, BuildDecoderSuccessfully)
-{
-    // Setup
-    base::Name assetName("decoder/test/0");
-    NamespaceId namespaceId("policy_test_0");
-
-    auto decoder = json::Json(R"({
-        "name": "decoder/test/0",
-        "parents": ["DecodersTree/Input"],
-        "check": [{
-            "event.code": 2
-        }]
-    })");
-
-    // Setup mock expectations
-    EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_)).WillRepeatedly(testing::Return(m_mocks->m_spNSReader));
-
-    EXPECT_CALL(*m_mocks->m_spNSReader, getAssetByName(assetName)).WillRepeatedly(testing::Return(decoder));
-
-    EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
-
-    // Build asset
-    auto expression = m_builder->buildAsset(assetName, namespaceId);
-
-    // Verify
-    ASSERT_NE(expression, nullptr);
-    EXPECT_EQ(expression->getName(), assetName);
-}
-
-TEST_F(BuildAssetTest, BuildRuleSuccessfully)
-{
-    // Setup
-    base::Name assetName("rule/test/0");
-    NamespaceId namespaceId("policy_test_0");
-
-    auto rule = json::Json(R"({
-        "name": "rule/test/0",
-        "check": [{
-            "process.name": "test"
-        }],
-        "normalize": [{
-            "map": [{
-                "event.risk_score": 21
-            }]
-        }]
-    })");
-
-    // Setup mock expectations
-    EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_)).WillRepeatedly(testing::Return(m_mocks->m_spNSReader));
-
-    EXPECT_CALL(*m_mocks->m_spNSReader, getAssetByName(assetName)).WillRepeatedly(testing::Return(rule));
-
-    EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
-
-    EXPECT_CALL(*m_mocks->m_spSchemf, hasField(DotPath("process.name"))).WillRepeatedly(testing::Return(true));
-    EXPECT_CALL(*m_mocks->m_spSchemf, hasField(DotPath("event.risk_score"))).WillRepeatedly(testing::Return(true));
-
-    // Build asset
-    auto expression = m_builder->buildAsset(assetName, namespaceId);
-
-    // Verify
-    ASSERT_NE(expression, nullptr);
-    EXPECT_EQ(expression->getName(), assetName);
-}
-
-TEST_F(BuildAssetTest, BuildFilterSuccessfully)
-{
-    // Setup
-    base::Name assetName("filter/test/0");
-    NamespaceId namespaceId("policy_test_0");
-
-    auto filter = json::Json(R"({
-        "name": "filter/test/0",
-        "type": "pre-filter",
-        "check": [{
-            "wazuh.protocol.queue": 49
-        }]
-    })");
-
-    // Setup mock expectations
-    EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_)).WillRepeatedly(testing::Return(m_mocks->m_spNSReader));
-
-    EXPECT_CALL(*m_mocks->m_spNSReader, getAssetByName(assetName)).WillRepeatedly(testing::Return(filter));
-
-    EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
-
-    EXPECT_CALL(*m_mocks->m_spSchemf, hasField(DotPath("wazuh.protocol.queue"))).WillRepeatedly(testing::Return(true));
-
-    // Build asset
-    auto expression = m_builder->buildAsset(assetName, namespaceId);
-
-    // Verify
-    ASSERT_NE(expression, nullptr);
-    EXPECT_EQ(expression->getName(), assetName);
-}
-
-TEST_F(BuildAssetTest, BuildOutputSuccessfully)
-{
-    // Setup
-    base::Name assetName("output/test/0");
-    NamespaceId namespaceId("policy_test_0");
-
-    auto output = json::Json(R"({
-        "name": "output/test/0",
-        "check": [{
-            "event.category": "intrusion_detection"
-        }]
-    })");
-
-    // Setup mock expectations
-    EXPECT_CALL(*m_mocks->m_spStore, getNSReader(testing::_)).WillRepeatedly(testing::Return(m_mocks->m_spNSReader));
-
-    EXPECT_CALL(*m_mocks->m_spNSReader, getAssetByName(assetName)).WillRepeatedly(testing::Return(output));
-
-    EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
-
-    EXPECT_CALL(*m_mocks->m_spSchemf, hasField(DotPath("event.category"))).WillRepeatedly(testing::Return(true));
-
-    // Build asset
-    auto expression = m_builder->buildAsset(assetName, namespaceId);
-
-    // Verify
-    ASSERT_NE(expression, nullptr);
-    EXPECT_EQ(expression->getName(), assetName);
 }
 
 class BuildPolicyAdvancedTest : public ::testing::Test
@@ -813,6 +629,8 @@ protected:
 
     void SetUp() override
     {
+        SingletonLocator::registerManager<fastmetrics::IManager,
+                                          base::PtrSingleton<fastmetrics::IManager, fastmetrics::MockManager>>();
         m_mocks = std::make_shared<Mocks>();
         m_mocks->m_spStore = std::make_shared<MockICMstore>();
         m_mocks->m_spNSReader = std::make_shared<MockICMStoreNSReader>();
@@ -859,6 +677,8 @@ protected:
                                               builderDeps,
                                               mockStore);
     }
+
+    void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
 };
 
 TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
@@ -946,11 +766,11 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithMultipleIntegrations)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
 
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     // Build policy
-    auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, true);
 
     // Verify results
     ASSERT_NE(builtPolicy, nullptr);
@@ -1031,11 +851,11 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithKVDB)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
 
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     // Build policy
-    auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, true);
 
     // Verify results
     ASSERT_NE(builtPolicy, nullptr);
@@ -1113,11 +933,11 @@ TEST_F(BuildPolicyAdvancedTest, BuildPolicyWithOutputs)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
 
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
     // Build policy
-    auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, true);
 
     // Verify results
     ASSERT_NE(builtPolicy, nullptr);
@@ -1201,18 +1021,18 @@ TEST_F(BuildPolicyAdvancedTest, ParentTemporaryVariableIsAvailableInChildDecoder
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
-    auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, true);
     ASSERT_NE(builtPolicy, nullptr);
 
     auto event = std::make_shared<json::Json>(R"({"event": {"code": "PARENT"}})");
     EXPECT_TRUE(evalExpression(builtPolicy->expression(), event));
 
-    auto reason = event->getString("/event/reason");
-    ASSERT_TRUE(reason.has_value());
-    EXPECT_EQ(reason.value(), "child-hit");
+    std::string reason;
+    ASSERT_EQ(json::RetGet::Success, event->getString(reason, "/event/reason"));
+    EXPECT_EQ(reason, "child-hit");
     EXPECT_FALSE(event->exists("/_tmp"));
     EXPECT_FALSE(event->exists("/_tmp/shared"));
 }
@@ -1281,10 +1101,10 @@ TEST_F(BuildPolicyAdvancedTest, DecoderTemporaryVariableIsRemovedAtPipelineEnd)
 
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByUUID(testing::_)).WillRepeatedly(testing::Return(true));
     EXPECT_CALL(*m_mocks->m_spNSReader, assetExistsByName(testing::_)).WillRepeatedly(testing::Return(true));
-    EXPECT_CALL(*m_mocks->m_spNSReader, getDefaultOutputs())
+    EXPECT_CALL(*m_mocks->m_spNSReader, getOutputsForSpace(testing::_))
         .WillRepeatedly(testing::Return(std::vector<json::Json> {}));
 
-    auto builtPolicy = m_builder->buildPolicy(namespaceId, false, true);
+    auto builtPolicy = m_builder->buildPolicy(namespaceId, true);
     ASSERT_NE(builtPolicy, nullptr);
 
     auto event = std::make_shared<json::Json>(R"({"event": {"code": "PARENT"}})");

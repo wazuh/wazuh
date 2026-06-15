@@ -4,7 +4,6 @@
 import asyncio
 import contextlib
 import logging
-import os
 from functools import wraps
 from typing import Callable
 

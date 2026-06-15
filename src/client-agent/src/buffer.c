@@ -43,25 +43,9 @@ struct{
 } buff;
 
 /**
- * @brief Represents a single message stored in the event buffer.
- *
- * This structure is used to hold a message that can be either a null-terminated
- * text string or a raw binary data buffer. It pairs a pointer to the data with
- * its explicit size, allowing the system to handle binary content safely
- * without truncation at null bytes.
- */
-typedef struct {
-    /** @brief Pointer to the dynamically allocated message data. */
-    void *data;
-
-    /** @brief The exact size of the data in bytes. */
-    size_t size;
-} buffered_message;
-
-/**
  * @brief The agent's main event buffer.
  */
-static buffered_message *buffer;
+STATIC buffered_message *buffer;
 
 static pthread_mutex_t mutex_lock;
 static pthread_cond_t cond_no_empty;
@@ -81,6 +65,9 @@ static void delay(struct timespec * ts_loop);
 void buffer_init(){
 
     if (!buffer) {
+        /* buffer_init() is called either before threads start or under external
+        * serialization (config reload path). No race condition exists. */
+        // coverity[missing_lock]
         os_calloc(agt->buflength + 1, sizeof(buffered_message), buffer);
     }
 
@@ -147,16 +134,19 @@ int buffer_append(const char *msg, ssize_t msg_len) {
         return(-1);
 
     } else {
-        size_t size_to_alloc;
-        if (msg_len < 0) { // It's a null-terminated string.
-            size_to_alloc = strlen(msg) + 1;
-        } else { // It's a binary buffer with a known length.
-            size_to_alloc = (size_t)msg_len;
+        size_t payload_size;
+        size_t alloc_size;
+        if (msg_len < 0) {
+            payload_size = strlen(msg);
+            alloc_size = payload_size + 1;
+        } else {
+            payload_size = (size_t)msg_len;
+            alloc_size = payload_size;
         }
 
-        os_malloc(size_to_alloc, buffer[i].data);
-        memcpy(buffer[i].data, msg, size_to_alloc);
-        buffer[i].size = size_to_alloc;
+        os_malloc(alloc_size, buffer[i].data);
+        memcpy(buffer[i].data, msg, alloc_size);
+        buffer[i].size = payload_size;
 
         forward(i, agt->buflength + 1);
         w_cond_signal(&cond_no_empty);
@@ -166,17 +156,27 @@ int buffer_append(const char *msg, ssize_t msg_len) {
     }
 }
 
+STATIC void send_buffer_status_event(const char *action, int severity) {
+    char msg[OS_MAXSTR];
+    cJSON *event = cJSON_CreateObject();
+    cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
+    cJSON_AddStringToObject(event, "event.category", "change");
+    cJSON_AddStringToObject(event, "event.dataset", "wazuh-agent.buffer");
+    cJSON_AddNumberToObject(event, "event.severity", severity);
+    cJSON_AddStringToObject(event, "event.action", action);
+    char *json_str = cJSON_PrintUnformatted(event);
+    cJSON_Delete(event);
+    snprintf(msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);
+    os_free(json_str);
+    send_msg(msg, -1);
+}
+
 /* Send messages from buffer to the server */
 #ifdef WIN32
 DWORD WINAPI dispatch_buffer(__attribute__((unused)) LPVOID arg) {
 #else
 void *dispatch_buffer(__attribute__((unused)) void * arg) {
 #endif
-    char flood_msg[OS_MAXSTR];
-    char full_msg[OS_MAXSTR];
-    char warn_msg[OS_MAXSTR];
-    char normal_msg[OS_MAXSTR];
-    char warn_str[OS_SIZE_2048];
     struct timespec ts0;
     struct timespec ts1;
 
@@ -190,7 +190,7 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
         }
 
         if (!agt->buffer) {
-            minfo("Dispatch buffer thread received stop signal. Exiting.");
+            mdebug1("Dispatch buffer thread received stop signal. Exiting.");
             w_mutex_unlock(&mutex_lock);
             break;
         }
@@ -230,41 +230,36 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
         }
 
         buffered_message msg_to_dispatch = buffer[j];
-        unsigned int original_j_for_nulling = j;
+        /* Clear the slot while still holding the lock, before advancing the
+         * consumer index. This prevents the producer from wrapping around and
+         * reusing this slot while it still holds a stale pointer. */
+        buffer[j].data = NULL;
+        buffer[j].size = 0;
         forward(j, agt->buflength + 1);
         w_mutex_unlock(&mutex_lock);
 
         if (buff.warn) {
-
             buff.warn = 0;
             mwarn(WARN_BUFFER, warn_level);
-            snprintf(warn_str, OS_SIZE_2048, OS_WARN_BUFFER, warn_level);
-            snprintf(warn_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", warn_str);
-            send_msg(warn_msg, -1);
+            send_buffer_status_event("warning", 1);
         }
 
         if (buff.full) {
-
             buff.full = 0;
             mwarn(FULL_BUFFER);
-            snprintf(full_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FULL_BUFFER);
-            send_msg(full_msg, -1);
+            send_buffer_status_event("full", 2);
         }
 
         if (buff.flood) {
-
             buff.flood = 0;
             mwarn(FLOODED_BUFFER);
-            snprintf(flood_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_FLOOD_BUFFER);
-            send_msg(flood_msg, -1);
+            send_buffer_status_event("flooded", 3);
         }
 
         if (buff.normal) {
-
             buff.normal = 0;
-            minfo(NORMAL_BUFFER, normal_level);
-            snprintf(normal_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", OS_NORMAL_BUFFER);
-            send_msg(normal_msg, -1);
+            mdebug1(NORMAL_BUFFER, normal_level);
+            send_buffer_status_event("normal", 0);
         }
 
         os_wait();
@@ -272,8 +267,6 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
         if (msg_to_dispatch.data != NULL) {
             send_msg(msg_to_dispatch.data, msg_to_dispatch.size);
             os_free(msg_to_dispatch.data);
-            buffer[original_j_for_nulling].data = NULL;
-            buffer[original_j_for_nulling].size = 0;
         }
 
         gettime(&ts1);
@@ -338,7 +331,7 @@ void w_agentd_buffer_free(unsigned int current_capacity) {
     w_cond_signal(&cond_no_empty);
     w_mutex_unlock(&mutex_lock);
 
-    minfo("Client buffer freed successfully.");
+    mdebug1("Client buffer freed successfully.");
 }
 
 int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity) {
@@ -410,7 +403,7 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
             }
         }
 
-        minfo("Successfully copied %u messages to the new buffer.", retained_message_count);
+        mdebug1("Successfully copied %u messages to the new buffer.", retained_message_count);
 
         // Now free everything in the old buffer
         // Loop up to and including 'current_capacity' as the buffer was sized for 'current_capacity + 1' elements.
@@ -432,7 +425,7 @@ int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_c
     os_free(buffer);
     buffer = temp_buffer;
     w_mutex_unlock(&mutex_lock);
-    minfo("Client buffer resized from %u to %u elements.",
-          current_capacity, desired_capacity);
+    mdebug1("Client buffer resized from %u to %u elements.",
+            current_capacity, desired_capacity);
     return 0;
 }

@@ -4,9 +4,11 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include <base/logging.hpp>
 #include <base/utils/hash.hpp>
+#include <geo/errorCodes.hpp>
 #include <store/mockStore.hpp>
 
 #include "manager.hpp"
@@ -127,7 +129,7 @@ protected:
     auto getEmptyManager()
     {
         EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
-            .WillOnce(testing::Return(storeReadError<store::Doc>()));
+            .WillRepeatedly(testing::Return(storeReadError<store::Doc>()));
 
         return Manager(mockStore, mockDownloader);
     }
@@ -139,7 +141,7 @@ protected:
         docJson.setString(path, typePrefix + "/path");
         docJson.setString("hash", typePrefix + "/hash");
         docJson.setInt64(1769111225, typePrefix + "/generated_at");
-        
+
         EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
             .WillOnce(testing::Return(storeReadDocResp(docJson)));
 
@@ -169,8 +171,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
     doc.setString("hash2", "/city/hash");
     doc.setInt64(1769111225, "/city/generated_at");
 
-    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadDocResp(doc)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME))).WillOnce(testing::Return(storeReadDocResp(doc)));
 
     std::shared_ptr<Manager> manager;
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
@@ -194,8 +195,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbs)
 TEST_F(GeoManagerTest, InitializeAddingDbsStoreError)
 {
     // Failure reading document
-    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadError<store::Doc>()));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME))).WillOnce(testing::Return(storeReadError<store::Doc>()));
 
     std::shared_ptr<Manager> manager;
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
@@ -216,8 +216,7 @@ TEST_F(GeoManagerTest, InitializeAddingDbsAddError)
     doc.setString("hash2", "/city/hash");
     doc.setInt64(1769111225, "/city/generated_at");
 
-    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
-        .WillOnce(testing::Return(storeReadDocResp(doc)));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME))).WillOnce(testing::Return(storeReadDocResp(doc)));
 
     std::shared_ptr<Manager> manager;
     ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
@@ -236,10 +235,10 @@ TEST_F(GeoManagerTest, GetLocator)
     auto dbType = Type::ASN;
     auto manager = getManagerWithDb(dbPath, dbType);
 
-    base::RespOrError<std::shared_ptr<ILocator>> locatorResp;
+    Result<std::shared_ptr<ILocator>> locatorResp;
     ASSERT_NO_THROW(locatorResp = manager.getLocator(dbType));
-    ASSERT_FALSE(base::isError(locatorResp));
-    auto locator = base::getResponse(locatorResp);
+    ASSERT_FALSE(locatorResp.isError());
+    auto locator = locatorResp.value();
     ASSERT_NE(locator, nullptr);
 }
 
@@ -247,9 +246,9 @@ TEST_F(GeoManagerTest, GetLocatorNonExists)
 {
     auto manager = getEmptyManager();
 
-    base::RespOrError<std::shared_ptr<ILocator>> locatorResp;
+    Result<std::shared_ptr<ILocator>> locatorResp;
     ASSERT_NO_THROW(locatorResp = manager.getLocator(Type::ASN));
-    ASSERT_TRUE(base::isError(locatorResp));
+    ASSERT_TRUE(locatorResp.isError());
 }
 
 TEST_F(GeoManagerTest, RemoteUpsert)
@@ -368,4 +367,257 @@ TEST_F(GeoManagerTest, RemoteUpsertAlreadyUpdated)
     // Databases should remain unchanged
     auto dbs = manager.listDbs();
     ASSERT_EQ(dbs.size(), 2);
+}
+
+TEST_F(GeoManagerTest, RequestShutdown)
+{
+    auto manager = getEmptyManager();
+    ASSERT_NO_THROW(manager.requestShutdown());
+}
+
+TEST_F(GeoManagerTest, RemoteUpsertShutdownBeforeStart)
+{
+    auto manager = getEmptyManager();
+    manager.requestShutdown();
+
+    // Should return immediately without downloading
+    ASSERT_NO_THROW(manager.remoteUpsert("https://example.com/manifest.json", "/tmp/city.mmdb", "/tmp/asn.mmdb"));
+}
+
+TEST_F(GeoManagerTest, RemoteUpsertShutdownBetweenDatabases)
+{
+    auto cityFile = getTmpDb();
+    auto asnFile = getTmpDb();
+    auto cityPath = std::filesystem::path(cityFile).string();
+    auto asnPath = std::filesystem::path(asnFile).string();
+
+    auto cityContent = getContentDb(cityFile);
+    auto cityHash = base::utils::hash::md5(cityContent);
+
+    auto manager = getEmptyManager();
+
+    json::Json manifest;
+    manifest.setInt64(1769111225, "/generated_at");
+    manifest.setString("https://example.com/city.tar.gz", "/city/url");
+    manifest.setString(cityHash, "/city/md5");
+    manifest.setString("https://example.com/asn.tar.gz", "/asn/url");
+    manifest.setString("asnhash", "/asn/md5");
+
+    EXPECT_CALL(*mockDownloader, downloadManifest(testing::_))
+        .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
+    EXPECT_CALL(*mockDownloader, downloadHTTPS("https://example.com/city.tar.gz"))
+        .WillOnce(testing::Return(base::RespOrError<std::string>(cityContent)));
+    EXPECT_CALL(*mockDownloader, extractMmdbFromGz(cityContent, cityPath + ".tmp"))
+        .WillOnce(testing::Invoke(
+            [cityContent, cityPath, &manager](const std::string&, const std::string&) -> base::OptError
+            {
+                std::ofstream ofs(cityPath + ".tmp", std::ios::binary);
+                ofs.write(cityContent.c_str(), cityContent.size());
+                ofs.close();
+                // Trigger shutdown after city is processed, before ASN
+                manager.requestShutdown();
+                return base::noError();
+            }));
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
+        .WillRepeatedly(testing::Return(storeReadError<store::Doc>()));
+    EXPECT_CALL(*mockStore, upsertDoc(base::Name(INTERNAL_NAME), testing::_))
+        .WillRepeatedly(testing::Return(storeOk()));
+
+    ASSERT_NO_THROW(manager.remoteUpsert("https://example.com/manifest.json", cityPath, asnPath));
+
+    // Only city should have been processed (ASN skipped due to shutdown)
+    auto dbs = manager.listDbs();
+    ASSERT_EQ(dbs.size(), 1);
+}
+
+TEST_F(GeoManagerTest, RemoteUpsertDownloadFails)
+{
+    auto manager = getEmptyManager();
+    auto cityPath = "/tmp/test_city_dl_fail.mmdb";
+    auto asnPath = "/tmp/test_asn_dl_fail.mmdb";
+
+    json::Json manifest;
+    manifest.setInt64(1769111225, "/generated_at");
+    manifest.setString("https://example.com/city.tar.gz", "/city/url");
+    manifest.setString("expectedmd5", "/city/md5");
+    manifest.setString("https://example.com/asn.tar.gz", "/asn/url");
+    manifest.setString("expectedmd5asn", "/asn/md5");
+
+    EXPECT_CALL(*mockDownloader, downloadManifest(testing::_))
+        .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
+    // All download attempts fail
+    EXPECT_CALL(*mockDownloader, downloadHTTPS(testing::_))
+        .WillRepeatedly(testing::Return(base::Error {"connection refused"}));
+
+    ASSERT_NO_THROW(manager.remoteUpsert("https://example.com/manifest.json", cityPath, asnPath));
+
+    ASSERT_EQ(manager.listDbs().size(), 0);
+}
+
+TEST_F(GeoManagerTest, RemoteUpsertMd5Mismatch)
+{
+    auto cityFile = getTmpDb();
+    auto cityPath = std::filesystem::path(cityFile).string();
+    auto cityContent = getContentDb(cityFile);
+
+    auto manager = getEmptyManager();
+
+    json::Json manifest;
+    manifest.setInt64(1769111225, "/generated_at");
+    manifest.setString("https://example.com/city.tar.gz", "/city/url");
+    manifest.setString("wrong_md5_hash_value_here_12345", "/city/md5");
+    // No ASN entry
+    manifest.setString("", "/asn/url");
+    manifest.setString("", "/asn/md5");
+
+    EXPECT_CALL(*mockDownloader, downloadManifest(testing::_))
+        .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
+    // Download succeeds but MD5 will not match (all 3 retries)
+    EXPECT_CALL(*mockDownloader, downloadHTTPS("https://example.com/city.tar.gz"))
+        .WillRepeatedly(testing::Return(base::RespOrError<std::string>(cityContent)));
+
+    ASSERT_NO_THROW(manager.remoteUpsert("https://example.com/manifest.json", cityPath, "/tmp/asn.mmdb"));
+
+    // City should NOT be loaded because MD5 did not match
+    ASSERT_EQ(manager.listDbs().size(), 0);
+}
+
+TEST_F(GeoManagerTest, RemoteUpsertExtractFails)
+{
+    auto cityFile = getTmpDb();
+    auto cityPath = std::filesystem::path(cityFile).string();
+    auto cityContent = getContentDb(cityFile);
+    auto cityHash = base::utils::hash::md5(cityContent);
+
+    auto manager = getEmptyManager();
+
+    json::Json manifest;
+    manifest.setInt64(1769111225, "/generated_at");
+    manifest.setString("https://example.com/city.tar.gz", "/city/url");
+    manifest.setString(cityHash, "/city/md5");
+    manifest.setString("", "/asn/url");
+    manifest.setString("", "/asn/md5");
+
+    EXPECT_CALL(*mockDownloader, downloadManifest(testing::_))
+        .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
+    EXPECT_CALL(*mockDownloader, downloadHTTPS("https://example.com/city.tar.gz"))
+        .WillOnce(testing::Return(base::RespOrError<std::string>(cityContent)));
+    EXPECT_CALL(*mockDownloader, extractMmdbFromGz(testing::_, testing::_))
+        .WillOnce(testing::Return(base::Error {"extraction failed"}));
+
+    ASSERT_NO_THROW(manager.remoteUpsert("https://example.com/manifest.json", cityPath, "/tmp/asn.mmdb"));
+
+    ASSERT_EQ(manager.listDbs().size(), 0);
+}
+
+TEST_F(GeoManagerTest, RemoteUpsertEmptyUrlOrMd5)
+{
+    auto manager = getEmptyManager();
+
+    json::Json manifest;
+    manifest.setInt64(1769111225, "/generated_at");
+    // Empty URLs and MD5 -> should skip both
+    manifest.setString("", "/city/url");
+    manifest.setString("", "/city/md5");
+    manifest.setString("", "/asn/url");
+    manifest.setString("", "/asn/md5");
+
+    EXPECT_CALL(*mockDownloader, downloadManifest(testing::_))
+        .WillOnce(testing::Return(base::RespOrError<json::Json>(manifest)));
+
+    ASSERT_NO_THROW(manager.remoteUpsert("https://example.com/manifest.json", "/tmp/city.mmdb", "/tmp/asn.mmdb"));
+
+    ASSERT_EQ(manager.listDbs().size(), 0);
+}
+
+TEST_F(GeoManagerTest, InitializeIncompleteStoreDoc)
+{
+    // Document with incomplete info (missing generated_at)
+    json::Json doc;
+    doc.setString("/tmp/test.mmdb", "/city/path");
+    doc.setString("hash", "/city/hash");
+    // No generated_at field
+
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME))).WillOnce(testing::Return(storeReadDocResp(doc)));
+
+    std::shared_ptr<Manager> manager;
+    ASSERT_NO_THROW(manager = std::make_shared<Manager>(mockStore, mockDownloader));
+    ASSERT_NE(manager, nullptr);
+    ASSERT_EQ(manager->listDbs().size(), 0);
+}
+
+/**************************************************************************
+ * ErrorCode getErrorDescription coverage
+ *************************************************************************/
+
+TEST(ErrorCodeTest, GetErrorDescriptionAllCodes)
+{
+    // Exercise every ErrorCode to cover all switch branches
+    EXPECT_EQ(getErrorDescription(ErrorCode::SUCCESS), "Success");
+    EXPECT_EQ(getErrorDescription(ErrorCode::DB_NOT_AVAILABLE), "Database is not available");
+    EXPECT_EQ(getErrorDescription(ErrorCode::DB_HANDLE_EXPIRED), "Database handle expired");
+    EXPECT_EQ(getErrorDescription(ErrorCode::DB_TYPE_NOT_AVAILABLE), "Type doesn't have a database available");
+    EXPECT_EQ(getErrorDescription(ErrorCode::IP_TRANSLATION), "Error translating IP address");
+    EXPECT_EQ(getErrorDescription(ErrorCode::IP_NOT_FOUND), "No data found for the IP address");
+    EXPECT_EQ(getErrorDescription(ErrorCode::DATA_TYPE_MISMATCH), "Data type mismatch");
+    EXPECT_EQ(getErrorDescription(ErrorCode::DATA_TYPE_MISMATCH_SIMPLE), "Data type is not a simple type");
+    EXPECT_EQ(getErrorDescription(ErrorCode::DATA_TYPE_MISMATCH_STRING), "Data type is not a string");
+    EXPECT_EQ(getErrorDescription(ErrorCode::DATA_TYPE_MISMATCH_UINT32), "Data type is not a uint32");
+    EXPECT_EQ(getErrorDescription(ErrorCode::DATA_TYPE_MISMATCH_DOUBLE), "Data type is not a double");
+    EXPECT_EQ(getErrorDescription(ErrorCode::DATA_ENTRY_EMPTY), "Entry data list is empty");
+    EXPECT_EQ(getErrorDescription(ErrorCode::MMDB_VALUE_ERROR), "Error getting value from MMDB");
+    EXPECT_EQ(getErrorDescription(ErrorCode::MMDB_LIBMMDB_ERROR), "Error from libmaxminddb");
+    EXPECT_EQ(getErrorDescription(ErrorCode::MMDB_RETRIEVAL_ENTRY_LIST), "Error getting entry data list");
+    EXPECT_EQ(getErrorDescription(ErrorCode::MMDB_DUMP_ENTRY), "Error dumping entry data");
+    EXPECT_EQ(getErrorDescription(ErrorCode::UNKNOWN_ERROR), "Unknown error");
+}
+
+TEST(ErrorCodeTest, GetErrorDescriptionInvalidCode)
+{
+    // Force the default return path with an invalid code value
+    auto invalidCode = static_cast<ErrorCode>(255);
+    EXPECT_EQ(getErrorDescription(invalidCode), "Unknown error code");
+}
+
+TEST(ErrorCodeTest, StreamOperator)
+{
+    std::ostringstream oss;
+    oss << ErrorCode::IP_NOT_FOUND;
+    EXPECT_EQ(oss.str(), "No data found for the IP address");
+
+    oss.str("");
+    oss << ErrorCode::SUCCESS;
+    EXPECT_EQ(oss.str(), "Success");
+}
+
+/**************************************************************************
+ * Result class coverage
+ *************************************************************************/
+
+TEST(ResultTest, DefaultConstructor)
+{
+    Result<int> res;
+    EXPECT_TRUE(res.isError());
+    EXPECT_EQ(res.error(), ErrorCode::UNKNOWN_ERROR);
+}
+
+TEST(ResultTest, ValueConstructor)
+{
+    Result<std::string> res(std::string("hello"));
+    EXPECT_FALSE(res.isError());
+    EXPECT_EQ(res.value(), "hello");
+}
+
+TEST(ResultTest, ErrorConstructor)
+{
+    Result<int> res(ErrorCode::DB_NOT_AVAILABLE);
+    EXPECT_TRUE(res.isError());
+    EXPECT_EQ(res.error(), ErrorCode::DB_NOT_AVAILABLE);
+    EXPECT_EQ(res.readableStr(), "Database is not available");
+}
+
+TEST(ResultTest, ReadableStrSuccess)
+{
+    Result<int> res(42);
+    EXPECT_EQ(res.readableStr(), "success");
 }

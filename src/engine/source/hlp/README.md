@@ -63,11 +63,14 @@ This separation allows syntax to be fast and reusable, while semantic validation
 ```cpp
 namespace hlp::parser {
     using Mapper    = std::function<void(json::Json&)>;
-    using SemParser = std::function<std::variant<Mapper, base::Error>(std::string_view)>;
+    using SemParser = std::function<std::variant<Mapper, base::Error>(std::string_view, bool)>;
     struct SemToken { std::string_view parsed; SemParser semParser; };
     using Parser    = abs::Parser<SemToken>;  // function<Result<SemToken>(string_view)>
 }
 ```
+
+The semantic parser receives the matched text plus an `enableTrace` flag. When `enableTrace` is `false`, parsers may
+skip building detailed error strings and return an empty `base::Error` instead.
 
 ### Params — Builder Input
 
@@ -216,15 +219,20 @@ All builders follow the signature `Parser fn(const Params&)`. Each validates its
 
 ```cpp
 // Run syntax → semantic → mapping pipeline
-std::optional<base::Error> parser::run(const Parser& parser, std::string_view text, json::Json& event);
+std::optional<base::Error>
+parser::run(const Parser& parser, std::string_view text, json::Json& event, bool enableTrace = true);
 ```
+
+`parser::run` returns an empty optional on success. On failure it returns a `base::Error`; when `enableTrace` is
+`false`, the error is still present but its `message` may be empty.
 
 ### HLP-Level Combinators (parser.hpp)
 
 ```cpp
 namespace hlp::parser::combinator {
-    Parser choice(const Parser& lhs, const Parser& rhs);  // try left, then right
-    Parser sequence(...);  // run parsers in order, nest results
+    Parser choice(const Parser& lhs, const Parser& rhs);      // try left, then right
+    Parser opt(const Parser& parser);                         // parser becomes optional
+    Parser all(const std::vector<Parser>& parsers);           // run parsers in order, nest results
 }
 ```
 

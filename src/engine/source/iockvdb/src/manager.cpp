@@ -76,16 +76,32 @@ public:
      */
     static DBState fromJson(const json::Json& j)
     {
-        auto optName = j.getString(JPATH_NAME);
-        if (!optName.has_value() || optName->empty())
+        std::string name;
+        auto ret = j.getString(name, JPATH_NAME);
+
+        switch (ret)
         {
-            throw std::runtime_error("DBState::fromJson: Missing/empty name field");
+            case json::RetGet::NotFound: throw std::runtime_error("DBState::fromJson: Missing name field");
+            case json::RetGet::WrongType: throw std::runtime_error("DBState::fromJson: name field is not a string");
+            case json::RetGet::Success:
+                if (name.empty())
+                    throw std::runtime_error("DBState::fromJson: name field cannot be empty");
+                break; // Continue processing
+            default: throw std::runtime_error("DBState::fromJson: Unknown error retrieving name field");
         }
 
-        auto optPath = j.getString(JPATH_INSTANCE_PATH);
-        if (!optPath.has_value())
+        std::string path;
+        ret = j.getString(path, JPATH_INSTANCE_PATH);
+
+        switch (ret)
         {
-            throw std::runtime_error("DBState::fromJson: Missing instance_path field");
+            case json::RetGet::NotFound: throw std::runtime_error("DBState::fromJson: Missing instance_path field");
+            case json::RetGet::WrongType: throw std::runtime_error("DBState::fromJson: instance_path field is not a string");
+            case json::RetGet::Success:
+                if (path.empty())
+                    throw std::runtime_error("DBState::fromJson: instance_path field cannot be empty");
+                break; // Continue processing
+            default: throw std::runtime_error("DBState::fromJson: Unknown error retrieving instance_path field");
         }
 
         auto optCreated = j.getInt64(JPATH_CREATED);
@@ -94,7 +110,7 @@ public:
             throw std::runtime_error("DBState::fromJson: Missing created field");
         }
 
-        return {*optName, *optPath, *optCreated};
+        return {name, path, *optCreated};
     }
 };
 
@@ -140,41 +156,6 @@ std::filesystem::path KVDBManager::makeNextInstancePath(std::string_view name)
     char buf[5];
     std::snprintf(buf, sizeof(buf), "%04x", hash);
     return m_root / std::string(name) / buf;
-}
-
-std::shared_ptr<DbHandle> KVDBManager::getOrCreateHandle(std::string_view dbName, bool createIfMissing)
-{
-    const std::string key(dbName);
-    std::shared_ptr<DbHandle> handle;
-
-    // Try read-only access first (concurrent with other readers)
-    {
-        std::shared_lock<std::shared_mutex> lk(m_registryMutex);
-        auto it = m_handles.find(key);
-        if (it != m_handles.end())
-        {
-            return it->second;
-        }
-    }
-
-    // Not found - need exclusive lock to create
-    if (createIfMissing)
-    {
-        std::unique_lock<std::shared_mutex> lk(m_registryMutex);
-        // Double-check: another thread might have created it
-        auto it = m_handles.find(key);
-        if (it != m_handles.end())
-        {
-            return it->second;
-        }
-
-        // Create new handle
-        handle = std::make_shared<DbHandle>(std::string(dbName));
-        m_handles.emplace(key, handle);
-        return handle;
-    }
-
-    return nullptr;
 }
 
 void KVDBManager::add(std::string_view name)

@@ -6,7 +6,7 @@ stages:
   - name: Get cluster config
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/local/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -36,7 +36,7 @@ stages:
   - name: Get cluster healtcheck
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/healthcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -69,7 +69,7 @@ stages:
   - name: Get cluster healtcheck
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/healthcheck"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/healthcheck"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -111,7 +111,7 @@ stages:
   - name: Get cluster node
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/local/info"
+      url: "{protocol:s}://{host:s}:{master_port:d}/cluster/local/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -136,7 +136,7 @@ stages:
   - name: Get cluster nodes
     request: &get_cluster_nodes
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -408,7 +408,7 @@ stages:
   - name: Get cluster {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -445,7 +445,7 @@ stages:
   - name: Get cluster nodes with select
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/nodes"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/nodes"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -468,7 +468,7 @@ stages:
   - name: Get cluster status
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -487,7 +487,7 @@ stages:
   - name: Request (master-node)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -511,7 +511,7 @@ stages:
   - name: Request (worker)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -540,7 +540,7 @@ stages:
   - name: Request cluster validation
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/configuration/validation"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/configuration/validation"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -572,7 +572,7 @@ stages:
   - name: Get API configuration for all nodes
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -611,16 +611,6 @@ stages:
                 drop_privileges: !anybool
                 authentication_pool_size: !anyint
                 upload_configuration:
-                  remote_commands:
-                    localfile:
-                      allow: !anybool
-                      exceptions: !anything
-                    wodle_command:
-                      allow: !anybool
-                      exceptions: !anything
-                  limits:
-                    eps:
-                      allow: !anybool
                   agents:
                     allow_higher_versions:
                       allow: !anybool
@@ -640,7 +630,7 @@ stages:
   - name: Get API configuration for worker1 and worker2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/api/config"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/api/config"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -670,7 +660,7 @@ stages:
   - name: Show the config of authd/authd on master
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/auth/auth"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration/auth/auth"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -696,10 +686,9 @@ stages:
           total_failed_items: 0
 
   - name: Show the config of monitor/internal on master
-    skip: True # https://github.com/wazuh/wazuh/issues/33608
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/monitor/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration/monitor/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -725,7 +714,7 @@ stages:
   - name: Show the config of request/remote on worker2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker2/configuration/request/remote"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker2/configuration/request/remote"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -747,7 +736,7 @@ stages:
   - name: Show the config of request/internal on master
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/request/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration/request/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -786,7 +775,7 @@ stages:
   - name: Show the config of wazuh-manager-db/internal on master
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-manager-db/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration/wazuh-manager-db/internal"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -808,7 +797,7 @@ stages:
   - name: Show the config of wazuh-manager-db/wdb on master
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wazuh-manager-db/wdb"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration/wazuh-manager-db/wdb"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -831,7 +820,7 @@ stages:
   - name: Show the config of wmodules/wmodules on master
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wmodules/wmodules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration/wmodules/wmodules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -849,7 +838,7 @@ stages:
   - name: Try to show the invalid component in the master node
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/agent/wmodules"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration/agent/wmodules"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -861,7 +850,7 @@ stages:
   - name: Try to show the invalid config of component in the master node
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/master-node/configuration/wmodules/internal"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/master-node/configuration/wmodules/internal"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -886,7 +875,7 @@ stages:
   - name: Read info {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/info"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/{node_id}/info"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -922,7 +911,7 @@ stages:
   - name: Read logs {node_id}
     request: &get_cluster_logs
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/logs"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/{node_id}/logs"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1065,13 +1054,13 @@ stages:
           total_affected_items: !anyint
           total_failed_items: 0
 
-  - name: Read logs with filters -> tag=wazuh-manager-remoted, limit=2 {node_id}
+  - name: Read logs with filters -> tag=wazuh-manager-remoted, limit=1 {node_id}
     request:
       verify: False
       <<: *get_cluster_logs
       params:
         tag: wazuh-manager-remoted
-        limit: 2
+        limit: 1
     response:
       status_code: 200
       json:
@@ -1080,11 +1069,14 @@ stages:
           affected_items:
             - <<: *cluster_log
               tag: wazuh-manager-remoted
-            - <<: *cluster_log
-              tag: wazuh-manager-remoted
           failed_items: []
           total_affected_items: !anyint
           total_failed_items: 0
+      verify_response_with:
+        - function: tavern_utils:test_expected_value
+          extra_kwargs:
+            key: "tag"
+            expected_values: "wazuh-manager-remoted"
 
   - name: Read logs with filters -> tag=wazuh-unknown-daemon {node_id}
     request:
@@ -1196,7 +1188,7 @@ stages:
   - name: Read logs summary {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/logs/summary"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/{node_id}/logs/summary"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1228,7 +1220,7 @@ stages:
   - name: Get all daemons' statistics from {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/{node_id}/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1249,7 +1241,7 @@ stages:
   - name: Get statistics from a single daemon from {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/{node_id}/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1270,7 +1262,7 @@ stages:
   - name: Get statistics from a list of daemons from {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/{node_id}/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1292,7 +1284,7 @@ stages:
   - name: Try to get statistics from a wrong daemon from {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/daemons/stats"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/{node_id}/daemons/stats"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1317,7 +1309,7 @@ stages:
   - name: Read status {node_id}
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/{node_id}/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/{node_id}/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1334,15 +1326,12 @@ stages:
 ---
 test_name: PUT /cluster/restart
 
-marks:
-  - skip: execd socket no longer exists in manager after agent-manager separation
-
 stages:
 
   - name: Restart cluster (worker1, worker2)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1364,7 +1353,7 @@ stages:
   - name: Restart cluster all nodes
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/restart"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/restart"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -1385,16 +1374,13 @@ stages:
 ---
 test_name: PUT /cluster/{node_id}/configuration
 
-marks:
-  - xfail # https://github.com/wazuh/wazuh/issues/34676q
-
 stages:
 
   # PUT /cluster/{node_id}/configuration
   - name: Upload a valid configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration"
       method: PUT
       data: "{valid_wazuh_conf:s}"
       headers:
@@ -1415,7 +1401,7 @@ stages:
   - name: Ensure the new config has been applied by checking a field
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration"
       headers:
         Authorization: "Bearer {test_login_token}"
       method: GET
@@ -1439,7 +1425,7 @@ stages:
   - name: Try to upload an invalid configuration
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/cluster/worker1/configuration"
       method: PUT
       data: "{invalid_wazuh_conf:s}"
       headers:
@@ -1459,50 +1445,3 @@ stages:
           total_affected_items: 0
           total_failed_items: 1
 
-  # PUT /cluster/{node_id}/configuration
-  - name: Try to upload an invalid xml
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
-      method: PUT
-      data: "{invalid_wazuh_xml:s}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: [ ]
-          failed_items:
-            - error:
-                code: 1908
-              id:
-                - 'worker1'
-          total_affected_items: 0
-          total_failed_items: 1
-
-  # PUT /cluster/{node_id}/configuration
-  - name: Try to upload an empty configuration
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/cluster/worker1/configuration"
-      method: PUT
-      data: "{invalid_wazuh_conf:s}"
-      headers:
-        Authorization: "Bearer {test_login_token}"
-        content-type: application/octet-stream
-    response:
-      status_code: 200
-      json:
-        error: 1
-        data:
-          affected_items: []
-          failed_items:
-            - error:
-                code: 1113
-              id:
-                - 'worker1'
-          total_affected_items: 0
-          total_failed_items: 1

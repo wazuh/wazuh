@@ -1,0 +1,58 @@
+name: Detect changed integration test modules
+description: |
+  Inspect the diff between two commits and build a GitHub Actions matrix of
+  integration test modules whose declared `paths` match any changed file.
+  Glob patterns honour `**` recursive matching independently of the host
+  Python version, fixing a long-standing portability gap with
+  `pathlib.PurePath.match` on Python < 3.13.
+
+inputs:
+  modules-config:
+    description: Path to the JSON file describing the test modules.
+    required: true
+  base-sha:
+    description: |
+      Base commit SHA to diff against. Defaults to the PR base SHA. When
+      empty (e.g. outside a pull_request context) the action emits
+      `none-matrix` without running git.
+    required: false
+    default: ${{ github.event.pull_request.base.sha }}
+  head-sha:
+    description: Head commit SHA to diff. Defaults to the PR head SHA.
+    required: false
+    default: ${{ github.event.pull_request.head.sha }}
+  none-matrix:
+    description: |
+      JSON value emitted as the matrix when no module matches. The keys of
+      its entries must match those produced for matched modules so that the
+      consuming workflow's `with:` block can reference them uniformly.
+    required: true
+  field-defaults:
+    description: |
+      Optional JSON object with default values applied to every matched
+      entry for fields the module did not declare. Use this to keep the
+      shape of matrix entries uniform across modules.
+    required: false
+    default: '{}'
+
+outputs:
+  matrix:
+    description: GitHub Actions matrix include with the matched modules.
+    value: ${{ steps.detect.outputs.matrix }}
+  any_matched:
+    description: '"true" if at least one module matched, "false" otherwise.'
+    value: ${{ steps.detect.outputs.any_matched }}
+
+runs:
+  using: composite
+  steps:
+    - name: Build matrix from changed files
+      id: detect
+      shell: bash
+      env:
+        MODULES_CONFIG: ${{ inputs.modules-config }}
+        BASE_SHA: ${{ inputs.base-sha }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        NONE_MATRIX: ${{ inputs.none-matrix }}
+        FIELD_DEFAULTS: ${{ inputs.field-defaults }}
+      run: python3 "${GITHUB_ACTION_PATH}/detect_modules.py"

@@ -660,6 +660,29 @@ void expect_get_data (char *user, char *group, char *file_path, int calculate_ch
 }
 
 /* tests */
+
+/* fim_epoch_to_iso8601 */
+static void test_fim_epoch_to_iso8601_known_date(void **state) {
+    (void)state;
+    char buffer[25];
+    // 2019-10-04T10:17:03 UTC
+    assert_true(fim_epoch_to_iso8601(1570184223, buffer, sizeof(buffer)));
+    assert_string_equal(buffer, "2019-10-04T10:17:03.000Z");
+}
+
+static void test_fim_epoch_to_iso8601_epoch_zero(void **state) {
+    (void)state;
+    char buffer[25];
+    assert_true(fim_epoch_to_iso8601(0, buffer, sizeof(buffer)));
+    assert_string_equal(buffer, "1970-01-01T00:00:00.000Z");
+}
+
+static void test_fim_epoch_to_iso8601_buffer_too_small(void **state) {
+    (void)state;
+    char buffer[5];
+    assert_false(fim_epoch_to_iso8601(1570184223, buffer, sizeof(buffer)));
+}
+
 static void test_fim_attributes_json(void **state) {
     fim_data_t *fim_data = *state;
     directory_t configuration = { .options = -1 };
@@ -695,7 +718,7 @@ static void test_fim_attributes_json(void **state) {
     assert_string_equal(inode->valuestring, "606060");
     cJSON *mtime = cJSON_GetObjectItem(fim_data->json, "mtime");
     assert_non_null(mtime);
-    assert_int_equal(mtime->valueint, 1570184223);
+    assert_string_equal(mtime->valuestring, "2019-10-04T10:17:03.000Z");
     cJSON *hash = cJSON_GetObjectItem(fim_data->json, "hash");
     assert_non_null(hash);
     cJSON *hash_md5 = cJSON_GetObjectItem(hash, "md5");
@@ -1780,6 +1803,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1807,6 +1833,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1868,6 +1897,9 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1932,6 +1964,9 @@ static void test_fim_scan_realtime_enabled(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2005,6 +2040,9 @@ static void test_fim_scan_no_limit(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2031,6 +2069,153 @@ static void test_fim_scan_no_limit(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
+}
+
+static int setup_fim_file_scan_symlink_test(void **state) {
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    syscheck.file_limit_enabled = false;
+
+    syscheck.directories = OSList_Create();
+    if (!syscheck.directories) {
+        return -1;
+    }
+    OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
+
+    directory_t *dir = fim_create_directory("/test/symdir", CHECK_SIZE, NULL, 256, NULL, 1024, 0);
+    if (!dir) {
+        return -1;
+    }
+    OSList_InsertData(syscheck.directories, NULL, dir);
+
+    *state = dir;
+    return 0;
+}
+
+static int teardown_fim_file_scan_symlink_test(void **state) {
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    OSList_Destroy(syscheck.directories);
+    syscheck.directories = NULL;
+    *state = NULL;
+    return 0;
+}
+
+static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
+    directory_t *dir = *state;
+    struct stat directory_buf = { .st_mode = S_IFDIR };
+    TXN_HANDLE mock_handle = NULL;
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_IsLink, file, "/test/symdir");
+    will_return(__wrap_IsLink, 0);
+
+    expect_string(__wrap_realpath, path, "/test/symdir");
+    will_return(__wrap_realpath, strdup("/actual/dir"));
+
+    expect_string(__wrap__minfo, formatted_msg,
+        "(6961): Configured path '/test/symdir' is a symbolic link to '/actual/dir'. "
+        "Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, "
+        "not the directory contents. Consider monitoring '/actual/dir' directly or enabling "
+        "'follow_symbolic_link'.");
+
+    expect_string(__wrap_lstat, filename, "/test/symdir");
+    will_return(__wrap_lstat, &directory_buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test/symdir");
+    will_return(__wrap_HasFilesystem, 1);
+
+    expect_string(__wrap_realtime_adddir, dir, "/test/symdir");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
+    fim_file_scan();
+
+    assert_true(dir->symlink_warned);
+}
+
+static void test_fim_file_scan_no_warn_second_scan(void **state) {
+    directory_t *dir = *state;
+    dir->symlink_warned = true;
+    struct stat directory_buf = { .st_mode = S_IFDIR };
+    TXN_HANDLE mock_handle = NULL;
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_lstat, filename, "/test/symdir");
+    will_return(__wrap_lstat, &directory_buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test/symdir");
+    will_return(__wrap_HasFilesystem, 1);
+
+    expect_string(__wrap_realtime_adddir, dir, "/test/symdir");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
+    fim_file_scan();
+
+    assert_true(dir->symlink_warned);
+}
+
+static void test_fim_file_scan_no_warn_not_symlink(void **state) {
+    struct stat directory_buf = { .st_mode = S_IFDIR };
+    TXN_HANDLE mock_handle = NULL;
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_IsLink, file, "/test/symdir");
+    will_return(__wrap_IsLink, -1);
+
+    expect_string(__wrap_lstat, filename, "/test/symdir");
+    will_return(__wrap_lstat, &directory_buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test/symdir");
+    will_return(__wrap_HasFilesystem, 1);
+
+    expect_string(__wrap_realtime_adddir, dir, "/test/symdir");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
+    fim_file_scan();
 }
 
 #else
@@ -3800,7 +3985,7 @@ void test_fim_calculate_dbsync_difference(void **state){
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "gid")->valuestring, "1000");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "owner")->valuestring, "root");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "group")->valuestring, "root");
-    assert_int_equal(cJSON_GetObjectItem(old_attributes, "mtime")->valueint, 123456789);
+    assert_string_equal(cJSON_GetObjectItem(old_attributes, "mtime")->valuestring, "1973-11-29T21:33:09.000Z");
     assert_string_equal(cJSON_GetObjectItem(old_attributes, "inode")->valuestring, "1");
     cJSON* hash = cJSON_GetObjectItem(old_attributes, "hash");
     assert_non_null(hash);
@@ -3903,7 +4088,7 @@ static void test_dbsync_attributes_json(void **state) {
     directory_t configuration = { .options = -1, .tag = "tag_name" };
     json_struct_t *data = *state;
 #ifndef TEST_WINAGENT
-    const char *result_str = "{\"size\":11,\"permissions\":[\"rw-r--r--\"],\"uid\":\"0\",\"owner\":\"root\",\"gid\":\"0\",\"group\":\"root\",\"inode\":\"271017\",\"device\":\"64768\",\"mtime\":1646124392,\"hash\":{\"md5\":\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"}}";
+    const char *result_str = "{\"size\":11,\"permissions\":[\"rw-r--r--\"],\"uid\":\"0\",\"owner\":\"root\",\"gid\":\"0\",\"group\":\"root\",\"inode\":\"271017\",\"device\":\"64768\",\"mtime\":\"2022-03-01T08:46:32.000Z\",\"hash\":{\"md5\":\"d73b04b0e696b0945283defa3eee4538\",\"sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\"}}";
     cJSON *dbsync_event = cJSON_Parse("{\"attributes\":\"\",\"checksum\":\"c0edc82c463da5f4ab8dd420a778a9688a923a72\",\"device\":64768,\"gid\":\"0\",\"group_\":\"root\",\"hash_md5\":\"d73b04b0e696b0945283defa3eee4538\",\"hash_sha1\":\"e7509a8c032f3bc2a8df1df476f8ef03436185fa\",\"hash_sha256\":\"8cd07f3a5ff98f2a78cfc366c13fb123eb8d29c1ca37c79df190425d5b9e424d\",\"inode\":\"271017\",\"mtime\":1646124392,\"path\":\"/etc/testfile\",\"permissions\":\"rw-r--r--\",\"size\":11,\"uid\":\"0\",\"owner\":\"root\"}");
 #else
     cJSON *dbsync_event = cJSON_Parse("{\"size\":0, \"permissions\":\"{\\\"S-1-5-32-544\\\":{\\\"name\\\":\\\"Administrators\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]},\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]},\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\", \"attributes\":\"ARCHIVE\", \"uid\":\"0\", \"gid\":\"0\", \
@@ -3916,7 +4101,7 @@ static void test_dbsync_attributes_json(void **state) {
         "\"{\\\"S-1-5-18\\\":{\\\"name\\\":\\\"SYSTEM\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"write_dac\\\",\\\"write_owner\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\","
         "\"{\\\"S-1-5-32-545\\\":{\\\"name\\\":\\\"Users\\\",\\\"allowed\\\":[\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"read_ea\\\",\\\"execute\\\",\\\"read_attributes\\\"]}}\","
         "\"{\\\"S-1-5-11\\\":{\\\"name\\\":\\\"Authenticated Users\\\",\\\"allowed\\\":[\\\"delete\\\",\\\"read_control\\\",\\\"synchronize\\\",\\\"read_data\\\",\\\"write_data\\\",\\\"append_data\\\",\\\"read_ea\\\",\\\"write_ea\\\",\\\"execute\\\",\\\"read_attributes\\\",\\\"write_attributes\\\"]}}\"],"
-        "\"uid\":\"0\",\"owner\":\"Administrators\",\"gid\":\"0\",\"inode\":\"0\",\"mtime\":1646145212,"
+        "\"uid\":\"0\",\"owner\":\"Administrators\",\"gid\":\"0\",\"inode\":\"0\",\"mtime\":\"2022-03-01T14:33:32.000Z\","
         "\"hash\":{\"md5\":\"d41d8cd98f00b204e9800998ecf8427e\",\"sha1\":\"da39a3ee5e6b4b0d3255bfef95601890afd80709\",\"sha256\":\"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\"},"
         "\"attributes\":[\"ARCHIVE\"]}";
 
@@ -3934,11 +4119,64 @@ static void test_dbsync_attributes_json(void **state) {
     free(json_attributes_str);
 }
 
+/* Validates fix for (6960): when dbsync delivers `inode` as a JSON number
+ * (the column is INTEGER), it must be normalized to a string instead of
+ * being dropped and logged. No __wrap__minfo expectation is set on purpose:
+ * the buggy code path calls minfo(FIM_WARN_INODE_WRONG_TYPE) -> cmocka fails. */
+static void test_fim_attributes_json_inode_number(void **state) {
+    (void) state;
+    directory_t configuration = { .options = CHECK_INODE };
+
+    // inode arrives as a NUMBER (note: no quotes), and a large >INT_MAX value
+    // to prove %llu is required (a %d/valueint conversion would truncate it).
+    cJSON *dbsync_event = cJSON_Parse("{\"inode\":4294967296}");
+
+    cJSON *attributes = fim_attributes_json(dbsync_event, NULL, &configuration);
+
+    assert_non_null(attributes);
+    cJSON *inode = cJSON_GetObjectItem(attributes, "inode");
+    assert_non_null(inode);
+    assert_true(cJSON_IsString(inode));
+    assert_string_equal(inode->valuestring, "4294967296");
+
+    cJSON_Delete(dbsync_event);
+    cJSON_Delete(attributes);
+}
+
+/* Same fix, "changed/old" path: numeric inode must become a string in
+ * old_attributes and "file.inode" must be reported as a changed field. */
+static void test_fim_calculate_dbsync_difference_inode_number(void **state) {
+    (void) state;
+    directory_t configuration = { .options = CHECK_INODE };
+
+    cJSON *changed_data_json   = cJSON_Parse("{\"inode\":4294967296}");
+    cJSON *old_attributes      = cJSON_CreateObject();
+    cJSON *changed_attributes  = cJSON_CreateArray();
+
+    fim_calculate_dbsync_difference(&configuration,
+                                    changed_data_json,
+                                    changed_attributes,
+                                    old_attributes);
+
+    cJSON *inode = cJSON_GetObjectItem(old_attributes, "inode");
+    assert_non_null(inode);
+    assert_true(cJSON_IsString(inode));
+    assert_string_equal(inode->valuestring, "4294967296");
+
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 1);
+    assert_string_equal(cJSON_GetArrayItem(changed_attributes, 0)->valuestring, "file.inode");
+
+    cJSON_Delete(changed_data_json);
+    cJSON_Delete(old_attributes);
+    cJSON_Delete(changed_attributes);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
         cmocka_unit_test_setup_teardown(test_dbsync_attributes_json, setup_json_event_attributes, teardown_json_event_attributes),
+        cmocka_unit_test(test_fim_attributes_json_inode_number),
 
         /* fim_audit_json */
         cmocka_unit_test_teardown(test_fim_audit_json, teardown_delete_json),
@@ -4078,6 +4316,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_create_unix_who_data_events, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test(test_fim_calculate_dbsync_difference_inode_number),
     };
     const struct CMUnitTest fim_regex_tests[] = {
         /* fim_check_ignore */
@@ -4096,12 +4335,33 @@ int main(void) {
         cmocka_unit_test(test_update_wildcards_config_remove_config),
         cmocka_unit_test(test_update_wildcards_config_list_null),
     };
+    const struct CMUnitTest epoch_to_iso8601_tests[] = {
+        cmocka_unit_test(test_fim_epoch_to_iso8601_known_date),
+        cmocka_unit_test(test_fim_epoch_to_iso8601_epoch_zero),
+        cmocka_unit_test(test_fim_epoch_to_iso8601_buffer_too_small),
+    };
     int retval;
 
-    retval = cmocka_run_group_tests(tests, setup_group, teardown_group);
+    retval = cmocka_run_group_tests(epoch_to_iso8601_tests, NULL, NULL);
+    retval += cmocka_run_group_tests(tests, setup_group, teardown_group);
     retval += cmocka_run_group_tests(fim_regex_tests, setup_fim_regex_group, teardown_group);
     retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
     retval += cmocka_run_group_tests(wildcards_tests, setup_wildcards, teardown_wildcards);
+
+#ifndef TEST_WINAGENT
+    const struct CMUnitTest fim_file_scan_symlink_tests[] = {
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_symlink_warns_when_no_follow,
+                                        setup_fim_file_scan_symlink_test,
+                                        teardown_fim_file_scan_symlink_test),
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_no_warn_second_scan,
+                                        setup_fim_file_scan_symlink_test,
+                                        teardown_fim_file_scan_symlink_test),
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_no_warn_not_symlink,
+                                        setup_fim_file_scan_symlink_test,
+                                        teardown_fim_file_scan_symlink_test),
+    };
+    retval += cmocka_run_group_tests(fim_file_scan_symlink_tests, NULL, NULL);
+#endif
 
     return retval;
 

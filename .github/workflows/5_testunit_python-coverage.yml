@@ -1,22 +1,31 @@
 name: 5.X - Unit tests coverage - Python
 on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/5_testunit_python-coverage.yml'
+      - 'api/**'
+      - 'framework/**'
+      - 'wodles/**'
   workflow_dispatch:
     inputs:
       base_branch:
         description: 'Base branch'
         required: true
         default: 'main'
-  pull_request:
-    paths:
-      - '.github/workflows/5_testunit_python-coverage.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:

@@ -121,7 +121,18 @@ INSTANTIATE_TEST_SUITE_P(
         TransformT({}, opBuilderHelperSanitizeFields, SUCCESS()),
         TransformT({makeValue(R"("value")")}, opBuilderHelperSanitizeFields, FAILURE()),
         TransformT({makeValue("true")}, opBuilderHelperSanitizeFields, SUCCESS()),
-        TransformT({makeRef("ref")}, opBuilderHelperSanitizeFields, FAILURE())),
+        TransformT({makeValue("false")}, opBuilderHelperSanitizeFields, SUCCESS()),
+        TransformT({makeRef("ref")}, opBuilderHelperSanitizeFields, FAILURE()),
+        /*** Non-bool value types must fail ***/
+        TransformT({makeValue(R"(1)")}, opBuilderHelperSanitizeFields, FAILURE()),
+        TransformT({makeValue(R"(1.5)")}, opBuilderHelperSanitizeFields, FAILURE()),
+        TransformT({makeValue(R"(null)")}, opBuilderHelperSanitizeFields, FAILURE()),
+        TransformT({makeValue(R"([1,2])")}, opBuilderHelperSanitizeFields, FAILURE()),
+        TransformT({makeValue(R"({"a":1})")}, opBuilderHelperSanitizeFields, FAILURE()),
+        /*** Discard Events (target field is always "targetField" -> mismatch -> FAILURE) ***/
+        TransformT({}, opBuilderHelperDiscardEvents, FAILURE()),
+        TransformT({makeValue(R"("value")")}, opBuilderHelperDiscardEvents, FAILURE()),
+        TransformT({makeRef("ref")}, opBuilderHelperDiscardEvents, FAILURE())),
     testNameFormatter<TransformBuilderTest>("JsonTransform"));
 } // namespace transformbuildtest
 

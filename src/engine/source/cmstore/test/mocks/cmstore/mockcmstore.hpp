@@ -30,7 +30,7 @@ public:
     MOCK_METHOD(dataType::KVDB, getKVDBByUUID, (const std::string& uuid), (const, override));
     MOCK_METHOD(json::Json, getAssetByName, (const base::Name& name), (const, override));
     MOCK_METHOD(json::Json, getAssetByUUID, (const std::string& uuid), (const, override));
-    MOCK_METHOD((const std::vector<json::Json>), getDefaultOutputs, (), (const, override));
+    MOCK_METHOD((const std::vector<json::Json>), getOutputsForSpace, (std::string_view spaceKey), (const, override));
 };
 
 class MockICMstoreNS : public ICMstoreNS
@@ -56,18 +56,18 @@ public:
     MOCK_METHOD(dataType::KVDB, getKVDBByUUID, (const std::string& uuid), (const, override));
     MOCK_METHOD(json::Json, getAssetByName, (const base::Name& name), (const, override));
     MOCK_METHOD(json::Json, getAssetByUUID, (const std::string& uuid), (const, override));
-    MOCK_METHOD((const std::vector<json::Json>), getDefaultOutputs, (), (const, override));
+    MOCK_METHOD((const std::vector<json::Json>), getOutputsForSpace, (std::string_view spaceKey), (const, override));
 
     // ICMstoreNS methods
     MOCK_METHOD(std::string,
                 createResource,
-                (const std::string& name, ResourceType type, const std::string& ymlContent),
+                (const std::string& name, ResourceType type, const json::Json& content),
                 (override));
     MOCK_METHOD(void,
                 updateResourceByName,
-                (const std::string& name, ResourceType type, const std::string& ymlContent),
+                (const std::string& name, ResourceType type, const json::Json& content),
                 (override));
-    MOCK_METHOD(void, updateResourceByUUID, (const std::string& uuid, const std::string& ymlContent), (override));
+    MOCK_METHOD(void, updateResourceByUUID, (const std::string& uuid, const json::Json& content), (override));
     MOCK_METHOD(void, deleteResourceByName, (const std::string& name, ResourceType type), (override));
     MOCK_METHOD(void, deleteResourceByUUID, (const std::string& uuid), (override));
     MOCK_METHOD(void, upsertPolicy, (const dataType::Policy& policy), (override));

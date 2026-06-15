@@ -12,6 +12,14 @@
         - FIM_MODE
     - windows_audit_interval:
         value: 1
+    - synchronization:
+        elements:
+        - enabled:
+            value: 'yes'
+        - response_timeout:
+            value: 1
+        - interval:
+            value: 9999999
   - section: sca
     elements:
     - enabled:

@@ -950,6 +950,7 @@ int wdb_global_update_agent_name(wdb_t *wdb, int id, char* name);
  * @param [in] os_version The agent's operating system version.
  * @param [in] os_major The agent's operating system major version.
  * @param [in] os_minor The agent's operating system minor version.
+ * @param [in] os_type The agent's operating system family (linux, windows, unix, ...).
  * @param [in] os_platform The agent's operating system platform.
  * @param [in] os_arch The agent's operating system architecture.
  * @param [in] version The agent's version.
@@ -967,6 +968,7 @@ int wdb_global_update_agent_version(wdb_t *wdb,
                                     const char *os_version,
                                     const char *os_major,
                                     const char *os_minor,
+                                    const char *os_type,
                                     const char *os_platform,
                                     const char *os_arch,
                                     const char *version,
@@ -1337,6 +1339,11 @@ int wdb_global_groups_number_get(wdb_t *wdb, int agent_id);
  * @return w_err_t OS_SUCCESS if valid. OS_INVALID otherwise.
  */
 w_err_t wdb_global_validate_group_name(const char *group_name);
+
+/**
+ * @brief Cleanup compiled regex for group name validation (for testing)
+ */
+void wdb_global_validate_group_name_cleanup(void);
 
 /**
  * @brief Verifies that the number of groups to be assigned is less or equal to 128 and

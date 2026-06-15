@@ -19,7 +19,7 @@ void FIMDB::init(std::function<void(modules_log_level_t, const std::string&)> ca
                  const int registryLimit)
 {
     std::lock_guard<std::shared_timed_mutex> lock(m_handlersMutex);
-    m_dbsyncHandler = dbsyncHandler;
+    m_dbsyncHandler = std::move(dbsyncHandler);
     m_loggingFunction = std::move(callbackLogWrapper);
     m_stopping = false;
     FIMDBCreator<OS_TYPE>::setLimits(m_dbsyncHandler, fileLimit, registryLimit);

@@ -49,19 +49,23 @@ namespace Utils
             cancel();
         }
 
-        void push(Type&& value)
+        bool push(Type&& value)
         {
             if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue.size() < m_maxQueueSize))
             {
                 m_queue.push(std::move(value));
+                return true;
             }
+            return false;
         }
-        void push(Type& value)
+        bool push(Type& value)
         {
             if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue.size() < m_maxQueueSize))
             {
                 m_queue.push(value);
+                return true;
             }
+            return false;
         }
 
         void cancel()

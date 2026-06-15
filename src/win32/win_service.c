@@ -81,6 +81,15 @@ int os_stop_service()
             if (ControlService(schService, SERVICE_CONTROL_STOP, &lpServiceStatus)) {
                 rc = 1;
             }
+            else if (GetLastError() == ERROR_SERVICE_NOT_ACTIVE) {
+                rc = -1; /* already stopped — not a real error */
+            }
+            else if (GetLastError() == ERROR_SERVICE_CANNOT_ACCEPT_CTRL) {
+                rc = -1; /* already stopping — wait and restart normally */
+            }
+            else {
+                plain_mdebug1("os_stop_service(): ControlService failed (error %lu).", GetLastError());
+            }
 
             CloseServiceHandle(schService);
         }
@@ -92,7 +101,9 @@ int os_stop_service()
     * Sleep for a short period of time to avoid possible race-conditions with
     * newer instances of wazuh-agent.
     */
-    Sleep(300); //milliseconds
+    if (rc == 1 || rc == -1) {
+        Sleep(300);
+    }
 
     return (rc);
 }
@@ -252,9 +263,18 @@ int UninstallService()
 /* "Signal" handler */
 VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 {
+    /* Re-entry guard: merror_exit() calls WinSetError() which re-enters this
+     * handler. Without the guard the second pass runs stop_wmodules a second
+     * time on top of the first, racing the SCM transitions. */
+    static volatile LONG stop_in_progress = 0;
+
     if (ossecServiceStatusHandle) {
         switch (dwOpcode) {
             case SERVICE_CONTROL_STOP:
+                if (InterlockedCompareExchange(&stop_in_progress, 1, 0) != 0) {
+                    return;
+                }
+
                 ossecServiceStatus.dwWin32ExitCode          = 0;
                 ossecServiceStatus.dwCheckPoint             = 0;
                 ossecServiceStatus.dwWaitHint               = 0;

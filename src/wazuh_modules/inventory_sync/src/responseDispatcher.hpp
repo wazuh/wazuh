@@ -15,7 +15,6 @@
 #include "asyncValueDispatcher.hpp"
 #include "flatbuffers/include/inventorySync_generated.h"
 #include "loggerHelper.h"
-#include "routerProvider.hpp"
 #include "socketClient.hpp"
 #include <memory>
 
@@ -44,7 +43,7 @@ struct ResponseMessage
 
 using ResponseQueue = Utils::AsyncValueDispatcher<ResponseMessage, std::function<void(ResponseMessage&&)>>;
 
-constexpr auto ARQUEUE_PATH {"queue/alerts/ar"};
+constexpr auto ARQUEUE_PATH {"queue/sockets/ar"};
 
 template<typename TQueue>
 class ResponseDispatcherImpl

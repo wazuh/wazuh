@@ -51,7 +51,7 @@ int wm_agent_upgrade_read(__attribute__((unused)) const OS_XML *xml, xml_node **
         data->agent_config.upgrade_wait_factor_increase = WM_UPGRADE_WAIT_FACTOR_INCREASE;
         data->agent_config.enable_ca_verification = 1;
         #else
-        data->enabled = 0;
+        data->enabled = 1;
         data->manager_config.max_threads = WM_UPGRADE_MAX_THREADS;
         data->manager_config.chunk_size = WM_UPGRADE_CHUNK_SIZE;
         data->manager_config.wpk_repository = NULL;

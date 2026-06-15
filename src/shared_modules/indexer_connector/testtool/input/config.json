@@ -1,5 +1,12 @@
 {
   "name": "wazuh-states-vulnerabilities-cluster",
   "enabled": "yes",
-  "hosts": ["http://0.0.0.0:9200"]
+  "hosts": ["https://172.19.0.2:9200"],
+  "username": "admin",
+  "password": "admin",
+  "ssl": {
+    "certificate_authorities": [
+      "/workspaces/devContainer/wazuh/src/engine/tools/devContainer/e2e/certs/root-ca.pem"
+    ]
+  }
 }

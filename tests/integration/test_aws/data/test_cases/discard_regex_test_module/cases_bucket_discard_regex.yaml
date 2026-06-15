@@ -161,24 +161,6 @@
     expected_results: 1
     skipped_logs: 1
 
-- name: guardduty_discard_regex
-  description: GuardDuty discard regex configurations
-  configuration_parameters:
-    BUCKET_TYPE: guardduty
-    BUCKET_NAME: wazuh-guardduty-integration-tests
-    DISCARD_FIELD: partition
-    DISCARD_REGEX: aws
-    PATH: ''
-  metadata:
-    resource_type: bucket
-    bucket_type: guardduty
-    bucket_name: wazuh-guardduty-integration-tests
-    only_logs_after: 2022-NOV-20
-    discard_field: partition
-    discard_regex: aws
-    expected_results: 1
-    skipped_logs: 1
-
 - name: native_guardduty_discard_regex
   description: Native GuardDuty discard regex configurations
   configuration_parameters:

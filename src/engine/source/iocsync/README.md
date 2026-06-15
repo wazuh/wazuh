@@ -70,6 +70,23 @@ The module runs as a periodic task and is designed so that readers of the IOC da
 
 ## Key Concepts
 
+### Consumer Validation for Consistency
+
+To prevent data inconsistency when the wazuh-indexer is mid-update, `iocsync` implements **consumer validation via Point-In-Time (PIT)**:
+
+1. **Hash check phase**: `getRemoteHashesFromRemote()` passes `IOC_ENRICHMENT_CONSUMER_ID` to the indexer connector.
+   - The connector creates a multi-index PIT (`wazuh-threatintel-enrichments` + `.wazuh-cti-consumers`).
+   - It validates the consumer is in the `idle` status within that PIT snapshot.
+   - If idle: returns the hashes (and the check is consistent).
+   - If not idle: returns `std::nullopt` → sync cycle is skipped.
+
+2. **Download phase**: `downloadAndPopulateDB()` passes the same consumer ID to `streamIocsByType()`.
+   - The connector again validates the consumer is idle within a NEW PIT snapshot.
+   - If idle: streams IOCs within that PIT snapshot.
+   - If not idle: returns `std::nullopt` → download is skipped, temp DB is rolled back.
+
+This two-phase validation ensures the indexer is NOT actively updating the IOCs before or during the download.
+
 ### Hash-Based Change Detection
 
 Each IOC type has a remote hash maintained by the Wazuh Indexer. `IocSync` stores the last known hash per type in `SyncedIOCDatabase::m_lastDataHash`. A sync cycle only downloads data when the hashes differ, minimizing unnecessary network and disk I/O.
@@ -80,7 +97,17 @@ All external dependencies (`IWIndexerConnector`, `IKVDBManager`, `store::IStore`
 
 ### Retry Logic
 
-Remote operations (`existIocDataInRemote`, `getRemoteHashesFromRemote`) use `base::utils::executeWithRetry` with configurable `m_attempts` (default: 3) and `m_waitSeconds` (default: 5) for resilience against transient network issues.
+Remote operations (`existIocDataInRemote`, `getRemoteHashesFromRemote`) use `base::utils::executeWithRetry` with configurable `m_attempts` (default: 3) and `m_waitSeconds` (default: 5) for resilience against transient network issues. The shutdown flag `m_shutdownRequested` is passed to `executeWithRetry`, which checks it before each attempt and during inter-retry sleep (split into 1-second chunks).
+
+### Graceful Shutdown
+
+`IocSync` supports responsive shutdown via `requestShutdown()`:
+
+- Sets `m_shutdownRequested` (`std::atomic<bool>`) to `true`.
+- `synchronize()` checks the flag at multiple points: before starting, before each IOC type iteration, and in the outer `catch` block.
+- `executeWithRetry` aborts early when the flag is set.
+- If the underlying indexer throws `IndexerConnectorException` during `streamIocsByType()` (due to `WIndexerConnector::requestShutdown()`), the exception propagates through `downloadAndPopulateDB()` which triggers a rollback of the temporary database — **preventing promotion of a partially-downloaded dataset via hot-swap**.
+- The module is registered in the exit handler in `main.cpp`; on SIGINT/SIGTERM, `requestShutdown()` is called and the sync cycle aborts within one batch round-trip.
 
 ### Rollback on Failure
 
@@ -111,11 +138,13 @@ iocsync/
 namespace ioc::sync {
 class IIocSync {
     virtual void synchronize() = 0;
+    virtual void requestShutdown() = 0;
 };
 }
 ```
 
-Single method: `synchronize()` performs a full sync cycle for all configured IOC types.
+- `synchronize()` performs a full sync cycle for all configured IOC types.
+- `requestShutdown()` signals the module to abort as soon as possible (idempotent, thread-safe).
 
 ## Implementation Details
 
@@ -134,12 +163,13 @@ Single method: `synchronize()` performs a full sync cycle for all configured IOC
 | `m_mutex` | `shared_mutex` | Protects `m_databasesState` and sync operations |
 | `m_attempts` | `size_t` | Retry count for remote operations (default: 3) |
 | `m_waitSeconds` | `size_t` | Wait between retries (default: 5) |
+| `m_shutdownRequested` | `std::atomic<bool>` | Abort flag checked at multiple points during sync |
 
 **`synchronize()`**: Acquires the KVDB manager, checks remote availability, fetches hashes, iterates all configured IOC types calling `syncIOCType()` for each, and persists state if anything changed.
 
 **`syncIOCType()`**: Per-type logic — compares hashes, downloads to temp DB via `downloadAndPopulateDB()`, ensures target exists, performs `hotSwap()`, updates local hash. Returns `true` if the database was updated.
 
-**`downloadAndPopulateDB()`**: Streams IOC documents from the indexer in batches of 1000. Each document's key is normalized to lowercase. Values are stored via `ioc::kvdb::details::updateValueInDB()` which appends to arrays if the key already exists.
+**`downloadAndPopulateDB()`**: Streams IOC documents from the indexer in batches of 1000 via `streamIocsByType()`, passing `IOC_ENRICHMENT_CONSUMER_ID` for consumer validation. Returns `bool` (false if consumer not idle). Each document's key is normalized to lowercase. Values are stored via `ioc::kvdb::details::updateValueInDB()` which appends to arrays if the key already exists. On consumer-not-idle or download failure, rolls back the temp database.
 
 ### `SyncedIOCDatabase` (internal class in iocsync.cpp)
 

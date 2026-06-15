@@ -407,12 +407,22 @@ class DistributedAPI:
     async def send_tmp_file(self, node_name=None):
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
         # a temporary file in /var/wazuh-manager/tmp which needs to be sent to the master before forwarding the request
+        tmp_file = self.f_kwargs.get('tmp_file', '')
+        if not tmp_file:
+            raise exception.WazuhClusterError(3034, extra_message='tmp_file parameter is required')
+
+        tmp_path = os.path.join(common.OSSEC_TMP_PATH, tmp_file)
+        resolved_path = os.path.realpath(tmp_path)
+
+        allowed_tmp_dir = os.path.realpath(common.OSSEC_TMP_PATH)
+        if not resolved_path.startswith(allowed_tmp_dir + os.sep) and resolved_path != allowed_tmp_dir:
+            raise exception.WazuhClusterError(3034,
+                extra_message=f'Invalid tmp_file path: {tmp_file}. Path must be within tmp directory')
+
         client = self.get_client()
-        res = json.loads(await client.send_file(os.path.join(common.WAZUH_PATH,
-                                                             self.f_kwargs['tmp_file']),
-                                                node_name),
+        res = json.loads(await client.send_file(resolved_path, node_name),
                          object_hook=c_common.as_wazuh_object)
-        os.remove(os.path.join(common.WAZUH_PATH, self.f_kwargs['tmp_file']))
+        os.remove(resolved_path)
 
     async def execute_remote_request(self) -> Dict:
         """Execute a remote request. This function is used by worker nodes to execute master_only API requests.
@@ -682,9 +692,6 @@ class APIRequestQueue(WazuhRequestQueue):
 
     async def run(self):
         while True:
-            if self.server.configuration['node_type'] == 'master':
-                await self.server.tasks_event.wait()
-
             names, request = (await self.request_queue.get()).split(' ', 1)
             names = names.split('*', 1)
             # name    -> node name the request must be sent to. None if called from a worker node.

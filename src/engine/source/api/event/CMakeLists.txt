@@ -14,8 +14,9 @@ target_link_libraries(api_event
     PUBLIC
     api::adapter
     router::irouter
-    archiver::iface
+    dumper::iface
     rawevtindexer::irawindexer
+    fastmetrics::fastmetrics
 )
 add_library(api::event ALIAS api_event)
 
@@ -37,7 +38,7 @@ if(ENGINE_BUILD_TEST)
         router::mocks
         GTest::gtest_main
         api::adapter::test
-        archiver::mocks
+        dumper::mocks
         rawevtindexer::mocks
     )
     gtest_discover_tests(api_event_utest)

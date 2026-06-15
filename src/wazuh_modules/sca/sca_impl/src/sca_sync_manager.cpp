@@ -260,7 +260,7 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
         ++m_syncedCount;
 
         LoggingHelper::getInstance().log(
-            LOG_INFO,
+            LOG_DEBUG_VERBOSE,
             "SCA sync limit promotion: promoted check " + checkId + " on modify");
 
         return true;
@@ -312,7 +312,7 @@ bool SCASyncManager::shouldSyncModify(const nlohmann::json& checkData)
     ++m_syncedCount;
 
     LoggingHelper::getInstance().log(
-        LOG_INFO,
+        LOG_DEBUG_VERBOSE,
         "SCA sync limit promotion: promoted check " + checkId + " on modify");
 
     return true;
@@ -388,7 +388,7 @@ SCASyncManager::DeleteResult SCASyncManager::handleDelete(const nlohmann::json& 
     if (!result.promotedIds.empty())
     {
         LoggingHelper::getInstance().log(
-            LOG_INFO,
+            LOG_DEBUG,
             "SCA sync limit promotion: promoted " + std::to_string(result.promotedIds.size()) +
             " check(s)");
     }
@@ -474,7 +474,7 @@ SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
     else
     {
         LoggingHelper::getInstance().log(
-            LOG_INFO,
+            LOG_DEBUG,
             "SCA sync limit enforced: limit=" + std::to_string(m_syncLimit) +
             " synced=" + std::to_string(m_syncedCount) +
             " total=" + std::to_string(m_totalCount));

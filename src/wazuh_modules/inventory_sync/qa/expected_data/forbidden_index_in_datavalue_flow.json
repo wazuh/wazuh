@@ -1,0 +1,46 @@
+{
+    "description": "Expected results for forbidden index in DataValue test",
+    "expected_message_count": 3,
+    "validate_session_consistency": true,
+    "expected_messages": [
+      {
+        "type": "start",
+        "expected_status": "sent",
+        "description": "Start message accepted normally - session must be created",
+        "expected_response": {
+          "type": "flatbuffer",
+          "data": {
+            "type": "start_ack",
+            "status": 0
+          },
+          "validate_session": true,
+          "timeout": 5.0
+        }
+      },
+      {
+        "type": "data",
+        "expected_status": "sent",
+        "description": "DataValue with non-states index sent successfully (no response expected at this stage)",
+        "expected_response": null
+      },
+      {
+        "type": "end",
+        "expected_status": "sent",
+        "description": "End must yield end_ack(Status_Ok) via the no-op session path because no bulk/delete operations were enqueued",
+        "expected_response": {
+          "type": "flatbuffer",
+          "data": {
+            "type": "end_ack",
+            "status": 0
+          },
+          "validate_session": true,
+          "timeout": 30.0
+        }
+      }
+    ],
+    "validation_rules": {
+      "session_consistency": "All messages share the same session ID",
+      "message_order": "start -> data -> end",
+      "response_format": "Final end_ack must be Status_Ok despite no bulk write happening; without the no-op session fix the notify callback would be stranded and this test would time out"
+    }
+  }

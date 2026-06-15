@@ -1,0 +1,414 @@
+run-name: External deps - ${{ inputs.dependencies && format('{0}', inputs.dependencies) || '(no version overrides)' }}
+name: 5.X - Package - Build external dependencies
+
+# Rebuilds Wazuh's external dependencies across every (system, architecture)
+# leg we ship. Each runner uploads a per-leg .tar.gz laid out in the S3
+# layout expected by `make deps` (libraries/<os>/<arch>/<dep>.tar.gz plus
+# libraries/sources/<dep>.tar.gz). The `consolidate` job then merges every
+# per-leg tarball into a single externals-all.tar.gz ready for upload to
+# packages.wazuh.com/deps/<version>/ — use that artifact, not a hand-merge
+# of the per-leg ones, since on Linux the agent and manager legs overlap.
+#
+# A deps release is whole-or-nothing: every consumer platform needs its
+# leg in the published tarball, so the matrix is fixed and runs all 5
+# supported legs every time:
+#   - 2 Linux Docker legs:  rpm-amd64, rpm-arm64 (rpm is the oldest common
+#                           denominator — its glibc is forward-compatible
+#                           with deb, so we don't build deb separately)
+#   - 2 macOS native legs:  macos-intel64, macos-arm64
+#   - 1 Windows leg:        windows-i686 (MinGW cross-compile inside the
+#                                         compile_windows_agent image —
+#                                         ubuntu:22.04 with mingw pre-baked,
+#                                         the same image used by the official
+#                                         windows agent build)
+# macOS and Windows are agent-only (no manager binaries exist for them).
+# To re-run a single broken leg, use Actions' "Re-run failed jobs" rather
+# than reintroducing a per-leg dispatch input.
+#
+# Each Linux leg always runs twice — once with the agent builder image and
+# once with the manager builder image. The agent image is the oldest common
+# denominator (centos:6 / wheezy era, glibc 2.12), so any binary produced
+# there runs everywhere we ship; the manager image (centos:7, glibc 2.17)
+# can build deps the agent image's older toolchain can't handle. Both legs
+# pack everything they built; the `consolidate` job decides which copy of
+# each dep ships, straight from the build output (see that job below):
+# a compiled binary beats a source-only snapshot, and where both legs
+# compiled a dep the agent copy wins on glibc compatibility. Sources are
+# identical across legs.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dependencies:
+        description: |
+          Semicolon-separated list of deps to update, in "name:version" form.
+          Example: "curl:8.13.0;openssl:3.5.2".
+          Empty = rebuild all deps from currently vendored sources without
+          replacing any.
+        type: string
+        required: false
+        default: ""
+      docker_image_tag:
+        description: |
+          GHCR builder image tag. "auto" derives it from VERSION.json,
+          "developer" uses the branch name. Otherwise a literal tag.
+        type: string
+        default: "auto"
+        required: false
+
+jobs:
+  build-externals:
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        # Linux legs run twice (agent image + manager image); macOS and
+        # Windows have no manager builder image so they run agent-only.
+        # windows-i686 is MinGW cross-compile inside the compile_windows_agent
+        # container on the Linux amd64 runner — see "Resolve image tag" below.
+        include:
+          - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: agent }
+          - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: agent }
+          - { system: macos,   architecture: intel64, runner: macos-14-large, leg: macos-intel64, target: agent }
+          - { system: macos,   architecture: arm64,   runner: macos-14,       leg: macos-arm64,   target: agent }
+          - { system: windows, architecture: i686,    runner: wz-linux-amd64, leg: windows-i686,  target: agent }
+          - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: manager }
+          - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: manager }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    name: Build externals (${{ matrix.leg }}-${{ matrix.target }})
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        if: matrix.system == 'rpm' || matrix.system == 'windows'
+        run: |
+          VERSION="$(grep '"version"' "${GITHUB_WORKSPACE}/VERSION.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          if [ "${{ inputs.docker_image_tag }}" = "auto" ]; then
+            echo "TAG=${VERSION}" >> "${GITHUB_ENV}"
+          elif [ "${{ inputs.docker_image_tag }}" = "developer" ]; then
+            echo "TAG=$(sed 's|[/\\]|--|g' <<< "${{ github.ref_name }}")" >> "${GITHUB_ENV}"
+          else
+            echo "TAG=${{ inputs.docker_image_tag }}" >> "${GITHUB_ENV}"
+          fi
+          # rpm legs use one builder image per (system, target, arch). The
+          # windows leg uses compile_windows_agent — the same ubuntu:22.04 +
+          # MinGW image 5_builderpackage_agent-windows.yml builds the agent
+          # in, so the host glibc the externals link against matches what
+          # downstream windows agent consumers see.
+          if [ "${{ matrix.system }}" = "windows" ]; then
+            echo "CONTAINER_NAME=compile_windows_agent" >> "${GITHUB_ENV}"
+          else
+            echo "CONTAINER_NAME=pkg_${{ matrix.system }}_${{ matrix.target }}_builder_${{ matrix.architecture }}" >> "${GITHUB_ENV}"
+          fi
+
+      - name: Pull builder image from GHCR
+        if: matrix.system == 'rpm' || matrix.system == 'windows'
+        timeout-minutes: 20
+        run: |
+          bash "${GITHUB_WORKSPACE}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh" \
+            "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "${CONTAINER_NAME}" "${TAG}"
+
+      - name: Install build tools (macOS leg)
+        if: matrix.system == 'macos'
+        # gnu-tar provides `gtar`. The system /usr/bin/tar (BSD) rejects
+        # --owner/--group/--no-same-owner, which we use to keep the packed
+        # tarballs reproducible across runners.
+        run: brew install bash automake gnu-tar
+
+      - name: Build externals
+        timeout-minutes: 60
+        working-directory: packages
+        run: |
+          # nproc is Linux-only; macOS runners use sysctl. The scripts also
+          # have this fallback internally, but compute JOBS here so it shows
+          # in the workflow log for diagnosis.
+          jobs="$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 2)"
+          bash externals/generate_external.sh \
+            --system "${{ matrix.system }}" \
+            --architecture "${{ matrix.architecture }}" \
+            --target "${{ matrix.target }}" \
+            --tag "${TAG:-}" \
+            --dependencies "${{ inputs.dependencies }}" \
+            --jobs "${jobs}" \
+            --verbose
+
+      - name: List produced artifacts
+        if: always()
+        run: |
+          ls -lh packages/output_externals/externals-*.tar.gz 2>/dev/null || echo "no per-leg tarball produced"
+          ls -la packages/output_externals/libraries/ 2>/dev/null || echo "no libraries/ tree"
+
+      - name: Upload per-leg tarball
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: externals-${{ matrix.leg }}-${{ matrix.target }}
+          path: packages/output_externals/externals-*.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  consolidate:
+    # Merge every per-leg tarball into a single libraries/ tree shaped
+    # like the packages.wazuh.com/deps/<version>/ layout: sources/ holds
+    # the union of upstream blobs (byte-identical across legs, so any
+    # leg's copy works), linux/<arch>/ holds the Linux binaries, darwin/<arch>/
+    # holds the macOS leg binaries, and windows/ holds the MinGW leg
+    # binaries. Output is a single externals-all.tar.gz the user can
+    # extract straight into S3.
+    #
+    # On Linux the agent and manager legs both build the agent dep set, so
+    # their per-leg tarballs overlap. The merge picks a winner per dep from
+    # the build output itself — no dep lists — so changing a dependency
+    # never needs a workflow change.
+    needs: build-externals
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Download all per-leg tarballs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: externals-*
+          path: per-leg
+
+      - name: Merge into single libraries/ tree
+        run: |
+          set -euo pipefail
+          mkdir -p consolidated/libraries staging
+
+          # Unpack each per-leg artifact into its own staging dir so copies
+          # of the same dep can be compared across legs before one is chosen.
+          for art_dir in per-leg/*/; do
+            art_name="$(basename "${art_dir}")"   # e.g. externals-rpm-amd64-agent
+            leg_tar="$(echo "${art_dir}"externals-*.tar.gz)"
+            mkdir -p "staging/${art_name}"
+            echo "unpacking ${leg_tar}"
+            tar -xzf "${leg_tar}" -C "staging/${art_name}"
+          done
+
+          # True when a packed <dep>.tar.gz actually carries compiled output
+          # (a static or shared library) rather than just a source snapshot.
+          # `tar` is read fully into a variable first rather than piped into
+          # `grep -q`: under `set -o pipefail`, grep -q closing the pipe early
+          # makes tar exit on SIGPIPE and the whole pipeline reports failure,
+          # so the piped form returns false even when the artifact IS present.
+          has_compiled_artifact() {
+            local listing
+            listing="$(tar -tzf "$1" 2>/dev/null)" || return 1
+            grep -qE '\.(a|so|lib)([.0-9]+)?$' <<<"${listing}"
+          }
+
+          # Should an incoming <dep>.tar.gz replace what's already placed?
+          # Precedence, highest first:
+          #   1. a compiled copy beats a source-only copy — this is what
+          #      keeps a server-only dep the agent leg couldn't build
+          #      (rocksdb, lzma: gated by `if(NOT IS_AGENT ...)` in
+          #      src/external/CMakeLists.txt) coming from the manager leg.
+          #   2. between two compiled copies the agent leg wins — its
+          #      centos:6 / glibc-2.12 binaries link in every Wazuh builder
+          #      image; the manager's centos:7 / glibc-2.17 ones do not.
+          # Output-driven only: no dependency names appear here.
+          should_replace() {
+            local incoming="$1" existing="$2" incoming_is_agent="$3"
+            [ -f "${existing}" ] || return 0
+            has_compiled_artifact "${incoming}" || return 1
+            has_compiled_artifact "${existing}" || return 0
+            [ "${incoming_is_agent}" = "yes" ]
+          }
+
+          # Process manager legs first, then agent legs, so an agent copy is
+          # the last writer and can take the intersection per rule 2 above.
+          ordered_legs="$( (ls -d staging/*/ | grep -- '-manager/$' || true);
+                            (ls -d staging/*/ | grep -v -- '-manager/$' || true) )"
+
+          for leg_dir in ${ordered_legs}; do
+            case "${leg_dir}" in
+              *-agent/) is_agent=yes ;;
+              *)        is_agent=no  ;;
+            esac
+            [ -d "${leg_dir}libraries" ] || continue
+            while IFS= read -r src_file; do
+              rel="${src_file#${leg_dir}libraries/}"
+              dst="consolidated/libraries/${rel}"
+              mkdir -p "$(dirname "${dst}")"
+              case "${rel}" in
+                sources/*)
+                  # byte-identical across legs; first writer wins
+                  [ -f "${dst}" ] || cp "${src_file}" "${dst}"
+                  ;;
+                *)
+                  if should_replace "${src_file}" "${dst}" "${is_agent}"; then
+                    cp "${src_file}" "${dst}"
+                  fi
+                  ;;
+              esac
+            done < <(find "${leg_dir}libraries" -type f -name '*.tar.gz')
+          done
+
+          echo "---"
+          echo "consolidated libraries/ tree layout:"
+          find consolidated/libraries -maxdepth 2 -type d | sort
+          echo "---"
+          echo "per-subtree dep counts:"
+          for d in consolidated/libraries/*/ consolidated/libraries/*/*/; do
+            n="$(find "${d}" -maxdepth 1 -name '*.tar.gz' | wc -l | xargs)"
+            [ "${n}" -gt 0 ] && echo "  ${d}  ${n} tarballs"
+          done
+
+      - name: Pack consolidated tarball
+        run: |
+          tar -czf externals-all.tar.gz \
+              --owner=0 --group=0 --no-same-owner \
+              -C consolidated libraries
+          ls -lh externals-all.tar.gz
+
+      - name: Upload consolidated tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: externals-all
+          path: externals-all.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  smoke-build:
+    # Sanity check: build the agent and the manager from source against the
+    # dependency tree we just consolidated, to confirm the binaries actually
+    # link. No package is produced — this runs `make deps` (pointed at the
+    # local tree, not packages.wazuh.com) then the plain `make` build inside
+    # the same builder images build-externals uses. The full build log is
+    # uploaded for human review; the analysis step only flags the obvious
+    # signal (a dep that got recompiled from source instead of being consumed
+    # as a precompiled archive means its binary was packed at the wrong path).
+    needs: consolidate
+    permissions:
+      contents: read
+      packages: read
+    strategy:
+      fail-fast: false
+      matrix:
+        # `image` is the builder image to consume the consolidated deps inside.
+        # For agent/manager that's the same rpm builder build-externals used;
+        # for winagent it's compile_windows_agent (ubuntu:22.04) so the windows
+        # binaries shipped in libraries/windows/ are exercised against the same
+        # glibc baseline the downstream windows agent build sees. Without this,
+        # a host-side tool packed in the windows externals (e.g. flatbuffers'
+        # `flatc`) that was built on a newer glibc than the consumer slips
+        # through the smoke check.
+        include:
+          - { architecture: amd64, runner: wz-linux-amd64, target: agent,    image: pkg_rpm_agent_builder_amd64 }
+          - { architecture: amd64, runner: wz-linux-amd64, target: manager,  image: pkg_rpm_manager_builder_amd64 }
+          - { architecture: arm64, runner: wz-linux-arm64, target: agent,    image: pkg_rpm_agent_builder_arm64 }
+          - { architecture: arm64, runner: wz-linux-arm64, target: manager,  image: pkg_rpm_manager_builder_arm64 }
+          - { architecture: i686,  runner: wz-linux-amd64, target: winagent, image: compile_windows_agent }
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    name: Smoke build (${{ matrix.target }}-${{ matrix.architecture }})
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        run: |
+          VERSION="$(grep '"version"' "${GITHUB_WORKSPACE}/VERSION.json" | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
+          if [ "${{ inputs.docker_image_tag }}" = "auto" ]; then
+            echo "TAG=${VERSION}" >> "${GITHUB_ENV}"
+          elif [ "${{ inputs.docker_image_tag }}" = "developer" ]; then
+            echo "TAG=$(sed 's|[/\\]|--|g' <<< "${{ github.ref_name }}")" >> "${GITHUB_ENV}"
+          else
+            echo "TAG=${{ inputs.docker_image_tag }}" >> "${GITHUB_ENV}"
+          fi
+          echo "CONTAINER_NAME=${{ matrix.image }}" >> "${GITHUB_ENV}"
+
+      - name: Pull builder image from GHCR
+        timeout-minutes: 20
+        run: |
+          bash "${GITHUB_WORKSPACE}/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh" \
+            "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "${CONTAINER_NAME}" "${TAG}"
+
+      - name: Download consolidated dependency tree
+        uses: actions/download-artifact@v4
+        with:
+          name: externals-all
+          path: consolidated-deps
+
+      - name: Build ${{ matrix.target }} against consolidated deps
+        timeout-minutes: 75
+        run: |
+          set -o pipefail
+          mkdir -p smoke-logs
+          log="smoke-logs/smoke-build-${{ matrix.target }}-${{ matrix.architecture }}.log"
+
+          # externals-all artifact holds externals-all.tar.gz -> libraries/.
+          # Extract it so smoke_build.sh can point `make deps` at libraries/.
+          tar -xzf consolidated-deps/externals-all.tar.gz -C consolidated-deps
+          rm -f consolidated-deps/externals-all.tar.gz
+
+          jobs="$(nproc 2>/dev/null || echo 2)"
+          # Same mount layout as generate_external.sh: working tree at
+          # /wazuh-local-src (rw — the build writes into src/external/ and
+          # src/build/). The consolidated tree lives inside the workspace so
+          # it is visible in the container without a second mount.
+          docker run --rm -t \
+            -v "${GITHUB_WORKSPACE}:/wazuh-local-src:Z" \
+            -e BUILD_TARGET="${{ matrix.target }}" \
+            -e ARCHITECTURE_TARGET="${{ matrix.architecture }}" \
+            -e DEPS_DIR="/wazuh-local-src/consolidated-deps" \
+            -e JOBS="${jobs}" \
+            -e WAZUH_VERBOSE="yes" \
+            --entrypoint /bin/bash \
+            "${CONTAINER_NAME}:${TAG}" \
+            /wazuh-local-src/packages/externals/smoke_build.sh 2>&1 | tee "${log}"
+
+      - name: Analyze dependency usage
+        if: always()
+        run: |
+          log="smoke-logs/smoke-build-${{ matrix.target }}-${{ matrix.architecture }}.log"
+          if [ ! -f "${log}" ]; then
+            echo "::warning::no build log produced — the build step likely failed before running"
+            exit 0
+          fi
+          echo "## Precompiled dependencies consumed"
+          # src/external/CMakeLists.txt prints this when an if(EXISTS ...)
+          # short-circuit finds a prebuilt archive in the source tree.
+          grep -nE 'Using precompiled' "${log}" || echo "  (none found — unexpected for a precompiled-deps build)"
+          echo
+          echo "## Dependencies COMPILED from source"
+          # A dependency that wasn't consumed precompiled shows up two ways in
+          # src/external/CMakeLists.txt, so check both:
+          #  - ExternalProject deps (rocksdb, lzma, flatbuffers, openssl, ...):
+          #    a real run emits "Creating directories for '<dep>_external'" and
+          #    "Performing build step for '<dep>_external'". The precompiled
+          #    short-circuit instead defines a no-op add_custom_target — no
+          #    such lines.
+          #  - "pattern B" deps (cJSON, sqlite, procps): the fallback is
+          #    add_library(ext_<dep> STATIC <dep>.c), which compiles into
+          #    ext_<dep>.dir/. (wazuhext is Wazuh's own aggregation lib, not a
+          #    dep — its target is `wazuhext`, never `ext_<name>`, so the
+          #    \bext_ word boundary below does not match it.)
+          # For a build against a complete consolidated tree both should be
+          # empty.
+          ep="$(grep -nE "(Performing build step for|Creating directories for) '[^']+_external'" "${log}" || true)"
+          pb="$(grep -nE 'Building (C|CXX) object .*\bext_[a-z0-9_]+\.dir/' "${log}" || true)"
+          if [ -n "${ep}${pb}" ]; then
+            [ -n "${ep}" ] && printf '%s\n' "${ep}"
+            [ -n "${pb}" ] && printf '%s\n' "${pb}"
+            echo "::warning::one or more external dependencies were recompiled from source — check whether their precompiled archive was packed at the path src/external/CMakeLists.txt expects"
+          else
+            echo "  (none — every external dependency was consumed precompiled)"
+          fi
+          echo
+          echo "## Build errors (first 50)"
+          grep -niE 'error:|fatal error|undefined reference|No rule to make target|recipe for target .* failed' "${log}" | head -50 \
+            || echo "  (none)"
+
+      - name: Upload smoke build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-build-${{ matrix.target }}-${{ matrix.architecture }}
+          path: smoke-logs/
+          if-no-files-found: error
+          retention-days: 14

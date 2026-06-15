@@ -149,7 +149,7 @@ def test_audit_rules_with_symlink(test_configuration, test_metadata, set_wazuh_c
 
     expected_output:
         - r'.*Links check finalized.*'
-        - r'.*Audit rules reloaded\. Rules loaded: (.+)'
+        - r'.*Audit rules reloaded. Rules loaded: (.+)'
         - r'.*"type":"modified".*'
 
     tags:

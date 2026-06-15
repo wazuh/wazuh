@@ -32,3 +32,16 @@ def json_response(data: dict, pretty: bool = False, status_code: int = 200, cont
     return ConnexionResponse(body=prettify(data) if pretty else dumps(data),
                              content_type=content_type,
                              status_code=status_code)
+
+def build_recursion_error_response(pretty: bool = False) -> ConnexionResponse:
+    problem = {
+        "title": "Maximum recursion depth exceeded.",
+        "detail": "The JSON structure of the request exceeds the maximum nesting depth allowed by the API."
+    }
+
+    return json_response(
+        data=problem,
+        pretty=pretty,
+        status_code=400,
+        content_type=ERROR_CONTENT_TYPE
+    )

@@ -7,7 +7,11 @@ on:
     paths:
       - "src/**"
       - "packages/**"
+      - "ruleset/**"
+      - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-macos.yml"
+      - ".github/workflows/5_testintegration_macos-integration-tests.yml"
+      - ".github/test_modules_macos.json"
   workflow_dispatch:
     inputs:
       architecture:
@@ -38,10 +42,14 @@ on:
           Default is 'false'.
         required: false
         default: false
-# ===================== JOBS =====================
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   build-macos-intel64:
-    if: github.event_name == 'pull_request' || inputs.architecture == 'intel64'
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.architecture == 'intel64'
     runs-on: macos-14-large
     timeout-minutes: 90
     name: Build PKG package (intel64)
@@ -194,7 +202,7 @@ jobs:
   upload-macos-intel64-to-s3:
     needs: [build-macos-intel64, test-macos-intel64]
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 15
     name: Upload PKG to S3 (intel64)
 
@@ -272,7 +280,7 @@ jobs:
           fi
 
   build-macos-arm64:
-    if: github.event_name == 'pull_request' || inputs.architecture == 'arm64'
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.architecture == 'arm64'
     runs-on: macos-14
     timeout-minutes: 90
     name: Build PKG package (arm64)
@@ -425,7 +433,7 @@ jobs:
   upload-macos-arm64-to-s3:
     needs: [build-macos-arm64, test-macos-arm64]
     if: success()
-    runs-on: ubuntu-latest
+    runs-on: wz-linux-amd64
     timeout-minutes: 15
     name: Upload PKG to S3 (arm64)
 
@@ -503,10 +511,56 @@ jobs:
           fi
 
   smoke-test-macos:
-    needs: [upload-macos-arm64-to-s3]
+    needs: [upload-macos-arm64-to-s3, detect-changes]
     if: success()
     uses: ./.github/workflows/5_testintegration_agent-start.yml
     with:
       base_branch: ''
       platform: 'macos'
+    secrets: inherit
+
+  detect-changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    name: Detect changed macOS test modules
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      any_matched: ${{ steps.detect.outputs.any_matched }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed modules
+        id: detect
+        uses: ./.github/actions/5_testintegration_detect-changes
+        with:
+          modules-config: .github/test_modules_macos.json
+          none-matrix: '{"include":[{"name":"none","shard_name":"none","pytest_target":"","pytest_extra_args":"","pytest_tier_args":"","pre_install":"","timeout_minutes":1}]}'
+          field-defaults: '{"pytest_extra_args":"","pre_install":"","timeout_minutes":120}'
+
+  run-integration-tests:
+    needs: [upload-macos-arm64-to-s3, detect-changes]
+    if: >
+      needs.upload-macos-arm64-to-s3.result == 'success' &&
+      needs.detect-changes.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
+    name: ${{ matrix.name == 'none' && 'Skipped IT MacOS - no relevant changes' || format('IT MacOS - {0} ({1})', matrix.name, matrix.shard_name) }}
+    uses: ./.github/workflows/5_testintegration_macos-integration-tests.yml
+    with:
+      base_branch: ${{ github.event.pull_request.base.ref }}
+      build_run_id: ${{ github.run_id }}
+      module_name: ${{ matrix.name }}
+      shard_name: ${{ matrix.shard_name }}
+      pytest_target: ${{ matrix.pytest_target }}
+      pytest_extra_args: ${{ matrix.pytest_extra_args }}
+      pytest_tier_args: ${{ matrix.pytest_tier_args }}
+      pre_install: ${{ matrix.pre_install }}
+      timeout_minutes: ${{ matrix.timeout_minutes }}
     secrets: inherit

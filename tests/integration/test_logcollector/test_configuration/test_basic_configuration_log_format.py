@@ -66,6 +66,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH, MACOS_LOG_COMMAND_PATH
 from wazuh_testing.constants.platforms import WINDOWS, MACOS
 from wazuh_testing.constants.daemons import LOGCOLLECTOR_DAEMON
+from wazuh_testing.modules.agentd import configuration as agentd_configuration
 from wazuh_testing.modules.logcollector import configuration as logcollector_configuration
 from wazuh_testing.modules.logcollector import patterns, PREFIX
 from wazuh_testing.tools.monitors import file_monitor
@@ -133,6 +134,8 @@ if sys.platform == WINDOWS:
 
 
 local_internal_options = {logcollector_configuration.LOGCOLLECTOR_REMOTE_COMMANDS: '1', logcollector_configuration.LOGCOLLECTOR_DEBUG: '2'}
+if sys.platform == WINDOWS:
+    local_internal_options.update({agentd_configuration.AGENTD_WINDOWS_DEBUG: '2'})
 
 log_format_not_print_analyzing_info = ['command', 'full_command', 'eventlog', 'eventchannel', 'macos']
 
@@ -294,7 +297,7 @@ def test_log_format(test_configuration, test_metadata, configure_local_internal_
 
     expected_output:
         - r'Analyzing file.*'
-        - r'INFO: Monitoring .* of command.*'
+        - r'DEBUG: Monitoring .* of command.*'
         - r'INFO: Using program name .* for DJB multilog file.*'
         - r'Invalid value for element .*'
         - r'Configuration error at .*'

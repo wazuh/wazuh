@@ -49,7 +49,8 @@ else()
                                     -Wl,--wrap,stat -Wl,--wrap=fgetc -Wl,--wrap=w_fseek -Wl,--wrap,w_ftell \
                                     -Wl,--wrap,OS_SHA1_File_Nbytes_with_fp_check -Wl,--wrap,cJSON_CreateString \
                                     -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,wpclose -Wl,--wrap,kill \
-                                    -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS} \
+                                    -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle -Wl,--wrap,popen \
+                                    -Wl,--wrap,rename -Wl,--wrap,unlink -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
                                     ${HASH_OP_WRAPPERS}")
 
     list(APPEND logcollector_names "test_read_multiline_regex")
@@ -152,6 +153,14 @@ else()
                                     -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status -Wl,--wrap,_merror \
                                     -Wl,--wrap=w_get_hash_context -Wl,--wrap=_fseeki64 -Wl,--wrap=OS_SHA1_Stream \
                                     -Wl,--wrap=w_fseek -Wl,--wrap,wfopen")
+
+    list(APPEND logcollector_names "test_read_audit")
+    list(APPEND logcollector_flags "-Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fgets \
+                                    -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fseek -Wl,--wrap=fgetc \
+                                    -Wl,--wrap,can_read -Wl,--wrap,w_ftell -Wl,--wrap,fgetpos -Wl,--wrap=w_update_file_status \
+                                    -Wl,--wrap=w_get_hash_context -Wl,--wrap=OS_SHA1_Stream -Wl,--wrap=w_fseek \
+                                    -Wl,--wrap,wfopen -Wl,--wrap,w_msg_hash_queues_push -Wl,--wrap,check_ignore_and_restrict \
+                                    -Wl,--wrap,_merror ${DEBUG_OP_WRAPPERS}")
 
 endif()
 

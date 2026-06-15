@@ -1,13 +1,8 @@
 name: 5.X - MsGraph on Linux - Integration tests - Tier 0 and 1
 
 on:
-  workflow_dispatch:
-    inputs:
-      base_branch:
-        description: 'Base branch'
-        required: true
-        default: 'main'
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
         - ".github/workflows/5_testintegration_msgraph-tier-0-1-lin.yml"
         - "src/config/src/wmodules-ms-graph.c"
@@ -16,13 +11,24 @@ on:
         - "src/Makefile"
         - "tests/integration/conftest.py"
         - "tests/integration/test_msgraph/**"
+  workflow_dispatch:
+    inputs:
+      base_branch:
+        description: 'Base branch'
+        required: true
+        default: 'main'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

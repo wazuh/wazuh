@@ -66,15 +66,6 @@ public:
 
 private:
     /**
-     * @brief Get or create handle (with idempotency for add).
-     * @param dbName Database name.
-     * @param createIfMissing If true, create handle if not exists.
-     * @return Shared pointer to handle, or nullptr if not found and !createIfMissing.
-     * @note Thread-safe with m_registryMutex.
-     */
-    std::shared_ptr<DbHandle> getOrCreateHandle(std::string_view dbName, bool createIfMissing);
-
-    /**
      * @brief Generate next version path for DB instance.
      */
     std::filesystem::path makeNextInstancePath(std::string_view dbName);

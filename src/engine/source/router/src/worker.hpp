@@ -6,6 +6,7 @@
 #include <memory>
 #include <thread>
 
+#include <fastmetrics/slidingWindowRate.hpp>
 #include <fastqueue/iqueue.hpp>
 #include <rawevtindexer/iraweventindexer.hpp>
 
@@ -28,6 +29,7 @@ private:
     std::thread m_thread;                                            ///< The thread for the worker
     std::shared_ptr<fastqueue::IQueue<IngestEvent>> m_rQueue;        ///< The router queue
     std::shared_ptr<raweventindexer::IRawEventIndexer> m_rawIndexer; ///< Raw indexer used in worker drain path
+    std::shared_ptr<fastmetrics::SlidingWindowRate> m_epsRate;       ///< EPS rate shared across all workers
 
 public:
     /**
@@ -36,11 +38,13 @@ public:
      */
     RouterWorker(std::shared_ptr<EnvironmentBuilder> envBuilder,
                  decltype(m_rQueue) rQueue,
-                 std::shared_ptr<raweventindexer::IRawEventIndexer> rawIndexer)
+                 std::shared_ptr<raweventindexer::IRawEventIndexer> rawIndexer,
+                 const std::shared_ptr<fastmetrics::SlidingWindowRate>& epsRate)
         : m_router(std::make_shared<Router>(envBuilder))
         , m_isRunning(false)
         , m_rQueue(rQueue)
         , m_rawIndexer(rawIndexer)
+        , m_epsRate(epsRate)
     {
         if (!m_rQueue)
         {

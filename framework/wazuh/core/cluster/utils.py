@@ -21,12 +21,10 @@ from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError, WazuhHAPHelperError
 from wazuh.core.results import WazuhResult
 from wazuh.core.utils import temporary_cache
-from wazuh.core.wazuh_socket import create_wazuh_socket_message
 from wazuh.core.wlogging import WazuhLogger
 
 NO = 'no'
 YES = 'yes'
-DISABLED = 'disabled'
 HAPROXY_HELPER = 'haproxy_helper'
 HAPROXY_DISABLED = 'haproxy_disabled'
 HAPROXY_ADDRESS = 'haproxy_address'
@@ -487,12 +485,6 @@ class ClusterFilter(logging.Filter):
         record.subtag = self.subtag
         return True
 
-    def update_tag(self, new_tag: str):
-        self.tag = new_tag
-
-    def update_subtag(self, new_subtag: str):
-        self.subtag = new_subtag
-
 
 class ClusterLogger(WazuhLogger):
     """
@@ -587,19 +579,6 @@ async def forward_function(func: callable, f_kwargs: dict = None, request_type: 
                           broadcasting=broadcasting)
     pool = concurrent.futures.ThreadPoolExecutor()
     return pool.submit(run, dapi.distribute_function()).result()
-
-
-def running_in_master_node() -> bool:
-    """Determine if the API is running in a master node.
-
-    Returns
-    -------
-    bool
-        True if the API is running in the master node.
-    """
-    cluster_config = read_cluster_config()
-
-    return cluster_config['node_type'] == 'master'
 
 
 def raise_if_exc(result: object) -> None:

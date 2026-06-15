@@ -12,34 +12,33 @@ _sym_db = _symbol_database.Default()
 
 
 import api_communication.proto.engine_pb2 as _engine_pb2
-from google.protobuf import struct_pb2 as google_dot_protobuf_dot_struct__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rmetrics.proto\x12\x1c\x63om.wazuh.api.engine.metrics\x1a\x0c\x65ngine.proto\x1a\x1cgoogle/protobuf/struct.proto\"\x0e\n\x0c\x44ump_Request\"\x97\x01\n\rDump_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12*\n\x05value\x18\x03 \x01(\x0b\x32\x16.google.protobuf.ValueH\x01\x88\x01\x01\x42\x08\n\x06_errorB\x08\n\x06_value\"c\n\x0bGet_Request\x12\x16\n\tscopeName\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x1b\n\x0einstrumentName\x18\x02 \x01(\tH\x01\x88\x01\x01\x42\x0c\n\n_scopeNameB\x11\n\x0f_instrumentName\"\x96\x01\n\x0cGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12*\n\x05value\x18\x03 \x01(\x0b\x32\x16.google.protobuf.ValueH\x01\x88\x01\x01\x42\x08\n\x06_errorB\x08\n\x06_value\"\x86\x01\n\x0e\x45nable_Request\x12\x16\n\tscopeName\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x1b\n\x0einstrumentName\x18\x02 \x01(\tH\x01\x88\x01\x01\x12\x13\n\x06status\x18\x03 \x01(\x08H\x02\x88\x01\x01\x42\x0c\n\n_scopeNameB\x11\n\x0f_instrumentNameB\t\n\x07_status\"\x85\x01\n\x0f\x45nable_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x14\n\x07\x63ontent\x18\x03 \x01(\tH\x01\x88\x01\x01\x42\x08\n\x06_errorB\n\n\x08_content\"\x0e\n\x0cList_Request\"\x97\x01\n\rList_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12*\n\x05value\x18\x03 \x01(\x0b\x32\x16.google.protobuf.ValueH\x01\x88\x01\x01\x42\x08\n\x06_errorB\x08\n\x06_value\"\x0e\n\x0cTest_Request\"r\n\rTest_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x0f\n\x07\x63ontent\x18\x03 \x03(\tB\x08\n\x06_errorb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rmetrics.proto\x12\x1c\x63om.wazuh.api.engine.metrics\x1a\x0c\x65ngine.proto\"~\n\x0e\x45nable_Request\x12\x1b\n\x0einstrumentName\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x13\n\x06status\x18\x02 \x01(\x08H\x01\x88\x01\x01\x12\x12\n\x05space\x18\x03 \x01(\tH\x02\x88\x01\x01\x42\x11\n\x0f_instrumentNameB\t\n\x07_statusB\x08\n\x06_space\"\x85\x01\n\x0f\x45nable_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x14\n\x07\x63ontent\x18\x03 \x01(\tH\x01\x88\x01\x01\x42\x08\n\x06_errorB\n\n\x08_content\"[\n\x0bGet_Request\x12\x1b\n\x0einstrumentName\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x12\n\x05space\x18\x02 \x01(\tH\x01\x88\x01\x01\x42\x11\n\x0f_instrumentNameB\x08\n\x06_space\"\xd8\x01\n\x0cGet_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x11\n\x04name\x18\x03 \x01(\tH\x01\x88\x01\x01\x12\x11\n\x04type\x18\x04 \x01(\tH\x02\x88\x01\x01\x12\x14\n\x07\x65nabled\x18\x05 \x01(\x08H\x03\x88\x01\x01\x12\x12\n\x05value\x18\x06 \x01(\x01H\x04\x88\x01\x01\x42\x08\n\x06_errorB\x07\n\x05_nameB\x07\n\x05_typeB\n\n\x08_enabledB\x08\n\x06_value\",\n\x0cList_Request\x12\x12\n\x05space\x18\x01 \x01(\tH\x00\x88\x01\x01\x42\x08\n\x06_space\"p\n\rList_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\r\n\x05names\x18\x03 \x03(\tB\x08\n\x06_error\"\x0e\n\x0c\x44ump_Request\"\x85\x01\n\x0bMetricEntry\x12\x11\n\x04name\x18\x01 \x01(\tH\x00\x88\x01\x01\x12\x11\n\x04type\x18\x02 \x01(\tH\x01\x88\x01\x01\x12\x14\n\x07\x65nabled\x18\x03 \x01(\x08H\x02\x88\x01\x01\x12\x12\n\x05value\x18\x04 \x01(\x01H\x03\x88\x01\x01\x42\x07\n\x05_nameB\x07\n\x05_typeB\n\n\x08_enabledB\x08\n\x06_value\"X\n\x0cSpaceMetrics\x12\x0c\n\x04name\x18\x01 \x01(\t\x12:\n\x07metrics\x18\x02 \x03(\x0b\x32).com.wazuh.api.engine.metrics.MetricEntry\"\xba\x02\n\rDump_Response\x12\x32\n\x06status\x18\x01 \x01(\x0e\x32\".com.wazuh.api.engine.ReturnStatus\x12\x12\n\x05\x65rror\x18\x02 \x01(\tH\x00\x88\x01\x01\x12\x11\n\x04name\x18\x03 \x01(\tH\x01\x88\x01\x01\x12\x13\n\x06uptime\x18\x04 \x01(\tH\x02\x88\x01\x01\x12\x16\n\ttimestamp\x18\x05 \x01(\tH\x03\x88\x01\x01\x12\x39\n\x06global\x18\x06 \x03(\x0b\x32).com.wazuh.api.engine.metrics.MetricEntry\x12:\n\x06spaces\x18\x07 \x03(\x0b\x32*.com.wazuh.api.engine.metrics.SpaceMetricsB\x08\n\x06_errorB\x07\n\x05_nameB\t\n\x07_uptimeB\x0c\n\n_timestampb\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'metrics_pb2', globals())
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _DUMP_REQUEST._serialized_start=91
-  _DUMP_REQUEST._serialized_end=105
-  _DUMP_RESPONSE._serialized_start=108
-  _DUMP_RESPONSE._serialized_end=259
-  _GET_REQUEST._serialized_start=261
-  _GET_REQUEST._serialized_end=360
-  _GET_RESPONSE._serialized_start=363
-  _GET_RESPONSE._serialized_end=513
-  _ENABLE_REQUEST._serialized_start=516
-  _ENABLE_REQUEST._serialized_end=650
-  _ENABLE_RESPONSE._serialized_start=653
-  _ENABLE_RESPONSE._serialized_end=786
-  _LIST_REQUEST._serialized_start=788
-  _LIST_REQUEST._serialized_end=802
-  _LIST_RESPONSE._serialized_start=805
-  _LIST_RESPONSE._serialized_end=956
-  _TEST_REQUEST._serialized_start=958
-  _TEST_REQUEST._serialized_end=972
-  _TEST_RESPONSE._serialized_start=974
-  _TEST_RESPONSE._serialized_end=1088
+  _ENABLE_REQUEST._serialized_start=61
+  _ENABLE_REQUEST._serialized_end=187
+  _ENABLE_RESPONSE._serialized_start=190
+  _ENABLE_RESPONSE._serialized_end=323
+  _GET_REQUEST._serialized_start=325
+  _GET_REQUEST._serialized_end=416
+  _GET_RESPONSE._serialized_start=419
+  _GET_RESPONSE._serialized_end=635
+  _LIST_REQUEST._serialized_start=637
+  _LIST_REQUEST._serialized_end=681
+  _LIST_RESPONSE._serialized_start=683
+  _LIST_RESPONSE._serialized_end=795
+  _DUMP_REQUEST._serialized_start=797
+  _DUMP_REQUEST._serialized_end=811
+  _METRICENTRY._serialized_start=814
+  _METRICENTRY._serialized_end=947
+  _SPACEMETRICS._serialized_start=949
+  _SPACEMETRICS._serialized_end=1037
+  _DUMP_RESPONSE._serialized_start=1040
+  _DUMP_RESPONSE._serialized_end=1354
 # @@protoc_insertion_point(module_scope)

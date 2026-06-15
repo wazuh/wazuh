@@ -1,6 +1,12 @@
 name: 5.X - API - Unit tests
 
 on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - '.github/workflows/5_testunit_api.yml'
+      - 'api/**'
+      - 'src/Makefile'
   workflow_dispatch:
     inputs:
       generate_report:
@@ -12,14 +18,14 @@ on:
         description: 'QA repository branch'
         required: false
         default: 'main'
-  pull_request:
-    paths:
-      - '.github/workflows/5_testunit_api.yml'
-      - 'api/**'
-      - 'src/Makefile'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
-  build: 
+  build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -47,10 +53,9 @@ jobs:
         run: |
           set -o pipefail
           python -m pytest api/api -vv --ignore=test --cov=api | tee ${TEST_REPORT_PATH}
-      
+
       - name: Generate test report
         if: inputs.generate_report
         run: |
           git clone -b ${{ inputs.qa_branch }} --single-branch https://github.com/wazuh/qa-integration-framework.git
           python qa-integration-framework/src/wazuh_testing/scripts/pytest_results_parser.py -f ${TEST_REPORT_PATH}
-

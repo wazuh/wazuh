@@ -13,9 +13,6 @@ from api.api_exception import APIError
 
 logger = logging.getLogger('wazuh-api')
 
-# Variable used to specify an unknown user
-UNKNOWN_USER_STRING = "unknown_user"
-
 
 class APILoggerSize:
     size_regex = re.compile(r"(\d+)([KM])")
@@ -81,11 +78,11 @@ class WazuhJsonFormatter(jsonlogger.JsonFormatter):
 
 def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
     """Set up logging for API.
-    
+
     This function creates a logging configuration dictionary, configure the wazuh-api logger
     and returns the logging configuration dictionary that will be used in uvicorn logging
     configuration.
-    
+
     Parameters
     ----------
     log_path : str
@@ -106,7 +103,7 @@ def set_logging(log_filepath, log_level='INFO', foreground_mode=False) -> dict:
         Logging configuration dictionary.
     """
     handlers = {
-        'plainfile': None, 
+        'plainfile': None,
         'jsonfile': None,
     }
     if foreground_mode:

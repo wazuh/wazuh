@@ -48,7 +48,7 @@ def test_wazuh_exception__deepcopy__():
 
 def test_wazuh_error__or__():
     """Check that WazuhError's | operator performs the union of id sets properly."""
-    error1 = WazuhError(1310, ids={1, 2, 3})
-    error2 = WazuhError(1310, ids={4, 5, 6})
+    error1 = WazuhError(1000, ids={1, 2, 3})
+    error2 = WazuhError(1000, ids={4, 5, 6})
     error3 = error2 | error1
     assert error3.ids == {1, 2, 3, 4, 5, 6}
