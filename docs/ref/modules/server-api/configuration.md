@@ -1,6 +1,6 @@
 # Configuration
 
-The Server API and Framework read configuration from multiple sources: YAML files for the API layer, `ossec.conf` for the manager, and internal constants for runtime limits.
+The Server API and Framework read configuration from multiple sources: YAML files for the API layer, `wazuh-manager.conf` for the manager, and internal constants for runtime limits.
 
 ---
 
@@ -24,7 +24,7 @@ The API reads its configuration from files defined in `api/constants.py`:
 
 ## Manager Configuration
 
-- `ossec.conf` is parsed by `core/configuration.py`
+- `etc/wazuh-manager.conf` is parsed by `core/configuration.py`
 - Configuration sections are validated per component
 - XML validation uses `lxml` and `defusedxml`
 

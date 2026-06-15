@@ -1,6 +1,6 @@
 # Active Response migration guide (4.x to 5.x)
 
-Active Response (AR) is rebuilt in 5.x. The 4.x XML in `ossec.conf`, the agent-side `ar.conf`, rule-based matching, and the `PUT /active-response` API are all removed. 5.x replaces them with channels managed in the dashboard, an Alerting monitor that triggers them, a `wazuh-active-responses` data stream that records executions, and a manager-side poller that dispatches to agents over `wazuh-remoted`.
+Active Response (AR) is rebuilt in 5.x. The 4.x XML in `ossec.conf`, the agent-side `ar.conf`, rule-based matching, and the `PUT /active-response` API are all removed. 5.x replaces them with channels managed in the dashboard, an Alerting monitor that triggers them, a `wazuh-active-responses` data stream that records executions, and a manager-side poller that dispatches to agents over `wazuh-manager-remoted`.
 
 > **Manual migration only.** No converter, importer, or compatibility shim is provided. Every 4.x AR must be recreated as a 5.x active response; every custom script must be rewritten for the new JSON contract.
 
@@ -9,7 +9,7 @@ Active Response (AR) is rebuilt in 5.x. The 4.x XML in `ossec.conf`, the agent-s
 - `ossec.conf` `<command>` / `<active-response>` blocks are no longer parsed. `ar.conf` is removed from the agent.
 - AR is created under **Explore → Active Responses**. Each channel carries `name`, `description`, `enabled`, `executable`, `extra_arguments`, `type` (`stateful` / `stateless`), `stateful_timeout` (default `180s`), `location` (`local` / `defined-agent` / `all`), `agent_id`.
 - Matching (`<rules_id>` / `<level>` / `<rules_group>`) moves to the query of an Alerting monitor of type **Active Response**.
-- `PUT /active-response` is removed with no replacement. Dispatch is document-driven: a monitor action writes into `wazuh-active-responses`; the manager polls every 60 s (batches of 100) and forwards via `wazuh-remoted`. Pre-5.0 agents are filtered out.
+- `PUT /active-response` is removed with no replacement. Dispatch is document-driven: a monitor action writes into `wazuh-active-responses`; the manager polls every 60 s (batches of 100) and forwards via `wazuh-manager-remoted`. Pre-5.0 agents are filtered out.
 - Executions land as structured documents in the `wazuh-active-responses` data stream (backing data stream `.ds-wazuh-active-responses`, 3-day ISM retention via `stream-active-responses-policy`).
 - The JSON delivered to scripts changed shape: `command` ∈ `enable` / `disable` (was `add` / `delete`); alert fields use flat WCS paths (`source.ip`, `user.name`, …); AR metadata sits under `wazuh.active_response.*`.
 - Default firewall scripts (`firewall-drop`, `firewalld-drop`, `pf`, `npf`, `ipfw`, `netsh`, `route-null`, `host-deny`) are folded into a single `block-ip` executable. `restart-wazuh` moves to the Control Module. `wazuh-slack` is removed.
@@ -296,7 +296,7 @@ For every migrated AR that referenced a consolidated script, set **Executable** 
 
 1. **Finish the stack upgrade** through dashboard startup. AR can only be validated once the manager and indexer are on 5.x.
 2. **Rewrite custom scripts** following the [recipe above](#migration-recipe). Re-apply `root:wazuh` ownership and `750` permissions.
-3. **Recreate each 4.x AR** under **Explore → Active Responses → Create active response**, using the [field mapping table](#field-mapping-4x-xml--5x-channel) and the [Default scripts](#default-scripts) translation.
+3. **Recreate each 4.x AR** under **Explore → Active Responses → Create active response**, using the [field mapping table](#field-mapping-4x-xml--5x-active-response) and the [Default scripts](#default-scripts) translation.
 
    ![Side menu — Explore → Active Responses](../images/ar-explore-menu-entry.png)
 
@@ -330,7 +330,7 @@ Two end-to-end migrations that make every section above concrete.
 
 ### Example 1 — Default `firewall-drop` on SSH brute-force (rule 5763)
 
-The most common migration: a single rule, a single agent, stateful reversal, using only default scripts. Exercises [field mapping](#field-mapping-4x-xml--5x-channel), the [`block-ip` consolidation](#default-scripts), and monitor wiring.
+The most common migration: a single rule, a single agent, stateful reversal, using only default scripts. Exercises [field mapping](#field-mapping-4x-xml--5x-active-response), the [`block-ip` consolidation](#default-scripts), and monitor wiring.
 
 **Starting point (4.x `/var/ossec/etc/ossec.conf`):**
 
@@ -375,7 +375,7 @@ What this does in 4.x: when rule `5763` (composite SSH brute force — fires aft
 | Location         | `Local`                                | Same as 4.x `<location>local</location>`.                                                           |
 | Agent ID         | _(hidden)_                             | Only appears when Location = Defined agent.                                                         |
 
-**Expected outcome after Step 6:**
+**Expected outcome after Step 5:**
 
 1. Agent's `/var/ossec/logs/active-responses.log` shows two lines for the same source IP: a BLOCK at firing time, then an UNBLOCK ~60 s later.
 2. The indexer's `wazuh-active-responses*` data stream gets one document. The `enable` document looks like:
@@ -631,7 +631,7 @@ exit 0
 | Location         | `Local`                                                   |
 | Agent ID         | _(hidden)_                                                |
 
-**Expected outcome after Step 6:**
+**Expected outcome after Step 5:**
 
 The JSON written to the script's stdin (capture inside the script with `read -r INPUT_JSON; echo "$INPUT_JSON" > /tmp/ar-input.json` — not a `tee` wrapper; see [Custom script hangs and AR queue stalls](#custom-script-hangs-and-ar-queue-stalls)) looks like:
 
@@ -668,7 +668,7 @@ Examples 1 and 2 cover the two most common shapes (default consolidated script, 
 | Default `disable-account` (retained)                                             | `disable-account` channel (same executable name — see [Default scripts](#default-scripts))                                                                                          |
 | Trigger by `<level>`                                                             | Monitor query `wazuh.rule.level >= N` (see [Triggering model](#triggering-model))                                                                                                   |
 | Trigger by `<rules_group>`                                                       | Monitor query `wazuh.rule.groups: <group>` (see [Triggering model](#triggering-model))                                                                                              |
-| `<location>defined-agent</location>` + `<agent_id>`                              | `Location = Defined agent` + Agent ID (see [Field mapping](#field-mapping-4x-xml--5x-channel))                                                                                      |
+| `<location>defined-agent</location>` + `<agent_id>`                              | `Location = Defined agent` + Agent ID (see [Field mapping](#field-mapping-4x-xml--5x-active-response))                                                                                      |
 | `<location>all</location>`                                                       | `Location = All`                                                                                                                                                                    |
 | `<location>server</location>` (removed)                                          | Co-located agent on manager + `Location = Defined agent` (see [`Location = server`](#location--server-from-4x))                                                                     |
 | `firewalld-drop`, `pf`, `npf`, `ipfw`, `netsh`, `route-null`, `host-deny`        | Folded into `block-ip` (see [Default scripts](#default-scripts))                                                                                                                    |
@@ -676,7 +676,7 @@ Examples 1 and 2 cover the two most common shapes (default consolidated script, 
 | `wazuh-slack` (removed)                                                          | Notifications → Channels                                                                                                                                                            |
 | Stateless AR (no `<timeout>`)                                                    | `Type = Stateless`                                                                                                                                                                  |
 | `<repeated_offenders>` (no direct equivalent)                                    | No 1:1 substitute for escalating timeouts; upstream gating reduces noise, multi-channel approximates escalation (see [`<repeated_offenders>` is gone](#repeated_offenders-is-gone)) |
-| `<disabled>yes</disabled>` (persistent disable)                                  | `enabled = false` + **Mute / Unmute** (see [Field mapping](#field-mapping-4x-xml--5x-channel))                                                                                      |
+| `<disabled>yes</disabled>` (persistent disable)                                  | `enabled = false` + **Mute / Unmute** (see [Field mapping](#field-mapping-4x-xml--5x-active-response))                                                                                      |
 | API-driven dispatch via `PUT /active-response` (removed)                         | Document-driven via alert insertion (see [API change](#api-change))                                                                                                                 |
 | Custom Python script (non-shell executable)                                      | Same path, same ownership, same JSON contract (see [JSON stdin contract](#json-stdin-contract))                                                                                     |
 | Multiple `<command>` blocks sharing one executable with different `<extra_args>` | Single executable + N channels with N `extra_arguments`                                                                                                                             |
@@ -690,7 +690,7 @@ Pick the rows that match your 4.14 inventory and validate those scenarios before
 - Every 4.x `<active-response>` block has a matching entity in **Explore → Active Responses** with the values from the inventory.
 - Custom scripts under `/var/ossec/active-response/bin/` use the 5.x JSON contract (no references to `parameters.alert.data.*` or the `add` / `delete` inbound commands).
 - `ossec.conf` contains no `<command>` or `<active-response>` blocks.
-- The smoke test from [Migration steps](#migration-steps) (step 6) passes for at least one migrated AR.
+- The smoke test from [Migration steps](#migration-steps) (step 5) passes for at least one migrated AR.
 
 ---
 
