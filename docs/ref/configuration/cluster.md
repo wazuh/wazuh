@@ -51,12 +51,15 @@ This key must be the same for all of the cluster nodes.
 openssl rand -hex 16
 ```
 
-To modify the key manually for all workers, do this in master node:
+To share the key across the cluster, read it on the master node:
 
 ```bash
-grep '<key>' /var/wazuh-manager/etc/wazuh-manager.conf
+sed -n 's|.*<key>\(.*\)</key>.*|\1|p' /var/wazuh-manager/etc/wazuh-manager.conf
+```
 
-# Once copied, copy it in each worker node and then restart the manager:
+Then set that value on each worker node and restart the manager:
+
+```bash
 sudo sed -i 's|<key>.*</key>|<key>PASTE_MASTER_KEY_HERE</key>|' /var/wazuh-manager/etc/wazuh-manager.conf
 sudo systemctl restart wazuh-manager
 ```
