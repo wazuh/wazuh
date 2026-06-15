@@ -6,7 +6,7 @@ This section contains migration guides for changes that require manual review wh
 
 | Guide | Description |
 |-------|-------------|
-| [Manager configuration migration](manager-configuration-migration.md) | How to migrate `ossec.conf`, `internal_options.conf`, `api.yaml`, and `cluster.json` from 4.x to 5.0 |
+| [Manager configuration migration](manager-configuration-migration.md) | How to migrate `ossec.conf`, `internal_options.conf`, `api.yaml`, and `cluster.json` from 4.x to 5.x |
 | [Agent groups migration](agent-groups-migration.md) | How to transfer group configurations and re-enroll agents under 5.0 |
 | [CIS-CAT/OpenSCAP to SCA](ciscat-openscap-to-sca.md) | Replacing CIS-CAT and OpenSCAP wodles with the native SCA module |
 | [SCA policies 4.x to 5.x](sca-policies-4x-to-5x.md) | Custom SCA policy format changes |

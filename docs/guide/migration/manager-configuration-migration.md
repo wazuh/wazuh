@@ -100,6 +100,7 @@ In 5.0 the `<global>` parser only accepts `<agents_disconnection_time>` and `<ag
 | `<email_to>` | Email functionality removed |
 | `<email_maxperhour>` | Email functionality removed |
 | `<email_log_source>` | Email functionality removed |
+| `<update_check>` | Removed |
 
 **4.x:**
 ```xml
@@ -261,8 +262,8 @@ In 4.x the certificates pointed to Filebeat's certificate directory. In 5.0, Fil
     <certificate_authorities>
       <ca>/var/wazuh-manager/etc/certs/root-ca.pem</ca>
     </certificate_authorities>
-    <certificate>/var/wazuh-manager/etc/certs/wazuh-manager.pem</certificate>
-    <key>/var/wazuh-manager/etc/certs/wazuh-manager-key.pem</key>
+    <certificate>/var/wazuh-manager/etc/certs/manager.pem</certificate>
+    <key>/var/wazuh-manager/etc/certs/manager-key.pem</key>
   </ssl>
 </indexer>
 ```
@@ -281,7 +282,7 @@ In 4.x, internal options were split across two files with a priority system:
 
 When a daemon needed an internal option value, it checked `local_internal_options.conf` first; if the key was absent, it fell back to `internal_options.conf`.
 
-**In 5.0, this two-file system is gone.** There is now a single file: `wazuh-manager-internal-options.conf`. It inherits the role of the old `local_internal_options.conf` — it is the user-editable file where overrides are placed — while the system defaults are hardcoded directly in the engine. There is no longer a system-level file to fall back to.
+**In 5.0, this two-file system is gone for the manager.** There is now a single file: `wazuh-manager-internal-options.conf`. It inherits the role of the old `local_internal_options.conf` — it is the user-editable file where overrides are placed — while the system defaults are hardcoded directly in the engine. There is no longer a system-level file to fall back to. Agents continue to use the 4.x two-file system (`internal_options.conf` + `local_internal_options.conf`).
 
 Migrate your customizations from `local_internal_options.conf` (or from `internal_options.conf` if you edited it directly) to `wazuh-manager-internal-options.conf`, keeping only the options that remain valid in 5.0. Many options have been removed as part of the engine rewrite; carrying them forward will cause startup errors.
 
@@ -335,11 +336,63 @@ analysisd.state_interval
 analysisd.debug
 ```
 
-**remoted (most options removed)**
+**remoted**
 
-The remoted daemon has been simplified. The following 4.x options are no longer valid:
+Only one option has been removed from remoted:
 
 ```
+remoted.guess_agent_group
+```
+
+> [!NOTE]
+> `remoted.guess_agent_group` has been explicitly removed. The checksum-based group guessing mechanism no longer exists in Wazuh 5.0 — see [Agent groups migration](agent-groups-migration.md) for the replacement workflow.
+
+**Other removed options:**
+
+```
+maild.strict_checking
+maild.grouping
+maild.full_subject
+maild.geoip
+monitord.sign
+wazuh_download.enabled
+dbd.reconnect_attempts
+integrator.debug
+wazuh_clusterd.debug
+```
+
+### Retained options
+
+The following options are valid in `wazuh-manager-internal-options.conf` and carry over from 4.x without change:
+
+```
+monitord.day_wait
+monitord.compress
+monitord.rotate_log
+monitord.keep_log_days
+monitord.size_rotate
+monitord.daily_rotations
+monitord.monitor_agents
+monitord.delete_old_agents
+monitord.debug
+auth.timeout_seconds
+auth.timeout_microseconds
+authd.max_agents
+authd.debug
+wazuh_modules.task_nice
+wazuh_modules.max_eps
+wazuh_modules.kill_timeout
+wazuh_modules.rlimit_nofile
+wazuh_modules.debug
+wazuh_modules.max_sessions
+wazuh_modules.inventory_sync_queue_size
+wazuh_modules.inventory_sync_data_value_quota
+wazuh_command.remote_commands
+wazuh.thread_stack_size
+wazuh_database.sync_agents
+wazuh_database.real_time
+wazuh_database.interval
+wazuh_database.max_queued_events
 remoted.recv_counter_flush
 remoted.comp_average_printout
 remoted.verify_msg_id
@@ -359,7 +412,6 @@ remoted.disk_storage
 remoted.keyupdate_interval
 remoted.worker_pool
 remoted.state_interval
-remoted.guess_agent_group
 remoted.receive_chunk
 remoted.send_chunk
 remoted.send_buffer_size
@@ -370,27 +422,10 @@ remoted.tcp_keepintvl
 remoted.tcp_keepcnt
 remoted.control_msg_queue_size
 remoted.router_forwarding_disabled
+remoted.batch_events_capacity
+remoted.batch_events_per_agent_capacity
+remoted.enrich_cache_expire_time
 remoted.debug
-```
-
-> [!NOTE]
-> `remoted.guess_agent_group` has been explicitly removed. The checksum-based group guessing mechanism no longer exists in Wazuh 5.0 — see [Agent groups migration](agent-groups-migration.md) for the replacement workflow.
-
-**Other removed options:**
-
-```
-maild.strict_checking
-maild.grouping
-maild.full_subject
-maild.geoip
-monitord.sign
-monitord.monitor_agents
-monitord.delete_old_agents
-wazuh_database.sync_agents
-wazuh_database.real_time
-wazuh_database.interval
-wazuh_database.max_queued_events
-wazuh_download.enabled
 wazuh_db.worker_pool_size
 wazuh_db.commit_time_min
 wazuh_db.commit_time_max
@@ -402,64 +437,11 @@ wazuh_db.fragmentation_delta
 wazuh_db.free_pages_percentage
 wazuh_db.check_fragmentation_interval
 wazuh_db.debug
-dbd.reconnect_attempts
 vulnerability-detection.translation_lru_size
 vulnerability-detection.osdata_lru_size
 vulnerability-detection.remediation_lru_size
 vulnerability-detection.disable_scan_manager
 vulnerability-detection.report_queue_size
-authd.debug
-integrator.debug
-wazuh_clusterd.debug
-```
-
-### Retained options
-
-The following options are valid in `wazuh-manager-internal-options.conf` and carry over from 4.x without change:
-
-```
-logcollector.*
-monitord.day_wait
-monitord.compress
-monitord.rotate_log
-monitord.keep_log_days
-monitord.size_rotate
-monitord.daily_rotations
-execd.request_timeout
-execd.max_restart_lock
-execd.debug
-syscheck.rt_delay
-syscheck.max_fd_win_rt
-syscheck.max_audit_entries
-syscheck.default_max_depth
-syscheck.symlink_scan_interval
-syscheck.file_max_size
-syscheck.debug
-rootcheck.sleep
-agent.tolerance
-agent.warn_level
-agent.normal_level
-agent.min_eps
-agent.state_interval
-agent.recv_timeout
-agent.remote_conf
-agent.request_pool
-agent.request_rto_sec
-agent.request_rto_msec
-agent.max_attempts
-agent.debug
-wazuh_modules.task_nice
-wazuh_modules.max_eps
-wazuh_modules.kill_timeout
-wazuh_modules.rlimit_nofile
-wazuh_modules.debug
-wazuh_command.remote_commands
-wazuh.thread_stack_size
-sca.request_db_interval
-sca.remote_commands
-sca.commands_timeout
-windows.debug
-logcollector.debug
 ```
 
 ---
@@ -597,20 +579,3 @@ A new `intervals.common` block is introduced:
 This controls the polling interval (in seconds) for active-response status checks, shared across master and worker nodes.
 
 ---
-
-## Checklist
-
-Use this checklist to confirm the migration is complete before starting the 5.0 manager.
-
-- [ ] `wazuh-manager.conf` root element is `<wazuh_config>`, not `<ossec_config>`
-- [ ] `<global>` section contains only `<agents_disconnection_time>` and `<agents_disconnection_alert_time>` (plus any retained custom options)
-- [ ] `<remote>` section does not contain `<connection>`
-- [ ] `<auth>` certificate paths point to `/var/wazuh-manager/etc/`
-- [ ] `<rootcheck>`, `<syscheck>`, `<wodle name="open-scap">`, `<wodle name="syscollector">`, `<alerts>`, `<command>`, `<localfile>`, and `<ruleset>` blocks have been removed
-- [ ] `<vulnerability-detection>` section does not contain `<index-status>`
-- [ ] `<indexer>` section does not contain `<enabled>` and certificate paths point to `/var/wazuh-manager/etc/certs/` (not Filebeat paths)
-- [ ] Custom rules and decoders have been migrated through the engine's content management system (files cannot be copied to disk — refer to the Wazuh 5.0 engine documentation)
-- [ ] `wazuh-manager-internal-options.conf` does not contain any `analysisd.*`, `remoted.*`, `maild.*`, `wazuh_db.*`, or `vulnerability-detection.*` options
-- [ ] `api.yaml` SSL certificate names updated if using defaults (`server.key`/`server.crt` → `manager.key`/`manager.crt`)
-- [ ] `api.yaml` does not reference `ssl_protocol`, `experimental_features`, `remote_commands`, `limits.eps`, or `integrations.virustotal`
-- [ ] Agent groups restored — see [Agent groups migration](agent-groups-migration.md)
