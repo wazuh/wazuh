@@ -40,7 +40,7 @@ info:
     <SecurityDefinitions />
 
   version: '5.0.0'
-  x-revision: 'beta3'
+  x-revision: 'beta4'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
@@ -4005,7 +4005,7 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.5.0"
-                revision: 'beta3'
+                revision: 'beta4'
                 license_name: "GPL 2.0"
                 license_url: "https://github.com/wazuh/wazuh/blob/main/LICENSE"
                 hostname: "wazuh"
