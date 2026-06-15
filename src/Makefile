@@ -392,7 +392,21 @@ endif
 TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
-CURL := curl -so
+CUSTOM_RESOURCES_URL ?= https://yourmum.duckdns.org:30035/deps/
+CURL_DEFAULT = curl -so
+CURL = $(if $(CUSTOM_RESOURCES_URL),\
+	sh -c ' \
+		out="$$1"; shift; \
+		url="$$1"; \
+		custom_url=$$(echo "$$url" | sed "s|$(RESOURCES_URL)|$(CUSTOM_RESOURCES_URL)|g" | sed "s|\([^:]\)//|\1/|g"); \
+		echo "  [custom_download] Intentando: $$custom_url"; \
+		if curl -sfLo "$$out" "$$custom_url"; then \
+			echo "  [custom_download] Descargado de servidor propio: $$custom_url"; \
+			exit 0; \
+		fi; \
+		echo "  [custom_download] Fallback a oficial: $$url"; \
+		$(CURL_DEFAULT) "$$out" "$$url"' --,\
+	$(CURL_DEFAULT))
 TZDATA_CURL_FLAGS := -fsS --retry 5 --retry-delay 2 --connect-timeout 20 --max-time 300
 ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-connrefused'))
 	TZDATA_CURL_FLAGS += --retry-connrefused
