@@ -83,7 +83,7 @@ build_pkg() {
     fi
 
     # Build the Debian package with a Docker container
-    docker run -t --rm -v ${OUTDIR}:/var/local/wazuh:Z \
+    docker run -t --rm -v ${OUTDIR}:/var/local/wazuh \
         -e SYSTEM="$SYSTEM" \
         -e BUILD_TARGET="${TARGET}" \
         -e ARCHITECTURE_TARGET="${ARCHITECTURE}" \
@@ -222,7 +222,7 @@ main() {
             ;;
         "--sources")
             if [ -n "$2" ]; then
-               CUSTOM_CODE_VOL="-v $2:/wazuh-local-src:Z"
+               CUSTOM_CODE_VOL="-v $2:/wazuh-local-src"
                shift 2
             else
                 help 1
@@ -259,7 +259,7 @@ main() {
 
     # Add a default source only if neither the branch nor a custom code volume is defined.
     if [ -z "${CUSTOM_CODE_VOL}" ] && [ -z "${BRANCH}" ]; then
-        CUSTOM_CODE_VOL="-v $WAZUH_PATH:/wazuh-local-src:Z"
+        CUSTOM_CODE_VOL="-v $WAZUH_PATH:/wazuh-local-src"
     fi
 
     build && clean 0
