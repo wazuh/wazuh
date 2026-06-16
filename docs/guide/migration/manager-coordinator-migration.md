@@ -1,4 +1,4 @@
-# Migrating Manager Coordinator from 4.x to 5.0
+# Migrating Manager Coordinator from 4.x to 5.x
 
 Coordinator migration requires almost no steps, as the coordinator only runs HAProxy and the dataplaneapi — there is no Wazuh manager package installed on it to upgrade. The migration mainly consists of refreshing the HAProxy and dataplaneapi configuration so they work with the 5.0 HAProxy helper.
 
@@ -37,6 +37,7 @@ backend wazuh_register
   balance leastconn
   server master <MASTER_NODE>:1515 check
   server worker1 <WORKER_NODE>:1515 check
+  # add one 'server worker<n> <WORKER_NODE>:1515 check' line per extra worker
 
 # Reporting/connection (remoted) — managed by the HAProxy helper.
 # The helper creates the frontend (wazuh_reporting_front) bound to 1514 and
@@ -79,7 +80,7 @@ Stop the services and prepare the backup directory:
 sudo service haproxy stop
 sudo pkill -9 dataplaneapi
 
-sudo mkdir -p /tmp/coordinator-4-x-backup
+sudo mkdir -p /var/coordinator-4-x-backup
 ```
 
 You have two alternatives: keep the configurations your load balancer already uses, or start fresh with the new base files.
@@ -87,8 +88,8 @@ You have two alternatives: keep the configurations your load balancer already us
 ##### Alternative 1 — keep your existing configuration
 
 ```bash
-sudo cp /etc/haproxy/haproxy.cfg /tmp/coordinator-4-x-backup/haproxy.cfg
-sudo cp /etc/haproxy/dataplaneapi.yml /tmp/coordinator-4-x-backup/dataplaneapi.yml
+sudo cp /etc/haproxy/haproxy.cfg /var/coordinator-4-x-backup/haproxy.cfg
+sudo cp /etc/haproxy/dataplaneapi.yml /var/coordinator-4-x-backup/dataplaneapi.yml
 ```
 
 ##### Alternative 2 — start fresh with the new base files
@@ -96,7 +97,7 @@ sudo cp /etc/haproxy/dataplaneapi.yml /tmp/coordinator-4-x-backup/dataplaneapi.y
 Remember to replace `<MASTER_NODE>`, `<WORKER_NODE>`, `<USER>`, and `<PASSWORD>` with your real values after generating the files.
 
 ```bash
-sudo tee /tmp/coordinator-4-x-backup/haproxy.cfg > /dev/null << 'EOF'
+sudo tee /var/coordinator-4-x-backup/haproxy.cfg > /dev/null << 'EOF'
 global
   maxconn 4000
   user haproxy
@@ -119,12 +120,13 @@ backend wazuh_register
   balance leastconn
   server master <MASTER_NODE>:1515 check
   server worker1 <WORKER_NODE>:1515 check
+  # add one 'server worker<n> <WORKER_NODE>:1515 check' line per extra worker
 
 backend wazuh_reporting
   balance leastconn
 EOF
 
-sudo tee /tmp/coordinator-4-x-backup/dataplaneapi.yml > /dev/null << 'EOF'
+sudo tee /var/coordinator-4-x-backup/dataplaneapi.yml > /dev/null << 'EOF'
 dataplaneapi:
   host: 0.0.0.0
   port: 5555
@@ -146,9 +148,9 @@ EOF
 
 Do these steps on your machine with HAProxy installed.
 
-#### 2.1. Ensure you have the latest 2.X dataplaneapi version
+#### 2.1. Install a supported dataplaneapi version
 
-Check all available versions of dataplaneapi [here](https://github.com/haproxytech/dataplaneapi/releases/).
+Use dataplaneapi `2.9.0`. Newer `2.x` releases are listed [here](https://github.com/haproxytech/dataplaneapi/releases/).
 
 ```bash
 sudo rm /usr/local/bin/dataplaneapi
@@ -168,11 +170,11 @@ sudo chown haproxy:haproxy /run/haproxy
 Restore the configuration files and start the services:
 
 ```bash
-sudo cp /tmp/coordinator-4-x-backup/haproxy.cfg /etc/haproxy
-sudo cp /tmp/coordinator-4-x-backup/dataplaneapi.yml /etc/haproxy
+sudo cp /var/coordinator-4-x-backup/haproxy.cfg /etc/haproxy
+sudo cp /var/coordinator-4-x-backup/dataplaneapi.yml /etc/haproxy
 
 sudo service haproxy start
-dataplaneapi -f /etc/haproxy/dataplaneapi.yml &
+sudo nohup dataplaneapi -f /etc/haproxy/dataplaneapi.yml > /var/log/dataplaneapi.log 2>&1 &
 ```
 
 Ensure dataplaneapi is working correctly with:
@@ -183,7 +185,7 @@ curl -X GET --user <DATAPLANE_USER>:<DATAPLANE_PASSWORD> http://<COORDINATOR_IP>
 
 You will see a response similar to this if everything works correctly:
 
-```bash
+```json
 {"api":{"build_date":"2023-12-08T14:53:01.000Z","version":"v2.9.0 91da11d"},"system":{}}
 ```
 
