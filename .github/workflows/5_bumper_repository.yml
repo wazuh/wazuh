@@ -23,6 +23,10 @@ on:
         description: 'Issue link in format https://github.com/wazuh/<REPO>/issues/<ISSUE-NUMBER>'
         required: true
         type: string
+      bump-issue-link:
+        description: 'Issue link used in the original bump (required for revert if different from issue-link)'
+        required: false
+        type: string
       set_as_main:
         description: 'Update version values only, preserving main branch references in URLs'
         default: false
@@ -142,7 +146,13 @@ jobs:
         run: |
           ISSUE_NUMBER=$(echo "${{ inputs.issue-link }}" | awk -F'/' '{print $NF}')
 
-          BUMP_BRANCH="enhancement/wqa${ISSUE_NUMBER}-bump-${{ github.ref_name }}"
+          if [ -n "${{ inputs.bump-issue-link }}" ]; then
+            BUMP_ISSUE_NUMBER=$(echo "${{ inputs.bump-issue-link }}" | awk -F'/' '{print $NF}')
+          else
+            BUMP_ISSUE_NUMBER=$ISSUE_NUMBER
+          fi
+
+          BUMP_BRANCH="enhancement/wqa${BUMP_ISSUE_NUMBER}-bump-${{ github.ref_name }}"
 
           PR_NUMBER=$(gh pr list --head "$BUMP_BRANCH" --base "${{ github.ref_name }}" --state merged --json number --jq '.[0].number')
 
