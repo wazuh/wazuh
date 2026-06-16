@@ -109,7 +109,7 @@ jobs:
       AWS_RETRY_MODE: adaptive
 
     runs-on:
-      - codebuild-github-actions-codebuild-runner-arm64-${{ github.run_id }}-${{ github.run_attempt }}'
+      - codebuild-github-actions-codebuild-runner-arm64-${{ github.run_id }}-${{ github.run_attempt }}
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
     steps:
