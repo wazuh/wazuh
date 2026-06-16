@@ -1,0 +1,22 @@
+{
+    "file": {
+        "attributes": "ARCHIVE",
+        "device": "0,0",
+        "gid": "S-1-5-32-544",
+        "group": "BUILTIN\\Administrators",
+        "hash": {
+            "md5":    "d41d8cd98f00b204e9800998ecf8427e",
+            "sha1":   "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "inode": "0",
+        "mtime": "2024-01-15T10:30:00Z",
+        "owner": "BUILTIN\\Administrators",
+        "path": "c:\\users\\vagrant\\test\\document.txt",
+        "permissions": ["{\"S-1-5-32-544\":{\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"],
+        "size": 512,
+        "uid": "S-1-5-32-544"
+    },
+    "checksum": {"hash": {"sha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709"}},
+    "state": {"document_version": 1, "modified_at": "2024-01-15T10:30:00Z"}
+}

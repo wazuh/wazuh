@@ -1,0 +1,765 @@
+{
+  "session_id": 13828999133622223402,
+  "metadata": {
+    "agentid": "001",
+    "agentname": "wazuh-agent-5x-ubuntu",
+    "module": "fim",
+    "mode": "ModuleDelta",
+    "option": "Sync",
+    "indices": [
+      "wazuh-states-fim-files"
+    ],
+    "architecture": "x86_64",
+    "hostname": "wazuh-agent-5x-ubuntu",
+    "osname": "Ubuntu",
+    "osplatform": "ubuntu",
+    "ostype": "linux",
+    "osversion": "22.04.5 LTS (Jammy Jellyfish)",
+    "agentversion": "v5.0.0",
+    "groups": [
+      "default"
+    ]
+  },
+  "items": [
+    {
+      "seq": 0,
+      "operation": "Upsert",
+      "id": "f18f85ab0bbb841f3a1b6410511e7677ccac39e6",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 59,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125941",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "129f697592d293fb163307d0feb7c201",
+            "sha1": "067c0de9ec8706ed12f4ced4cab1594319afb951",
+            "sha256": "136bb0d113b87c9c5c6073fe4495231e43901d6a3d71648615ef7d704e339f26"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00009.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "8ded9d7a2e9e58e49dbf8eba4d50837f6f64d1e4"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.765Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 1,
+      "operation": "Upsert",
+      "id": "c9d5633067f6b186fc83d7026fe2178fce62e470",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 59,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125600",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "bf5df253989cde850d2a8f2b8220f832",
+            "sha1": "a1fe2864c7bbcc77238ba857e896cefabfce1afa",
+            "sha256": "4bb969b06c9aa6395e9f845d9c6ffc255bff8bbe3681659cc085aa640bf1d1e7"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00003.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "30857a1562692c9c2bf58e8de29da7ac709ba568"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.767Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 2,
+      "operation": "Upsert",
+      "id": "99de0b5536c4313605677d9904e3368593fc990d",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 59,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125932",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "03898ef80963faa6eb63d911c4d1b558",
+            "sha1": "5ce7addce870e2d93c5f31276bdd2a6c37b7bca1",
+            "sha256": "f1e66ade0b06d9a55572f6f861a4bdbe5bc377eb83aa490ce59ff5e9dad1aeeb"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00007.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "a2e3e2866b4b2d92231890f6dae0deaa1c07e981"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.767Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 3,
+      "operation": "Upsert",
+      "id": "3fc919bcf9f6aa69897d71a343246389948f474d",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 59,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125940",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "058404d24a37d76f836fa6c809971dc7",
+            "sha1": "14a33130168a50cf2eae040e2247248bd7adcde4",
+            "sha256": "bc591b2e99564d60ac3bb1c5afa84862b3d45c6c490c2284b994ac9181d94cb6"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00008.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "eaada5d30a024c850e85d613896fa2e4b61f7d7c"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.767Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "operation": "Upsert",
+      "id": "831406699fcc66de268a11604b836ee31a8b4a36",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125945",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "1b8d2a8772384a5a5efe7223e8bb9787",
+            "sha1": "35687c4be0e0cb5a957f5de7c6b4ad1026231439",
+            "sha256": "f04f207331f21ba3e3618e5fc107cf34fe5cd18524773ef988640c2f2208298e"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00013.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "f595da3d136bfa05ce556035df9f5d3337e87bf4"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.767Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 5,
+      "operation": "Upsert",
+      "id": "3a5cdac447c927b1939601bfb5567f0c60dcda1a",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125951",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "438cff9bb350b9cc8471d67a39a71cc9",
+            "sha1": "3c95ee9b23a5975262fffa73cd105eb2ac4f2ca1",
+            "sha256": "a26b9640513e477d33752298bf29345d0ec6ecdca38c73ccab40804dc8214532"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00019.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "882f776a0d58619cb76151bd9fe905e9f5f684fe"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.767Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 6,
+      "operation": "Upsert",
+      "id": "51c0bf59c03fa261572c35d23c09270d6b73d659",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125949",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "a3a57c06d597bb45365a38198019581b",
+            "sha1": "7f48214c15e73247c2105c6062826a824b90da5d",
+            "sha256": "34dd87634d57b2a5485a0cac212ace24e81bb1d2e7d77ae57d697e98a30f1193"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00017.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "fff235d0089deb8e932736abe0bfd0a56f5df2e3"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.767Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 7,
+      "operation": "Upsert",
+      "id": "d35f31985728e98e81327f96b3c95ba518e713ad",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 59,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125597",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "c3f14e32c127644793bd95a48fb8e0c0",
+            "sha1": "25356969be7ad5dd80e497b990b67b3284e088b7",
+            "sha256": "d919a9582f48c96520ad7b4c4fac5eb9134c388c3a2aa3ee6bb50592e7d050af"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00002.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "a5ee10e5c4c43eb2f8285952564e3bd129cfe9e0"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.767Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 8,
+      "operation": "Upsert",
+      "id": "811bce6fb3bb478082e9565538cf66ae411d0c50",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125948",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "e13e1bdf4f5929f2e81415f3e8880f74",
+            "sha1": "e3f2d4c5b186896e68bd9e64c83ac0cc25e633a9",
+            "sha256": "02167c67e01d354399f840f440fbbfbab8fee06c362032a976af159af6ed9d53"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00016.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "27340638cd8ed4c5e9a1c462461455c2d5aade47"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.767Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 9,
+      "operation": "Upsert",
+      "id": "bd329a04f5a5f1caf30409177b612b35338e15a8",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 59,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125532",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "160894753a523a6c0f9d380088099ea6",
+            "sha1": "e96b8855220063c37327d283d0de7e2d78fed028",
+            "sha256": "217d6a592dfde08fe20a589fa3c9a5d8b6474ad1015e5c8d58fbec15d9541bf0"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00001.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "fd926ae5938445f9c4379ebfe6ff39895a8248e5"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.768Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 10,
+      "operation": "Upsert",
+      "id": "ba17ad13dbb3e67d92fc48b5ad776e083e9e7940",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125950",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "3462b8d803717aee343f7a6135589025",
+            "sha1": "93f87235687251f323b17a946480f3cb6c22da8e",
+            "sha256": "c498c4288acf69eaebe416a5209cd631b768ed9d1791a7e33672b4cc1ea6d7ff"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00018.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "8d21d215937c4ba39d0e9eea24d7cd2c59a284b8"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.768Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 11,
+      "operation": "Upsert",
+      "id": "2e2447064328515d75c10f7a0e83fe4a8d91b53c",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125942",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "8019aa8a9db7f2cd313bf4a5dbdf079c",
+            "sha1": "65972c7ff7b466dbb5ac14005b284ca2698f83ce",
+            "sha256": "8ee2c92af91391b2dc1bef4f75bcccd29d8ddd15de58878078734f88d32d7f79"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00010.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "d2e15e8915c3d053e98f2117a02e1e846eddd4ea"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.768Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 12,
+      "operation": "Upsert",
+      "id": "79bda8fe9436ef8779d8f53ded14030a988bf135",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125944",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "5ac441ab508ae7f1f7c6769209dc059e",
+            "sha1": "ba13069c87d8b8b0ac87e0c0e24606334be04c4c",
+            "sha256": "fe47ce5fe9cdceb189b35cc107428402e79639d242cc7038d3607572ee00f1ff"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00012.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "6edd73d30d5a654f167469e71855deb2cca87604"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.768Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 13,
+      "operation": "Upsert",
+      "id": "2fe467e316eb1c3b1543837a729d85ed527ae5a2",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125947",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "3b5867cb9d3d6780bd80d2f8616883fa",
+            "sha1": "27748e7d76b041e04edd425894d643508b72deea",
+            "sha256": "d7aad4fcec0bb4543fdea963df67318ff0f348926efb0714a9449863b0ac0af0"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00015.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "7005e127e71a572a44964f01df1caecacd498a99"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.768Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 14,
+      "operation": "Upsert",
+      "id": "7efa398907e771145224c620de755d95e2e34a3b",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125943",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "a09665423f69490ee4653a11c3d9db75",
+            "sha1": "5d8df55c3c63aab3752669d6a66bd57ba316723f",
+            "sha256": "c153e776535d5db64f7a528c43630fc201d7d52f7327562539ca69408e65c470"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00011.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "5dcd1a71e56098c9a6af0eea173062d3590e018d"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.768Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 15,
+      "operation": "Upsert",
+      "id": "0ccdba60a834cdf6e64968f8eb5f7a6113bcc9b4",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125952",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "daa6e26dcd77fe0ffaf50170acf7c42d",
+            "sha1": "a290fdf101557247086efd23abd1bd5bcd0cc467",
+            "sha256": "b8f2974bd4b133f00cd0c97984cecf9da64bee355eebe006fd841552c6765796"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00020.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "ec30ad7cb53d5c4038cdbb4b6da7059960eff673"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.768Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 16,
+      "operation": "Upsert",
+      "id": "f8b6a71c5301a9e1d0bb6d451170c8ded057aca5",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 60,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125946",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "a2422a1792ed1751f96accb670a81e56",
+            "sha1": "de945f66f49c1ceb1d84a3d05a7ec0a987af8281",
+            "sha256": "0265e6855533c22437945398a901b8753c6b95f6f8d8026890c92b22b2653eed"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00014.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "f23f032e8ba985997270144155fe019de4e6623f"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.768Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 17,
+      "operation": "Upsert",
+      "id": "2fd765e8ef03b8942f856cf9dac88acfe876fc0f",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 59,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125916",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "d54b231cfdde7a30a188886c732e0ed6",
+            "sha1": "0322dde66ccfcd3694bbe0098f43e3cb051ddb6e",
+            "sha256": "034cf0f0f80647f5f54bb794392b4d2fe468ba8a82ce80bf6d1251e5c0ea2396"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00004.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "3ae938af9fe00fa39e99d41a6dbe011ba1a00a76"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.768Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 18,
+      "operation": "Upsert",
+      "id": "29627b5a650dea6f23eae116fa45792f55282380",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 59,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125923",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "b9e90d9e921006bebd4b325906029f92",
+            "sha1": "975a81b7b8513393bc17c1dd96bcb8cbe8498da4",
+            "sha256": "1b88593f85d66f2f8477080ccceedd58687e1960acd5a92f1e7e07e07470814b"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00006.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "8b104b12480c63d4b3e8ff542519910ec7dca4c4"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.769Z",
+          "document_version": 1
+        }
+      }
+    },
+    {
+      "seq": 19,
+      "operation": "Upsert",
+      "id": "953f0f2ab5d5765a807f0422fcefe8bddc33a814",
+      "index": "wazuh-states-fim-files",
+      "version": 1,
+      "data": {
+        "file": {
+          "size": 59,
+          "permissions": [
+            "rw-r--r--"
+          ],
+          "uid": "0",
+          "owner": "root",
+          "gid": "0",
+          "group": "root",
+          "inode": "24125917",
+          "device": "167",
+          "mtime": "2026-05-22T14:47:30.000Z",
+          "hash": {
+            "md5": "3668e7ce8b89e7ccaf7b00910120edcb",
+            "sha1": "29da3ba1520c11521e6cd1c080c136fae05e029e",
+            "sha256": "0a2aeccfe02958faafd709d1a870f68e4493e1c8281992f1a37c9ac0b8871927"
+          },
+          "path": "/fim-bench/dir_000/delta_c001_00005.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "e2705440af650a2ca1b39713b7ef2372b8cd0bdf"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-22T14:47:32.769Z",
+          "document_version": 1
+        }
+      }
+    }
+  ]
+}

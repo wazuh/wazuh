@@ -1,0 +1,21 @@
+{
+  "name": "engine_burst_mixed",
+  "description": "5 agents, each running 2 lanes in parallel per iteration: (1) a fim_file inventory_sync delta session, and (2) an engine log stream at 2k EPS. Validates that engine streams and inventory_sync sessions share the same per-agent socket lock without corruption.",
+  "lanes": {
+    "fim_sync": [
+      { "kind": "fim_file", "data_size": 50, "max_eps": 100 }
+    ],
+    "engine_syslog": [
+      {
+        "engine":   "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps":  2000,
+        "loop":     true
+      }
+    ]
+  },
+  "total_agents":    5,
+  "parallel_agents": 0,
+  "repeat_until":    30,
+  "drain_timeout":   15
+}

@@ -1,0 +1,30 @@
+{
+  "name": "engine_invalid_all_engine",
+  "description": "Negative test. Agent is assigned ONLY engine lanes, but engine1 has run_while_siblings_active=true. Loader MUST reject because the siblings counter would never be decremented (no non-engine lane).",
+  "lanes": {
+    "engine1": [
+      {
+        "engine": "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps": 500,
+        "loop": true,
+        "run_while_siblings_active": true
+      }
+    ],
+    "engine2": [
+      {
+        "engine": "sample_payloads/engine/syslog.log",
+        "location": "syslog2",
+        "max_eps": 500,
+        "loop": true,
+        "duration": 5.0
+      }
+    ]
+  },
+  "fleets": [
+    { "name": "all-engine", "agents": 1, "lanes": ["engine1", "engine2"] }
+  ],
+  "parallel_agents": 0,
+  "repeat_until": 0,
+  "drain_timeout": 3
+}
