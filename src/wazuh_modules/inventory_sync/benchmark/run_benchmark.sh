@@ -63,7 +63,7 @@ LABEL=""
 MANAGER="127.0.0.1"
 PORT=1514
 REG_PORT=1515
-DRAIN_TIMEOUT=60
+DRAIN_TIMEOUT_CLI=""
 # Post-run grace — how long monitor.py stays alive after the sender exits,
 # so RSS / CPU / disk / queue stats keep being sampled while the system
 # settles. CLI default is empty (let scenario decide); resolution order:
@@ -101,7 +101,7 @@ Benchmark mode:
   -p, --port PORT         Manager port (default: $PORT)
       --drain-timeout N   (sender-side) seconds stats_collector keeps
                           sampling bench.csv after agents finish, to capture
-                          late EndAcks. Default: $DRAIN_TIMEOUT.
+                          late EndAcks. Overrides scenario drain_timeout.
       --post-run-grace N  (script-side) seconds to keep monitor.py alive
                           after the sender exits, so RSS / CPU / disk
                           stabilise on the recorded charts. Overrides
@@ -150,7 +150,7 @@ while [[ $# -gt 0 ]]; do
         -l|--label)       LABEL="$2"; shift 2 ;;
         -m|--manager)     MANAGER="$2"; shift 2 ;;
         -p|--port)        PORT="$2"; shift 2 ;;
-        --drain-timeout)  DRAIN_TIMEOUT="$2"; shift 2 ;;
+        --drain-timeout)  DRAIN_TIMEOUT_CLI="$2"; shift 2 ;;
         --post-run-grace) POST_RUN_GRACE_CLI="$2"; shift 2 ;;
         --cleanup-after)  CLEANUP_AFTER=true; shift ;;
         --manager-log)    MANAGER_LOG="$2"; shift 2 ;;
@@ -537,10 +537,12 @@ GO_ARGS=(
     --manager "$SENDER_MANAGER"
     --port "$PORT"
     --reg-port "$REG_PORT"
-    --drain-timeout "$DRAIN_TIMEOUT"
     --summary-json "$SENDER_JSON"
     -o "$BENCH_CSV"
 )
+if [[ -n "$DRAIN_TIMEOUT_CLI" ]]; then
+    GO_ARGS+=( --drain-timeout "$DRAIN_TIMEOUT_CLI" )
+fi
 if [[ -n "$KEEPALIVE_INTERVAL" ]]; then
     GO_ARGS+=( --keepalive-interval "$KEEPALIVE_INTERVAL" )
 fi
