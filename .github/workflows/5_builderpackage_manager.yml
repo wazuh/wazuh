@@ -162,6 +162,14 @@ jobs:
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
           echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${{ env.PACKAGE_ARCH }}" >> $GITHUB_ENV
 
+      - name: Debug entrypoint
+        run: |
+          echo "whoami: $(whoami)"
+          ls -l /home/runner/entrypoint.sh 2>/dev/null && echo "my image is in use"
+          ps aux | grep -E 'dockerd|entrypoint' | grep -v grep
+          ls -l /var/run/docker.sock 2>&1
+          docker context ls 2>&1
+
       - name: Download docker image for package building
         timeout-minutes: 20
         run: |
