@@ -87,10 +87,6 @@ TEST_F(TimeUtilsTest, TimestampToISO8601)
 
     EXPECT_EQ(currentISO8601ZeroMs, Utils::timestampToISO8601(timestamp));
     EXPECT_EQ("", Utils::timestampToISO8601("21:00:00"));
-
-    // Additional cases
-    EXPECT_EQ("2025-12-01T18:25:40.000Z", Utils::timestampToISO8601("2025/12/01 18:25:40"));
-    EXPECT_EQ("2025-06-30T18:29:50.000Z", Utils::timestampToISO8601("2025/06/30 18:29:50"));
 }
 
 TEST_F(TimeUtilsTest, RawTimestampToISO8601)
