@@ -11,6 +11,9 @@ on:
         required: false
         default: "5.x"
   push:
+    branches:
+      - main
+      - "5.[0-9]+.[0-9]+"
     paths:
       - "tools/testing/coverity/**"
 
