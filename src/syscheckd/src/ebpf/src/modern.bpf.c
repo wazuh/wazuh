@@ -98,6 +98,38 @@ struct {
 extern int LINUX_KERNEL_VERSION __kconfig;
 
 /*
+ * Minimal renamedata definition for kernels >= 5.12 where vfs_rename
+ * takes a single struct renamedata * argument instead of separate params.
+ * We only need old_dentry and new_dentry so we define just enough fields.
+ *
+ * The ___local suffix tells libbpf to use this local definition instead
+ * of looking it up in the kernel BTF, avoiding CO-RE failures on kernels
+ * where renamedata is not exposed in BTF (e.g. Ubuntu 22.04 / kernel 5.15).
+ *
+ * Field layout matches fs/namei.c in kernel 5.12-5.15 (6 pointer fields):
+ *   struct renamedata {
+ *       struct user_namespace *old_mnt_userns;  // offset  0
+ *       struct inode          *old_dir;         // offset  8
+ *       struct dentry         *old_dentry;      // offset 16
+ *       struct user_namespace *new_mnt_userns;  // offset 24  <-- must not be omitted
+ *       struct inode          *new_dir;         // offset 32
+ *       struct dentry         *new_dentry;      // offset 40
+ *       ...
+ *   };
+ * On kernel 6.3+ old_mnt_userns/new_mnt_userns became mnt_idmap/new_mnt_idmap
+ * but the layout (two pointer fields before each dir/dentry pair) is the same.
+ */
+struct renamedata___local {
+    void          *old_mnt_userns;  /* user_namespace* on 5.12-5.15, mnt_idmap* on 6.3+ */
+    struct inode  *old_dir;
+    struct dentry *old_dentry;
+    void          *new_mnt_userns;  /* mirrors old_mnt_userns; must be present or
+                                     * &rd->new_dentry reads new_dir (off-by-8) */
+    struct inode  *new_dir;
+    struct dentry *new_dentry;
+};
+
+/*
 * Concatenates a directory path and a filename into a full path.
 * The result is stored in out_buf->data.
 * The function returns the length of the concatenated string.
@@ -313,10 +345,15 @@ statfunc void submit_event(const char *filename,
     evt->inode = ino;
     evt->dev   = dev;
 
-    /* Clear buffers safely */
-    bpf_probe_read_kernel_str(evt->cwd, MAX_PATH_LEN, "");
-    bpf_probe_read_kernel_str(evt->parent_cwd, MAX_PATH_LEN, "");
-    bpf_probe_read_kernel_str(evt->parent_name, TASK_COMM_LEN, "");
+    /* Clear string fields with direct null-byte writes instead of
+     * bpf_probe_read_kernel_str(..., "") to avoid emitting a .rodata.str1.1
+     * ELF section.  libbpf < 0.6 cannot resolve relocations against that
+     * section, leaving the BPF object internally corrupted and causing a
+     * crash on subsequent load.  The effect is identical: both approaches
+     * write a single null byte to the first element of the destination. */
+    evt->cwd[0]         = '\0';
+    evt->parent_cwd[0]  = '\0';
+    evt->parent_name[0] = '\0';
 
     /* Get process cwd */
     get_task_cwd(evt->cwd, MAX_PATH_LEN, current_task);
@@ -574,21 +611,42 @@ int kprobe__vfs_rename(struct pt_regs *ctx)
     struct dentry *old_dentry;
     struct dentry *new_dentry;
 
+    /*
+     * Read BOTH old_dentry and new_dentry from the calling convention.
+     *
+     * This is a kprobe — it fires BEFORE vfs_rename executes — so new_dentry
+     * is a negative dentry (d_inode == NULL, no file exists at the destination
+     * yet).  We therefore use old_dentry->d_inode for all metadata validation
+     * (regular-file check, inode number, device, superblock/mount) and use
+     * new_dentry only for path reconstruction (the destination path FIM needs).
+     *
+     * Only one get_path_str_from_path call is made (new_dentry's path), so the
+     * jump-sequence count stays within the BPF verifier's 8192 limit on 5.15.
+     *
+     * Use PT_REGS_PARM*_CORE so the compiler goes through bpf_probe_read_kernel
+     * rather than emitting a direct "modified ctx pointer dereference" that the
+     * strict 5.15 verifier rejects.
+     *
+     * For kernel >= 5.12, PARM1 IS the renamedata pointer; cast it directly.
+     * Do NOT use bpf_probe_read_kernel to "dereference" PARM1 — that would
+     * read the first field of the struct (mnt_idmap) instead of the pointer.
+     */
     if (LINUX_KERNEL_VERSION < KERNEL_VERSION(5, 12, 0)) {
         old_dentry = (struct dentry *)PT_REGS_PARM2_CORE(ctx);
         new_dentry = (struct dentry *)PT_REGS_PARM4_CORE(ctx);
     } else {
-        struct renamedata *rd = (struct renamedata *)PT_REGS_PARM1_CORE(ctx);
+        struct renamedata___local *rd =
+            (struct renamedata___local *)PT_REGS_PARM1_CORE(ctx);
         if (!rd)
             return 0;
-        old_dentry = BPF_CORE_READ(rd, old_dentry);
-        new_dentry = BPF_CORE_READ(rd, new_dentry);
+        bpf_probe_read_kernel(&old_dentry, sizeof(old_dentry), &rd->old_dentry);
+        bpf_probe_read_kernel(&new_dentry, sizeof(new_dentry), &rd->new_dentry);
     }
 
-    if (!old_dentry)
+    if (!old_dentry || !new_dentry)
         return 0;
 
-    /* Validate source inode: must be a regular file (S_IFREG = 0100000) */
+    /* Use old_dentry->d_inode: source file exists, new_dentry is negative. */
     struct inode *d_inode = NULL;
     bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &old_dentry->d_inode);
     if (!d_inode)
@@ -599,11 +657,9 @@ int kprobe__vfs_rename(struct pt_regs *ctx)
     if ((mode & 00170000) != 0100000)
         return 0;
 
-    /* Extract inode and device from the source file */
     __u64 inode = 0, dev = 0;
     get_inode_dev(d_inode, &inode, &dev);
 
-    /* Get filesystem mount info (same approach as vfs_unlink) */
     struct super_block *sb = NULL;
     bpf_probe_read_kernel(&sb, sizeof(sb), &d_inode->i_sb);
     if (!sb)
@@ -623,32 +679,20 @@ int kprobe__vfs_rename(struct pt_regs *ctx)
     if (!string_buf)
         return 0;
 
+    /* Reconstruct new_dentry's path (the destination). */
     u8 *full_path = NULL;
-
-    /* Submit event for OLD path (source: detects moves OUT of monitored dirs) */
-    struct path old_path = {
-        .dentry = old_dentry,
+    struct path new_path = {
+        .dentry = new_dentry,
         .mnt    = mnt
     };
 
-    if (get_path_str_from_path(&full_path, &old_path, string_buf) >= 0)
+    if (get_path_str_from_path(&full_path, &new_path, string_buf) >= 0)
         submit_event((const char *)full_path, inode, dev);
-
-    /* Submit event for NEW path (destination: detects moves INTO monitored dirs) */
-    if (new_dentry) {
-        struct path new_path = {
-            .dentry = new_dentry,
-            .mnt    = mnt
-        };
-
-        full_path = NULL;
-        if (get_path_str_from_path(&full_path, &new_path, string_buf) >= 0)
-            submit_event((const char *)full_path, inode, dev);
-    }
 
     return 0;
 }
 
+#ifdef ENABLE_BPF_LSM
 /*
 * LSM hook for file open. Reports newly-created or write-opened regular
 * files. Only invoked when "bpf" is part of the active LSM list
@@ -704,8 +748,9 @@ int BPF_PROG(file_open, struct file *file)
     submit_event((const char *)full_path, inode, dev);
     return 0;
 }
+#endif /* ENABLE_BPF_LSM */
 
-
+#ifdef ENABLE_BPF_LSM
 /*
 * LSM hook for path-based unlink. Same activation rules as lsm/file_open.
 * Requires CONFIG_SECURITY_PATH=y in the running kernel.
@@ -752,7 +797,9 @@ int BPF_PROG(path_unlink, struct path *path, struct dentry *dentry)
     submit_event((const char *)full_path, inode, dev);
     return 0;
 }
+#endif /* ENABLE_BPF_LSM */
 
+#ifdef ENABLE_BPF_LSM
 /*
 * LSM hook for path-based rename. Same activation rules as lsm/path_unlink.
 * Only invoked when "bpf" is part of the active LSM list.
@@ -798,20 +845,7 @@ int BPF_PROG(path_rename, struct path *old_dir, struct dentry *old_dentry,
     const char *file_name_ptr;
     int ret;
 
-    /* Submit event for OLD path (source: detects moves OUT of monitored dirs) */
-    ret = bpf_d_path(old_dir, dir_path, MAX_PATH_LEN);
-    if (ret >= 0) {
-        bpf_probe_read_kernel(&file_name_ptr, sizeof(file_name_ptr),
-                              &old_dentry->d_name.name);
-        if (file_name_ptr) {
-            full_path = NULL;
-            ret = concat_strings_bpf(&full_path, dir_path, file_name_ptr, string_buf);
-            if (ret >= 0)
-                submit_event((const char *)full_path, inode, dev);
-        }
-    }
-
-    /* Submit event for NEW path (destination: detects moves INTO monitored dirs) */
+    /* Only report the NEW path (destination) — same policy as kprobe/vfs_rename. */
     ret = bpf_d_path(new_dir, dir_path, MAX_PATH_LEN);
     if (ret >= 0) {
         bpf_probe_read_kernel(&file_name_ptr, sizeof(file_name_ptr),
@@ -826,5 +860,6 @@ int BPF_PROG(path_rename, struct path *old_dir, struct dentry *old_dentry,
 
     return 0;
 }
+#endif /* ENABLE_BPF_LSM */
 
 char LICENSE[] SEC("license") = "GPL";
