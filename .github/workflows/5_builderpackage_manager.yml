@@ -108,8 +108,8 @@ jobs:
       AWS_MAX_ATTEMPTS: "10"
       AWS_RETRY_MODE: adaptive
 
-    runs-on:
-      - codebuild-github-actions-codebuild-runner-arm64-${{ github.run_id }}-${{ github.run_attempt }}
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && format('codebuild-github-actions-codebuild-runner-arm64-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-{0}-{1}', github.run_id, github.run_attempt) }}
+    timeout-minutes: 90
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
     steps:
