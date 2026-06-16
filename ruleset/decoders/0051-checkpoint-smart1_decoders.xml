@@ -122,13 +122,47 @@
   <order>layer_name_first</order>
 </decoder>-->
 
-<!-- Second layer_name (captures the last occurrence) -->
 
+<!-- 3 layer_uuids - non-adjacent -->
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
-  <!--<regex>layer_uuid:"(\.*)";|layer_uuid:"(\.*)"$|layer_uuid:(\.*);|layer_uuid:(\.*)$</regex>-->
-  <regex>layer_uuid:"(\.*)"; layer_uuid:"(\.*)"|layer_uuid:"(\.*)"; layer_uuid:"(\.*)"$|layer_uuid:(\.*); layer_uuid:(\.*);|layer_uuid:(\.*); layer_uuid:(\.*)$|layer_uuid:"(\.*)";|layer_uuid:"(\.*)"$|layer_uuid:(\.*);|layer_uuid:(\.*)$</regex>
+  <regex>layer_uuid:"(\.+)"; \w\.+layer_uuid:"(\.+)"; \w\.+layer_uuid:"(\.+)";</regex>
+  <order>layer_uuid_main,layer_uuid_secondary,layer_uuid_third</order>
+</decoder>
+
+<!-- 3 layer_uuids - first two adjacent, third non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>layer_uuid:"(\.+)"; layer_uuid:"(\.+)"; \w\.+layer_uuid:"(\.+)";</regex>
+  <order>layer_uuid_main,layer_uuid_secondary,layer_uuid_third</order>
+</decoder>
+
+<!-- 3 layer_uuids - all adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>layer_uuid:"(\.+)"; layer_uuid:"(\.+)"; layer_uuid:"(\.+)";</regex>
+  <order>layer_uuid_main,layer_uuid_secondary,layer_uuid_third</order>
+</decoder>
+
+<!-- 2 layer_uuids - non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>layer_uuid:"(\.+)"; \w\.+layer_uuid:"(\.+)";</regex>
   <order>layer_uuid_main,layer_uuid_secondary</order>
+</decoder>
+
+<!-- 2 layer_uuids - adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>layer_uuid:"(\.+)"; layer_uuid:"(\.+)";</regex>
+  <order>layer_uuid_main,layer_uuid_secondary</order>
+</decoder>
+
+<!-- 1 layer_uuid -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>layer_uuid:"(\.+)";</regex>
+  <order>layer_uuid_main</order>
 </decoder>
 
 <decoder name="checkpoint-smart1">
@@ -182,10 +216,25 @@
   <order>outzone</order>
 </decoder>
 
+<!-- 2 parent_rules - non-adjacent -->
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
-  <regex>parent_rule:"(\.*)"; parent_rule:"(\.*)"|parent_rule:"(\.*)"; parent_rule:"(\.*)"$|parent_rule:(\.*); parent_rule:(\.*);|parent_rule:(\.*); parent_rule:(\.*)$|parent_rule:"(\.*)";|parent_rule:"(\.*)"$|parent_rule:(\.*);|parent_rule:(\.*)$</regex>
+  <regex>parent_rule:"(\.+)"; \w\.+parent_rule:"(\.+)";</regex>
   <order>parent_rule_main,parent_rule_secondary</order>
+</decoder>
+
+<!-- 2 parent_rules - adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>parent_rule:"(\.+)"; parent_rule:"(\.+)";</regex>
+  <order>parent_rule_main,parent_rule_secondary</order>
+</decoder>
+
+<!-- 1 parent_rule -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>parent_rule:"(\.+)";</regex>
+  <order>parent_rule_main</order>
 </decoder>
 
 <decoder name="checkpoint-smart1">
@@ -228,28 +277,121 @@
   <regex>reject_category:"(\.*)";|reject_category:"(\.*)"$|reject_category:(\.*);|reject_category:(\.*)$</regex>
   <order>reject_category</order>
 </decoder>
+
+
+
+
+
+
+<!-- 3 rule_actions - non-adjacent -->
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
-  <!--<regex>rule_action:"(\.*)";|rule_action:"(\.*)"$|rule_action:(\.*);|rule_action:(\.*)$</regex>-->
-  <!-- <regex>rule_action:"(\.*)"; rule_action:"(\.*)"|rule_action:"(\.*)"; rule_action:"(\.*)"$|rule_action:(\.*); rule_action:(\.*);|rule_action:(\.*); rule_action:(\.*)$|rule_action:"(\.*)";|rule_action:"(\.*)"$|rule_action:(\.*);|rule_action:(\.*)$</regex>-->
-    <regex>rule_action:"(\.*)"; rule_action:"(\.*)"; rule_action:"(\.*)"|rule_action:"(\.*)"; rule_action:"(\.*)"; rule_action:"(\.*)"$|rule_action:"(\.*)"; rule_action:(\.*); rule_action:(\.*);|rule_action:"(\.*)"; rule_action:(\.*); rule_action:(\.*)$|rule_action:"(\.*)"; rule_action:"(\.*)"|rule_action:"(\.*)"; rule_action:"(\.*)"$|rule_action:(\.*); rule_action:(\.*);|rule_action:(\.*); rule_action:(\.*)$|rule_action:"(\.*)";|rule_action:"(\.*)"$|rule_action:(\.*);|rule_action:(\.*)$</regex>
-
+  <regex>rule_action:"(\.+)"; \w\.+rule_action:"(\.+)"; \w\.+rule_action:"(\.+)";</regex>
   <order>rule_action_main,rule_action_second,rule_action_third</order>
 </decoder>
 
+<!-- 3 rule_actions - first two adjacent, third non-adjacent -->
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
-  <regex>rule_name:"(\.*)"; rule_name:"(\.*)"|rule_name:"(\.*)"; rule_name:"(\.*)"$|rule_name:(\.*); rule_name:(\.*);|rule_name:(\.*); rule_name:(\.*)$|rule_name:"(\.*)";|rule_name:"(\.*)"$|rule_name:(\.*);|rule_name:(\.*)$</regex>
-  <!--<regex>rule_name:"(\.*)";|rule_name:"(\.*)"$|rule_name:(\.*);|rule_name:(\.*)$</regex>-->
+  <regex>rule_action:"(\.+)"; rule_action:"(\.+)"; \w\.+rule_action:"(\.+)";</regex>
+  <order>rule_action_main,rule_action_second,rule_action_third</order>
+</decoder>
+
+<!-- 3 rule_actions - all adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_action:"(\.+)"; rule_action:"(\.+)"; rule_action:"(\.+)";</regex>
+  <order>rule_action_main,rule_action_second,rule_action_third</order>
+</decoder>
+
+<!-- 2 rule_actions - non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_action:"(\.+)"; \w\.+rule_action:"(\.+)";</regex>
+  <order>rule_action_main,rule_action_second</order>
+</decoder>
+
+<!-- 2 rule_actions - adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_action:"(\.+)"; rule_action:"(\.+)";</regex>
+  <order>rule_action_main,rule_action_second</order>
+</decoder>
+
+<!-- 1 rule_action -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_action:"(\.+)";</regex>
+  <order>rule_action_main</order>
+</decoder>
+
+
+
+
+<!-- 2 rule_names - non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_name:"(\.+)"; \w\.+rule_name:"(\.+)";</regex>
   <order>rule_name_main,rule_name_secondary</order>
 </decoder>
+
+<!-- 2 rule_names - adjacent -->
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
-  
-  <regex>rule_uid:"(\.*)"; rule_uid:"(\.*)"; rule_uid:"(\.*)"|rule_uid:"(\.*)"; rule_uid:"(\.*)"; rule_uid:"(\.*)"$|rule_uid:"(\.*)"; rule_uid:(\.*); rule_uid:(\.*);|rule_uid:"(\.*)"; rule_uid:(\.*); rule_uid:(\.*)$|rule_uid:"(\.*)"; rule_uid:"(\.*)"|rule_uid:"(\.*)"; rule_uid:"(\.*)"$|rule_uid:(\.*); rule_uid:(\.*);|rule_uid:(\.*); rule_uid:(\.*)$|rule_uid:"(\.*)";|rule_uid:"(\.*)"$|rule_uid:(\.*);|rule_uid:(\.*)$</regex>
-  <!--<regex>rule_uid:"(\.*)"; rule_uid:"(\.*)"|rule_uid:"(\.*)"; rule_uid:"(\.*)"$|rule_uid:(\.*); rule_uid:(\.*);|rule_uid:(\.*); rule_uid:(\.*)$|rule_uid:"(\.*)";|rule_uid:"(\.*)"$|rule_uid:(\.*);|rule_uid:(\.*)$</regex>-->
-  <!--<regex>rule_uid:"(\.*)";|rule_uid:"(\.*)"$|rule_uid:(\.*);|rule_uid:(\.*)$</regex>-->
+  <regex>rule_name:"(\.+)"; rule_name:"(\.+)";</regex>
+  <order>rule_name_main,rule_name_secondary</order>
+</decoder>
+
+<!-- 1 rule_name -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_name:"(\.+)";</regex>
+  <order>rule_name_main</order>
+</decoder>
+
+
+
+
+<!-- 3 rule_uids - non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_uid:"(\.+)"; \w\.+rule_uid:"(\.+)"; \w\.+rule_uid:"(\.+)";</regex>
   <order>rule_uid_main,rule_uid_second,rule_uid_third</order>
+</decoder>
+
+<!-- 3 rule_uids - first two adjacent, third non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_uid:"(\.+)"; rule_uid:"(\.+)"; \w\.+rule_uid:"(\.+)";</regex>
+  <order>rule_uid_main,rule_uid_second,rule_uid_third</order>
+</decoder>
+
+<!-- 3 rule_uids - all adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_uid:"(\.+)"; rule_uid:"(\.+)"; rule_uid:"(\.+)";</regex>
+  <order>rule_uid_main,rule_uid_second,rule_uid_third</order>
+</decoder>
+
+<!-- 2 rule_uids - non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_uid:"(\.+)"; \w\.+rule_uid:"(\.+)";</regex>
+  <order>rule_uid_main,rule_uid_second</order>
+</decoder>
+
+<!-- 2 rule_uids - adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_uid:"(\.+)"; rule_uid:"(\.+)";</regex>
+  <order>rule_uid_main,rule_uid_second</order>
+</decoder>
+
+<!-- 1 rule_uid -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>rule_uid:"(\.+)";</regex>
+  <order>rule_uid_main</order>
 </decoder>
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
@@ -362,22 +504,93 @@
 <!-- For multi-value fields - these will capture the LAST occurrence (same as your current decoder behavior) -->
 <!-- If you want the first occurrence of layer_name instead of last, add this BEFORE the existing layer_name decoder -->
 
-<!-- To capture BOTH layer names (first and second), add these two decoders -->
-<!-- First layer_name -->
+<!-- To capture multiple values (first and second), add these decoders -->
+
+
+
+<!-- 3 layer_names - non-adjacent -->
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
-  <regex>layer_name:"(\.*)"; layer_name:"(\.*)"; layer_name:"(\.*)"|layer_name:"(\.*)"; layer_name:"(\.*)"; layer_name:"(\.*)"$|layer_name:"(\.*)"; layer_name:(\.*); layer_name:(\.*);|layer_name:"(\.*)"; layer_name:(\.*); layer_name:(\.*)$|layer_name:"(\.*)"; layer_name:"(\.*)"|layer_name:"(\.*)"; layer_name:"(\.*)"$|layer_name:(\.*); layer_name:(\.*);|layer_name:(\.*); layer_name:(\.*)$|layer_name:"(\.*)";|layer_name:"(\.*)"$|layer_name:(\.*);|layer_name:(\.*)$</regex>
-  
-  <!--<regex>layer_name:"(\.*)"; layer_name:"(\.*)"|layer_name:"(\.*)"; layer_name:"(\.*)"$|layer_name:(\.*); layer_name:(\.*);|layer_name:(\.*); layer_name:(\.*)$|layer_name:"(\.*)";|layer_name:"(\.*)"$|layer_name:(\.*);|layer_name:(\.*)$</regex>-->
+  <regex>layer_name:"(\.+)"; \w\.+layer_name:"(\.+)"; \w\.+layer_name:"(\.+)";</regex>
   <order>layer_name_first,layer_name_second,layer_name_third</order>
 </decoder>
 
-
+<!-- 3 layer_names - first two adjacent, third non-adjacent -->
 <decoder name="checkpoint-smart1">
   <parent>checkpoint-smart1</parent>
-  <regex>match_id:"(\.*)"; match_id:"(\.*)"; match_id:"(\.*)"|match_id:"(\.*)"; match_id:"(\.*)"; match_id:"(\.*)"$|match_id:"(\.*)"; match_id:(\.*); match_id:(\.*);|match_id:"(\.*)"; match_id:(\.*); match_id:(\.*)$|match_id:"(\.*)"; match_id:"(\.*)"|match_id:"(\.*)"; match_id:"(\.*)"$|match_id:(\.*); match_id:(\.*);|match_id:(\.*); match_id:(\.*)$|match_id:"(\.*)";|match_id:"(\.*)"$|match_id:(\.*);|match_id:(\.*)$</regex>
-  <!--<regex>match_id:"(\.*)"; match_id:"(\.*)"|match_id:"(\.*)"; match_id:"(\.*)"$|match_id:(\.*); match_id:(\.*);|match_id:(\.*); match_id:(\.*)$|match_id:"(\.*)";|match_id:"(\.*)"$|match_id:(\.*);|match_id:(\.*)$</regex>-->
+  <regex>layer_name:"(\.+)"; layer_name:"(\.+)"; \w\.+layer_name:"(\.+)";</regex>
+  <order>layer_name_first,layer_name_second,layer_name_third</order>
+</decoder>
+
+<!-- 3 layer_names - all adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>layer_name:"(\.+)"; layer_name:"(\.+)"; layer_name:"(\.+)";</regex>
+  <order>layer_name_first,layer_name_second,layer_name_third</order>
+</decoder>
+
+<!-- 2 layer_names - non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>layer_name:"(\.+)"; \w\.+layer_name:"(\.+)";</regex>
+  <order>layer_name_first,layer_name_second</order>
+</decoder>
+
+<!-- 2 layer_names - adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>layer_name:"(\.+)"; layer_name:"(\.+)";</regex>
+  <order>layer_name_first,layer_name_second</order>
+</decoder>
+
+<!-- 1 layer_name -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>layer_name:"(\.+)";</regex>
+  <order>layer_name_first</order>
+</decoder>
+
+
+<!-- 3 match_ids - non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>match_id:"(\.+)"; \w\.+match_id:"(\.+)"; \w\.+match_id:"(\.+)";</regex>
   <order>match_id_first,match_id_second,match_id_third</order>
+</decoder>
+
+<!-- 3 match_ids - first two adjacent, third non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>match_id:"(\.+)"; match_id:"(\.+)"; \w\.+match_id:"(\.+)";</regex>
+  <order>match_id_first,match_id_second,match_id_third</order>
+</decoder>
+
+<!-- 3 match_ids - all adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>match_id:"(\.+)"; match_id:"(\.+)"; match_id:"(\.+)";</regex>
+  <order>match_id_first,match_id_second,match_id_third</order>
+</decoder>
+
+<!-- 2 match_ids - non-adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>match_id:"(\.+)"; \w\.+match_id:"(\.+)";</regex>
+  <order>match_id_first,match_id_second</order>
+</decoder>
+
+<!-- 2 match_ids - adjacent -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>match_id:"(\.+)"; match_id:"(\.+)";</regex>
+  <order>match_id_first,match_id_second</order>
+</decoder>
+
+<!-- 1 match_id -->
+<decoder name="checkpoint-smart1">
+  <parent>checkpoint-smart1</parent>
+  <regex>match_id:"(\.+)";</regex>
+  <order>match_id_first</order>
 </decoder>
 
 <decoder name="checkpoint-smart1">
