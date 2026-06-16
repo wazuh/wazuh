@@ -25,6 +25,7 @@
   - [Migrating Syslog Input to Logcollector with rsyslog](guide/migration/syslog-input-4x-to-5x.md)
   - [Active Response](guide/migration/active-response.md)
   - [Upgrade 4.X to 5.X](guide/migration/upgrade-4x-to-5x.md)
+  - [Migration Manager Configuration from 4.x to 5.x](guide/migration/manager-configuration-migration.md)
   - [Migrating Manager Coordinator from 4.x to 5.x](guide/migration/manager-coordinator-migration.md)
 
 # Reference Manual
