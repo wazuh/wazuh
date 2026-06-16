@@ -16,6 +16,7 @@
 #include <atomic>
 #include <future>
 #include <functional>
+#include <string>
 
 #include "loggerHelper.h"
 #include "threadSafeQueue.h"
@@ -196,6 +197,21 @@ namespace Utils
             }
 
             SyncDispatcher(Functor functor)
+                : m_functor{functor}
+                , m_running{true}
+            {
+            }
+
+            SyncDispatcher(Functor functor, std::string /*logTag*/)
+                : m_functor{functor}
+                , m_running{true}
+            {
+            }
+
+            SyncDispatcher(Functor functor,
+                           std::string /*logTag*/,
+                           const unsigned int /*numberOfThreads*/,
+                           const size_t /*maxQueueSize*/)
                 : m_functor{functor}
                 , m_running{true}
             {

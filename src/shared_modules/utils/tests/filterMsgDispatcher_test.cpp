@@ -32,7 +32,7 @@ public:
 TEST_F(FilterMsgDispatcherTest, rWithoutFilterCallback)
 {
     CallbackWrapper callbackWrapper;
-    TestMsgDispatcher dispatcher([&](const Value& value) { callbackWrapper.callback(value); }, nullptr);
+    TestMsgDispatcher dispatcher([&](const Value& value) { callbackWrapper.callback(value); }, "test-dispatcher", nullptr);
 
     EXPECT_CALL(callbackWrapper, callback("1")).Times(1);
     EXPECT_CALL(callbackWrapper, callback("2")).Times(1);
@@ -50,6 +50,7 @@ TEST_F(FilterMsgDispatcherTest, WithFilterCallback)
 {
     CallbackWrapper callbackWrapper;
     TestMsgDispatcher dispatcher([&](const Value& value) { callbackWrapper.callback(value); },
+                                 "test-dispatcher",
                                  [](const Value& value) { return value == "2"; });
 
     EXPECT_CALL(callbackWrapper, callback("1")).Times(0);
@@ -66,5 +67,5 @@ TEST_F(FilterMsgDispatcherTest, WithFilterCallback)
 
 TEST_F(FilterMsgDispatcherTest, NullCallback)
 {
-    EXPECT_ANY_THROW(TestMsgDispatcher dispatcher(nullptr));
+    EXPECT_ANY_THROW(TestMsgDispatcher dispatcher(nullptr, "test-dispatcher"));
 }

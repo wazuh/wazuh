@@ -25,7 +25,7 @@ void RocksDBSafeQueueTest::SetUp()
     std::error_code ec;
     std::filesystem::remove_all("test.db", ec);
     queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
-        RocksDBQueue<std::string>("test.db"));
+        RocksDBQueue<std::string>("test.db", "test-rocksdb-queue"));
 };
 
 void RocksDBSafeQueueTest::TearDown() {};
@@ -148,7 +148,7 @@ TEST_F(RocksDBSafeQueueTest, CreateFolderRecursively)
 
     EXPECT_NO_THROW({
         (std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
-            RocksDBQueue<std::string>(DATABASE_NAME)));
+            RocksDBQueue<std::string>(DATABASE_NAME, "test-rocksdb-queue")));
     });
 
     std::error_code ec;
@@ -161,7 +161,7 @@ TEST_F(RocksDBSafeQueueTest, CorruptionTest)
     std::unique_ptr<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>> testQueue;
 
     testQueue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
-        RocksDBQueue<std::string>(DATABASE_NAME));
+        RocksDBQueue<std::string>(DATABASE_NAME, "test-rocksdb-queue"));
 
     for (int i = 0; i < 10; i++)
     {
@@ -189,7 +189,7 @@ TEST_F(RocksDBSafeQueueTest, CorruptionTest)
     try
     {
         testQueue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
-            RocksDBQueue<std::string>(DATABASE_NAME));
+            RocksDBQueue<std::string>(DATABASE_NAME, "test-rocksdb-queue"));
     }
     catch (const std::exception& e)
     {
@@ -215,12 +215,12 @@ TEST_F(RocksDBSafeQueueTest, PopBulkWithDeletedIndexAndEmpty)
 
     queue = nullptr;
     {
-        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
+        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db", "test");
         db->delete_(Utils::padString(std::to_string(1), '0', 20));
     }
 
     queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
-        RocksDBQueue<std::string>("test.db"));
+        RocksDBQueue<std::string>("test.db", "test-rocksdb-queue"));
 
     if (auto queueElements = queue->getBulk(ITERATION_COUNT, std::chrono::seconds(1));
         queueElements.size() != ELEMENTS_TO_POP)
@@ -249,11 +249,11 @@ TEST_F(RocksDBSafeQueueTest, PopBulkWithDeletedIndexAndPendingElements)
 
     queue = nullptr;
     {
-        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
+        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db", "test");
         db->delete_(Utils::padString(std::to_string(3), '0', 20));
     }
     queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
-        RocksDBQueue<std::string>("test.db"));
+        RocksDBQueue<std::string>("test.db", "test-rocksdb-queue"));
 
     auto queueElements = queue->getBulk(BULK_SIZE, std::chrono::seconds(1));
 
@@ -304,11 +304,11 @@ TEST_F(RocksDBSafeQueueTest, PopWithDeletedIndex)
 
     queue = nullptr;
     {
-        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
+        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db", "test");
         db->delete_(Utils::padString(std::to_string(3), '0', 20));
     }
     queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
-        RocksDBQueue<std::string>("test.db"));
+        RocksDBQueue<std::string>("test.db", "test-rocksdb-queue"));
 
     auto queueElements = queue->getBulk(BULK_SIZE, std::chrono::seconds(1));
 
@@ -366,7 +366,7 @@ TEST_F(RocksDBSafeQueueTest, PopBulkWithDeletedIndexAndPendingElementsEmpty)
 
     queue = nullptr;
     {
-        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
+        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db", "test");
         // Delete elements from 2 to 9
         for (int i = ELEMENTS_TO_DELETE_FROM; i < ELEMENTS_TO_DELETE_TO; i++)
         {
@@ -374,7 +374,7 @@ TEST_F(RocksDBSafeQueueTest, PopBulkWithDeletedIndexAndPendingElementsEmpty)
         }
     }
     queue = std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
-        RocksDBQueue<std::string>("test.db"));
+        RocksDBQueue<std::string>("test.db", "test-rocksdb-queue"));
 
     auto queueElements = queue->getBulk(BULK_SIZE, std::chrono::seconds(1));
 
@@ -473,7 +473,7 @@ TEST_F(RocksDBSafeQueueTest, StressTestMultipleQueuesAndThreads)
         std::filesystem::remove_all(dbName, ec);
 
         queues.push_back(std::make_unique<Utils::SafeQueue<std::string, RocksDBQueue<std::string>>>(
-            RocksDBQueue<std::string>(dbName, true)));
+            RocksDBQueue<std::string>(dbName, "test-rocksdb-queue", true)));
     }
 
     printSharedBufferStats("After creating 10 queues");

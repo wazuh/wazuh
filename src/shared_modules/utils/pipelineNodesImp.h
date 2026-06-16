@@ -12,6 +12,7 @@
 #ifndef PIPELINE_NODES_IMP_H
 #define PIPELINE_NODES_IMP_H
 #include <functional>
+#include <string>
 #include "threadDispatcher.h"
 #include "pipelinePattern.h"
 
@@ -26,12 +27,13 @@ namespace Utils
     class ReadNode : public Dispatcher<Input, Functor>
     {
         public:
-            ReadNode(Functor functor)
-                : DispatcherType{ functor }
+            ReadNode(Functor functor, std::string logTag = "pipeline-node")
+                : DispatcherType{ functor, std::move(logTag) }
             {}
             ReadNode(Functor functor,
-                     const unsigned int numberOfThreads)
-                : DispatcherType{ functor, numberOfThreads, UNLIMITED_QUEUE_SIZE }
+                     const unsigned int numberOfThreads,
+                     std::string logTag = "pipeline-node")
+                : DispatcherType{ functor, std::move(logTag), numberOfThreads, UNLIMITED_QUEUE_SIZE }
             {}
             // LCOV_EXCL_START
             ~ReadNode() = default;

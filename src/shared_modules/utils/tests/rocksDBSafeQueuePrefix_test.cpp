@@ -20,7 +20,7 @@ void RocksDBSafeQueuePrefixTest::SetUp()
     std::error_code ec;
     std::filesystem::remove_all("test.db", ec);
     queue = std::make_unique<Utils::TSafeMultiQueue<std::string, std::string, RocksDBQueueCF<std::string>>>(
-        RocksDBQueueCF<std::string>("test.db"));
+        RocksDBQueueCF<std::string>("test.db", "test-rocksdb-queue-cf"));
 };
 
 void RocksDBSafeQueuePrefixTest::TearDown() {};
@@ -147,7 +147,7 @@ TEST_F(RocksDBSafeQueuePrefixTest, CreateFolderRecursively)
 
     EXPECT_NO_THROW({
         (std::make_unique<Utils::TSafeMultiQueue<std::string, std::string, RocksDBQueueCF<std::string>>>(
-            RocksDBQueueCF<std::string>(DATABASE_NAME)));
+            RocksDBQueueCF<std::string>(DATABASE_NAME, "test-rocksdb-queue-cf")));
     });
 
     std::error_code ec;
@@ -205,12 +205,12 @@ TEST_F(RocksDBSafeQueuePrefixTest, PopWithDeletedIndex)
 
     queue = nullptr;
     {
-        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db");
+        auto db = std::make_unique<Utils::RocksDBWrapper>("test.db", "test-rocksdb-wrapper");
         db->delete_("001_" + std::to_string(3));
         db->delete_("001_" + std::to_string(8));
     }
     queue = std::make_unique<Utils::TSafeMultiQueue<std::string, std::string, RocksDBQueueCF<std::string>>>(
-        RocksDBQueueCF<std::string>("test.db"));
+        RocksDBQueueCF<std::string>("test.db", "test-rocksdb-queue-cf"));
 
     std::queue<std::string> queueElements;
     while (queue->size("001") != 0)

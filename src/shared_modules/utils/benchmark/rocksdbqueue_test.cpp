@@ -16,7 +16,7 @@ static void pushBenchmark(benchmark::State& state)
     std::error_code ec;
     std::filesystem::remove_all(TEST_DB, ec);
 
-    RocksDBQueue<std::string> queue(TEST_DB);
+    RocksDBQueue<std::string> queue(TEST_DB, "benchmark");
     for (auto _ : state)
     {
         queue.push("test");
@@ -30,7 +30,7 @@ static void popBenchmark(benchmark::State& state)
     std::error_code ec;
     std::filesystem::remove_all(TEST_DB, ec);
 
-    RocksDBQueue<std::string> queue(TEST_DB);
+    RocksDBQueue<std::string> queue(TEST_DB, "benchmark");
 
     for (auto _ : state)
     {
@@ -48,7 +48,7 @@ static void frontBenchmark(benchmark::State& state)
     std::error_code ec;
     std::filesystem::remove_all(TEST_DB, ec);
 
-    RocksDBQueue<std::string> queue(TEST_DB);
+    RocksDBQueue<std::string> queue(TEST_DB, "benchmark");
     queue.push("test");
 
     for (auto _ : state)

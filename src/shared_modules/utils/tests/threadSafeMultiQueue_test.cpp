@@ -27,7 +27,7 @@ TEST_F(ThreadSafeMultiQueueTest, Ctor)
 {
     Utils::
         TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test", "test-rocksdb-queue-cf"));
     EXPECT_TRUE(queue.empty());
     EXPECT_FALSE(queue.cancelled());
 }
@@ -36,7 +36,7 @@ TEST_F(ThreadSafeMultiQueueTest, FrontAndPop)
 {
     Utils::
         TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test", "test-rocksdb-queue-cf"));
 
     constexpr auto EXPECTED_COUNT_MSGS = 1;
     auto count = 0;
@@ -60,7 +60,7 @@ TEST_F(ThreadSafeMultiQueueTest, MultiDataFrontAndPop)
 {
     Utils::
         TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test", "test-rocksdb-queue-cf"));
 
     constexpr auto EXPECTED_COUNT_MSGS = 1;
     auto count = 0;
@@ -87,7 +87,7 @@ TEST_F(ThreadSafeMultiQueueTest, Cancel)
 {
     Utils::
         TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test", "test-rocksdb-queue-cf"));
     std::thread t1 {[&]() { queue.front(); }};
 
     queue.cancel();
@@ -99,7 +99,7 @@ TEST_F(ThreadSafeMultiQueueTest, Postpone)
 {
     Utils::
         TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test", "test-rocksdb-queue-cf"));
     // Get current timestamp
     auto now = std::chrono::system_clock::now();
 
@@ -134,7 +134,7 @@ TEST_F(ThreadSafeMultiQueueTest, Clear)
 {
     Utils::
         TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test", "test-rocksdb-queue-cf"));
 
     rocksdb::Slice slice("DATA");
     queue.push("000", slice);
@@ -165,7 +165,7 @@ TEST_F(ThreadSafeMultiQueueTest, ClearAll)
 {
     Utils::
         TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test", "test-rocksdb-queue-cf"));
 
     rocksdb::Slice slice("DATA");
     queue.push("000", slice);
@@ -188,7 +188,7 @@ TEST_F(ThreadSafeMultiQueueTest, LoadAfterStop)
         Utils::TSafeMultiQueue<rocksdb::Slice,
                                rocksdb::PinnableSlice,
                                RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test", "test-rocksdb-queue-cf"));
 
         rocksdb::Slice slice("DATA");
         queue.push("000", slice);
@@ -202,7 +202,7 @@ TEST_F(ThreadSafeMultiQueueTest, LoadAfterStop)
 
     Utils::
         TSafeMultiQueue<rocksdb::Slice, rocksdb::PinnableSlice, RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>
-            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test"));
+            queue(RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("test", "test-rocksdb-queue-cf"));
 
     EXPECT_FALSE(queue.empty());
     EXPECT_EQ(1, queue.size("000"));
@@ -220,7 +220,7 @@ TEST_F(ThreadSafeMultiQueueTest, CorruptionTest)
     auto spTestQueue = std::make_unique<Utils::TSafeMultiQueue<rocksdb::Slice,
                                                                rocksdb::PinnableSlice,
                                                                RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>>(
-        RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("corrupted.db"));
+        RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("corrupted.db", "test-rocksdb-queue-cf"));
 
     for (int i = 0; i < 10; i++)
     {
@@ -249,7 +249,7 @@ TEST_F(ThreadSafeMultiQueueTest, CorruptionTest)
         spTestQueue = std::make_unique<Utils::TSafeMultiQueue<rocksdb::Slice,
                                                               rocksdb::PinnableSlice,
                                                               RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>>>(
-            RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("corrupted.db"));
+            RocksDBQueueCF<rocksdb::Slice, rocksdb::PinnableSlice>("corrupted.db", "test-rocksdb-queue-cf"));
     }
     catch (const std::exception& e)
     {

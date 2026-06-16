@@ -39,7 +39,7 @@ public:
 TEST_F(ThreadDispatcherTest, AsyncDispatcherPushAndRundown)
 {
     FunctorWrapper functor;
-    AsyncDispatcher<int, std::reference_wrapper<FunctorWrapper>> dispatcher {std::ref(functor)};
+    AsyncDispatcher<int, std::reference_wrapper<FunctorWrapper>> dispatcher {std::ref(functor), "test-dispatcher"};
     EXPECT_EQ(std::thread::hardware_concurrency(), dispatcher.numberOfThreads());
 
     for (int i = 0; i < 10; ++i)
@@ -60,7 +60,7 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherPushAndRundown)
 TEST_F(ThreadDispatcherTest, AsyncDispatcherCancel)
 {
     FunctorWrapper functor;
-    AsyncDispatcher<int, std::reference_wrapper<FunctorWrapper>> dispatcher {std::ref(functor)};
+    AsyncDispatcher<int, std::reference_wrapper<FunctorWrapper>> dispatcher {std::ref(functor), "test-dispatcher"};
     EXPECT_EQ(std::thread::hardware_concurrency(), dispatcher.numberOfThreads());
     dispatcher.cancel();
 
@@ -96,6 +96,7 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherQueue)
                                                                        condition.wait(lock);
                                                                    }
                                                                },
+                                                               "test-dispatcher",
                                                                NUMBER_OF_THREADS,
                                                                MAX_QUEUE_SIZE};
 
@@ -155,7 +156,8 @@ TEST_F(ThreadDispatcherTest, CaptureWarningMsg)
         {
             EXPECT_EQ(testMsg, data);
             throw std::runtime_error("Test exception");
-        });
+        },
+        "test-dispatcher");
 
     dispatcher.push(testMsg);
     dispatcher.rundown();

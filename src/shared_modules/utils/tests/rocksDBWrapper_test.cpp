@@ -113,7 +113,7 @@ TEST_F(RocksDBWrapperTest, TestGetEmptyKey)
  */
 TEST_F(RocksDBWrapperTest, TestGetEmptyDB)
 {
-    Utils::RocksDBWrapper new_db_wrapper("new_test.db");
+    Utils::RocksDBWrapper new_db_wrapper("new_test.db", "test");
     std::string value {};
     EXPECT_FALSE(new_db_wrapper.get("key1", value));
 }
@@ -150,7 +150,7 @@ TEST_F(RocksDBWrapperTest, TestDeleteEmptyKey)
  */
 TEST_F(RocksDBWrapperTest, TestDeleteEmptyDB)
 {
-    Utils::RocksDBWrapper new_db_wrapper("new_test.db");
+    Utils::RocksDBWrapper new_db_wrapper("new_test.db", "test");
     EXPECT_NO_THROW(new_db_wrapper.delete_("key1"));
 }
 
@@ -172,7 +172,7 @@ TEST_F(RocksDBWrapperTest, TestGetLastKeyValue)
  */
 TEST_F(RocksDBWrapperTest, TestGetLastKeyValueEmptyDB)
 {
-    Utils::RocksDBWrapper new_db_wrapper("new_test.db");
+    Utils::RocksDBWrapper new_db_wrapper("new_test.db", "test");
     EXPECT_THROW(new_db_wrapper.getLastKeyValue(), std::runtime_error);
 }
 
@@ -208,7 +208,7 @@ TEST_F(RocksDBWrapperTest, TestDeleteAllColumnFamily)
  */
 TEST_F(RocksDBWrapperTest, TestDeleteAllEmptyDB)
 {
-    Utils::RocksDBWrapper new_db_wrapper("new_test.db");
+    Utils::RocksDBWrapper new_db_wrapper("new_test.db", "test");
     EXPECT_NO_THROW(db_wrapper->deleteAll());
 }
 
@@ -343,7 +343,7 @@ TEST_F(RocksDBWrapperTest, TestRangeForLoopWithBinaryBuffers)
 TEST_F(RocksDBWrapperTest, TestCreateFolderRecursively)
 {
     const auto databaseFolder {OUTPUT_FOLDER / "folder1" / "folder2" / "test_db"};
-    EXPECT_NO_THROW(std::make_unique<Utils::RocksDBWrapper>(databaseFolder));
+    EXPECT_NO_THROW(std::make_unique<Utils::RocksDBWrapper>(databaseFolder, "test"));
 }
 
 /**
@@ -401,7 +401,7 @@ TEST_F(RocksDBWrapperTest, ColumnsSetup)
 
     // Reset wrapper. This will call the destructor and then the constructor again.
     db_wrapper.reset();
-    ASSERT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder); });
+    ASSERT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, "test"); });
 
     EXPECT_TRUE(db_wrapper->columnExists(COLUMN_NAME_A));
     EXPECT_TRUE(db_wrapper->columnExists(COLUMN_NAME_B));
@@ -585,7 +585,7 @@ TEST_F(RocksDBWrapperTest, CorruptAndRepairTest)
 {
     db_wrapper.reset();
 
-    db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false);
+    db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, "test", false);
 
     for (int i = 0; i < 10; i++)
     {
@@ -606,6 +606,6 @@ TEST_F(RocksDBWrapperTest, CorruptAndRepairTest)
     }
     EXPECT_TRUE(corrupted);
 
-    EXPECT_ANY_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false, false); });
-    EXPECT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, false, true); });
+    EXPECT_ANY_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, "test", false, false); });
+    EXPECT_NO_THROW({ db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, "test", false, true); });
 }
