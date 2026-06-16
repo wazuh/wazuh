@@ -56,11 +56,13 @@ namespace Utils
          *                     unbounded queue.
          */
         explicit AsyncValueDispatcher(Functor functor,
+                                      std::string logTag,
                                       const unsigned int numberOfThreads = std::thread::hardware_concurrency(),
                                       const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
             : m_functor {functor}
             , m_numberOfThreads {numberOfThreads ? numberOfThreads : 1}
             , m_maxQueueSize {maxQueueSize}
+            , m_logTag(std::move(logTag))
         {
             m_threads.reserve(m_numberOfThreads);
 
@@ -203,7 +205,7 @@ namespace Utils
                 }
                 catch (const std::exception& ex)
                 {
-                    logDebug1(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
+                    logDebug1(m_logTag.c_str(), "Dispatch handler error, %s", ex.what());
                 }
             }
         }
@@ -225,6 +227,7 @@ namespace Utils
 
         /// @brief Maximum accepted queue size, or UNLIMITED_QUEUE_SIZE for no limit.
         const size_t m_maxQueueSize;
+        std::string m_logTag;
     };
 } // namespace Utils
 #endif // ASYNC_VALUE_DISPATCHER_HPP

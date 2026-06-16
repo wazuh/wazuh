@@ -92,7 +92,7 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
 
     EVPHelper().encryptAES256(value, encryptedValue);
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -119,7 +119,7 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
 {
     std::string encryptedValue;
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -149,7 +149,7 @@ std::string Keystore::get(const std::string& columnFamily, const std::string& ke
     std::string value;
     std::string encryptedValue;
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {

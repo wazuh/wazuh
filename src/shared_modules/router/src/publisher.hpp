@@ -44,6 +44,7 @@ public:
         : m_socketServer(std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(socketPath + endpointName))
         , m_msgDispatcher(std::make_unique<MsgDispatcher>([this, endpointName](const std::vector<char>& data)
                                                           { this->call(data); },
+                                                          "router",
                                                           nullptr,
                                                           PUBLISHER_DISPATCH_THREAD_COUNT))
     {

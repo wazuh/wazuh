@@ -69,11 +69,12 @@ namespace Utils
     class AsyncDispatcher
     {
         public:
-            AsyncDispatcher(Functor functor, const unsigned int numberOfThreads = std::thread::hardware_concurrency(), const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+            AsyncDispatcher(Functor functor, std::string logTag, const unsigned int numberOfThreads = std::thread::hardware_concurrency(), const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
                 : m_functor{ functor }
                 , m_running{ true }
                 , m_numberOfThreads{ numberOfThreads ? numberOfThreads : 1 }
                 , m_maxQueueSize { maxQueueSize }
+                , m_logTag(std::move(logTag))
             {
                 m_threads.reserve(m_numberOfThreads);
 
@@ -158,7 +159,7 @@ namespace Utils
                     }
                     catch (const std::exception& ex)
                     {
-                        logDebug1(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
+                        logDebug1(m_logTag.c_str(), "Dispatch handler error, %s", ex.what());
                     }
                 }
             }
@@ -179,6 +180,7 @@ namespace Utils
             std::atomic_bool m_running;
             const unsigned int m_numberOfThreads;
             const size_t m_maxQueueSize;
+            std::string m_logTag;
     };
 
     template <typename Input, typename Functor>

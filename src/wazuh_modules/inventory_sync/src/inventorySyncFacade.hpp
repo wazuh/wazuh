@@ -603,7 +603,7 @@ public:
         {
             logWarn(m_logTag.c_str(), "Error removing inventory_sync directory: %s", errorCodeFS.message().c_str());
         }
-        m_dataStore = std::make_unique<TRocksDBWrapper>(INVENTORY_SYNC_PATH);
+        m_dataStore = std::make_unique<TRocksDBWrapper>(INVENTORY_SYNC_PATH, m_logTag);
         m_responseDispatcher = std::make_unique<TResponseDispatcher>(m_logTag);
 
         logDebug2(m_logTag.c_str(), "Configuration: %s", configuration.dump().c_str());
@@ -689,6 +689,7 @@ public:
                     logError(m_logTag.c_str(), "InventorySyncFacade::start: %s", e.what());
                 }
             },
+            m_logTag,
             std::thread::hardware_concurrency(),
             m_workersQueueSize);
 
@@ -1512,6 +1513,7 @@ public:
                     m_indexerConnector->invokePendingCallbacks();
                 }
             },
+            m_logTag,
             m_threadCount,
             UNLIMITED_QUEUE_SIZE);
 

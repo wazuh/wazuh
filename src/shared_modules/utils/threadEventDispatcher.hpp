@@ -45,7 +45,7 @@ public:
         , m_bulkSize {bulkSize}
         , m_retryDelay {retryDelay}
         , m_flushInterval {flushInterval}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, useSharedBuffers))}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, logTag, useSharedBuffers))}
         , m_logTag(std::move(logTag))
     {
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
@@ -61,7 +61,7 @@ public:
         , m_bulkSize {bulkSize}
         , m_retryDelay {retryDelay}
         , m_flushInterval {flushInterval}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, logTag))}
         , m_logTag(std::move(logTag))
     {
     }

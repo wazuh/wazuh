@@ -30,8 +30,9 @@ template<typename T, typename U = T>
 class RocksDBQueue final
 {
 public:
-    explicit RocksDBQueue(const std::string& connectorName, bool useSharedBuffers = false)
+    explicit RocksDBQueue(const std::string& connectorName, std::string logTag, bool useSharedBuffers = false)
         : m_legacyKeyMode {false}
+        , m_logTag(std::move(logTag))
     {
         // RocksDB initialization using shared buffers.
         // Get shared buffers to reduce memory usage across multiple instances
@@ -90,7 +91,7 @@ public:
                         throw std::runtime_error("Failed to open RocksDB database after repairing. Reason: " +
                                                  std::string {status.getState()});
                     }
-                    logWarn(LOGGER_DEFAULT_TAG,
+                    logWarn(m_logTag.c_str(),
                             "Database '%s' was repaired because it was corrupt.",
                             connectorName.c_str());
                 }
@@ -301,6 +302,7 @@ private:
     uint64_t m_first = 1;
     uint64_t m_last = 0;
     bool m_legacyKeyMode = false;
+    std::string m_logTag;
 
     std::string paddedKey(const uint64_t key) const
     {
