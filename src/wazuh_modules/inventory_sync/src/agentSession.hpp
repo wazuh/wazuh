@@ -87,15 +87,18 @@ class AgentSessionImpl final
     std::mutex m_mutex;                 ///< Mutex to guard shared state
     bool m_endEnqueued = false;         ///< Whether the END message has been enqueued
     uint64_t m_declaredSize {0};        ///< DataValue count declared in the Start message (for quota accounting)
+    std::string m_logTag;               ///< Log tag for this session
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
                               Wazuh::SyncSchema::Start const* data,
                               TStore& store,
                               TIndexerQueue& indexerQueue,
-                              const TResponseDispatcher& responseDispatcher)
+                              const TResponseDispatcher& responseDispatcher,
+                              std::string logTag = std::string(WM_INVENTORY_SYNC_LOGTAG))
         : m_store {store}
         , m_indexerQueue {indexerQueue}
+        , m_logTag(std::move(logTag))
 
     {
         if (data == nullptr)
@@ -153,8 +156,8 @@ public:
                     auto entry = index->str();
                     if (!isAgentScopedStateIndex(entry))
                     {
-                        logWarn(LOGGER_DEFAULT_TAG,
-                                "Start: rejecting index '%s' (outside the agent's authorized state-index scope) for "
+                        logWarn(m_logTag.c_str(),
+                                "Start: ignoring index '%s' (does not belong to wazuh-states-* family) for "
                                 "agent '%.*s' (session %llu).",
                                 entry.c_str(),
                                 static_cast<int>(agentId.size()),
@@ -202,13 +205,13 @@ public:
                                                .clusterName = std::string(clusterName.data(), clusterName.size()),
                                                .clusterNode = std::string(clusterNode.data(), clusterNode.size())});
 
-        logDebug2(LOGGER_DEFAULT_TAG,
+        logDebug2(m_logTag.c_str(),
                   "New session for module '%s' by agent '%s'. (Session %llu)",
                   m_context->moduleName.c_str(),
                   m_context->agentId.c_str(),
                   m_context->sessionId);
 
-        logDebug2(LOGGER_DEFAULT_TAG,
+        logDebug2(m_logTag.c_str(),
                   "Session %llu cluster info - cluster_name: '%s', cluster_node: '%s'",
                   m_context->sessionId,
                   m_context->clusterName.c_str(),
@@ -250,14 +253,14 @@ public:
         const auto seq = data->seq();
         const auto session = data->session();
 
-        logDebug2(LOGGER_DEFAULT_TAG, "Handling sequence number '%llu' for session '%llu'", seq, session);
+        logDebug2(m_logTag.c_str(), "Handling sequence number '%llu' for session '%llu'", seq, session);
 
         // Avoid storing data if the sequence number is out of declared size bounds;
         // GapSet::observe will throw std::out_of_range below and the WorkersQueue
         // wrapper will absorb it, so m_store.put never runs and no orphan key is left.
         if (seq >= m_declaredSize)
         {
-            logWarn(LOGGER_DEFAULT_TAG,
+            logWarn(m_logTag.c_str(),
                     "Data sequence number '%llu' exceeds declared size '%llu' for session %llu "
                     "(agent '%s', module '%s'); rejecting message.",
                     seq,
@@ -275,7 +278,7 @@ public:
         // the observation should not throw, though if it does the data chunk is already stored.
         m_gapSet->observe(data->seq());
 
-        logDebug2(LOGGER_DEFAULT_TAG,
+        logDebug2(m_logTag.c_str(),
                   "Data received: %s %llu %llu %s",
                   std::format("{}_{}", session, seq).c_str(),
                   m_context->sessionId,
@@ -313,7 +316,7 @@ public:
         // ChecksumModule messages — they can no longer influence the in-flight bulk.
         if (m_endEnqueued)
         {
-            logDebug2(LOGGER_DEFAULT_TAG,
+            logDebug2(m_logTag.c_str(),
                       "ChecksumModule arrived after End was enqueued for session %llu; ignoring",
                       m_context->sessionId);
             return;
@@ -329,8 +332,8 @@ public:
             auto candidate = data->index()->str();
             if (!isAgentScopedStateIndex(candidate))
             {
-                logWarn(LOGGER_DEFAULT_TAG,
-                        "ChecksumModule: rejecting index '%s' (outside the agent's authorized state-index scope) for "
+                logWarn(m_logTag.c_str(),
+                        "ChecksumModule: ignoring index '%s' (does not belong to wazuh-states-* family) for "
                         "session %llu.",
                         candidate.c_str(),
                         m_context->sessionId);
@@ -341,7 +344,7 @@ public:
             }
         }
 
-        logDebug2(LOGGER_DEFAULT_TAG,
+        logDebug2(m_logTag.c_str(),
                   "ChecksumModule received for session %llu, index: %s, checksum: %s",
                   m_context->sessionId,
                   m_context->checksumIndex.c_str(),
@@ -371,14 +374,14 @@ public:
         const auto seq = data->seq();
         const auto session = data->session();
 
-        logDebug2(LOGGER_DEFAULT_TAG, "Handling DataContext sequence number '%llu' for session '%llu'", seq, session);
+        logDebug2(m_logTag.c_str(), "Handling DataContext sequence number '%llu' for session '%llu'", seq, session);
 
         // Avoid storing context if the sequence number is out of declared size bounds;
         // GapSet::observe will throw std::out_of_range below and the WorkersQueue
         // wrapper will absorb it, so m_store.put never runs and no orphan key is left.
         if (seq >= m_declaredSize)
         {
-            logWarn(LOGGER_DEFAULT_TAG,
+            logWarn(m_logTag.c_str(),
                     "DataContext sequence number '%llu' exceeds declared size '%llu' for session %llu "
                     "(agent '%s', module '%s'); rejecting message.",
                     seq,
@@ -397,7 +400,7 @@ public:
         // the observation should not throw, though if it does the data chunk is already stored.
         m_gapSet->observe(seq);
 
-        logDebug2(LOGGER_DEFAULT_TAG,
+        logDebug2(m_logTag.c_str(),
                   "DataContext received: %s %llu %llu %s",
                   std::format("{}_{}_context", session, seq).c_str(),
                   m_context->sessionId,
@@ -435,13 +438,13 @@ public:
         const auto seq = data->seq();
         const auto session = data->session();
 
-        logDebug2(LOGGER_DEFAULT_TAG, "Handling DataClean sequence number '%llu' for session '%llu'", seq, session);
+        logDebug2(m_logTag.c_str(), "Handling DataClean sequence number '%llu' for session '%llu'", seq, session);
 
         // Check if the sequence number is within declared size bounds; GapSet::observe will
         // throw std::out_of_range below and the WorkersQueue wrapper will absorb it.
         if (seq >= m_declaredSize)
         {
-            logWarn(LOGGER_DEFAULT_TAG,
+            logWarn(m_logTag.c_str(),
                     "DataClean sequence number '%llu' exceeds declared size '%llu' for session %llu "
                     "(agent '%s', module '%s'); rejecting message.",
                     seq,
@@ -457,8 +460,8 @@ public:
             std::string index = data->index()->str();
             if (!isAgentScopedStateIndex(index))
             {
-                logWarn(LOGGER_DEFAULT_TAG,
-                        "DataClean: rejecting index '%s' (outside the agent's authorized state-index scope) for "
+                logWarn(m_logTag.c_str(),
+                        "DataClean: ignoring index '%s' (does not belong to wazuh-states-* family) for "
                         "session %llu, seq %llu.",
                         index.c_str(),
                         m_context->sessionId,
@@ -468,7 +471,7 @@ public:
             {
                 m_context->dataCleanIndices.insert(index);
 
-                logDebug2(LOGGER_DEFAULT_TAG,
+                logDebug2(m_logTag.c_str(),
                           "DataClean received for session %llu, seq %llu, index: %s",
                           m_context->sessionId,
                           seq,
@@ -477,7 +480,7 @@ public:
         }
         else
         {
-            logError(LOGGER_DEFAULT_TAG,
+            logError(m_logTag.c_str(),
                      "DataClean received without index for session %llu, seq %llu",
                      m_context->sessionId,
                      seq);
@@ -507,7 +510,7 @@ public:
 
         if (m_endEnqueued)
         {
-            logDebug2(LOGGER_DEFAULT_TAG, "End already enqueued for session %llu", m_context->sessionId);
+            logDebug2(m_logTag.c_str(), "End already enqueued for session %llu", m_context->sessionId);
             responseDispatcher.sendEndAck(
                 Wazuh::SyncSchema::Status_Processing, m_context->agentId, m_context->sessionId, m_context->moduleName);
             return;
@@ -515,7 +518,7 @@ public:
 
         if (m_gapSet->empty())
         {
-            logDebug2(LOGGER_DEFAULT_TAG, "All sequences received for session %llu", m_context->sessionId);
+            logDebug2(m_logTag.c_str(), "All sequences received for session %llu", m_context->sessionId);
             m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
             m_endEnqueued = true;
             responseDispatcher.sendEndAck(

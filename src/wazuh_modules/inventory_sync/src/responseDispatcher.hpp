@@ -44,36 +44,39 @@ struct ResponseMessage
 using ResponseQueue = Utils::AsyncValueDispatcher<ResponseMessage, std::function<void(ResponseMessage&&)>>;
 
 constexpr auto ARQUEUE_PATH {"queue/sockets/ar"};
+constexpr auto WM_INVENTORY_SYNC_LOGTAG {"wazuh-manager-modulesd:inventory-sync"};
 
 template<typename TQueue>
 class ResponseDispatcherImpl
 {
 private:
     std::unique_ptr<TQueue> m_responseDispatcher;
+    std::string m_logTag;
 
 public:
-    explicit ResponseDispatcherImpl()
+    explicit ResponseDispatcherImpl(std::string logTag = std::string(WM_INVENTORY_SYNC_LOGTAG))
+        : m_logTag(std::move(logTag))
     {
         auto responseSocketClient =
             std::make_shared<SocketClient<Socket<OSPrimitives, NoHeaderProtocol>, EpollWrapper>>(ARQUEUE_PATH);
         responseSocketClient->connect(
-            [](const char*, uint32_t, const char*, uint32_t)
+            [logTag = m_logTag](const char*, uint32_t, const char*, uint32_t)
             {
-                logDebug2(LOGGER_DEFAULT_TAG, "OnRead to %s", ARQUEUE_PATH);
+                logDebug2(logTag.c_str(), "OnRead to %s", ARQUEUE_PATH);
                 // Not used
             },
-            []()
+            [logTag = m_logTag]()
             {
-                logDebug2(LOGGER_DEFAULT_TAG, "Connected to %s", ARQUEUE_PATH);
+                logDebug2(logTag.c_str(), "Connected to %s", ARQUEUE_PATH);
                 // Not used
             },
             SOCK_DGRAM);
 
         // Response queue callback - uses ARQUEUE for all agents
         m_responseDispatcher = std::make_unique<ResponseQueue>(
-            [responseSocketClient](const ResponseMessage& data)
+            [responseSocketClient, logTag = m_logTag](const ResponseMessage& data)
             {
-                logDebug2(LOGGER_DEFAULT_TAG,
+                logDebug2(logTag.c_str(),
                           "ResponseDispatcher: Sending response to agent '%s', module '%s'",
                           data.agentId.c_str(),
                           data.moduleName.c_str());
