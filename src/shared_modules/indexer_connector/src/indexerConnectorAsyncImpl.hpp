@@ -510,6 +510,7 @@ public:
                                     {});
             },
             m_dbPath,
+            m_logTag,
             m_elementsPerBulk,
             m_maxQueueSize,
             RetryDelay,

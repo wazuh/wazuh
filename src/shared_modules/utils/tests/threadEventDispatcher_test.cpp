@@ -51,6 +51,7 @@ TEST_F(ThreadEventDispatcherTest, Ctor)
                 }
             },
             "test.db",
+            "test-dispatcher",
             BULK_SIZE,
             UNLIMITED_QUEUE_SIZE,
             1,
@@ -76,7 +77,7 @@ TEST_F(ThreadEventDispatcherTest, CtorNoWorker)
         auto index {0};
 
         ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>> dispatcher(
-            "test.db", BULK_SIZE, UNLIMITED_QUEUE_SIZE, 1, 0);
+            "test.db", "test-dispatcher", BULK_SIZE, UNLIMITED_QUEUE_SIZE, 1, 0);
 
         for (size_t i = 0; i < MESSAGES_TO_SEND; ++i)
         {
@@ -139,6 +140,7 @@ TEST_F(ThreadEventDispatcherTest, CtorPopFeature)
             }
         },
         "test.db",
+        "test-dispatcher",
         BULK_SIZE,
         UNLIMITED_QUEUE_SIZE,
         0,
@@ -204,7 +206,8 @@ TEST_F(ThreadEventDispatcherTest, CaptureWarningMsg)
                 throw std::runtime_error("Test exception");
             }
         },
-        "test.db");
+        "test.db",
+        "test-dispatcher");
 
     // Force the dispatch method to throw an exception.
     dispatcher.push(testMsg);
@@ -279,6 +282,7 @@ TEST_F(ThreadEventDispatcherTest, QueueSizeLimitEnforced)
             }
         },
         "test.db",
+        "test-dispatcher",
         BULK_SIZE,
         MAX_QUEUE_SIZE,
         1,
@@ -377,6 +381,7 @@ TEST_F(ThreadEventDispatcherTest, DiscardRateLimitingPreventsLogFlood)
             }
         },
         "test.db",
+        "test-dispatcher",
         BULK_SIZE,
         MAX_QUEUE_SIZE,
         1,
@@ -424,6 +429,7 @@ TEST_F(ThreadEventDispatcherTest, UnlimitedQueueSizeWorks)
             }
         },
         "test.db",
+        "test-dispatcher",
         BULK_SIZE,
         UNLIMITED_QUEUE_SIZE, // Explicitly set to unlimited
         1,
