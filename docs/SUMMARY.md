@@ -31,7 +31,7 @@
   - [VirusTotal migration](guide/migration/virustotal-migration.md)
   - [Vulnerability Detection to CTI-Based Feeds](guide/migration/vulnerability-detection-cti-feeds.md)
   - [Remote Agent Upgrade Migration](guide/migration/remote-agent-upgrade.md)
-
+  - [Migrating decoders from XML to YAML](guide/migration/xml-decoders-migration.md)
 
 # Reference Manual
 
