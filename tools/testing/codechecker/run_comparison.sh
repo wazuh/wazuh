@@ -136,6 +136,28 @@ run_scan() {
     [ -s "$cc_json" ] || die "[$slug] empty compile_commands"
     print_ok "[$slug] captured $(grep -c '"file"' "$cc_json" 2>/dev/null || echo '?') TUs"
 
+    # If a defect_samples directory is present in the checked-out tree
+    # (test/codechecker-defect-samples branch), capture and merge its
+    # compilation so those defects appear in the analysis results.
+    local samples_dir="$WAZUH_DIR/tools/testing/codechecker/defect_samples"
+    if [ -d "$samples_dir" ]; then
+        print_step "[$slug] Capturing defect_samples (test validation)"
+        local samples_json="$WAZUH_DIR/compile_commands_samples_${slug}.json"
+        ( cd "$samples_dir" && \
+          CodeChecker log -b "make clean all" -o "$samples_json" ) 2>/dev/null || true
+        if [ -s "$samples_json" ]; then
+            python3 - "$cc_json" "$samples_json" <<'PYEOF'
+import json, sys
+a = json.load(open(sys.argv[1]))
+b = json.load(open(sys.argv[2]))
+json.dump(a + b, open(sys.argv[1], 'w'))
+PYEOF
+            print_ok "[$slug] merged defect_samples ($(grep -c '"file"' "$samples_json" 2>/dev/null || echo '?') extra TUs)"
+        else
+            print_warn "[$slug] defect_samples build produced no compile_commands — skipping merge"
+        fi
+    fi
+
     print_step "[$slug] CodeChecker analyze"
     build_analyze_flags
     rm -rf "$reports"
