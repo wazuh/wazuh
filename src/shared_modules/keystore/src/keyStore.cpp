@@ -11,10 +11,9 @@ constexpr auto DATABASE_PATH {"queue/keystore"};
 // AES 256 encryption, without the need of the private key file.
 constexpr auto PRIVATE_KEY_FILE {"etc/sslmanager.key"};
 
-// Keystore constants, KS_NAME is used in the logs as tag.
+// Keystore constants.
 // KS_VERSION is the current version of the keystore. Used to identify the version of the keystore in the database.
 // KS_VERSION_FIELD is the field used to store the version of the keystore in the database.
-constexpr auto KS_NAME {"keystore"};
 constexpr auto KS_VERSION {"2"};
 constexpr auto KS_VERSION_FIELD {"version"};
 
@@ -24,7 +23,7 @@ namespace Log
         GLOBAL_LOG_FUNCTION;
 };
 
-static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& columnFamily)
+static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& columnFamily, const std::string& tag)
 {
     std::string versionValue;
 
@@ -50,12 +49,12 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
                 // Get the encrypted RSA value
                 if (keystoreDB.get(key, encryptedRSAValue, columnFamily))
                 {
-                    logInfo(KS_NAME, "Upgrading '%s' key pair.", key.c_str());
+                    logInfo(tag.c_str(), "Upgrading '%s' key pair.", key.c_str());
                 }
 
                 // Decrypt the RSA value
                 RSAHelper().rsaDecrypt(PRIVATE_KEY_FILE, encryptedRSAValue, rawValue);
-                logDebug2(KS_NAME, "Decryption successful for key: '%s'", key.c_str());
+                logDebug2(tag.c_str(), "Decryption successful for key: '%s'", key.c_str());
 
                 // Encrypt the value with AES 256
                 EVPHelper().encryptAES256(rawValue, encryptedValue);
@@ -63,14 +62,14 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
                 // Insert the key-value pair using AES encryption
                 keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
 
-                logInfo(KS_NAME, "Key pair '%s' upgraded.", key.c_str());
+                logInfo(tag.c_str(), "Key pair '%s' upgraded.", key.c_str());
             }
         }
         catch (const std::exception& exception)
         {
             // If the upgrade fails, delete all keys and log the error.
             keystoreDB.deleteAll(columnFamily);
-            logWarn(KS_NAME,
+            logWarn(tag.c_str(),
                     "Keystore upgrade failed, re-run the tool again for all keys to save them. Error: %s",
                     exception.what());
         }
@@ -86,13 +85,14 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
     }
 }
 
-void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value)
+void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value, std::string_view logTag)
 {
+    const auto tag = composeTag(logTag, "keystore");
     std::vector<char> encryptedValue;
 
     EVPHelper().encryptAES256(value, encryptedValue);
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, tag, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -102,7 +102,7 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
     // algorithm. If the version field does not exist, it means that the keystore has not been upgraded yet. If the
     // version is different from the current version, update it. If the upgrade fails, the version is set to the current
     // version, because all keys have been deleted.
-    upgrade(keystoreDB, columnFamily);
+    upgrade(keystoreDB, columnFamily, tag);
 
     // Insert the key-value pair using AES encryption.
     keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
@@ -115,11 +115,12 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
  * @param key The key to be inserted or updated.
  * @param value The corresponding value to be returned.
  */
-void Keystore::get(const std::string& columnFamily, const std::string& key, std::string& value)
+void Keystore::get(const std::string& columnFamily, const std::string& key, std::string& value, std::string_view logTag)
 {
+    const auto tag = composeTag(logTag, "keystore");
     std::string encryptedValue;
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, tag, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -127,7 +128,7 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
     }
 
     // Upgrade the keystore if necessary and get the key-value pair, to get all keys encrypted with the same algorithm.
-    upgrade(keystoreDB, columnFamily);
+    upgrade(keystoreDB, columnFamily, tag);
 
     // Get the key-value pair using AES decryption.
     if (keystoreDB.get(key, encryptedValue, columnFamily))
@@ -144,12 +145,13 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
  * @param key The key to be inserted or updated.
  * @return The corresponding value to be returned.
  */
-std::string Keystore::get(const std::string& columnFamily, const std::string& key)
+std::string Keystore::get(const std::string& columnFamily, const std::string& key, std::string_view logTag)
 {
+    const auto tag = composeTag(logTag, "keystore");
     std::string value;
     std::string encryptedValue;
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, tag, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -157,7 +159,7 @@ std::string Keystore::get(const std::string& columnFamily, const std::string& ke
     }
 
     // Upgrade the keystore if necessary and get the key-value pair, to get all keys encrypted with the same algorithm.
-    upgrade(keystoreDB, columnFamily);
+    upgrade(keystoreDB, columnFamily, tag);
 
     // Get the key-value pair using AES decryption.
     if (keystoreDB.get(key, encryptedValue, columnFamily))

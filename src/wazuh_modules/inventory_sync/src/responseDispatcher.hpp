@@ -104,7 +104,8 @@ public:
                                   std::back_inserter(messageVector));
 
                 responseSocketClient->send(reinterpret_cast<const char*>(messageVector.data()), messageVector.size());
-            }, m_logTag);
+            },
+            m_logTag);
     }
 
     explicit ResponseDispatcherImpl(TQueue* responseDispatcher)

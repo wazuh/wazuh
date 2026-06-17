@@ -40,11 +40,11 @@ public:
      * @param endpointName Server's endpoint.
      * @param socketPath Server's socket path.
      */
-    explicit Publisher(const std::string& endpointName, const std::string& socketPath)
+    explicit Publisher(const std::string& endpointName, const std::string& socketPath, std::string logTag = "router")
         : m_socketServer(std::make_unique<SocketServer<Socket<OSPrimitives>, EpollWrapper>>(socketPath + endpointName))
         , m_msgDispatcher(std::make_unique<MsgDispatcher>([this, endpointName](const std::vector<char>& data)
                                                           { this->call(data); },
-                                                          "router",
+                                                          std::move(logTag),
                                                           nullptr,
                                                           PUBLISHER_DISPATCH_THREAD_COUNT))
     {

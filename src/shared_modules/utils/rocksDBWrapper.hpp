@@ -87,7 +87,7 @@ namespace Utils
                                  const bool useSharedBuffers = false)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
-            , m_logTag(std::move(logTag))
+            , m_logTag(composeTag(logTag, "rocksdb"))
         {
 
             if (useSharedBuffers)

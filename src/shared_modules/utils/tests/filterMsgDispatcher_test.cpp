@@ -32,7 +32,8 @@ public:
 TEST_F(FilterMsgDispatcherTest, rWithoutFilterCallback)
 {
     CallbackWrapper callbackWrapper;
-    TestMsgDispatcher dispatcher([&](const Value& value) { callbackWrapper.callback(value); }, "test-dispatcher", nullptr);
+    TestMsgDispatcher dispatcher(
+        [&](const Value& value) { callbackWrapper.callback(value); }, "test-dispatcher", nullptr);
 
     EXPECT_CALL(callbackWrapper, callback("1")).Times(1);
     EXPECT_CALL(callbackWrapper, callback("2")).Times(1);

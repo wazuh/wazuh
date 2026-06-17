@@ -322,7 +322,8 @@ TEST_F(AsyncValueDispatcherTest, CaptureWarningMsg)
 
 TEST_F(AsyncValueDispatcherTest, Push_ReturnsTrueWhenAccepted)
 {
-    Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher([](int) {}, "test-dispatcher", 1, /*maxQueueSize*/ 10);
+    Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher(
+        [](int) {}, "test-dispatcher", 1, /*maxQueueSize*/ 10);
     EXPECT_TRUE(dispatcher.push(42));
 }
 
@@ -359,7 +360,8 @@ TEST_F(AsyncValueDispatcherTest, Push_ReturnsFalseWhenQueueFull)
 
 TEST_F(AsyncValueDispatcherTest, Push_ReturnsFalseAfterCancel)
 {
-    Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher([](int) {}, "test-dispatcher", 1, /*maxQueueSize*/ 10);
+    Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher(
+        [](int) {}, "test-dispatcher", 1, /*maxQueueSize*/ 10);
     dispatcher.cancel();
     EXPECT_FALSE(dispatcher.push(7));
 }
@@ -369,9 +371,8 @@ TEST_F(AsyncValueDispatcherTest, Push_ReturnsTrueOnUnlimitedQueue)
     // Default constructor uses UNLIMITED_QUEUE_SIZE.
     std::promise<void> blockWorker;
     std::shared_future<void> blockFuture = blockWorker.get_future().share();
-    Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher([blockFuture](int) { blockFuture.wait(); },
-                                                                          "test-dispatcher",
-                                                                          1);
+    Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher(
+        [blockFuture](int) { blockFuture.wait(); }, "test-dispatcher", 1);
 
     // Push more items than any reasonable bounded queue would accept; with the
     // unlimited size, every push must succeed.

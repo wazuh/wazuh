@@ -41,8 +41,7 @@ namespace Utils
             : ThreadType {std::bind(&DispatcherType::dispatch, this, std::placeholders::_1),
                           std::move(logTag),
                           threadPoolSize,
-                          maxQueueSize}
-            // clang-format on
+                          maxQueueSize} // clang-format on
             , m_callback {callback}
             , m_filterCallback {filterCallback}
         {

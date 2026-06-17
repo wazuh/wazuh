@@ -19,6 +19,8 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <string>
+#include <string_view>
 #include <thread>
 #include <unordered_map>
 
@@ -36,6 +38,16 @@ auto constexpr LOGGER_DEFAULT_TAG {"logger-helper"};
 #define logDebug2(X, Y, ...) Log::Logger::debugVerbose(X, LogEndl, Y, ##__VA_ARGS__)
 #define logError(X, Y, ...)  Log::Logger::error(X, LogEndl, Y, ##__VA_ARGS__)
 constexpr auto MAXLEN {65536};
+
+inline std::string composeTag(std::string_view parentTag, std::string_view libName)
+{
+    if (parentTag.empty())
+        return std::string(libName);
+    auto open = parentTag.rfind(" (");
+    if (open != std::string_view::npos)
+        return std::string(parentTag.substr(0, parentTag.size() - 1)) + "/" + std::string(libName) + ")";
+    return std::string(parentTag) + " (" + std::string(libName) + ")";
+}
 
 namespace Log
 {

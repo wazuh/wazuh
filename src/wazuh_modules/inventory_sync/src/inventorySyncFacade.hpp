@@ -363,8 +363,13 @@ class InventorySyncFacadeImpl final
                         try
                         {
                             // AgentSession will extract all info (including module) from Start message
-                            m_agentSessions.try_emplace(
-                                sessionId, sessionId, startMsg, *m_dataStore, *m_indexerQueue, *m_responseDispatcher, m_logTag);
+                            m_agentSessions.try_emplace(sessionId,
+                                                        sessionId,
+                                                        startMsg,
+                                                        *m_dataStore,
+                                                        *m_indexerQueue,
+                                                        *m_responseDispatcher,
+                                                        m_logTag);
                         }
                         catch (...)
                         {
@@ -414,16 +419,14 @@ class InventorySyncFacadeImpl final
             std::shared_lock lock(m_agentSessionsMutex);
             if (auto it = m_agentSessions.find(end->session()); it == m_agentSessions.end())
             {
-                logDebug2(m_logTag.c_str(),
-                          "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                          end->session());
+                logDebug2(
+                    m_logTag.c_str(), "InventorySyncFacade::start: Session not found, sessionId: %llu", end->session());
             }
             else
             {
                 // Handle end.
                 it->second.handleEnd(*m_responseDispatcher);
-                logDebug2(
-                    m_logTag.c_str(), "InventorySyncFacade::start: End handled for session %llu", end->session());
+                logDebug2(m_logTag.c_str(), "InventorySyncFacade::start: End handled for session %llu", end->session());
             }
         }
         else
@@ -674,8 +677,7 @@ public:
                                                        dataRaw.size());
                         if (Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
                         {
-                            logDebug2(m_logTag.c_str(),
-                                      "InventorySyncFacade::start: Processing FlatBuffer message...");
+                            logDebug2(m_logTag.c_str(), "InventorySyncFacade::start: Processing FlatBuffer message...");
                             run(dataRaw);
                         }
                         else

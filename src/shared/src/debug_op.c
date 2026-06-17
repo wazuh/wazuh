@@ -46,7 +46,7 @@ static void print_stderr_msg(char* timestamp, const char *tag, const char * file
     (void)fprintf(stderr, "%s ", timestamp);
 
     if (dbg_flag > 0) {
-        (void)fprintf(stderr, "%s[%d] %s:%d at %s(): ", tag, pid, file, line, func);
+        (void)fprintf(stderr, "%s [%d] %s:%d at %s(): ", tag, pid, file, line, func);
     } else {
         (void)fprintf(stderr, "%s: ", tag);
     }
@@ -235,7 +235,7 @@ static void _log_function(int level, const char *tag, const char * file, int lin
             (void)fprintf(fp, "%s ", timestamp);
 
             if (dbg_flag > 0) {
-                (void)fprintf(fp, "%s[%d] %s:%d at %s(): ", tag, pid, file, line, func);
+                (void)fprintf(fp, "%s [%d] %s:%d at %s(): ", tag, pid, file, line, func);
             } else {
                 (void)fprintf(fp, "%s: ", tag);
             }

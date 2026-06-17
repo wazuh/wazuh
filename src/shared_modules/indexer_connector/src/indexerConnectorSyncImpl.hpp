@@ -612,7 +612,7 @@ public:
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
         std::string callerName = "")
-        : m_logTag(callerName.empty() ? "indexer-connector" : callerName + " (indexer-connector)")
+        : m_logTag(composeTag(callerName, "indexer-connector"))
         , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
     {
         if (logFunction)
@@ -663,8 +663,8 @@ public:
         }
 
         std::lock_guard lock(G_CREDENTIAL_MUTEX);
-        static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY);
-        static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
+        static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY, m_logTag);
+        static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, m_logTag);
         if (username.empty() && password.empty())
         {
             username = "admin";

@@ -62,7 +62,7 @@ namespace Utils
             : m_functor {functor}
             , m_numberOfThreads {numberOfThreads ? numberOfThreads : 1}
             , m_maxQueueSize {maxQueueSize}
-            , m_logTag(std::move(logTag))
+            , m_logTag(composeTag(logTag, "async-dispatcher"))
         {
             m_threads.reserve(m_numberOfThreads);
 

@@ -81,7 +81,7 @@ private:
 
 public:
     explicit RocksDBQueueCF(const std::string& path, std::string logTag, bool useSharedBuffers = false)
-        : m_logTag(std::move(logTag))
+        : m_logTag(composeTag(logTag, "rocksdb"))
     {
         // RocksDB initialization.
         // Read cache is used to cache the data read from the disk.

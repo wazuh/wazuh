@@ -32,7 +32,7 @@ class RocksDBQueue final
 public:
     explicit RocksDBQueue(const std::string& connectorName, std::string logTag, bool useSharedBuffers = false)
         : m_legacyKeyMode {false}
-        , m_logTag(std::move(logTag))
+        , m_logTag(composeTag(logTag, "rocksdb"))
     {
         // RocksDB initialization using shared buffers.
         // Get shared buffers to reduce memory usage across multiple instances
@@ -91,9 +91,8 @@ public:
                         throw std::runtime_error("Failed to open RocksDB database after repairing. Reason: " +
                                                  std::string {status.getState()});
                     }
-                    logWarn(m_logTag.c_str(),
-                            "Database '%s' was repaired because it was corrupt.",
-                            connectorName.c_str());
+                    logWarn(
+                        m_logTag.c_str(), "Database '%s' was repaired because it was corrupt.", connectorName.c_str());
                 }
             }
             else

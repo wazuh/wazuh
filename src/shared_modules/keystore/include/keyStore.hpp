@@ -13,6 +13,7 @@
 #define _KEYSTORE_HPP
 
 #include <string>
+#include <string_view>
 
 class Keystore final
 {
@@ -27,7 +28,7 @@ public:
      * @param key The key to be inserted or updated.
      * @param value The corresponding value.
      */
-    static void put(const std::string& columnFamily, const std::string& key, const std::string& value);
+    static void put(const std::string& columnFamily, const std::string& key, const std::string& value, std::string_view logTag = "");
 
     /**
      * Get the key value in the specified column family.
@@ -35,17 +36,19 @@ public:
      * @param columnFamily The target column family.
      * @param key The key to be inserted or updated.
      * @param value The corresponding value to be returned.
+     * @param logTag Optional parent log tag; "keystore" is appended automatically.
      */
-    static void get(const std::string& columnFamily, const std::string& key, std::string& value);
+    static void get(const std::string& columnFamily, const std::string& key, std::string& value, std::string_view logTag = "");
 
     /**
      * Get the key value in the specified column family.
      *
      * @param columnFamily The target column family.
      * @param key The key to be inserted or updated.
+     * @param logTag Optional parent log tag; "keystore" is appended automatically.
      * @return The corresponding value to be returned.
      */
-    static std::string get(const std::string& columnFamily, const std::string& key);
+    static std::string get(const std::string& columnFamily, const std::string& key, std::string_view logTag = "");
 };
 
 #endif // _KEYSTORE_HPP
