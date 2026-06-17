@@ -22,6 +22,8 @@ namespace api::ioccrud::handlers
 namespace eIoc = com::wazuh::api::engine::ioc;
 namespace eEngine = com::wazuh::api::engine;
 
+constexpr std::string_view LOG_MODULE_NAME = "API::IOC";
+
 namespace detail
 {
 std::atomic<bool> g_syncInProgress {false}; ///< Flag to indicate if an IOC synchronization is currently in progress
@@ -68,7 +70,7 @@ void updateIOCStatus(const std::shared_ptr<store::IStore>& storeRef,
     catch (const std::exception& e)
     {
         auto lambdaName = logging::getLambdaName("syncIoc", "updateStatus");
-        LOG_WARNING_L(lambdaName.c_str(), "Failed to update IOC status: {}", e.what());
+        LOG_WARNING_L(lambdaName.c_str(), "[{}] Failed to update IOC status: {}", LOG_MODULE_NAME, e.what());
     }
 }
 
@@ -86,7 +88,7 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
                     const std::string& fileHash)
 {
     auto lambdaName = logging::getLambdaName("syncIoc", "asyncTask");
-    LOG_INFO_L(lambdaName.c_str(), "Starting IOC synchronization from file: {}", filePath);
+    LOG_INFO_L(lambdaName.c_str(), "[{}] Starting IOC synchronization from file: {}", LOG_MODULE_NAME, filePath);
 
     // Ensure the flag is released when task finishes (RAII pattern)
     struct SyncGuard
@@ -97,7 +99,7 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
     auto kvdbManager = weakKvdbManager.lock();
     if (!kvdbManager)
     {
-        LOG_WARNING_L(lambdaName.c_str(), "KVDB Manager is not available, aborting IOC sync");
+        LOG_WARNING_L(lambdaName.c_str(), "[{}] KVDB Manager is not available, aborting IOC sync", LOG_MODULE_NAME);
         if (auto store = weakStore.lock())
         {
             updateIOCStatus(store, "", "KVDB Manager is not available");
@@ -108,7 +110,7 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
     auto storeRef = weakStore.lock();
     if (!storeRef)
     {
-        LOG_WARNING_L(lambdaName.c_str(), "Store is not available, aborting IOC sync");
+        LOG_WARNING_L(lambdaName.c_str(), "[{}] Store is not available, aborting IOC sync", LOG_MODULE_NAME);
         return;
     }
 
@@ -118,7 +120,7 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
         std::ifstream file(filePath);
         if (!file.is_open())
         {
-            LOG_WARNING_L(lambdaName.c_str(), "Failed to open file: {}", filePath);
+            LOG_WARNING_L(lambdaName.c_str(), "[{}] Failed to open file: {}", LOG_MODULE_NAME, filePath);
             updateIOCStatus(storeRef, "", fmt::format("Failed to open file: {}", filePath));
             return;
         }
@@ -162,7 +164,7 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
             catch (const std::exception& e)
             {
                 // Skip this line (unsupported DB type or missing key)
-                LOG_DEBUG_L(lambdaName.c_str(), "Skipping line {}: {}", lineNumber, e.what());
+                LOG_DEBUG_L(lambdaName.c_str(), "[{}] Skipping line {}: {}", LOG_MODULE_NAME, lineNumber, e.what());
                 ++skippedLines;
                 // Only store the last error to avoid excessive logging, but include line number for context
                 lastSkipError = fmt::format("Line {}: {}", lineNumber, e.what());
@@ -176,14 +178,15 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
         if (skippedLines > 0)
         {
             LOG_WARNING_L(lambdaName.c_str(),
-                          "Processed {} IOC entries, skipped {} invalid lines. Last error: {}",
+                          "[{}] Processed {} IOC entries, skipped {} invalid lines. Last error: {}",
+                          LOG_MODULE_NAME,
                           processedLines,
                           skippedLines,
                           lastSkipError);
         }
         else
         {
-            LOG_DEBUG_L(lambdaName.c_str(), "Processed {} IOC entries from file", processedLines);
+            LOG_DEBUG_L(lambdaName.c_str(), "[{}] Processed {} IOC entries from file", LOG_MODULE_NAME, processedLines);
         }
 
         // Perform hot-swap for ALL temporary databases to production
@@ -195,28 +198,37 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
 
             if (!kvdbManager->exists(originalDbName))
             {
-                LOG_WARNING_L(
-                    lambdaName.c_str(), "Original DB {} does not exist, skipping hot-swap for this DB", originalDbName);
+                LOG_WARNING_L(lambdaName.c_str(),
+                              "[{}] Original DB {} does not exist, skipping hot-swap for this DB",
+                              LOG_MODULE_NAME,
+                              originalDbName);
                 // Clean up the temporary database since production DB doesn't exist
                 try
                 {
                     kvdbManager->remove(tmpDbName);
-                    LOG_DEBUG_L(lambdaName.c_str(), "Deleted unused temporary DB: {}", tmpDbName);
+                    LOG_DEBUG_L(lambdaName.c_str(), "[{}] Deleted unused temporary DB: {}", LOG_MODULE_NAME, tmpDbName);
                 }
                 catch (const std::exception& e)
                 {
-                    LOG_WARNING_L(lambdaName.c_str(), "Failed to delete temporary DB {}: {}", tmpDbName, e.what());
+                    LOG_WARNING_L(lambdaName.c_str(),
+                                  "[{}] Failed to delete temporary DB {}: {}",
+                                  LOG_MODULE_NAME,
+                                  tmpDbName,
+                                  e.what());
                 }
                 continue;
             }
 
             // Hot-swap: move tmp DB to production (even if empty)
             kvdbManager->hotSwap(tmpDbName, originalDbName);
-            LOG_DEBUG_L(lambdaName.c_str(), "Hot-swap completed for DB: {}", originalDbName);
+            LOG_DEBUG_L(lambdaName.c_str(), "[{}] Hot-swap completed for DB: {}", LOG_MODULE_NAME, originalDbName);
             ++dbsUpdated;
         }
 
-        LOG_INFO_L(lambdaName.c_str(), "IOC synchronization completed successfully. {} DBs updated.", dbsUpdated);
+        LOG_INFO_L(lambdaName.c_str(),
+                   "[{}] IOC synchronization completed successfully, {} DBs updated",
+                   LOG_MODULE_NAME,
+                   dbsUpdated);
 
         // Update the hash in the store after successful synchronization
         std::string message =
@@ -227,7 +239,7 @@ void performIOCSync(const std::weak_ptr<::ioc::kvdb::IKVDBManager>& weakKvdbMana
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING_L(lambdaName.c_str(), "IOC sync failed: {}", e.what());
+        LOG_WARNING_L(lambdaName.c_str(), "[{}] IOC sync failed: {}", LOG_MODULE_NAME, e.what());
         // Store error without updating hash
         updateIOCStatus(storeRef, "", fmt::format("IOC sync failed: {}", e.what()));
     }
@@ -289,14 +301,17 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
         {
             // Document doesn't exist, create it with empty hash
             auto lambdaName = logging::getLambdaName("syncIoc", "handler");
-            LOG_DEBUG_L(lambdaName.c_str(), "IOC status document does not exist, will be created on first sync");
+            LOG_DEBUG_L(lambdaName.c_str(),
+                        "[{}] IOC status document does not exist, will be created on first sync",
+                        LOG_MODULE_NAME);
             store::Doc statusDoc;
             statusDoc.setString("", detail::DOC_HASH_KEY);
             auto createResult = storeRef->upsertDoc(detail::IOC_STATUS_DOC, statusDoc);
             if (base::isError(createResult))
             {
                 LOG_WARNING_L(lambdaName.c_str(),
-                              "Failed to create IOC status document: {}",
+                              LOG_MODULE_NAME,
+                              "[{}] Failed to create IOC status document: {}",
                               base::getError(createResult).message);
             }
         }
@@ -310,8 +325,10 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
         if (fileHash == storedHash)
         {
             auto lambdaName = logging::getLambdaName("syncIoc", "handler");
-            LOG_DEBUG_L(
-                lambdaName.c_str(), "IOC file hash matches stored hash ({}), skipping synchronization", fileHash);
+            LOG_DEBUG_L(lambdaName.c_str(),
+                        "[{}] IOC file hash matches stored hash ({}), skipping synchronization",
+                        LOG_MODULE_NAME,
+                        fileHash);
             ResponseType eResponse;
             eResponse.set_status(eEngine::ReturnStatus::OK);
             eResponse.set_error("IOC data is already up to date");
