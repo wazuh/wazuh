@@ -47,9 +47,7 @@ env:
 jobs:
   build:
     name: Build Manager (${{ matrix.arch }})
-    runs-on:
-      group: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
-      labels: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
+    runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-arm64-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-{0}-{1}', github.run_id, github.run_attempt) }}
     outputs:
       version: ${{ steps.set_version.outputs.version }}
     strategy:
@@ -117,9 +115,7 @@ jobs:
   check_standalone_engine:
     name: Test standalone engine (${{ matrix.arch }})
 
-    runs-on:
-      group: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
-      labels: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
+    runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-arm64-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-{0}-{1}', github.run_id, github.run_attempt) }}
     needs: build
     timeout-minutes: 60
     strategy:
