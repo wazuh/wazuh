@@ -173,7 +173,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        system: [deb, rpm]
+        system: ${{ github.event_name == 'pull_request' && fromJSON('["deb", "rpm"]') || fromJSON(format('["{0}"]', inputs.system)) }}
         arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "arm64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture == 'aarch64' && 'arm64' || inputs.architecture)) }}
 
     steps:
@@ -300,7 +300,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        system: [deb, rpm]
+        system: ${{ github.event_name == 'pull_request' && fromJSON('["deb", "rpm"]') || fromJSON(format('["{0}"]', inputs.system)) }}
         arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64", "arm64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture == 'aarch64' && 'arm64' || inputs.architecture)) }}
 
     steps:
@@ -384,7 +384,7 @@ jobs:
 
   smoke-test-linux:
     needs: [upload-to-s3]
-    if: success()
+    if: github.event_name == 'pull_request' && success()
     uses: ./.github/workflows/5_testintegration_agent-start.yml
     with:
       base_branch: ""
