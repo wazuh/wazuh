@@ -11,7 +11,12 @@ on:
       - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-windows.yml"
       - ".github/test-modules-windows.json"
+      - ".github/workflows/5_testintegration_agent-start.yml"
       - ".github/workflows/5_testintegration_windows-integration-tests.yml"
+      - ".github/actions/5_builderpackage_get-last-stable-version/**"
+      - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
+      - ".github/actions/5_builderpackage_windows-smoke-upgrade-test/**"
+      - ".github/actions/5_testintegration_detect-changes/**"
   workflow_dispatch:
     inputs:
       revision:

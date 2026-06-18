@@ -92,6 +92,7 @@ jobs:
       AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     runs-on: windows-2025
+    timeout-minutes: 240
     name: Run ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
     steps:
       - name: No relevant changes
