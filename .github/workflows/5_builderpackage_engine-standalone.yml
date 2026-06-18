@@ -87,9 +87,12 @@ jobs:
         run: |
           if ! command -v docker &> /dev/null; then
             echo "Installing Docker..."
-
             sudo apt-get update
             sudo apt-get install -y docker.io
+          fi
+
+          if ! docker info &> /dev/null; then
+            echo "Starting Docker daemon..."
             sudo systemctl start docker
             sudo chmod 666 /var/run/docker.sock
           fi
