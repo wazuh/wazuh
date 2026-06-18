@@ -48,7 +48,7 @@ jobs:
       packages: write
       actions: write
 
-    runs-on: ${{ inputs.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-24.04' }}
+    runs-on: ${{ inputs.architecture == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-24.04' }}
     timeout-minutes: 180
     name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
 
