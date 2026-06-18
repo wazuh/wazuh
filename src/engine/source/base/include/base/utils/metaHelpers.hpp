@@ -60,13 +60,26 @@ decltype(auto) executeWithRetry(Func&& operation,
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING_L(componentOperationName.c_str(),
-                          "[{}] {} - Attempt {}/{}: {}",
-                          componentOperationName,
-                          message,
-                          attempt,
-                          maxAttempts,
-                          e.what());
+            if (attempt < maxAttempts)
+            {
+                LOG_INFO_L(componentOperationName.c_str(),
+                           "[{}] {} - Attempt {}/{}: {}",
+                           componentOperationName,
+                           message,
+                           attempt,
+                           maxAttempts,
+                           e.what());
+            }
+            else
+            {
+                LOG_WARNING_L(componentOperationName.c_str(),
+                              "[{}] {} - Attempt {}/{}: {}",
+                              componentOperationName,
+                              message,
+                              attempt,
+                              maxAttempts,
+                              e.what());
+            }
             if (attempt < maxAttempts)
             {
                 // Split sleep into 1-second chunks for responsive abort
@@ -74,10 +87,8 @@ decltype(auto) executeWithRetry(Func&& operation,
                 {
                     if (shutdownRequested.load(std::memory_order_relaxed))
                     {
-                        throw std::runtime_error(fmt::format("{}::{} aborted during retry wait (attempt {})",
-                                                             message,
-                                                             componentOperationName,
-                                                             attempt));
+                        throw std::runtime_error(fmt::format(
+                            "{}::{} aborted during retry wait (attempt {})", message, componentOperationName, attempt));
                     }
                     std::this_thread::sleep_for(std::chrono::seconds(1));
                 }
