@@ -1962,6 +1962,86 @@ TEST_F(AgentInfoCoordinationTest, ShutdownDuringPausePollAbortsCleanly)
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("pause did not complete within 30 seconds")));
 }
 
+// A stop requested while a coordination query is failing must abort the retry loop
+// immediately instead of sleeping COORDINATION_RETRY_DELAY_MS before each remaining
+// attempt. On macOS the module thread is joined without a timeout, so this back-off
+// would otherwise stall modulesd shutdown, leak its PID file and prevent the next
+// start from bringing modulesd back up (issue #37017).
+TEST_F(AgentInfoCoordinationTest, QueryRetryAbortsOnStopDuringCoordination)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    int fimPauseAttempts = 0;
+    auto* agentInfoPtr = &m_agentInfo; // capture by pointer so the mock can call stop()
+
+    auto queryModuleFunc = [&fimPauseAttempts, agentInfoPtr](const std::string & module_name,
+                                                             const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["message"] = "Success";
+
+        if (command == "pause" && module_name == "fim")
+        {
+            // Retryable failure (98 == MQ_ERR_INTERNAL, not "module unavailable"), so
+            // queryModuleWithRetry would normally retry MAX_COORDINATION_RETRIES times
+            // with a 1 s back-off between attempts.
+            ++fimPauseAttempts;
+            responseJson["error"] = 98;
+
+            // Signal the stop during the first attempt: the retry back-off must then
+            // wake up immediately instead of sleeping.
+            if (fimPauseAttempts == 1 && *agentInfoPtr)
+            {
+                (*agentInfoPtr)->stop();
+            }
+
+            std::string responseStr = responseJson.dump();
+            * response = strdup(responseStr.c_str());
+            return 98;
+        }
+
+        responseJson["error"] = 0;
+
+        if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // The FIM pause query failed once and the retry loop bailed out on stop instead of
+    // burning the remaining attempts: a single attempt, abort log present, and the
+    // "after N attempts" exhaustion log absent.
+    EXPECT_EQ(fimPauseAttempts, 1);
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent stopping, aborting query to fim"));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("after 3 attempts")));
+}
+
 // A legacy FIM response WITHOUT the first_sync_completed field must be treated as
 // completed (steady-state), never as a permanent deferral (guards R1).
 TEST_F(AgentInfoCoordinationTest, MissingFirstSyncFieldTreatedAsCompleted)

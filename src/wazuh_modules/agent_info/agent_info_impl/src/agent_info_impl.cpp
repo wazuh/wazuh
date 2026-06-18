@@ -1055,6 +1055,21 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
 
     for (int attempt = 1; attempt <= MAX_COORDINATION_RETRIES; ++attempt)
     {
+        // Cooperative cancellation: bail out immediately if the agent is shutting down
+        // instead of burning the remaining retries against a socket that is being torn
+        // down. On macOS the module thread is joined without a timeout (see the non-Linux
+        // branch in src/wazuh_modules/src/main.c), so a non-interruptible retry here would
+        // stall modulesd shutdown, leak its PID file and block the next start.
+        if (m_stopped)
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting query to " + moduleName);
+            ModuleResponse aborted;
+            aborted.success = false;
+            aborted.errorCode = MQ_ERR_INTERNAL;
+            aborted.isModuleUnavailable = false;
+            return aborted;
+        }
+
         char* rawResponse = nullptr;
         int result = m_queryModuleFunction(moduleName, jsonMessage, &rawResponse);
 
@@ -1104,7 +1119,22 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
 
         if (attempt < MAX_COORDINATION_RETRIES)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(COORDINATION_RETRY_DELAY_MS));
+            // Interruptible back-off: wake up at once if a stop is requested during the
+            // delay so shutdown is not held for COORDINATION_RETRY_DELAY_MS per attempt.
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            if (m_cv.wait_for(lock,
+                              std::chrono::milliseconds(COORDINATION_RETRY_DELAY_MS),
+                              [this] { return m_stopped.load(); }))
+            {
+                lock.unlock();
+                m_logFunction(LOG_INFO, "Agent stopping, aborting query to " + moduleName);
+                ModuleResponse aborted;
+                aborted.success = false;
+                aborted.errorCode = MQ_ERR_INTERNAL;
+                aborted.isModuleUnavailable = false;
+                return aborted;
+            }
         }
     }
 
