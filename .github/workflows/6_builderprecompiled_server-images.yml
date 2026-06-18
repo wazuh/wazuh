@@ -84,9 +84,9 @@ jobs:
         run: |
           if ! docker info &>/dev/null 2>&1; then
             sudo apt-get update
-            sudo apt-get install -y docker.io fuse-overlayfs
-            sudo nohup dockerd --storage-driver fuse-overlayfs > /var/log/dockerd.log 2>&1 &
-            timeout 30 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
             sudo chmod 666 /var/run/docker.sock
           fi
 
