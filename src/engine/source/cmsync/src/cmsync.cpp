@@ -22,6 +22,8 @@ constexpr std::string_view COMPONENT_NAME = "CMSync";            ///< Component 
 constexpr std::string_view STANDARD_SPACE_NAME = "standard";     ///< Standard space name
 constexpr std::string_view CUSTOM_SPACE_NAME = "custom";         ///< Custom space name
 
+constexpr std::string_view LOG_MODULE_NAME = "CM::Sync"; ///< Log module name for CMSync
+
 /**
  * @brief Generate a random namespace ID for the given origin space
  *
@@ -244,7 +246,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
         return;
     }
 
-    LOG_DEBUG("[CMSync] First setup detected, initializing default sync spaces");
+    LOG_DEBUG("[{}] First setup detected, initializing default sync spaces", LOG_MODULE_NAME);
 
     // Populate directly and dump once to avoid multiple unnecessary store writes
     m_namespacesState.emplace_back(STANDARD_SPACE_NAME,
@@ -309,7 +311,8 @@ bool CMSync::downloadNamespace(std::string_view originSpace,
         }
         catch (const std::exception& ex)
         {
-            LOG_WARNING("[CMSync::downloadNamespace] Failed to rollback namespace '{}' after import failure: {}",
+            LOG_WARNING("[{}::downloadNamespace] Failed to rollback namespace '{}' after import failure: {}",
+                        LOG_MODULE_NAME,
                         dstNamespace.toStr(),
                         ex.what());
         }
@@ -376,8 +379,9 @@ CMSync::downloadAndEnrichNamespace(std::string_view originSpace, const std::opti
         }
         catch (const std::exception& ex)
         {
-            LOG_WARNING("[CMSync::downloadAndEnrichNamespace] Failed to rollback temporary namespace '{}' after asset "
+            LOG_WARNING("[{}::downloadAndEnrichNamespace] Failed to rollback temporary namespace '{}' after asset "
                         "addition failure: {}",
+                        LOG_MODULE_NAME,
                         newNs.toStr(),
                         ex.what());
         }
@@ -449,7 +453,7 @@ void CMSync::addSpaceToSync(std::string_view space)
     // Add the new space to the sync list (constructor already sets DUMMY_NAMESPACE_ID)
     m_namespacesState.emplace_back(space);
 
-    LOG_DEBUG("[CMSync] Added space '{}' to the sync list", space);
+    LOG_DEBUG("[{}] Added space '{}' to the sync list", LOG_MODULE_NAME, space);
 
     dumpStateToStore();
 }
@@ -468,7 +472,7 @@ void CMSync::removeSpaceFromSync(std::string_view space)
 
     m_namespacesState.erase(it, m_namespacesState.end());
 
-    LOG_INFO("[CMSync] Removed space '{}' from the sync list", space);
+    LOG_INFO("[{}] Removed space '{}' from the sync list", LOG_MODULE_NAME, space);
 
     dumpStateToStore();
 }
@@ -522,7 +526,7 @@ void CMSync::dumpStateToStore()
 void CMSync::synchronize()
 {
 
-    LOG_DEBUG("[CMSync] Checking for namespace updates to synchronize");
+    LOG_DEBUG("[{}] Checking for namespace updates to synchronize", LOG_MODULE_NAME);
 
     const auto cmcrudPtr = base::utils::lockWeakPtr(m_cmcrudPtr, "CMCrud Service");
     const auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
@@ -536,7 +540,7 @@ void CMSync::synchronize()
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("[CMSync] Failed to dump sync state to store: {}", e.what());
+            LOG_WARNING("[{}] Failed to dump sync state to store: {}", LOG_MODULE_NAME, e.what());
         }
     };
 
@@ -545,14 +549,14 @@ void CMSync::synchronize()
         // Check abort at the start of each namespace iteration
         if (m_shutdownRequested.load(std::memory_order_relaxed))
         {
-            LOG_INFO("[CMSync] Synchronization aborted during namespace iteration");
+            LOG_INFO("[{}] Synchronization aborted during namespace iteration", LOG_MODULE_NAME);
             updateSpacesStatusSnapshot();
             return;
         }
 
         try
         {
-            LOG_DEBUG("[CMSync] Synchronizing namespace for space '{}'", nsState.getOriginSpace());
+            LOG_DEBUG("[{}] Synchronizing namespace for space '{}'", LOG_MODULE_NAME, nsState.getOriginSpace());
 
             // Check the route in the router FIRST (router is local, works even if the indexer is down).
             // This refreshes availability up front, so a route removed out-of-band is reflected even if
@@ -567,7 +571,8 @@ void CMSync::synchronize()
 
             if (!existSpaceInRemote(nsState.getOriginSpace()))
             {
-                LOG_WARNING("[CMSync] Space '{}' does not exist in wazuh-indexer, skipping synchronization",
+                LOG_WARNING("[{}] Space '{}' does not exist in wazuh-indexer, skipping synchronization",
+                            LOG_MODULE_NAME,
                             nsState.getOriginSpace());
                 continue;
             }
@@ -575,7 +580,8 @@ void CMSync::synchronize()
             // Get remote policy hash and enabled status (with consumer validation in PIT if configured)
             if (m_shutdownRequested.load(std::memory_order_relaxed))
             {
-                LOG_INFO("[CMSync] Synchronization aborted before getting policy info for space '{}'",
+                LOG_INFO("[{}] Synchronization aborted before getting policy info for space '{}'",
+                         LOG_MODULE_NAME,
                          nsState.getOriginSpace());
                 updateSpacesStatusSnapshot();
                 return;
@@ -596,8 +602,9 @@ void CMSync::synchronize()
 
                 if (!ready)
                 {
-                    LOG_INFO("[CMSync] Synchronization skipped for space '{}' because wazuh-indexer consumer '{}' is "
+                    LOG_INFO("[{}] Synchronization skipped for space '{}' because wazuh-indexer consumer '{}' is "
                              "not ready for sync (might be updating or no data)",
+                             LOG_MODULE_NAME,
                              nsState.getOriginSpace(),
                              nsState.getConsumerId().value());
                     continue;
@@ -608,8 +615,9 @@ void CMSync::synchronize()
                 getPolicyHashAndEnabledFromRemote(nsState.getOriginSpace(), nsState.getConsumerId());
             if (!hashResult.has_value())
             {
-                LOG_INFO("[CMSync] Synchronization skipped for space '{}' because wazuh-indexer is updating the policy "
+                LOG_INFO("[{}] Synchronization skipped for space '{}' because wazuh-indexer is updating the policy "
                          "or consumer is not idle (consumer ID: '{}')",
+                         LOG_MODULE_NAME,
                          nsState.getOriginSpace(),
                          nsState.getConsumerId().value_or("unknown"));
                 continue;
@@ -665,12 +673,14 @@ void CMSync::synchronize()
                 if (routeConfig.has_value())
                 {
                     const auto& [_ignore, nsId, routeHash] = *routeConfig;
-                    LOG_INFO("[CMSync] Policy for space '{}' is disabled in indexer, removing route and namespace",
+                    LOG_INFO("[{}] Policy for space '{}' is disabled in indexer, removing route and namespace",
+                             LOG_MODULE_NAME,
                              nsState.getOriginSpace());
 
                     if (auto err = routerPtr->deleteEntry(nsState.getRouteName()); base::isError(err))
                     {
-                        LOG_WARNING("[CMSync] Failed to delete route '{}' for space '{}': {}",
+                        LOG_WARNING("[{}] Failed to delete route '{}' for space '{}': {}",
+                                    LOG_MODULE_NAME,
                                     nsState.getRouteName(),
                                     nsState.getOriginSpace(),
                                     err->message);
@@ -683,7 +693,8 @@ void CMSync::synchronize()
                     }
                     catch (const std::exception& e)
                     {
-                        LOG_WARNING("[CMSync] Failed to delete namespace '{}' for space '{}': {}",
+                        LOG_WARNING("[{}] Failed to delete namespace '{}' for space '{}': {}",
+                                    LOG_MODULE_NAME,
                                     nsId.toStr(),
                                     nsState.getOriginSpace(),
                                     e.what());
@@ -691,7 +702,8 @@ void CMSync::synchronize()
                 }
                 else
                 {
-                    LOG_DEBUG("[CMSync] Policy for space '{}' is disabled in indexer and no route exists, skipping",
+                    LOG_DEBUG("[{}] Policy for space '{}' is disabled in indexer and no route exists, skipping",
+                              LOG_MODULE_NAME,
                               nsState.getOriginSpace());
                 }
                 nsState.setRouteState(false, false, ""); // route removed / absent → not available
@@ -704,14 +716,15 @@ void CMSync::synchronize()
                 const auto& [enabledRoute, nsId, routeHash] = *routeConfig;
                 if (enabledRoute && routeHash == remoteHash)
                 {
-                    LOG_DEBUG("[CMSync] No changes detected for space '{}', skipping synchronization",
+                    LOG_DEBUG("[{}] No changes detected for space '{}', skipping synchronization",
+                              LOG_MODULE_NAME,
                               nsState.getOriginSpace());
                     continue; // Case 4: No changes, skip synchronization
                 }
             }
 
             // Cases 3 and 4: Changes detected, perform synchronization
-            LOG_INFO("[CMSync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
+            LOG_INFO("[{}] Changes detected for space '{}', updating...", LOG_MODULE_NAME, nsState.getOriginSpace());
 
             // Mark this space as running
             nsState.setSyncStatus(base::SyncStatus::UPDATING);
@@ -720,7 +733,8 @@ void CMSync::synchronize()
             // Check abort before download (most expensive operation)
             if (m_shutdownRequested.load(std::memory_order_relaxed))
             {
-                LOG_INFO("[CMSync] Synchronization aborted before downloading namespace for space '{}'",
+                LOG_INFO("[{}] Synchronization aborted before downloading namespace for space '{}'",
+                         LOG_MODULE_NAME,
                          nsState.getOriginSpace());
                 nsState.setSyncStatus(base::SyncStatus::READY);
                 updateSpacesStatusSnapshot();
@@ -731,7 +745,8 @@ void CMSync::synchronize()
             const auto newNsIdOpt = downloadAndEnrichNamespace(nsState.getOriginSpace(), nsState.getConsumerId());
             if (!newNsIdOpt.has_value())
             {
-                LOG_INFO("[CMSync] Download skipped for space '{}' because consumer is not idle",
+                LOG_INFO("[{}] Download skipped for space '{}' because consumer is not idle",
+                         LOG_MODULE_NAME,
                          nsState.getOriginSpace());
                 nsState.setSyncStatus(base::SyncStatus::READY);
                 updateSpacesStatusSnapshot();
@@ -753,12 +768,14 @@ void CMSync::synchronize()
                 }
                 catch (const std::exception& ex)
                 {
-                    LOG_WARNING("[CMSync::synchronize] Failed to rollback temporary namespace '{}' after route sync "
+                    LOG_WARNING("[{}::synchronize] Failed to rollback temporary namespace '{}' after route sync "
                                 "failure: {}",
+                                LOG_MODULE_NAME,
                                 newNsId.toStr(),
                                 ex.what());
                 }
-                LOG_ERROR("[CMSync] Failed to sync namespace in route for space '{}': {}",
+                LOG_ERROR("[{}] Failed to sync namespace in route for space '{}': {}",
+                          LOG_MODULE_NAME,
                           nsState.getOriginSpace(),
                           e.what());
                 nsState.setSyncStatus(base::SyncStatus::FAILED);
@@ -781,14 +798,15 @@ void CMSync::synchronize()
                 }
                 catch (const std::exception& e)
                 {
-                    LOG_WARNING("[CMSync] Failed to delete old namespace '{}' for space '{}': {}",
+                    LOG_WARNING("[{}] Failed to delete old namespace '{}' for space '{}': {}",
+                                LOG_MODULE_NAME,
                                 oldNsId.toStr(),
                                 nsState.getOriginSpace(),
                                 e.what());
                 }
             }
 
-            LOG_INFO("[CMSync] Successfully synchronized space '{}'", nsState.getOriginSpace());
+            LOG_INFO("[{}] Successfully synchronized space '{}'", LOG_MODULE_NAME, nsState.getOriginSpace());
             // Route now deployed for an enabled policy at the remote hash.
             nsState.setRouteState(true, remoteEnabled, remoteHash);
             nsState.setSyncStatus(base::SyncStatus::READY);
@@ -799,11 +817,11 @@ void CMSync::synchronize()
             nsState.setSyncStatus(base::SyncStatus::FAILED);
             updateSpacesStatusSnapshot();
             LOG_WARNING(
-                "[CMSync] Failed to synchronize namespace for space '{}': {}", nsState.getOriginSpace(), e.what());
+                "[{}] Failed to synchronize namespace for space '{}': {}", LOG_MODULE_NAME, nsState.getOriginSpace(), e.what());
         }
     }
 
-    LOG_DEBUG("[CMSync] Finished synchronization of spaces");
+    LOG_DEBUG("[{}] Finished synchronization of spaces", LOG_MODULE_NAME,);
 
     updateSpacesStatusSnapshot();
 }
@@ -811,7 +829,7 @@ void CMSync::synchronize()
 void CMSync::requestShutdown()
 {
     m_shutdownRequested.store(true, std::memory_order_relaxed);
-    LOG_INFO("[CMSync] Shutdown requested");
+    LOG_INFO("[{}] Shutdown requested", LOG_MODULE_NAME);
 }
 
 void CMSync::updateSpacesStatusSnapshot()

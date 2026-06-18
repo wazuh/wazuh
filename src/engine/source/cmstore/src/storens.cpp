@@ -5,7 +5,10 @@
 #include "fileutils.hpp"
 #include "storens.hpp"
 
+namespace
+{
 constexpr std::string_view LOG_MODULE_NAME = "CM::Store::NS";
+}
 
 namespace cm::store
 {
