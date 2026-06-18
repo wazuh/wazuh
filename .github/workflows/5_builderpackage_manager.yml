@@ -182,6 +182,12 @@ jobs:
             sudo apt-get install -y uuid-runtime
           fi
 
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }} 
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
+
       - name: Download docker image for package building
         timeout-minutes: 20
         run: |
