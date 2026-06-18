@@ -1387,33 +1387,7 @@ $(DBUS_LIB):
 TAR := tar -xf
 GUNZIP := gunzip
 GZIP := gzip
-CUSTOM_RESOURCES_URL ?= https://yourmum.duckdns.org:30035/deps/
-CURL_DEFAULT = curl -so
-CURL = $(if $(CUSTOM_RESOURCES_URL),\
-	sh -c ' \
-		out=""; \
-		url=""; \
-		custom_url=""; \
-		for arg in "$$@"; do \
-			if [ -z "$$out" ]; then \
-				out="$$arg"; \
-			elif echo "$$arg" | grep -q "$(RESOURCES_URL)"; then \
-				url="$$arg"; \
-				custom_url=$$(echo "$$arg" | sed "s|$(RESOURCES_URL)|$(CUSTOM_RESOURCES_URL)|g" | sed "s|\([^:]\)//|\1/|g"); \
-			fi; \
-		done; \
-		if [ -n "$$custom_url" ]; then \
-			echo "  [custom_download] Intentando: $$custom_url"; \
-			if curl -k -sfLo "$$out" "$$custom_url"; then \
-				echo "  [custom_download] Descargado de servidor propio: $$custom_url"; \
-				exit 0; \
-			fi; \
-			echo "  [custom_download] Fallback a oficial: $$url"; \
-			$(CURL_DEFAULT) "$$out" "$$url"; \
-		else \
-			$(CURL_DEFAULT) "$$@"; \
-		fi' --,\
-	$(CURL_DEFAULT))
+CURL := curl -so
 DEPS_VERSION = 52
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
