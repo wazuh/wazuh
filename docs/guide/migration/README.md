@@ -15,3 +15,5 @@ This section contains migration guides for changes that require manual review wh
 | [VirusTotal migration](virustotal-migration.md) | Replacing the removed VirusTotal integration |
 | [Vulnerability Detection to CTI-based feeds](vulnerability-detection-cti-feeds.md) | Removal of offline feeds and the new CTI/Indexer content distribution model |
 | [Remote agent upgrade](remote-agent-upgrade.md) | TCP connectivity and version path requirements for remote agent upgrades to 5.x |
+| [CDB to KVDB migration](cdb-to-kvdb-migration.md) | Migrating CDB files to KVDB files |
+| [Coordinator migration](manager-coordinator-migration.md) | How to migrate HAProxy from 4.x to 5.x |

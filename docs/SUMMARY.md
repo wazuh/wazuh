@@ -31,7 +31,7 @@
   - [VirusTotal migration](guide/migration/virustotal-migration.md)
   - [Vulnerability Detection to CTI-Based Feeds](guide/migration/vulnerability-detection-cti-feeds.md)
   - [Remote Agent Upgrade Migration](guide/migration/remote-agent-upgrade.md)
-
+  - [Migrating CDB lists to KVDB lists](guide/migration/cdb-to-kvdb-migration.md)
 
 # Reference Manual
 
