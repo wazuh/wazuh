@@ -96,7 +96,7 @@ env:
 
 jobs:
   Build-server-packages:
-    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-24.04' }}
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-24.04' }}
     timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-server on ${{ inputs.architecture }}
 
