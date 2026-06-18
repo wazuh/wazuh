@@ -177,6 +177,10 @@ jobs:
           # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
           #    which the older git inside builder Docker images cannot read.
           git config core.repositoryformatversion 0
+          # Install uuidgen
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
 
       - name: Download docker image for package building
         timeout-minutes: 20
