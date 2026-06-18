@@ -309,33 +309,17 @@ int check_invalid_kernel_version() {
 
     std::string version;
     file >> version;
-    std::istringstream versionStream(version);
-    std::vector<int> versionNumbers;
-    std::string segment;
 
-    while (std::getline(versionStream, segment, '.')) {
-        try {
-            versionNumbers.push_back(std::stoi(segment));
-        } catch (...) {
-            break;
-        }
-    }
-
-    // Check we got minor and major versions
-    if (versionNumbers.size() < 2) {
+    int major = 0, minor = 0;
+    if (sscanf(version.c_str(), "%d.%d", &major, &minor) < 2) {
         return 1;
     }
-
-    int major = versionNumbers[0];
-    int minor = versionNumbers[1];
 
     if ((major < 5) || (major == 5 && minor < 8)) {
         logFn(LOG_ERROR, FIM_ERROR_EBPF_INVALID_KERNEL);
         return 1;
     }
-    else {
-        return 0;
-    }
+    return 0;
 }
 
 int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> local_sym_load) {
@@ -494,8 +478,8 @@ int init_bpfobj() {
     auto abspathFn = fimebpf::instance().m_abspath;
     char bpfobj_path[PATH_MAX] = {0};
 
-    if (!logFn || !abspathFn ) {
-         return 1;
+    if (!logFn || !abspathFn) {
+        return 1;
     }
     abspathFn(BPF_OBJ_INSTALL_PATH, bpfobj_path, sizeof(bpfobj_path));
 
@@ -511,7 +495,6 @@ int init_bpfobj() {
      */
     bpf_object* obj = nullptr;
     bool prefer_dpath = g_bpf_lsm_active;  /* only meaningful when LSM is active */
-    bool fallback_attempted = false;
     int err = 0;
 
     while (true) {
@@ -534,10 +517,9 @@ int init_bpfobj() {
         bpf_helpers->bpf_object_close(obj);
         obj = nullptr;
 
-        if (g_bpf_lsm_active && prefer_dpath && !fallback_attempted) {
+        if (g_bpf_lsm_active && prefer_dpath) {
             logFn(LOG_INFO, FIM_EBPF_LSM_DPATH_FALLBACK);
             prefer_dpath = false;
-            fallback_attempted = true;
             continue;
         }
 
