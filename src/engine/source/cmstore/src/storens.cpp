@@ -7,7 +7,7 @@
 
 namespace
 {
-constexpr std::string_view LOG_MODULE_NAME = "CM::Store::NS";
+constexpr std::string_view LOG_MODULE_NAME = "CM::Store::NS"; ///< Log module name for CMStoreNS
 }
 
 namespace cm::store
@@ -37,8 +37,10 @@ void CMStoreNS::loadCacheFromDisk()
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING(
-            "[{}] Failed to load cache from disk: {}. Rebuilding cache from storage", LOG_MODULE_NAME, e.what());
+        LOG_WARNING("[{}] Failed to load cache from disk: {}."
+                    " Rebuilding cache from storage",
+                    LOG_MODULE_NAME,
+                    e.what());
         rebuildCacheFromStorage();
         flushCacheToDisk();
     }
@@ -82,8 +84,10 @@ void CMStoreNS::rebuildCacheFromStorage()
         }
         else
         {
-            LOG_WARNING(
-                "[{}] Unknown resource type directory '{}' found in storage, skipping", LOG_MODULE_NAME, dirName);
+            LOG_WARNING("[{}] Unknown resource type directory '{}' "
+                        "found in storage, skipping",
+                        LOG_MODULE_NAME,
+                        dirName);
             continue;
         }
 
