@@ -8,6 +8,7 @@ add_subdirectory(rawevtindexer)
 add_subdirectory(event)
 add_subdirectory(cmcrud)
 add_subdirectory(ioccrud)
+add_subdirectory(status)
 
 add_library(api INTERFACE)
 target_include_directories(api INTERFACE
@@ -23,4 +24,5 @@ target_link_libraries(api INTERFACE
   api::cmcrud
   api::rawevtindexer
   api::ioccrud
+  api::status
 )
