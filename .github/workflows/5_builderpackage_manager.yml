@@ -162,6 +162,18 @@ jobs:
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
           echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${{ env.PACKAGE_ARCH }}" >> $GITHUB_ENV
 
+      - name: Start Docker daemon
+        # TODO: Remove when CodeBuild base image has Docker daemon pre-started
+        run: |
+          if ! command -v docker &>/dev/null; then
+            sudo apt-get update && sudo apt-get install -y docker.io
+          fi
+          if ! docker info &>/dev/null 2>&1; then
+            sudo nohup dockerd > /var/log/dockerd.log 2>&1 &
+            timeout 30 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+
       - name: Download docker image for package building
         timeout-minutes: 20
         run: |

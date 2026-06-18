@@ -84,14 +84,15 @@ jobs:
               ;;
           esac
 
-      - name: Install docker
+      - name: Start Docker daemon
+        # TODO: Remove when CodeBuild base image has Docker daemon pre-started
         run: |
-          if ! command -v docker &> /dev/null; then
-            echo "Installing Docker..."
-
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo systemctl start docker
+          if ! command -v docker &>/dev/null; then
+            sudo apt-get update && sudo apt-get install -y docker.io
+          fi
+          if ! docker info &>/dev/null 2>&1; then
+            sudo nohup dockerd > /var/log/dockerd.log 2>&1 &
+            timeout 30 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
             sudo chmod 666 /var/run/docker.sock
           fi
 
