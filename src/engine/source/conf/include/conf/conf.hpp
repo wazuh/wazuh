@@ -174,7 +174,8 @@ public:
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("[{}] Failed to retrieve or convert environment variable for key '{}': {}",
+            LOG_WARNING("[{}] Failed to retrieve or convert environment variable for key '{}': {}."
+                        " Falling back to file or default value.",
                         LOG_MODULE_NAME,
                         key,
                         e.what());
