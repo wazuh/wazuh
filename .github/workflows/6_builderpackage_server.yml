@@ -135,6 +135,8 @@ jobs:
       - name: CodeBuild workarounds
         # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
         run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
           if ! docker info &>/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y docker.io
@@ -142,6 +144,9 @@ jobs:
             timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
             sudo chmod 666 /var/run/docker.sock
           fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
 
       - name: Download docker image for package building
         run: |
