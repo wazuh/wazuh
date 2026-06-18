@@ -20,7 +20,9 @@
 namespace
 {
 
-const base::Name KVDB_STORE_NAME {"kvdb-ioc/status/0"}; ///< Store document name for KVDB state
+const base::Name KVDB_STORE_NAME {"kvdb-ioc/status/0"};   ///< Store document name for KVDB state
+constexpr std::string_view LOG_MODULE_NAME = "IOC::KVDB"; ///< Log module name for KVDBManager
+
 /**
  * @brief Represents the persisted state of a KVDB instance
  */
@@ -245,7 +247,7 @@ void KVDBManager::add(std::string_view name)
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("[KVDB IOC] Failed to persist state after add: {}.", e.what());
+        LOG_WARNING("[{}] Failed to persist state after add: {}", LOG_MODULE_NAME, e.what());
     }
 
     // Mark as successful - prevent rollback
@@ -448,7 +450,7 @@ void KVDBManager::hotSwap(std::string_view sourceDb, std::string_view targetDb)
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("[KVDB IOC] Failed to persist state after hot-swap: {}.", e.what());
+        LOG_WARNING("[{}] Failed to persist state after hot-swap: {}", LOG_MODULE_NAME, e.what());
     }
 
     // Opportunistic cleanup of retired instances
@@ -500,7 +502,7 @@ void KVDBManager::remove(std::string_view name)
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("[KVDB IOC] Failed to persist state after removal: {}.", e.what());
+        LOG_WARNING("[{}] Failed to persist state after removal: {}", LOG_MODULE_NAME, e.what());
     }
 
     // Opportunistic cleanup of retired instances
@@ -596,7 +598,7 @@ void KVDBManager::loadStateFromStore()
                     }
                     else
                     {
-                        LOG_WARNING("[KVDB IOC] Failed to open DB '{}': {}.", dbState.getName(), status.ToString());
+                        LOG_WARNING("[{}] Failed to open DB '{}': {}", LOG_MODULE_NAME, dbState.getName(), status.ToString());
                     }
                 }
 
@@ -605,7 +607,8 @@ void KVDBManager::loadStateFromStore()
             }
             catch (const std::exception& e)
             {
-                LOG_WARNING("[KVDB IOC] Failed to restore DB '{}' from '{}': {}.",
+                LOG_WARNING("[{}] Failed to restore DB '{}' from '{}': {}",
+                            LOG_MODULE_NAME,
                             dbState.getName(),
                             dbState.getInstancePath(),
                             e.what());
@@ -614,7 +617,7 @@ void KVDBManager::loadStateFromStore()
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("[KVDB IOC] Failed to load persisted state: {}. Starting fresh.", e.what());
+        LOG_WARNING("[{}] Failed to load persisted state: {}. Starting fresh", LOG_MODULE_NAME, e.what());
     }
 }
 
@@ -645,7 +648,7 @@ void KVDBManager::saveStateToStore()
     }
     catch (const std::exception& e)
     {
-        LOG_DEBUG("[KVDB IOC] Could not preload previous persisted paths: {}.", e.what());
+        LOG_DEBUG("[{}] Could not preload previous persisted paths: {}", LOG_MODULE_NAME, e.what());
     }
 
     {

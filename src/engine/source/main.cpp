@@ -555,8 +555,7 @@ int main(int argc, char* argv[])
         {
             rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
                 indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
-            LOG_INFO("Raw Event Indexer initialized (index: {}).",
-                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
+            LOG_INFO("Raw Event Indexer initialized");
 
             if (remoteConf)
             {
