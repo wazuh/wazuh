@@ -93,7 +93,8 @@ jobs:
 
           if ! docker info &> /dev/null; then
             echo "Starting Docker daemon..."
-            sudo systemctl start docker
+            sudo dockerd > /tmp/dockerd.log 2>&1 &
+            timeout 30 sh -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
             sudo chmod 666 /var/run/docker.sock
           fi
 
