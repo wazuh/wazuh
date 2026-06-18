@@ -8,6 +8,10 @@ on:
       - "src/**"
       - "packages/**"
       - ".github/workflows/5_builderpackage_agent-linux-arm64.yml"
+      - ".github/actions/5_builderpackage_get-last-stable-version/**"
+      - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
+      - ".github/actions/5_builderpackage_linux-smoke-uninstall-test/**"
+      - ".github/actions/5_builderpackage_linux-smoke-upgrade-test/**"
   workflow_dispatch:
     inputs:
       architecture:
