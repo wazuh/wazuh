@@ -4,6 +4,7 @@
 #include <memory>
 #include <unistd.h>
 
+#include <base/logging.hpp>
 #include <base/name.hpp>
 #include <base/utils/generator.hpp>
 #include <gmock/gmock.h>
@@ -26,6 +27,7 @@ protected:
 
     void SetUp() override
     {
+        logging::testInit();
         const auto suffix = base::utils::generators::generateUUIDv4();
         m_root = std::filesystem::temp_directory_path() / ("cmstore-test-" + suffix);
         m_outputs = m_root / "default_outputs";
@@ -582,6 +584,7 @@ class CMStoreNSTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        logging::testInit();
         m_storageDir = std::make_unique<TempDir>();
         m_outputsDir = std::make_unique<TempDir>();
         std::filesystem::create_directories(m_outputsDir->path() / "default");
@@ -920,6 +923,7 @@ class CMStoreTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        logging::testInit();
         m_baseDir = std::make_unique<TempDir>();
         m_outputsDir = std::make_unique<TempDir>();
         std::filesystem::create_directories(m_outputsDir->path() / "default");
