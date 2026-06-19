@@ -108,7 +108,7 @@ jobs:
       AWS_MAX_ATTEMPTS: "10"
       AWS_RETRY_MODE: adaptive
 
-    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'wz-linux-amd64' }}
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
     timeout-minutes: 90
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
@@ -161,6 +161,32 @@ jobs:
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
           echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${{ env.PACKAGE_ARCH }}" >> $GITHUB_ENV
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # Install uuidgen
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }} 
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
 
       - name: Download docker image for package building
         timeout-minutes: 20
