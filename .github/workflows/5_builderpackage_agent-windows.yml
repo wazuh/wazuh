@@ -290,6 +290,13 @@ jobs:
           & checkfiles_env\Scripts\Activate.ps1
           python -m pip install --upgrade pip
           python -m pip install -r .github/actions/check_files/requirements.txt
+          # pywin32 is Windows-only, so it is NOT in the shared check_files
+          # requirements.txt (that file is also installed on Linux/macOS runners).
+          # check_files.py imports win32file on Windows; install it here and run the
+          # post-install so the win32 DLLs load inside the isolated venv (otherwise
+          # it fails with "No module named 'win32file'" / "DLL load failed").
+          python -m pip install pywin32==308
+          python checkfiles_env\Scripts\pywin32_postinstall.py -install
 
       - name: Check installed files
         shell: pwsh
