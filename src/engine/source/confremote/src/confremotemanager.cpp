@@ -101,7 +101,7 @@ void ConfRemoteManager::synchronize()
         catch (const std::exception& e)
         {
             LOG_WARNING("[{}] Remote setting '{}' rejected (value: {}): {}. "
-                        "Keeping current value.",
+                        "Keeping current value",
                         LOG_MODULE_NAME,
                         key,
                         value.str(),

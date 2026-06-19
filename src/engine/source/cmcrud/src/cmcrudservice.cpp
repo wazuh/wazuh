@@ -167,7 +167,7 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
         if (store->existsNamespace(nsId))
         {
             throw std::runtime_error(fmt::format("Namespace '{}' already exists. "
-                                                 "Import is only allowed into a new namespace.",
+                                                 "Import is only allowed into a new namespace",
                                                  nsId.toStr()));
         }
 
@@ -360,8 +360,9 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     // Reject if destination namespace already exists
     if (store->existsNamespace(nsId))
     {
-        throw std::runtime_error(
-            fmt::format("Namespace '{}' already exists. Import is only allowed into a new namespace.", nsId.toStr()));
+        throw std::runtime_error(fmt::format("Namespace '{}' already exists. "
+                                             "Import is only allowed into a new namespace",
+                                             nsId.toStr()));
     }
 
     // Create empty destination namespace

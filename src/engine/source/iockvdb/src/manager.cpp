@@ -98,7 +98,8 @@ public:
         switch (ret)
         {
             case json::RetGet::NotFound: throw std::runtime_error("DBState::fromJson: Missing instance_path field");
-            case json::RetGet::WrongType: throw std::runtime_error("DBState::fromJson: instance_path field is not a string");
+            case json::RetGet::WrongType:
+                throw std::runtime_error("DBState::fromJson: instance_path field is not a string");
             case json::RetGet::Success:
                 if (path.empty())
                     throw std::runtime_error("DBState::fromJson: instance_path field cannot be empty");
@@ -256,7 +257,6 @@ void KVDBManager::add(std::string_view name)
     // Opportunistic cleanup of retired instances
     tryCleanRetired();
 }
-
 
 bool KVDBManager::exists(std::string_view dbName) const noexcept
 {
@@ -598,7 +598,8 @@ void KVDBManager::loadStateFromStore()
                     }
                     else
                     {
-                        LOG_WARNING("[{}] Failed to open DB '{}': {}", LOG_MODULE_NAME, dbState.getName(), status.ToString());
+                        LOG_WARNING(
+                            "[{}] Failed to open DB '{}': {}", LOG_MODULE_NAME, dbState.getName(), status.ToString());
                     }
                 }
 
