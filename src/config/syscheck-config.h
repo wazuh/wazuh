@@ -226,6 +226,8 @@ typedef struct whodata_evt {
     char *group_name;  // Linux
     char *audit_uid;  // Linux
     char *audit_name;  // Linux
+    char *audit_gid;  // Linux
+    char *audit_group_name;  // Linux
     char *effective_uid;  // Linux
     char *effective_name;  // Linux
     char *inode;  // Linux
