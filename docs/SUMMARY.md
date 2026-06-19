@@ -28,6 +28,7 @@
   - [Upgrade 4.X to 5.X](guide/migration/upgrade-4x-to-5x.md)
   - [Migration Manager Configuration from 4.x to 5.x](guide/migration/manager-configuration-migration.md)
   - [Migrating Manager Coordinator from 4.x to 5.x](guide/migration/manager-coordinator-migration.md)
+  - [VirusTotal migration](guide/migration/virustotal-migration.md)
 
 # Reference Manual
 

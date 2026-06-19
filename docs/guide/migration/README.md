@@ -12,3 +12,4 @@ This section contains migration guides for changes that require manual review wh
 | [SCA policies 4.x to 5.x](sca-policies-4x-to-5x.md) | Custom SCA policy format changes |
 | [Mail forwarding and reporting](mail-forwarding-reporting.md) | Replacing the removed email functionality |
 | [osQuery to IT hygiene](osquery-to-it-hygiene.md) | Replacing the osQuery module |
+| [VirusTotal migration](virustotal-migration.md) | Replacing the removed VirusTotal integration |
