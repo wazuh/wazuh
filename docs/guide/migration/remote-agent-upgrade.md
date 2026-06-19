@@ -2,7 +2,7 @@
 
 The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/upgrade` and `PUT /agents/upgrade_custom` API endpoints exist, and the `/var/wazuh-manager/bin/agent_upgrade` binary is also available as a command-line alternative that calls the same underlying framework. The WPK-based transfer flow is unchanged. Two breaking requirements must be met before any remote upgrade to 5.0.0+ can succeed:
 
-1. **TCP-only agent connectivity on port 1514.** In Wazuh 5.x, the agent ignores the `<protocol>` configuration option and always connects to the manager over TCP, regardless of what it was set to in 4.x. The manager still accepts UDP, but no 5.x agent will initiate a UDP connection. The WPK transfer piggybacks on this same channel, so it is always TCP as well. The risk arises when an agent that was connecting over UDP is upgraded: it restarts in TCP mode, and if outbound TCP on port 1514 is blocked in the firewall, the agent cannot reconnect and appears as `disconnected`, not `active`. Firewall rules must be updated to allow outbound TCP on port 1514 from the agent to the manager **before** the agent is upgraded to 5.x, or the agent will be unreachable and cannot be remotely upgraded.
+1. **TCP-only agent connectivity on port 1514.** In Wazuh 5.x, the agent ignores the `<protocol>` configuration option and always connects to the manager over TCP, regardless of what it was set to in 4.x. The manager still accepts UDP, but no 5.x agent will initiate a UDP connection. The WPK transfer uses the agent's current 4.x communication channel while the upgrade is being delivered, which can still be UDP for agents that have not restarted into 5.x yet. The risk arises after an agent that was connecting over UDP is upgraded: it restarts in TCP mode, and if outbound TCP on port 1514 is blocked in the firewall, the agent cannot reconnect and appears as `disconnected`, not `active`. Firewall rules must be updated to allow outbound TCP on port 1514 from the agent to the manager **before** the agent is upgraded to 5.x, or the agent will be unreachable after the upgrade.
 2. **Intermediate version requirement.** Direct remote upgrade to v5.0.0+ from agents older than v4.14.0 is blocked by the upgrade module and cannot be overridden with `--force`. Agents on v4.13.x or earlier must be upgraded to v4.14.x first.
 
 ---
@@ -107,7 +107,7 @@ API request or agent_upgrade binary
     └─► Agent Upgrade module (queue/tasks/upgrade)
             ├─► validates version requirements and downloads WPK
             └─► sends WPK commands to Remoted (queue/sockets/remote)
-                    └─► Remoted delivers to agent over TCP port 1514
+                    └─► Remoted delivers to agent over its current channel
                             └─► agent installs WPK and writes result
                                     └─► Remoted receives result
                                             └─► Router (upgrade_notifications topic)
@@ -125,7 +125,7 @@ The six commands sent to the agent during WPK transfer are, in order:
 | `sha1 <file>` | Verify the SHA1 checksum of the received file |
 | `upgrade <installer>` | Execute the installer (`upgrade.bat` on Windows, `upgrade.sh` elsewhere) |
 
-All six commands travel over the TCP channel. If TCP is blocked at any point during the transfer, the upgrade module reports one of the following errors: `Send lock restart error`, `Send open file error`, `Send write file error`, `Send close file error`, `Send verify sha1 error`, or `Send upgrade command error`.
+All six commands travel over the agent-manager channel that is active before the agent restarts. For 4.x agents still configured over UDP, the transfer can use UDP; after the agent upgrades to 5.x, it reconnects only over TCP. If the active channel fails during the transfer, the upgrade module reports one of the following errors: `Send lock restart error`, `Send open file error`, `Send write file error`, `Send close file error`, `Send verify sha1 error`, or `Send upgrade command error`.
 
 ---
 
@@ -160,7 +160,7 @@ Optional query parameters:
 Example response:
 
 ```json
-
+{
    "data": {
       "affected_items": [
          {
@@ -174,21 +174,30 @@ Example response:
    },
    "message": "All upgrade tasks were created",
    "error": 0
-
+}
 ```
 
 If an agent below v4.14.0 is included, it appears in `failed_items`:
 
 ```json
 {
- "error": {
-      "code": 1822,
-      "message": "Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first"
+   "data": {
+      "affected_items": [],
+      "total_affected_items": 0,
+      "total_failed_items": 1,
+      "failed_items": [
+         {
+            "error": {
+               "code": 1822,
+               "message": "Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first"
             },
-            "id": [
-               "002"
-            ]
+            "id": ["002"]
          }
+      ]
+   },
+   "message": "Some upgrade tasks were not created",
+   "error": 1
+}
 ```
 
 **Step 3: Monitor upgrade status:**
@@ -245,18 +254,18 @@ Agents on v4.13.x or earlier require an intermediate upgrade to v4.14.x before t
 Via API:
 
 ```bash
-curl -k -X PUT "https://localhost:55000/agents/upgrade?pretty=true&agents_list=003&upgrade_version=v4.14.0" \
+curl -k -X PUT "https://localhost:55000/agents/upgrade?pretty=true&agents_list=002&upgrade_version=v4.14.5" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 Via binary:
 
 ```bash
-/var/wazuh-manager/bin/agent_upgrade -a 003 -v v4.14.5
+/var/wazuh-manager/bin/agent_upgrade -a 002 -v v4.14.5
 ```
 
 ```
-root@indexer2:/home/vagrant# /var/wazuh-manager/bin/agent_upgrade -a 002 -v v4.14.5
+/var/wazuh-manager/bin/agent_upgrade -a 002 -v v4.14.5
 
 Upgrading...
 
@@ -264,23 +273,23 @@ Upgraded agents:
         Agent 002 upgraded: v4.13.1 -> v4.14.5
 ```
 
+> [!NOTE]
+> Using `--force` / `force=true` on step 1 is only needed if the agent reports a version equal to or higher than the target. It is not required for a normal version step-up.
+
 ### Step 2: Upgrade to v5.0.0
 
 Via API:
 
 ```bash
-curl -k -X PUT "https://localhost:55000/agents/upgrade?pretty=true&agents_list=003" \
+curl -k -X PUT "https://localhost:55000/agents/upgrade?pretty=true&agents_list=002" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 Via binary:
 
 ```bash
-/var/wazuh-manager/bin/agent_upgrade -a 003
+/var/wazuh-manager/bin/agent_upgrade -a 002
 ```
-
-> [!NOTE]
-> Using `--force` / `force=true` on step 1 is only needed if the agent reports a version equal to or higher than the target. It is not required for a normal version step-up.
 
 ---
 
