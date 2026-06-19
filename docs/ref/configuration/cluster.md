@@ -41,7 +41,7 @@ The current cluster implementation allows only one master node.
 
 Defines the key used to encrypt the communication between the nodes. This key must be 32 characters long.
 
-- **Default value**: n/a
+- **Default value**: `fd3350b86d239654e34866ab3c4988a8` (well-known placeholder — **must always be replaced**)
 - **Allowed values**: Letters, digits, and underscores (32 characters)
 
 This key must be the same for all of the cluster nodes.
@@ -81,12 +81,7 @@ Toggles whether or not to show information about the cluster that generated an a
 - **Default value**: `no`
 - **Allowed values**: `yes`, `no`
 
-### disabled
-
-Toggles whether the cluster is enabled or not. If this value is set to `yes`, the cluster won't start.
-
-- **Default value**: `no`
-- **Allowed values**: `yes`, `no`
+> **Note for users migrating from Wazuh 4.x:** The `<disabled>` option present in 4.x cluster configuration is no longer processed in 5.0. Cluster enable/disable is controlled at the service level — to disable the cluster, stop or disable the `wazuh-manager-clusterd` service. If `<disabled>` is present in the configuration file it is silently ignored.
 
 ## Configuration Example
 
@@ -104,7 +99,6 @@ Toggles whether the cluster is enabled or not. If this value is set to `yes`, th
     <node>MASTER_NODE_IP</node>
   </nodes>
   <hidden>no</hidden>
-  <disabled>no</disabled>
 </cluster>
 ```
 
@@ -124,7 +118,6 @@ Replace `MASTER_NODE_IP` with the actual IP address of the master node.
     <node>MASTER_NODE_IP</node>
   </nodes>
   <hidden>no</hidden>
-  <disabled>no</disabled>
 </cluster>
 ```
 

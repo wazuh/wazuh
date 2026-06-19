@@ -1,5 +1,7 @@
 # Command Module
 
+For the full per-option reference (all options, defaults and allowed values verified against the parser) see [Wodle: Command Configuration](../../configuration/wodle-command.md).
+
 ## Introduction
 
 The Wazuh command module executes configured operating system commands at scheduled intervals and can forward their output for analysis. It runs as the `<wodle name="command">` module inside `wazuh-modulesd` on agents and inside `wazuh-manager-modulesd` on the manager.
@@ -73,9 +75,9 @@ Windows example with checksum verification:
 The command module uses the shared Wazuh module scheduler:
 
 - `interval` executes the command periodically.
-- `time` executes the command at a specific time of day and requires an interval that is a multiple of one day.
-- `wday` executes the command on a specific weekday and requires an interval that is a multiple of one week.
-- `day` executes the command on a specific day of the month and requires a month interval.
+- `time` executes the command at a specific time of day; non-day intervals are normalized to `1d` with a warning.
+- `wday` executes the command on a specific weekday; non-weekly intervals are normalized to `1w` with a warning.
+- `day` executes the command on a specific day of the month; non-month intervals are normalized to `1M` with a warning.
 
 When `run_on_start` is `yes`, the first execution happens immediately. When it is `no`, the first execution waits for the next scheduled time.
 
