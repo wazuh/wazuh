@@ -17,7 +17,7 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
                const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
                const std::shared_ptr<builders::RegistryType>& registry,
                const std::shared_ptr<schemf::IValidator>& schema,
-               const std::shared_ptr<IAllowedFields>& allowedFields,
+               const std::shared_ptr<IDecoderUnmodifiableFields>& decoderUnmodifiableFields,
                const bool isTestMode)
 {
     const auto& cmStoreNsReader = cmStore->getNSReader(namespaceId);
@@ -39,7 +39,7 @@ Policy::Policy(const cm::store::NamespaceId& namespaceId,
     buildCtx->context().indexDiscardedEvents = policyData.shouldIndexDiscardedEvents();
     buildCtx->context().indexUnclassifiedEvents = policyData.shouldIndexUnclassifiedEvents();
     buildCtx->setTestMode(isTestMode);
-    buildCtx->setAllowedFields(allowedFields);
+    buildCtx->setDecoderUnmodifiableFields(decoderUnmodifiableFields);
     buildCtx->setStoreNSReader(cmStoreNsReader);
 
     // Build assets of policy

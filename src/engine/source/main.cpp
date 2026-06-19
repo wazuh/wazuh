@@ -18,7 +18,7 @@
 #include <base/utils/singletonLocatorStrategies.hpp>
 #include <base/utils/timeUtils.hpp>
 #include <bk/rx/controller.hpp>
-#include <builder/allowedFields.hpp>
+#include <builder/decoderUnmodifiableFields.hpp>
 #include <builder/builder.hpp>
 #include <cmcrud/cmcrudservice.hpp>
 #include <cmstore/cmstore.hpp>
@@ -511,24 +511,24 @@ int main(int argc, char* argv[])
             auto defs = std::make_shared<defs::DefinitionsBuilder>();
 
             // Build decoder unmodifiable fields
-            std::shared_ptr<builder::IAllowedFields> allowedFields;
-            auto allowedFieldsDoc = store->readDoc("schema/allowed-fields/0");
-            if (std::holds_alternative<base::Error>(allowedFieldsDoc))
+            std::shared_ptr<builder::IDecoderUnmodifiableFields> decoderUnmodifiableFields;
+            auto decoderUnmodifiableFieldsDoc = store->readDoc("schema/decoder-unmodifiable-fields/0");
+            if (std::holds_alternative<base::Error>(decoderUnmodifiableFieldsDoc))
             {
-                LOG_DEBUG("Could not load 'schema/allowed-fields/0' document, {}",
-                          std::get<base::Error>(allowedFieldsDoc).message);
+                LOG_DEBUG("Could not load 'schema/decoder-unmodifiable-fields/0' document, {}",
+                          std::get<base::Error>(decoderUnmodifiableFieldsDoc).message);
                 LOG_WARNING("Decoder unmodifiable fields not found, decoder assets will not have write restrictions.");
 
-                allowedFields = std::make_shared<builder::AllowedFields>();
+                decoderUnmodifiableFields = std::make_shared<builder::DecoderUnmodifiableFields>();
             }
             else
             {
-                allowedFields =
-                    std::make_shared<builder::AllowedFields>(base::getResponse<store::Doc>(allowedFieldsDoc));
+                decoderUnmodifiableFields = std::make_shared<builder::DecoderUnmodifiableFields>(
+                    base::getResponse<store::Doc>(decoderUnmodifiableFieldsDoc));
             }
 
-            builder =
-                std::make_shared<builder::Builder>(cmStore, schemaValidator, defs, allowedFields, builderDeps, store);
+            builder = std::make_shared<builder::Builder>(
+                cmStore, schemaValidator, defs, decoderUnmodifiableFields, builderDeps, store);
             LOG_INFO("Builder initialized.");
         }
 

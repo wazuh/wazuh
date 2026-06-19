@@ -75,7 +75,7 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
             const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
             for (const auto& fieldName : logparBuild.targetFields)
             {
-                if (!buildCtx->allowedFields().check(assetType, DotPath {fieldName}))
+                if (!buildCtx->decoderUnmodifiableFields().check(assetType, DotPath {fieldName}))
                 {
                     throw std::runtime_error(fmt::format(
                         "Logpar expression writes to field '{}' which cannot be modified by decoders", fieldName));

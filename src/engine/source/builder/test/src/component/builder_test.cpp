@@ -413,7 +413,7 @@ protected:
             std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_mocks->m_spSchemf);
         builderDeps.kvdbManager = nullptr;
 
-        auto emptyAllowedFields = std::make_shared<AllowedFields>();
+        auto emptyDecoderUnmodifiableFields = std::make_shared<DecoderUnmodifiableFields>();
         auto mockStore = std::make_shared<store::mocks::MockStore>();
 
         // Configure MockStore to return a valid GeoIP configuration
@@ -441,7 +441,7 @@ protected:
         m_builder = std::make_shared<Builder>(m_mocks->m_spStore,
                                               m_mocks->m_spSchemf,
                                               m_mocks->m_spDefBuilder,
-                                              emptyAllowedFields,
+                                              emptyDecoderUnmodifiableFields,
                                               builderDeps,
                                               mockStore);
     }
@@ -647,7 +647,7 @@ protected:
             std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_mocks->m_spSchemf);
         builderDeps.kvdbManager = nullptr;
 
-        auto emptyAllowedFields = std::make_shared<AllowedFields>();
+        auto emptyDecoderUnmodifiableFields = std::make_shared<DecoderUnmodifiableFields>();
         auto mockStore = std::make_shared<store::mocks::MockStore>();
 
         // Configure MockStore to return configurations for enrichments
@@ -673,7 +673,7 @@ protected:
         m_builder = std::make_shared<Builder>(m_mocks->m_spStore,
                                               m_mocks->m_spSchemf,
                                               m_mocks->m_spDefBuilder,
-                                              emptyAllowedFields,
+                                              emptyDecoderUnmodifiableFields,
                                               builderDeps,
                                               mockStore);
     }

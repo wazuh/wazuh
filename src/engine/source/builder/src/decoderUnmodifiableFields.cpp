@@ -1,4 +1,4 @@
-#include <builder/allowedFields.hpp>
+#include <builder/decoderUnmodifiableFields.hpp>
 
 #include <fmt/format.h>
 
@@ -14,7 +14,7 @@ bool startsWithPathPrefix(const std::string& field, const std::string& prefix)
 }
 } // namespace
 
-AllowedFields::AllowedFields(const json::Json& definition)
+DecoderUnmodifiableFields::DecoderUnmodifiableFields(const json::Json& definition)
 {
     if (!definition.isObject())
     {
@@ -22,12 +22,12 @@ AllowedFields::AllowedFields(const json::Json& definition)
     }
 
     std::string name;
-    if (definition.getString(name, syntax::allowedfields::NAME_PATH) != json::RetGet::Success)
+    if (definition.getString(name, syntax::decoderUnmodifiableFields::NAME_PATH) != json::RetGet::Success)
     {
         throw std::runtime_error {"Decoder unmodifiable fields definition must have a name"};
     }
 
-    auto unmodifiableFields = definition.getArray(syntax::allowedfields::DECODER_UNMODIFIABLE_FIELDS_PATH);
+    auto unmodifiableFields = definition.getArray(syntax::decoderUnmodifiableFields::DECODER_UNMODIFIABLE_FIELDS_PATH);
     if (!unmodifiableFields)
     {
         throw std::runtime_error {"Decoder unmodifiable fields definition must have decoder_unmodifiable_fields entry"};
@@ -47,7 +47,7 @@ AllowedFields::AllowedFields(const json::Json& definition)
     }
 }
 
-bool AllowedFields::check(const base::Name& assetType, const DotPath& field) const
+bool DecoderUnmodifiableFields::check(const base::Name& assetType, const DotPath& field) const
 {
     // Only decoders have protected write targets.
     if (!syntax::name::isDecoder(assetType, false))

@@ -222,7 +222,7 @@ The store is instantiated once in `main.cpp` using `FileDriver` pointed at the c
 | Path | Owner | Description |
 |------|-------|-------------|
 | `schema/engine-schema/0` | builder | Engine schema definition |
-| `schema/allowed-fields/0` | builder | Fields that decoder assets cannot modify |
+| `schema/decoder-unmodifiable-fields/0` | builder | Fields that decoder assets cannot modify |
 | `schema/wazuh-logpar-overrides/0` | builder | Log parser overrides |
 | `router/router/0` | router | Router configuration snapshot |
 | `router/tester/0` | router | Tester configuration snapshot |
@@ -234,8 +234,8 @@ The store is instantiated once in `main.cpp` using `FileDriver` pointed at the c
 
 ### Decoder Unmodifiable Fields
 
-`schema/allowed-fields/0` protects system-owned fields from decoder writes. The active list is defined by the
-`decoder_unmodifiable_fields` array in `ruleset/schemas/allowed-fields.json`.
+`schema/decoder-unmodifiable-fields/0` protects system-owned fields from decoder writes. The active list is defined by
+the `decoder_unmodifiable_fields` array in `ruleset/schemas/decoder-unmodifiable-fields.json`.
 
 The following broader candidate set is intentionally documented for future review and is not the active list unless it
 is added to `decoder_unmodifiable_fields`:

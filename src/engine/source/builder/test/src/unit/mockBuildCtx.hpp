@@ -24,9 +24,15 @@ public:
     MOCK_METHOD((const Context&), context, (), (const));
     MOCK_METHOD((Context&), context, (), ());
     MOCK_METHOD(bool, isTestMode, (), (const));
-    MOCK_METHOD((const builder::IAllowedFields&), allowedFields, (), (const));
-    MOCK_METHOD(void, setAllowedFields, (const std::shared_ptr<const builder::IAllowedFields>& allowedFields), ());
-    MOCK_METHOD((std::shared_ptr<const builder::IAllowedFields>), allowedFieldsPtr, (), (const));
+    MOCK_METHOD((const builder::IDecoderUnmodifiableFields&), decoderUnmodifiableFields, (), (const));
+    MOCK_METHOD(void,
+                setDecoderUnmodifiableFields,
+                (const std::shared_ptr<const builder::IDecoderUnmodifiableFields>& decoderUnmodifiableFields),
+                ());
+    MOCK_METHOD((std::shared_ptr<const builder::IDecoderUnmodifiableFields>),
+                decoderUnmodifiableFieldsPtr,
+                (),
+                (const));
     MOCK_METHOD((std::shared_ptr<cm::store::ICMStoreNSReader>), storeNSReaderPtr, (), (const));
     MOCK_METHOD((const cm::store::ICMStoreNSReader&), getStoreNSReader, (), (const));
     MOCK_METHOD(void, setStoreNSReader, (const std::shared_ptr<cm::store::ICMStoreNSReader> nsReader), ());

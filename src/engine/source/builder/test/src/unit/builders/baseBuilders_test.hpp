@@ -11,7 +11,7 @@
 #include "mockBuildCtx.hpp"
 #include "mockRegistry.hpp"
 
-#include <builder/mockAllowedFields.hpp>
+#include <builder/mockDecoderUnmodifiableFields.hpp>
 #include <cmstore/mockcmstore.hpp>
 #include <defs/mockDefinitions.hpp>
 #include <schemf/mockSchema.hpp>
@@ -40,7 +40,7 @@ struct BuildersMocks
     std::shared_ptr<MockSchema> validator;
     std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>> registry;
     std::shared_ptr<MockDefinitions> definitions;
-    std::shared_ptr<MockAllowedFields> allowedFields;
+    std::shared_ptr<MockDecoderUnmodifiableFields> decoderUnmodifiableFields;
     std::shared_ptr<cm::store::MockICMStoreNSReader> nsReader;
     Context context;
 };
@@ -59,18 +59,20 @@ protected:
         mocks->validator = std::make_shared<MockSchema>();
         mocks->registry = MockMetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>::createMock();
         mocks->definitions = std::make_shared<MockDefinitions>();
-        mocks->allowedFields = std::make_shared<MockAllowedFields>();
+        mocks->decoderUnmodifiableFields = std::make_shared<MockDecoderUnmodifiableFields>();
         mocks->nsReader = std::make_shared<cm::store::MockICMStoreNSReader>();
 
         ON_CALL(*mocks->ctx, context()).WillByDefault(testing::ReturnRef(mocks->context));
         ON_CALL(*mocks->ctx, isTestMode()).WillByDefault(testing::Return(false));
         ON_CALL(*mocks->ctx, validator()).WillByDefault(testing::ReturnRef(*(mocks->validator)));
-        ON_CALL(*mocks->ctx, allowedFields()).WillByDefault(testing::ReturnRef(*(mocks->allowedFields)));
+        ON_CALL(*mocks->ctx, decoderUnmodifiableFields())
+            .WillByDefault(testing::ReturnRef(*(mocks->decoderUnmodifiableFields)));
         ON_CALL(*mocks->ctx, getStoreNSReader()).WillByDefault(testing::ReturnRef(*(mocks->nsReader)));
         ON_CALL(*mocks->ctx, isKvdbAvailable(testing::_)).WillByDefault(testing::Return(std::make_pair(true, true)));
 
-        ON_CALL(*mocks->allowedFields, check(testing::_, testing::_)).WillByDefault(testing::Return(true));
-        ON_CALL(*mocks->ctx, allowedFieldsPtr()).WillByDefault(testing::Return(mocks->allowedFields));
+        ON_CALL(*mocks->decoderUnmodifiableFields, check(testing::_, testing::_)).WillByDefault(testing::Return(true));
+        ON_CALL(*mocks->ctx, decoderUnmodifiableFieldsPtr())
+            .WillByDefault(testing::Return(mocks->decoderUnmodifiableFields));
         ON_CALL(*mocks->ctx, validatorPtr()).WillByDefault(testing::Return(mocks->validator));
 
         mocks->context.policyName = "policy/name/0";
@@ -308,8 +310,9 @@ auto expectMapHelper(const std::string& name, Builder builder)
         std::shared_ptr<const MockBuildCtx> constCtx = ctx;
         EXPECT_CALL(*constCtx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
 
-        EXPECT_CALL(*constCtx, allowedFields()).WillOnce(testing::ReturnRef(*mocks.allowedFields));
-        EXPECT_CALL(*mocks.allowedFields, check(testing::_, testing::_)).WillOnce(testing::Return(true));
+        EXPECT_CALL(*constCtx, decoderUnmodifiableFields())
+            .WillOnce(testing::ReturnRef(*mocks.decoderUnmodifiableFields));
+        EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, testing::_)).WillOnce(testing::Return(true));
 
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
         EXPECT_CALL(*mocks.validator,
@@ -383,8 +386,10 @@ auto expectAnyMapHelper(Builders... builders)
         std::shared_ptr<const MockBuildCtx> constCtx = ctx;
         EXPECT_CALL(*constCtx, context()).WillRepeatedly(testing::ReturnRefOfCopy(mocks.context));
 
-        EXPECT_CALL(*constCtx, allowedFields()).WillRepeatedly(testing::ReturnRef(*mocks.allowedFields));
-        EXPECT_CALL(*mocks.allowedFields, check(testing::_, testing::_)).WillRepeatedly(testing::Return(true));
+        EXPECT_CALL(*constCtx, decoderUnmodifiableFields())
+            .WillRepeatedly(testing::ReturnRef(*mocks.decoderUnmodifiableFields));
+        EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, testing::_))
+            .WillRepeatedly(testing::Return(true));
 
         EXPECT_CALL(*ctx, validator()).Times(testing::AtLeast(1)).WillRepeatedly(testing::ReturnRef(*mocks.validator));
         EXPECT_CALL(*mocks.validator,

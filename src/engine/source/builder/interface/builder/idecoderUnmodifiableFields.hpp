@@ -1,5 +1,5 @@
-#ifndef _BUILDER_IALLOWEDFIELDS_HPP
-#define _BUILDER_IALLOWEDFIELDS_HPP
+#ifndef _BUILDER_IDECODER_UNMODIFIABLE_FIELDS_HPP
+#define _BUILDER_IDECODER_UNMODIFIABLE_FIELDS_HPP
 
 #include <base/dotPath.hpp>
 #include <base/name.hpp>
@@ -11,10 +11,10 @@ namespace builder
  * @brief Interface for checking if a field is allowed to be written by a given asset type.
  *
  */
-class IAllowedFields
+class IDecoderUnmodifiableFields
 {
 public:
-    virtual ~IAllowedFields() = default;
+    virtual ~IDecoderUnmodifiableFields() = default;
 
     /**
      * @brief Check if a field is allowed to be written by a given asset type.
@@ -29,4 +29,4 @@ public:
 };
 } // namespace builder
 
-#endif // _BUILDER_IALLOWEDFIELDS_HPP
+#endif // _BUILDER_IDECODER_UNMODIFIABLE_FIELDS_HPP

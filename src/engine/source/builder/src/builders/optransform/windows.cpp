@@ -57,9 +57,9 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
         utils::assertValue(opArgs, 0);
         utils::assertRef(opArgs, 1);
 
-        // Allowed fields check
+        // Decoder unmodifiable fields check
         const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-        if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+        if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
         {
             throw std::runtime_error(
                 fmt::format("Field '{}' is not allowed in '{}'", targetField.dotPath(), assetType));

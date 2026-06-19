@@ -89,8 +89,10 @@ TEST_F(ParseBuilderTest, RejectsDecoderUnmodifiableTarget)
         .WillOnce(testing::Return(schemf::TargetFieldKind::SCHEMA));
     EXPECT_CALL(*schema, getType(DotPath {"agent.name"})).WillOnce(testing::Return(schemf::Type::KEYWORD));
     EXPECT_CALL(*mocks->ctx, context()).WillOnce(testing::ReturnRef(mocks->context));
-    EXPECT_CALL(*mocks->ctx, allowedFields()).WillOnce(testing::ReturnRef(*mocks->allowedFields));
-    EXPECT_CALL(*mocks->allowedFields, check(testing::_, DotPath {"agent.name"})).WillOnce(testing::Return(false));
+    EXPECT_CALL(*mocks->ctx, decoderUnmodifiableFields())
+        .WillOnce(testing::ReturnRef(*mocks->decoderUnmodifiableFields));
+    EXPECT_CALL(*mocks->decoderUnmodifiableFields, check(testing::_, DotPath {"agent.name"}))
+        .WillOnce(testing::Return(false));
 
     ASSERT_THROW(builder(definition, mocks->ctx), std::runtime_error);
 }

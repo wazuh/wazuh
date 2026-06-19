@@ -11,7 +11,7 @@
 #include "mockBuildCtx.hpp"
 #include "mockRegistry.hpp"
 
-#include <builder/mockAllowedFields.hpp>
+#include <builder/mockDecoderUnmodifiableFields.hpp>
 #include <defs/mockDefinitions.hpp>
 #include <schemf/mockSchema.hpp>
 
@@ -40,7 +40,7 @@ protected:
     std::shared_ptr<MockSchema> validator;
     std::shared_ptr<MockMetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>> registry;
     std::shared_ptr<MockDefinitions> definitions;
-    std::shared_ptr<MockAllowedFields> allowedFields;
+    std::shared_ptr<MockDecoderUnmodifiableFields> decoderUnmodifiableFields;
     Context context;
 
     void SetUp() override
@@ -52,7 +52,7 @@ protected:
         validator = std::make_shared<MockSchema>();
         registry = MockMetaRegistry<OpBuilderEntry, StageBuilder, EnrichmentBuilder>::createMock();
         definitions = std::make_shared<MockDefinitions>();
-        allowedFields = std::make_shared<MockAllowedFields>();
+        decoderUnmodifiableFields = std::make_shared<MockDecoderUnmodifiableFields>();
 
         context.policyName = "policy/name/0";
         context.originSpace = "test_space";
@@ -62,10 +62,10 @@ protected:
         ON_CALL(Const(*ctx), context()).WillByDefault(ReturnRef(context));
         ON_CALL(*ctx, isTestMode()).WillByDefault(Return(false));
         ON_CALL(*ctx, validator()).WillByDefault(ReturnRef(*validator));
-        ON_CALL(*ctx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
+        ON_CALL(*ctx, decoderUnmodifiableFields()).WillByDefault(ReturnRef(*decoderUnmodifiableFields));
         ON_CALL(*ctx, definitions()).WillByDefault(ReturnRef(*definitions));
         ON_CALL(*ctx, registry()).WillByDefault(ReturnRef(*registry));
-        ON_CALL(*allowedFields, check(_, _)).WillByDefault(Return(true));
+        ON_CALL(*decoderUnmodifiableFields, check(_, _)).WillByDefault(Return(true));
     }
 
     void TearDown() override { SingletonLocator::unregisterManager<fastmetrics::IManager>(); }
@@ -137,7 +137,7 @@ protected:
         ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
         ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
         ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
-        ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
+        ON_CALL(*cloneCtx, decoderUnmodifiableFields()).WillByDefault(ReturnRef(*decoderUnmodifiableFields));
         return cloneCtx;
     }
 
@@ -346,7 +346,7 @@ TEST_F(BaseHelperTest, MapToTransformDisallowedField)
     auto transformBuilder = mapToTransform(mapBuilder, Reference("target.field"));
 
     Reference ignored("ignored");
-    EXPECT_CALL(*allowedFields, check(_, _)).WillOnce(Return(false));
+    EXPECT_CALL(*decoderUnmodifiableFields, check(_, _)).WillOnce(Return(false));
     ASSERT_THROW(transformBuilder(ignored, {}, ctx), std::runtime_error);
 }
 
@@ -680,7 +680,7 @@ TEST_F(BaseHelperTest, JsonDefinitionArrayValue)
         ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
         ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
         ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
-        ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
+        ON_CALL(*cloneCtx, decoderUnmodifiableFields()).WillByDefault(ReturnRef(*decoderUnmodifiableFields));
         return cloneCtx;
     }));
 
@@ -710,7 +710,7 @@ TEST_F(BaseHelperTest, JsonDefinitionArrayValueFilter)
         ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
         ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
         ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
-        ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
+        ON_CALL(*cloneCtx, decoderUnmodifiableFields()).WillByDefault(ReturnRef(*decoderUnmodifiableFields));
         return cloneCtx;
     }));
 
@@ -739,7 +739,7 @@ TEST_F(BaseHelperTest, JsonDefinitionObjectValue)
         ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
         ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
         ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
-        ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
+        ON_CALL(*cloneCtx, decoderUnmodifiableFields()).WillByDefault(ReturnRef(*decoderUnmodifiableFields));
         return cloneCtx;
     }));
 
@@ -771,7 +771,7 @@ TEST_F(BaseHelperTest, JsonDefinitionObjectValueFilter)
         ON_CALL(Const(*cloneCtx), context()).WillByDefault(ReturnRef(context));
         ON_CALL(*cloneCtx, isTestMode()).WillByDefault(Return(false));
         ON_CALL(*cloneCtx, validator()).WillByDefault(ReturnRef(*validator));
-        ON_CALL(*cloneCtx, allowedFields()).WillByDefault(ReturnRef(*allowedFields));
+        ON_CALL(*cloneCtx, decoderUnmodifiableFields()).WillByDefault(ReturnRef(*decoderUnmodifiableFields));
         return cloneCtx;
     }));
 

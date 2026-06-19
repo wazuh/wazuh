@@ -13,7 +13,7 @@
 namespace builder::syntax
 {
 
-namespace allowedfields
+namespace decoderUnmodifiableFields
 {
 constexpr auto NAME_KEY = "name";                            ///< Key for the name of the document.
 const auto NAME_PATH = json::Json::formatJsonPath(NAME_KEY); ///< Path to the name field in a document.
@@ -21,7 +21,7 @@ constexpr auto DECODER_UNMODIFIABLE_FIELDS_KEY =
     "decoder_unmodifiable_fields"; ///< Key for fields decoders cannot modify.
 const auto DECODER_UNMODIFIABLE_FIELDS_PATH =
     json::Json::formatJsonPath(DECODER_UNMODIFIABLE_FIELDS_KEY); ///< Path to decoder unmodifiable fields.
-} // namespace allowedfields
+} // namespace decoderUnmodifiableFields
 
 // Asset syntax
 namespace asset

@@ -1,5 +1,5 @@
 {
-    "name": "schema/allowed-fields/0",
+    "name": "schema/decoder-unmodifiable-fields/0",
     "decoder_unmodifiable_fields": [
         "event.original",
         "wazuh.agent",

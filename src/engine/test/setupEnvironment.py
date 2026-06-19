@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def setup_engine(engine_src_dir, environment_dir):
-    schemas = ["wazuh-logpar-overrides", "engine-schema", "allowed-fields"]
+    schemas = ["wazuh-logpar-overrides", "engine-schema", "decoder-unmodifiable-fields"]
 
     for schema in schemas:
         print(f"Copying schema {schema}")
