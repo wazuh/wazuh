@@ -207,7 +207,7 @@ jobs:
   upload-macos-intel64-to-s3:
     needs: [build-macos-intel64, test-macos-intel64]
     if: success()
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 15
     name: Upload PKG to S3 (intel64)
 
@@ -438,7 +438,7 @@ jobs:
   upload-macos-arm64-to-s3:
     needs: [build-macos-arm64, test-macos-arm64]
     if: success()
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 15
     name: Upload PKG to S3 (arm64)
 

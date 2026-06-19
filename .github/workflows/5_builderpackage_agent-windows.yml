@@ -69,7 +69,7 @@ jobs:
 
   build-windows-i686:
     needs: detect-changes
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
     name: Build Windows agent binaries
     outputs:
@@ -83,6 +83,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64 make
+
+      - name: Install a compatible CMake
+        # TODO(codebuild-temp): Remove when CodeBuild base images ship cmake.
+        # The winagent deps build (make -C src deps) builds cmocka with cmake internally.
+        uses: ./.github/actions/reinstall_cmake
 
       - name: Set VERSION
         id: set-version
@@ -327,7 +332,7 @@ jobs:
   upload-windows-i686-to-s3:
     needs: [package-windows-i686, test-windows-i686]
     if: success()
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 15
     name: Upload MSI to S3
 
