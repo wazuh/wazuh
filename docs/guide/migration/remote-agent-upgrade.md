@@ -1,4 +1,4 @@
-# Remote Agent Upgrade Migration Guide (4.x to 5.x)
+# Remote Agent Upgrade Migration
 
 The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/upgrade` and `PUT /agents/upgrade_custom` API endpoints exist, and the `/var/wazuh-manager/bin/agent_upgrade` binary is also available as a command-line alternative that calls the same underlying framework. The WPK-based transfer flow is unchanged. Two breaking requirements must be met before any remote upgrade to 5.0.0+ can succeed:
 
@@ -75,7 +75,7 @@ Identify agents below v4.14.0, they require an intermediate upgrade before they 
 Via API:
 
 ```bash
-curl -k -X GET "https://localhost:55000/agents?pretty=true&select=id,name,version,status&limit=500" \
+curl -k -X GET "https://<manager_ip>:55000/agents?pretty=true&select=id,name,version,status&limit=500" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -119,7 +119,7 @@ The six commands sent to the agent during WPK transfer are, in order:
 | Command | Purpose |
 |---------|---------|
 | `lock_restart` | Prevent the agent from restarting while the transfer is in progress |
-| `open wb <file>` | Open the WPK file for writing on the agent |
+| `open <wpk_file> wb` | Open the WPK file for writing on the agent |
 | `write <chunk>` | Send the WPK data in chunks (default 32 KB per chunk) |
 | `close <file>` | Close and flush the file |
 | `sha1 <file>` | Verify the SHA1 checksum of the received file |
@@ -143,7 +143,7 @@ TOKEN=$(curl -sk -u wazuh-wui:wazuh-wui -X POST \
 **Step 2: Trigger the upgrade:**
 
 ```bash
-curl -k -X PUT "https://localhost:55000/agents/upgrade?pretty=true&agents_list=001,002" \
+curl -k -X PUT "https://<manager_ip>:55000/agents/upgrade?pretty=true&agents_list=001,002" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -205,18 +205,18 @@ If an agent below v4.14.0 is included, it appears in `failed_items`:
 Poll the result for each agent:
 
 ```bash
-curl -k -X GET "https://localhost:55000/agents/upgrade_result?pretty=true&agents_list=001,002" \
+curl -k -X GET "https://<manager_ip>:55000/agents/upgrade_result?pretty=true&agents_list=001,002" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
 Or query all pending tasks:
 
 ```bash
-curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
+curl -k -X GET "https://<manager_ip>:55000/tasks/status?pretty=true" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Expected `status` values during a successful upgrade: `In queue` → `Updating` → `Updated`.
+Expected `status` values during a successful upgrade: `Pending` → `In progress` → `Done`.
 
 ### Via binary
 
@@ -254,7 +254,7 @@ Agents on v4.13.x or earlier require an intermediate upgrade to v4.14.x before t
 Via API:
 
 ```bash
-curl -k -X PUT "https://localhost:55000/agents/upgrade?pretty=true&agents_list=002&upgrade_version=v4.14.5" \
+curl -k -X PUT "https://<manager_ip>:55000/agents/upgrade?pretty=true&agents_list=002&upgrade_version=v4.14.5" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -281,7 +281,7 @@ Upgraded agents:
 Via API:
 
 ```bash
-curl -k -X PUT "https://localhost:55000/agents/upgrade?pretty=true&agents_list=002" \
+curl -k -X PUT "https://<manager_ip>:55000/agents/upgrade?pretty=true&agents_list=002" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
@@ -300,7 +300,7 @@ Use the custom upgrade method when the manager does not have access to the WPK r
 ### Via API
 
 ```bash
-curl -k -X PUT "https://localhost:55000/agents/upgrade_custom?pretty=true&agents_list=002&file_path=/var/wazuh-manager/var/upgrade/wazuh_agent_v5.0.0_linux_x86_64.wpk&installer=upgrade.sh" -H "Authorization: Bearer $TOKEN"
+curl -k -X PUT "https://<manager_ip>:55000/agents/upgrade_custom?pretty=true&agents_list=002&file_path=/var/wazuh-manager/var/upgrade/wazuh_agent_v5.0.0_linux_x86_64.wpk&installer=upgrade.sh" -H "Authorization: Bearer $TOKEN"
 ```
 
 ### Via binary
@@ -322,7 +322,7 @@ The `agent_upgrade` module still validates the intermediate version requirement 
 
 After triggering the upgrade, confirm all conditions below are met before declaring the migration complete:
 
-- `GET /agents/upgrade_result?agents_list=<id>` returns `"status": "Updated"` for every upgraded agent (or the binary exited with `Agent upgraded successfully`).
+- `GET /agents/upgrade_result?agents_list=<id>` returns `"status": "Done"` for every upgraded agent (or the binary exited with `Agent upgraded successfully`).
 - Agent version reported in `GET /agents/<id>` matches `5.0.0`.
 - Agent connection status is `active`.
 - `ossec.log` on the agent contains no errors related to the upgrade (`grep -i "upgrade" /var/ossec/logs/ossec.log`).
