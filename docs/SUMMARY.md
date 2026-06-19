@@ -30,6 +30,8 @@
   - [Migrating Manager Coordinator from 4.x to 5.x](guide/migration/manager-coordinator-migration.md)
   - [VirusTotal migration](guide/migration/virustotal-migration.md)
   - [Vulnerability Detection to CTI-Based Feeds](guide/migration/vulnerability-detection-cti-feeds.md)
+  - [Remote Agent Upgrade Migration](guide/migration/remote-agent-upgrade.md)
+
 
 # Reference Manual
 
