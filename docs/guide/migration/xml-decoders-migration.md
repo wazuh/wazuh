@@ -1,44 +1,22 @@
 # Migrating Custom Decoders from XML format to YAML
 
+## 0. Migration prerequisites
+
+In order to have a better experience on migrating your custom decoders, please take a look on [this engine introduction](engine-introduction.md)
+
 ## 1. Specific decoders features supported in YAML
 
 ### 1.1. Supported YAML tags table
 
-| YAML tag | Required | Definition |
-|----------|----------|------------|
-| id | Y | (string): Unique identifier for the decoder in UUIDv4 format |
-| name | Y | (string): Component name with 3 parts: decoder/\<name\>/\<version\> |
-| enabled | Y | (boolean): Whether the decoder is built/loaded |
-| metadata | Y | (object): Decoder metadata |
-| parents | N | (array): Parent decoders evaluated before this one. |
-| check | N | (string or array): Conditional expression. As a string: `$field helper` with NOT/AND/OR operators. As an array: each item is `field: condition`, all must pass in order. The array form is AND-only; use the string form for OR logic. |
-| parse\|\<field\> | N | (array): List of parser expressions (e.g., logpar) applied to the named source field. Evaluated in order until one succeeds. |
-| normalize | N | (array): Sequential sub-stages (check/parse/map) |
-| definitions | N | (object): Build-time typed macros expanded by interpolation. Conflicts, precedence, chaining, and scope are enforced at build time. |
+Check [engine documentation](../../ref/modules/engine/README.md#assets) to dive into what fields are supported in a YAML decoder.
 
 ### 1.2. Metadata table
 
-| YAML tag | Required | Definition |
-|----------|----------|------------|
-| title | Y | (string): Human-readable label (e.g., Windows Event Log Decoder). |
-| description | Y | (string): Brief description of the decoder. |
-| compatibility | N | (array): Compatible products, versions, and formats. |
-| author | Y | (string): Decoder author name. |
-| references | N | (array): Links to product documentation. |
-| date | N | (string): Creation date in ISO 8601 date or date-time format |
-| modified | N | (string): Last modification date in ISO 8601 date or date-time format |
-| documentation | N | (string): Free-form additional documentation |
-| supports | N | (array): Supported versions/platforms |
+Check [engine documentation](../../ref/modules/engine/README.md#assets) to dive into what fields are supported in `metadata` field.
 
 ### 1.3. Normalize array
 
-Each block of **normalize** runs in sequence and they may contain these sub-stages:
-
-| Normalize block | Definition |
-|-----------------|--------------|
-| check | (string or array): Conditional expression. As a string: `$field helper` with NOT/AND/OR operators. As an array: each item is `field: condition`, all must pass in order. The array form is AND-only; use the string form for OR logic. |
-| parse\|\<field\> | (array): List of parser expressions (e.g., logpar) applied to the named source field. Evaluated in order until one succeeds. |
-| map | (array): List of assignments - field: value |
+Check [engine documentation](../../ref/modules/engine/README.md#decoders) to dive into what fields are supported in `normalize` field.
 
 #### Valid blocks combination
 
@@ -56,7 +34,7 @@ Each block of **normalize** runs in sequence and they may contain these sub-stag
 |-------------|-----------------|
 | \<decoder name="..."\> ... \</decoder\> | name: ... |
 | \<parent\>...\</parent\> | parents: ... |
-| \<prematch\>...\</prematch\> | check: ... |
+| \<prematch\>...\</prematch\> | check: ... + parse\|\<field\>: ... |
 | \<regex\>...\</regex\> / \<order\> ... \</order\> | parse\|\<field\>: ... |
 | \<program_name\>...\</program_name\> | check: $process.name == '...' |
 

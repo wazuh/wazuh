@@ -88,6 +88,7 @@
     - [Parsers Reference](ref/modules/engine/ref-parser.md)
     - [Helper Functions Reference](ref/modules/engine/ref-helper-functions.md)
     - [Dev internal tools](ref/modules/engine/internal-tools.md)
+    - [Engine introduction for related migrations](guide/migration/engine-introduction.md)
   - [FIM](ref/modules/fim/README.md)
     - [Architecture](ref/modules/fim/architecture.md)
     - [API Reference](ref/modules/fim/api-reference.md)
