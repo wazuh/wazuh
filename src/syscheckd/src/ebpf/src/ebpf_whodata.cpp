@@ -11,6 +11,7 @@
 #include <cstdlib>
 #include <sstream>
 #include <unistd.h>
+#include <pwd.h>
 #include "modern.skel.h"
 #include <fstream>
 #include <iostream>
@@ -49,6 +50,21 @@ static char* uint_to_str(unsigned int num) {
 static char* ulong_to_str(unsigned long long num) {
     std::string s = std::to_string(num);
     return strdup(s.c_str());
+}
+
+/* Resolves the primary GID for a given UID by looking up its passwd entry.
+ * Used to derive "login_gid" (audit GID) from login_uid, since the kernel
+ * audit subsystem only tracks loginuid (auid) and has no equivalent GID. */
+static int get_login_gid(unsigned int uid) {
+    struct passwd pwd;
+    struct passwd* result = nullptr;
+    char buf[16384];
+
+    if (getpwuid_r(uid, &pwd, buf, sizeof(buf), &result) != 0 || result == nullptr) {
+        return -1;
+    }
+
+    return (int)pwd.pw_gid;
 }
 
 /* Callback for normal whodata events */
@@ -312,6 +328,11 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
             w_evt->effective_name = fimebpf::instance().m_get_user(event->euid);
             w_evt->audit_uid      = uint_to_str(event->login_uid);
             w_evt->audit_name     = fimebpf::instance().m_get_user(event->login_uid);
+            int audit_gid = get_login_gid(event->login_uid);
+            if (audit_gid >= 0) {
+                w_evt->audit_gid        = uint_to_str((unsigned int)audit_gid);
+                w_evt->audit_group_name = fimebpf::instance().m_get_group(audit_gid);
+            }
             w_evt->inode          = ulong_to_str(event->inode);
             w_evt->dev            = ulong_to_str(event->dev);
             w_evt->process_id     = event->pid;

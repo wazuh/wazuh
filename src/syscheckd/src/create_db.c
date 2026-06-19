@@ -1673,6 +1673,8 @@ cJSON * fim_audit_json(const whodata_evt * w_evt) {
     if (w_evt->group_name) cJSON_AddStringToObject(fim_audit, "group_name", w_evt->group_name);
     if (w_evt->audit_uid) cJSON_AddStringToObject(fim_audit, "audit_uid", w_evt->audit_uid);
     if (w_evt->audit_name) cJSON_AddStringToObject(fim_audit, "audit_name", w_evt->audit_name);
+    if (w_evt->audit_gid) cJSON_AddStringToObject(fim_audit, "audit_gid", w_evt->audit_gid);
+    if (w_evt->audit_group_name) cJSON_AddStringToObject(fim_audit, "audit_group_name", w_evt->audit_group_name);
     if (w_evt->effective_uid) cJSON_AddStringToObject(fim_audit, "effective_uid", w_evt->effective_uid);
     if (w_evt->effective_name) cJSON_AddStringToObject(fim_audit, "effective_name", w_evt->effective_name);
     if (w_evt->parent_name) cJSON_AddStringToObject(fim_audit, "parent_name", w_evt->parent_name);

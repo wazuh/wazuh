@@ -99,6 +99,18 @@ struct {
 // Kernel version check
 extern int LINUX_KERNEL_VERSION __kconfig;
 
+/* Minimal CO-RE shadow of struct task_struct, used only to read loginuid.
+ * Some vmlinux.h snapshots are generated from kernels built without
+ * CONFIG_AUDIT, in which case the real task_struct has no loginuid field
+ * and a direct current_task->loginuid access fails to compile. Declaring
+ * it here lets the CO-RE relocation engine resolve the field against the
+ * *running* kernel's BTF at load time instead of the build-time header,
+ * combined with bpf_core_field_exists() to skip gracefully if the running
+ * kernel also lacks CONFIG_AUDIT. */
+struct task_struct___local {
+    kuid_t loginuid;
+};
+
 /*
 * Concatenates a directory path and a filename into a full path.
 * The result is stored in out_buf->data.
@@ -309,9 +321,19 @@ statfunc void submit_event(const char *filename,
     kuid_t euid = BPF_CORE_READ(current_task, cred, euid);
     evt->euid = euid.val;
 
-    /* Login UID (audit UID) */
-    kuid_t loginuid;
-    bpf_probe_read_kernel(&loginuid, sizeof(loginuid), &current_task->loginuid);
+    /* Login UID (audit UID)
+     * The 'loginuid' field in struct task_struct only exists when the
+     * kernel is built with CONFIG_AUDIT. Some vmlinux.h snapshots used
+     * for compilation are generated from kernels without that option,
+     * so the field is missing at compile time. We use a local CO-RE
+     * shadow struct (same ___local pattern as renamedata___local) so
+     * the relocation is resolved against the *running* kernel's BTF
+     * at load time instead of the build-time vmlinux.h. */
+    struct task_struct___local *task_local = (struct task_struct___local *)current_task;
+    kuid_t loginuid = {0};
+    if (bpf_core_field_exists(task_local->loginuid)) {
+        loginuid = BPF_CORE_READ(task_local, loginuid);
+    }
     evt->login_uid = loginuid.val;
 
     /* Command name of the current task */
@@ -324,10 +346,15 @@ statfunc void submit_event(const char *filename,
     evt->inode = ino;
     evt->dev   = dev;
 
-    /* Clear buffers safely */
-    bpf_probe_read_kernel_str(evt->cwd, MAX_PATH_LEN, "");
-    bpf_probe_read_kernel_str(evt->parent_cwd, MAX_PATH_LEN, "");
-    bpf_probe_read_kernel_str(evt->parent_name, TASK_COMM_LEN, "");
+    /* Clear string fields with direct null-byte writes instead of
+     * bpf_probe_read_kernel_str(..., "") to avoid emitting a .rodata.str1.1
+     * ELF section. libbpf < 0.6 cannot resolve relocations against that
+     * section, leaving the BPF object internally corrupted and causing a
+     * crash/healthcheck failure on subsequent load. The effect is identical:
+     * both approaches write a single null byte to the first element. */
+    evt->cwd[0]         = '\0';
+    evt->parent_cwd[0]  = '\0';
+    evt->parent_name[0] = '\0';
 
     /* Get process cwd */
     get_task_cwd(evt->cwd, MAX_PATH_LEN, current_task);
