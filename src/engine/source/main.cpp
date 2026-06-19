@@ -198,7 +198,7 @@ int main(int argc, char* argv[])
     }
 
     // Load the configuration
-    auto confManager = conf::Conf(std::make_shared<conf::FileLoader>());
+    auto confManager = conf::Conf(std::make_shared<conf::FileLoader>(base::process::getWazuhHome() / "etc/wazuh-manager-internal-options.conf"));
     try
     {
         confManager.load();
