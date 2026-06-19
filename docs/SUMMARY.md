@@ -29,6 +29,7 @@
   - [Migration Manager Configuration from 4.x to 5.x](guide/migration/manager-configuration-migration.md)
   - [Migrating Manager Coordinator from 4.x to 5.x](guide/migration/manager-coordinator-migration.md)
   - [VirusTotal migration](guide/migration/virustotal-migration.md)
+  - [Vulnerability Detection to CTI-Based Feeds](guide/migration/vulnerability-detection-cti-feeds.md)
 
 # Reference Manual
 
