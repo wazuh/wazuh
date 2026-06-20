@@ -1,22 +1,21 @@
 <!--
-  Caddy Web Server Rules
-  Depends on: caddy_decoders.xml
+  -  Caddy web server rules
+  -  Created by NucleiAv
+  -  Copyright (C) 2015, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
 
-  NOTE: Wazuh's built-in json decoder fires before user decoders, so the base
-  rule matches on <field name="logger"> rather than <decoded_as>caddy-access</decoded_as>.
-  The "status" field is a Wazuh reserved field and cannot be used in <field> tags,
-  so 4xx/5xx status-based rules are not implementable via this mechanism.
+<!--
+  -  ID range: 996000 - 996030
 -->
 
 <group name="caddy,web,">
 
-  <!-- Base rule: identify Caddy logs by the logger field -->
   <rule id="996000" level="0">
     <field name="logger">http\.log\.access</field>
     <description>Caddy web server access log.</description>
   </rule>
 
-  <!-- Path traversal attempt: PCRE2 required so \. is a literal dot, not any-char -->
   <rule id="996003" level="10">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)(\.\./|\.\.\\|%2e%2e|%252e%252e)</field>
@@ -27,8 +26,6 @@
     </mitre>
   </rule>
 
-  <!-- SQL injection: keyword-based (UNION/SELECT) and boolean (OR 1=1, ' OR ') patterns.
-       %27 = URL-encoded ', %20 = URL-encoded space, %3D = URL-encoded =  -->
   <rule id="996004" level="10">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)(union.+select|select.+from|insert.+into|drop.+table|(%27|')(\s|%20)*(or)(\s|%20)+|(\s|%20)(or)(\s|%20)+1(\s|%20)*(%3D|=)(\s|%20)*1)</field>
@@ -39,7 +36,6 @@
     </mitre>
   </rule>
 
-  <!-- Sensitive path probing (wp-admin, phpmyadmin, etc.) -->
   <rule id="996005" level="8">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)(\/\.env$|\/\.git|\/wp-admin|\/phpmyadmin|\/admin\.php|\/config\.php|\/backup)</field>
@@ -50,7 +46,6 @@
     </mitre>
   </rule>
 
-  <!-- XSS attempt in URI -->
   <rule id="996008" level="10">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)(%3Cscript|&lt;script|javascript:|onerror=|onload=|alert\(|document\.cookie|eval\()</field>
@@ -61,7 +56,6 @@
     </mitre>
   </rule>
 
-  <!-- Command injection attempt in URI -->
   <rule id="996009" level="10">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)(%7C|%60|\||\`).*?(ls|id|whoami|cat\s|wget\s|curl\s|bash|/bin/sh|cmd\.exe)</field>
@@ -72,7 +66,6 @@
     </mitre>
   </rule>
 
-  <!-- Known attack/scanner tool user agents -->
   <rule id="996010" level="8">
     <if_sid>996000</if_sid>
     <field name="request.headers.User-Agent" type="pcre2">(?i)(sqlmap|nikto|nmap|masscan|nuclei|gobuster|dirbuster|wfuzz|acunetix|nessus|openvas|zgrab|whatweb)</field>
@@ -83,7 +76,6 @@
     </mitre>
   </rule>
 
-  <!-- HTTP TRACE/TRACK method - cross-site tracing attack vector -->
   <rule id="996011" level="6">
     <if_sid>996000</if_sid>
     <field name="request.method">TRACE|TRACK</field>
@@ -94,7 +86,6 @@
     </mitre>
   </rule>
 
-  <!-- Log4Shell JNDI injection attempt -->
   <rule id="996012" level="15">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)(\$\{jndi:|%24%7Bjndi%3A|%24%7Bjndi:)</field>
@@ -105,7 +96,6 @@
     </mitre>
   </rule>
 
-  <!-- Sensitive file access attempts (web app configs, system files) -->
   <rule id="996013" level="8">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)(\/xmlrpc\.php|\/\.htaccess|\/\.htpasswd|\/wp-config\.php|\/config\.php|\/backup|\/dump\.sql|\/proc\/self|\/etc\/shadow)</field>
@@ -116,7 +106,6 @@
     </mitre>
   </rule>
 
-  <!-- Credential and secret file access (env files, private keys, token stores) -->
   <rule id="996014" level="12">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)(\/\.env(\.|$|\/)|\/id_rsa|\/id_dsa|\/id_ed25519|\/id_ecdsa|credentials?\.json|credentials?\.xml|secrets?\.json|secrets?\.ya?ml|jwt\.(pem|secret)|private\.key|oauth\.json|token\.json|authorized_keys|known_hosts|\.p12$|\.pfx$|\.pem$|\.key$)</field>
@@ -127,7 +116,6 @@
     </mitre>
   </rule>
 
-  <!-- Backup and database dump file access -->
   <rule id="996015" level="10">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)\.(bak|backup|old|orig|save|swp|sql|dump|sqlite|db|mdb|tar\.gz|tar\.bz2|tgz|7z|rar)(\?|$)</field>
@@ -138,7 +126,6 @@
     </mitre>
   </rule>
 
-  <!-- Source control repository artifact exposure -->
   <rule id="996016" level="10">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)(\/\.git(\/|$)|\/\.svn\/|\/\.hg\/|\/\.gitignore|\/\.gitattributes|\/\.gitmodules)</field>
@@ -149,7 +136,6 @@
     </mitre>
   </rule>
 
-  <!-- Application log file exposure -->
   <rule id="996017" level="8">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)\/(error|access|debug|app|application|server|system|audit|exception)\.(log|txt|out)(\?|$)</field>
@@ -160,7 +146,6 @@
     </mitre>
   </rule>
 
-  <!-- Suspicious keyword in requested filename (passwords, secrets, confidential, etc.) -->
   <rule id="996020" level="8">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)\/(password|passwd|secret|confidential|credential|private|token|apikey|api[_-]key|auth)[^/]*(\.[a-z]{1,5})?$</field>
@@ -171,7 +156,6 @@
     </mitre>
   </rule>
 
-  <!-- Authentication endpoint access (base for brute force detection) -->
   <rule id="996021" level="3">
     <if_sid>996000</if_sid>
     <field name="request.uri" type="pcre2">(?i)\/(login|signin|sign-in|logon|auth|authenticate|wp-login\.php|admin\/login|account\/login|session\/new|user\/login|api\/login|api\/auth|oauth\/token|token)(\/|\?|$)</field>
@@ -179,7 +163,6 @@
     <group>web,authentication,</group>
   </rule>
 
-  <!-- Brute force: same IP hitting auth endpoints 10+ times in 60 seconds -->
   <rule id="996022" level="10" frequency="10" timeframe="60">
     <if_matched_sid>996021</if_matched_sid>
     <same_field>request.remote_ip</same_field>
@@ -190,7 +173,86 @@
     </mitre>
   </rule>
 
-  <!-- Directory enumeration: same IP probing 10+ sensitive paths in 60 seconds -->
+  <rule id="996023" level="10">
+    <if_sid>996000</if_sid>
+    <field name="request.uri" type="pcre2">(?i)(%c0%ae|%c0%2f|%c1%9c|%uff0e|%u2215|%u002f|%252f|%255c|\.\.%ef%bc%8f|\.\.%c0%af)</field>
+    <description>Caddy: Encoding evasion / WAF bypass attempt from $(request.remote_ip)</description>
+    <group>web,attack,evasion,</group>
+    <mitre>
+      <id>T1027</id>
+    </mitre>
+  </rule>
+
+  <rule id="996024" level="12">
+    <if_sid>996000</if_sid>
+    <field name="request.uri" type="pcre2">(?i)(php://|phar://|data://|expect://|zip://|glob://|file://|gopher://|dict://|\.(php|phtml|phar)\b.*=|[?&amp;][^&amp;]+=https?://|[?&amp;][^&amp;]+=ftp://)</field>
+    <description>Caddy: LFI/RFI file inclusion attempt from $(request.remote_ip) - $(request.uri)</description>
+    <group>web,attack,lfi,</group>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+  </rule>
+
+  <rule id="996025" level="12">
+    <if_sid>996000</if_sid>
+    <field name="request.uri" type="pcre2">(?i)(169\.254\.169\.254|metadata\.google\.internal|metadata/instance|169\.254\.170\.2|100\.100\.100\.200|[?&amp;][^&amp;]*=https?://(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|localhost)|[?&amp;][^&amp;]*=https?://[^/]*\.(internal|local|corp|intranet))</field>
+    <description>Caddy: SSRF attempt targeting internal resource from $(request.remote_ip) - $(request.uri)</description>
+    <group>web,attack,ssrf,</group>
+    <mitre>
+      <id>T1090</id>
+    </mitre>
+  </rule>
+
+  <rule id="996026" level="8">
+    <if_sid>996000</if_sid>
+    <field name="request.uri" type="pcre2">(?i)(\/graphql|\/graphiql|\/gql|__schema|__type|__typename|introspectionquery)</field>
+    <description>Caddy: GraphQL introspection or API schema probe from $(request.remote_ip)</description>
+    <group>web,recon,api,</group>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="996027" level="8">
+    <if_sid>996000</if_sid>
+    <field name="request.method" type="pcre2">^(CONNECT|DEBUG|MOVE|COPY|PROPFIND|PROPPATCH|MKCOL|LOCK|UNLOCK|BREW|TEST|FUZZ|SEARCH|PURGE)$</field>
+    <description>Caddy: Unusual or dangerous HTTP method from $(request.remote_ip) - $(request.method)</description>
+    <group>web,attack,protocol_abuse,</group>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+  </rule>
+
+  <rule id="996028" level="6">
+    <if_sid>996000</if_sid>
+    <field name="request.headers.User-Agent" type="pcre2">^(\[\]|''|-)$|^.{500,}</field>
+    <description>Caddy: Suspicious User-Agent (empty or oversized) from $(request.remote_ip)</description>
+    <group>web,recon,</group>
+    <mitre>
+      <id>T1036</id>
+    </mitre>
+  </rule>
+
+  <rule id="996029" level="12">
+    <if_sid>996000</if_sid>
+    <field name="request.uri" type="pcre2">(?i)(\/upload|\/uploads|\/files|\/media|\/assets|\/static)[^?]*\.(php[0-9]?|phtml|phar|asp|aspx|jsp|jspx|cfm|cgi|pl|py|rb|sh|exe|dll|bat|cmd|vbs|ps1)</field>
+    <description>Caddy: Dangerous file upload attempt from $(request.remote_ip) - $(request.uri)</description>
+    <group>web,attack,upload,</group>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+  </rule>
+
+  <rule id="996030" level="8">
+    <if_sid>996000</if_sid>
+    <field name="request.uri" type="pcre2">^.{2000,}</field>
+    <description>Caddy: Oversized URI detected from $(request.remote_ip) - possible fuzzing</description>
+    <group>web,recon,scan,</group>
+    <mitre>
+      <id>T1595.002</id>
+    </mitre>
+  </rule>
+
   <rule id="996018" level="14" frequency="10" timeframe="60">
     <if_matched_sid>996005</if_matched_sid>
     <same_field>request.remote_ip</same_field>
@@ -201,11 +263,10 @@
     </mitre>
   </rule>
 
-  <!-- Brute force / aggressive scanning: same IP triggering 8+ attack rules in 60 seconds -->
   <rule id="996019" level="14" frequency="8" timeframe="60">
     <if_matched_sid>996003</if_matched_sid>
     <same_field>request.remote_ip</same_field>
-    <description>Caddy: Aggressive scanning or brute force - repeated path traversal attempts from $(request.remote_ip)</description>
+    <description>Caddy: Aggressive scanning - repeated path traversal attempts from $(request.remote_ip)</description>
     <group>web,attack,brute_force,</group>
     <mitre>
       <id>T1110</id>
