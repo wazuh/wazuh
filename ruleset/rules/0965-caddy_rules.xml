@@ -185,7 +185,7 @@
 
   <rule id="996024" level="12">
     <if_sid>996000</if_sid>
-    <field name="request.uri" type="pcre2">(?i)(php://|phar://|data://|expect://|zip://|glob://|file://|gopher://|dict://|\.(php|phtml|phar)\b.*=|[?&amp;][^&amp;]+=https?://|[?&amp;][^&amp;]+=ftp://)</field>
+    <field name="request.uri" type="pcre2">(?i)(php://|phar://|data://|expect://|zip://|glob://|file://|gopher://|dict://|\.(php|phtml|phar)\b.*=)</field>
     <description>Caddy: LFI/RFI file inclusion attempt from $(request.remote_ip) - $(request.uri)</description>
     <group>web,attack,lfi,</group>
     <mitre>
