@@ -23,7 +23,7 @@ on:
 jobs:
   # Build the winagent on linux.
   build:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v3
       # Install wingw required to build the winagent.

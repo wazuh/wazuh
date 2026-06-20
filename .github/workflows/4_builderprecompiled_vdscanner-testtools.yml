@@ -41,12 +41,12 @@ jobs:
 
     # Runs only if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
 
     steps:
       - name: Install dependencies
-        run: sudo apt-get install lzip xz-utils
+        run: sudo apt-get install -y lzip xz-utils
 
       - name: Check out repository
         uses: actions/checkout@v4
