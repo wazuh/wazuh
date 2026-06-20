@@ -245,7 +245,7 @@
 
   <rule id="996030" level="8">
     <if_sid>996000</if_sid>
-    <field name="request.uri" type="pcre2">^.{2000,}</field>
+    <field name="request.uri" type="pcre2">^.{1000,}</field>
     <description>Caddy: Oversized URI detected from $(request.remote_ip) - possible fuzzing</description>
     <group>web,recon,scan,</group>
     <mitre>
