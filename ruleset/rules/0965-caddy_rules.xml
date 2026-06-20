@@ -1,0 +1,47 @@
+<!--
+  Caddy Web Server Rules
+  Depends on: caddy_decoders.xml
+-->
+
+<group name="caddy,web,">
+
+  <!-- Base rule: identify Caddy logs by the logger field -->
+  <rule id="996000" level="0">
+    <field name="logger">http\.log\.access</field>
+    <description>Caddy web server access log.</description>
+  </rule>
+
+  <!-- Path traversal attempt -->
+  <rule id="996003" level="10">
+    <if_sid>996000</if_sid>
+    <field name="request.uri">\.\./|\.\.\\|%2e%2e|%252e%252e</field>
+    <description>Caddy: Path traversal attempt from $(request.remote_ip)</description>
+    <group>web,attack,path_traversal,</group>
+    <mitre>
+      <id>T1083</id>
+    </mitre>
+  </rule>
+
+  <!-- SQL injection pattern in URI -->
+  <rule id="996004" level="10">
+    <if_sid>996000</if_sid>
+    <field name="request.uri" type="pcre2">(?i)(union.+select|select.+from|insert.+into|drop.+table)</field>
+    <description>Caddy: SQL injection attempt from $(request.remote_ip)</description>
+    <group>web,attack,sql_injection,</group>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+  </rule>
+
+  <!-- Sensitive path probing -->
+  <rule id="996005" level="8">
+    <if_sid>996000</if_sid>
+    <field name="request.uri">\.env$|\.git|wp-admin|phpmyadmin|admin\.php</field>
+    <description>Caddy: Sensitive path probe from $(request.remote_ip) - $(request.uri)</description>
+    <group>web,recon,</group>
+    <mitre>
+      <id>T1595</id>
+    </mitre>
+  </rule>
+
+</group>

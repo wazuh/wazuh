@@ -1,0 +1,14 @@
+<!--
+  Caddy Web Server Decoders
+  Caddy outputs structured JSON access logs.
+  Log format: https://caddyserver.com/docs/logging
+-->
+
+<decoder name="caddy">
+  <prematch>"logger":"http\.log\.access</prematch>
+</decoder>
+
+<decoder name="caddy-access">
+  <parent>caddy</parent>
+  <plugin_decoder>JSON_Decoder</plugin_decoder>
+</decoder>
