@@ -6,7 +6,7 @@
 -->
 
 <!--
-  -  ID range: 996000 - 996030
+  -  ID range: 996000 - 996032
 -->
 
 <group name="caddy,web,">
@@ -250,6 +250,26 @@
     <group>web,recon,scan,</group>
     <mitre>
       <id>T1595.002</id>
+    </mitre>
+  </rule>
+
+  <rule id="996031" level="13">
+    <if_sid>996000</if_sid>
+    <field name="request.uri" type="pcre2">(?i)(\/upload|\/uploads|\/files|\/media|\/assets|\/static)[^?]*\.(php[0-9]?|phtml|phar|asp|aspx|jsp|jspx|cfm|cgi|pl|py|rb|sh|exe|dll|bat|cmd|vbs|ps1)\.[a-z]{2,4}(\?|$)</field>
+    <description>Caddy: Double extension bypass upload attempt from $(request.remote_ip) - $(request.uri)</description>
+    <group>web,attack,upload,evasion,</group>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+  </rule>
+
+  <rule id="996032" level="8">
+    <if_sid>996000</if_sid>
+    <field name="request.uri" type="pcre2">(?i)(\/upload|\/uploads|\/files|\/media|\/assets|\/static)[^?]*\.(zip|rar|7z|tar|gz|tgz|iso|img|docm|xlsm|pptm|xlam|svg)(\?|$)</field>
+    <description>Caddy: Archive or macro-enabled file upload from $(request.remote_ip) - $(request.uri)</description>
+    <group>web,recon,upload,</group>
+    <mitre>
+      <id>T1566.001</id>
     </mitre>
   </rule>
 
