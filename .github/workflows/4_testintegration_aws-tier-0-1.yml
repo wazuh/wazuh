@@ -25,7 +25,7 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.IT_AWS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: 'us-east-1'
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

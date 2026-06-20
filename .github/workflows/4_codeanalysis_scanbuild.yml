@@ -8,7 +8,7 @@ on:
 
 jobs:
   scan-build-linux:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     strategy:
       fail-fast: false
       matrix:
@@ -41,7 +41,7 @@ jobs:
         run: exit 1
 
   scan-build-ubuntu-mingw-windows:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v3
         with:

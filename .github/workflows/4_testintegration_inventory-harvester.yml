@@ -17,7 +17,7 @@ on:
 
 jobs:
   inventory-harvester-qa:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Cancel previous runs

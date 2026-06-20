@@ -18,16 +18,16 @@ jobs:
           fail-fast: false
           matrix:
               target: [agent, winagent, server]
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
+      - name: "Install a compatible CMake"
+        uses: ./.github/actions/reinstall_cmake
       - name: "Install dependencies"
         uses: ./.github/actions/install_build_deps
         with:
           target: ${{ matrix.target }}
-      - name: "Install a compatible CMake"
-        uses: ./.github/actions/reinstall_cmake
       - name: "Build wazuh"
         uses: ./.github/actions/build_test_flags
         with:
