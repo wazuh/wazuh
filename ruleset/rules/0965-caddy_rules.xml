@@ -171,6 +171,25 @@
     </mitre>
   </rule>
 
+  <!-- Authentication endpoint access (base for brute force detection) -->
+  <rule id="996021" level="3">
+    <if_sid>996000</if_sid>
+    <field name="request.uri" type="pcre2">(?i)\/(login|signin|sign-in|logon|auth|authenticate|wp-login\.php|admin\/login|account\/login|session\/new|user\/login|api\/login|api\/auth|oauth\/token|token)(\/|\?|$)</field>
+    <description>Caddy: Authentication endpoint access from $(request.remote_ip)</description>
+    <group>web,authentication,</group>
+  </rule>
+
+  <!-- Brute force: same IP hitting auth endpoints 10+ times in 60 seconds -->
+  <rule id="996022" level="10" frequency="10" timeframe="60">
+    <if_matched_sid>996021</if_matched_sid>
+    <same_field>request.remote_ip</same_field>
+    <description>Caddy: Possible brute force - repeated auth endpoint hits from $(request.remote_ip)</description>
+    <group>web,attack,brute_force,</group>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+  </rule>
+
   <!-- Directory enumeration: same IP probing 10+ sensitive paths in 60 seconds -->
   <rule id="996018" level="14" frequency="10" timeframe="60">
     <if_matched_sid>996005</if_matched_sid>
