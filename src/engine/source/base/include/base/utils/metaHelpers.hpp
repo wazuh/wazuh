@@ -60,17 +60,9 @@ decltype(auto) executeWithRetry(Func&& operation,
         }
         catch (const std::exception& e)
         {
-            if (attempt < maxAttempts)
-            {
-                LOG_INFO_L(componentOperationName.c_str(),
-                           "[{}] {} - Attempt {}/{}: {}",
-                           componentOperationName,
-                           message,
-                           attempt,
-                           maxAttempts,
-                           e.what());
-            }
-            else
+            const bool isLastAttempt = attempt == maxAttempts;
+
+            if (isLastAttempt)
             {
                 LOG_WARNING_L(componentOperationName.c_str(),
                               "[{}] {} - Attempt {}/{}: {}",
@@ -79,24 +71,27 @@ decltype(auto) executeWithRetry(Func&& operation,
                               attempt,
                               maxAttempts,
                               e.what());
-            }
-            if (attempt < maxAttempts)
-            {
-                // Split sleep into 1-second chunks for responsive abort
-                for (std::size_t s = 0; s < waitSeconds; ++s)
-                {
-                    if (shutdownRequested.load(std::memory_order_relaxed))
-                    {
-                        throw std::runtime_error(fmt::format(
-                            "{}::{} aborted during retry wait (attempt {})", message, componentOperationName, attempt));
-                    }
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                }
-            }
-            else
-            {
                 throw std::runtime_error(fmt::format(
                     "{}::{} failed after {} attempts: {}", message, componentOperationName, maxAttempts, e.what()));
+            }
+
+            LOG_INFO_L(componentOperationName.c_str(),
+                       "[{}] {} - Attempt {}/{}: {}",
+                       componentOperationName,
+                       message,
+                       attempt,
+                       maxAttempts,
+                       e.what());
+
+            // Split sleep into 1-second chunks for responsive abort
+            for (std::size_t s = 0; s < waitSeconds; ++s)
+            {
+                if (shutdownRequested.load(std::memory_order_relaxed))
+                {
+                    throw std::runtime_error(fmt::format(
+                        "{}::{} aborted during retry wait (attempt {})", message, componentOperationName, attempt));
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(1));
             }
         }
     }
