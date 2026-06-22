@@ -41,6 +41,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 # Generate agentd tests
 list(APPEND client-agent_names "test_start_agent")
 set(START_AGENT_BASE_FLAGS "-Wl,--wrap,w_rotate_log -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,OS_ConnectUDP \
+                            -Wl,--wrap,OS_SetKeepalive -Wl,--wrap,OS_SetKeepalive_Options -Wl,--wrap,OS_SetSendTimeout \
                             -Wl,--wrap,OS_ConnectTCP -Wl,--wrap,OS_SetRecvTimeout -Wl,--wrap,OS_GetHost \
                             -Wl,--wrap,send_msg -Wl,--wrap,recv -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,fseek \
                             -Wl,--wrap=is_fim_shutdown -Wl,--wrap=fim_db_teardown \
@@ -120,6 +121,12 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
 
 list(APPEND client-agent_names "test_startup_gate")
 list(APPEND client-agent_flags "-Wl,--wrap,getsharedfiles ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND client-agent_names "test_sendmsg")
+list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \
+                                -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
+                                -Wl,--wrap,CreateSecMSG \
+                                -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_CloseSocket")
 endif()
 
 list(LENGTH client-agent_names count)

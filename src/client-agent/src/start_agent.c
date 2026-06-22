@@ -399,6 +399,18 @@ bool connect_server(int server_id, bool verbose)
             #endif
         }
     } else {
+        if (OS_SetKeepalive(agt->sock) < 0) {
+            mwarn("OS_SetKeepalive failed with error '%s'", strerror(errno));
+        } else {
+            int keepidle  = getDefine_Int("agent", "tcp_keepidle",  1, 7200);
+            int keepintvl = getDefine_Int("agent", "tcp_keepintvl", 1, 100);
+            int keepcnt   = getDefine_Int("agent", "tcp_keepcnt",   1, 50);
+            OS_SetKeepalive_Options(agt->sock, keepidle, keepintvl, keepcnt);
+        }
+        int send_timeout = getDefine_Int("agent", "send_timeout", 1, 600);
+        if (OS_SetSendTimeout(agt->sock, send_timeout) < 0) {
+            mwarn("OS_SetSendTimeout failed with error '%s'", strerror(errno));
+        }
         agt->rip_id = server_id;
         last_connection_time = (int)time(NULL);
         os_free(ip_address);
