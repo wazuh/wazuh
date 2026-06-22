@@ -15,3 +15,4 @@ This section contains migration guides for changes that require manual review wh
 | [VirusTotal migration](virustotal-migration.md) | Replacing the removed VirusTotal integration |
 | [Vulnerability Detection to CTI-based feeds](vulnerability-detection-cti-feeds.md) | Removal of offline feeds and the new CTI/Indexer content distribution model |
 | [Remote agent upgrade](remote-agent-upgrade.md) | TCP connectivity and version path requirements for remote agent upgrades to 5.x |
+| [XML decoders to YAML decoders](xml-decoders-migration.md) | How to migrate decoders from XML to YAML |
