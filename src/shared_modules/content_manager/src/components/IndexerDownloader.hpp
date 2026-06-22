@@ -70,6 +70,8 @@ private:
         Unknown
     };
 
+    static constexpr std::chrono::seconds INDEXER_RETRY_INTERVAL {30};
+
     nlohmann::json m_config;
     mutable std::mutex m_callbackMutex; ///< Serializes processPage calls across parallel slices.
 
@@ -706,8 +708,6 @@ private:
      */
     size_t initialLoad(UpdaterContext& context) const
     {
-        static constexpr std::chrono::seconds INITIAL_LOAD_RETRY_INTERVAL {30};
-
         const nlohmann::json query = {{"match_all", nlohmann::json::object()}};
         const size_t numSlices = m_config.at("indexer").value("numSlices", 2u);
         size_t attempt = 0;
@@ -744,7 +744,7 @@ private:
                 logWarn(WM_CONTENTUPDATER,
                         "IndexerDownloader: Initial load failed (%s) — retrying in %zu s.",
                         e.what(),
-                        static_cast<size_t>(INITIAL_LOAD_RETRY_INTERVAL.count()));
+                        static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
             }
 
             if (totalProcessed > 0)
@@ -762,14 +762,14 @@ private:
             {
                 logWarn(WM_CONTENTUPDATER,
                         "IndexerDownloader: Indexer index not ready (0 documents) — retrying in %zu s.",
-                        static_cast<size_t>(INITIAL_LOAD_RETRY_INTERVAL.count()));
+                        static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
             }
 
             ++attempt;
 
             // waitFor returns true when spStopCondition is set (agent shutdown).
             if (context.spUpdaterBaseContext->spStopCondition->waitFor(
-                    std::chrono::duration_cast<std::chrono::milliseconds>(INITIAL_LOAD_RETRY_INTERVAL)))
+                    std::chrono::duration_cast<std::chrono::milliseconds>(INDEXER_RETRY_INTERVAL)))
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during initial load retry — aborting.");
                 return 0;
@@ -821,56 +821,71 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "IndexerDownloader - Starting process");
 
-        auto lastCursor = getStoredCursor(*context);
-
-        // Validate that the stored cursor is a valid integer before using it for an
-        // incremental range query. A corrupt RocksDB entry could cause std::stoull to
-        // throw std::invalid_argument, which would loop on every scheduler cycle.
-        // In that case, discard the cursor and fall back to a full initial load.
-        if (!lastCursor.empty())
+        while (!context->spUpdaterBaseContext->spStopCondition->check())
         {
-            try
+            auto lastCursor = getStoredCursor(*context);
+
+            // Validate that the stored cursor is a valid integer before using it for an
+            // incremental range query. A corrupt RocksDB entry could cause std::stoull to
+            // throw std::invalid_argument, which would loop on every scheduler cycle.
+            // In that case, discard the cursor and fall back to a full initial load.
+            if (!lastCursor.empty())
             {
-                std::stoull(lastCursor);
+                try
+                {
+                    std::stoull(lastCursor);
+                }
+                catch (const std::exception&)
+                {
+                    logWarn(WM_CONTENTUPDATER,
+                            "IndexerDownloader: stored cursor '%s' is not a valid integer — falling back to initial "
+                            "load.",
+                            lastCursor.c_str());
+                    lastCursor.clear();
+                }
             }
-            catch (const std::exception&)
+
+            const bool forceInitialLoad = lastCursor.empty();
+            if (!waitUntilConsumerIdle(*context))
             {
-                logWarn(WM_CONTENTUPDATER,
-                        "IndexerDownloader: stored cursor '%s' is not a valid integer — falling back to initial load.",
-                        lastCursor.c_str());
-                lastCursor.clear();
+                break;
             }
-        }
 
-        const bool forceInitialLoad = lastCursor.empty();
-        if (!waitUntilConsumerIdle(*context))
-        {
-            return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
-        }
+            size_t totalProcessed = 0;
+            if (forceInitialLoad)
+            {
+                totalProcessed = initialLoad(*context);
+            }
+            else
+            {
+                totalProcessed = incrementalUpdate(*context, lastCursor);
+            }
 
-        size_t totalProcessed = 0;
-        if (forceInitialLoad)
-        {
-            totalProcessed = initialLoad(*context);
-        }
-        else
-        {
-            totalProcessed = incrementalUpdate(*context, lastCursor);
-        }
+            // If a shutdown was requested, skip the completion signal — no point reloading
+            // maps or triggering a rescan if the agent is going down.
+            if (context->spUpdaterBaseContext->spStopCondition->check())
+            {
+                break;
+            }
 
-        // If a shutdown was requested, skip the completion signal — no point reloading
-        // maps or triggering a rescan if the agent is going down.
-        if (context->spUpdaterBaseContext->spStopCondition->check())
-        {
-            return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
-        }
+            if (sendCompletionSignal(*context, totalProcessed))
+            {
+                break;
+            }
 
-        if (!sendCompletionSignal(*context, totalProcessed))
-        {
             invalidateCursor(*context);
             logWarn(WM_CONTENTUPDATER,
                     "IndexerDownloader: downloaded feed is not ready after completion validation. "
-                    "The stored cursor was invalidated and the next scheduler cycle will perform a full reload.");
+                    "The stored cursor was invalidated and a full reload will be retried in %zu s.",
+                    static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+
+            if (context->spUpdaterBaseContext->spStopCondition->waitFor(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(INDEXER_RETRY_INTERVAL)))
+            {
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Stop requested during completion validation retry — aborting.");
+                break;
+            }
         }
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
