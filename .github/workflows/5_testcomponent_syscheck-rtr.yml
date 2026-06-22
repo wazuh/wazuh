@@ -25,7 +25,7 @@ jobs:
       matrix:
         module: [syscheckd]
         target: [agent, winagent]
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
 
     steps:
