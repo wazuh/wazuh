@@ -15,7 +15,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from connexion.exceptions import OAuthProblem
+from connexion.exceptions import OAuthProblem, ProblemException
 from connexion.lifecycle import ConnexionRequest
 from connexion.security import AbstractSecurityHandler
 
@@ -41,6 +41,9 @@ LOGIN_ENDPOINT = '/security/user/authenticate'
 
 # Authentication context hash key
 HASH_AUTH_CONTEXT_KEY = 'hash_auth_context'
+
+# Allowed upper bound for auth_context payload
+AUTH_CONTEXT_MAX_PAYLOAD_SIZE = 8 * 1024
 
 # API secure headers
 server = Server().set("Wazuh")
@@ -227,6 +230,22 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
 
+class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
+    """Reject run_as requests whose body exceeds AUTH_CONTEXT_MAX_PAYLOAD_SIZE."""
+
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
+        if request.url.path == RUN_AS_LOGIN_ENDPOINT and request.method == "POST":
+            body = await request.body()
+            if len(body) > AUTH_CONTEXT_MAX_PAYLOAD_SIZE:
+                raise ProblemException(
+                    status=413,
+                    title="Request Entity Too Large",
+                    detail=f"Auth context payload exceeds the maximum allowed size of "
+                           f"{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes.",
+                )
+        return await call_next(request)
+
+
 class CheckBlockedIP(BaseHTTPMiddleware):
     """Rate Limits Middleware."""
 
@@ -259,9 +278,10 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
         prev_time = time.time()
 
         body = await request.body()
-        if body:
+
+        if body and not(request.url.path == RUN_AS_LOGIN_ENDPOINT and len(body) > AUTH_CONTEXT_MAX_PAYLOAD_SIZE):
             try:
-                # Load the request body to the _json field before calling the controller so it's cached before the stream 
+                # Load the request body to the _json field before calling the controller so it's cached before the stream
                 # is consumed. If there's a json error we skip it so it's handled later.
                 # Related to https://github.com/wazuh/wazuh/issues/24060.
                 _ = await request.json()
@@ -304,28 +324,28 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: ConnexionRequest, call_next: RequestResponseEndpoint) -> Response:
         """Check for specific request headers and generate error 417 if conditions are not met.
-                
+
         Parameters
         ----------
             request : Request
             HTTP Request received.
         call_next :  RequestResponseEndpoint
             Endpoint callable to be executed.
-        
+
         Returns
         -------
             Returned response.
         """
-        
+
         if 'Expect' not in request.headers:
             response = await call_next(request)
             return response
         else:
             expect_value = request.headers["Expect"].lower()
-            
+
             if expect_value != '100-continue':
                 raise ExpectFailedException(status=417, title="Expectation failed", detail="Unknown Expect")
-            
+
             if 'Content-Length' in request.headers:
                 content_length = int(request.headers["Content-Length"])
                 max_upload_size = configuration.api_conf["max_upload_size"]
@@ -333,6 +353,6 @@ class CheckExpectHeaderMiddleware(BaseHTTPMiddleware):
                     raise ExpectFailedException(status=417, title="Expectation failed",
                                                 detail=f"Maximum content size limit ({max_upload_size}) exceeded "
                                                        f"({content_length} bytes read)")
-                
+
         response = await call_next(request)
         return response
