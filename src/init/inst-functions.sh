@@ -459,8 +459,13 @@ WriteManager()
         DisableAuthd
     fi
 
+    if command -v openssl >/dev/null 2>&1; then
+        CLUSTER_KEY=$(openssl rand -hex 16)
+    else
+        CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    fi
     # Writting cluster configuration
-    cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
+    sed -e "s|\${CLUSTER_KEY}|$CLUSTER_KEY|g" "${CLUSTER_TEMPLATE}" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</wazuh_config>" >> $NEWCONFIG
