@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cerrno>
+#include <pwd.h>
 #include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -86,6 +87,19 @@ static char* ulong_to_str(unsigned long long num) {
     return strdup(s.c_str());
 }
 
+/* Resolves the primary GID for a given UID by looking up its passwd entry.
+ * Used to derive "login_gid" (audit GID) from login_uid, since the kernel
+ * audit subsystem only tracks loginuid (auid) and has no equivalent GID. */
+static int get_login_gid(unsigned int uid) {
+    struct passwd pwd;
+    struct passwd* result = nullptr;
+    char buf[16384];
+    if (getpwuid_r(uid, &pwd, buf, sizeof(buf), &result) != 0 || result == nullptr) {
+        return -1;
+    }
+    return (int)pwd.pw_gid;
+}
+
 /* Callback for normal whodata events */
 int handle_event(void* ctx, void* data, size_t data_sz) {
     (void)ctx;
@@ -110,6 +124,8 @@ int handle_event(void* ctx, void* data, size_t data_sz) {
             .ppid        = e->ppid,
             .uid         = e->uid,
             .gid         = e->gid,
+            .euid        = e->euid,
+            .login_uid   = e->login_uid,
             .inode       = e->inode,
             .dev         = e->dev
         });
@@ -586,19 +602,28 @@ void ebpf_pop_events(fim::BoundedQueue<std::unique_ptr<dynamic_file_event>>& loc
             if (!w_evt) {
                 continue;
             }
-            w_evt->path         = strdup(event->filename.c_str());
-            w_evt->process_name = strdup(event->comm.c_str());
-            w_evt->user_id      = uint_to_str(event->uid);
-            w_evt->user_name    = fimebpf::instance().m_get_user(event->uid);
-            w_evt->group_id     = uint_to_str(event->gid);
-            w_evt->group_name   = fimebpf::instance().m_get_group(event->gid);
-            w_evt->inode        = ulong_to_str(event->inode);
-            w_evt->dev          = ulong_to_str(event->dev);
-            w_evt->process_id   = event->pid;
-            w_evt->ppid         = event->ppid;
-            w_evt->cwd          = strdup(event->cwd.c_str());
-            w_evt->parent_cwd   = strdup(event->parent_cwd.c_str());
-            w_evt->parent_name  = strdup(event->parent_comm.c_str());
+            w_evt->path           = strdup(event->filename.c_str());
+            w_evt->process_name   = strdup(event->comm.c_str());
+            w_evt->user_id        = uint_to_str(event->uid);
+            w_evt->user_name      = fimebpf::instance().m_get_user(event->uid);
+            w_evt->group_id       = uint_to_str(event->gid);
+            w_evt->group_name     = fimebpf::instance().m_get_group(event->gid);
+            w_evt->effective_uid  = uint_to_str(event->euid);
+            w_evt->effective_name = fimebpf::instance().m_get_user(event->euid);
+            w_evt->audit_uid      = uint_to_str(event->login_uid);
+            w_evt->audit_name     = fimebpf::instance().m_get_user(event->login_uid);
+            int audit_gid_val = get_login_gid(event->login_uid);
+            if (audit_gid_val >= 0) {
+                w_evt->audit_gid        = uint_to_str((unsigned int)audit_gid_val);
+                w_evt->audit_group_name = fimebpf::instance().m_get_group(audit_gid_val);
+            }
+            w_evt->inode          = ulong_to_str(event->inode);
+            w_evt->dev            = ulong_to_str(event->dev);
+            w_evt->process_id     = event->pid;
+            w_evt->ppid           = event->ppid;
+            w_evt->cwd            = strdup(event->cwd.c_str());
+            w_evt->parent_cwd     = strdup(event->parent_cwd.c_str());
+            w_evt->parent_name    = strdup(event->parent_comm.c_str());
 
             fimebpf::instance().m_fim_whodata_event(w_evt);
             fimebpf::instance().m_free_whodata_event(w_evt);
