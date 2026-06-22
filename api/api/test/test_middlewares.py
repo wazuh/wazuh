@@ -17,8 +17,9 @@ from connexion.exceptions import ProblemException, OAuthProblem
 from freezegun import freeze_time
 
 from api.middlewares import check_rate_limit, check_blocked_ip, MAX_REQUESTS_EVENTS_DEFAULT, UNKNOWN_USER_STRING, \
-    LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckRateLimitsMiddleware, WazuhAccessLoggerMiddleware, CheckBlockedIP, \
-    SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log
+    LOGIN_ENDPOINT, RUN_AS_LOGIN_ENDPOINT, CheckAuthContextSizeMiddleware, CheckRateLimitsMiddleware, \
+    WazuhAccessLoggerMiddleware, CheckBlockedIP, \
+    SecureHeadersMiddleware, CheckExpectHeaderMiddleware, secure_headers, access_log, AUTH_CONTEXT_MAX_PAYLOAD_SIZE
 from api.api_exception import ExpectFailedException
 
 @pytest.fixture
@@ -37,6 +38,7 @@ def mock_req(request, request_info):
     req.json = AsyncMock(side_effect=lambda: {'ctx': ''} )
     req.context = MagicMock()
     req.context.get = MagicMock(return_value={})
+    req.body = AsyncMock(return_value=b'x' * (AUTH_CONTEXT_MAX_PAYLOAD_SIZE + 1))
 
     return req
 
@@ -613,3 +615,21 @@ async def test_access_log_no_warning_for_normal_username(mock_req):
         await access_log(request=mock_req, response=response, prev_time=expected_time)
 
         mock_warning.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_run_as_login_oversized_payload():
+    """CheckAuthContextSizeMiddleware must reject run_as payloads larger than AUTH_CONTEXT_MAX_PAYLOAD_SIZE with 413."""
+    mock_req = AsyncMock()
+    mock_req.body = AsyncMock(return_value=b'x' * (AUTH_CONTEXT_MAX_PAYLOAD_SIZE + 1))
+    mock_req.url.path = RUN_AS_LOGIN_ENDPOINT
+    mock_req.method = "POST"
+
+    dispatch_mock = AsyncMock()
+    middleware = CheckAuthContextSizeMiddleware(AsyncApp(__name__), dispatch=dispatch_mock)
+
+    with pytest.raises(ProblemException) as exc_info:
+        await middleware.dispatch(request=mock_req, call_next=dispatch_mock)
+
+    assert exc_info.value.status == 413
+    dispatch_mock.assert_not_called()
