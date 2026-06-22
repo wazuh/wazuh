@@ -125,7 +125,6 @@ is in the scenario file. Its main runtime flags are operational knobs:
 | `--label LABEL` | Results directory suffix. Defaults to scenario name, then timestamp. |
 | `--manager HOST` | Manager address. Non-localhost enables remote-monitor mode. |
 | `--port PORT` | Manager remoted port. Default: `1514`. |
-| `--drain-timeout N` | Sender-side grace while waiting for late EndAcks after agents finish. Can be overridden by scenario `drain_timeout`. |
 | `--post-run-grace N` | Script-side grace: keep monitor sampling after the sender exits. Overrides scenario `post_run_grace`. |
 | `--cleanup-after` | Delete `bench-*` agents at the end. By default they are kept so indexed docs remain inspectable. |
 | `--compare DIR...` | Generate comparison charts from previous result directories. |
@@ -216,7 +215,7 @@ Top-level fields:
 | `fleets` | Optional split of agents into groups that run different lane subsets. |
 | `parallel_agents` | Global agent concurrency cap. `0` means all registered agents run together. |
 | `repeat_until` | `0` means one pass. `>0` loops the lanes until the time budget expires. |
-| `drain_timeout` | Optional sender-side post-finish drain window. |
+| `drain_timeout` | Optional sender-side post-finish drain window. When omitted, the sender uses its built-in default (60 s). |
 | `post_run_grace` | Optional monitor-side grace read by `run_benchmark.sh`. |
 
 Fleet example:
