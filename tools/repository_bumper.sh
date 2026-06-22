@@ -353,16 +353,21 @@ update_file_api() {
         local version_short
         version_short=$(echo "$new_version" | awk -F. '{print $1 "." $2}')
         if [[ -z "$skip_urls" ]]; then
-            # Build the target Git ref for blob/ URLs. Pre-release stages tag as
-            # vMAJOR.MINOR.PATCH-STAGE (e.g. v5.0.0-beta2), so without the stage
-            # suffix the URL would point to a tag that does not exist yet.
-            local tag_ref="v${new_version}"
-            [[ -n "$new_stage" ]] && tag_ref="${tag_ref}-${new_stage}"
+            # Build the target ref for blob/ URLs.
+            # - Pre-release (stage non-empty): tag format vMAJOR.MINOR.PATCH-STAGE (e.g. v5.0.0-beta3)
+            # - Release branch (stage empty): branch name format MAJOR.MINOR.PATCH (e.g. 5.0.0, no v)
+            local url_ref
+            if [[ -n "$new_stage" ]]; then
+                url_ref="v${new_version}-${new_stage}"
+            else
+                url_ref="${new_version}"
+            fi
 
-            # blob/ paths: match main, vMAJOR.MINOR.PATCH, and vMAJOR.MINOR.PATCH-STAGE
-            # so subsequent stage bumps can replace an existing tagged ref.
+            # blob/ paths: match main, vMAJOR.MINOR.PATCH, vMAJOR.MINOR.PATCH-STAGE,
+            # and MAJOR.MINOR.PATCH (branch name without v) so any existing ref format
+            # can be replaced on subsequent bumps.
             sed -i -E \
-                "s~(blob/)(v?main|v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+[0-9]+)?)(/)~\1${tag_ref}\4~g" \
+                "s~(blob/)(v?main|v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+[0-9]+)?|[0-9]+\.[0-9]+\.[0-9]+)(/)~\1${url_ref}\4~g" \
                 "$spec_file"
             # documentation URLs use 2-part version without v prefix (e.g. wazuh.com/5.0/)
             sed -i -E \
