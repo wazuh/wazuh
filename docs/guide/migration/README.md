@@ -17,3 +17,4 @@ This section contains migration guides for changes that require manual review wh
 | [Remote agent upgrade](remote-agent-upgrade.md) | TCP connectivity and version path requirements for remote agent upgrades to 5.x |
 | [CDB to KVDB migration](cdb-to-kvdb-migration.md) | Migrating CDB files to KVDB files |
 | [Coordinator migration](manager-coordinator-migration.md) | How to migrate HAProxy from 4.x to 5.x |
+| [XML decoders to YAML decoders](xml-decoders-migration.md) | How to migrate decoders from XML to YAML |
