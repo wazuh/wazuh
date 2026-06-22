@@ -12,9 +12,9 @@ namespace base
  */
 enum class SyncStatus
 {
-    READY,   ///< Up to date, operational
-    RUNNING, ///< Loading or updating
-    FAILED   ///< Last synchronization attempt failed
+    READY,    ///< Up to date, operational
+    UPDATING, ///< Loading or updating
+    FAILED    ///< Last synchronization attempt failed
 };
 
 /**
@@ -25,7 +25,7 @@ inline constexpr auto syncStatusToStr(SyncStatus s)
     switch (s)
     {
         case SyncStatus::READY: return "ready";
-        case SyncStatus::RUNNING: return "running";
+        case SyncStatus::UPDATING: return "updating";
         case SyncStatus::FAILED: return "failed";
         default: throw std::logic_error("Invalid SyncStatus");
     }

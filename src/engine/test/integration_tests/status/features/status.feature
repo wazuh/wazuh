@@ -36,7 +36,7 @@ Feature: Engine status / readiness endpoint
     Scenario: Reported status values are within the allowed set
         When I request the engine status
         Then the status response should be a "success"
-        And every reported "status" value should be one of "ready", "running" or "failed"
+        And every reported "status" value should be one of "ready", "updating" or "failed"
 
     Scenario: Reported timestamps are valid unix timestamps
         When I request the engine status

@@ -91,7 +91,7 @@ TEST_F(StatusHandlerTest, EnabledSpaceUnavailable)
 
     EXPECT_CALL(*m_mockCmSync, getSpacesStatus())
         .WillOnce(::testing::Return(std::vector<SpaceStatus> {
-            {"standard", false, true, base::SyncStatus::RUNNING, "", 0}, // enabled but not available
+            {"standard", false, true, base::SyncStatus::UPDATING, "", 0}, // enabled but not available
         }));
 
     EXPECT_CALL(*m_mockIocSync, getIocStatus())
@@ -113,7 +113,7 @@ TEST_F(StatusHandlerTest, EnabledSpaceUnavailable)
     const auto& response = std::get<eStatus::StatusGet_Response>(parsed);
 
     EXPECT_FALSE(response.ready());
-    EXPECT_EQ(response.spaces().at("standard").status(), "running");
+    EXPECT_EQ(response.spaces().at("standard").status(), "updating");
 }
 
 // Disabled space unavailable → ready = true (disabled spaces ignored)
@@ -203,7 +203,7 @@ TEST_F(StatusHandlerTest, GeoUnavailable)
 
     EXPECT_CALL(*m_mockGeo, getGeoStatus())
         .WillOnce(::testing::Return(std::vector<GeoDbStatus> {
-            {"city", false, base::SyncStatus::RUNNING, "", 0}, // geo unavailable
+            {"city", false, base::SyncStatus::UPDATING, "", 0}, // geo unavailable
             {"asn", true, base::SyncStatus::READY, "g2", 1759190400},
         }));
 
@@ -224,17 +224,17 @@ TEST_F(StatusHandlerTest, PartiallySynchronizedStillReady)
 
     EXPECT_CALL(*m_mockCmSync, getSpacesStatus())
         .WillOnce(::testing::Return(std::vector<SpaceStatus> {
-            {"standard", true, true, base::SyncStatus::RUNNING, "hash1", 1759190400}, // running but available
+            {"standard", true, true, base::SyncStatus::UPDATING, "hash1", 1759190400}, // running but available
         }));
 
     EXPECT_CALL(*m_mockIocSync, getIocStatus())
         .WillOnce(::testing::Return(std::vector<IocTypeStatus> {
-            {"connection", true, base::SyncStatus::RUNNING, "h1", 1759190400}, // running but available
+            {"connection", true, base::SyncStatus::UPDATING, "h1", 1759190400}, // running but available
         }));
 
     EXPECT_CALL(*m_mockGeo, getGeoStatus())
         .WillOnce(::testing::Return(std::vector<GeoDbStatus> {
-            {"city", true, base::SyncStatus::RUNNING, "g1", 1759190400}, // running but available
+            {"city", true, base::SyncStatus::UPDATING, "g1", 1759190400}, // running but available
             {"asn", true, base::SyncStatus::READY, "g2", 1759190400},
         }));
 
@@ -392,7 +392,7 @@ TEST_F(StatusHandlerTest, MultipleUnavailableStillReportsAll)
 
     EXPECT_CALL(*m_mockGeo, getGeoStatus())
         .WillOnce(::testing::Return(std::vector<GeoDbStatus> {
-            {"city", false, base::SyncStatus::RUNNING, "", 0},
+            {"city", false, base::SyncStatus::UPDATING, "", 0},
             {"asn", true, base::SyncStatus::READY, "g2", 1759190400},
         }));
 

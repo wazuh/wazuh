@@ -38,7 +38,7 @@ paths:
         Each resource reports:
         - `available` — whether a usable version is currently loaded (independent of `status`; an old version can stay available after a failed sync)
         - `enabled` — (spaces only) whether the space is enabled in the remote policy; disabled spaces do not block readiness
-        - `status` — current sync state: `ready`, `running`, or `failed`
+        - `status` — current sync state: `ready`, `updating`, or `failed`
         - `hash` — last known content hash (empty if never synced)
         - `last_successful_update` — Unix timestamp of last successful sync (0 if never)
 
@@ -135,32 +135,32 @@ paths:
                     ioc:
                       connection:
                         available: false
-                        status: running
+                        status: updating
                         hash: ""
                         last_successful_update: 0
                       url_domain:
                         available: false
-                        status: running
+                        status: updating
                         hash: ""
                         last_successful_update: 0
                       url_full:
                         available: false
-                        status: running
+                        status: updating
                         hash: ""
                         last_successful_update: 0
                       hash_md5:
                         available: false
-                        status: running
+                        status: updating
                         hash: ""
                         last_successful_update: 0
                       hash_sha1:
                         available: false
-                        status: running
+                        status: updating
                         hash: ""
                         last_successful_update: 0
                       hash_sha256:
                         available: false
-                        status: running
+                        status: updating
                         hash: ""
                         last_successful_update: 0
                     geo:
@@ -685,7 +685,7 @@ paths:
                     status: ERROR
                     error: 'File not found: /invalid/path/file.json'
                 sync_in_progress:
-                  summary: Another synchronization is already running
+                  summary: Another synchronization is already updating
                   value:
                     status: ERROR
                     error: IOC synchronization already in progress
@@ -1315,9 +1315,9 @@ components:
           type: string
           enum:
           - ready
-          - running
+          - updating
           - failed
-          description: 'Current synchronization state: ready (idle), running (syncing), or failed (last sync errored).'
+          description: 'Current synchronization state: ready (idle), updating (syncing), or failed (last sync errored).'
         hash:
           type: string
           description: Last known content hash. Empty string if never synced.
@@ -1336,9 +1336,9 @@ components:
           type: string
           enum:
           - ready
-          - running
+          - updating
           - failed
-          description: 'Current synchronization state: ready (idle), running (syncing), or failed (last sync errored).'
+          description: 'Current synchronization state: ready (idle), updating (syncing), or failed (last sync errored).'
         hash:
           type: string
           description: Last known content hash. Empty string if never synced.

@@ -375,7 +375,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
         }
 
         // Mark this type as running (a previously loaded version, if any, stays available)
-        m_typeState[type].status = base::SyncStatus::RUNNING;
+        m_typeState[type].status = base::SyncStatus::UPDATING;
         updateGeoStatusSnapshot();
 
         LOG_INFO("[Geo::Manager] Changes detected for {} database '{}', updating...", typeName, dbName);

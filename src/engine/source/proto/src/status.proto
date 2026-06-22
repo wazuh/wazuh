@@ -34,7 +34,7 @@ message SpaceState
 {
     bool available = 1;                // Has been successfully synced at least once
     bool enabled = 2;                  // Whether the space is enabled in the remote policy
-    string status = 3;                 // Current state: "ready", "running", or "failed"
+    string status = 3;                 // Current state: "ready", "updating", or "failed"
     string hash = 4;                   // Last known content hash (empty if never synced)
     uint32 last_successful_update = 5; // Unix timestamp of last successful sync (0 if never)
 }
@@ -43,7 +43,7 @@ message SpaceState
 message ResourceState
 {
     bool available = 1;                // Has a version available for processing
-    string status = 2;                 // Current state: "ready", "running", or "failed"
+    string status = 2;                 // Current state: "ready", "updating", or "failed"
     string hash = 3;                   // Last known content hash (empty if never synced)
     uint32 last_successful_update = 4; // Unix timestamp of last successful sync (0 if never)
 }

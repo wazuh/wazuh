@@ -13,7 +13,7 @@ SOCKET_PATH = (Path(ENV_DIR) / "queue/sockets/engine-api.socket").as_posix()
 
 api_client = APIClient(SOCKET_PATH)
 
-ALLOWED_STATUS = {"ready", "running", "failed"}
+ALLOWED_STATUS = {"ready", "updating", "failed"}
 
 
 def _request_status():
@@ -111,7 +111,7 @@ def step_impl(context, section: str):
         assert isinstance(entry.available, bool), f"{section} '{name}'.available must be bool"
 
 
-@then('every reported "status" value should be one of "ready", "running" or "failed"')
+@then('every reported "status" value should be one of "ready", "updating" or "failed"')
 def step_impl(context):
     response = context.response
     for section in ("spaces", "ioc", "geo"):

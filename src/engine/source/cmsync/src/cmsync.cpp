@@ -214,6 +214,32 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
     if (storePtr->existsDoc(STORE_NAME_CMSYNC))
     {
         loadStateFromStore();
+        const auto reconcileRouteState = [this]()
+        {
+            auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
+
+            for (auto& nsState : m_namespacesState)
+            {
+                if (!routerPtr->existsEntry(nsState.getRouteName()))
+                {
+                    nsState.setRouteState(false, nsState.getEnabled(), "");
+                    continue;
+                }
+
+                const auto resp = routerPtr->getEntry(nsState.getRouteName());
+                if (base::isError(resp))
+                {
+                    LOG_WARNING("[CMSync] Failed to read route '{}' while reconciling status on startup: {}",
+                                nsState.getRouteName(),
+                                base::getError(resp).message);
+                    nsState.setRouteState(false, nsState.getEnabled(), "");
+                    continue;
+                }
+
+                nsState.setRouteState(true, nsState.getEnabled(), base::getResponse(resp).hash());
+            }
+        };
+        reconcileRouteState();
         updateSpacesStatusSnapshot(); // Publish initial status
         return;
     }
@@ -688,7 +714,7 @@ void CMSync::synchronize()
             LOG_INFO("[CMSync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
 
             // Mark this space as running
-            nsState.setSyncStatus(base::SyncStatus::RUNNING);
+            nsState.setSyncStatus(base::SyncStatus::UPDATING);
             updateSpacesStatusSnapshot();
 
             // Check abort before download (most expensive operation)

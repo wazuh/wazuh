@@ -1,5 +1,5 @@
-#ifndef _BASE_STATUS_SNAPSHOT_HPP
-#define _BASE_STATUS_SNAPSHOT_HPP
+#ifndef BASE_STATUS_SNAPSHOT_HPP
+#define BASE_STATUS_SNAPSHOT_HPP
 
 #include <atomic>
 #include <memory>
@@ -60,4 +60,4 @@ private:
 
 } // namespace base
 
-#endif // _BASE_STATUS_SNAPSHOT_HPP
+#endif // BASE_STATUS_SNAPSHOT_HPP

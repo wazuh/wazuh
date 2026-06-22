@@ -60,7 +60,7 @@ private:
     std::string m_iocType;      ///< IOC type from document.type (e.g., connection, url_domain, url_full, hash_md5,
                                 ///< hash_sha1, hash_sha256)
     std::string m_lastDataHash; ///< Last known data hash
-    uint32_t m_lastSuccessfulUpdate {0}; ///< Unix timestamp of last successful sync
+    uint32_t m_lastSuccessfulUpdate {0};                     ///< Unix timestamp of last successful sync
     base::SyncStatus m_syncStatus {base::SyncStatus::READY}; ///< Per-type sync status
 
     static constexpr std::string_view JPATH_IOC_TYPE = "/ioc_type";             ///< JSON path for IOC type
@@ -540,7 +540,7 @@ void IocSync::synchronize()
             }
 
             // Mark this type as running and publish
-            dbState.setSyncStatus(base::SyncStatus::RUNNING);
+            dbState.setSyncStatus(base::SyncStatus::UPDATING);
             updateIocStatusSnapshot();
 
             if (syncIOCType(dbState, remoteTypeHashes, kvdbiocPtr))
@@ -576,7 +576,7 @@ void IocSync::synchronize()
             // Reset any in-progress types
             for (auto& dbState : m_databasesState)
             {
-                if (dbState.getSyncStatus() == base::SyncStatus::RUNNING)
+                if (dbState.getSyncStatus() == base::SyncStatus::UPDATING)
                 {
                     dbState.setSyncStatus(base::SyncStatus::READY);
                 }
@@ -638,7 +638,7 @@ void IocSync::reportSyncFailure()
     {
         // No usable version yet, or interrupted mid-sync → the failed attempt is reflected as FAILED.
         // A type that already holds a version (non-empty hash, not running) stays as-is (usable).
-        if (dbState.getLastDataHash().empty() || dbState.getSyncStatus() == base::SyncStatus::RUNNING)
+        if (dbState.getLastDataHash().empty() || dbState.getSyncStatus() == base::SyncStatus::UPDATING)
         {
             dbState.setSyncStatus(base::SyncStatus::FAILED);
         }
