@@ -12,6 +12,7 @@ This section contains migration guides for changes that require manual review wh
 | [SCA policies 4.x to 5.x](sca-policies-4x-to-5x.md) | Custom SCA policy format changes |
 | [Mail forwarding and reporting](mail-forwarding-reporting.md) | Replacing the removed email functionality |
 | [osQuery to IT hygiene](osquery-to-it-hygiene.md) | Replacing the osQuery module |
+| [Agentless to supported alternatives](agentless-4x-to-5x.md) | Replacing the removed Agentless module with agent-based and SSH relay approaches |
 | [VirusTotal migration](virustotal-migration.md) | Replacing the removed VirusTotal integration |
 | [Vulnerability Detection to CTI-based feeds](vulnerability-detection-cti-feeds.md) | Removal of offline feeds and the new CTI/Indexer content distribution model |
 | [Remote agent upgrade](remote-agent-upgrade.md) | TCP connectivity and version path requirements for remote agent upgrades to 5.x |
