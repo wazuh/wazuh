@@ -1,0 +1,71 @@
+name: "eBPF Field Validation"
+description: "Builds the eBPF object and validates hook events across filesystems"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang llvm libelf-dev build-essential btrfs-progs xfsprogs kmod
+      shell: bash
+
+    - name: Build BPF object
+      run: make -C src/ -j$(nproc) external/libbpf-bootstrap
+      shell: bash
+
+    - name: Compile validation runner
+      run: |
+        SRC_DIR=src
+        g++ -O2 -Wall -std=c++17 \
+          -I${SRC_DIR}/external/libbpf-bootstrap/build/libbpf \
+          -I${SRC_DIR}/external/libbpf-bootstrap/libbpf/src \
+          src/syscheckd/src/ebpf/tests/ebpf_validation/ebpf_validation_test.cpp \
+          ${SRC_DIR}/external/libbpf-bootstrap/build/libbpf/libbpf.a \
+          -lelf -lz -lpthread -lstdc++fs \
+          -o ebpf_validation_runner
+      shell: bash
+
+    - name: Run eBPF validation across filesystems
+      run: |
+        BPF_OBJ=src/external/libbpf-bootstrap/build/modern.bpf.o
+        FAILED=""
+
+        for FS in ext4 xfs btrfs tmpfs; do
+          IMG="/tmp/ebpf_test_${FS}.img"
+          MNT="/mnt/ebpf_test_${FS}"
+
+          echo "=========================================="
+          echo " Testing filesystem: ${FS}"
+          echo "=========================================="
+
+          if [ "${FS}" != "tmpfs" ] && ! grep -q "${FS}" /proc/filesystems; then
+            sudo modprobe "${FS}" 2>/dev/null || true
+            if ! grep -q "${FS}" /proc/filesystems; then
+              echo "[WARNING] Kernel does not support ${FS}. Skipping."
+              continue
+            fi
+          fi
+
+          sudo rm -rf "${MNT}" && sudo mkdir -p "${MNT}"
+
+          if [ "${FS}" = "tmpfs" ]; then
+            sudo mount -t tmpfs tmpfs "${MNT}"
+          else
+            dd if=/dev/zero of="${IMG}" bs=1M count=100 conv=sparse 2>/dev/null
+            sudo mkfs.${FS} -f -q "${IMG}" 2>/dev/null || sudo mkfs.${FS} -F -q "${IMG}"
+            sudo mount -o loop "${IMG}" "${MNT}"
+          fi
+
+          sudo ./ebpf_validation_runner --bpf-obj "${BPF_OBJ}" --test-dir "${MNT}" || FAILED="${FAILED} ${FS}"
+
+          sudo umount -l "${MNT}" 2>/dev/null || true
+          sudo rm -rf "${MNT}" "${IMG}"
+        done
+
+        if [ -n "${FAILED}" ]; then
+          echo "[FAIL] Failed filesystems:${FAILED}"
+          exit 1
+        fi
+        echo "[PASS] All filesystem tests passed"
+      shell: bash
