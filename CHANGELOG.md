@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.7]
 
+### Manager
+
+#### Removed
+
+- Removed deprecated wazuh-dbd daemon and database_output configuration. ([#37035](https://github.com/wazuh/wazuh/pull/37035))
+
 ## [v4.14.6]
 
 ### Manager
