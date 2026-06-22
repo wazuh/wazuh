@@ -32,6 +32,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install system build dependencies
+        # TODO: Remove when added to CodeBuild base images
+        run: sudo apt-get update && sudo apt-get install -y cmake
       - name: Project dependencies
         uses: ./.github/actions/vulnerability_scanner_deps
 
@@ -46,6 +49,15 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r src/wazuh_modules/inventory_harvester/qa/requirements.txt
+
+      - name: Log in to Docker Hub
+        # TODO(codebuild-temp): Remove once CodeBuild runners use an ECR pull-through cache for
+        # Docker Hub. The QA tests pull opensearchproject/opensearch; CodeBuild NAT Gateway IPs
+        # exhaust the 100-pull/6h unauthenticated rate limit instantly.
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
 
       - name: Run tests
         run: |

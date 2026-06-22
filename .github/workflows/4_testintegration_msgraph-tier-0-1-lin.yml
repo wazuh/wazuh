@@ -26,6 +26,9 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
+      - name: Install system build dependencies
+        # TODO: Remove when added to CodeBuild base images
+        run: sudo apt-get update && sudo apt-get install -y python3-pip
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -79,6 +82,17 @@ jobs:
           echo "" >> ./etc/preloaded-vars.conf
           sudo sh install.sh
           rm ./etc/preloaded-vars.conf
+      - name: Set http_proxy for Wazuh ms-graph module
+        # TODO(codebuild-temp): Remove once CodeBuild runners run systemd as PID 1.
+        # proxy_setup calls `systemctl set-environment http_proxy=...` to route Wazuh's
+        # ms-graph module through m365proxy. Without systemd, that call fails silently.
+        # Ubuntu's `service` command uses `env -i` when falling through to init.d, stripping
+        # ALL inherited env vars — so GITHUB_ENV and sudo -E cannot propagate http_proxy to
+        # Wazuh daemons. Patching wazuh-control directly ensures the export survives restarts.
+        # 127.0.0.1 is explicit to avoid localhost→::1 resolution ambiguity.
+        run: |
+          sudo sed -i '/^#!/a export http_proxy=http://127.0.0.1:8000' /var/ossec/bin/wazuh-control
+          echo "http_proxy=http://127.0.0.1:8000" >> $GITHUB_ENV
       # Download and install integration tests framework.
       - name: Download and install integration tests framework
         run: |
@@ -93,10 +107,10 @@ jobs:
               QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install --ignore-installed qa-integration-framework/
+          sudo pip install --ignore-installed --break-system-packages qa-integration-framework/
           sudo rm -rf qa-integration-framework/
       # Run msgraph integration tests.
       - name: Run msgraph integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 0 --tier 1 test_msgraph/
+          sudo -E python -m pytest --tier 0 --tier 1 test_msgraph/
