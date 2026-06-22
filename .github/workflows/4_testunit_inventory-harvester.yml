@@ -27,6 +27,9 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install system build dependencies
+        # TODO: Remove when added to CodeBuild base images
+        run: sudo apt-get update && sudo apt-get install -y cmake python3-pip
       - name: Project dependencies
         uses: ./.github/actions/vulnerability_scanner_deps
 
