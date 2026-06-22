@@ -194,7 +194,7 @@ extern "C"
                 {
                     if (callbackLog)
                     {
-                        callbackLog(level, msg.c_str(), ":router");
+                        callbackLog(level, msg.c_str(), "wazuh-manager-modulesd:router");
                     }
                 });
             logMessage(modules_log_level_t::LOG_DEBUG, "Router initialized successfully.");

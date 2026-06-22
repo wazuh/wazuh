@@ -43,10 +43,10 @@ inline std::string composeTag(std::string_view parentTag, std::string_view libNa
 {
     if (parentTag.empty())
         return std::string(libName);
-    auto open = parentTag.rfind(" (");
+    auto open = parentTag.rfind("(");
     if (open != std::string_view::npos)
         return std::string(parentTag.substr(0, parentTag.size() - 1)) + "/" + std::string(libName) + ")";
-    return std::string(parentTag) + " (" + std::string(libName) + ")";
+    return std::string(parentTag) + "(" + std::string(libName) + ")";
 }
 
 namespace Log
