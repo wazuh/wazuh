@@ -7,4 +7,6 @@
   metadata:
     policy_file: cis_win_mitre.yaml
     mitre_tactics: ["TA0005"]
+    mitre_tactic_names: ["Defense Evasion"]
     mitre_techniques: ["T1005"]
+    mitre_technique_names: ["Data from Local System"]
