@@ -7,6 +7,7 @@ from functools import cache
 import hashlib
 import json
 import jwt
+import threading
 import logging
 import os
 from concurrent.futures import ThreadPoolExecutor
@@ -32,8 +33,9 @@ from wazuh.core.decorators import dapi_allower
 
 INVALID_TOKEN = "Invalid token"
 EXPIRED_TOKEN = "Token expired"
-pool = ThreadPoolExecutor(max_workers=1)
-
+login_pool = ThreadPoolExecutor(max_workers=4)
+token_pool = ThreadPoolExecutor(max_workers=2)
+rbac_pool = ThreadPoolExecutor(max_workers=4)
 
 @dapi_allower()
 def check_user_master(user: str, password: str) -> dict:
@@ -84,7 +86,7 @@ def check_user(user: str, password: str, required_scopes=None) -> Union[dict, No
                           wait_for_complete=False,
                           logger=logging.getLogger('wazuh-api')
                           )
-    data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+    data = raise_if_exc(login_pool.submit(asyncio.run, dapi.distribute_function()).result())
 
     if data['result']:
         return {'sub': user, 'active': True }
@@ -95,6 +97,7 @@ JWT_ISSUER = 'wazuh'
 JWT_ALGORITHM = 'ES512'
 _private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
 _public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
+_keypair_lock = threading.Lock()
 
 @cache
 def generate_keypair():
@@ -105,23 +108,24 @@ def generate_keypair():
     WazuhInternalError(6003)
         If there was an error trying to load the JWT secret.
     """
-    try:
-        if not os.path.exists(_private_key_path) or not os.path.exists(_public_key_path):
-            private_key, public_key = change_keypair()
-            try:
-                os.chown(_private_key_path, wazuh_uid(), wazuh_gid())
-                os.chown(_public_key_path, wazuh_uid(), wazuh_gid())
-            except PermissionError:
-                pass
-            os.chmod(_private_key_path, 0o640)
-            os.chmod(_public_key_path, 0o640)
-        else:
-            with open(_private_key_path, mode='r') as key_file:
-                private_key = key_file.read()
-            with open(_public_key_path, mode='r') as key_file:
-                public_key = key_file.read()
-    except IOError:
-        raise WazuhInternalError(6003)
+    with _keypair_lock:
+        try:
+            if not os.path.exists(_private_key_path) or not os.path.exists(_public_key_path):
+                private_key, public_key = change_keypair()
+                try:
+                    os.chown(_private_key_path, wazuh_uid(), wazuh_gid())
+                    os.chown(_public_key_path, wazuh_uid(), wazuh_gid())
+                except PermissionError:
+                    pass
+                os.chmod(_private_key_path, 0o640)
+                os.chmod(_public_key_path, 0o640)
+            else:
+                with open(_private_key_path, mode='r') as key_file:
+                    private_key = key_file.read()
+                with open(_public_key_path, mode='r') as key_file:
+                    public_key = key_file.read()
+        except IOError:
+            raise WazuhInternalError(6003)
 
     return private_key, public_key
 
@@ -183,6 +187,7 @@ def generate_token(user_id: str = None, data: dict = None, auth_context: dict = 
                           wait_for_complete=False,
                           logger=logging.getLogger('wazuh-api')
                           )
+    pool = rbac_pool if auth_context is not None else token_pool
     result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).dikt
     timestamp = int(core_utils.get_utc_now().timestamp())
 
@@ -278,7 +283,7 @@ def decode_token(token: str) -> dict:
                               wait_for_complete=False,
                               logger=logging.getLogger('wazuh-api')
                               )
-        data = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
+        data = raise_if_exc(token_pool.submit(asyncio.run, dapi.distribute_function()).result()).to_dict()
 
         if not data['result']['valid']:
             raise Unauthorized(INVALID_TOKEN)
@@ -292,7 +297,7 @@ def decode_token(token: str) -> dict:
                               wait_for_complete=False,
                               logger=logging.getLogger('wazuh-api')
                               )
-        result = raise_if_exc(pool.submit(asyncio.run, dapi.distribute_function()).result())
+        result = raise_if_exc(token_pool.submit(asyncio.run, dapi.distribute_function()).result())
 
         current_rbac_mode = result['rbac_mode']
         current_expiration_time = result['auth_token_exp_timeout']
