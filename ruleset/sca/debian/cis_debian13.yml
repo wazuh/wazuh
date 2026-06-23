@@ -822,7 +822,7 @@ checks:
       subtechnique: ["T1048.003", "T1552.001"]
     condition: all
     rules:
-      - 'c:stat -L "%n %a %u %U %g %G" /boot/grub/grub.cfg -> r:0 root 0 root && r:600'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /boot/grub/grub.cfg -> r:0 root 0 root && r:600'
 
   # 1.5.1 Ensure address space layout randomization is enabled. (Automated) - Not Implemented
   # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
@@ -925,7 +925,7 @@ checks:
     condition: any
     rules:
       - "not f:/etc/motd"
-      - 'c:stat -L "%n %a %u %U %g %G" /etc/motd -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/motd -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.5 Ensure access to /etc/issue is configured. (Automated)
   - id: 33052
@@ -950,7 +950,7 @@ checks:
       subtechnique: ["T1048.003", "T1552.001"]
     condition: all
     rules:
-      - 'c:stat -L "%n %a %u %U %g %G" /etc/issue -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.6 Ensure access to /etc/issue.net is configured. (Automated)
   - id: 33053
@@ -975,7 +975,7 @@ checks:
       subtechnique: ["T1048.003", "T1552.001"]
     condition: all
     rules:
-      - 'c:stat -L "%n %a %u %U %g %G" /etc/issue.net -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue.net -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.7.1 Ensure GDM is removed. (Automated)
   - id: 33054
