@@ -28,6 +28,7 @@ public:
     PodWatcher(KubernetesClient*               client,
                MetadataCache*                  cache,
                std::shared_ptr<StopController> stop,
+               std::chrono::seconds            poll_interval,
                LogCallback                     log);
 
     ~PodWatcher();
@@ -47,13 +48,13 @@ private:
     KubernetesClient*               client_;
     MetadataCache*                  cache_;
     std::shared_ptr<StopController> stop_;
+    std::chrono::seconds            poll_interval_;
     LogCallback                     log_;
 
     std::thread thread_;
     bool        running_{false};
 
-    static constexpr auto kBaseInterval = std::chrono::seconds(5);
-    static constexpr auto kMaxBackoff   = std::chrono::seconds(60);
+    static constexpr auto kMaxBackoff = std::chrono::seconds(300);
 };
 
 } // namespace wazuh::container_connector

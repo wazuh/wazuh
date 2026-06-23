@@ -34,14 +34,22 @@ extern "C" {
  * from modulesd internals. */
 typedef struct cc_kubernetes_config_t {
     int         enabled;
+    int         poll_interval; /* seconds between pod list polls; 0 => use built-in default (5s). */
     const char* api_server;   /* NULL or empty => derived from $KUBERNETES_SERVICE_HOST/PORT. */
     const char* ca_bundle;    /* NULL or empty => default service-account ca.crt path.       */
     const char* token_path;   /* NULL or empty => default service-account token path.        */
     const char* node_name;    /* NULL or empty => derived from $NODE_NAME.                   */
 } cc_kubernetes_config_t;
 
+typedef struct cc_docker_config_t {
+    int         enabled;
+    int         poll_interval; /* seconds between snapshot + event resyncs; 0 => use built-in default (60s). */
+    const char* socket_path;  /* NULL or empty => /var/run/docker.sock */
+} cc_docker_config_t;
+
 typedef struct cc_config_t {
     cc_kubernetes_config_t kubernetes;
+    cc_docker_config_t     docker;
 } cc_config_t;
 
 typedef void (*cc_log_callback_t)(modules_log_level_t level, const char* log, const char* tag);

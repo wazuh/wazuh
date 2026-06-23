@@ -1,6 +1,8 @@
 #include "ipc_server.hpp"
 
 #include "container_meta.hpp"
+#include "docker_meta.hpp"
+#include "docker_metadata_cache.hpp"
 #include "logging_helper.h"
 #include "metadata_cache.hpp"
 
@@ -42,6 +44,7 @@ void CloseFd(int& fd) noexcept
 nlohmann::json ContainerMetaToJson(const ContainerInPod& c)
 {
     nlohmann::json j = {
+        {"runtime",       "kubernetes"},
         {"container_id",  c.container_id},
         {"name",          c.name},
         {"image",         c.image},
@@ -70,14 +73,60 @@ nlohmann::json ContainerMetaToJson(const ContainerInPod& c)
     return j;
 }
 
+nlohmann::json DockerMetaToJson(const DockerContainerInfo& c)
+{
+    nlohmann::json j = {
+        {"runtime",       "docker"},
+        {"container_id",  c.container_id},
+        {"name",          c.name},
+        {"image",         c.image},
+        {"image_id",      c.image_id},
+        {"restart_count", c.state.restart_count},
+        {"cgroup_id",     c.cgroup_id},
+    };
+
+    nlohmann::json docker = {
+        {"state",        c.state.status},
+        {"running",      c.state.running},
+        {"paused",       c.state.paused},
+        {"restarting",   c.state.restarting},
+        {"exit_code",    c.state.exit_code},
+        {"started_at",   c.state.started_at},
+        {"finished_at",  c.state.finished_at},
+        {"network_mode", c.network_mode},
+    };
+
+    if (!c.labels.empty()) docker["labels"] = c.labels;
+
+    if (!c.networks.empty()) {
+        nlohmann::json nets = nlohmann::json::array();
+        for (const auto& ep : c.networks) {
+            nets.push_back({
+                {"name",           ep.network_name},
+                {"network_id",     ep.network_id},
+                {"gateway",        ep.gateway},
+                {"ip_address",     ep.ip_address},
+                {"ip_prefix_len",  ep.ip_prefix_len},
+                {"mac_address",    ep.mac_address},
+            });
+        }
+        docker["networks"] = std::move(nets);
+    }
+
+    j["docker"] = std::move(docker);
+    return j;
+}
+
 } // namespace
 
 IpcServer::IpcServer(std::string                     socket_path,
                      MetadataCache*                  cache,
+                     DockerMetadataCache*            docker_cache,
                      std::shared_ptr<StopController> stop,
                      LogCallback                     log)
     : socket_path_(std::move(socket_path))
     , cache_(cache)
+    , docker_cache_(docker_cache)
     , stop_(std::move(stop))
     , log_(std::move(log))
 {
@@ -264,7 +313,14 @@ std::string IpcServer::ProcessRequest(const std::string& request_line)
     const auto op = op_it->get<std::string>();
 
     if (op == "size") {
-        nlohmann::json resp = {{"ok", true}, {"size", cache_->Size()}};
+        const size_t k8s_sz    = cache_       ? cache_->Size()        : 0;
+        const size_t docker_sz = docker_cache_ ? docker_cache_->Size() : 0;
+        nlohmann::json resp = {
+            {"ok",          true},
+            {"size",        k8s_sz + docker_sz},
+            {"k8s_size",    k8s_sz},
+            {"docker_size", docker_sz},
+        };
         return resp.dump();
     }
 
@@ -273,10 +329,21 @@ std::string IpcServer::ProcessRequest(const std::string& request_line)
         if (v == req.end() || !v->is_number_integer()) {
             return R"({"ok":false,"error":"missing cgroup_id"})";
         }
-        const auto meta = cache_->LookupByCgroupId(v->get<uint64_t>());
-        if (!meta) return R"({"ok":false})";
-        nlohmann::json resp = {{"ok", true}, {"meta", ContainerMetaToJson(*meta)}};
-        return resp.dump();
+        const auto cgroup_id = v->get<uint64_t>();
+
+        if (cache_) {
+            if (const auto meta = cache_->LookupByCgroupId(cgroup_id)) {
+                nlohmann::json resp = {{"ok", true}, {"meta", ContainerMetaToJson(*meta)}};
+                return resp.dump();
+            }
+        }
+        if (docker_cache_) {
+            if (const auto meta = docker_cache_->LookupByCgroupId(cgroup_id)) {
+                nlohmann::json resp = {{"ok", true}, {"meta", DockerMetaToJson(*meta)}};
+                return resp.dump();
+            }
+        }
+        return R"({"ok":false})";
     }
 
     if (op == "lookup_container_id") {
@@ -284,10 +351,21 @@ std::string IpcServer::ProcessRequest(const std::string& request_line)
         if (v == req.end() || !v->is_string()) {
             return R"({"ok":false,"error":"missing id"})";
         }
-        const auto meta = cache_->LookupByContainerId(v->get<std::string>());
-        if (!meta) return R"({"ok":false})";
-        nlohmann::json resp = {{"ok", true}, {"meta", ContainerMetaToJson(*meta)}};
-        return resp.dump();
+        const auto id = v->get<std::string>();
+
+        if (cache_) {
+            if (const auto meta = cache_->LookupByContainerId(id)) {
+                nlohmann::json resp = {{"ok", true}, {"meta", ContainerMetaToJson(*meta)}};
+                return resp.dump();
+            }
+        }
+        if (docker_cache_) {
+            if (const auto meta = docker_cache_->LookupByContainerId(id)) {
+                nlohmann::json resp = {{"ok", true}, {"meta", DockerMetaToJson(*meta)}};
+                return resp.dump();
+            }
+        }
+        return R"({"ok":false})";
     }
 
     return R"({"ok":false,"error":"unknown op"})";

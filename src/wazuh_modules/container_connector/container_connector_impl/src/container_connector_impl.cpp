@@ -1,5 +1,8 @@
 #include "container_connector_impl.hpp"
 
+#include "docker_client.hpp"
+#include "docker_metadata_cache.hpp"
+#include "docker_watcher.hpp"
 #include "ipc_server.hpp"
 #include "kubernetes_client.hpp"
 #include "logging_helper.h"
@@ -42,43 +45,61 @@ void ContainerConnectorImpl::Start()
         return;
     }
 
-    if (!config_.kubernetes.enabled) {
-        Log(LOG_INFO, "Kubernetes backend disabled; module remains idle.");
+    const bool any_enabled = config_.kubernetes.enabled || config_.docker.enabled;
+    if (!any_enabled) {
+        Log(LOG_INFO, "All backends disabled; module remains idle.");
         started_ = true;
         return;
     }
 
-    Log(LOG_INFO, std::string{"Starting Kubernetes connector. node_name='"} +
-                  (config_.kubernetes.node_name.empty()
-                       ? std::string{"<env $NODE_NAME>"}
-                       : config_.kubernetes.node_name) + "'.");
+    if (config_.kubernetes.enabled) {
+        Log(LOG_INFO, std::string{"Starting Kubernetes connector. node_name='"} +
+                      (config_.kubernetes.node_name.empty()
+                           ? std::string{"<env $NODE_NAME>"}
+                           : config_.kubernetes.node_name) + "'.");
 
-    // T-K2/T-K3: K8s client + metadata cache + pod watcher.
-    // Construction is infallible (config resolution is deferred to the first
-    // request). All transient errors — including "not in cluster yet" — are
-    // absorbed by the watcher's backoff loop, so the module is always able to
-    // recover when the environment becomes valid.
-    k8s_client_  = std::make_unique<KubernetesClient>(config_.kubernetes, stop_, log_);
-    cache_       = std::make_unique<MetadataCache>(stop_, log_);
-    pod_watcher_ = std::make_unique<PodWatcher>(k8s_client_.get(), cache_.get(), stop_, log_);
+        k8s_client_  = std::make_unique<KubernetesClient>(config_.kubernetes, stop_, log_);
+        cache_       = std::make_unique<MetadataCache>(stop_, log_);
+        pod_watcher_ = std::make_unique<PodWatcher>(
+            k8s_client_.get(), cache_.get(), stop_,
+            std::chrono::seconds(config_.kubernetes.poll_interval), log_);
+        pod_watcher_->Start();
+        Log(LOG_INFO, "PodWatcher started (polling every " +
+                      std::to_string(config_.kubernetes.poll_interval) +
+                      "s; exponential backoff up to 300s on errors).");
+    }
 
-    pod_watcher_->Start();
-    Log(LOG_INFO, "PodWatcher started (polling every 5s; exponential backoff up to 60s on errors).");
+    if (config_.docker.enabled) {
+        const auto& sock = config_.docker.socket_path.empty()
+                               ? std::string{"/var/run/docker.sock"}
+                               : config_.docker.socket_path;
+        Log(LOG_INFO, "Starting Docker connector. socket='" + sock + "'.");
 
-    // IPC server: optional. If bind() fails (path read-only, dir missing) we log
-    // and continue — the watcher keeps the cache fresh and consumers (FIM) will
-    // simply not be able to do sync lookups until the issue is fixed.
+        docker_client_  = std::make_unique<DockerClient>(config_.docker, stop_, log_);
+        docker_cache_   = std::make_unique<DockerMetadataCache>(stop_, log_);
+        docker_watcher_ = std::make_unique<DockerWatcher>(
+            docker_client_.get(), docker_cache_.get(), stop_,
+            std::chrono::seconds(config_.docker.poll_interval), log_);
+        docker_watcher_->Start();
+        Log(LOG_INFO, "DockerWatcher started (polling every " +
+                      std::to_string(config_.docker.poll_interval) +
+                      "s; exponential backoff up to 300s on errors).");
+    }
+
+    // IPC server: optional. If bind() fails we log and continue.
     try {
-        ipc_server_ = std::make_unique<IpcServer>(kDefaultIpcSocketPath, cache_.get(), stop_, log_);
+        ipc_server_ = std::make_unique<IpcServer>(
+            kDefaultIpcSocketPath,
+            cache_.get(),
+            docker_cache_.get(),
+            stop_,
+            log_);
         ipc_server_->Start();
     } catch (const std::exception& ex) {
         Log(LOG_ERROR, std::string{"Failed to start IpcServer: "} + ex.what() +
                            " — module continues without IPC; FIM sync lookups will not work.");
         ipc_server_.reset();
     }
-
-    // T-K4 will instantiate IpcServer here.
-    // Each component owns its own threads and respects stop_.
 
     started_ = true;
 }
@@ -98,14 +119,20 @@ void ContainerConnectorImpl::Stop()
     // its reset() releases resources. No "give up if busy" path: each Stop() always
     // completes the teardown (the wait granularities are bounded by design).
     if (ipc_server_) {
-        ipc_server_->Stop();    // eventfd wake + close listen fd + join
+        ipc_server_->Stop();
         ipc_server_.reset();
     }
+    if (docker_watcher_) {
+        docker_watcher_->Stop();
+        docker_watcher_.reset();
+    }
+    docker_cache_.reset();
+    docker_client_.reset();
     if (pod_watcher_) {
-        pod_watcher_->Stop();   // joins the worker thread
+        pod_watcher_->Stop();
         pod_watcher_.reset();
     }
-    cache_.reset();             // no threads; safe to release once writers/readers are joined
+    cache_.reset();
     k8s_client_.reset();
 
     started_ = false;
