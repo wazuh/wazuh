@@ -18,9 +18,9 @@ namespace
 
 const base::Name STORE_NAME_CMSYNC {"cmsync/status/0"};          ///< Name of the internal store document
 const cm::store::NamespaceId DUMMY_NAMESPACE_ID {"dummy_ns_id"}; ///< Dummy namespace ID
-constexpr std::string_view COMPONENT_NAME = "CMSync";            ///< Component name for logging
 constexpr std::string_view STANDARD_SPACE_NAME = "standard";     ///< Standard space name
 constexpr std::string_view CUSTOM_SPACE_NAME = "custom";         ///< Custom space name
+const std::string COMPONENT_NAME = "CMSync";                     ///< Component name for logging
 
 constexpr std::string_view LOG_MODULE_NAME = "CM::Sync"; ///< Log module name for CMSync
 
@@ -263,7 +263,7 @@ bool CMSync::existSpaceInRemote(std::string_view space)
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr, space]() { return indexerPtr->existsPolicy(space); },
-                                         fmt::format("{}", COMPONENT_NAME),
+                                         COMPONENT_NAME,
                                          fmt::format("Check '{}' space in wazuh-indexer", space),
                                          m_attempts,
                                          m_waitSeconds,
@@ -280,7 +280,7 @@ bool CMSync::downloadNamespace(std::string_view originSpace,
     // Download policy from wazuh-indexer (with optional consumer validation in PIT)
     auto policyResource = base::utils::executeWithRetry(
         [&indexerPtr, originSpace, &consumerId]() { return indexerPtr->getPolicy(originSpace, consumerId); },
-        fmt::format("{}::downloadNamespace()", COMPONENT_NAME),
+        COMPONENT_NAME,
         fmt::format("Download '{}' space from wazuh-indexer", originSpace),
         m_attempts,
         m_waitSeconds,
@@ -311,7 +311,7 @@ bool CMSync::downloadNamespace(std::string_view originSpace,
         }
         catch (const std::exception& ex)
         {
-            LOG_WARNING("[{}::downloadNamespace] Failed to rollback namespace '{}' after import failure: {}",
+            LOG_WARNING("[{}] Failed to rollback namespace '{}' after import failure: {}",
                         LOG_MODULE_NAME,
                         dstNamespace.toStr(),
                         ex.what());
@@ -330,7 +330,7 @@ CMSync::getPolicyHashAndEnabledFromRemote(std::string_view space, const std::opt
 
     return base::utils::executeWithRetry(
         [&indexerPtr, space, &consumerId]() { return indexerPtr->getPolicyHashAndEnabled(space, consumerId); },
-        fmt::format("{}::getInfoFromRemote()", COMPONENT_NAME),
+        COMPONENT_NAME,
         fmt::format("Get policy hash and enabled status for '{}' space from wazuh-indexer", space),
         m_attempts,
         m_waitSeconds,
@@ -379,7 +379,7 @@ CMSync::downloadAndEnrichNamespace(std::string_view originSpace, const std::opti
         }
         catch (const std::exception& ex)
         {
-            LOG_WARNING("[{}::downloadAndEnrichNamespace] Failed to rollback temporary namespace '{}' after asset "
+            LOG_WARNING("[{}] Failed to rollback temporary namespace '{}' after asset "
                         "addition failure: {}",
                         LOG_MODULE_NAME,
                         newNs.toStr(),
@@ -594,7 +594,7 @@ void CMSync::synchronize()
                 const bool ready = base::utils::executeWithRetry(
                     [&indexerPtr, &consumerId = nsState.getConsumerId().value()]()
                     { return indexerPtr->isConsumerReadyForSync(consumerId); },
-                    fmt::format("{}", COMPONENT_NAME),
+                    COMPONENT_NAME,
                     fmt::format("Check consumer readiness for space '{}'", nsState.getOriginSpace()),
                     m_attempts,
                     m_waitSeconds,
@@ -821,7 +821,7 @@ void CMSync::synchronize()
         }
     }
 
-    LOG_DEBUG("[{}] Finished synchronization of spaces", LOG_MODULE_NAME,);
+    LOG_DEBUG("[{}] Finished synchronization of spaces", LOG_MODULE_NAME);
 
     updateSpacesStatusSnapshot();
 }

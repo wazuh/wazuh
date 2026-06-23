@@ -7,7 +7,7 @@
 
 namespace
 {
-constexpr std::string_view LOG_MODULE_NAME = "CM::Store::NS"; ///< Log module name for CMStoreNS
+inline constexpr std::string_view LOG_MODULE_NAME = "CM::Store::NS"; ///< Log module name for CMStoreNS
 }
 
 namespace cm::store

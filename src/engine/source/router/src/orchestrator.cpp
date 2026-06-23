@@ -154,7 +154,7 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     const auto jsonEntry = store->readDoc(tableName);
     if (base::isError(jsonEntry))
     {
-        LOG_DEBUG("[Orchestrator] {} table not found in store. Creating new table: {}",
+        LOG_DEBUG("[Orchestrator] {} table not found in store ({}). Creating new table",
                   tableName.toStr(),
                   base::getError(jsonEntry).message);
         store->createDoc(tableName, json::Json {"[]"});

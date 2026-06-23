@@ -22,7 +22,7 @@ namespace conf
 namespace
 {
 
-constexpr std::string_view LOG_MODULE_NAME = "Config"; ///< Log module name for configuration
+inline constexpr std::string_view LOG_MODULE_NAME = "Config"; ///< Log module name for configuration
 
 template<typename U>
 std::string toStr(const U& value)
@@ -174,7 +174,7 @@ public:
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("[{}] Failed to retrieve or convert environment variable for key '{}': {}"
+            LOG_WARNING("[{}] Failed to retrieve or convert environment variable for key '{}': {}. "
                         " Falling back to file or default value.",
                         LOG_MODULE_NAME,
                         key,
@@ -339,7 +339,7 @@ public:
             }
             catch (const std::exception& e)
             {
-                LOG_WARNING("Failed to convert value '{}' for key '{}': {}. "
+                LOG_WARNING("[{}] Failed to convert value '{}' for key '{}': {}. "
                             "Using default value",
                             LOG_MODULE_NAME,
                             rawValue,

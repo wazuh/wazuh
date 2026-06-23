@@ -310,8 +310,8 @@ adapter::RouteHandler syncIoc(const std::shared_ptr<::ioc::kvdb::IKVDBManager>& 
             if (base::isError(createResult))
             {
                 LOG_WARNING_L(lambdaName.c_str(),
-                              LOG_MODULE_NAME,
                               "[{}] Failed to create IOC status document: {}",
+                              LOG_MODULE_NAME,
                               base::getError(createResult).message);
             }
         }
