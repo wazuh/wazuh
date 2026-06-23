@@ -56,6 +56,8 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/include
   ${SRC_FOLDER}/wazuh_modules/sca/include
   ${SRC_FOLDER}/wazuh_modules/sca/sca_impl/include
+  ${SRC_FOLDER}/wazuh_modules/container_images/include
+  ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/include
   ${SRC_FOLDER}/wazuh_modules/syscollector/include
   ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include
   ${SRC_FOLDER}/wazuh_modules/inventory_sync_server/include
@@ -104,6 +106,7 @@ else()
   # Modules - Agent only
   add_subdirectory(agent_info)
   add_subdirectory(sca)
+  add_subdirectory(container_images)
   add_subdirectory(syscollector)
 endif()
 
@@ -150,6 +153,7 @@ else()
     wazuh_modulesd_lib
     PUBLIC agent_info
            sca
+           container_images
            syscollector
            sysinfo
            wazuhext
@@ -179,6 +183,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     wazuh-modulesd
     PRIVATE agent_info
             sca
+            container_images
             syscollector
             sysinfo
             wazuhext
