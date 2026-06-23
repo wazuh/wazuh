@@ -114,6 +114,14 @@
         <CustomAction Id="CustomAction_InstallerScripts" BinaryKey="InstallerScripts" VBScriptCall="config" Return="check" Execute="commit" Impersonate="no"/>
         <CustomAction Id="SetWazuhPermissions" BinaryKey="InstallerScripts" VBScriptCall="SetWazuhPermissions" Return="check" Execute="commit" Impersonate="no"/>
 
+        <!-- Grant Everyone read/write on ossec.conf with icacls (replaces the former
+             util:PermissionEx, which broke the uninstall with 1603 via SecureObjects
+             rollback). Deferred + no-impersonate so it runs in the system context;
+             Return="ignore" so a permission failure never aborts install/uninstall. -->
+        <CustomAction Id="SetCustomActionDataForOssecConfPermissions" Return="check" Property="SetOssecConfPermissions"
+                      Value="&quot;[SystemFolder]icacls.exe&quot; &quot;[APPLICATIONFOLDER]ossec.conf&quot; /grant *S-1-1-0:(R,W)" />
+        <CustomAction Id="SetOssecConfPermissions" BinaryKey="WixCA" DllEntry="WixQuietExec" Return="ignore" Execute="deferred" Impersonate="no"/>
+
         <CustomAction Id="SetCustomActionDataCleanupLegacyDBs" Return="check" Property="CleanupLegacyDatabases" Value="&quot;[APPLICATIONFOLDER]&quot;" />
         <CustomAction Id="CleanupLegacyDatabases" BinaryKey="InstallerScripts" VBScriptCall="CleanupLegacyDatabases" Return="check" Execute="deferred" Impersonate="no" />
 
@@ -184,6 +192,11 @@
             <Custom Action="SetCustomActionDataCleanupLegacyDBs" After="AppSearch">IS_UPGRADING_FROM_PRIOR_TO_5X</Custom>
             <Custom Action="CleanupLegacyDatabases" After="InstallFiles">IS_UPGRADING_FROM_PRIOR_TO_5X</Custom>
 
+            <!-- Apply the Everyone read/write ACL on ossec.conf after the file is laid down,
+                 on install/upgrade but never on uninstall. -->
+            <Custom Action="SetCustomActionDataForOssecConfPermissions" After="CleanupLegacyDatabases">NOT REMOVE="ALL"</Custom>
+            <Custom Action="SetOssecConfPermissions" After="SetCustomActionDataForOssecConfPermissions">NOT REMOVE="ALL"</Custom>
+
             <!-- Start services if necessary -->
             <Custom Action="StartWazuhSvc" After="InstallFinalize">((WIX_UPGRADE_DETECTED) OR (PATCH)) AND ((OSSECRUNNING = "Running") OR (WAZUHRUNNING = "Running"))</Custom>
 
@@ -237,9 +250,13 @@
                         <File Id="LOCAL_INTERNAL_OPTIONS.CONF" Name="local_internal_options.conf" Source="default-local_internal_options.conf" KeyPath="yes" />
                     </Component>
                     <Component Id="OSSEC.CONF" DiskId="1" Guid="26C3265E-EFC8-488D-8D19-397A0C44C071" NeverOverwrite="yes" Permanent="yes">
-                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes">
-                            <util:PermissionEx User="Everyone" GenericRead="yes" GenericWrite="yes" />
-                        </File>
+                        <!-- The Everyone read/write grant is applied with icacls via the deferred
+                             SetOssecConfPermissions custom action instead of util:PermissionEx:
+                             util:PermissionEx (SecureObjects) REPLACES the ACL and stores fragile
+                             rollback information that fails on uninstall on newer Windows builds
+                             (returns 1603). icacls grants the same access additively, keeping the
+                             inherited SYSTEM/Administrators entries the uninstall needs. -->
+                        <File Id="OSSEC.CONF" Name="ossec.conf" Source="default-ossec.conf" KeyPath="yes" />
                     </Component>
                     <Component Id="INTERNAL_OPTIONS.CONF" DiskId="1" Guid="D2F2A5B9-1A98-4BB8-8AC4-D948CA97DD0E">
                         <File Id="INTERNAL_OPTIONS.CONF" Name="internal_options.conf" Source="internal_options.conf"/>

@@ -31,11 +31,18 @@ def check_and_uninstall_wazuh():
         print(uninstall_result.stdout)
         print(uninstall_result.stderr)
 
-        if uninstall_result.returncode == 0:
+        # The wmic process exit code only reflects whether wmic ran, NOT whether
+        # the MSI uninstall succeeded. The real result is the WMI method's
+        # ReturnValue (0 == success; e.g. 1603 is a fatal MSI error). Parse every
+        # ReturnValue (the WHERE clause may match more than one product) so a
+        # failed uninstall is not silently treated as success.
+        return_values = [int(v) for v in re.findall(r"ReturnValue\s*=\s*(\d+)", uninstall_result.stdout)]
+
+        if uninstall_result.returncode == 0 and return_values and all(v == 0 for v in return_values):
             print("Uninstallation completed successfully.")
         else:
-            print(f"Uninstallation failed with return code {uninstall_result.returncode}.")
-            sys.exit(uninstall_result.returncode)
+            print(f"Uninstallation failed (process exit code {uninstall_result.returncode}, WMI ReturnValue(s) {return_values}).")
+            sys.exit(1)
     else:
         print("No existing Wazuh installation found.")
         sys.exit(1)
