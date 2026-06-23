@@ -144,7 +144,7 @@ VALUES (
     NULL,
     'all',
     '{"pci_dss":["5.2.1"],"nist_800_53":["14.6"]}',
-    '{"tactic":{"id":["TA0005"],"name":["Defense Evasion"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]}}',
+    '{"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]}}',
     '[{"type":"file","path":"/etc/ssh/sshd_config","permissions":"600"}]',
     'pcre2',
     1,

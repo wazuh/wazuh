@@ -181,13 +181,13 @@ TEST_F(SCARecoveryUtilsTest, NormalizeCheckInvalidComplianceJson)
 
 TEST_F(SCARecoveryUtilsTest, NormalizeCheckConvertMitre)
 {
-    nlohmann::json check = {{"mitre", R"({"tactic":{"id":["TA0005"],"name":["Defense Evasion"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]},"subtechnique":{"id":["T1548.001"],"name":["Setuid and Setgid"]}})"}, {"id", "123"}};
+    nlohmann::json check = {{"mitre", R"({"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]},"subtechnique":{"id":["T1548.001"],"name":["Setuid and Setgid"]}})"}, {"id", "123"}};
     sca::recovery::normalizeCheckForStateful(check);
 
     EXPECT_TRUE(check.contains("mitre"));
     EXPECT_TRUE(check["mitre"].is_object());
     EXPECT_EQ(check["mitre"]["tactic"]["id"], nlohmann::json({"TA0005"}));
-    EXPECT_EQ(check["mitre"]["tactic"]["name"], nlohmann::json({"Defense Evasion"}));
+    EXPECT_EQ(check["mitre"]["tactic"]["name"], nlohmann::json({"Stealth"}));
     EXPECT_EQ(check["mitre"]["technique"]["id"], nlohmann::json({"T1548"}));
     EXPECT_EQ(check["mitre"]["technique"]["name"], nlohmann::json({"Abuse Elevation Control Mechanism"}));
     EXPECT_EQ(check["mitre"]["subtechnique"]["id"], nlohmann::json({"T1548.001"}));
@@ -225,7 +225,7 @@ TEST_F(SCARecoveryUtilsTest, NormalizeCheckAllTransformations)
     {
         {"refs", "ref1,ref2"},
         {"compliance", R"({"pci_dss":["7.1"]})"},
-        {"mitre", R"({"tactic":{"id":["TA0005"],"name":["Defense Evasion"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]},"subtechnique":{"id":["T1548.001"],"name":["Setuid and Setgid"]}})"},
+        {"mitre", R"({"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]},"subtechnique":{"id":["T1548.001"],"name":["Setuid and Setgid"]}})"},
         {"rules", "rule1"},
         {"policy_id", "policy1"},
         {"id", "123"},
@@ -356,7 +356,7 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageWithNormalization)
         {"version", 1},
         {"refs", "ref1,ref2"},
         {"compliance", R"({"pci_dss":["7.1"]})"},
-        {"mitre", R"({"tactic":{"id":["TA0005"],"name":["Defense Evasion"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]}})"},
+        {"mitre", R"({"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]}})"},
         {"rules", "rule1"},
         {"policy_id", "policy1"}
     };
@@ -374,7 +374,7 @@ TEST_F(SCARecoveryUtilsTest, BuildStatefulMessageWithNormalization)
     EXPECT_FALSE(result["check"].contains("policy_id"));
     EXPECT_TRUE(result["check"]["mitre"].is_object());
     EXPECT_EQ(result["check"]["mitre"]["tactic"]["id"], nlohmann::json({"TA0005"}));
-    EXPECT_EQ(result["check"]["mitre"]["tactic"]["name"], nlohmann::json({"Defense Evasion"}));
+    EXPECT_EQ(result["check"]["mitre"]["tactic"]["name"], nlohmann::json({"Stealth"}));
     EXPECT_EQ(result["check"]["mitre"]["technique"]["id"], nlohmann::json({"T1548"}));
     EXPECT_EQ(result["check"]["mitre"]["technique"]["name"], nlohmann::json({"Abuse Elevation Control Mechanism"}));
 

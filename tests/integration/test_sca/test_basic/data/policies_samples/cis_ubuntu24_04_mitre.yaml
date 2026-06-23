@@ -29,7 +29,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1005"

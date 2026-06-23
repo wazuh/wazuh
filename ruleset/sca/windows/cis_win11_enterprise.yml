@@ -595,7 +595,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -687,7 +687,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -724,7 +724,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -763,7 +763,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -817,7 +817,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -871,7 +871,7 @@ checks:
           - "TA0005"
         name:
           - "Privilege Escalation"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1078"
@@ -1281,7 +1281,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -2080,7 +2080,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -2502,7 +2502,7 @@ checks:
           - "TA0005"
         name:
           - "Privilege Escalation"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1133"
@@ -2706,7 +2706,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -3156,7 +3156,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -3211,7 +3211,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -3304,7 +3304,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -3710,7 +3710,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -3745,7 +3745,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -3782,7 +3782,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -3819,7 +3819,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -3854,7 +3854,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -3889,7 +3889,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -3926,7 +3926,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -3963,7 +3963,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -3998,7 +3998,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4035,7 +4035,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4072,7 +4072,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4107,7 +4107,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4144,7 +4144,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4179,7 +4179,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4214,7 +4214,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4249,7 +4249,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4286,7 +4286,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4321,7 +4321,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4356,7 +4356,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4391,7 +4391,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4426,7 +4426,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4461,7 +4461,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4496,7 +4496,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4531,7 +4531,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4566,7 +4566,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4601,7 +4601,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4638,7 +4638,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4675,7 +4675,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4712,7 +4712,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4749,7 +4749,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4784,7 +4784,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4819,7 +4819,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4856,7 +4856,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4891,7 +4891,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4926,7 +4926,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4963,7 +4963,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -4998,7 +4998,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -5033,7 +5033,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -5068,7 +5068,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -5103,7 +5103,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -5142,7 +5142,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -5179,7 +5179,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -5216,7 +5216,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -5253,7 +5253,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -5448,7 +5448,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -5500,7 +5500,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -5809,7 +5809,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -5863,7 +5863,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6275,7 +6275,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6327,7 +6327,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6481,7 +6481,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6534,7 +6534,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6587,7 +6587,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6640,7 +6640,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6692,7 +6692,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6744,7 +6744,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6796,7 +6796,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6848,7 +6848,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6900,7 +6900,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -6952,7 +6952,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7004,7 +7004,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7056,7 +7056,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7108,7 +7108,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7160,7 +7160,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7212,7 +7212,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7264,7 +7264,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7316,7 +7316,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7368,7 +7368,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7420,7 +7420,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7472,7 +7472,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7524,7 +7524,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7576,7 +7576,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7628,7 +7628,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7680,7 +7680,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7732,7 +7732,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7784,7 +7784,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -7836,7 +7836,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -8032,7 +8032,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -8255,7 +8255,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -8294,7 +8294,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -8377,7 +8377,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -8429,7 +8429,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -8660,7 +8660,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -8699,7 +8699,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -8779,7 +8779,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -8818,7 +8818,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -8859,7 +8859,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -8967,7 +8967,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -9006,7 +9006,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -9047,7 +9047,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -9151,7 +9151,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -9190,7 +9190,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -9337,7 +9337,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1110"
@@ -9454,7 +9454,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1110"
@@ -9573,7 +9573,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -9610,7 +9610,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -9647,7 +9647,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -9807,7 +9807,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -9844,7 +9844,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -9889,7 +9889,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -9926,7 +9926,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -10037,7 +10037,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -10076,7 +10076,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -10117,7 +10117,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -10413,7 +10413,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -10656,7 +10656,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -10710,7 +10710,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -10818,7 +10818,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -10870,7 +10870,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -10922,7 +10922,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -10974,7 +10974,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -11026,7 +11026,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -11081,7 +11081,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -11365,7 +11365,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11404,7 +11404,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -11456,7 +11456,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11495,7 +11495,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11534,7 +11534,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11573,7 +11573,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11610,7 +11610,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11647,7 +11647,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11683,7 +11683,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11814,7 +11814,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11851,7 +11851,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11888,7 +11888,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11927,7 +11927,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -11964,7 +11964,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -12001,7 +12001,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -12038,7 +12038,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -12075,7 +12075,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -12112,7 +12112,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -12149,7 +12149,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -12186,7 +12186,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -12223,7 +12223,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -12731,7 +12731,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -12787,7 +12787,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -12911,7 +12911,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13065,7 +13065,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13102,7 +13102,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13139,7 +13139,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13176,7 +13176,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13391,7 +13391,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13428,7 +13428,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13613,7 +13613,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13650,7 +13650,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13807,7 +13807,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13844,7 +13844,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13881,7 +13881,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -13920,7 +13920,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -13972,7 +13972,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -14024,7 +14024,7 @@ checks:
           - "TA0005"
         name:
           - "Privilege Escalation"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1133"
@@ -14103,7 +14103,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -14252,7 +14252,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -14291,7 +14291,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -14343,7 +14343,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -14395,7 +14395,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -14449,7 +14449,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1189"
@@ -14470,7 +14470,7 @@ checks:
           - "Exploit Public-Facing Application"
           - "Exploitation for Client Execution"
           - "Exploitation for Credential Access"
-          - "Exploitation for Defense Evasion"
+          - "Exploitation for Stealth"
           - "Exploitation for Privilege Escalation"
           - "Exploitation of Remote Services"
           - "Taint Shared Content"
@@ -15353,7 +15353,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -17187,7 +17187,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -17237,7 +17237,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -17328,7 +17328,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -17365,7 +17365,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -17775,7 +17775,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -17825,7 +17825,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -17901,7 +17901,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -17979,7 +17979,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18018,7 +18018,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18057,7 +18057,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18096,7 +18096,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18135,7 +18135,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -18187,7 +18187,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -18239,7 +18239,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -18291,7 +18291,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -18343,7 +18343,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -18395,7 +18395,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -18447,7 +18447,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -18499,7 +18499,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -18549,7 +18549,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18590,7 +18590,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -18640,7 +18640,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18677,7 +18677,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18714,7 +18714,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18751,7 +18751,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18846,7 +18846,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18883,7 +18883,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -18924,7 +18924,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -18979,7 +18979,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19107,7 +19107,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19161,7 +19161,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19216,7 +19216,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19270,7 +19270,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19324,7 +19324,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19430,7 +19430,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19484,7 +19484,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19538,7 +19538,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19592,7 +19592,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19646,7 +19646,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19698,7 +19698,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -19748,7 +19748,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -19785,7 +19785,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -19822,7 +19822,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -19859,7 +19859,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -19898,7 +19898,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -19950,7 +19950,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -19989,7 +19989,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -20026,7 +20026,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -20063,7 +20063,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -20139,7 +20139,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -20178,7 +20178,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -20215,7 +20215,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -20252,7 +20252,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -20289,7 +20289,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -20326,7 +20326,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -20402,7 +20402,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -20966,7 +20966,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21003,7 +21003,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21040,7 +21040,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21077,7 +21077,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21114,7 +21114,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21151,7 +21151,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21246,7 +21246,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21285,7 +21285,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21421,7 +21421,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21461,7 +21461,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21502,7 +21502,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -21556,7 +21556,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -21610,7 +21610,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -21664,7 +21664,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -21718,7 +21718,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -21772,7 +21772,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -21824,7 +21824,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -21866,7 +21866,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -22155,7 +22155,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -22195,7 +22195,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -22312,7 +22312,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -22366,7 +22366,7 @@ checks:
           - "TA0006"
           - "TA0007"
         name:
-          - "Defense Evasion"
+          - "Stealth"
           - "Credential Access"
           - "Discovery"
       technique:
@@ -22634,7 +22634,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -22729,7 +22729,7 @@ checks:
           - "TA0005"
         name:
           - "Privilege Escalation"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1133"
@@ -22772,7 +22772,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -22811,7 +22811,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -22850,7 +22850,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"
@@ -22889,7 +22889,7 @@ checks:
           - "TA0005"
         name:
           - "Execution"
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1562"
@@ -23145,7 +23145,7 @@ checks:
         id:
           - "TA0005"
         name:
-          - "Defense Evasion"
+          - "Stealth"
       technique:
         id:
           - "T1036"

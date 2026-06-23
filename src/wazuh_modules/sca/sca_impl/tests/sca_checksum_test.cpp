@@ -41,7 +41,7 @@ class SCAChecksumTest : public ::testing::Test
                 {"refs", "https://example.com/ref1,https://example.com/ref2"},
                 {"condition", "all"},
                 {"compliance", R"({"pci_dss":["3.2.1"]})"},
-                {"mitre", "{\"tactic\":{\"id\":[\"TA0005\"],\"name\":[\"Defense Evasion\"]},\"technique\":{\"id\":[\"T1548\"],\"name\":[\"Abuse Elevation Control Mechanism\"]}}"},
+                {"mitre", "{\"tactic\":{\"id\":[\"TA0005\"],\"name\":[\"Stealth\"]},\"technique\":{\"id\":[\"T1548\"],\"name\":[\"Abuse Elevation Control Mechanism\"]}}"},
                 {"rules", "file:$SSH_CONFIG -> exists"}
             };
 
@@ -90,7 +90,7 @@ TEST_F(SCAChecksumTest, CalculateChecksumFromFields_ValidData_ReturnsNonEmptyStr
                                                   "https://example.com/ref1,https://example.com/ref2",
                                                   "all",
                                                   R"({"pci_dss":["3.2.1"]})",
-                                                  "{\"tactic\":{\"id\":[\"TA0005\"],\"name\":[\"Defense Evasion\"]},\"technique\":{\"id\":[\"T1548\"],\"name\":[\"Abuse Elevation Control Mechanism\"]}}",
+                                                  "{\"tactic\":{\"id\":[\"TA0005\"],\"name\":[\"Stealth\"]},\"technique\":{\"id\":[\"T1548\"],\"name\":[\"Abuse Elevation Control Mechanism\"]}}",
                                                   "file:$SSH_CONFIG -> exists",
                                                   "");
 
