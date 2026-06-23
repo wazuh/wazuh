@@ -391,14 +391,16 @@ async def test_async_decompress_files(decompress_files_mock):
 
 
 @pytest.mark.asyncio
-@patch('zlib.decompress')
+@patch('wazuh.core.cluster.cluster.get_cluster_items',
+       return_value={'intervals': {'communication': {'max_zip_size': 1073741824}}})
+@patch('wazuh.core.cluster.cluster.decompress_to_file')
 @patch('os.makedirs')
 @patch('os.path.exists', side_effect=[False, True, True])
 @patch('wazuh.core.cluster.cluster.remove')
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
 @patch('json.loads', return_value="some string with files")
 async def test_decompress_files_ok(json_loads_mock, mkdir_with_mode_mock, remove_mock, os_path_exists_mock,
-                                   mock_makedirs, zlib_mock):
+                                   mock_makedirs, decompress_to_file_mock, get_cluster_items_mock):
     """Check if the decompressing function is working properly."""
     zip_path = '/foo/bar/'
     compress_data = f'path{cluster.PATH_SEP}content{cluster.FILE_SEP}path2{cluster.PATH_SEP}content2'.encode()
@@ -410,20 +412,46 @@ async def test_decompress_files_ok(json_loads_mock, mkdir_with_mode_mock, remove
         ko_files, zip_dir = cluster.decompress_files(compress_path=zip_path)
         assert ko_files == "some string with files"
         assert zip_dir == zip_path + 'dir'
-        zlib_mock.assert_has_calls([call(b'content'), call(b'content2')])
+        decompress_to_file_mock.assert_has_calls([call(b'content', '/foo/bar/dir/path', 1073741824),
+                                                  call(b'content2', '/foo/bar/dir/path2', 1073741824)])
         mock_makedirs.assert_called_once_with(zip_path + 'dir')
         json_loads_mock.assert_called_once()
         mkdir_with_mode_mock.assert_called_once_with(zip_dir)
         remove_mock.assert_called_once_with(zip_path)
-        assert open_mock.call_args_list == [call('/foo/bar/', 'rb'), call('/foo/bar/dir/path', 'wb'),
-                                            call('/foo/bar/dir/path2', 'wb'), call('/foo/bar/dir/files_metadata.json')]
+        assert open_mock.call_args_list == [call('/foo/bar/', 'rb'), call('/foo/bar/dir/files_metadata.json')]
+
+
+def test_decompress_to_file_ok(tmp_path):
+    """Check that a compressed member is decompressed and written to disk."""
+    content = b'A' * 1024
+    dest = str(tmp_path / 'out.bin')
+
+    cluster.decompress_to_file(zlib.compress(content), dest, max_size=1024 * 1024)
+
+    with open(dest, 'rb') as f:
+        assert f.read() == content
+
+
+def test_decompress_to_file_exceeds_limit(tmp_path):
+    """Check that a decompression bomb is rejected once the size cap is exceeded."""
+    # ~100 MiB of 'A' compresses to a few KiB but must be rejected when the cap is lower.
+    co = zlib.compressobj(9)
+    parts = [co.compress(b'A' * (1024 * 1024)) for _ in range(100)]
+    parts.append(co.flush())
+    bomb = b''.join(parts)
+    dest = str(tmp_path / 'bomb.bin')
+
+    with pytest.raises(WazuhInternalError, match=r'.* 3053 .*'):
+        cluster.decompress_to_file(bomb, dest, max_size=10 * 1024 * 1024)
 
 
 @pytest.mark.asyncio
+@patch('wazuh.core.cluster.cluster.get_cluster_items',
+       return_value={'intervals': {'communication': {'max_zip_size': 1073741824}}})
 @patch('shutil.rmtree')
-@patch('zlib.decompress', return_value=Exception)
+@patch('wazuh.core.cluster.cluster.decompress_to_file', side_effect=Exception)
 @patch('wazuh.core.cluster.cluster.mkdir_with_mode')
-async def test_decompress_files_ko(mkdir_with_mode_mock, zlib_mock, rmtree_mock):
+async def test_decompress_files_ko(mkdir_with_mode_mock, decompress_to_file_mock, rmtree_mock, get_cluster_items_mock):
     """Check if the decompressing function is raising the necessary exceptions."""
 
     # Raising the expected Exception
@@ -433,7 +461,7 @@ async def test_decompress_files_ko(mkdir_with_mode_mock, zlib_mock, rmtree_mock)
         with patch('os.path.exists', return_value=True) as os_path_exists_mock:
             assert cluster.decompress_files(zip_dir) == "some string with files", zip_dir + "dir"
             mkdir_with_mode_mock.assert_called_once_with(zip_dir)
-            zlib_mock.assert_called_once()
+            decompress_to_file_mock.assert_called_once()
             os_path_exists_mock.assert_called_once()
             rmtree_mock.assert_called_once()
 
