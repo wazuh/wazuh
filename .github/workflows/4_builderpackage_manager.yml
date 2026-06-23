@@ -102,7 +102,7 @@ jobs:
       SHOULD_UPLOAD: ${{ inputs.upload_package }}
       SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package }}
 
-    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'wz-linux-amd64' }}
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
     timeout-minutes: 35
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
@@ -155,6 +155,31 @@ jobs:
           elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
           else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
           echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${{ env.PACKAGE_ARCH }}" >> $GITHUB_ENV
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd; VFS driver avoids overlay-on-overlay.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # 3. uuidgen: not pre-installed on CodeBuild images (needed by the check_files action).
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
 
       - name: Download docker image for package building
         run: |
@@ -258,17 +283,39 @@ jobs:
 
       - name: Get latest Wazuh release from GitHub
         run: |
-          sudo apt-get update
-          sudo apt-get install -y curl jq
+          if ! command -v curl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y curl jq
+          fi
 
           CURRENT_TAG="${{ env.TAG }}"
-          PREVIOUS_TAG=$(curl -s https://api.github.com/repos/wazuh/wazuh/releases | jq -r '.[].tag_name' | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^4\.[0-9]+\.[0-9]+$' | \
+          RELEASES_FILE=$(mktemp)
+          trap 'rm -f "$RELEASES_FILE"' EXIT
+
+          # Authenticated to avoid the 60 req/hour unauthenticated rate limit on shared CodeBuild IPs.
+          curl -fsSL --connect-timeout 20 --max-time 120 \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -o "$RELEASES_FILE" \
+            https://api.github.com/repos/wazuh/wazuh/releases
+
+          PREVIOUS_TAG=$(jq -r '.[].tag_name' "$RELEASES_FILE" | grep -vE 'alpha|beta|rc' | sed 's/^v//' | grep -E '^4\.[0-9]+\.[0-9]+$' | \
           grep -v "^${CURRENT_TAG}$" | sort -V | awk -v current="$CURRENT_TAG" '$0 < current' | tail -n1)
 
-          echo "Latest release detected: $PREVIOUS_TAG"
-          echo "PUBLIC_RELEASE_VERSION=$PREVIOUS_TAG" >> $GITHUB_ENV
+          rm -f "$RELEASES_FILE"
+          trap - EXIT
+
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Latest release detected: $PREVIOUS_TAG"
+            echo "PUBLIC_RELEASE_VERSION=$PREVIOUS_TAG" >> $GITHUB_ENV
+            echo "HAS_PREVIOUS_RELEASE=true" >> $GITHUB_ENV
+          else
+            echo "No previous stable release found for upgrade testing"
+            echo "HAS_PREVIOUS_RELEASE=false" >> $GITHUB_ENV
+          fi
 
       - name: Download latest public wazuh-manager package
+        if: env.HAS_PREVIOUS_RELEASE == 'true'
         run: |
           ARCH=${{ env.ARCH }}
           VERSION=${{ env.PUBLIC_RELEASE_VERSION }}
@@ -290,6 +337,7 @@ jobs:
           echo "PUBLIC_PACKAGE_NAME=$FILE_NAME_PUBLIC" >> $GITHUB_ENV
 
       - name: Run container and install public wazuh-manager
+        if: env.HAS_PREVIOUS_RELEASE == 'true'
         run: |
           FILE_NAME=${{ env.PUBLIC_PACKAGE_NAME }}
           SYSTEM=${{ inputs.system }}
@@ -316,6 +364,7 @@ jobs:
           docker exec wazuh_previous bash -c "/var/ossec/bin/wazuh-control info || echo 'Manager not started yet'"
 
       - name: Upgrade to current Wazuh version
+        if: env.HAS_PREVIOUS_RELEASE == 'true'
         run: |
           SYSTEM=${{ inputs.system }}
           FILE_NAME=${{ env.PACKAGE_NAME }}

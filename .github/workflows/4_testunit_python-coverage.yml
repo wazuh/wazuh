@@ -14,8 +14,8 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-      PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
-    runs-on: wz-linux-amd64
+      PYTHONPATH: ${{ github.workspace }}/api:${{ github.workspace }}/framework
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     strategy:
       fail-fast: false
       matrix:
@@ -49,4 +49,4 @@ jobs:
       - name: Run tests coverage
         run: |
           cd qa-integration-framework/src/wazuh_testing/scripts
-          python pytest_coverage.py -p /home/runner/work/wazuh/wazuh
+          python pytest_coverage.py -p ${{ github.workspace }}

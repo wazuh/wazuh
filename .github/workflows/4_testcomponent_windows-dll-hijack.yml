@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v3
       - name: Install mingw

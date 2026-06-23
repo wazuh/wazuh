@@ -59,6 +59,11 @@ runs:
           fi
 
           install -Dm755 "${FOUND_BIN}" "${TOOL_BIN}"
+          if ! "${TOOL_BIN}" --version 2>/dev/null; then
+            echo "::warning::Wazuh clang-format binary is incompatible with this runner (GLIBC mismatch). Falling back to runner package."
+            rm -f "${TOOL_BIN}"
+            exit 0
+          fi
           echo "USE_WAZUH_CLANG_FORMAT=true" >> "${GITHUB_ENV}"
           echo "CLANG_FORMAT_BIN=${TOOL_BIN}" >> "${GITHUB_ENV}"
           "${TOOL_BIN}" --version

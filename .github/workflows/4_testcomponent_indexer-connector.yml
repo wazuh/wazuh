@@ -15,7 +15,7 @@ on:
 
 jobs:
   indexer_connector-qa:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -39,6 +39,15 @@ jobs:
         run: |
           pip install -r src/shared_modules/indexer_connector/qa/requirements.txt
 
+      - name: Log in to Docker Hub
+        # TODO(codebuild-temp): Remove if CodeBuild runners ship opensearchproject/opensearch
+        # or if the unauthenticated Docker Hub pull rate limit is no longer hit in CI.
+        # The indexer connector tests pull opensearchproject/opensearch:latest from Docker Hub.
+        # Without authentication the shared-IP rate limit (100 pulls/6 h) is quickly exhausted.
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
       # Create folder for test logs
       - name: Create folder for test logs
         run: |

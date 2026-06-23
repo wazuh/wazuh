@@ -8,7 +8,7 @@ on:
 
 jobs:
   scan-build-linux:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     strategy:
       fail-fast: false
       matrix:
@@ -17,6 +17,9 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - name: Install system build dependencies
+        # TODO: Remove when added to CodeBuild base images
+        run: sudo apt-get update && sudo apt-get install -y python3-pip
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -41,11 +44,14 @@ jobs:
         run: exit 1
 
   scan-build-ubuntu-mingw-windows:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - name: Install system build dependencies
+        # TODO: Remove when added to CodeBuild base images
+        run: sudo apt-get update && sudo apt-get install -y python3-pip
       - name: Install dependencies
         run: |
           sudo apt-get update
