@@ -24,9 +24,18 @@ def test_get_script_arguments(capsys):
     assert stderr == "", 'stderr was not empty'
 
 
+def test_get_script_arguments_no_credentials_file(capsys):
+    """Test get_script_arguments works without credentials_file, which is optional for ADC."""
+    with patch("sys.argv", ['main', '--integration_type', 'any']):
+        args = tools.get_script_arguments()
+    stdout, stderr = capsys.readouterr()
+    assert stdout == "", 'stdout was not empty'
+    assert stderr == "", 'stderr was not empty'
+    assert args.credentials_file is None
+
+
 @pytest.mark.parametrize('args', [
     ['main'],
-    ['main', '--integration_type', 'any'],
     ['main', '--credentials_file', 'any'],
 ])
 def test_get_script_arguments_required(capsys, args):
