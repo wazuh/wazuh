@@ -230,9 +230,10 @@
 <!-- 2020-03-24 08:38:47.230409-0700  localhost sshd[2531]: Disconnected from user user 172.18.1.100 port 43042 -->
 <!-- 2020-03-24 08:38:47.230409-0700  localhost sshd[2531]: Disconnected from invalid user root 172.18.1.100 port 43042 -->
 <!-- 2020-03-24 08:38:47.230409-0700  localhost sshd[2531]: Disconnecting invalid user root 172.18.1.100 port 43042 -->
+<!-- Mar 31 12:32:30 localhost sshd[2548088]: Disconnecting authenticating user root 172.18.1.100 port 60158: Too many authentication failures [preauth] -->
 <decoder name="sshd-disconnect">
   <parent>sshd</parent>
-  <prematch type="pcre2">Disconnect(?:ed|ing) (?:from )?(?:invalid )?user </prematch>
+  <prematch type="pcre2">Disconnect(?:ed|ing) (?:authenticating )?(?:from )?(?:invalid )?user </prematch>
   <regex offset="after_prematch">^(\S+) (\S+) port (\d+)</regex>
   <order>srcuser,srcip,srcport</order>
 </decoder>
