@@ -87,11 +87,19 @@ void cc_init(const cc_config_t* cfg)
     }
     try {
         wazuh::container_connector::ModuleConfig cppcfg;
-        cppcfg.kubernetes.enabled = (cfg->kubernetes.enabled != 0);
+        cppcfg.kubernetes.enabled      = (cfg->kubernetes.enabled != 0);
+        cppcfg.kubernetes.poll_interval = (cfg->kubernetes.poll_interval > 0)
+                                              ? cfg->kubernetes.poll_interval
+                                              : 60;
         if (cfg->kubernetes.api_server) cppcfg.kubernetes.api_server = cfg->kubernetes.api_server;
         if (cfg->kubernetes.ca_bundle)  cppcfg.kubernetes.ca_bundle  = cfg->kubernetes.ca_bundle;
         if (cfg->kubernetes.token_path) cppcfg.kubernetes.token_path = cfg->kubernetes.token_path;
         if (cfg->kubernetes.node_name)  cppcfg.kubernetes.node_name  = cfg->kubernetes.node_name;
+        cppcfg.docker.enabled       = (cfg->docker.enabled != 0);
+        cppcfg.docker.poll_interval = (cfg->docker.poll_interval > 0)
+                                          ? cfg->docker.poll_interval
+                                          : 60;
+        if (cfg->docker.socket_path)    cppcfg.docker.socket_path    = cfg->docker.socket_path;
         wazuh::container_connector::ContainerConnector::Instance().Init(std::move(cppcfg), g_log);
     } catch (const std::exception& ex) {
         if (g_log) g_log(LOG_ERROR, std::string{"cc_init failed: "} + ex.what());

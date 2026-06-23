@@ -11,6 +11,9 @@ class KubernetesClient;
 class MetadataCache;
 class PodWatcher;
 class IpcServer;
+class DockerClient;
+class DockerMetadataCache;
+class DockerWatcher;
 } // namespace wazuh::container_connector
 
 namespace wazuh::container_connector {
@@ -18,15 +21,24 @@ namespace wazuh::container_connector {
 struct KubernetesConfig
 {
     bool        enabled{true};
-    std::string api_server;   ///< Empty => derived from KUBERNETES_SERVICE_HOST/PORT.
-    std::string ca_bundle;    ///< Empty => default service-account ca.crt path.
-    std::string token_path;   ///< Empty => default service-account token path.
-    std::string node_name;    ///< Empty => derived from $NODE_NAME.
+    int         poll_interval{60}; ///< Seconds between pod list polls.
+    std::string api_server;       ///< Empty => derived from KUBERNETES_SERVICE_HOST/PORT.
+    std::string ca_bundle;        ///< Empty => default service-account ca.crt path.
+    std::string token_path;       ///< Empty => default service-account token path.
+    std::string node_name;        ///< Empty => derived from $NODE_NAME.
+};
+
+struct DockerConfig
+{
+    bool        enabled{false};
+    int         poll_interval{60}; ///< Seconds between snapshot + event resyncs.
+    std::string socket_path;       ///< Empty => /var/run/docker.sock.
 };
 
 struct ModuleConfig
 {
     KubernetesConfig kubernetes;
+    DockerConfig     docker;
 };
 
 /// @brief Log callback supplied by the C glue. Level uses the modules_log_level_t int values.
@@ -67,10 +79,13 @@ private:
     std::shared_ptr<StopController> stop_;
 
     // Component owners, in construction order. Stop() tears them down in REVERSE order.
-    std::unique_ptr<KubernetesClient> k8s_client_;
-    std::unique_ptr<MetadataCache>    cache_;
-    std::unique_ptr<PodWatcher>       pod_watcher_;
-    std::unique_ptr<IpcServer>        ipc_server_;
+    std::unique_ptr<KubernetesClient>  k8s_client_;
+    std::unique_ptr<MetadataCache>     cache_;
+    std::unique_ptr<PodWatcher>        pod_watcher_;
+    std::unique_ptr<DockerClient>      docker_client_;
+    std::unique_ptr<DockerMetadataCache> docker_cache_;
+    std::unique_ptr<DockerWatcher>     docker_watcher_;
+    std::unique_ptr<IpcServer>         ipc_server_;
 
     bool started_{false};
 };

@@ -12,12 +12,15 @@
 
 #include "wmodules.h"
 
-static const char *XML_KUBERNETES = "kubernetes";
-static const char *XML_ENABLED    = "enabled";
-static const char *XML_API_SERVER = "api_server";
-static const char *XML_CA_BUNDLE  = "ca_bundle";
-static const char *XML_TOKEN_PATH = "token_path";
-static const char *XML_NODE_NAME  = "node_name";
+static const char *XML_KUBERNETES   = "kubernetes";
+static const char *XML_DOCKER       = "docker";
+static const char *XML_ENABLED      = "enabled";
+static const char *XML_API_SERVER   = "api_server";
+static const char *XML_CA_BUNDLE    = "ca_bundle";
+static const char *XML_TOKEN_PATH   = "token_path";
+static const char *XML_NODE_NAME     = "node_name";
+static const char *XML_SOCKET_PATH   = "socket_path";
+static const char *XML_POLL_INTERVAL = "poll_interval";
 
 static int parse_kubernetes_block(const OS_XML *xml, xml_node *kub_node, wm_container_connector_kubernetes_t *out) {
     xml_node **children = OS_GetElementsbyNode(xml, kub_node);
@@ -55,9 +58,66 @@ static int parse_kubernetes_block(const OS_XML *xml, xml_node *kub_node, wm_cont
         } else if (!strcmp(children[i]->element, XML_NODE_NAME)) {
             os_free(out->node_name);
             if (children[i]->content && *children[i]->content) os_strdup(children[i]->content, out->node_name);
+        } else if (!strcmp(children[i]->element, XML_POLL_INTERVAL)) {
+            int val = atoi(children[i]->content);
+            if (val <= 0) {
+                merror("At module '%s/%s': '%s' must be a positive integer.",
+                       WM_CONTAINER_CONNECTOR_CONTEXT.name, XML_KUBERNETES, XML_POLL_INTERVAL);
+                rc = OS_INVALID;
+                break;
+            }
+            out->poll_interval = (unsigned int)val;
         } else {
             merror("No such tag '%s' at module '%s/%s'.",
                    children[i]->element, WM_CONTAINER_CONNECTOR_CONTEXT.name, XML_KUBERNETES);
+            rc = OS_INVALID;
+            break;
+        }
+    }
+
+    OS_ClearNode(children);
+    return rc;
+}
+
+static int parse_docker_block(const OS_XML *xml, xml_node *docker_node, wm_container_connector_docker_t *out) {
+    xml_node **children = OS_GetElementsbyNode(xml, docker_node);
+    if (!children) {
+        mdebug1("Empty <docker> block in <container_connector>; using defaults.");
+        return 0;
+    }
+
+    int rc = 0;
+    for (int i = 0; children[i]; i++) {
+        if (!children[i]->element) {
+            merror(XML_ELEMNULL);
+            rc = OS_INVALID;
+            break;
+        } else if (!strcmp(children[i]->element, XML_ENABLED)) {
+            if (!strcmp(children[i]->content, "yes")) {
+                out->enabled = 1;
+            } else if (!strcmp(children[i]->content, "no")) {
+                out->enabled = 0;
+            } else {
+                merror("At module '%s/%s': invalid content for tag '%s'.",
+                       WM_CONTAINER_CONNECTOR_CONTEXT.name, XML_DOCKER, XML_ENABLED);
+                rc = OS_INVALID;
+                break;
+            }
+        } else if (!strcmp(children[i]->element, XML_SOCKET_PATH)) {
+            os_free(out->socket_path);
+            if (children[i]->content && *children[i]->content) os_strdup(children[i]->content, out->socket_path);
+        } else if (!strcmp(children[i]->element, XML_POLL_INTERVAL)) {
+            int val = atoi(children[i]->content);
+            if (val <= 0) {
+                merror("At module '%s/%s': '%s' must be a positive integer.",
+                       WM_CONTAINER_CONNECTOR_CONTEXT.name, XML_DOCKER, XML_POLL_INTERVAL);
+                rc = OS_INVALID;
+                break;
+            }
+            out->poll_interval = (unsigned int)val;
+        } else {
+            merror("No such tag '%s' at module '%s/%s'.",
+                   children[i]->element, WM_CONTAINER_CONNECTOR_CONTEXT.name, XML_DOCKER);
             rc = OS_INVALID;
             break;
         }
@@ -71,7 +131,10 @@ int wm_container_connector_read(const OS_XML *xml, xml_node **nodes, wmodule *mo
     wm_container_connector_t *cfg = NULL;
 
     os_calloc(1, sizeof(wm_container_connector_t), cfg);
-    cfg->kubernetes.enabled = 1;
+    cfg->kubernetes.enabled       = 0;
+    cfg->kubernetes.poll_interval = WM_CONTAINER_CONNECTOR_DEF_POLL_INTERVAL;
+    cfg->docker.enabled           = 0;
+    cfg->docker.poll_interval     = WM_CONTAINER_CONNECTOR_DEF_POLL_INTERVAL;
     module->context = &WM_CONTAINER_CONNECTOR_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = cfg;
@@ -84,6 +147,10 @@ int wm_container_connector_read(const OS_XML *xml, xml_node **nodes, wmodule *mo
             return OS_INVALID;
         } else if (!strcmp(nodes[i]->element, XML_KUBERNETES)) {
             if (parse_kubernetes_block(xml, nodes[i], &cfg->kubernetes) < 0) {
+                return OS_INVALID;
+            }
+        } else if (!strcmp(nodes[i]->element, XML_DOCKER)) {
+            if (parse_docker_block(xml, nodes[i], &cfg->docker) < 0) {
                 return OS_INVALID;
             }
         } else {

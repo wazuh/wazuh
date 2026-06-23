@@ -10,17 +10,22 @@
 namespace wazuh::container_connector {
 
 class MetadataCache;
+class DockerMetadataCache;
 
-/// @brief Unix-domain socket server that exposes the metadata cache to other
-/// agent components (initially syscheckd for FIM lookups, later logcollector).
+/// @brief Unix-domain socket server that exposes the metadata caches to other
+/// agent components (syscheckd FIM lookups, logcollector).
 ///
 /// Protocol: line-based JSON. Client sends one JSON object terminated by '\n',
 /// server replies with one JSON object terminated by '\n', then closes.
 ///
-/// Supported ops (T-K4 baseline):
+/// Supported ops:
 ///   { "op": "size" }
 ///   { "op": "lookup_cgroup_id",    "cgroup_id": <uint64> }
 ///   { "op": "lookup_container_id", "id": "<string>" }
+///
+/// Lookup ops check the Kubernetes cache first, then the Docker cache.
+/// The response includes a "runtime" field ("kubernetes" or "docker") and
+/// either a "pod" sub-object (Kubernetes) or a "docker" sub-object (Docker).
 ///
 /// Cancellation: the accept loop polls on both the listening socket and an
 /// eventfd. Stop() writes to the eventfd, closes the listening socket, and
@@ -30,6 +35,7 @@ class IpcServer final
 public:
     IpcServer(std::string                     socket_path,
               MetadataCache*                  cache,
+              DockerMetadataCache*            docker_cache,
               std::shared_ptr<StopController> stop,
               LogCallback                     log);
 
@@ -54,6 +60,7 @@ private:
 
     std::string                     socket_path_;
     MetadataCache*                  cache_;
+    DockerMetadataCache*            docker_cache_;
     std::shared_ptr<StopController> stop_;
     LogCallback                     log_;
 

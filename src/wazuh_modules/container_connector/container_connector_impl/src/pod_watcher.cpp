@@ -5,6 +5,7 @@
 #include "logging_helper.h"
 #include "metadata_cache.hpp"
 
+#include <algorithm>
 #include <exception>
 #include <utility>
 
@@ -13,10 +14,12 @@ namespace wazuh::container_connector {
 PodWatcher::PodWatcher(KubernetesClient*               client,
                        MetadataCache*                  cache,
                        std::shared_ptr<StopController> stop,
+                       std::chrono::seconds            poll_interval,
                        LogCallback                     log)
     : client_(client)
     , cache_(cache)
     , stop_(std::move(stop))
+    , poll_interval_(poll_interval)
     , log_(std::move(log))
 {
 }
@@ -54,7 +57,7 @@ void PodWatcher::Stop()
 
 void PodWatcher::RunLoop()
 {
-    auto current_interval = kBaseInterval;
+    auto current_interval = poll_interval_;
     bool first_iteration  = true;
 
     while (!stop_->IsStopRequested()) {
@@ -87,10 +90,37 @@ void PodWatcher::RunLoop()
                 }
             }
 
+            size_t pod_count        = 0;
+            size_t total_containers = 0;
+            for (const auto& snap : pods) {
+                if (!snap.pod) continue;
+                ++pod_count;
+                total_containers += snap.containers.size();
+                std::string owners;
+                for (const auto& ref : snap.pod->owner_refs) {
+                    if (!owners.empty()) owners += ", ";
+                    owners += ref.kind + "/" + ref.name;
+                }
+                Log(LOG_DEBUG, "K8s pod: ns='" + snap.pod->namespace_ + "' name='" +
+                               snap.pod->pod_name + "' uid=" + snap.pod->pod_uid +
+                               " containers=" + std::to_string(snap.containers.size()) +
+                               (owners.empty() ? "" : " owners=[" + owners + "]"));
+                for (const auto& c : snap.containers) {
+                    const auto short_id = c.container_id.substr(
+                        0, std::min<size_t>(12, c.container_id.size()));
+                    Log(LOG_DEBUG, "  container: name='" + c.name + "' image='" + c.image +
+                                   "' id=" + short_id +
+                                   " restarts=" + std::to_string(c.restart_count) +
+                                   " cgroup=" + std::to_string(c.cgroup_id));
+                }
+            }
+
             cache_->Reconcile(std::move(pods));
+            Log(LOG_INFO, "K8s snapshot synced: " + std::to_string(pod_count) + " pod(s), " +
+                          std::to_string(total_containers) + " container(s).");
 
             // Reset interval on a successful round.
-            current_interval = kBaseInterval;
+            current_interval = poll_interval_;
         } catch (const std::exception& ex) {
             Log(LOG_WARNING, std::string{"Pod poll failed: "} + ex.what() +
                                  " — backing off to " +

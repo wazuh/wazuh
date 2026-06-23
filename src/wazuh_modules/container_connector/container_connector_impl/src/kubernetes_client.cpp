@@ -251,6 +251,9 @@ std::vector<PodSnapshot> KubernetesClient::ListPodsOnNode()
         snapshots.push_back(std::move(snap));
     }
 
+    Log(LOG_DEBUG, "K8s pod list: " + std::to_string(snapshots.size()) +
+                   " pod(s) on node '" + effective_node_name_ + "'.");
+
     return snapshots;
 }
 

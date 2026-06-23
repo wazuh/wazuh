@@ -68,18 +68,22 @@ static void *wm_container_connector_main(wm_container_connector_t *cfg)
         return NULL;
     }
 
-    if (!cfg->kubernetes.enabled) {
-        mtinfo(WM_CONTAINER_CONNECTOR_LOGTAG, "Module disabled. Exiting.");
+    if (!cfg->kubernetes.enabled && !cfg->docker.enabled) {
+        mtinfo(WM_CONTAINER_CONNECTOR_LOGTAG, "All backends disabled. Exiting.");
         return NULL;
     }
 
     cc_config_t lib_cfg;
     memset(&lib_cfg, 0, sizeof(lib_cfg));
-    lib_cfg.kubernetes.enabled    = cfg->kubernetes.enabled ? 1 : 0;
-    lib_cfg.kubernetes.api_server = cfg->kubernetes.api_server;
-    lib_cfg.kubernetes.ca_bundle  = cfg->kubernetes.ca_bundle;
-    lib_cfg.kubernetes.token_path = cfg->kubernetes.token_path;
-    lib_cfg.kubernetes.node_name  = cfg->kubernetes.node_name;
+    lib_cfg.kubernetes.enabled       = cfg->kubernetes.enabled ? 1 : 0;
+    lib_cfg.kubernetes.poll_interval = (int)cfg->kubernetes.poll_interval;
+    lib_cfg.kubernetes.api_server    = cfg->kubernetes.api_server;
+    lib_cfg.kubernetes.ca_bundle     = cfg->kubernetes.ca_bundle;
+    lib_cfg.kubernetes.token_path    = cfg->kubernetes.token_path;
+    lib_cfg.kubernetes.node_name     = cfg->kubernetes.node_name;
+    lib_cfg.docker.enabled        = cfg->docker.enabled ? 1 : 0;
+    lib_cfg.docker.poll_interval  = (int)cfg->docker.poll_interval;
+    lib_cfg.docker.socket_path    = cfg->docker.socket_path;
 
     cc_set_log_function(wm_cc_log_dispatch);
     cc_init(&lib_cfg);
@@ -99,16 +103,23 @@ static void *wm_container_connector_main(wm_container_connector_t *cfg)
 
 static cJSON *wm_container_connector_dump(const wm_container_connector_t *cfg)
 {
-    cJSON *root = cJSON_CreateObject();
-    cJSON *obj  = cJSON_CreateObject();
-    cJSON *k8s  = cJSON_CreateObject();
+    cJSON *root   = cJSON_CreateObject();
+    cJSON *obj    = cJSON_CreateObject();
+    cJSON *k8s    = cJSON_CreateObject();
+    cJSON *docker = cJSON_CreateObject();
 
     cJSON_AddStringToObject(k8s, "enabled", cfg->kubernetes.enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(k8s, "poll_interval", cfg->kubernetes.poll_interval);
     if (cfg->kubernetes.api_server) cJSON_AddStringToObject(k8s, "api_server", cfg->kubernetes.api_server);
     if (cfg->kubernetes.ca_bundle)  cJSON_AddStringToObject(k8s, "ca_bundle",  cfg->kubernetes.ca_bundle);
     if (cfg->kubernetes.token_path) cJSON_AddStringToObject(k8s, "token_path", cfg->kubernetes.token_path);
     if (cfg->kubernetes.node_name)  cJSON_AddStringToObject(k8s, "node_name",  cfg->kubernetes.node_name);
     cJSON_AddItemToObject(obj, "kubernetes", k8s);
+
+    cJSON_AddStringToObject(docker, "enabled", cfg->docker.enabled ? "yes" : "no");
+    cJSON_AddNumberToObject(docker, "poll_interval", cfg->docker.poll_interval);
+    if (cfg->docker.socket_path) cJSON_AddStringToObject(docker, "socket_path", cfg->docker.socket_path);
+    cJSON_AddItemToObject(obj, "docker", docker);
 
     cJSON_AddItemToObject(root, "container_connector", obj);
     return root;
@@ -130,6 +141,7 @@ static void wm_container_connector_destroy(wm_container_connector_t *cfg)
     os_free(cfg->kubernetes.ca_bundle);
     os_free(cfg->kubernetes.token_path);
     os_free(cfg->kubernetes.node_name);
+    os_free(cfg->docker.socket_path);
     free(cfg);
 }
 
