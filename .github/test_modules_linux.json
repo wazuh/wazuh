@@ -218,7 +218,7 @@
       "pytest_target": "test_fim/",
       "tiers": ["0", "1"],
       "timeout_minutes": 120,
-      "pre_install": "sudo apt-get update && sudo apt-get install auditd -y",
+      "pre_install": "sudo apt-get update && sudo apt-get install auditd -y && (sudo /usr/sbin/auditd || true)",
       "pytest_extra_args": "-k \"not whodata and not Who-data\" --ignore=test_fim/test_files/test_follow_symbolic_link/test_audit_rules_with_symlink.py",
       "paths": [
         ".github/workflows/5_testintegration_linux-integration-tests.yml",
