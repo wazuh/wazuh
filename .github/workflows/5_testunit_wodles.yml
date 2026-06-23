@@ -35,9 +35,9 @@ jobs:
       matrix:
         python-version: ['3.10']
     env:
-      PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
-      TEST_REPORT_PATH: /home/runner/work/test_report.txt
-      COVERAGE_REPORT_PATH: /home/runner/work/coverage_report
+      PYTHONPATH: ${{ github.workspace }}/api:${{ github.workspace }}/framework
+      TEST_REPORT_PATH: ${{ runner.temp }}/test_report.txt
+      COVERAGE_REPORT_PATH: ${{ runner.temp }}/coverage_report
     steps:
       - uses: actions/checkout@v4
 
