@@ -100,8 +100,10 @@ class RBAChecker:
         tuple
             List with role_chunk and auth_chunk processed.
         """
-        role_chunk = sorted(role_chunk) if isinstance(role_chunk, list) else role_chunk
-        auth_chunk = sorted(auth_chunk) if isinstance(auth_chunk, list) else auth_chunk
+        def _safe_sort_key(x):
+            return (x is None, str(x))
+        role_chunk = sorted(role_chunk, key=_safe_sort_key) if isinstance(role_chunk, list) else role_chunk
+        auth_chunk = sorted(auth_chunk, key=_safe_sort_key) if isinstance(auth_chunk, list) else auth_chunk
 
         return role_chunk, auth_chunk
 

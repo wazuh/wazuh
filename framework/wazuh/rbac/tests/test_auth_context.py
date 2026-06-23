@@ -104,3 +104,22 @@ def test_auth_roles(db_setup):
                     else:
                         assert len(test.get_user_roles()) == 0
         roles = values()[1]
+
+
+def test_preprocess_to_list_handles_none_in_list(db_setup):
+    """Regression: auth_context lists may contain None when the IdP cannot
+    resolve a claim value (e.g. the caller lacks privileges to see a group).
+
+    sorted() on a list mixing str and None raises TypeError under Python 3;
+    preprocess_to_list must tolerate it so the rule simply fails to match
+    instead of propagating a 500 through the API.
+    """
+    RBAChecker = db_setup
+    role_chunk = ['admins', 'users']
+    auth_chunk = ['admins', None, 'users']
+
+    result_role, result_auth = RBAChecker.preprocess_to_list(role_chunk, auth_chunk)
+
+    assert result_role == ['admins', 'users']
+    assert None in result_auth
+    assert {v for v in result_auth if v is not None} == {'admins', 'users'}
