@@ -6,7 +6,7 @@
       "tiers": ["0 1"],
       "paths": [
         ".github/workflows/5_testintegration_windows-integration-tests.yml",
-        ".github/test-modules-windows.json",
+        ".github/test_modules_windows.json",
         "src/client-agent/**",
         "src/config/src/buffer-config.c",
         "src/config/src/client-config.c",
@@ -23,7 +23,7 @@
       "tiers": ["0 1"],
       "paths": [
         ".github/workflows/5_testintegration_windows-integration-tests.yml",
-        ".github/test-modules-windows.json",
+        ".github/test_modules_windows.json",
         "src/client-agent/**",
         "src/config/src/buffer-config.c",
         "src/config/src/client-config.c",
@@ -42,7 +42,7 @@
       "tiers": ["0 1"],
       "paths": [
         ".github/workflows/5_testintegration_windows-integration-tests.yml",
-        ".github/test-modules-windows.json",
+        ".github/test_modules_windows.json",
         "src/active-response/**",
         "src/os_execd/**",
         "src/win32/**",
@@ -59,7 +59,7 @@
       "start_service": true,
       "paths": [
         ".github/workflows/5_testintegration_windows-integration-tests.yml",
-        ".github/test-modules-windows.json",
+        ".github/test_modules_windows.json",
         "src/config/src/syscheck-config.c",
         "src/config/include/syscheck-config.h",
         "src/syscheckd/**",
@@ -74,7 +74,7 @@
       "tiers": ["0 1"],
       "paths": [
         ".github/workflows/5_testintegration_windows-integration-tests.yml",
-        ".github/test-modules-windows.json",
+        ".github/test_modules_windows.json",
         "src/config/src/wmodules-github.c",
         "src/wazuh_modules/src/wm_github.h",
         "src/wazuh_modules/src/wm_github.c",
@@ -90,7 +90,7 @@
       "tiers": ["0 1"],
       "paths": [
         ".github/workflows/5_testintegration_windows-integration-tests.yml",
-        ".github/test-modules-windows.json",
+        ".github/test_modules_windows.json",
         "src/config/src/localfile-config.c",
         "src/config/include/localfile-config.h",
         "src/logcollector/**",
@@ -105,7 +105,7 @@
       "tiers": ["0 1"],
       "paths": [
         ".github/workflows/5_testintegration_windows-integration-tests.yml",
-        ".github/test-modules-windows.json",
+        ".github/test_modules_windows.json",
         "src/config/src/wmodules-office365.c",
         "src/wazuh_modules/src/wm_office365.h",
         "src/wazuh_modules/src/wm_office365.c",
@@ -122,7 +122,7 @@
       "tiers": ["0 1"],
       "paths": [
         ".github/workflows/5_testintegration_windows-integration-tests.yml",
-        ".github/test-modules-windows.json",
+        ".github/test_modules_windows.json",
         "src/config/src/wmodules-sca.c",
         "src/wazuh_modules/src/wm_sca.c",
         "src/wazuh_modules/src/wm_sca.h",
@@ -139,10 +139,11 @@
       "tiers": ["0 1"],
       "paths": [
         ".github/workflows/5_testintegration_windows-integration-tests.yml",
-        ".github/test-modules-windows.json",
+        ".github/test_modules_windows.json",
         "src/config/src/wmodules-syscollector.c",
         "src/wazuh_modules/src/wm_syscollector.c",
         "src/wazuh_modules/syscollector/**",
+        "src/data_provider/**",
         "src/win32/**",
         "src/Makefile",
         "tests/integration/conftest.py",

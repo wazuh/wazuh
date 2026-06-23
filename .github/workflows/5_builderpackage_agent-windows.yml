@@ -10,8 +10,8 @@ on:
       - "ruleset/**"
       - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-windows.yml"
-      - ".github/test-modules-windows.json"
       - ".github/workflows/5_testintegration_agent-start.yml"
+      - ".github/test_modules_windows.json"
       - ".github/workflows/5_testintegration_windows-integration-tests.yml"
       - ".github/actions/5_builderpackage_get-last-stable-version/**"
       - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
@@ -63,7 +63,7 @@ jobs:
         id: detect
         uses: ./.github/actions/5_testintegration_detect-changes
         with:
-          modules-config: .github/test-modules-windows.json
+          modules-config: .github/test_modules_windows.json
           none-matrix: '{"include":[{"name":"none","shard_name":"none","pytest_target":"test_none\\","pytest_extra_args":"","pytest_tier_args":"","pytest_ignore_args":"","start_service":false,"skip_tests":true}]}'
           field-defaults: '{"pytest_extra_args":"","pytest_ignore_args":"","start_service":false,"skip_tests":false}'
 
