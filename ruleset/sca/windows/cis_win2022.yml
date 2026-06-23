@@ -1493,6 +1493,7 @@ checks:
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes'
       - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionPipes -> !r:HydraLSPipe|TermServLicensing|BROWSER'
+      - 'not r:HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\LanManServer\Parameters -> NullSessionShares -> r:\S+'
 
   # 2.3.10.8 (L1) Configure 'Network access: Remotely accessible registry paths' is configured. (Automated)
   - id: 27052
