@@ -34,13 +34,13 @@ METHODS (executed in order):
     1. Git command OR .git directory: Returns current branch and/or tag
        - Method 1 and 2 are mutually exclusive (git command takes precedence)
     2. VERSION.json: Always executed, returns branch and tag based on version
-       - Special case: version 5.0.0 also returns refs/heads/main as fallback
+       - Special case: version 5.0.1 also returns refs/heads/main as fallback
 
 EXAMPLES:
     $ $(basename "$0")
     refs/heads/enhancement/32855-checkout-indexer-templates
-    refs/heads/5.0.0
-    refs/tags/v5.0.0
+    refs/heads/5.0.1
+    refs/tags/v5.0.1
     refs/heads/main
 
     $ $(basename "$0")  # On a tagged commit with version 4.14.0
@@ -185,8 +185,8 @@ get_version_json_refs() {
     if [ -n "$version" ]; then
         echo "refs/heads/$version"
 
-        # Special case: for version 5.0.0, also try main branch as fallback
-        if [ "$version" = "5.0.0" ]; then
+        # Special case: for version 5.0.1, also try main branch as fallback
+        if [ "$version" = "5.0.1" ]; then
             echo "refs/heads/main"
         fi
 
