@@ -374,6 +374,17 @@ ANALYSISD_METRICS = [
     ("spaces_standard_events_unclassified", "Standard Space — Events Unclassified",  "Count"),
 ]
 
+EXTRA_PROCESS_COMPONENTS = (
+    "wazuh-indexer",
+    "wazuh-indexer-engine",
+    "wazuh-dashboard",
+)
+SIMPLE_MONITOR_EXTRA_COMPONENTS = (
+    "wazuh-indexer",
+    "wazuh-indexer-engine",
+)
+TOTAL_MONITOR_EXTRA_COMPONENTS = EXTRA_PROCESS_COMPONENTS
+
 
 # ---------------------------------------------------------------------------
 # Main chart generation
@@ -392,9 +403,11 @@ def generate_charts(
     analysisd_dfs: dict[str, pd.DataFrame] = {}
     logs: dict[str, pd.DataFrame] = {}
     modulesd_dfs: dict[str, pd.DataFrame] = {}
-    # wazuh-indexer process CSV (present only in all-in-one deployments).
-    # Kept separate so manager-only charts stay clean; combined charts add it back.
-    indexer_proc_dfs: dict[str, pd.DataFrame] = {}
+    # Optional all-in-one components. Kept separate so manager-only charts
+    # stay clean; selected combined charts add them back explicitly.
+    extra_proc_dfs: dict[str, dict[str, pd.DataFrame]] = {
+        name: {} for name in EXTRA_PROCESS_COMPONENTS
+    }
 
     for path, label in result_dirs:
         bench_path = os.path.join(path, "bench.csv")
@@ -455,12 +468,12 @@ def generate_charts(
                 proc_name = fname.removesuffix(".csv")
                 key = f"{label}/{proc_name}" if len(result_dirs) > 1 else proc_name
                 df = load_monitor(fpath)
-                if proc_name == "wazuh-indexer":
-                    if len(df) > 0:
-                        indexer_proc_dfs[label] = df
+                if len(df) == 0:
+                    continue
+                if proc_name in extra_proc_dfs:
+                    extra_proc_dfs[proc_name][label] = df
                 else:
-                    if len(df) > 0:
-                        monitors[key] = df
+                    monitors[key] = df
                     if "modulesd" in proc_name:
                         modulesd_dfs[label] = df
         elif os.path.isfile(monitor_path):
@@ -479,16 +492,17 @@ def generate_charts(
                 proc_name = fname.removesuffix(".csv")
                 key = f"{label}/{proc_name}" if len(result_dirs) > 1 else proc_name
                 df = load_monitor(fpath)
-                if proc_name == "wazuh-indexer":
-                    if len(df) > 0:
-                        indexer_proc_dfs[label] = df
+                if len(df) == 0:
+                    continue
+                if proc_name in extra_proc_dfs:
+                    extra_proc_dfs[proc_name][label] = df
                 else:
-                    if len(df) > 0:
-                        monitors[key] = df
+                    monitors[key] = df
                     if "modulesd" in proc_name:
                         modulesd_dfs[label] = df
 
-    if not monitors and not benches and not disk_dfs and not remoted_dfs:
+    has_extra_procs = any(extra_proc_dfs.values())
+    if not monitors and not benches and not disk_dfs and not remoted_dfs and not has_extra_procs:
         print("No data files found — nothing to generate.")
         return
 
@@ -498,48 +512,68 @@ def generate_charts(
     disk_dfs = {k: v for k, v in disk_dfs.items() if len(v) > 0}
     remoted_dfs = {k: v for k, v in remoted_dfs.items() if len(v) > 0}
     analysisd_dfs = {k: v for k, v in analysisd_dfs.items() if len(v) > 0}
-    indexer_proc_dfs = {k: v for k, v in indexer_proc_dfs.items() if len(v) > 0}
+    extra_proc_dfs = {
+        name: {lbl: df for lbl, df in datasets.items() if len(df) > 0}
+        for name, datasets in extra_proc_dfs.items()
+    }
+    has_extra_procs = any(extra_proc_dfs.values())
 
-    if not monitors and not benches and not disk_dfs and not remoted_dfs:
+    if not monitors and not benches and not disk_dfs and not remoted_dfs and not has_extra_procs:
         print("All CSV files are empty — nothing to generate.")
         return
 
     print(f"\nGenerating charts in {out_dir}/\n")
 
     # -- Monitor time-series: one chart per metric, overlaying all runs ------
-    if monitors:
-        # For the simple per-metric charts, include wazuh-indexer as an extra
-        # line when available.  For multi-result-dir runs the key follows the
-        # same "{label}/{proc}" convention used by other processes.
-        monitors_with_indexer: dict[str, pd.DataFrame] = dict(monitors)
-        for lbl, idf in indexer_proc_dfs.items():
-            ikey = f"{lbl}/wazuh-indexer" if len(result_dirs) > 1 else "wazuh-indexer"
-            monitors_with_indexer[ikey] = idf
+    simple_extra_proc_dfs = {
+        name: extra_proc_dfs.get(name, {})
+        for name in SIMPLE_MONITOR_EXTRA_COMPONENTS
+    }
+    has_simple_extra_procs = any(simple_extra_proc_dfs.values())
+    if monitors or has_simple_extra_procs:
+        # For the simple per-metric charts, include wazuh-indexer and the
+        # indexer-owned engine when available. For multi-result-dir runs the
+        # key follows the same "{label}/{proc}" convention used by other
+        # processes.
+        monitors_with_simple_extras: dict[str, pd.DataFrame] = dict(monitors)
+        for component, datasets in simple_extra_proc_dfs.items():
+            for lbl, df in datasets.items():
+                key = f"{lbl}/{component}" if len(result_dirs) > 1 else component
+                monitors_with_simple_extras[key] = df
 
         for col, title_suffix, ylabel in MONITOR_METRICS:
             out = os.path.join(out_dir, f"monitor_{col}.{fmt}")
             plot_timeseries(
-                monitors_with_indexer, col,
+                monitors_with_simple_extras, col,
                 f"Wazuh Manager — {title_suffix}",
                 ylabel, out,
             )
 
-        # manager-only: per-process lines + manager total (no indexer).
-        _plot_with_total(monitors, "cpu_pct", "CPU Usage (per process + total)",
-                         "CPU %", os.path.join(out_dir, f"monitor_cpu_total.{fmt}"))
-        _plot_with_total(monitors, "rss_mb", "RSS Memory (per process + total)",
-                         "MB", os.path.join(out_dir, f"monitor_rss_total.{fmt}"))
+        if monitors:
+            # manager-only: per-process lines + manager total (no indexer,
+            # indexer engine, or dashboard).
+            _plot_with_total(monitors, "cpu_pct", "CPU Usage (per process + total)",
+                             "CPU %", os.path.join(out_dir, f"monitor_cpu_total.{fmt}"))
+            _plot_with_total(monitors, "rss_mb", "RSS Memory (per process + total)",
+                             "MB", os.path.join(out_dir, f"monitor_rss_total.{fmt}"))
 
-        # combined: manager processes + wazuh-indexer line + single grand total.
-        if indexer_proc_dfs:
-            _plot_with_total_and_indexer(
-                monitors, indexer_proc_dfs, "cpu_pct",
-                "CPU Usage — Manager + Indexer", "CPU %",
-                os.path.join(out_dir, f"monitor_cpu_total_with_indexer.{fmt}"))
-            _plot_with_total_and_indexer(
-                monitors, indexer_proc_dfs, "rss_mb",
-                "RSS Memory — Manager + Indexer", "MB",
-                os.path.join(out_dir, f"monitor_rss_total_with_indexer.{fmt}"))
+            # combined: manager processes + optional all-in-one components +
+            # single grand total. Keep the historical *_with_indexer filenames
+            # because downstream docs and comparisons already reference them.
+            total_extra_proc_dfs = {
+                name: extra_proc_dfs.get(name, {})
+                for name in TOTAL_MONITOR_EXTRA_COMPONENTS
+                if extra_proc_dfs.get(name)
+            }
+            if total_extra_proc_dfs:
+                _plot_with_total_and_extra_components(
+                    monitors, total_extra_proc_dfs, "cpu_pct",
+                    "CPU Usage — Manager + Indexer + Dashboard", "CPU %",
+                    os.path.join(out_dir, f"monitor_cpu_total_with_indexer.{fmt}"))
+                _plot_with_total_and_extra_components(
+                    monitors, total_extra_proc_dfs, "rss_mb",
+                    "RSS Memory — Manager + Indexer + Dashboard", "MB",
+                    os.path.join(out_dir, f"monitor_rss_total_with_indexer.{fmt}"))
 
     # -- Disk-usage time series (from disk_usage.csv) ------------------------
     if disk_dfs:
@@ -1161,26 +1195,37 @@ def _plot_with_total(
     print(f"  -> {out_path}")
 
 
-def _plot_with_total_and_indexer(
+def _plot_with_total_and_extra_components(
     manager_datasets: dict[str, pd.DataFrame],
-    indexer_datasets: dict[str, pd.DataFrame],
+    extra_component_datasets: dict[str, dict[str, pd.DataFrame]],
     y_col: str,
     title: str,
     ylabel: str,
     out_path: str,
     figsize=(14, 7),
 ):
-    """Per-process manager lines + wazuh-indexer line + single grand total.
+    """Manager process lines + extra component lines + grand total.
 
-    For a single-result-dir run (keys have no "/") all manager processes are
-    summed into one total, the indexer is added on top, and a single "Total"
-    line is drawn.  For multi-result-dir runs each run gets its own total.
+    For a single-result-dir run (manager keys have no "/") all manager
+    processes are summed into one total, every available extra component is
+    added on top, and a single "Total" line is drawn. For multi-result-dir
+    runs each run gets its own total.
     """
     fig, ax = plt.subplots(figsize=figsize)
 
     def _run_of(key: str) -> str:
         """Return the run label part of a dataset key."""
         return key.split("/")[0] if "/" in key else ""
+
+    def _component_df(
+        component_datasets: dict[str, pd.DataFrame],
+        run_label: str,
+    ) -> pd.DataFrame | None:
+        if run_label in component_datasets:
+            return component_datasets[run_label]
+        if not run_label and component_datasets:
+            return next(iter(component_datasets.values()))
+        return None
 
     # Accumulate per-run manager totals.
     run_labels = list(dict.fromkeys(_run_of(k) for k in manager_datasets))
@@ -1201,27 +1246,24 @@ def _plot_with_total_and_indexer(
             t_r = int(float(t))
             mt[t_r] = mt.get(t_r, 0.0) + float(v)
 
-    # For each run: add indexer line and compute one grand total.
+    # For each run: add each extra component as its own line and compute one
+    # grand total that includes every available extra component.
     for run_label in run_labels:
         mt = run_totals[run_label]
         suffix = f" ({run_label})" if len(run_labels) > 1 and run_label else ""
-
-        # Locate indexer data: for single-dir (run_label=="") use first entry.
-        if run_label in indexer_datasets:
-            idf = indexer_datasets[run_label]
-        elif not run_label and indexer_datasets:
-            idf = next(iter(indexer_datasets.values()))
-        else:
-            idf = None
-
         grand: dict[int, float] = dict(mt)
-        if idf is not None and y_col in idf.columns:
+
+        for comp_idx, (component, component_datasets) in enumerate(extra_component_datasets.items()):
+            df = _component_df(component_datasets, run_label)
+            if df is None or y_col not in df.columns:
+                continue
             ax.plot(
-                idf["elapsed_s"], idf[y_col],
-                label=f"wazuh-indexer{suffix}",
-                color=COLORS[3], linewidth=2.0, alpha=0.9, linestyle="-",
+                df["elapsed_s"], df[y_col],
+                label=f"{component}{suffix}",
+                color=run_color(len(manager_datasets) + comp_idx),
+                linewidth=2.0, alpha=0.9, linestyle="-",
             )
-            for t, v in zip(idf["elapsed_s"], idf[y_col]):
+            for t, v in zip(df["elapsed_s"], df[y_col]):
                 t_r = int(float(t))
                 grand[t_r] = grand.get(t_r, 0.0) + float(v)
 
