@@ -225,6 +225,9 @@
                     <Component Id="SCA_DLL" DiskId="1" Guid="2A4C3BF3-959F-440C-9B2B-3EF856C8D551">
                         <File Id="SCA_DLL" Name="sca.dll" Source="..\build\bin\sca.dll" />
                     </Component>
+                    <Component Id="CONTAINER_IMAGES_DLL" DiskId="1" Guid="2512AAD8-E2FE-4A1D-8182-040A7EF6E950">
+                        <File Id="CONTAINER_IMAGES_DLL" Name="container_images.dll" Source="..\build\bin\container_images.dll" />
+                    </Component>
                     <Component Id="AGENT_INFO_DLL" DiskId="1" Guid="BF43CE03-6615-415C-8E07-4DBEB0CBBFEC">
                         <File Id="AGENT_INFO_DLL" Name="agent_info.dll" Source="..\build\bin\agent_info.dll" />
                     </Component>
@@ -608,6 +611,7 @@
             <ComponentRef Id="SYSCOLLECTOR_NORM_CONFIG" />
             <ComponentRef Id="SYSCOLLECTOR_DLL" />
             <ComponentRef Id="SCA_DLL" />
+            <ComponentRef Id="CONTAINER_IMAGES_DLL" />
             <ComponentRef Id="AGENT_INFO_DLL" />
             <ComponentRef Id="FIMDB_DLL" />
             <ComponentRef Id="LIBWAZUHEXT_DLL" />
