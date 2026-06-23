@@ -9,9 +9,9 @@
 # Center for Internet Security Mac0S 14 Sonoma Benchmark v1.0.0 - 10-16-2023
 
 policy:
-  id: "cis_macOS_14.0_Sonoma.yml"
-  file: "cis_macOS_14.0_Sonoma.yml"
-  name: "CIS_Apple_macOS_14.0_Sonoma_Benchmark_v1.0.0"
+  id: "cis_apple_macos_14"
+  file: "cis_apple_macOS_14.x.yml"
+  name: "CIS Apple macOS 14.0 Sonoma Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for MacOS 14 Sonoma systems."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
