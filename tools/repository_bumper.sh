@@ -535,6 +535,27 @@ update_root_changelog() {
     log_action "Modified $changelog_file with new version: $new_version"
 }
 
+update_file_git_refs() {
+    local new_version="$1"
+
+    [[ -z "$new_version" ]] && return
+
+    local refs_file="$DIR_ROOT/tools/get_git_refs.sh"
+    local current_version
+    current_version=$(grep -E 'if \[ "\$version" = "[0-9]+\.[0-9]+\.[0-9]+" \]' "$refs_file" \
+        | sed -E 's/.*if \[ "\$version" = "([0-9]+\.[0-9]+\.[0-9]+)" \].*/\1/')
+
+    if [[ -n "$current_version" && "$current_version" != "$new_version" ]]; then
+        local old_escaped="${current_version//./\\.}"
+        sed -i -E "s|(if \[ \"\\\$version\" = \")${old_escaped}(\" \])|\1${new_version}\2|" "$refs_file"
+        sed -i -E "s|(# Special case: for version )${old_escaped}(,)|\1${new_version}\2|" "$refs_file"
+        sed -i -E "s|(- Special case: version )${old_escaped}( also returns)|\1${new_version}\2|" "$refs_file"
+        sed -i -E "s|(refs/heads/)${old_escaped}$|\1${new_version}|" "$refs_file"
+        sed -i -E "s|(refs/tags/v)${old_escaped}$|\1${new_version}|" "$refs_file"
+        log_action "Modified $refs_file with new version: $new_version"
+    fi
+}
+
 update_version() {
     local current_version="$1"
     local current_stage="$2"
@@ -551,6 +572,7 @@ update_version() {
     update_file_sources "$new_version" "$new_stage"
     update_file_framework "$new_version" "$new_stage"
     update_file_api "$new_version" "$new_stage"
+    update_file_git_refs "$new_version"
     update_root_changelog "$new_version"
 
     local final_version="${new_version:-$current_version}"
