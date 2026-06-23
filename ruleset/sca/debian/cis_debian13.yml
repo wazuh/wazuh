@@ -2195,10 +2195,10 @@ checks:
   # 4.3.4 Ensure a nftables table exists. (Automated)
   - id: 33136
     name: "Ensure a nftables table exists."
-    description: "Tables hold chains. Each table only has one address family and only applies to packets of this family. Tables can have one of five families."
+    description: "Tables hold chains. Each table only has one address family and only applies to packets of this family."
     rationale: "nftables doesn't have any default tables. Without a table being built, nftables will not filter network traffic."
     impact: "Adding rules to a running nftables can cause loss of connectivity to the system."
-    remediation: "Run the following command to create a table in nftables # nft create table inet <table name> Example: # nft create table inet filter."
+    remediation: "Run the following command to create a table in nftables # nft create table <table family> <table name> Example: # nft create table inet filter."
     compliance:
       cmmc: ["AC.L2-3.1.20", "CM.L2-3.4.7", "SC.L2-3.13.1", "SC.L2-3.13.6"]
       fedramp: ["SC-7"]
@@ -2216,15 +2216,15 @@ checks:
       subtechnique: ["T1090.001", "T1090.002", "T1557.001"]
     condition: all
     rules:
-      - "c:nft list tables -> r:table inet"
+      - "c:nft list tables -> r:table"
 
   # 4.3.5 Ensure nftables base chains exist. (Automated)
   - id: 33137
     name: "Ensure nftables base chains exist."
     description: "Chains are containers for rules. They exist in two kinds, base chains and regular chains. A base chain is an entry point for packets from the networking stack, a regular chain may be used as jump target and is used for better rule organization."
-    rationale: "If a base chain doesn't exist with a hook for input, forward, and delete, packets that would flow through those chains will not be touched by nftables."
+    rationale: "If a base chain doesn't exist with a hook for input, forward, and output, packets that would flow through those chains will not be touched by nftables."
     impact: "If configuring nftables over ssh, creating a base chain with a policy of drop will cause loss of connectivity. Ensure that a rule allowing ssh has been added to the base chain prior to setting the base chain's policy to drop."
-    remediation: "Run the following command to create the base chains: # nft create chain inet <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; } Example: # nft create chain inet filter input { type filter hook input priority 0 \\; } # nft create chain inet filter forward { type filter hook forward priority 0 \\; } # nft create chain inet filter output { type filter hook output priority 0 \\; }."
+    remediation: "Run the following command to create the base chains: # nft create chain <table family> <table name> <base chain name> { type filter hook <(input|forward|output)> priority 0 \\; } Example: # nft create chain inet filter input { type filter hook input priority 0 \\; } # nft create chain inet filter forward { type filter hook forward priority 0 \\; } # nft create chain inet filter output { type filter hook output priority 0 \\; }."
     compliance:
       cmmc: ["AC.L2-3.1.20", "CM.L2-3.4.7", "SC.L2-3.13.1", "SC.L2-3.13.6"]
       fedramp: ["SC-7"]
@@ -2242,9 +2242,9 @@ checks:
       subtechnique: ["T1090.001", "T1090.002", "T1557.001"]
     condition: all
     rules:
-      - "c:nft list ruleset -> r:type filter hook input priority 0"
-      - "c:nft list ruleset -> r:type filter hook forward priority 0"
-      - "c:nft list ruleset -> r:type filter hook output priority 0"
+      - "c:nft --numeric list chains -> r:type filter hook input priority 0"
+      - "c:nft --numeric list chains -> r:type filter hook forward priority 0"
+      - "c:nft --numeric list chains -> r:type filter hook output priority 0"
 
   # 4.3.6 Ensure nftables loopback traffic is configured. (Automated)
   - id: 33138
@@ -2269,8 +2269,8 @@ checks:
       subtechnique: ["T1090.001", "T1090.002", "T1557.001"]
     condition: all
     rules:
-      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:iif "lo" accept'
-      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/''" -> r:ip saddr|ip6 saddr'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/'' | awk ''/iif(name)? \"lo\"/''" -> r:accept'
+      - 'c:sh -c "nft list ruleset | awk ''/hook input/,/}/'' | awk ''/ip(6)? saddr (127.0.0.0|::1)/''" -> r:drop'
 
   # 4.3.7 Ensure nftables outbound and established connections are configured. (Manual) - Not Implemented
 
