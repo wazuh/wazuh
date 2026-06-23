@@ -1,6 +1,6 @@
 # Log collectors
 
-Logcollector reads events from different sources on the monitored endpoint. Each source is configured with a `<localfile>` block in `ossec.conf`, where `<log_format>` selects the collector.
+Logcollector reads events from different log sources on the monitored endpoint. Each source is configured with a `<localfile>` block in `ossec.conf`, where `<log_format>` selects the collector.
 
 | Format | Operating system | Description |
 |--------|-----------------|-------------|
@@ -9,9 +9,6 @@ Logcollector reads events from different sources on the monitored endpoint. Each
 | `eventlog` | Windows | Windows Event Log via the legacy WinEventLog API |
 | `macos` | macOS | macOS Unified Logging System (ULS) |
 | `journald` | Linux | systemd journal |
-| `json` | Linux, macOS, Windows | JSON-encoded log files |
-| `command` | Linux, macOS, Windows | Standard output of a command, one event per line |
-| `full_command` | Linux, macOS, Windows | Full output of a command as a single event |
 
 For full configuration options, see [Configuration](configuration.md).
 
@@ -30,11 +27,13 @@ Reads plain text log files one line at a time. It is the standard format for mos
 
 The `<location>` field supports static paths, date-based patterns (`strftime` format), and wildcards.
 
+For JSON-encoded log files, use `<log_format>json</log_format>` — the collector reads the same way but validates and normalizes each line as a JSON object before forwarding it.
+
 ---
 
 ## eventchannel — Windows Event Channel
 
-Collects events from the Windows Event Log using the EventChannel API (`EvtQuery` / `EvtRender`). Supported on Windows Vista and later. By default the agent monitors the **System**, **Application**, and **Security** channels; any channel exposed by Windows can be added.
+Collects events from the Windows Event Log using the EventChannel API (`EvtSubscribe` / `EvtRender`). Supported on Windows Vista and later. By default the agent monitors the **System**, **Application**, and **Security** channels; any channel exposed by Windows can be added.
 
 ```xml
 <localfile>
@@ -131,32 +130,5 @@ Collects entries from the Linux systemd journal. Entries can be filtered by jour
   <log_format>journald</log_format>
   <filter_type>value</filter_type>
   <filter field="SYSLOG_IDENTIFIER">sshd</filter>
-</localfile>
-```
-
----
-
-## json — JSON log files
-
-Reads JSON-encoded log files, extracting top-level fields directly from the JSON structure.
-
-```xml
-<localfile>
-  <location>/var/log/app.json</location>
-  <log_format>json</log_format>
-</localfile>
-```
-
----
-
-## command and full_command — Command output
-
-Runs a command at a configured interval and collects its output. `command` treats each line of stdout as a separate event; `full_command` collects the entire output as a single event.
-
-```xml
-<localfile>
-  <log_format>command</log_format>
-  <command>df -P</command>
-  <frequency>360</frequency>
 </localfile>
 ```
