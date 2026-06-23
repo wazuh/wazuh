@@ -27,6 +27,7 @@ WORKDIR /usr/src
 RUN wget https://ftp.gnu.org/gnu/gcc/gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0/gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0.tar.xz \
  && tar -xf gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0.tar.xz \
  && cd gcc-${GCC_MAJOR_VERSION}.${GCC_MINOR_VERSION}.0 \
+ && sed -i "s|^base_url=.*|base_url='https://gcc.gnu.org/pub/gcc/infrastructure/'|" contrib/download_prerequisites \
  && ./contrib/download_prerequisites \
  && mkdir build && cd build \
  && ../configure \
