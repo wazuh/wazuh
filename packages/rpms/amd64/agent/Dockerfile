@@ -58,15 +58,15 @@ RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
 # Binutils
 # -------------------------------------------------------------------
 RUN yum install -y flex && \
-    curl -OL https://github.com/bminor/binutils-gdb/archive/refs/tags/binutils-2_41.zip && \
-    unzip binutils-2_41.zip && rm -f binutils-2_41.zip && \
-    cd binutils-gdb-binutils-2_41 && mkdir build && cd build && \
+    curl -OL https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz && \
+    tar xzf binutils-2.41.tar.gz && rm -f binutils-2.41.tar.gz && \
+    cd binutils-2.41 && mkdir build && cd build && \
     ../configure --disable-gdb --disable-werror --disable-zlib \
         --disable-gprofng --disable-gdbserver --disable-gdbsupport \
         --disable-gnulib --disable-gold --disable-gprof --disable-texinfo \
         --disable-binutils --disable-sim && \
     make MAKEINFO=true -j$(nproc) && make MAKEINFO=true install && \
-    cd / && rm -rf binutils-gdb-binutils-2_41 && \
+    cd / && rm -rf binutils-2.41 && \
     ln -fs /usr/local/bin/ld /usr/bin/ld
 
 # -------------------------------------------------------------------
