@@ -8,6 +8,7 @@
 - [Client](client/README.md) - Agent daemon (wazuh-agentd) managing agent-manager communication
 - [Cluster](cluster/README.md) - Manages the Wazuh server cluster
 - [Command](command/README.md) - Scheduled command execution through the command wodle
+- [Container Images](container-images/README.md) - Container image inventory discovery for agents
 - [Content Manager](content_manager/README.md) - CTI feed fetcher for Vulnerability Detection
 - [Control](control/README.md) - Manager control operations (restart, reload) via wm_control module
 - [Database Sync](database-sync/README.md) - modulesd `database` module that keeps `global.db` in step with `client.keys` and `/etc/wazuh-manager/shared/`
