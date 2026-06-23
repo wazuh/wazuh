@@ -56,8 +56,16 @@ checks:
       pci_dss: ["2.2.4"]
       nist_800_53: ["CM.1"]
     mitre:
-      tactic: ["TA0008"]
-      technique: ["T1021"]
+      tactic:
+        id:
+          - "TA0008"
+        name:
+          - "Lateral Movement"
+      technique:
+        id:
+          - "T1021"
+        name:
+          - "Remote Services"
     condition: all
     rules:
       - 'f:$sshd_file -> !r:^# && r:Port && !r:\s*\t*22$'
@@ -157,9 +165,32 @@ Unknown keys are rejected with a warning and excluded from the check.
 
 #### MITRE keys
 
-The `mitre` field is an object that maps MITRE ATT&CK categories to arrays of identifier strings. The following keys are supported:
+The `mitre` field is an object that maps MITRE ATT&CK categories to their identifiers and names. The following keys are supported:
 
 `tactic`, `technique`, `subtechnique`
+
+Each key is an object with two parallel arrays:
+
+| Subkey | Type             | Description                          |
+|--------|------------------|--------------------------------------|
+| id     | Array of strings | MITRE ATT&CK identifiers (e.g. `TA0008`, `T1021`) |
+| name   | Array of strings | Human-readable names matching each identifier in order (e.g. `Lateral Movement`, `Remote Services`) |
+
+The `id` and `name` arrays must have the same length, with each name corresponding to the identifier at the same position. Names are taken from the MITRE ATT&CK catalog (https://attack.mitre.org/).
+
+```yaml
+mitre:
+  tactic:
+    id:
+      - "TA0008"
+    name:
+      - "Lateral Movement"
+  technique:
+    id:
+      - "T1021"
+    name:
+      - "Remote Services"
+```
 
 ---
 
