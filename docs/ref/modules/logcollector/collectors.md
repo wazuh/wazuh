@@ -5,8 +5,9 @@ Logcollector reads events from different log sources on the monitored endpoint. 
 | Format | Operating system | Description |
 |--------|-----------------|-------------|
 | `syslog` | Linux, macOS, Windows | Plain text log files, one event per line |
+| `json` | Linux, macOS, Windows | JSON-encoded log files, one object per line |
 | `eventchannel` | Windows | Windows Event Log via the EventChannel API (Vista and later) |
-| `eventlog` | Windows | Windows Event Log via the legacy WinEventLog API |
+| `eventlog` | Windows | Windows Event Log via the `OpenEventLog` / `ReadEventLog` API |
 | `macos` | macOS | macOS Unified Logging System (ULS) |
 | `journald` | Linux | systemd journal |
 
@@ -27,7 +28,18 @@ Reads plain text log files one line at a time. It is the standard format for mos
 
 The `<location>` field supports static paths, date-based patterns (`strftime` format), and wildcards.
 
-For JSON-encoded log files, use `<log_format>json</log_format>` — the collector reads the same way but validates and normalizes each line as a JSON object before forwarding it.
+---
+
+## json — JSON log files
+
+Reads JSON-encoded log files one line at a time. Each line must be a valid JSON object; lines that fail to parse are silently discarded. If `<labels>` are configured, they are injected into each JSON object before the event is forwarded.
+
+```xml
+<localfile>
+  <location>/var/log/app.json</location>
+  <log_format>json</log_format>
+</localfile>
+```
 
 ---
 
@@ -51,7 +63,7 @@ Events can be filtered with XPath queries using the `<query>` element. See [Conf
 The agent wrapped each event in a JSON object containing a human-readable message and the raw XML:
 
 ```json
-{"message": "Event description.", "event": "<Event>...</Event>"}
+{"Message": "Event description.", "Event": "<Event>...</Event>"}
 ```
 
 #### Wazuh 5.0
@@ -122,13 +134,12 @@ The `<query>` attribute `type` accepts a comma-separated list of `activity`, `lo
 
 ## journald — systemd journal
 
-Collects entries from the Linux systemd journal. Entries can be filtered by journal field using `<filter>` elements.
+Collects entries from the Linux systemd journal. Entries can be filtered by journal field using `<filter>` elements. Filter values are compiled as PCRE2 regular expressions; use anchors (`^`, `$`) for exact matching.
 
 ```xml
 <localfile>
   <location>journald</location>
   <log_format>journald</log_format>
-  <filter_type>value</filter_type>
-  <filter field="SYSLOG_IDENTIFIER">sshd</filter>
+  <filter field="SYSLOG_IDENTIFIER">^sshd$</filter>
 </localfile>
 ```
