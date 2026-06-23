@@ -61,9 +61,13 @@ runs:
           # # Disable branch coverage
           arguments+="--rc branch_coverage=0 "
 
-          # Ignore lcov 2.x strict errors for unused include patterns, version mismatches,
-          # and gcov/lcov line range mismatches (gcov 13 + lcov 2.0 incompatibility)
-          arguments+="--ignore-errors unused,deprecated,mismatch,negative "
+          # TODO(codebuild-temp): Remove version guard once CodeBuild runners run Ubuntu 24.04+
+          # (lcov 2.0). The --ignore-errors flags below suppress gcov/lcov 2.x strict errors;
+          # lcov 1.x (Ubuntu 22.04) does not recognise these flag values and exits non-zero.
+          LCOV_MAJOR=$(lcov --version 2>/dev/null | grep -oP '\d+' | head -1)
+          if [ "${LCOV_MAJOR:-0}" -ge 2 ]; then
+            arguments+="--ignore-errors unused,deprecated,mismatch,negative "
+          fi
 
           # Include source files using glob patterns (compatible with lcov 2.x)
           if [[ ${{ inputs.path }} =~ "shared_modules/utils" ]]; then
@@ -86,7 +90,11 @@ runs:
           cd ${{ inputs.path }}/build
 
           # Generate HTML report
-          genhtml coverage.info --output-directory coverage_report --ignore-errors unused,deprecated,mismatch,negative
+          # TODO(codebuild-temp): Same as above — drop the flag once Ubuntu 24.04+ is the base.
+          LCOV_MAJOR=$(lcov --version 2>/dev/null | grep -oP '\d+' | head -1)
+          IGNORE_ARGS=""
+          if [ "${LCOV_MAJOR:-0}" -ge 2 ]; then IGNORE_ARGS="--ignore-errors unused,deprecated,mismatch,negative"; fi
+          genhtml coverage.info --output-directory coverage_report ${IGNORE_ARGS}
 
       # Upload the coverage report as an artifact
       - name: Uploading coverage report
