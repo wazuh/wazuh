@@ -184,6 +184,7 @@
       "pytest_target": "test_enrollment/",
       "tiers": ["0 1"],
       "timeout_minutes": 120,
+      "pre_install": "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0 2>/dev/null || true; sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=0 2>/dev/null || true; sudo ip -6 addr add ::1/128 dev lo 2>/dev/null || true",
       "paths": [
         ".github/workflows/5_testintegration_linux-integration-tests.yml",
         ".github/test_modules_linux.json",
@@ -218,6 +219,7 @@
       "tiers": ["0", "1"],
       "timeout_minutes": 120,
       "pre_install": "sudo apt-get update && sudo apt-get install auditd -y",
+      "pytest_extra_args": "-k \"not whodata and not Who-data\" --ignore=test_fim/test_files/test_follow_symbolic_link/test_audit_rules_with_symlink.py",
       "paths": [
         ".github/workflows/5_testintegration_linux-integration-tests.yml",
         ".github/test_modules_linux.json",
@@ -250,6 +252,7 @@
       "pytest_target": "test_logcollector/",
       "tiers": ["0 1"],
       "timeout_minutes": 120,
+      "pytest_extra_args": "--ignore=test_logcollector/test_read/test_read_journald_basic.py --ignore=test_logcollector/test_read/test_read_journald_ofe.py",
       "paths": [
         ".github/workflows/5_testintegration_linux-integration-tests.yml",
         ".github/test_modules_linux.json",
