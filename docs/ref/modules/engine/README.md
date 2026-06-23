@@ -844,40 +844,40 @@ flowchart TD
 
 #### Unclassified events
 
-An event is considered **unclassified** when it was only processed by the root decoder and no other decoder
-accepted it. This happens because the root decoder typically has no `check` stage — it accepts every event
-unconditionally, acting solely as the entry point of the decoder tree. When no child decoder matches the event,
-the root decoder remains the only one that has processed it.
-
-The engine tracks which decoders accepted each event by recording their names in the
-`wazuh.integration.decoders` array field. An event is therefore identified as unclassified when that array
-contains exactly one element (only the root decoder).
+An event is considered **unclassified** when its `wazuh.integration.category` field equals `"unclassified"`.
+This happens when the last decoder that matched the event belongs to an integration whose category is
+`unclassified`. That integration acts as a catch-all — its decoder accepts events that no other integration's
+decoder matched, ensuring every event that completes the pipeline has an assigned category.
 
 The `indexer.yml` output uses the [`index_unclassified_events`](ref-helper-functions.md#index_unclassified_events)
-helper to apply this check and route the event accordingly:
+helper to determine whether an unclassified event should be indexed:
 
 ```yaml
 # Excerpt from indexer.yml
 outputs:
   - first_of:
-    - check: index_unclassified_events($wazuh.integration.decoders)
+    - check: index_unclassified_events($wazuh.integration.category)
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-unclassified"
 
-    - check: NOT array_length_eq($wazuh.integration.decoders, 1)
+    - check: string_not_equal($wazuh.integration.category, "unclassified")
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-${wazuh.integration.category}"
 ```
 
-The routing logic evaluates two conditions in order:
+The routing logic uses a `first_of` block that evaluates two conditions in order:
 
 1. If `index_unclassified_events` returns `true` — meaning the policy has unclassified-events indexing enabled
-   **and** `wazuh.integration.decoders` contains exactly one entry — the event is sent to
+   **and** `wazuh.integration.category` equals `"unclassified"` — the event is sent to
    `wazuh-events-v5-unclassified`.
-2. Otherwise, if the decoder array has more than one entry, the event is classified and sent to the
-   data stream corresponding to its integration category: `wazuh-events-v5-${wazuh.integration.category}`.
+2. If `string_not_equal` succeeds — meaning the category is not `"unclassified"` — the event is classified
+   and sent to the data stream corresponding to its integration category:
+   `wazuh-events-v5-${wazuh.integration.category}`.
+
+If neither condition matches — the event is unclassified but the policy has unclassified-events indexing
+disabled — no output is selected and the event is **not indexed**.
 
 ```mermaid
 flowchart TD
@@ -888,13 +888,17 @@ classDef alt fill:#3f51b5,stroke-width:2px,color:#fff
 classDef skip fill:#9e9e9e,stroke-width:1px,color:#fff
 
 start["Output stage (indexer.yml)"]:::cond
-check["index_unclassified_events(wazuh.integration.decoders)?"]:::cond
+check1["index_unclassified_events($wazuh.integration.category)"]:::cond
+check2["string_not_equal($wazuh.integration.category, 'unclassified')"]:::cond
 unclassified["wazuh-events-v5-unclassified"]:::yes
-classified["wazuh-events-v5-\${wazuh.integration.category}"]:::alt
+classified["wazuh-events-v5-${wazuh.integration.category}"]:::alt
+dropped["Event not indexed"]:::skip
 
-start --> check
-check -->|"true: policy enabled AND array length == 1"| unclassified
-check -->|"false: array length > 1"| classified
+start --> check1
+check1 -->|"true: policy enabled AND category == unclassified"| unclassified
+check1 -->|"false"| check2
+check2 -->|"true: category ≠ unclassified"| classified
+check2 -->|"false: category == unclassified, indexing disabled"| dropped
 ```
 
 
