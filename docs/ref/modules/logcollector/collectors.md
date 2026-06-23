@@ -88,9 +88,9 @@ This change standardizes event data for downstream processing and makes forwarde
 
 ---
 
-## eventlog — Windows Event Log (legacy)
+## eventlog — Windows Event Log
 
-Collects events using the older WinEventLog API, compatible with all Windows versions. Covers the **Application**, **Security**, and **System** logs.
+Collects events from the Windows Event Log using the `OpenEventLog` / `ReadEventLog` API. Compatible with all Windows versions. Covers the **Application**, **Security**, and **System** logs.
 
 ```xml
 <localfile>
