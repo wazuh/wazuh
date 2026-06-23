@@ -8,6 +8,7 @@
 - [Control](control/) - Manager control operations (restart, reload) via wm_control module
 - [Command](command/) - Scheduled command execution through the command wodle
 - [Syscollector](syscollector/) - System inventory collection and monitoring
+- [Container Images](container-images/) - Container image inventory discovery for agents
 - [Logcollector](logcollector/) - Log ingestion
 - [FIM](fim/) - File Integrity Monitoring with persistent state synchronization
 - [Rootcheck](rootcheck/) - Rootkit and anomaly detection
