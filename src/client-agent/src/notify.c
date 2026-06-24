@@ -17,8 +17,6 @@
 #include "metadata_provider.h"
 #include "cJSON.h"
 
-/* Keeps hash in memory until a change is identified */
-static char *g_shared_mg_file_hash = NULL;
 /* Keeps the timestamp of the last notification. */
 static time_t g_saved_time = 0;
 
@@ -72,11 +70,6 @@ char *get_agent_ip()
     }
 
     return strdup(agent_ip);
-}
-
-/* Clear merged hash cache, to be updated in the next iteration.*/
-void clear_merged_hash_cache() {
-    os_free(g_shared_mg_file_hash);
 }
 
 /* Build JSON keepalive message from metadata_provider and additional fields */
@@ -237,16 +230,15 @@ void run_notify()
         merror(MEM_ERROR, errno, strerror(errno));
     }
 
-    /* Get shared files */
-    struct stat stat_fd;
-    if (!g_shared_mg_file_hash) {
-        g_shared_mg_file_hash = getsharedfiles();
-        if (!g_shared_mg_file_hash) {
-            merror(MEM_ERROR, errno, strerror(errno));
-            return;
-        }
-    } else if(w_stat(SHAREDCFG_FILE, &stat_fd) == -1 && ENOENT == errno) {
-        clear_merged_hash_cache();
+    /* Get shared files: compute the merged.mg hash fresh on every keepalive so
+     * the manager always sees the current state. A cached value would hide
+     * in-place edits/corruption of merged.mg from the server. getsharedfiles()
+     * returns "x" when the file is missing, which still forces a re-push. 
+     * */
+    char *merged_hash = getsharedfiles();
+    if (!merged_hash) {
+        merror(MEM_ERROR, errno, strerror(errno));
+        return;
     }
 
     time_t now = time(NULL);
@@ -267,8 +259,9 @@ void run_notify()
     /* Create JSON keepalive message */
     char *json_keepalive = build_json_keepalive(
         agent_ip[0] ? agent_ip : NULL,
-        g_shared_mg_file_hash
+        merged_hash
     );
+    os_free(merged_hash);   // build_json_keepalive already copied it into the JSON
     if (!json_keepalive) {
         merror("Failed to build JSON keepalive");
         return;
