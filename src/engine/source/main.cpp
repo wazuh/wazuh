@@ -429,7 +429,7 @@ int main(int argc, char* argv[])
                 if (elementsPerBulk == 0 || elementsPerBulk > INDEXER_ELEMENTS_PER_BULK_MAX)
                 {
                     throw std::runtime_error(
-                        fmt::format("analysisd.indexer_bulk_size must be between 1 and {} (got {})",
+                        fmt::format("analysisd.indexer_bulk_size_events must be between 1 and {} (got {})",
                                     INDEXER_ELEMENTS_PER_BULK_MAX,
                                     elementsPerBulk));
                 }
