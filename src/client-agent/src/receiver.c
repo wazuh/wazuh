@@ -315,6 +315,19 @@ int receive_msg()
     return 0;
 }
 
+/* Set to 1 by OssecServiceCtrlHandler before reporting SERVICE_STOPPED.
+ * receiver_messages() polls this at the top of its loop so the process
+ * exits cleanly without relying on ExitProcess(). */
+volatile int receiver_should_stop = 0;
+
+#ifdef WIN32
+/* Mirrors the active socket fd so OssecServiceCtrlHandler can close it
+ * without needing access to the full agent struct.  Closing the socket
+ * unblocks any in-progress OS_SendSecureTCP (SO_SNDTIMEO or select),
+ * making the exit latency effectively zero instead of up to 30 s. */
+volatile SOCKET receiver_agent_sock = INVALID_SOCKET;
+#endif
+
 #ifdef WIN32
 /* Receive events from the server */
 int receiver_messages()
@@ -330,24 +343,49 @@ int receiver_messages()
             ExecdTimeoutRun();
         }
 
+        /* Exit cleanly when the service stop handler has signalled shutdown.
+         * Checked before the sock==-1 sleep so the process does not wait an
+         * extra 5 seconds after OssecServiceCtrlHandler returns. */
+        if (receiver_should_stop) {
+            return 0;
+        }
+
         /* sock must be set */
         if (agt->sock == -1) {
+            receiver_agent_sock = INVALID_SOCKET;
             sleep(5);
             continue;
         }
 
+        /* Snapshot the atomic fd before any use: the stop handler (or
+         * sendmsg on a WSAETIMEDOUT) may write -1 concurrently.
+         * FD_SET/select need a stable, non-negative descriptor. */
+        const int sock = agt->sock;
+        if (sock == -1) {
+            receiver_agent_sock = INVALID_SOCKET;
+            continue;
+        }
+
+        /* Keep the mirror in sync so the stop handler can close it. */
+        receiver_agent_sock = (SOCKET)sock;
+
         run_notify();
 
         FD_ZERO(&fdset);
-        FD_SET(agt->sock, &fdset);
+        FD_SET(sock, &fdset);
 
-        /* Wait for 1 second */
+        /* Wait up to 1 second for incoming data */
         selecttime.tv_sec = 1;
         selecttime.tv_usec = 0;
 
         /* Wait with a timeout for any descriptor */
-        rc = select(agt->sock + 1, &fdset, NULL, NULL, &selecttime);
+        rc = select(sock + 1, &fdset, NULL, NULL, &selecttime);
         if (rc == -1) {
+            /* WSAEBADF / WSAENOTSOCK can occur when the stop handler closes
+             * agt->sock while select() is in flight; treat it as shutdown. */
+            if (receiver_should_stop) {
+                return 0;
+            }
             merror(SELECT_ERROR, WSAGetLastError(), win_strerror(WSAGetLastError()));
             sleep(30);
             continue;
