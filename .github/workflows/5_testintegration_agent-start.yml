@@ -63,7 +63,7 @@ jobs:
             "packages-path": "/tmp/packages"
           }')
           WIN=$(jq -cn '{
-            runner: "windows-2025", platform: "windows",
+            runner: "codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}", platform: "windows",
             "display-name": "Windows",
             "artifact-pattern": "wazuh-agent*windows*.msi",
             "artifact-regexp": "wazuh-agent.*windows.*\\.msi",

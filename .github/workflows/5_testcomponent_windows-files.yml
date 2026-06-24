@@ -72,7 +72,8 @@ jobs:
           name: binaries
           path: src/bin_files
   check_binaries_details:
-    runs-on: windows-2025
+    runs-on:
+      - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     needs: build
     steps:

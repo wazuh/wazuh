@@ -86,7 +86,8 @@ jobs:
           path: src/configuration_files
 
   check_dll_on_windows:
-    runs-on: windows-2025
+    runs-on:
+      - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     needs: build
     steps:
