@@ -1,5 +1,7 @@
 #include <algorithm>
 #include <chrono>
+#include <ctime>
+#include <memory>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -18,7 +20,7 @@ const base::Name STORE_NAME_CMSYNC {"cmsync/status/0"};          ///< Name of th
 const cm::store::NamespaceId DUMMY_NAMESPACE_ID {"dummy_ns_id"}; ///< Dummy namespace ID
 constexpr std::string_view COMPONENT_NAME = "CMSync";            ///< Component name for logging
 constexpr std::string_view STANDARD_SPACE_NAME = "standard";     ///< Standard space name
-constexpr std::string_view CUSTOM_SPACE_NAME = "custom";       ///< Custom space name
+constexpr std::string_view CUSTOM_SPACE_NAME = "custom";         ///< Custom space name
 
 /**
  * @brief Generate a random namespace ID for the given origin space
@@ -42,14 +44,26 @@ namespace cm::sync
 class SyncedNamespace
 {
 private:
-    std::string m_originSpace;               ///< Origin space in the indexer
-    std::string m_routeName;                 ///< Route name in the router
-    cm::store::NamespaceId m_nsId;           ///< Destination namespace ID in the local store
-    std::optional<std::string> m_consumerId; ///< Optional CTI consumer doc ID to validate during sync
+    std::string m_originSpace;                               ///< Origin space in the indexer
+    std::string m_routeName;                                 ///< Route name in the router
+    cm::store::NamespaceId m_nsId;                           ///< Destination namespace ID in the local store
+    std::optional<std::string> m_consumerId;                 ///< Optional CTI consumer doc ID to validate during sync
+    uint32_t m_lastSuccessfulUpdate {0};                     ///< Unix timestamp of last successful sync
+    base::SyncStatus m_syncStatus {base::SyncStatus::READY}; ///< Per-space sync status
+
+    // Cached router-derived state for status reporting. Updated during synchronize() (which already
+    // queries the router for its own logic) so the status snapshot can be built WITHOUT touching the
+    // router. Transient (not persisted): after restart these stay default until the next sync.
+    bool m_available {false}; ///< Whether a route currently exists for this space
+    bool m_enabled {false};   ///< Whether the space is enabled in the remote policy
+    std::string m_hash;       ///< Hash of the deployed route/policy
 
     static constexpr std::string_view JPATH_ORIGIN = "/origin_space";       ///< JSON path for origin space
     static constexpr std::string_view JPATH_NAMESPACE_ID = "/namespace_id"; ///< JSON path for namespace ID
     static constexpr std::string_view JPATH_CONSUMER_ID = "/consumer_id";   ///< JSON path for consumer ID
+    static constexpr std::string_view JPATH_LAST_SUCCESSFUL_UPDATE =
+        "/last_successful_update";                                ///< JSON path for last successful update
+    static constexpr std::string_view JPATH_ENABLED = "/enabled"; ///< JSON path for the remote-policy enabled flag
 
     /**
      * @brief Generate a route name for the given origin space
@@ -102,6 +116,21 @@ public:
     const std::optional<std::string>& getConsumerId() const { return m_consumerId; }
     void setNamespaceId(const cm::store::NamespaceId& nsId) { m_nsId = nsId; }
     void setConsumerId(const std::optional<std::string>& consumerId) { m_consumerId = consumerId; }
+    uint32_t getLastSuccessfulUpdate() const { return m_lastSuccessfulUpdate; }
+    void setLastSuccessfulUpdate(uint32_t ts) { m_lastSuccessfulUpdate = ts; }
+    base::SyncStatus getSyncStatus() const { return m_syncStatus; }
+    void setSyncStatus(base::SyncStatus s) { m_syncStatus = s; }
+
+    bool getAvailable() const { return m_available; }
+    bool getEnabled() const { return m_enabled; }
+    const std::string& getHash() const { return m_hash; }
+    /// Cache the router-derived state reported by the status endpoint.
+    void setRouteState(bool available, bool enabled, std::string hash)
+    {
+        m_available = available;
+        m_enabled = enabled;
+        m_hash = std::move(hash);
+    }
 
     /**
      * @brief Serialize the SyncedNamespace to a JSON object
@@ -117,6 +146,10 @@ public:
         {
             j.setString(*m_consumerId, JPATH_CONSUMER_ID);
         }
+        j.setInt64(static_cast<int64_t>(m_lastSuccessfulUpdate), JPATH_LAST_SUCCESSFUL_UPDATE);
+        // Persist only the remote-policy enabled flag. 'available'/'hash' are live state re-derived
+        // from the router on the next sync, so they are intentionally NOT persisted.
+        j.setBool(m_enabled, JPATH_ENABLED);
         return j;
     }
 
@@ -148,7 +181,18 @@ public:
             consumerId = std::move(consumerIdStr);
         }
 
-        return {origin, cm::store::NamespaceId(nsId), std::move(consumerId)};
+        SyncedNamespace ns {origin, cm::store::NamespaceId(nsId), std::move(consumerId)};
+        // Restore the last successful update timestamp if present (absent in older state documents).
+        if (const auto ts = j.getInt64(JPATH_LAST_SUCCESSFUL_UPDATE); ts.has_value())
+        {
+            ns.setLastSuccessfulUpdate(static_cast<uint32_t>(*ts));
+        }
+        // Restore the last known enabled flag (available/hash stay default; re-derived on next sync).
+        if (const auto enabled = j.getBool(JPATH_ENABLED); enabled.has_value())
+        {
+            ns.setRouteState(false, *enabled, "");
+        }
+        return ns;
     }
 };
 
@@ -170,6 +214,33 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
     if (storePtr->existsDoc(STORE_NAME_CMSYNC))
     {
         loadStateFromStore();
+        const auto reconcileRouteState = [this]()
+        {
+            auto routerPtr = base::utils::lockWeakPtr(m_router, "RouterAPI");
+
+            for (auto& nsState : m_namespacesState)
+            {
+                if (!routerPtr->existsEntry(nsState.getRouteName()))
+                {
+                    nsState.setRouteState(false, nsState.getEnabled(), "");
+                    continue;
+                }
+
+                const auto resp = routerPtr->getEntry(nsState.getRouteName());
+                if (base::isError(resp))
+                {
+                    LOG_WARNING("[CMSync] Failed to read route '{}' while reconciling status on startup: {}",
+                                nsState.getRouteName(),
+                                base::getError(resp).message);
+                    nsState.setRouteState(false, nsState.getEnabled(), "");
+                    continue;
+                }
+
+                nsState.setRouteState(true, nsState.getEnabled(), base::getResponse(resp).hash());
+            }
+        };
+        reconcileRouteState();
+        updateSpacesStatusSnapshot(); // Publish initial status
         return;
     }
 
@@ -180,6 +251,7 @@ CMSync::CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPt
                                    std::optional<std::string>(std::string(wiconnector::STANDARD_RULESET_CONSUMER_ID)));
     m_namespacesState.emplace_back(CUSTOM_SPACE_NAME);
     dumpStateToStore();
+    updateSpacesStatusSnapshot(); // Publish initial status
 }
 
 CMSync::~CMSync() = default;
@@ -474,12 +546,24 @@ void CMSync::synchronize()
         if (m_shutdownRequested.load(std::memory_order_relaxed))
         {
             LOG_INFO("[CMSync] Synchronization aborted during namespace iteration");
+            updateSpacesStatusSnapshot();
             return;
         }
 
         try
         {
             LOG_DEBUG("[CMSync] Synchronizing namespace for space '{}'", nsState.getOriginSpace());
+
+            // Check the route in the router FIRST (router is local, works even if the indexer is down).
+            // This refreshes availability up front, so a route removed out-of-band is reflected even if
+            // the indexer-dependent steps below abort. The result is reused by routeConfig (no re-query).
+            const bool routeExists = routerPtr->existsEntry(nsState.getRouteName());
+            if (!routeExists && nsState.getAvailable())
+            {
+                // Route gone out-of-band → no usable instance (keep enabled = last known policy).
+                nsState.setRouteState(false, nsState.getEnabled(), "");
+                updateSpacesStatusSnapshot();
+            }
 
             if (!existSpaceInRemote(nsState.getOriginSpace()))
             {
@@ -493,6 +577,7 @@ void CMSync::synchronize()
             {
                 LOG_INFO("[CMSync] Synchronization aborted before getting policy info for space '{}'",
                          nsState.getOriginSpace());
+                updateSpacesStatusSnapshot();
                 return;
             }
 
@@ -532,9 +617,10 @@ void CMSync::synchronize()
             const auto& [remoteHash, remoteEnabled] = *hashResult;
 
             // Check the current route/ns configuration to avoid unnecessary synchronization.
+            // Reuses routeExists from the up-front check above (no second existsEntry call).
             const auto routeConfig = [&]() -> std::optional<std::tuple<bool, cm::store::NamespaceId, std::string>>
             {
-                if (routerPtr->existsEntry(nsState.getRouteName()))
+                if (routeExists)
                 {
                     const auto resp = routerPtr->getEntry(nsState.getRouteName());
                     if (base::isError(resp))
@@ -550,6 +636,19 @@ void CMSync::synchronize()
                 }
                 return std::nullopt;
             }();
+
+            // Cache the current state for status reporting (avoids extra router calls in the status
+            // build). 'enabled' reflects the remote policy (remoteEnabled), not the router route state;
+            // 'available'/'hash' come from the current route. Overridden below on disable/success.
+            if (routeConfig.has_value())
+            {
+                const auto& [_enabledRoute, _routeNsId, routeHash] = *routeConfig;
+                nsState.setRouteState(true, remoteEnabled, routeHash);
+            }
+            else
+            {
+                nsState.setRouteState(false, remoteEnabled, "");
+            }
 
             // Cases:
             // 1. If the policy is disabled in the indexer, we should remove route and namespace if they exist, and skip
@@ -595,6 +694,7 @@ void CMSync::synchronize()
                     LOG_DEBUG("[CMSync] Policy for space '{}' is disabled in indexer and no route exists, skipping",
                               nsState.getOriginSpace());
                 }
+                nsState.setRouteState(false, false, ""); // route removed / absent → not available
                 continue;
             }
 
@@ -613,11 +713,17 @@ void CMSync::synchronize()
             // Cases 3 and 4: Changes detected, perform synchronization
             LOG_INFO("[CMSync] Changes detected for space '{}', updating...", nsState.getOriginSpace());
 
+            // Mark this space as running
+            nsState.setSyncStatus(base::SyncStatus::UPDATING);
+            updateSpacesStatusSnapshot();
+
             // Check abort before download (most expensive operation)
             if (m_shutdownRequested.load(std::memory_order_relaxed))
             {
                 LOG_INFO("[CMSync] Synchronization aborted before downloading namespace for space '{}'",
                          nsState.getOriginSpace());
+                nsState.setSyncStatus(base::SyncStatus::READY);
+                updateSpacesStatusSnapshot();
                 return;
             }
 
@@ -627,6 +733,8 @@ void CMSync::synchronize()
             {
                 LOG_INFO("[CMSync] Download skipped for space '{}' because consumer is not idle",
                          nsState.getOriginSpace());
+                nsState.setSyncStatus(base::SyncStatus::READY);
+                updateSpacesStatusSnapshot();
                 continue;
             }
             const auto& newNsId = *newNsIdOpt;
@@ -653,12 +761,15 @@ void CMSync::synchronize()
                 LOG_ERROR("[CMSync] Failed to sync namespace in route for space '{}': {}",
                           nsState.getOriginSpace(),
                           e.what());
+                nsState.setSyncStatus(base::SyncStatus::FAILED);
+                updateSpacesStatusSnapshot();
                 continue;
             }
 
-            // Update and dump the sync state
+            // Update and dump the sync state. Set the timestamp BEFORE dumping so it is persisted.
             auto oldNsId = nsState.getNamespaceId();
             nsState.setNamespaceId(newNsId);
+            nsState.setLastSuccessfulUpdate(static_cast<uint32_t>(std::time(nullptr)));
             dumpAndLogFn();
 
             // Delete old namespace if it exists and is different from the new one
@@ -678,21 +789,57 @@ void CMSync::synchronize()
             }
 
             LOG_INFO("[CMSync] Successfully synchronized space '{}'", nsState.getOriginSpace());
+            // Route now deployed for an enabled policy at the remote hash.
+            nsState.setRouteState(true, remoteEnabled, remoteHash);
+            nsState.setSyncStatus(base::SyncStatus::READY);
+            updateSpacesStatusSnapshot();
         }
         catch (const std::exception& e)
         {
+            nsState.setSyncStatus(base::SyncStatus::FAILED);
+            updateSpacesStatusSnapshot();
             LOG_WARNING(
                 "[CMSync] Failed to synchronize namespace for space '{}': {}", nsState.getOriginSpace(), e.what());
         }
     }
 
     LOG_DEBUG("[CMSync] Finished synchronization of spaces");
+
+    updateSpacesStatusSnapshot();
 }
 
 void CMSync::requestShutdown()
 {
     m_shutdownRequested.store(true, std::memory_order_relaxed);
     LOG_INFO("[CMSync] Shutdown requested");
+}
+
+void CMSync::updateSpacesStatusSnapshot()
+{
+    // Full rebuild from the cached per-namespace state, then publish atomically. Does NOT query the
+    // router: available/enabled/hash were cached during synchronize() (setRouteState), so building the
+    // status never contends with event processing nor duplicates router calls.
+    std::vector<SpaceStatus> result;
+    result.reserve(m_namespacesState.size());
+
+    for (const auto& nsState : m_namespacesState)
+    {
+        SpaceStatus entry;
+        entry.name = nsState.getOriginSpace();
+        entry.status = nsState.getSyncStatus();
+        entry.available = nsState.getAvailable();
+        entry.enabled = nsState.getEnabled();
+        entry.hash = nsState.getHash();
+        entry.lastSuccessfulUpdate = nsState.getLastSuccessfulUpdate();
+        result.push_back(std::move(entry));
+    }
+
+    m_spacesStatus.store(std::move(result));
+}
+
+std::vector<SpaceStatus> CMSync::getSpacesStatus() const
+{
+    return *m_spacesStatus.load();
 }
 
 } // namespace cm::sync
