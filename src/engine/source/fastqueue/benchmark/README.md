@@ -99,6 +99,56 @@ Direct head-to-head tests:
 | Rate Limiting (10K/s) | 900k+ ops/sec | **Best scenario** - condition_variable shines |
 | High Contention (16t) | 175M+ ops/sec | Good but lower than CQueue |
 
+---
+
+## Memory Profiling
+
+### 4. fastqueue_memory_profile (Standalone)
+**File**: `memory_profile_bench.cpp`
+
+A standalone memory profiling tool that measures heap allocation behavior of `CQueue<std::string>` under MPMC scenarios with ~1KB events.
+
+### What it measures
+- **Peak live memory**: Maximum heap bytes in-flight at any point
+- **Total allocations**: Number of `new` calls during push/pop
+- **Total bytes allocated**: Cumulative heap usage
+- **Per-event overhead**: Average bytes allocated per event vs payload size
+- **Allocations per event**: How many heap allocations each push+pop cycle costs
+- **RSS delta**: Resident Set Size change from `/proc/self/status`
+- **Queue construction cost**: Memory allocated just to create an empty queue
+
+### Scenarios tested
+| Config | Description |
+|--------|-------------|
+| 1P/1C | SPSC baseline |
+| 2P/2C | Light MPMC |
+| 4P/4C | Medium MPMC |
+| 8P/8C | Heavy MPMC |
+| 4P/1C | Fan-in (MPSC-like) |
+| 1P/4C | Fan-out (SPMC-like) |
+
+### Running
+
+```bash
+# Direct execution (text report to stdout)
+./build/source/fastqueue/fastqueue_memory_profile
+
+# With Valgrind Massif (heap timeline snapshots)
+valgrind --tool=massif ./build/source/fastqueue/fastqueue_memory_profile
+ms_print massif.out.<pid>
+
+# With heaptrack (if available)
+heaptrack ./build/source/fastqueue/fastqueue_memory_profile
+heaptrack_print heaptrack.fastqueue_memory_profile.<pid>.gz
+```
+
+### How it works
+- Overrides global `operator new` / `operator delete` with atomic counters
+- Stores allocation size in a 16-byte header before each returned pointer
+- Thread-safe via `std::atomic` (no mutex overhead in hot path)
+- Reads `/proc/self/status` for RSS/VmPeak measurements
+- Queue is constructed before tracking begins (isolates push/pop cost from construction cost)
+
 ### Configuration Tuning
 
 1. **BLOCK_SIZE** (currently 4096):
