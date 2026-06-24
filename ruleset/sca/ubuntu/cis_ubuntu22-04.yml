@@ -3701,10 +3701,10 @@ checks:
       tactic: ["TA0006", "TA0003"]
       technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
-    condition: all
+    condition: any
     rules:
       - 'd:/etc/security/pwquality.conf.d -> r:.*\.conf -> !r:^# && r:^\s*\t*dictcheck && n:\s*\t*=\s*\t*(\d+) compare != 0'
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:^\s*\t*dictcheck && n:\s*\t*=\s*\t*(\d+) compare != 0'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && r:^\s*\t*dictcheck && n:\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.3.3.2.7 Ensure password quality checking is enforced. (Automated)
   - id: 28731
@@ -3727,10 +3727,10 @@ checks:
       tactic: ["TA0006", "TA0003"]
       technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
       subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
-    condition: all
+    condition: any
     rules:
       - 'd:/etc/security/pwquality.conf.d -> r:.*\.conf -> !r:^# && r:^\s*\t*enforcing && n:\s*\t*=\s*\t*(\d+) compare != 0'
-      - 'f:/etc/pam.d/common-password -> !r:^# && r:^\s*\t*enforcing && n:\s*\t*=\s*\t*(\d+) compare != 0'
+      - 'f:/etc/security/pwquality.conf -> !r:^# && r:^\s*\t*enforcing && n:\s*\t*=\s*\t*(\d+) compare != 0'
 
   # 5.3.3.2.8 Ensure password quality is enforced for the root user. (Automated)
   - id: 28732
