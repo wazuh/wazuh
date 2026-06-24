@@ -56,7 +56,7 @@ RUN curl -OL http://packages.wazuh.com/utils/gcc/gcc-9.4.0.tar.gz && \
     cd / && rm -rf gcc-9.4.0*
 
 # -------------------------------------------------------------------
-# Binutils
+# Binutils: GNU release tarball (the bminor GitHub archive zip 404s)
 # -------------------------------------------------------------------
 RUN yum install -y flex && \
     curl -OL https://ftp.gnu.org/gnu/binutils/binutils-2.41.tar.gz && \
