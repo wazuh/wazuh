@@ -240,6 +240,26 @@ jobs:
           Write-Host "Using PDB writer from: $mspdbDir"
           Add-Content -Path $env:GITHUB_PATH -Value $mspdbDir
 
+      - name: Set up WiX Toolset (MSI build)
+        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships the WiX Toolset.
+        # generate_wazuh_msi.ps1 builds the MSI with candle.exe/light.exe (WiX v3). GitHub-hosted
+        # Windows images bundled WiX; the CodeBuild image does not, so download the WiX v3
+        # binaries and put them on PATH (the script also uses WixUtilExtension/WixUIExtension,
+        # which ship in the same zip).
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Get-Command candle.exe -ErrorAction SilentlyContinue) {
+            Write-Host "WiX already available: $((Get-Command candle.exe).Source)"
+          } else {
+            $wixZip = Join-Path $env:TEMP 'wix314-binaries.zip'
+            Invoke-WebRequest -Uri 'https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip' -OutFile $wixZip
+            $wixDir = 'C:\wix314'
+            Expand-Archive -Path $wixZip -DestinationPath $wixDir -Force
+            Add-Content -Path $env:GITHUB_PATH -Value $wixDir
+            Write-Host "WiX extracted to $wixDir"
+          }
+
       - name: Generate MSI package (without signing)
         id: build
         shell: pwsh
