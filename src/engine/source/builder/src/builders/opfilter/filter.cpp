@@ -9,7 +9,7 @@ namespace
 {
 FilterOp filterValue(const Reference& targetField, const Value& value, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto jValue(value.value());
+    auto jValue = std::make_shared<const json::Json>(value.value());
 
     auto targetNotFound =
         fmt::format("{} -> Target field '{}' not found", buildCtx->context().opName, targetField.dotPath());
@@ -21,14 +21,14 @@ FilterOp filterValue(const Reference& targetField, const Value& value, const std
             valueMissmatch,
             successTrace,
             isTestMode = buildCtx->isTestMode(),
-            jValue = std::move(jValue)](base::ConstEvent event) -> FilterResult
+            jValue](base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
             RETURN_FAILURE(isTestMode, false, targetNotFound);
         }
 
-        if (!event->equals(targetField, jValue))
+        if (!event->equals(targetField, *jValue))
         {
             RETURN_FAILURE(isTestMode, false, valueMissmatch);
         }
