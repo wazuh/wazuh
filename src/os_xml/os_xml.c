@@ -27,7 +27,7 @@ static int _writememory(const char *str, XML_TYPE type, size_t size,
                         unsigned int parent, OS_XML *_lxml) __attribute__((nonnull));
 static int _xml_fgetc(FILE *fp, OS_XML *_lxml) __attribute__((nonnull));
 int _xml_sgetc(OS_XML *_lxml)  __attribute__((nonnull));
-static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate, const int delim) __attribute__((nonnull));
+static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate, const int delim, unsigned int depth) __attribute__((nonnull));
 static void xml_error(OS_XML *_lxml, const char *msg, ...) __attribute__((format(printf, 2, 3), nonnull));
 
 /**
@@ -345,7 +345,7 @@ static int _ReadElem(unsigned int parent, OS_XML *_lxml, unsigned int recursion_
             }
             _currentlycont = _lxml->cur - 1;
             if (isspace(c)) {
-                if ((_ga = _getattributes(parent, _lxml, flag_truncate, cmp)) < 0) {
+                if ((_ga = _getattributes(parent, _lxml, flag_truncate, cmp, 0)) < 0) {
                     goto end;
                 }
             }
@@ -536,7 +536,7 @@ static int _writecontent(const char *str, __attribute__((unused)) size_t size, u
 }
 
 /* Read the attributes of an element */
-static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate, const int delim)
+static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate, const int delim, unsigned int depth)
 {
     int location = 0;
     unsigned int count = 0;
@@ -545,6 +545,11 @@ static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate
 
     char attr[XML_MAXSIZE + 1];
     char value[XML_MAXSIZE + 1];
+
+    if (depth > XML_MAX_ATTR_DEPTH) {
+        xml_error(_lxml, "XMLERR: Too many attributes.");
+        return (-1);
+    }
 
     memset(attr, '\0', XML_MAXSIZE + 1);
     memset(value, '\0', XML_MAXSIZE + 1);
@@ -638,7 +643,7 @@ static int _getattributes(unsigned int parent, OS_XML *_lxml, bool flag_truncate
             }
             c = xml_getc_fun(_lxml->fp, _lxml);
             if (isspace(c)) {
-                return (_getattributes(parent, _lxml, flag_truncate, delim));
+                return (_getattributes(parent, _lxml, flag_truncate, delim, depth + 1));
             } else if (c == _R_CONFE) {
                 return (0);
             } else if (c == '/') {
