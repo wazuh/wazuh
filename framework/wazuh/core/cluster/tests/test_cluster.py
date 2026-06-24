@@ -393,7 +393,7 @@ async def test_async_decompress_files(decompress_files_mock):
 @pytest.mark.asyncio
 @patch('wazuh.core.cluster.cluster.get_cluster_items',
        return_value={'intervals': {'communication': {'max_zip_size': 1073741824}}})
-@patch('wazuh.core.cluster.cluster.decompress_to_file', return_value=0)
+@patch('wazuh.core.cluster.cluster.decompress_to_file', side_effect=[100, 200])
 @patch('os.makedirs')
 @patch('os.path.exists', side_effect=[False, True, True])
 @patch('wazuh.core.cluster.cluster.remove')
@@ -412,8 +412,10 @@ async def test_decompress_files_ok(json_loads_mock, mkdir_with_mode_mock, remove
         ko_files, zip_dir = cluster.decompress_files(compress_path=zip_path)
         assert ko_files == "some string with files"
         assert zip_dir == zip_path + 'dir'
+        # The second member's budget must be reduced by the first member's decompressed size,
+        # exercising the rolling 'max_zip_size - total_decompressed' aggregate budget.
         decompress_to_file_mock.assert_has_calls([call(b'content', '/foo/bar/dir/path', 1073741824),
-                                                  call(b'content2', '/foo/bar/dir/path2', 1073741824)])
+                                                  call(b'content2', '/foo/bar/dir/path2', 1073741824 - 100)])
         mock_makedirs.assert_called_once_with(zip_path + 'dir')
         json_loads_mock.assert_called_once()
         mkdir_with_mode_mock.assert_called_once_with(zip_dir)
@@ -470,6 +472,9 @@ def test_decompress_files_aggregate_limit(get_cluster_items_mock, tmp_path):
 
     with pytest.raises(WazuhInternalError, match=r'.* 3053 .*'):
         cluster.decompress_files(zip_path)
+
+    # On rejection, decompress_files must remove the partial decompressed output.
+    assert not os.path.exists(zip_path + 'dir')
 
 
 @pytest.mark.asyncio
