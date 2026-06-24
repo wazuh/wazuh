@@ -393,7 +393,7 @@ async def test_async_decompress_files(decompress_files_mock):
 @pytest.mark.asyncio
 @patch('wazuh.core.cluster.cluster.get_cluster_items',
        return_value={'intervals': {'communication': {'max_zip_size': 1073741824}}})
-@patch('wazuh.core.cluster.cluster.decompress_to_file')
+@patch('wazuh.core.cluster.cluster.decompress_to_file', return_value=0)
 @patch('os.makedirs')
 @patch('os.path.exists', side_effect=[False, True, True])
 @patch('wazuh.core.cluster.cluster.remove')
@@ -426,8 +426,9 @@ def test_decompress_to_file_ok(tmp_path):
     content = b'A' * 1024
     dest = str(tmp_path / 'out.bin')
 
-    cluster.decompress_to_file(zlib.compress(content), dest, max_size=1024 * 1024)
+    written = cluster.decompress_to_file(zlib.compress(content), dest, max_size=1024 * 1024)
 
+    assert written == len(content)
     with open(dest, 'rb') as f:
         assert f.read() == content
 
@@ -443,6 +444,32 @@ def test_decompress_to_file_exceeds_limit(tmp_path):
 
     with pytest.raises(WazuhInternalError, match=r'.* 3053 .*'):
         cluster.decompress_to_file(bomb, dest, max_size=10 * 1024 * 1024)
+
+
+def test_decompress_to_file_truncated(tmp_path):
+    """Check that a truncated/corrupted member is rejected instead of silently accepted."""
+    compressed = zlib.compress(b'Z' * 4096)
+    dest = str(tmp_path / 'trunc.bin')
+
+    with pytest.raises(zlib.error):
+        cluster.decompress_to_file(compressed[:-2], dest, max_size=1024 * 1024)
+
+
+@patch('wazuh.core.cluster.cluster.get_cluster_items',
+       return_value={'intervals': {'communication': {'max_zip_size': 1500}}})
+def test_decompress_files_aggregate_limit(get_cluster_items_mock, tmp_path):
+    """Two members each under the cap but exceeding it in aggregate must be rejected."""
+    path_sep = cluster.PATH_SEP.encode()
+    file_sep = cluster.FILE_SEP.encode()
+    archive = (b'a.txt' + path_sep + zlib.compress(b'A' * 1000) + file_sep +
+               b'b.txt' + path_sep + zlib.compress(b'B' * 1000) + file_sep +
+               b'pad' + path_sep + zlib.compress(b''))
+    zip_path = str(tmp_path / 'agg.zip')
+    with open(zip_path, 'wb') as f:
+        f.write(archive)
+
+    with pytest.raises(WazuhInternalError, match=r'.* 3053 .*'):
+        cluster.decompress_files(zip_path)
 
 
 @pytest.mark.asyncio
