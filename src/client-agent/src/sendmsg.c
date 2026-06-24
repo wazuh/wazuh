@@ -85,18 +85,57 @@ int send_msg(const char *msg, ssize_t msg_length)
             agt->sock = -1;
         }
     }
-#endif
+#else  /* WIN32 */
+    /* Mirror the Linux dead-socket detection for Windows.
+     * WSAGetLastError() must be called immediately after the failed Winsock
+     * call and before w_mutex_unlock() to avoid a race where another thread
+     * calls a Winsock function in between.
+     * PR #36790 added SO_SNDTIMEO=30s on all platforms (start_agent.c) but
+     * only wired up the error handling on Linux; complete the port here so
+     * agt->sock is invalidated on terminal errors and receiver_messages()
+     * can detect the dead connection and exit. */
+    if (retval != 0) {
+        error = WSAGetLastError();
+        bool socket_dead = true;
+        switch (error) {
+        case WSAECONNRESET:
+            mdebug2("Connection reset by manager.");
+            break;
+        case WSAETIMEDOUT:
+            /* SO_SNDTIMEO expiry or TCP retransmit exhaustion. */
+            mdebug2(SEND_ERROR, "server", win_strerror(error));
+            break;
+        case WSAEWOULDBLOCK:
+            mdebug2(SEND_ERROR, "server", win_strerror(error));
+            break;
+        case WSAECONNREFUSED:
+            mdebug2(CONN_REF);
+            break;
+        case WSAENOTCONN:
+        case WSAESHUTDOWN:
+            mdebug2("Socket not connected.");
+            break;
+        case WSAEBADF:
+        case WSAENOTSOCK:
+            /* Socket was closed by the stop handler concurrently. */
+            mdebug2("Socket closed by stop handler.");
+            break;
+        default:
+            mwarn(SEND_ERROR, "server", win_strerror(error));
+            socket_dead = false;
+            break;
+        }
+        if (socket_dead && agt->sock >= 0) {
+            OS_CloseSocket(agt->sock);
+            agt->sock = -1;
+        }
+    }
+#endif  /* WIN32 */
     w_mutex_unlock(&send_mutex);
 
     if (retval == 0) {
         w_agentd_state_update(INCREMENT_MSG_SEND, NULL);
     }
-#ifdef WIN32
-    else {
-        error = WSAGetLastError();
-        mwarn(SEND_ERROR, "server", win_strerror(error));
-    }
-#endif
 
     return retval;
 }
