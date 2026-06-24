@@ -19,6 +19,15 @@
 
 namespace InventorySyncQueryBuilder
 {
+    /// Append a cluster.name filter to a bool/must query (no-op if @p clusterName is empty).
+    inline void addClusterScope(nlohmann::json& query, const std::string& clusterName)
+    {
+        if (!clusterName.empty())
+        {
+            query["query"]["bool"]["must"].push_back({{"term", {{"wazuh.cluster.name", clusterName}}}});
+        }
+    }
+
     /// @brief Build update query for agent metadata across all documents
     /// @param agentId Agent ID to match
     /// @param agentName New agent name
@@ -372,10 +381,12 @@ namespace InventorySyncQueryBuilder
     inline nlohmann::json
     buildContextGetQuery(const std::string& agentId, std::size_t size, const std::string& searchAfter = "")
     {
-        nlohmann::json query = {{"_source", nlohmann::json::array({"vulnerability.id", "vulnerability.score"})},
-                                {"query", {{"term", {{"wazuh.agent.id", agentId}}}}},
-                                {"size", size},
-                                {"sort", {{{"_id", {{"order", "asc"}}}}}}};
+        // bool/must so callers can append a cluster.name filter via addClusterScope.
+        nlohmann::json query = {
+            {"_source", nlohmann::json::array({"vulnerability.id", "vulnerability.score"})},
+            {"query", {{"bool", {{"must", nlohmann::json::array({{{"term", {{"wazuh.agent.id", agentId}}}}})}}}}},
+            {"size", size},
+            {"sort", {{{"_id", {{"order", "asc"}}}}}}};
 
         if (!searchAfter.empty())
         {

@@ -28,9 +28,9 @@ public:
     {
     }
 
-    void deleteByQuery(const std::string& index, const std::string& agentId)
+    void deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName)
     {
-        m_impl.deleteByQuery(index, agentId);
+        m_impl.deleteByQuery(index, agentId, clusterName);
     }
 
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
@@ -125,9 +125,11 @@ IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config, Logging
 
 IndexerConnectorSync::~IndexerConnectorSync() = default;
 
-void IndexerConnectorSync::deleteByQuery(const std::string& index, const std::string& agentId)
+void IndexerConnectorSync::deleteByQuery(const std::string& index,
+                                         const std::string& agentId,
+                                         const std::string& clusterName)
 {
-    m_impl->deleteByQuery(index, agentId);
+    m_impl->deleteByQuery(index, agentId, clusterName);
 }
 
 void IndexerConnectorSync::executeUpdateByQuery(const std::vector<std::string>& indices,

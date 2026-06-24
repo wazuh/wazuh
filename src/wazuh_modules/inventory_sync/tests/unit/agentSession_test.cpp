@@ -746,9 +746,7 @@ TEST_F(AgentSessionTest, Constructor_StartIndices_FiltersOutNonStatePrefix)
 
 TEST_F(AgentSessionTest, Constructor_StartIndices_EmptyPrefixOnlyRejected)
 {
-    // "wazuh-states-" exactly (empty suffix) must be rejected, even though it
-    // starts with the prefix — isInventoryStateIndex requires a non-empty
-    // suffix because an empty suffix would collapse to an unusable index name.
+    // "wazuh-states-" (empty suffix) matches no agent-scoped family: rejected.
     auto startMsg = createStartWithIndices(builder, 1, {"wazuh-states-"});
     builder.Finish(startMsg);
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
@@ -770,6 +768,69 @@ TEST_F(AgentSessionTest, Constructor_StartIndices_AllValidPassedThrough)
     AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
 
     EXPECT_EQ(session.getContext()->indices.size(), 3u);
+}
+
+// A wazuh-states-* name outside the agent scope must be rejected.
+TEST_F(AgentSessionTest, Constructor_StartIndices_RejectsOutOfScopeStateIndex)
+{
+    auto startMsg = createStartWithIndices(
+        builder, 1, {"wazuh-states-inventory-packages", "wazuh-states-something-else", "wazuh-states-rules"});
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    const auto& storedIndices = session.getContext()->indices;
+    ASSERT_EQ(storedIndices.size(), 1u);
+    EXPECT_EQ(storedIndices[0], "wazuh-states-inventory-packages");
+}
+
+// Manager-governance indices must be rejected.
+TEST_F(AgentSessionTest, Constructor_StartIndices_RejectsManagerGovernanceIndices)
+{
+    auto startMsg = createStartWithIndices(builder,
+                                           1,
+                                           {"wazuh-states-agent-management",
+                                            "wazuh-states-cluster-nodes",
+                                            "wazuh-states-manager-status",
+                                            "wazuh-states-vulnerabilities"},
+                                           Wazuh::SyncSchema::Mode_ModuleFull,
+                                           "syscollector_vd");
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+
+    // Only the in-scope vulnerabilities index survives.
+    const auto& storedIndices = session.getContext()->indices;
+    ASSERT_EQ(storedIndices.size(), 1u);
+    EXPECT_EQ(storedIndices[0], "wazuh-states-vulnerabilities");
+}
+
+// Direct coverage of the index-authorization predicate.
+TEST_F(AgentSessionTest, IsAgentScopedStateIndex_AllowlistAndBlocklist)
+{
+    // In-scope families.
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-inventory-packages"));
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-inventory-system"));
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-vulnerabilities"));
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-fim-files"));
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-fim-registry-keys"));
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-sca"));
+
+    // Manager-governance indices: denied (not in the allowlist).
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-states-agent-management"));
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-states-cluster-nodes"));
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-states-manager-status"));
+
+    // Out-of-scope / malformed names.
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-states-"));
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-states-rules"));
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-other-foo"));
+    EXPECT_FALSE(isAgentScopedStateIndex("random"));
+    EXPECT_FALSE(isAgentScopedStateIndex(""));
 }
 
 TEST_F(AgentSessionTest, HandleChecksumModule_NonStateIndex_Ignored)

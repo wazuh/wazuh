@@ -734,7 +734,7 @@ public:
             });
     }
 
-    void deleteByQuery(const std::string& index, const std::string& agentId)
+    void deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName = {})
     {
         if (!isSafeIndexName(index))
         {
@@ -744,8 +744,27 @@ public:
                     index.c_str());
             throw IndexerConnectorException("Unsafe index name");
         }
+
         auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
-        it->second["query"]["bool"]["filter"]["terms"]["wazuh.agent.id"].push_back(agentId);
+        auto& boolQuery = it->second["query"]["bool"];
+
+        if (clusterName.empty())
+        {
+            // No cluster name: filter by agent.id only.
+            boolQuery["filter"]["terms"]["wazuh.agent.id"].push_back(agentId);
+            return;
+        }
+
+        // Filter by agent.id and cluster.name.
+        if (success)
+        {
+            nlohmann::json agentClause;
+            agentClause["terms"]["wazuh.agent.id"] = nlohmann::json::array();
+            nlohmann::json clusterClause;
+            clusterClause["term"]["wazuh.cluster.name"] = clusterName;
+            boolQuery["filter"] = nlohmann::json::array({agentClause, clusterClause});
+        }
+        boolQuery["filter"][0]["terms"]["wazuh.agent.id"].push_back(agentId);
     }
 
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
