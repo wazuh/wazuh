@@ -642,7 +642,6 @@ int ebpf_whodata_healthcheck() {
     auto abspathFn = fimebpf::instance().m_abspath;
     char ebpf_hc_abs_path[PATH_MAX] = {0};
     bool healthcheck_failed = false;
-    bool healthcheck_file_available = false;
 
     if (!bpf_helpers) {
         bpf_helpers = std::make_unique<w_bpf_helpers_t>();
@@ -667,38 +666,37 @@ int ebpf_whodata_healthcheck() {
     }
 
     event_received = false;
-    ebpf_hc_created = false;
     abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
 
     if (std::remove(ebpf_hc_abs_path) == 0) {
         logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_HEALTHCHECK_CLEANUP);
     }
 
-    healthcheck_failed |= !run_healthcheck_action(rb,
+    bool file_created = run_healthcheck_action(rb,
                                                   "create file",
                                                   ebpf_hc_abs_path,
                                                   create_healthcheck_file,
                                                   true);
-    ebpf_hc_created = (access(ebpf_hc_abs_path, F_OK) == 0);
-    healthcheck_file_available = ebpf_hc_created;
+
+    healthcheck_failed |= !file_created;
 
     healthcheck_failed |= !run_healthcheck_action(rb,
                                                   "modify content",
                                                   ebpf_hc_abs_path,
                                                   modify_healthcheck_file_content,
-                                                  healthcheck_file_available);
+                                                  file_created);
 
     healthcheck_failed |= !run_healthcheck_action(rb,
                                                   "modify metadata",
                                                   ebpf_hc_abs_path,
                                                   modify_healthcheck_file_metadata,
-                                                  healthcheck_file_available);
+                                                  file_created);
 
     healthcheck_failed |= !run_healthcheck_action(rb,
                                                   "delete file",
                                                   ebpf_hc_abs_path,
                                                   delete_healthcheck_file,
-                                                  healthcheck_file_available);
+                                                  file_created);
 
     // Free healthcheck ring buffer
     bpf_helpers->ring_buffer_free(rb);
