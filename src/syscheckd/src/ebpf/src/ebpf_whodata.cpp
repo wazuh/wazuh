@@ -230,7 +230,8 @@ static bool modify_healthcheck_file_content(const char* file_path, char* detail,
 static bool modify_healthcheck_file_metadata(const char* file_path, char* detail, size_t detail_size) {
     struct stat file_stat = {};
 
-    if (stat(file_path, &file_stat) != 0) {
+    int fd = open(file_path, O_RDONLY);
+    if (fd < 0) {
         snprintf(detail,
                  detail_size,
                  FIM_EBPF_HEALTHCHECK_STAT_DETAIL,
@@ -239,18 +240,32 @@ static bool modify_healthcheck_file_metadata(const char* file_path, char* detail
         return false;
     }
 
+    if (fstat(fd, &file_stat) != 0) {
+        int saved_errno = errno;
+        close(fd);
+        snprintf(detail,
+                 detail_size,
+                 FIM_EBPF_HEALTHCHECK_STAT_DETAIL,
+                 file_path,
+                 strerror(saved_errno));
+        return false;
+    }
+
     mode_t current_mode = file_stat.st_mode & 0777;
     mode_t new_mode = (current_mode ^ S_IXUSR) & 0777;
 
-    if (chmod(file_path, new_mode) != 0) {
+    if (fchmod(fd, new_mode) != 0) {
+        int saved_errno = errno;
+        close(fd);
         snprintf(detail,
                  detail_size,
                  FIM_EBPF_HEALTHCHECK_CHMOD_DETAIL,
                  file_path,
-                 strerror(errno));
+                 strerror(saved_errno));
         return false;
     }
 
+    close(fd);
     return true;
 }
 
@@ -629,7 +644,6 @@ int ebpf_whodata_healthcheck() {
     auto abspathFn = fimebpf::instance().m_abspath;
     char ebpf_hc_abs_path[PATH_MAX] = {0};
     bool healthcheck_failed = false;
-    bool healthcheck_file_available = false;
 
     if (!bpf_helpers) {
         bpf_helpers = std::make_unique<w_bpf_helpers_t>();
@@ -654,44 +668,42 @@ int ebpf_whodata_healthcheck() {
     }
 
     event_received = false;
-    ebpf_hc_created = false;
     abspathFn(EBPF_HC_FILE, ebpf_hc_abs_path, sizeof(ebpf_hc_abs_path));
 
     if (std::remove(ebpf_hc_abs_path) == 0) {
         logFn(LOG_DEBUG_VERBOSE, FIM_EBPF_HEALTHCHECK_CLEANUP);
     }
 
-    healthcheck_failed |= !run_healthcheck_action(rb,
+    bool file_created = run_healthcheck_action(rb,
                                                   "create file",
                                                   ebpf_hc_abs_path,
                                                   create_healthcheck_file,
                                                   true);
-    ebpf_hc_created = (access(ebpf_hc_abs_path, F_OK) == 0);
-    healthcheck_file_available = ebpf_hc_created;
+
+    healthcheck_failed |= !file_created;
 
     healthcheck_failed |= !run_healthcheck_action(rb,
                                                   "modify content",
                                                   ebpf_hc_abs_path,
                                                   modify_healthcheck_file_content,
-                                                  healthcheck_file_available);
+                                                  file_created);
 
     healthcheck_failed |= !run_healthcheck_action(rb,
                                                   "modify metadata",
                                                   ebpf_hc_abs_path,
                                                   modify_healthcheck_file_metadata,
-                                                  healthcheck_file_available);
+                                                  file_created);
 
     healthcheck_failed |= !run_healthcheck_action(rb,
                                                   "delete file",
                                                   ebpf_hc_abs_path,
                                                   delete_healthcheck_file,
-                                                  healthcheck_file_available);
-    healthcheck_file_available = (access(ebpf_hc_abs_path, F_OK) == 0);
+                                                  file_created);
 
     // Free healthcheck ring buffer
     bpf_helpers->ring_buffer_free(rb);
 
-    if (healthcheck_file_available && std::remove(ebpf_hc_abs_path) != 0 && errno != ENOENT) {
+    if (std::remove(ebpf_hc_abs_path) != 0 && errno != ENOENT) {
         char error_message[4200] = {0};
         snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, ebpf_hc_abs_path);
         logFn(LOG_ERROR, error_message);
