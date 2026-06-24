@@ -103,6 +103,23 @@ jobs:
             Add-Content -Path $env:GITHUB_PATH -Value $wixDir
             Write-Host "WiX extracted to $wixDir"
           }
+      - name: Set up 7-Zip (MSI/zip extraction)
+        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships 7-Zip.
+        # The upgrade test (test_win_upgrade.py) extracts the MSI with `7z e`, and an MSI is an
+        # OLE/CAB container that tar/Expand-Archive cannot open — full 7-Zip is required.
+        # GitHub-hosted images bundled 7-Zip; the CodeBuild image does not.
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Get-Command 7z.exe -ErrorAction SilentlyContinue) {
+            Write-Host "7-Zip already available: $((Get-Command 7z.exe).Source)"
+          } else {
+            $installer = Join-Path $env:TEMP '7z-x64.exe'
+            Invoke-WebRequest -Uri 'https://www.7-zip.org/a/7z2408-x64.exe' -OutFile $installer
+            Start-Process -FilePath $installer -ArgumentList '/S' -Wait
+            Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files\7-Zip'
+            Write-Host "7-Zip installed to C:\Program Files\7-Zip"
+          }
       - name: Install dependencies
         run: |
           pip install -r src/win32/qa/requirements.txt
@@ -116,18 +133,7 @@ jobs:
           name: win-agent-base.zip
           path: C:\win-agent-base
       - name: Unzip base folder
-        # The CodeBuild Windows image has no 7-Zip on PATH (GitHub-hosted images did). Use the
-        # native tar.exe (fast, ships with Server 2019+) and fall back to Expand-Archive; the
-        # archive is a standard .zip produced by `7z a`, so both extract it.
-        shell: pwsh
-        run: |
-          $zip = "C:\win-agent-base\win-agent-base.zip"
-          $dest = "C:\win-agent-base"
-          if (Get-Command tar.exe -ErrorAction SilentlyContinue) {
-            tar -xf $zip -C $dest
-          } else {
-            Expand-Archive -Path $zip -DestinationPath $dest -Force
-          }
+        run: 7z x C:\win-agent-base\win-agent-base.zip -oC:\win-agent-base
       - name: Create .msi package
         run: |
           cd C:\win-agent-base\src\win32
