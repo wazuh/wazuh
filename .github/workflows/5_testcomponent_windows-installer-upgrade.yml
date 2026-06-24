@@ -39,11 +39,13 @@ concurrency:
 jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     steps:
       - name: Install mingw
-        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
+        run: |
+          sudo apt-get update
+          sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 make -y
       - uses: actions/checkout@v3
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
@@ -97,7 +99,18 @@ jobs:
           name: win-agent-base.zip
           path: C:\win-agent-base
       - name: Unzip base folder
-        run: 7z x C:\win-agent-base\win-agent-base.zip -oC:\win-agent-base
+        # The CodeBuild Windows image has no 7-Zip on PATH (GitHub-hosted images did). Use the
+        # native tar.exe (fast, ships with Server 2019+) and fall back to Expand-Archive; the
+        # archive is a standard .zip produced by `7z a`, so both extract it.
+        shell: pwsh
+        run: |
+          $zip = "C:\win-agent-base\win-agent-base.zip"
+          $dest = "C:\win-agent-base"
+          if (Get-Command tar.exe -ErrorAction SilentlyContinue) {
+            tar -xf $zip -C $dest
+          } else {
+            Expand-Archive -Path $zip -DestinationPath $dest -Force
+          }
       - name: Create .msi package
         run: |
           cd C:\win-agent-base\src\win32

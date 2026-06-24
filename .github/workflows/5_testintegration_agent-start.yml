@@ -36,7 +36,7 @@ env:
 
 jobs:
   setup-matrix:
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
