@@ -865,6 +865,7 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
     if (check.contains("mitre") && check["mitre"].is_object())
     {
         static const std::array<const char*, 3> MITRE_FIELDS = {"tactic", "technique", "subtechnique"};
+        static const std::array<const char*, 2> MITRE_SUBFIELDS = {"id", "name"};
 
         for (const auto* field : MITRE_FIELDS)
         {
@@ -875,13 +876,24 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 
             auto& mitreField = check["mitre"][field];
 
-            if (mitreField.is_string())
+            // Each tactic/technique/subtechnique is an object holding "id" and "name" lists.
+            if (!mitreField.is_object())
             {
-                mitreField = StringToJsonArray(mitreField.get<std::string>());
+                check["mitre"].erase(field);
+                continue;
             }
-            else if (!mitreField.is_array())
+
+            for (const auto* subfield : MITRE_SUBFIELDS)
             {
-                // Keep schema alignment by dropping invalid mitre subfield types.
+                if (mitreField.contains(subfield) && !mitreField[subfield].is_array())
+                {
+                    // Keep schema alignment by dropping invalid mitre subfield types.
+                    mitreField.erase(subfield);
+                }
+            }
+
+            if (mitreField.empty())
+            {
                 check["mitre"].erase(field);
             }
         }
