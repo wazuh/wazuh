@@ -261,6 +261,18 @@ Details: https://www.cisco.com/c/en/us/td/docs/routers/access/wireless/software/
   <order>cisco.facility, cisco.severity, cisco.mnemonic, srcuser, srcip</order>
 </decoder>
 
+<!-- Cisco IOS EMWEB login failure
+  - Extracts srcuser from failed EWS authentication attempts.
+  - Sample:
+  - %EMWEB-3-LOGIN_FAILED: ews_auth.c:1234 Login failed for the user:jsmith. Service-Type is not present.
+  -->
+<decoder name="cisco-ios-emweb-login">
+  <parent>cisco-ios</parent>
+  <prematch>%EMWEB-3-LOGIN_FAILED</prematch>
+  <regex type="pcre2">%(\w+)-(\d)-(\w+): \S+ Login failed for the user:(\S+)\.</regex>
+  <order>cisco.facility, cisco.severity, cisco.mnemonic, srcuser</order>
+</decoder>
+
 <!-- Cisco IOS
   - Extracts the ID of cisco ios messages IF NOT IDS/ACL log.
   -->
