@@ -230,7 +230,18 @@ static bool modify_healthcheck_file_content(const char* file_path, char* detail,
 static bool modify_healthcheck_file_metadata(const char* file_path, char* detail, size_t detail_size) {
     struct stat file_stat = {};
 
-    if (stat(file_path, &file_stat) != 0) {
+    int fd = open(file_path, O_RDONLY);
+    if (fd < 0) {
+        snprintf(detail,
+                 detail_size,
+                 FIM_EBPF_HEALTHCHECK_STAT_DETAIL,
+                 file_path,
+                 strerror(errno));
+        return false;
+    }
+
+    if (fstat(fd, &file_stat) != 0) {
+        close(fd);
         snprintf(detail,
                  detail_size,
                  FIM_EBPF_HEALTHCHECK_STAT_DETAIL,
@@ -242,7 +253,8 @@ static bool modify_healthcheck_file_metadata(const char* file_path, char* detail
     mode_t current_mode = file_stat.st_mode & 0777;
     mode_t new_mode = (current_mode ^ S_IXUSR) & 0777;
 
-    if (chmod(file_path, new_mode) != 0) {
+    if (fchmod(fd, new_mode) != 0) {
+        close(fd);
         snprintf(detail,
                  detail_size,
                  FIM_EBPF_HEALTHCHECK_CHMOD_DETAIL,
@@ -251,6 +263,7 @@ static bool modify_healthcheck_file_metadata(const char* file_path, char* detail
         return false;
     }
 
+    close(fd);
     return true;
 }
 
@@ -686,12 +699,11 @@ int ebpf_whodata_healthcheck() {
                                                   ebpf_hc_abs_path,
                                                   delete_healthcheck_file,
                                                   healthcheck_file_available);
-    healthcheck_file_available = (access(ebpf_hc_abs_path, F_OK) == 0);
 
     // Free healthcheck ring buffer
     bpf_helpers->ring_buffer_free(rb);
 
-    if (healthcheck_file_available && std::remove(ebpf_hc_abs_path) != 0 && errno != ENOENT) {
+    if (std::remove(ebpf_hc_abs_path) != 0 && errno != ENOENT) {
         char error_message[4200] = {0};
         snprintf(error_message, sizeof(error_message), FIM_ERROR_EBPF_HEALTHCHECK_FILE_DEL, ebpf_hc_abs_path);
         logFn(LOG_ERROR, error_message);
