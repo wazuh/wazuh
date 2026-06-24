@@ -685,10 +685,9 @@ public:
         m_selector =
             selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
 
-        m_maxBulkSize =
-            config.contains("max_bulk_size") && config.at("max_bulk_size").is_number_integer()
-                ? config.at("max_bulk_size").get<size_t>()
-                : MaxBulkSize;
+        m_maxBulkSize = config.contains("max_bulk_size") && config.at("max_bulk_size").is_number_integer()
+                            ? config.at("max_bulk_size").get<size_t>()
+                            : MaxBulkSize;
 
         m_flushInterval =
             config.contains("flush_interval_seconds") && config.at("flush_interval_seconds").is_number_integer()

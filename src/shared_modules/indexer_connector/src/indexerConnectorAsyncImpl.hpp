@@ -237,10 +237,9 @@ public:
                 ? config.at("flush_interval_seconds").get<size_t>()
                 : FlushInterval;
 
-        m_elementsPerBulk =
-            config.contains("elements_per_bulk") && config.at("elements_per_bulk").is_number_integer()
-                ? config.at("elements_per_bulk").get<size_t>()
-                : ElementsPerBulk;
+        m_elementsPerBulk = config.contains("elements_per_bulk") && config.at("elements_per_bulk").is_number_integer()
+                                ? config.at("elements_per_bulk").get<size_t>()
+                                : ElementsPerBulk;
 
         m_loggerProcessor = std::make_unique<ThreadLoggerQueue>(
             [this](const IndexerResponse& data)

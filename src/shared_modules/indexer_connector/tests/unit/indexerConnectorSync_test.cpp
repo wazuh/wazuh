@@ -4323,9 +4323,7 @@ TEST_F(IndexerConnectorSyncTest, MaxBulkSizeFromJsonConfigTriggersFlush)
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(1))
-        .WillRepeatedly(Invoke([this](auto requestParams,
-                                     auto postParams,
-                                     auto configParams)
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
                                { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
 
     // SmallBulk
@@ -4350,9 +4348,7 @@ TEST_F(IndexerConnectorSyncTest, MaxBulkSizeMinValueTriggersFlushOnSecondElement
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(1))
-        .WillRepeatedly(Invoke([this](auto requestParams,
-                                     auto postParams,
-                                     auto configParams)
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
                                { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
 
     IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
@@ -4394,9 +4390,7 @@ TEST_F(IndexerConnectorSyncTest, FlushIntervalSecondsFromJsonConfigTimerFires)
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(1))
-        .WillRepeatedly(Invoke([this](auto requestParams,
-                                     auto postParams,
-                                     auto configParams)
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
                                { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
