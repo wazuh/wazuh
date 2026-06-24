@@ -121,6 +121,7 @@ class IndexerConnectorAsyncImpl final
     size_t m_successCount {0};
     size_t m_maxQueueSize {0};
     size_t m_flushInterval {FlushInterval};
+    size_t m_elementsPerBulk {ElementsPerBulk};
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
 
 public:
@@ -235,6 +236,11 @@ public:
             config.contains("flush_interval_seconds") && config.at("flush_interval_seconds").is_number_integer()
                 ? config.at("flush_interval_seconds").get<size_t>()
                 : FlushInterval;
+
+        m_elementsPerBulk =
+            config.contains("elements_per_bulk") && config.at("elements_per_bulk").is_number_integer()
+                ? config.at("elements_per_bulk").get<size_t>()
+                : ElementsPerBulk;
 
         m_loggerProcessor = std::make_unique<ThreadLoggerQueue>(
             [this](const IndexerResponse& data)
@@ -409,10 +415,10 @@ public:
 
                 const auto onSuccess = [this, &bulkData, &boundaries](std::string&& response)
                 {
-                    if (m_dispatcher->bulkSize() != ElementsPerBulk && m_successCount == MaxSuccessCount)
+                    if (m_dispatcher->bulkSize() != m_elementsPerBulk && m_successCount == MaxSuccessCount)
                     {
-                        logDebug2(m_logTag.c_str(), "Resetting bulk size to %zu.", ElementsPerBulk);
-                        m_dispatcher->bulkSize(ElementsPerBulk);
+                        logDebug2(m_logTag.c_str(), "Resetting bulk size to %zu.", m_elementsPerBulk);
+                        m_dispatcher->bulkSize(m_elementsPerBulk);
                         m_error413Logged = false;
                     }
 
@@ -505,7 +511,7 @@ public:
                                     {});
             },
             m_dbPath,
-            ElementsPerBulk,
+            m_elementsPerBulk,
             m_maxQueueSize,
             RetryDelay,
             m_flushInterval);

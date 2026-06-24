@@ -423,6 +423,29 @@ int main(int argc, char* argv[])
                 json::Json jsonCnf(baseJsonCnf);
                 const auto maxQueueSize = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_EVENTS);
                 jsonCnf.setUint64(maxQueueSize, "/max_queue_size");
+
+                constexpr size_t INDEXER_ELEMENTS_PER_BULK_MAX = 1000000;
+                const auto elementsPerBulk = confManager.get<size_t>(conf::key::INDEXER_ELEMENTS_PER_BULK);
+                if (elementsPerBulk == 0 || elementsPerBulk > INDEXER_ELEMENTS_PER_BULK_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_bulk_size must be between 1 and {} (got {})",
+                                    INDEXER_ELEMENTS_PER_BULK_MAX,
+                                    elementsPerBulk));
+                }
+                jsonCnf.setUint64(elementsPerBulk, "/elements_per_bulk");
+
+                constexpr size_t INDEXER_FLUSH_INTERVAL_MAX = 3600;
+                const auto flushInterval = confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL);
+                if (flushInterval == 0 || flushInterval > INDEXER_FLUSH_INTERVAL_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_flush_interval must be between 1 and {} (got {})",
+                                    INDEXER_FLUSH_INTERVAL_MAX,
+                                    flushInterval));
+                }
+                jsonCnf.setUint64(flushInterval, "/flush_interval_seconds");
+
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
 
