@@ -3,20 +3,20 @@
 namespace kvdbstore
 {
 
-KVDBHandler::KVDBHandler(std::shared_ptr<const KVMap> map) noexcept
-    : m_map(std::move(map))
+KVDBHandler::KVDBHandler(std::shared_ptr<const KVMapStore> store) noexcept
+    : m_store(std::move(store))
 {
 }
 
 const json::Json& KVDBHandler::get(const std::string& key) const
 {
-    if (!m_map)
+    if (!m_store)
     {
-        throw std::out_of_range("KVDBHandler has no backing map (null).");
+        throw std::out_of_range("KVDBHandler has no backing store (null).");
     }
 
-    const auto it = m_map->find(key);
-    if (it == m_map->end())
+    const auto it = m_store->entries.find(key);
+    if (it == m_store->entries.end())
     {
         throw std::out_of_range("Key not found in KVDB: '" + key + "'.");
     }
@@ -26,7 +26,7 @@ const json::Json& KVDBHandler::get(const std::string& key) const
 
 bool KVDBHandler::contains(const std::string& key) const noexcept
 {
-    return m_map && (m_map->find(key) != m_map->end());
+    return m_store && (m_store->entries.find(key) != m_store->entries.end());
 }
 
 } // namespace kvdbstore

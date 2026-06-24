@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <limits>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "rapidjson/schema.h"
@@ -447,6 +448,26 @@ std::optional<std::vector<std::tuple<std::string, Json>>> Json::getObject(std::s
     }
 
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
+std::unordered_map<std::string, Json> Json::extractObjectMembers()
+{
+    if (!m_document.IsObject())
+    {
+        throw std::runtime_error("extractObjectMembers called on non-object Json");
+    }
+
+    std::unordered_map<std::string, Json> result;
+    result.reserve(m_document.MemberCount());
+
+    for (auto& m : m_document.GetObject())
+    {
+        Json entry;
+        entry.m_document.Swap(m.value); // Zero-copy: steals value, leaves null in source
+        result.try_emplace(std::string(m.name.GetString(), m.name.GetStringLength()), std::move(entry));
+    }
+
+    return result;
 }
 
 std::optional<std::vector<std::string>> Json::getFields() const
