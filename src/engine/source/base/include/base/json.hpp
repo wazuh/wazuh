@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include <fmt/format.h>
@@ -545,6 +546,22 @@ public:
      * @throws std::runtime_error If any pointer path is invalid.
      */
     std::optional<std::vector<std::tuple<std::string, Json>>> getObject(std::string_view path = "") const;
+
+    /**
+     * @brief Extract all top-level members of this JSON object by swapping (zero-copy).
+     *
+     * Each member value is moved out of this document via Value::Swap, avoiding
+     * expensive deep copies (CopyFrom / SetStringRaw). After extraction, this
+     * object's members are left in a null/moved-from state.
+     *
+     * IMPORTANT: The returned Json values reference string data stored in this
+     * object's allocator. This object MUST remain alive for as long as any of
+     * the returned Json values are in use.
+     *
+     * @return unordered_map of member name → Json (zero-copy swapped values).
+     * @throws std::runtime_error If this Json is not an object.
+     */
+    std::unordered_map<std::string, Json> extractObjectMembers();
 
     /**
      * @brief Get a list of fields from a json object.
