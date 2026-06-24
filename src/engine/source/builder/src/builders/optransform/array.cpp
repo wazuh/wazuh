@@ -60,7 +60,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                      targetFieldtype,
                      unique,
                      isInSchema,
-                     value = asValue->value()](std::vector<json::Json>& targetArray,
+                     value = std::make_shared<const json::Json>(asValue->value())](std::vector<json::Json>& targetArray,
                                                json::Json::Type& valueType,
                                                const base::Event& event) -> base::OptError
                     {
@@ -72,7 +72,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                                 // otherwise take the type of the first element of the target field.
                                 if (!event->getArray(targetField).has_value())
                                 {
-                                    valueType = value.type();
+                                    valueType = value->type();
                                 }
                                 else
                                 {
@@ -85,22 +85,22 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                             }
                         }
 
-                        if (value.type() != valueType)
+                        if (value->type() != valueType)
                         {
                             return base::Error {fmt::format("Expected '{}' value but got value of type '{}'",
                                                             json::Json::typeToStr(valueType),
-                                                            json::Json::typeToStr(value.type()))};
+                                                            json::Json::typeToStr(value->type()))};
                         }
 
                         if (unique)
                         {
-                            if (std::find(targetArray.begin(), targetArray.end(), value) != targetArray.end())
+                            if (std::find(targetArray.begin(), targetArray.end(), *value) != targetArray.end())
                             {
                                 return base::noError();
                             }
                         }
 
-                        targetArray.emplace_back(value);
+                        targetArray.emplace_back(*value);
                         return base::noError();
                     });
             }

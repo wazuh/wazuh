@@ -7,12 +7,12 @@ namespace
 {
 MapOp mapValue(const Value& value, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto jValue(value.value());
+    auto jValue = std::make_shared<const json::Json>(value.value());
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
     return
-        [successTrace, isTestMode = buildCtx->isTestMode(), jValue = std::move(jValue)](base::ConstEvent event) -> MapResult
+        [successTrace, isTestMode = buildCtx->isTestMode(), jValue](base::ConstEvent event) -> MapResult
     {
-        RETURN_SUCCESS(isTestMode, json::Json(jValue), successTrace);
+        RETURN_SUCCESS(isTestMode, json::Json(*jValue), successTrace);
     };
 }
 
