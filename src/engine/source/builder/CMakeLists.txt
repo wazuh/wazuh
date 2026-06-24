@@ -25,7 +25,7 @@ SET(BUILDER_PRI_INCS
 )
 add_library(builder STATIC
     ${SRC_DIR}/builder.cpp
-    ${SRC_DIR}/allowedFields.cpp
+    ${SRC_DIR}/decoderUnmodifiableFields.cpp
     ${SRC_DIR}/policy/factory.cpp
     ${SRC_DIR}/policy/policy.cpp
     ${SRC_DIR}/policy/assetBuilder.cpp
@@ -121,7 +121,7 @@ gtest_discover_tests(builder_ctest)
 add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/baseBuilders_test.cpp
 	${UNIT_SRC_DIR}/builders/baseHelper_test.cpp
-	${UNIT_SRC_DIR}/allowedFields_test.cpp
+	${UNIT_SRC_DIR}/decoderUnmodifiableFields_test.cpp
 	${UNIT_SRC_DIR}/registry_test.cpp
 	${UNIT_SRC_DIR}/policy/factory_test.cpp
 	${UNIT_SRC_DIR}/policy/assetBuilder_test.cpp

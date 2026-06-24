@@ -285,6 +285,49 @@ parsec::Parser<std::list<ParserInfo>> pLogpar()
 
 namespace hlp::logpar
 {
+namespace
+{
+bool isWildcardField(const parser::Field& field)
+{
+    return field.name.value == std::string {syntax::EXPR_WILDCARD};
+}
+
+void collectTargetFields(const std::list<parser::ParserInfo>& parserInfos, std::vector<std::string>& fields)
+{
+    for (const auto& parserInfo : parserInfos)
+    {
+        if (std::holds_alternative<parser::Literal>(parserInfo))
+        {
+            continue;
+        }
+        if (std::holds_alternative<parser::Field>(parserInfo))
+        {
+            const auto& field = std::get<parser::Field>(parserInfo);
+            if (!isWildcardField(field))
+            {
+                fields.push_back(field.name.value);
+            }
+        }
+        else if (std::holds_alternative<parser::Choice>(parserInfo))
+        {
+            const auto& choice = std::get<parser::Choice>(parserInfo);
+            if (!isWildcardField(choice.left))
+            {
+                fields.push_back(choice.left.name.value);
+            }
+            if (!isWildcardField(choice.right))
+            {
+                fields.push_back(choice.right.name.value);
+            }
+        }
+        else if (std::holds_alternative<parser::Group>(parserInfo))
+        {
+            collectTargetFields(std::get<parser::Group>(parserInfo).children, fields);
+        }
+    }
+}
+} // namespace
+
 Logpar::Logpar(const json::Json& fieldParserOverrides,
                const std::shared_ptr<schemf::IValidator>& schemaValidator,
                size_t maxGroupRecursion,
@@ -333,8 +376,7 @@ Logpar::Logpar(const json::Json& fieldParserOverrides,
         auto parserType = strToParserType(val);
         if (parserType == ParserType::ERROR_TYPE)
         {
-            throw std::runtime_error(
-                fmt::format("Field parser override '{}' invalid parser type '{}'", key, val));
+            throw std::runtime_error(fmt::format("Field parser override '{}' invalid parser type '{}'", key, val));
         }
 
         m_fieldParserOverrides[key] = parserType;
@@ -664,7 +706,7 @@ void Logpar::registerBuilder(ParserType type, const ParserBuilder& builder)
     m_parserBuilders[type] = builder;
 }
 
-Logpar::Hlp Logpar::build(std::string_view logpar) const
+Logpar::BuildResult Logpar::build(std::string_view logpar) const
 {
     auto result = parser::pLogpar()(logpar, 0);
     if (result.failure())
@@ -673,9 +715,12 @@ Logpar::Hlp Logpar::build(std::string_view logpar) const
     }
 
     auto parserInfos = result.value();
+    std::vector<std::string> fields;
+    collectTargetFields(parserInfos, fields);
+
     auto p = buildParsers(parserInfos, 0);
 
-    return hlp::parser::combinator::all({p, hlp::parsers::getEofParser({.name = "EOF"})});
+    return {hlp::parser::combinator::all({p, hlp::parsers::getEofParser({.name = "EOF"})}), std::move(fields)};
 }
 
 } // namespace hlp::logpar

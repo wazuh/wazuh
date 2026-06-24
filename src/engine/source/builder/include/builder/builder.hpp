@@ -15,7 +15,7 @@
 #include <streamlog/ilogger.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
 
-#include <builder/iallowedFields.hpp>
+#include <builder/idecoderUnmodifiableFields.hpp>
 #include <builder/ibuilder.hpp>
 #include <builder/ivalidator.hpp>
 
@@ -52,7 +52,7 @@ private:
     std::shared_ptr<cm::store::ICMStore> m_cmStore;                  ///< CMStore interface
     std::shared_ptr<schemf::IValidator> m_schema;                    ///< Schema validator
     std::shared_ptr<defs::IDefinitionsBuilder> m_definitionsBuilder; ///< Definitions builder
-    std::shared_ptr<IAllowedFields> m_allowedFields; ///< Manages wich fields can be modified by different assets
+    std::shared_ptr<IDecoderUnmodifiableFields> m_decoderUnmodifiableFields; ///< Decoder field write restrictions.
 
     std::shared_ptr<Registry> m_registry; ///< builders registry
 
@@ -66,13 +66,13 @@ public:
      * @param storeRead Store reader interface
      * @param schema Schema validator
      * @param definitionsBuilder Definitions builder
-     * @param allowedFields Manages wich fields can be modified by different assets
+     * @param decoderUnmodifiableFields Decoder field write restrictions
      * @param builderDeps Builders dependencies
      */
     Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
             const std::shared_ptr<schemf::IValidator>& schema,
             const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
-            const std::shared_ptr<IAllowedFields>& allowedFields,
+            const std::shared_ptr<IDecoderUnmodifiableFields>& decoderUnmodifiableFields,
             const BuilderDeps& builderDeps,
             const std::shared_ptr<::store::IStore>& store);
 

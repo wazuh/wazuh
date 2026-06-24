@@ -204,7 +204,7 @@ TEST_F(HlpNegativeTest, InvalidInputForParser)
 TEST_F(HlpNegativeTest, DisallowedTargetField)
 {
     EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
-    EXPECT_CALL(*mocks->allowedFields, check(testing::_, DotPath("forbidden_field")))
+    EXPECT_CALL(*mocks->decoderUnmodifiableFields, check(testing::_, DotPath("forbidden_field")))
         .WillOnce(testing::Return(false));
 
     std::vector<OpArg> opArgs {makeRef("source")};

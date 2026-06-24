@@ -80,9 +80,9 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     // Assert expected number of parameters
     utils::assertSize(opArgs, 2);
 
-    // Allowed fields check
+    // Decoder unmodifiable fields check
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed in '{}'", targetField.dotPath(), assetType));
     }
@@ -205,7 +205,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     const auto isTestMode = buildCtx->isTestMode();
     const auto targetJsonPath = targetField.jsonPath();
     const auto targetDotPath = targetField.dotPath();
-    const auto allowedFieldsPtr = buildCtx->allowedFieldsPtr();
+    const auto decoderUnmodifiableFieldsPtr = buildCtx->decoderUnmodifiableFieldsPtr();
 
     // Return Op
     return [key,
@@ -223,7 +223,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
             isTestMode,
             targetJsonPath,
             targetDotPath,
-            allowedFieldsPtr,
+            decoderUnmodifiableFieldsPtr,
             kvdbHandler = std::move(kvdbHandler),
             doMerge,
             isRecursive](base::Event event) -> TransformResult
@@ -268,7 +268,7 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
                 auto fields = value.getFields().value();
                 for (const auto& field : fields)
                 {
-                    if (!allowedFieldsPtr->check(assetType, DotPath::append(targetDotPath, field)))
+                    if (!decoderUnmodifiableFieldsPtr->check(assetType, DotPath::append(targetDotPath, field)))
                     {
                         RETURN_FAILURE(isTestMode, event, failureTrace8)
                     }
@@ -464,9 +464,9 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         // Assert expected number of parameters
         utils::assertSize(opArgs, 2);
 
-        // Check allowed fields
+        // Check decoder unmodifiable fields
         const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-        if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+        if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
         {
             throw std::runtime_error(
                 fmt::format("Field '{}' is not allowed in '{}'", targetField.dotPath(), assetType));
@@ -776,9 +776,9 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     utils::assertValue(opArgs, 0, 1);
     utils::assertRef(opArgs, 2);
 
-    // Check allowed fields
+    // Check decoder unmodifiable fields
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed in '{}'", targetField.dotPath(), assetType));
     }

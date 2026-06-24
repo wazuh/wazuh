@@ -669,7 +669,7 @@ TransformOp opBuilderHelperStringTrim(const Reference& targetField,
 {
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
@@ -1838,7 +1838,7 @@ TransformOp opBuilderHelperStringReplace(const Reference& targetField,
 {
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
@@ -2101,7 +2101,7 @@ TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
 {
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
@@ -2128,7 +2128,7 @@ TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
             isTestMode = buildCtx->isTestMode(),
             targetField = targetField.jsonPath(),
             targetFieldDotPath = targetField.dotPath(),
-            allowedFields = buildCtx->allowedFieldsPtr(),
+            decoderUnmodifiableFields = buildCtx->decoderUnmodifiableFieldsPtr(),
             fieldReference = refField.jsonPath()](base::Event event) -> TransformResult
     {
         // Check target and reference field exists
@@ -2159,7 +2159,7 @@ TransformOp opBuilderHelperMergeRecursively(const Reference& targetField,
             auto fields = ref.getFields().value();
             for (const auto& field : fields)
             {
-                if (!allowedFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
+                if (!decoderUnmodifiableFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
                 {
                     RETURN_FAILURE(isTestMode, event, failureTrace5)
                 }
@@ -2311,7 +2311,7 @@ TransformOp opBuilderHelperAppendSplitString(const Reference& targetField,
 {
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
@@ -2391,7 +2391,7 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
 {
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
@@ -2418,7 +2418,7 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
             isTestMode = buildCtx->isTestMode(),
             targetField = targetField.jsonPath(),
             targetFieldDotPath = targetField.dotPath(),
-            allowedFields = buildCtx->allowedFieldsPtr(),
+            decoderUnmodifiableFields = buildCtx->decoderUnmodifiableFieldsPtr(),
             fieldReference = refField.jsonPath()](base::Event event) -> TransformResult
     {
         // Check target and reference field exists
@@ -2449,7 +2449,7 @@ TransformOp opBuilderHelperMerge(const Reference& targetField,
             auto fields = ref.getFields().value();
             for (const auto& field : fields)
             {
-                if (!allowedFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
+                if (!decoderUnmodifiableFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
                 {
                     RETURN_FAILURE(isTestMode, event, failureTrace5)
                 }
@@ -2474,7 +2474,7 @@ TransformOp opBuilderHelperDeleteField(const Reference& targetField,
 {
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
@@ -2521,7 +2521,7 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
                                                  const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
@@ -2616,12 +2616,12 @@ TransformOp opBuilderHelperRenameField(const Reference& targetField,
 
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, srcField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, srcField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", srcField.dotPath()));
     }
 
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
@@ -3380,7 +3380,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
 {
     // Check Allowed field
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed", targetField.dotPath()));
     }
@@ -3466,7 +3466,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
             isTestMode = buildCtx->isTestMode(),
             targetField = targetField.jsonPath(),
             targetFieldDotPath = targetField.dotPath(),
-            allowedFields = buildCtx->allowedFieldsPtr(),
+            decoderUnmodifiableFields = buildCtx->decoderUnmodifiableFieldsPtr(),
             parameter = opArgs[0],
             key = keyRef.jsonPath(),
             keyPP = json::PointerPath(keyRef.jsonPath())](base::Event event) -> TransformResult
@@ -3535,7 +3535,7 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
             auto fields = resolvedValue.value().getFields().value();
             for (const auto& field : fields)
             {
-                if (!allowedFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
+                if (!decoderUnmodifiableFields->check(assetType, DotPath::append(targetFieldDotPath, field)))
                 {
                     RETURN_FAILURE(isTestMode, event, failureTrace9)
                 }

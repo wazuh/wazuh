@@ -114,7 +114,7 @@ protected:
 TEST_P(LogparBuildParseTest, BuildParse)
 {
     auto [shouldPass, expression, text, expected] = GetParam();
-    auto parser = logpar->build(expression);
+    auto parser = logpar->build(expression).parser;
 
     json::Json event;
     auto error = hlp::parser::run(parser, text, event);
@@ -517,7 +517,7 @@ TEST_P(LogparAdditionalTypesTest, ParsesNewTypes)
     auto [fieldName, schemaType, parserType, expression, inputText, expectedJson] = GetParam();
 
     // Build the parser
-    auto parser = logpar->build(expression);
+    auto parser = logpar->build(expression).parser;
     ASSERT_TRUE(parser != nullptr);
 
     // Parse the input

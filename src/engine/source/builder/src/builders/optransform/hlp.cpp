@@ -93,9 +93,9 @@ TransformOp specificHLPBuilder(const Reference& targetField,
     utils::assertSize(opArgs, 1, utils::MAX_OP_ARGS);
     utils::assertRef(opArgs, 0);
 
-    // Allowed fields check
+    // Decoder unmodifiable fields check
     const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
-    if (!buildCtx->allowedFields().check(assetType, targetField.dotPath()))
+    if (!buildCtx->decoderUnmodifiableFields().check(assetType, targetField.dotPath()))
     {
         throw std::runtime_error(fmt::format("Field '{}' is not allowed in '{}'", targetField.dotPath(), assetType));
     }

@@ -14,8 +14,8 @@ namespace builder::builders
 class BuildCtx final : public IBuildCtx
 {
 private:
-    bool m_isTestMode {false};            ///< Policy-level immutable: true for test/tester, false for production.
-    Context m_context;                    ///< Context
+    bool m_isTestMode {false}; ///< Policy-level immutable: true for test/tester, false for production.
+    Context m_context;         ///< Context
 
     std::shared_ptr<const RegistryType> m_registry; ///< Builders registry
 
@@ -25,7 +25,8 @@ private:
 
     std::shared_ptr<const schemf::ISchema> m_schema; ///< Schema
 
-    std::shared_ptr<const builder::IAllowedFields> m_allowedFields; ///< Allowed fields
+    std::shared_ptr<const builder::IDecoderUnmodifiableFields>
+        m_decoderUnmodifiableFields; ///< Decoder write restrictions
 
     std::shared_ptr<cm::store::ICMStoreNSReader> m_storeNSReader; ///< Store namespace reader
 
@@ -39,7 +40,7 @@ public:
         m_registry = nullptr;
         m_definitions = nullptr;
         m_schemaValidator = nullptr;
-        m_allowedFields = nullptr;
+        m_decoderUnmodifiableFields = nullptr;
         m_storeNSReader = nullptr;
         m_allowMissingDependencies = false;
         m_context.integration.availableKvdbs = std::nullopt;
@@ -57,14 +58,14 @@ public:
      * @param registry Builders registry
      * @param definitions Definitions
      * @param schemaValidator Schema validator
-     * @param allowedFields Allowed fields
+     * @param decoderUnmodifiableFields Field write restrictions
      */
     BuildCtx(bool isTestMode,
              const Context& context,
              const std::shared_ptr<const RegistryType>& registry,
              const std::shared_ptr<const defs::IDefinitions>& definitions,
              const std::shared_ptr<const schemf::IValidator>& schemaValidator,
-             const std::shared_ptr<const builder::IAllowedFields>& allowedFields,
+             const std::shared_ptr<const builder::IDecoderUnmodifiableFields>& decoderUnmodifiableFields,
              const std::shared_ptr<cm::store::ICMStoreNSReader>& storeNSReader,
              bool allowMissingDependencies)
         : m_isTestMode(isTestMode)
@@ -72,7 +73,7 @@ public:
         , m_registry(registry)
         , m_definitions(definitions)
         , m_schemaValidator(schemaValidator)
-        , m_allowedFields(allowedFields)
+        , m_decoderUnmodifiableFields(decoderUnmodifiableFields)
         , m_storeNSReader(storeNSReader)
         , m_allowMissingDependencies(allowMissingDependencies)
     {
@@ -90,7 +91,7 @@ public:
                                           m_registry,
                                           m_definitions,
                                           m_schemaValidator,
-                                          m_allowedFields,
+                                          m_decoderUnmodifiableFields,
                                           m_storeNSReader,
                                           m_allowMissingDependencies);
     }
@@ -157,21 +158,28 @@ public:
     inline void setTestMode(bool isTestMode) { m_isTestMode = isTestMode; }
 
     /**
-     * @copydoc IBuildCtx::allowedFields
+     * @copydoc IBuildCtx::decoderUnmodifiableFields
      */
-    inline const builder::IAllowedFields& allowedFields() const override { return *m_allowedFields; }
-
-    /**
-     * @copydoc IBuildCtx::allowedFieldsPtr
-     */
-    inline std::shared_ptr<const builder::IAllowedFields> allowedFieldsPtr() const override { return m_allowedFields; }
-
-    /**
-     * @copydoc IBuildCtx::setAllowedFields
-     */
-    inline void setAllowedFields(const std::shared_ptr<const builder::IAllowedFields>& allowedFields) override
+    inline const builder::IDecoderUnmodifiableFields& decoderUnmodifiableFields() const override
     {
-        m_allowedFields = allowedFields;
+        return *m_decoderUnmodifiableFields;
+    }
+
+    /**
+     * @copydoc IBuildCtx::decoderUnmodifiableFieldsPtr
+     */
+    inline std::shared_ptr<const builder::IDecoderUnmodifiableFields> decoderUnmodifiableFieldsPtr() const override
+    {
+        return m_decoderUnmodifiableFields;
+    }
+
+    /**
+     * @copydoc IBuildCtx::setDecoderUnmodifiableFields
+     */
+    inline void setDecoderUnmodifiableFields(
+        const std::shared_ptr<const builder::IDecoderUnmodifiableFields>& decoderUnmodifiableFields) override
+    {
+        m_decoderUnmodifiableFields = decoderUnmodifiableFields;
     }
 
     /**

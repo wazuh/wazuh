@@ -5,7 +5,7 @@
 #include <optional>
 #include <string>
 
-#include <builder/iallowedFields.hpp>
+#include <builder/idecoderUnmodifiableFields.hpp>
 #include <cmstore/icmstore.hpp>
 #include <defs/idefinitions.hpp>
 #include <schemf/ivalidator.hpp>
@@ -131,25 +131,26 @@ public:
     virtual bool isTestMode() const = 0;
 
     /**
-     * @brief Get the allowed fields object
+     * @brief Get the field write restrictions object
      *
-     * @return const builder::IAllowedFields&
+     * @return const builder::IDecoderUnmodifiableFields&
      */
-    virtual const builder::IAllowedFields& allowedFields() const = 0;
+    virtual const builder::IDecoderUnmodifiableFields& decoderUnmodifiableFields() const = 0;
 
     /**
-     * @brief Get the allowed fields pointer object
+     * @brief Get the field write restrictions pointer object
      *
-     * @return std::shared_ptr<const builder::IAllowedFields>
+     * @return std::shared_ptr<const builder::IDecoderUnmodifiableFields>
      */
-    virtual std::shared_ptr<const builder::IAllowedFields> allowedFieldsPtr() const = 0;
+    virtual std::shared_ptr<const builder::IDecoderUnmodifiableFields> decoderUnmodifiableFieldsPtr() const = 0;
 
     /**
-     * @brief Set the Allowed Fields object
+     * @brief Set the field write restrictions object
      *
-     * @param allowedFields
+     * @param decoderUnmodifiableFields
      */
-    virtual void setAllowedFields(const std::shared_ptr<const builder::IAllowedFields>& allowedFields) = 0;
+    virtual void setDecoderUnmodifiableFields(
+        const std::shared_ptr<const builder::IDecoderUnmodifiableFields>& decoderUnmodifiableFields) = 0;
 
     /**
      * @brief Get the store namespace reader object

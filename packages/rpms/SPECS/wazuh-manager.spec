@@ -614,7 +614,7 @@ rm -fr %{buildroot}
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/geo
 %dir %attr(770, root, wazuh-manager) %{_localstatedir}/data/store/geo/mmdb
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema
-%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/allowed-fields
+%dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/decoder-unmodifiable-fields
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/engine-schema
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/wazuh-logpar-overrides
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb
@@ -624,7 +624,7 @@ rm -fr %{buildroot}
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/geo/0
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/enrichment/ioc/0
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/geo/mmdb/0
-%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/allowed-fields/0
+%attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/decoder-unmodifiable-fields/0
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/engine-schema/0
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/data/store/schema/wazuh-logpar-overrides/0
 %attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/data/tzdb/iana/*

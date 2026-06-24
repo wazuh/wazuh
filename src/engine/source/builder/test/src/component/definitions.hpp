@@ -2,7 +2,7 @@
 #define _BUILDER_TEST_DEFINITIONS_HPP
 
 #include <base/behaviour.hpp>
-#include <builder/allowedFields.hpp>
+#include <builder/decoderUnmodifiableFields.hpp>
 #include <builder/builder.hpp>
 #include <cmstore/mockcmstore.hpp>
 #include <defs/mockDefinitions.hpp>
@@ -368,7 +368,7 @@ public:
             std::make_shared<hlp::logpar::Logpar>(json::Json {WAZUH_LOGPAR_TYPES_JSON}, m_spMocks->m_spSchemf);
         builderDeps.kvdbManager = nullptr;
 
-        auto emptyAllowedFields = std::make_shared<builder::AllowedFields>();
+        auto emptyDecoderUnmodifiableFields = std::make_shared<builder::DecoderUnmodifiableFields>();
 
         // Configure MockStore to return a valid GeoIP configuration for enrichment/geo/0
         auto geoConfig = json::Json(R"({
@@ -405,7 +405,12 @@ public:
             .WillRepeatedly(testing::Return(base::RespOrError<store::Doc>(iocConfig)));
 
         m_spBuilder = std::make_shared<builder::Builder>(
-            m_spMocks->m_spStore, m_spMocks->m_spSchemf, m_spMocks->m_spDefBuilder, emptyAllowedFields, builderDeps, m_spMocks->m_spMockStore);
+            m_spMocks->m_spStore,
+            m_spMocks->m_spSchemf,
+            m_spMocks->m_spDefBuilder,
+            emptyDecoderUnmodifiableFields,
+            builderDeps,
+            m_spMocks->m_spMockStore);
     }
 };
 

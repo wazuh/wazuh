@@ -44,6 +44,9 @@ HELPERS_INTEG_UUID   = "e9d1a9c3-8f2b-4a6a-9f4b-2c6d5e7f2b10"
 # KVDB resource UUID in CM
 KVDB_RESOURCE_UUID = "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10"
 
+# Output resource UUID used by helpers that run after decoder integration metadata is attached.
+HELPERS_OUTPUT_UUID = "4d8e6f20-2f51-4a3b-9d90-0bba1e932337"
+
 
 # ===================================================================
 #  CLI
@@ -125,6 +128,7 @@ class Evaluator:
         self.skipped = False
         self.expected = ""
         self.input = []
+        self.integration_category = None
 
     def set_id(self, id: int):
         self.id = id
@@ -152,6 +156,9 @@ class Evaluator:
 
     def set_input(self, input: list):
         self.input = input
+
+    def set_integration_category(self, integration_category: Optional[str]):
+        self.integration_category = integration_category
 
     def create_failure_test(self, response):
         """
@@ -280,7 +287,15 @@ class Evaluator:
         output = raw_output
 
         if not self.skipped:
-            if (self.should_pass and field_mapping in output) or (
+            if self.helper_name == "index_unclassified_events":
+                result = extract_helper_result_from_response(response, self.helper_name)
+                if (self.should_pass and result == "Success") or (
+                    not self.should_pass and result != "Success"
+                ):
+                    self.create_success_test()
+                else:
+                    self.create_failure_test(response)
+            elif (self.should_pass and field_mapping in output) or (
                 not self.should_pass and field_mapping not in output
             ):
                 self.create_success_test()
@@ -468,7 +483,18 @@ def delete_integration(api_client: APIClient):
     api_client.send_recv(req)
 
 
-def create_helpers_integration(api_client: APIClient):
+def delete_output(api_client: APIClient):
+    """
+    Delete the helpers output (if present) in POLICY_NS by UUID.
+    No error if it doesn't exist.
+    """
+    req = api_crud.resourceDelete_Request()
+    req.space = POLICY_NS
+    req.uuid = HELPERS_OUTPUT_UUID
+    api_client.send_recv(req)
+
+
+def create_helpers_integration(api_client: APIClient, integration_category: Optional[str] = None):
     """
     Create/update the helpers integration that references the helpers decoder
     and associates the KVDB resource.
@@ -479,7 +505,7 @@ def create_helpers_integration(api_client: APIClient):
             "id": HELPERS_INTEG_UUID,
             "metadata": {"title": "helpers-test"},
             "enabled": True,
-            "category": "other",
+            "category": integration_category or "other",
             "default_parent": HELPERS_DECODER_UUID,
             "decoders": [HELPERS_DECODER_UUID],
             "kvdbs": [KVDB_RESOURCE_UUID],
@@ -493,7 +519,41 @@ def create_helpers_integration(api_client: APIClient):
     assert response.status == api_engine.OK, f"{response.error}"
 
 
-def create_policy(api_client: APIClient):
+def create_helpers_output(api_client: APIClient):
+    """
+    Create/update an output used to test helpers that depend on post-decoder metadata.
+    """
+    output_json = json.dumps(
+        {
+            "id": HELPERS_OUTPUT_UUID,
+            "name": "output/helpers-test/0",
+            "metadata": {"title": "helpers-test-output"},
+            "enabled": True,
+            "outputs": [
+                {
+                    "first_of": [
+                        {
+                            "check": "index_unclassified_events($wazuh.integration.category)",
+                            "then": [{"wazuh-indexer": {"index": "wazuh-events-v5-helpers-test-unclassified"}}],
+                        },
+                        {
+                            "check": "not_exists($wazuh.integration.category) OR string_not_equal($wazuh.integration.category, \"unclassified\")",
+                            "then": [{"wazuh-indexer": {"index": "wazuh-events-v5-helpers-test-other"}}],
+                        },
+                    ]
+                }
+            ],
+        },
+        separators=(",", ":"),
+    )
+    req = api_crud.resourcePost_Request()
+    req.space = POLICY_NS
+    req.type = "output"
+    response = _post_json_content(api_client, req, json.loads(output_json))
+    assert response.status == api_engine.OK, f"{response.error}"
+
+
+def create_policy(api_client: APIClient, output_uuids: Optional[list] = None):
     """
     Create/update the policy in engine-cm, in namespace POLICY_NS.
 
@@ -509,6 +569,7 @@ def create_policy(api_client: APIClient):
             "hash": "helpers-test-hash",
             "enrichments": [],
             "filters": [],
+            "outputs": output_uuids or [],
             "index_unclassified_events": True,
             "index_discarded_events": False,
             "default_parent": HELPERS_DECODER_UUID,
@@ -710,6 +771,21 @@ def extract_transformation_result_from_response(response: dict, helper_name: str
     return None
 
 
+def extract_helper_result_from_response(response: dict, helper_name: str) -> Optional[str]:
+    """
+    Parse the RunPost response and extract the first Success/Failure result for helper_name
+    from any asset trace.
+    """
+    response = json.loads(MessageToJson(response))
+    for asset_trace in response["result"].get("assetTraces", []):
+        for trace in asset_trace.get("traces", []):
+            if helper_name in trace:
+                match = re.search(r"->\s*(Success|Failure)", trace)
+                if match:
+                    return match.group(1)
+    return None
+
+
 # ===================================================================
 #  Test execution
 # ===================================================================
@@ -724,13 +800,18 @@ def execute_single_run_test(api_client: APIClient, run_test: dict, result_evalua
     result_evaluator.set_skipped(run_test.get("skipped", False))
     result_evaluator.set_description(run_test["description"])
     result_evaluator.set_input([])
+    result_evaluator.set_integration_category(run_test.get("integration_category"))
 
     # Create runtime decoder
     if create_asset_for_runtime(api_client, result_evaluator):
         # Integration that references the decoder and KVDB
-        create_helpers_integration(api_client)
+        create_helpers_integration(api_client, result_evaluator.integration_category)
         # Policy based only on integrations
-        create_policy(api_client)
+        if result_evaluator.helper_name == "index_unclassified_events":
+            create_helpers_output(api_client)
+            create_policy(api_client, [HELPERS_OUTPUT_UUID])
+        else:
+            create_policy(api_client)
         # Tester session bound to the namespace/policy
         create_session(api_client)
 
@@ -758,12 +839,17 @@ def execute_multiple_run_tests(api_client: APIClient, run_test: dict, result_eva
         result_evaluator.set_expected(test_case.get("expected", None))
         result_evaluator.set_description(run_test["description"])
         result_evaluator.set_input(test_case.get("input", []))
+        result_evaluator.set_integration_category(test_case.get("integration_category"))
 
         if j == 0:
             if not create_asset_for_runtime(api_client, result_evaluator):
                 break
-            create_helpers_integration(api_client)
-            create_policy(api_client)
+            create_helpers_integration(api_client, result_evaluator.integration_category)
+            if result_evaluator.helper_name == "index_unclassified_events":
+                create_helpers_output(api_client)
+                create_policy(api_client, [HELPERS_OUTPUT_UUID])
+            else:
+                create_policy(api_client)
             create_session(api_client)
 
         if result_evaluator.helper_type == "map":
@@ -804,6 +890,7 @@ def process_file(file: Path, api_client: APIClient, result_evaluator: Evaluator,
         delete_policy(api_client)
         delete_asset(api_client)
         delete_integration(api_client)
+        delete_output(api_client)
         delete_kvdb_resource(api_client)
 
         # Setup
@@ -820,6 +907,7 @@ def process_file(file: Path, api_client: APIClient, result_evaluator: Evaluator,
         delete_policy(api_client)
         delete_asset(api_client)
         delete_integration(api_client)
+        delete_output(api_client)
         delete_kvdb_resource(api_client)
 
         # Setup

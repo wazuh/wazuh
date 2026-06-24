@@ -62,14 +62,24 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
             }
             logparExpr = buildCtx->definitions().replace(logparExpr);
 
-            hlp::parser::Parser parser;
+            hlp::logpar::Logpar::BuildResult logparBuild;
             try
             {
-                parser = logpar->build(logparExpr);
+                logparBuild = logpar->build(logparExpr);
             }
             catch (const std::exception& e)
             {
                 throw std::runtime_error(fmt::format("An error occurred while parsing a log: {}", e.what()));
+            }
+
+            const auto assetType = base::Name(buildCtx->context().assetName).parts().front();
+            for (const auto& fieldName : logparBuild.targetFields)
+            {
+                if (!buildCtx->decoderUnmodifiableFields().check(assetType, DotPath {fieldName}))
+                {
+                    throw std::runtime_error(fmt::format(
+                        "Logpar expression writes to field '{}' which cannot be modified by decoders", fieldName));
+                }
             }
 
             // Traces
@@ -89,7 +99,7 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
                     logparExpr,
                     [=,
                      isTestMode = buildCtx->isTestMode(),
-                     parser = std::move(parser),
+                     parser = std::move(logparBuild.parser),
                      fieldPP = json::PointerPath(field)](base::Event event)
                     {
                         std::string_view ev;

@@ -888,14 +888,14 @@ installEngineStore()
     local ENRICHMENT_PATH=${STORE_PATH}/enrichment
     local ENGINE_SCHEMA_PATH=${SCHEMA_PATH}/engine-schema/
     local ENGINE_LOGPAR_TYPE_PATH=${SCHEMA_PATH}/wazuh-logpar-overrides
-    local ENGINE_ALLOWED_FIELDS_PATH=${SCHEMA_PATH}/allowed-fields
+    local ENGINE_DECODER_UNMODIFIABLE_FIELDS_PATH=${SCHEMA_PATH}/decoder-unmodifiable-fields
     local ENGINE_ENRICHMENT_GEO=${ENRICHMENT_PATH}/geo
     local ENGINE_ENRICHMENT_IOC=${ENRICHMENT_PATH}/ioc
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${STORE_PATH}
     mkdir -p "${ENGINE_SCHEMA_PATH}"
     mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
-    mkdir -p "${ENGINE_ALLOWED_FIELDS_PATH}"
+    mkdir -p "${ENGINE_DECODER_UNMODIFIABLE_FIELDS_PATH}"
     mkdir -p "${ENGINE_ENRICHMENT_GEO}"
     mkdir -p "${ENGINE_ENRICHMENT_IOC}"
 
@@ -903,12 +903,12 @@ installEngineStore()
     echo "Copying store files..."
     cp "${ENGINE_SRC_PATH}/ruleset/schemas/engine-schema.json" "${ENGINE_SCHEMA_PATH}/0"
     cp "${ENGINE_SRC_PATH}/ruleset/schemas/wazuh-logpar-overrides.json" "${ENGINE_LOGPAR_TYPE_PATH}/0"
-    cp "${ENGINE_SRC_PATH}/ruleset/schemas/allowed-fields.json" "${ENGINE_ALLOWED_FIELDS_PATH}/0"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/decoder-unmodifiable-fields.json" "${ENGINE_DECODER_UNMODIFIABLE_FIELDS_PATH}/0"
     cp "${ENGINE_SRC_PATH}/ruleset/schemas/enrichment-geo.json" "${ENGINE_ENRICHMENT_GEO}/0"
     cp "${ENGINE_SRC_PATH}/ruleset/schemas/enrichment-ioc.json" "${ENGINE_ENRICHMENT_IOC}/0"
 
     if [ ! -f "${ENGINE_SCHEMA_PATH}/0" ] || [ ! -f "${ENGINE_LOGPAR_TYPE_PATH}/0" ] \
-        || [ ! -f "${ENGINE_ALLOWED_FIELDS_PATH}/0" ] || [ ! -f "${ENGINE_ENRICHMENT_GEO}/0" ] \
+        || [ ! -f "${ENGINE_DECODER_UNMODIFIABLE_FIELDS_PATH}/0" ] || [ ! -f "${ENGINE_ENRICHMENT_GEO}/0" ] \
         || [ ! -f "${ENGINE_ENRICHMENT_IOC}/0" ]; then
         echo "Error: Failed to copy store files."
         exit 1

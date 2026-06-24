@@ -33,7 +33,7 @@ public:
      * @param definitionsBuilder Definitions builder.
      * @param registry Registry instance.
      * @param schema Schema validator instance.
-     * @param allowedFields Allowed fields instance.
+     * @param decoderUnmodifiableFields Field write restrictions instance.
      * @param isTestMode Whether to build the policy in test mode.
      */
     Policy(const cm::store::NamespaceId& namespaceId,
@@ -41,7 +41,7 @@ public:
            const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
            const std::shared_ptr<builders::RegistryType>& registry,
            const std::shared_ptr<schemf::IValidator>& schema,
-           const std::shared_ptr<IAllowedFields>& allowedFields,
+           const std::shared_ptr<IDecoderUnmodifiableFields>& decoderUnmodifiableFields,
            const bool isTestMode);
 
     /**

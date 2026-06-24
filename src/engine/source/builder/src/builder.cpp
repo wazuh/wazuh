@@ -4,7 +4,7 @@
 
 #include <cmstore/categories.hpp>
 
-#include "allowedFields.hpp"
+#include "decoderUnmodifiableFields.hpp"
 #include "builders/ibuildCtx.hpp"
 #include "policy/assetBuilder.hpp"
 #include "policy/factory.hpp"
@@ -22,13 +22,13 @@ class Builder::Registry final : public builders::RegistryType
 Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
                  const std::shared_ptr<schemf::IValidator>& schema,
                  const std::shared_ptr<defs::IDefinitionsBuilder>& definitionsBuilder,
-                 const std::shared_ptr<IAllowedFields>& allowedFields,
+                 const std::shared_ptr<IDecoderUnmodifiableFields>& decoderUnmodifiableFields,
                  const BuilderDeps& builderDeps,
                  const std::shared_ptr<::store::IStore>& store)
     : m_cmStore {cmStore}
     , m_schema {schema}
     , m_definitionsBuilder {definitionsBuilder}
-    , m_allowedFields {allowedFields}
+    , m_decoderUnmodifiableFields {decoderUnmodifiableFields}
 {
     if (!m_cmStore)
     {
@@ -45,9 +45,9 @@ Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
         throw std::runtime_error {"Definitions builder is null"};
     }
 
-    if (!m_allowedFields)
+    if (!m_decoderUnmodifiableFields)
     {
-        throw std::runtime_error {"Allowed fields is null"};
+        throw std::runtime_error {"Decoder unmodifiable fields interface is null"};
     }
 
     // Registry
@@ -61,7 +61,7 @@ Builder::Builder(const std::shared_ptr<cm::store::ICMStore>& cmStore,
 std::shared_ptr<IPolicy> Builder::buildPolicy(const cm::store::NamespaceId& namespaceId, bool isTestMode) const
 {
     auto policy = std::make_shared<policy::Policy>(
-        namespaceId, m_cmStore, m_definitionsBuilder, m_registry, m_schema, m_allowedFields, isTestMode);
+        namespaceId, m_cmStore, m_definitionsBuilder, m_registry, m_schema, m_decoderUnmodifiableFields, isTestMode);
 
     return policy;
 }
@@ -153,7 +153,7 @@ base::OptError Builder::validateAsset(const std::shared_ptr<cm::store::ICMStoreN
         auto buildCtx = std::make_shared<builders::BuildCtx>();
         buildCtx->setRegistry(m_registry);
         buildCtx->setValidator(m_schema);
-        buildCtx->setAllowedFields(m_allowedFields);
+        buildCtx->setDecoderUnmodifiableFields(m_decoderUnmodifiableFields);
         buildCtx->setStoreNSReader(nsReader);
         buildCtx->setAllowMissingDependencies(false);
 
@@ -187,7 +187,7 @@ base::OptError Builder::validateAssetShallow(const json::Json& assetJson) const
         auto buildCtx = std::make_shared<builders::BuildCtx>();
         buildCtx->setRegistry(m_registry);
         buildCtx->setValidator(m_schema);
-        buildCtx->setAllowedFields(m_allowedFields);
+        buildCtx->setDecoderUnmodifiableFields(m_decoderUnmodifiableFields);
         buildCtx->setAllowMissingDependencies(true);
 
         auto assetBuilder = std::make_shared<policy::AssetBuilder>(buildCtx, m_definitionsBuilder);

@@ -33,7 +33,7 @@ INSTANTIATE_TEST_SUITE_P(
                    FAILURE(
                        [](const auto& mocks)
                        {
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("targetField")))
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
@@ -48,7 +48,7 @@ INSTANTIATE_TEST_SUITE_P(
                    FAILURE(
                        [](const auto& mocks)
                        {
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("targetField")))
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
@@ -63,9 +63,9 @@ INSTANTIATE_TEST_SUITE_P(
                    FAILURE(
                        [](const auto& mocks)
                        {
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("ref")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("ref")))
                                .WillOnce(testing::Return(true));
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("targetField")))
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
@@ -74,7 +74,7 @@ INSTANTIATE_TEST_SUITE_P(
                    FAILURE(
                        [](const auto& mocks)
                        {
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("ref")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("ref")))
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
@@ -88,7 +88,7 @@ INSTANTIATE_TEST_SUITE_P(
                    FAILURE(
                        [](const auto& mocks)
                        {
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("targetField")))
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
@@ -102,7 +102,7 @@ INSTANTIATE_TEST_SUITE_P(
                    FAILURE(
                        [](const auto& mocks)
                        {
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("targetField")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("targetField")))
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
@@ -490,9 +490,9 @@ INSTANTIATE_TEST_SUITE_P(
                    FAILURE(
                        [](const auto& mocks)
                        {
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("target")))
                                .WillOnce(testing::Return(true));
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target.a.d")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("target.a.d")))
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),
@@ -549,9 +549,9 @@ INSTANTIATE_TEST_SUITE_P(
                    FAILURE(
                        [](const auto& mocks)
                        {
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("target")))
                                .WillOnce(testing::Return(true));
-                           EXPECT_CALL(*mocks.allowedFields, check(testing::_, DotPath("target.a.d")))
+                           EXPECT_CALL(*mocks.decoderUnmodifiableFields, check(testing::_, DotPath("target.a.d")))
                                .WillOnce(testing::Return(false));
                            return None {};
                        })),

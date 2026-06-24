@@ -31,6 +31,7 @@ class TestData:
         self.validator = validator
         self.tests = {"build_test": [], "run_test": []}
         self.asset_definition = {}
+        self.integration_category = None
 
     def get_target_field_name(self):
         target_field_path = self.parser.get_target_field_path()
@@ -103,16 +104,24 @@ class TestData:
         """
         helper = f"{self.parser.get_name()}({', '.join(str(v) for v in arguments)})"
         target_field_name = self.get_target_field_name()
+        self.integration_category = None
         if self.helper_type == "map":
             normalize_list = [{"map": [{"_eventJson": "parse_json($event.original)"}, {
                 "_helper": helper}]}]
         elif self.helper_type == "filter":
-            normalize_list = [
-                {"map": [{"_eventJson": "parse_json($event.original)"}, {
-                    target_field_name: target_field_value}]},
-                {"check": [{target_field_name: helper}], "map": [
-                    {"_verification_field": "It is used to verify if the check passed correctly"}]}
-            ]
+            if self.parser.get_name() == "index_unclassified_events":
+                if isinstance(target_field_value, str) and target_field_value:
+                    self.integration_category = target_field_value
+                normalize_list = [
+                    {"map": [{"_eventJson": "parse_json($event.original)"}]}
+                ]
+            else:
+                normalize_list = [
+                    {"map": [{"_eventJson": "parse_json($event.original)"}, {
+                        target_field_name: target_field_value}]},
+                    {"check": [{target_field_name: helper}], "map": [
+                        {"_verification_field": "It is used to verify if the check passed correctly"}]}
+                ]
         else:
             normalize_list = [{"map": [{"_eventJson": "parse_json($event.original)"}, {target_field_name: target_field_value}, {
                 target_field_name: helper}]}]
@@ -132,6 +141,8 @@ class TestData:
         """
         test_cases = [
             {"input": input, "id": increase_id(), "should_pass": should_pass}]
+        if self.integration_category is not None:
+            test_cases[0]["integration_category"] = self.integration_category
         if skip_tag and skip_tag in self.parser.get_skips():
             test_cases[0]["skipped"] = True
         if expected is not None:
@@ -157,6 +168,8 @@ class TestData:
         """
         test_cases = [
             {"input": input, "id": increase_id(), "should_pass": should_pass}]
+        if self.integration_category is not None:
+            test_cases[0]["integration_category"] = self.integration_category
         if skip:
             test_cases[0]["skipped"] = True
         if expected is not None:
