@@ -166,6 +166,22 @@ bool Json::equals(std::string_view ptrPath, const Json& value) const
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
 }
 
+bool Json::equalsString(std::string_view ptrPath, std::string_view str) const
+{
+    const auto fieldPtr = rapidjson::Pointer(ptrPath.data(), ptrPath.size());
+    if (fieldPtr.IsValid())
+    {
+        const auto got {fieldPtr.Get(m_document)};
+        if (!got || !got->IsString())
+        {
+            return false;
+        }
+        return std::string_view(got->GetString(), got->GetStringLength()) == str;
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
+}
+
 bool Json::equals(std::string_view basePtrPath, std::string_view referencePtrPath) const
 {
     const auto fieldPtr = rapidjson::Pointer(basePtrPath.data(), basePtrPath.size());

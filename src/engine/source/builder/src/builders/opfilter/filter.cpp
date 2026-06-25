@@ -9,18 +9,44 @@ namespace
 {
 FilterOp filterValue(const Reference& targetField, const Value& value, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto jValue = std::make_shared<const json::Json>(value.value());
-
     auto targetNotFound =
         fmt::format("{} -> Target field '{}' not found", buildCtx->context().opName, targetField.dotPath());
     auto valueMissmatch =
         fmt::format("{} -> Value missmatch for reference '{}'", buildCtx->context().opName, targetField.dotPath());
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
+    auto isTestMode = buildCtx->isTestMode();
+
+    // For string-only Values, capture the string directly (avoids json::Json steady-state overhead)
+    if (value.isStringValue())
+    {
+        auto strValue = std::string(value.getStringDirect());
+        return [targetField = targetField.jsonPath(),
+                targetNotFound,
+                valueMissmatch,
+                successTrace,
+                isTestMode,
+                strValue](base::ConstEvent event) -> FilterResult
+        {
+            if (!event->exists(targetField))
+            {
+                RETURN_FAILURE(isTestMode, false, targetNotFound);
+            }
+
+            if (!event->equalsString(targetField, strValue))
+            {
+                RETURN_FAILURE(isTestMode, false, valueMissmatch);
+            }
+
+            RETURN_SUCCESS(isTestMode, true, successTrace);
+        };
+    }
+
+    auto jValue = value.sharedValue();
     return [targetField = targetField.jsonPath(),
             targetNotFound,
             valueMissmatch,
             successTrace,
-            isTestMode = buildCtx->isTestMode(),
+            isTestMode,
             jValue](base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))

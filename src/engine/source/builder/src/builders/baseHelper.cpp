@@ -345,13 +345,11 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
                 if (strValue.size() >= 2 && strValue[0] == syntax::helper::DEFAULT_ESCAPE
                     && strValue[1] == syntax::field::REF_ANCHOR)
                 {
-                    json::Json newValue;
-                    newValue.setString(strValue.substr(1));
-                    opArgs.emplace_back(std::make_shared<Value>(std::move(newValue)));
+                    opArgs.emplace_back(std::make_shared<Value>(strValue.substr(1)));
                 }
                 else
                 {
-                    opArgs.emplace_back(std::make_shared<Value>(json::Json(jValue)));
+                    opArgs.emplace_back(std::make_shared<Value>(std::string(strValue)));
                 }
             }
 
