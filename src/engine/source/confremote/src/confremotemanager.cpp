@@ -59,8 +59,7 @@ void ConfRemoteManager::synchronize()
             return;
         }
 
-        LOG_WARNING("Failed to synchronize remote settings. Keeping current state.");
-        LOG_DEBUG("Synchronize failure detail: {}.", e.what());
+        LOG_WARNING("[ConfRemote] Failed to synchronize remote settings: {}. Keeping current state.", e.what());
         return;
     }
 

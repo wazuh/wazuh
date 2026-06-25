@@ -50,6 +50,8 @@ class TMonitoring final
     std::atomic<bool> m_stop {false};
     uint32_t m_interval {INTERVAL};
     THttpRequest* m_httpRequest;
+    std::map<std::string, std::string, std::less<>> m_unavailableReasonByServer;
+    std::map<std::string, bool, std::less<>> m_previousServerAvailability;
 
     /**
      * @brief Checks the health of a server.
@@ -65,6 +67,10 @@ class TMonitoring final
     void healthCheck(const std::string& serverAddress, const SecureCommunication& authentication)
     {
         auto& serverStatus = m_servers[serverAddress];
+        const auto previousAvailability = m_previousServerAvailability.find(serverAddress);
+        const bool wasAvailable =
+            previousAvailability == m_previousServerAvailability.end() || previousAvailability->second;
+        std::string unavailableReason;
 
         // Set the server status to unavailable by default
         serverStatus = false;
@@ -105,8 +111,8 @@ class TMonitoring final
         };
 
         // On error callback
-        const auto onError =
-            [&serverAddress](const std::string& error, const long statusCode, const std::string& errorBody)
+        const auto onError = [&serverAddress, &unavailableReason](
+                                 const std::string& error, const long statusCode, const std::string& errorBody)
         {
             // LCOV_EXCL_START
             //  Try to extract error details from JSON
@@ -137,51 +143,36 @@ class TMonitoring final
             {
                 if (!errorType.empty() && !errorReason.empty())
                 {
-                    logDebug2(MONITOR_NAME,
-                              "Health check failed for '%s' - type: '%s', reason: '%s' - Check indexer credentials",
-                              serverAddress.c_str(),
-                              errorType.c_str(),
-                              errorReason.c_str());
+                    unavailableReason =
+                        "Unauthorized (" + errorType + ": " + errorReason + ") - Check indexer credentials";
                 }
                 else
                 {
-                    logDebug2(MONITOR_NAME,
-                              "Health check failed for '%s' - Unauthorized - Check indexer credentials",
-                              serverAddress.c_str());
+                    unavailableReason = "Unauthorized - Check indexer credentials";
                 }
             }
             else if (statusCode == 403)
             {
                 if (!errorType.empty() && !errorReason.empty())
                 {
-                    logDebug2(MONITOR_NAME,
-                              "Health check failed for '%s' - type: '%s', reason: '%s' - Check user permissions",
-                              serverAddress.c_str(),
-                              errorType.c_str(),
-                              errorReason.c_str());
+                    unavailableReason = "Forbidden (" + errorType + ": " + errorReason + ") - Check user permissions";
                 }
                 else
                 {
-                    logDebug2(MONITOR_NAME,
-                              "Health check failed for '%s' - Forbidden - Check user permissions",
-                              serverAddress.c_str());
+                    unavailableReason = "Forbidden - Check user permissions";
                 }
             }
             else if (statusCode >= 500)
             {
-                logDebug2(MONITOR_NAME,
-                          "Health check failed for '%s' - Server error (%ld)",
-                          serverAddress.c_str(),
-                          statusCode);
+                unavailableReason = "Server error (HTTP " + std::to_string(statusCode) + ")";
             }
             else
             {
-                logDebug2(MONITOR_NAME,
-                          "Health check failed for '%s' - status: %ld, error: %s",
-                          serverAddress.c_str(),
-                          statusCode,
-                          error.c_str());
+                unavailableReason = error.empty() ? "status: " + std::to_string(statusCode) : error;
             }
+
+            logDebug2(
+                MONITOR_NAME, "Health check failed for '%s' - %s", serverAddress.c_str(), unavailableReason.c_str());
         };
         // LCOV_EXCL_STOP
 
@@ -192,6 +183,34 @@ class TMonitoring final
         m_httpRequest->get(RequestParameters {.url = HttpURL(url), .secureCommunication = authentication},
                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                            ConfigurationParameters {.timeout = HEALTH_CHECK_TIMEOUT_MS});
+
+        if (!serverStatus && unavailableReason.empty())
+        {
+            unavailableReason = "Cluster reported unhealthy status";
+        }
+
+        if (!serverStatus)
+        {
+            m_unavailableReasonByServer[serverAddress] = unavailableReason;
+        }
+        else
+        {
+            m_unavailableReasonByServer.erase(serverAddress);
+        }
+
+        if (wasAvailable && !serverStatus)
+        {
+            logInfo(MONITOR_NAME,
+                    "Indexer node '%s' is no longer available. Reason: %s",
+                    serverAddress.c_str(),
+                    unavailableReason.c_str());
+        }
+        else if (!wasAvailable && serverStatus)
+        {
+            logInfo(MONITOR_NAME, "Indexer node '%s' is available again.", serverAddress.c_str());
+        }
+
+        m_previousServerAvailability[serverAddress] = serverStatus;
     }
 
     /**
@@ -287,6 +306,30 @@ public:
             throw std::out_of_range("Server not found in monitoring");
         }
         return it->second;
+    }
+
+    std::string getUnavailableServersDetails()
+    {
+        std::scoped_lock lock(m_mutex);
+        std::string result;
+        for (const auto& [serverAddress, available] : m_servers)
+        {
+            if (available)
+            {
+                continue;
+            }
+
+            const auto unavailableReason = m_unavailableReasonByServer.find(serverAddress);
+            if (!result.empty())
+            {
+                result += "; ";
+            }
+            result += serverAddress + ": " +
+                      (unavailableReason == m_unavailableReasonByServer.end() ? std::string {"unknown"}
+                                                                              : unavailableReason->second);
+        }
+
+        return result.empty() ? "no error details available" : result;
     }
 };
 

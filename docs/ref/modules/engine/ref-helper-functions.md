@@ -1614,7 +1614,7 @@ field: index_unclassified_events()
 
 | Path | Type | Possible values |
 | ---- | ---- | --------------- |
-| wazuh.integration.category | string | unclassified, access-management, applications, cloud-services, network-activity, other, security, system-activity |
+| wazuh.integration.category | string | Any string |
 
 
 ## Description
@@ -1626,9 +1626,9 @@ This filter returns true if and only if:
 3. 'wazuh.integration.category' equals the string "unclassified"
 
 This helper is used in output routing to decide whether to index events that the
-root decoder tagged as unclassified (no integration decoder matched) when the policy
-allows it. If the policy flag is disabled, the category differs from "unclassified",
-or the field is missing / not a string, the validation fails.
+root decoder tagged as unclassified (no integration decoder matched) when the
+policy allows it. If the policy flag is disabled, the category differs from
+"unclassified", or the field is missing / not a string, the validation fails.
 
 Note: This helper does not accept any arguments, rejects any target field other than
 'wazuh.integration.category', and depends on the policy context configured at build time.
@@ -1719,9 +1719,7 @@ check:
 #### Input Event
 
 ```json
-{
-  "wazuh.integration.category": ""
-}
+{}
 ```
 
 *The check was performed with errors*
@@ -4460,6 +4458,70 @@ check:
 
 
 
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
+
 ---
 # kvdb_not_match
 
@@ -4584,6 +4646,70 @@ check:
 *The check was successful*
 
 
+
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
 
 ---
 # match_value
@@ -14630,6 +14756,70 @@ normalize:
 
 
 
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
+
 ---
 # kvdb_get
 
@@ -14919,6 +15109,70 @@ normalize:
 *The operation was successful*
 
 
+
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
 
 ---
 # kvdb_get_array
@@ -15286,6 +15540,70 @@ normalize:
 
 
 
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
+
 ---
 # kvdb_get_merge
 
@@ -15621,6 +15939,70 @@ normalize:
 *The operation was successful*
 
 
+
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
 
 ---
 # kvdb_get_merge_recursive
@@ -15969,6 +16351,70 @@ normalize:
 *The operation was successful*
 
 
+
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
 
 ---
 # merge
