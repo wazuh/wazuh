@@ -396,6 +396,48 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(sys_process_priority->valueint, 10);
 }
 
+void test_getSyscheckConfig_scan_schedule(void **state)
+{
+    (void) state;
+    cJSON * ret;
+
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+
+    expect_any_always(__wrap__mdebug1, formatted_msg);
+    expect_any_always(__wrap__minfo, formatted_msg);
+
+    Read_Syscheck_Config("test_syscheck_scan_schedule.conf");
+    ret = getSyscheckConfig();
+    *state = ret;
+
+    assert_non_null(ret);
+
+    cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
+    assert_non_null(sys_items);
+
+    /* scan_day must be the human-readable day name, not a binary bitmap */
+    cJSON *scan_day = cJSON_GetObjectItem(sys_items, "scan_day");
+    assert_non_null(scan_day);
+    char *scan_day_value = cJSON_GetStringValue(scan_day);
+    assert_non_null(scan_day_value);
+    assert_string_equal(scan_day_value, "sunday");
+    /* The first byte must be printable, never the 0x01 bitmap marker */
+    assert_true(scan_day_value[0] >= 0x20);
+
+    /* scan_time must be the original HH:MM string, not the encoded range */
+    cJSON *scan_time = cJSON_GetObjectItem(sys_items, "scan_time");
+    assert_non_null(scan_time);
+    char *scan_time_value = cJSON_GetStringValue(scan_time);
+    assert_non_null(scan_time_value);
+    assert_string_equal(scan_time_value, "01:00");
+    /* The encoded internal format starts with a leading '.' (e.g. ".01:0001:00") */
+    assert_int_not_equal(scan_time_value[0], '.');
+}
+
 void test_getSyscheckConfig_no_audit(void **state)
 {
     (void) state;
@@ -870,6 +912,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_undefined, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_Read_Syscheck_Config_unparsed, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig, setup_read_config, restart_syscheck),
+        cmocka_unit_test_setup_teardown(test_getSyscheckConfig_scan_schedule, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_audit, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckConfig_no_directories, setup_read_config, restart_syscheck),
         cmocka_unit_test_setup_teardown(test_getSyscheckInternalOptions, setup_read_config, restart_syscheck),

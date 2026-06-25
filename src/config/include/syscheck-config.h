@@ -395,8 +395,10 @@ typedef struct _config {
     OSList *directories;                               /* List of directories to be monitored */
     OSList *wildcards;                                 /* List of wildcards to be monitored */
 
-    char *scan_day;                                    /* run syscheck on this day */
-    char *scan_time;                                   /* run syscheck at this time */
+    char *scan_day;                                    /* run syscheck on this day (internal bitmap) */
+    char *scan_time;                                   /* run syscheck at this time (internal encoded format) */
+    char *scan_day_str;                                /* original scan_day string from configuration */
+    char *scan_time_str;                               /* original scan_time string from configuration */
 
     unsigned int file_limit_enabled;                   /* Enable FIM file entry max limits */
     int file_entry_limit;                              /* maximum number of files to monitor */
