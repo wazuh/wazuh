@@ -15,6 +15,7 @@
 #include <winternl.h>
 #include <ntstatus.h>
 #include <iphlpapi.h>
+#include <lm.h>
 #include <shellapi.h>
 #include <memory>
 #include <list>
@@ -1094,6 +1095,31 @@ nlohmann::json SysInfo::getUsers() const
 
     UserGroupsProvider userGroupsProvider;
 
+    // The password aging policy (max/min age) is domain/machine-wide, so query it once
+    // per scan via NetUserModalsGet and apply it to every user. Values are returned in
+    // seconds and converted to days; an unlimited maximum age is reported as -1.
+    std::int64_t passwordMaxDaysBetweenChanges = 0;
+    std::int64_t passwordMinDaysBetweenChanges = 0;
+    {
+        USER_MODALS_INFO_0* userModals = nullptr;
+
+        if (NetUserModalsGet(nullptr, 0, reinterpret_cast<LPBYTE*>(&userModals)) == NERR_Success &&
+                userModals != nullptr)
+        {
+            constexpr std::int64_t SECONDS_PER_DAY = 86400;
+            passwordMaxDaysBetweenChanges = (userModals->usrmod0_max_passwd_age == TIMEQ_FOREVER)
+                                            ? -1
+                                            : static_cast<std::int64_t>(userModals->usrmod0_max_passwd_age) / SECONDS_PER_DAY;
+            passwordMinDaysBetweenChanges =
+                static_cast<std::int64_t>(userModals->usrmod0_min_passwd_age) / SECONDS_PER_DAY;
+        }
+
+        if (userModals != nullptr)
+        {
+            NetApiBufferFree(userModals);
+        }
+    }
+
     for (auto& user : collectedUsers)
     {
         nlohmann::json userItem {};
@@ -1101,7 +1127,7 @@ nlohmann::json SysInfo::getUsers() const
         std::string username = (user.contains("username") && !user["username"].get<std::string>().empty()) ? user["username"] : UNKNOWN_VALUE;
 
         userItem["user_id"] = user["uid"];
-        userItem["user_full_name"] = user["description"];
+        userItem["user_full_name"] = user["full_name"];
         userItem["user_home"] = user["directory"];
         userItem["user_name"] = username;
         userItem["user_shell"] = user["shell"];
@@ -1217,8 +1243,8 @@ nlohmann::json SysInfo::getUsers() const
         userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
         userItem["user_password_inactive_days"] = 0;
         userItem["user_password_last_change"] = 0;
-        userItem["user_password_max_days_between_changes"] = 0;
-        userItem["user_password_min_days_between_changes"] = 0;
+        userItem["user_password_max_days_between_changes"] = passwordMaxDaysBetweenChanges;
+        userItem["user_password_min_days_between_changes"] = passwordMinDaysBetweenChanges;
         userItem["user_password_status"] = UNKNOWN_VALUE;
         userItem["user_password_warning_days_before_expiration"] = 0;
 

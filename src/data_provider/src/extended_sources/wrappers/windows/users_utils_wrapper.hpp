@@ -144,6 +144,9 @@ using user_info_4_ptr = NetApiObjectPtr<USER_INFO_4>;
 /// @brief Alias for NetApiObjectPtr managing LOCALGROUP_USERS_INFO_0 pointers.
 using localgroup_users_info_0_ptr = NetApiObjectPtr<LOCALGROUP_USERS_INFO_0>;
 
+/// @brief Alias for NetApiObjectPtr managing GROUP_USERS_INFO_0 pointers.
+using group_users_info_0_ptr = NetApiObjectPtr<GROUP_USERS_INFO_0>;
+
 /// @brief Alias for NetApiObjectPtr managing LOCALGROUP_INFO_1 pointers.
 using localgroup_info_1_ptr = NetApiObjectPtr<LOCALGROUP_INFO_1>;
 
