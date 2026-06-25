@@ -62,7 +62,7 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: windows-2025
+    runs-on: codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -71,9 +71,26 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: Add WiX toolkit to PATH
-        shell: bash
-        run: echo "${WIX}bin" >> $GITHUB_PATH
+      - name: Set up WiX Toolset (MSI build)
+        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships WiX.
+        # wazuh-installer-build-msi.bat builds the MSI with candle.exe/light.exe (WiX v3).
+        # GitHub-hosted images bundled WiX (exposed via $WIX); the CodeBuild image does not.
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Get-Command candle.exe -ErrorAction SilentlyContinue) {
+            Write-Host "WiX already available: $((Get-Command candle.exe).Source)"
+          } elseif ($env:WIX -and (Test-Path (Join-Path $env:WIX 'bin\candle.exe'))) {
+            Add-Content -Path $env:GITHUB_PATH -Value (Join-Path $env:WIX 'bin')
+            Write-Host "WiX found via `$WIX: $env:WIX"
+          } else {
+            $wixZip = Join-Path $env:TEMP 'wix314-binaries.zip'
+            Invoke-WebRequest -Uri 'https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip' -OutFile $wixZip
+            $wixDir = 'C:\wix314'
+            Expand-Archive -Path $wixZip -DestinationPath $wixDir -Force
+            Add-Content -Path $env:GITHUB_PATH -Value $wixDir
+            Write-Host "WiX extracted to $wixDir"
+          }
       # Download the compressed winagent build.
       - name: Download Artifact winagent
         uses: ./.github/actions/download_s3_artifact

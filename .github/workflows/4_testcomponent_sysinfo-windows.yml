@@ -85,7 +85,7 @@ jobs:
           path: src/wazuh_modules/syscollector/build/bin
   run-on-windows:
     needs: build
-    runs-on: windows-2025
+    runs-on: codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
