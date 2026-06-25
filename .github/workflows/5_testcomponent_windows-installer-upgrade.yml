@@ -39,11 +39,13 @@ concurrency:
 jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     steps:
       - name: Install mingw
-        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
+        run: |
+          sudo apt-get update
+          sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 make -y
       - uses: actions/checkout@v3
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
@@ -69,7 +71,8 @@ jobs:
     strategy:
           matrix:
               wazuh_version: [4.14.0-1]
-    runs-on: windows-2025
+    runs-on:
+      - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     needs: build
     steps:
@@ -80,9 +83,43 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
-      - name: Add WiX toolkit to PATH
-        shell: bash
-        run: echo "${WIX}bin" >> $GITHUB_PATH
+      - name: Set up WiX Toolset (MSI build)
+        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships the WiX Toolset.
+        # wazuh-installer-build-msi.bat builds the MSI with candle.exe/light.exe (WiX v3).
+        # GitHub-hosted images bundled WiX (exposed via $WIX); the CodeBuild image does not.
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Get-Command candle.exe -ErrorAction SilentlyContinue) {
+            Write-Host "WiX already available: $((Get-Command candle.exe).Source)"
+          } elseif ($env:WIX -and (Test-Path (Join-Path $env:WIX 'bin\candle.exe'))) {
+            Add-Content -Path $env:GITHUB_PATH -Value (Join-Path $env:WIX 'bin')
+            Write-Host "WiX found via `$WIX: $env:WIX"
+          } else {
+            $wixZip = Join-Path $env:TEMP 'wix314-binaries.zip'
+            Invoke-WebRequest -Uri 'https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip' -OutFile $wixZip
+            $wixDir = 'C:\wix314'
+            Expand-Archive -Path $wixZip -DestinationPath $wixDir -Force
+            Add-Content -Path $env:GITHUB_PATH -Value $wixDir
+            Write-Host "WiX extracted to $wixDir"
+          }
+      - name: Set up 7-Zip (MSI/zip extraction)
+        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships 7-Zip.
+        # The upgrade test (test_win_upgrade.py) extracts the MSI with `7z e`, and an MSI is an
+        # OLE/CAB container that tar/Expand-Archive cannot open — full 7-Zip is required.
+        # GitHub-hosted images bundled 7-Zip; the CodeBuild image does not.
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Get-Command 7z.exe -ErrorAction SilentlyContinue) {
+            Write-Host "7-Zip already available: $((Get-Command 7z.exe).Source)"
+          } else {
+            $installer = Join-Path $env:TEMP '7z-x64.exe'
+            Invoke-WebRequest -Uri 'https://www.7-zip.org/a/7z2408-x64.exe' -OutFile $installer
+            Start-Process -FilePath $installer -ArgumentList '/S' -Wait
+            Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files\7-Zip'
+            Write-Host "7-Zip installed to C:\Program Files\7-Zip"
+          }
       - name: Install dependencies
         run: |
           pip install -r src/win32/qa/requirements.txt
