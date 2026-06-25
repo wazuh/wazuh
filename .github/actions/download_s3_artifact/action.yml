@@ -1,0 +1,80 @@
+name: "Download artifact from S3"
+description: >
+  Drop-in replacement for actions/download-artifact that retrieves an artifact from
+  the xdrsiem-ci-dev-internal S3 bucket instead of GitHub artifact storage
+  (see https://github.com/wazuh/wazuh-automation/issues/3502).
+  Downloads and extracts the archive previously uploaded by upload_s3_artifact from:
+    <bucket>/<repository>/<workflow>/<name>/artifacts_<run_id>.zip
+  AWS credentials must already be configured in the job, e.g. with
+  aws-actions/configure-aws-credentials (the job needs `permissions: id-token: write`).
+  Requires `7z` and the AWS CLI on the runner.
+
+inputs:
+  name:
+    description: "Artifact name. Must match the name used by the producer upload_s3_artifact step."
+    required: true
+  path:
+    description: "Destination directory for the extracted files. Defaults to the current directory."
+    required: false
+    default: ""
+  bucket:
+    description: "Source S3 bucket URI."
+    required: false
+    default: "s3://xdrsiem-ci-dev-internal"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Resolve S3 key for ${{ inputs.name }}"
+      id: key
+      shell: bash
+      env:
+        ARTIFACT_NAME: ${{ inputs.name }}
+        BUCKET: ${{ inputs.bucket }}
+        REPO_NAME: ${{ github.event.repository.name }}
+        WORKFLOW_REF: ${{ github.workflow_ref }}
+        RUN_ID: ${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        # Derive the workflow file basename, e.g. 4_testcomponent_sysinfo-windows
+        ref_no_at="${WORKFLOW_REF%@*}"
+        wf_file="${ref_no_at##*/}"
+        wf="${wf_file%.*}"
+        # Make the artifact name safe for use as a single S3 key segment
+        safe_name="$(printf '%s' "$ARTIFACT_NAME" | tr ' /\\:' '____')"
+        echo "s3_uri=${BUCKET}/${REPO_NAME}/${wf}/${safe_name}/artifacts_${RUN_ID}.zip" >> "$GITHUB_OUTPUT"
+
+    - name: "Download ${{ inputs.name }} from S3 (Unix)"
+      if: runner.os != 'Windows'
+      shell: bash
+      env:
+        ARTIFACT_NAME: ${{ inputs.name }}
+        DEST_PATH: ${{ inputs.path }}
+        S3_URI: ${{ steps.key.outputs.s3_uri }}
+      run: |
+        set -euo pipefail
+        tmp="$(mktemp -d)"
+        zip_file="${tmp}/artifacts.zip"
+        aws s3 cp "$S3_URI" "$zip_file" --only-show-errors
+        dest="${DEST_PATH:-.}"
+        mkdir -p "$dest"
+        7z x -y "$zip_file" -o"$dest" >/dev/null
+        echo "Downloaded artifact '${ARTIFACT_NAME}' from ${S3_URI} into ${dest}"
+
+    - name: "Download ${{ inputs.name }} from S3 (Windows)"
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        ARTIFACT_NAME: ${{ inputs.name }}
+        DEST_PATH: ${{ inputs.path }}
+        S3_URI: ${{ steps.key.outputs.s3_uri }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $tmp = Join-Path $env:RUNNER_TEMP ([System.Guid]::NewGuid().ToString())
+        New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+        $zip = Join-Path $tmp "artifacts.zip"
+        aws s3 cp $env:S3_URI $zip --only-show-errors
+        $dest = if ([string]::IsNullOrEmpty($env:DEST_PATH)) { "." } else { $env:DEST_PATH }
+        New-Item -ItemType Directory -Force -Path $dest | Out-Null
+        7z x -y $zip "-o$dest" | Out-Null
+        Write-Host "Downloaded artifact '$env:ARTIFACT_NAME' from $env:S3_URI into $dest"

@@ -13,6 +13,10 @@ on:
       - ".github/workflows/4_testcomponent_syscollector-rtr.yml"
       - ".github/actions/**"
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   rtr:
     strategy:
@@ -56,9 +60,15 @@ jobs:
           name="${{ matrix.module }}"
           name=$(echo $name | sed -e 's*/*-*g')
           echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
+      - name: Configure AWS credentials
+        if: always()
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_CI_ARTIFACTS_ROLE }}
+          aws-region: us-east-1
       - name: Uploading coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: coverage_report ${{ env.ARTIFACT_NAME }} ${{ matrix.target }}
           path: ./**/coverage_report/**

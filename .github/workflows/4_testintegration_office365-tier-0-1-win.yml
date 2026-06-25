@@ -18,6 +18,10 @@ on:
         - "tests/integration/conftest.py"
         - "tests/integration/test_office365/**"
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   # Build the winagent on linux.
   build:
@@ -43,8 +47,14 @@ jobs:
           mkdir -p src/winagent
           cp ../wazuh.zip src/winagent/wazuh.zip
       # Upload build artifacts.
+      - name: Configure AWS credentials
+        if: always()
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_CI_ARTIFACTS_ROLE }}
+          aws-region: us-east-1
       - name: Upload Artifact winagent
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: winagent
           path: src/winagent
@@ -67,8 +77,14 @@ jobs:
         shell: bash
         run: echo "${WIX}bin" >> $GITHUB_PATH
       # Download the compressed winagent build.
+      - name: Configure AWS credentials
+        if: always()
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_CI_ARTIFACTS_ROLE }}
+          aws-region: us-east-1
       - name: Download Artifact winagent
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: winagent
           path: C:\winagent\

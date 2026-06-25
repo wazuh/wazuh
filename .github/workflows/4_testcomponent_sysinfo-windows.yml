@@ -10,6 +10,10 @@ on:
       - "src/wazuh_modules/syscollector/**"
       - "src/Makefile"
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -35,32 +39,38 @@ jobs:
           cp src/win32/libstdc++-6.dll src/shared_libraries/
           cp src/win32/libwinpthread-1.dll src/shared_libraries/
       # Upload build artifacts for the shared libraries.
+      - name: Configure AWS credentials
+        if: always()
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_CI_ARTIFACTS_ROLE }}
+          aws-region: us-east-1
       - name: Upload Artifact shared_libraries
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: shared_libraries
           path: src/shared_libraries
       # Upload build artifacts for the data provider.
       - name: Upload Artifact data_provider
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: data_provider
           path: src/data_provider/build/bin
       # Upload build artifacts for dbsync.
       - name: Upload Artifact dbsync
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: dbsync
           path: src/shared_modules/dbsync/build/bin
       # Upload build artifacts for rsync.
       - name: Upload Artifact rsync
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: rsync
           path: src/shared_modules/rsync/build/bin
       # Upload build artifacts for syscollector.
       - name: Upload Artifact syscollector
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: syscollector
           path: src/wazuh_modules/syscollector/build/bin
@@ -75,28 +85,34 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
+      - name: Configure AWS credentials
+        if: always()
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_S3_CI_ARTIFACTS_ROLE }}
+          aws-region: us-east-1
       - name: Download Artifact data_provider
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: data_provider
           path: C:\data_provider\
       - name: Download Artifact dbsync
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: dbsync
           path: C:\dbsync\
       - name: Download Artifact rsync
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: rsync
           path: C:\rsync\
       - name: Download Artifact syscollector
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: syscollector
           path: C:\syscollector\
       - name: Download Artifact shared_libraries
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: shared_libraries
           path: C:\shared_libraries\
