@@ -60,7 +60,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                      targetFieldtype,
                      unique,
                      isInSchema,
-                     value = std::make_shared<const json::Json>(asValue->value())](std::vector<json::Json>& targetArray,
+                     value = asValue->sharedValue()](std::vector<json::Json>& targetArray,
                                                json::Json::Type& valueType,
                                                const base::Event& event) -> base::OptError
                     {
