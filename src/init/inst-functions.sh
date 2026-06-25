@@ -860,6 +860,20 @@ InstallCommon()
 }
 
 
+installIndexerTemplates()
+{
+    local SRC_DIR="external/indexer-plugins"
+    local DEST_DIR="${INSTALLDIR}/etc/indexer-plugins"
+
+    if [ -d "${SRC_DIR}" ]; then
+        ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} "${DEST_DIR}"
+        for f in "${SRC_DIR}"/*.json; do
+            [ -f "$f" ] || continue
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} "$f" "${DEST_DIR}/"
+        done
+    fi
+}
+
 generateSchemaFiles()
 {
     echo "Generating schema files..."
@@ -1042,6 +1056,8 @@ InstallLocal()
     fi
 
     generateSchemaFiles
+
+    installIndexerTemplates
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data
 
