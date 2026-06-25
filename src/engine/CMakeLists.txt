@@ -222,6 +222,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR FSANITIZE)
     ${CMAKE_SOURCE_DIR}/build/lib
     ${ROCKSDB_LIB_BUILD_DIR}
     ${INDEXERCONNECTOR_LIB_BUILD_DIR}
+    ${CMAKE_SOURCE_DIR}/external/jemalloc/lib
   )
 endif()
 
@@ -348,6 +349,20 @@ target_link_libraries(wazuh-engine
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
 if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
     target_link_libraries(wazuh-engine -static-libgcc -static-libstdc++)
+endif()
+
+# Link jemalloc for reduced memory fragmentation (unless explicitly disabled)
+if(NOT DEFINED DISABLE_JEMALLOC OR NOT DISABLE_JEMALLOC)
+  find_library(
+    JEMALLOC_LIB jemalloc
+    PATHS ${CMAKE_SOURCE_DIR}/external/jemalloc/lib
+    NO_DEFAULT_PATH)
+  if(JEMALLOC_LIB)
+    target_link_libraries(wazuh-engine ${JEMALLOC_LIB})
+    message(STATUS "Linking wazuh-engine with jemalloc: ${JEMALLOC_LIB}")
+  else()
+    message(WARNING "jemalloc not found in ${CMAKE_SOURCE_DIR}/external/jemalloc/lib")
+  endif()
 endif()
 
 # Print LD anc CXX flags
