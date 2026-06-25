@@ -37,7 +37,7 @@ on:
 
 jobs:
   Upload-package-building-images:
-    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && 'wz-linux-arm64' || 'ubuntu-24.04' }}
+    runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-24.04' }}
     timeout-minutes: 140
     name: Package - Upload pkg_${{ inputs.system }}_server_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
 
@@ -78,6 +78,22 @@ jobs:
           cp packages/${{ inputs.system }}s/utils/* $dockerfile_path
           cp src/engine/vcpkg-configuration.json $dockerfile_path
           cp src/engine/vcpkg.json $dockerfile_path
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
 
       - name: Build and push image pkg_${{ inputs.system }}_server_builder_${{ env.ARCH }} with tag ${{ env.TAG }} to Github Container Registry
         run:

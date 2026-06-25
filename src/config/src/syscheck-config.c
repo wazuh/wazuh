@@ -2157,7 +2157,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             syscheck->max_files_per_second = atoi(node[i]->content);
 
         } else {
-            mwarn(XML_INVELEM, node[i]->element);
+            minfo(XML_INVELEM, node[i]->element);
         }
     }
 

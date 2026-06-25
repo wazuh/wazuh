@@ -48,3 +48,32 @@ def test_aws_cloudtrail_bucket_reformat_msg(mock_reformat):
             # Check dynamic fields were cast from string to dict
             assert isinstance(event['aws'][field], dict)
             assert formatted_event['aws'][field]['string'] == 'value'
+
+
+@patch('aws_bucket.AWSBucket.reformat_msg')
+def test_aws_cloudtrail_bucket_reformat_msg_disable_api_termination_already_dict(mock_reformat):
+    """reformat_msg leaves disableApiTermination unchanged when it is already a dict (elif branch)."""
+    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    existing_dict = {'value': True}
+    event['aws']['requestParameters'] = {'disableApiTermination': existing_dict.copy()}
+
+    instance = utils.get_mocked_bucket(class_=cloudtrail.AWSCloudTrailBucket)
+    formatted_event = instance.reformat_msg(event)
+
+    # dict branch → pass: value must remain unchanged
+    assert formatted_event['aws']['requestParameters']['disableApiTermination'] == existing_dict
+
+
+@patch('builtins.print')
+@patch('aws_bucket.AWSBucket.reformat_msg')
+def test_aws_cloudtrail_bucket_reformat_msg_disable_api_termination_unexpected_type_prints_warning(
+        mock_reformat, mock_print):
+    """reformat_msg prints a WARNING when disableApiTermination is neither bool nor dict (else branch)."""
+    event = copy.deepcopy(aws_bucket.AWS_BUCKET_MSG_TEMPLATE)
+    event['aws']['requestParameters'] = {'disableApiTermination': 'unexpected_string'}
+
+    instance = utils.get_mocked_bucket(class_=cloudtrail.AWSCloudTrailBucket)
+    instance.reformat_msg(event)
+
+    mock_print.assert_called_once()
+    assert 'WARNING' in mock_print.call_args.args[0]

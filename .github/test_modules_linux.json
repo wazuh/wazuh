@@ -305,6 +305,7 @@
         "src/config/src/wmodules-syscollector.c",
         "src/wazuh_modules/src/wm_syscollector.c",
         "src/wazuh_modules/syscollector/**",
+        "src/data_provider/**",
         "src/Makefile",
         "tests/integration/conftest.py",
         "tests/integration/test_syscollector/**"

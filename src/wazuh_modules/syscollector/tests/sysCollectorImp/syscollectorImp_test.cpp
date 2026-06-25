@@ -210,6 +210,7 @@ void SyscollectorImpTest::SetUp()
     mockValidators["wazuh-states-inventory-hardware"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-system"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-interfaces"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-protocols"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-networks"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-ports"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-packages"] = m_mockValidator;
@@ -4252,8 +4253,8 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollecto
     // This tests the error handling path
     EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
-    // Verify error log for missing sync protocol
-    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+    // Verify info log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Sync protocol not initialized, cannot notify data clean"));
 
     Syscollector::instance().destroy();
 }
@@ -4410,8 +4411,8 @@ TEST_F(SyscollectorImpTest, allCollectorsDisabledWithData)
     // We can verify this by calling notifyDisableCollectorsDataClean (will fail without sync protocol)
     EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
-    // Verify error log for missing sync protocol
-    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+    // Verify info log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Sync protocol not initialized, cannot notify data clean"));
 
     Syscollector::instance().destroy();
 }
@@ -4466,8 +4467,8 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
     // Verify by attempting notification (will fail without sync protocol but tests the detection)
     EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
-    // Verify error log for missing sync protocol
-    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+    // Verify info log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Sync protocol not initialized, cannot notify data clean"));
 
     // Cleanup should work even without sync protocol
     EXPECT_NO_THROW(Syscollector::instance().deleteDisableCollectorsData());
@@ -5005,8 +5006,9 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
     EXPECT_TRUE(foundDeferredDeletion) << "Expected deferred deletion log not found";
 }
 
-// Test for missing validator: factory is initialized but no validator for the index
-TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
+// Test for missing validator: factory is initialized but no validator for the index.
+// The message must be discarded (restrictive behaviour) and a warning logged.
+TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
 
@@ -5043,8 +5045,8 @@ TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
         }
     };
 
-    // Expect persist callback for hardware data (should be queued despite missing validator)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+    // No persist callback expected: with no validator for the index the message is discarded
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(0);
 
     // Capture log messages to verify warning is logged
     // Use shared_ptr to prevent dangling references after test completes

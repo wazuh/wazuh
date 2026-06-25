@@ -27,6 +27,7 @@ jobs:
               module: [wazuh_modules/syscollector, shared_modules/dbsync, data_provider]
               target: [agent, winagent]
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

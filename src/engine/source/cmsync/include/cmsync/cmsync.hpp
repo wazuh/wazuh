@@ -6,6 +6,7 @@
 #include <shared_mutex>
 #include <string>
 
+#include <base/statusSnapshot.hpp>
 #include <cmcrud/icmcrudservice.hpp>
 #include <router/iapi.hpp>
 #include <store/istore.hpp>
@@ -35,6 +36,13 @@ private:
     std::vector<SyncedNamespace> m_namespacesState; ///< State of the namespaces being synchronized
 
     std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal graceful shutdown of sync operations
+
+    /// Lock-free status snapshot of all spaces. Read via load() (wait-free). Rebuilt and published
+    /// via store() by updateSpacesStatusSnapshot() on the single sync thread.
+    base::StatusSnapshot<SpaceStatus> m_spacesStatus;
+
+    /// Rebuild the spaces status from cached per-namespace state and publish it atomically (lock-free reads).
+    void updateSpacesStatusSnapshot();
 
     /**
      * @brief Check if a space exists in the wazuh-indexer
@@ -138,6 +146,11 @@ public:
      * @copydoc ICMSync::requestShutdown
      */
     void requestShutdown() override;
+
+    /**
+     * @copydoc ICMSync::getSpacesStatus
+     */
+    std::vector<SpaceStatus> getSpacesStatus() const override;
 };
 
 } // namespace cm::sync

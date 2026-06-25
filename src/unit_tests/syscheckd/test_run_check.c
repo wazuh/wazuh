@@ -56,6 +56,9 @@ bool fim_has_configured_directories(void);
 bool fim_has_configured_paths(void);
 bool fim_has_data_in_database(void);
 bool handle_all_paths_removed(void);
+
+/* First-sync flag priming (start_daemon helper) */
+void prime_fim_first_sync_from_marker(void);
 #ifdef WIN32
 bool fim_has_configured_registries(void);
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
@@ -154,6 +157,7 @@ static int setup_group(void ** state) {
     fim_flush_result.data = 0;
     syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
     syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
 
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -297,6 +301,7 @@ static int teardown_group(void **state) {
     fim_flush_result.data = 0;
     syscheck.fim_pause_requested.data = 0;
     syscheck.fim_pausing_is_allowed.data = 0;
+    syscheck.fim_first_sync_completed.data = 0;
 
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -1358,6 +1363,43 @@ void test_fim_has_configured_paths_with_directories(void **state) {
     assert_true(result);
 }
 
+// When the persisted marker indicates the first sync already completed in a previous run,
+// start_daemon must prime fim_first_sync_completed to 1 before fim_scan() so agent-info does
+// not defer coordination during the startup baseline-scan window.
+void test_prime_fim_first_sync_from_marker_sets_flag_when_present(void **state) {
+    (void)state;
+
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 123456);
+
+    prime_fim_first_sync_from_marker();
+
+    assert_int_equal(syscheck.fim_first_sync_completed.data, 1);
+}
+
+// On a genuine first-ever run there is no marker, so the flag stays 0 and coordination is
+// correctly deferred until the first sync actually completes.
+void test_prime_fim_first_sync_from_marker_keeps_flag_clear_when_absent(void **state) {
+    (void)state;
+
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+
+    prime_fim_first_sync_from_marker();
+
+    assert_int_equal(syscheck.fim_first_sync_completed.data, 0);
+}
+
 void test_fim_has_data_in_database_no_entries(void **state) {
     will_return(__wrap_fim_db_get_count_file_entry, 0);
 #ifdef WIN32
@@ -1400,7 +1442,7 @@ void test_handle_all_paths_removed_no_sync_handle(void **state) {
     will_return(__wrap_fim_db_get_count_file_entry, 10);
 
     expect_string(__wrap__mdebug1, formatted_msg, "All monitored paths removed from configuration but database has data. Initiating DataClean process.");
-    expect_string(__wrap__merror, formatted_msg, "Sync protocol not initialized, cannot send DataClean notification.");
+    expect_string(__wrap__minfo, formatted_msg, "Sync protocol not initialized, cannot send DataClean notification.");
 
     bool result = handle_all_paths_removed();
 
@@ -1435,6 +1477,8 @@ int main(void) {
         cmocka_unit_test(test_fim_has_configured_directories_null_list),
         cmocka_unit_test(test_fim_has_configured_directories_with_directories),
         cmocka_unit_test(test_fim_has_configured_paths_with_directories),
+        cmocka_unit_test(test_prime_fim_first_sync_from_marker_sets_flag_when_present),
+        cmocka_unit_test(test_prime_fim_first_sync_from_marker_keeps_flag_clear_when_absent),
         cmocka_unit_test(test_fim_has_data_in_database_no_entries),
         cmocka_unit_test(test_fim_has_data_in_database_with_file_entries),
         cmocka_unit_test(test_handle_all_paths_removed_no_data_in_db),

@@ -80,6 +80,25 @@ def test_aws_guardduty_bucket_check_guardduty_type_handles_exceptions(mock_wazuh
     assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
 
 
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_guardduty_bucket_check_guardduty_type_handles_exception_with_message_attr(mock_wazuh_aws_integration, mock_sts):
+    """Test 'check_guardduty_type' logs err.message when the exception has a message attribute."""
+    with patch('guardduty.AWSGuardDutyBucket.check_guardduty_type'):
+        instance = utils.get_mocked_bucket(class_=guardduty.AWSGuardDutyBucket)
+
+    err = Exception("S3 error")
+    err.message = "detailed S3 error message"
+
+    with patch('aws_tools.debug') as mock_debug, pytest.raises(SystemExit) as e:
+        instance.client = MagicMock()
+        instance.client.list_objects_v2.side_effect = err
+        instance.check_guardduty_type()
+
+    assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
+    mock_debug.assert_any_call(f"+++ Unexpected error: {err.message}", 2)
+
+
 @patch('aws_bucket.AWSLogsBucket.get_base_prefix', return_value='base_prefix/')
 @patch('guardduty.AWSGuardDutyBucket.check_guardduty_type')
 @patch('aws_bucket.AWSCustomBucket.__init__')

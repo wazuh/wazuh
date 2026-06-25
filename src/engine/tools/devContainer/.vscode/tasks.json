@@ -331,6 +331,19 @@
             ],
             "group": "build",
             "problemMatcher": []
+        },
+        {
+            "label": "Clean unused containers (interactive)",
+            "type": "shell",
+            "command": "bash ${env:WAZUH_DEV_SCRIPTS}/clean-unused-containers.sh",
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared"
+            },
+            "detail": "Lists stopped containers with last used date and size, then interactively asks which to delete."
         }
     ]
 }

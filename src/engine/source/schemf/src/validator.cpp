@@ -24,6 +24,7 @@ bool isTemporaryField(const DotPath& name)
 
 void Schema::Validator::registerCompatibles()
 {
+    // All types are compatible with null jsons type.
     m_compatibles.emplace(Type::BOOLEAN,
                           ValidationInfo {{json::Json::Type::Boolean}, validators::getBoolValidator(), {}});
     m_compatibles.emplace(Type::BYTE,
@@ -291,6 +292,12 @@ base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& n
 
 base::RespOrError<ValidationResult> Schema::Validator::validate(const DotPath& name, const ValueToken& token) const
 {
+    // null is always accepted
+    if (token.value().isNull())
+    {
+        return ValidationResult();
+    }
+
     const auto& entry = m_compatibles.at(m_schema.getType(name));
 
     // When validating json values, if the schema type has a validator, validate the value

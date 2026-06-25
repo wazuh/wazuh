@@ -533,10 +533,32 @@ TEST_F(BaseHelperTest, JsonDefinitionMultipleKeys)
     ASSERT_THROW(baseHelperBuilder(def, ctx, HelperType::MAP), std::runtime_error);
 }
 
-TEST_F(BaseHelperTest, JsonDefinitionNullValue)
+TEST_F(BaseHelperTest, JsonDefinitionNullValueMap)
 {
+    // null literal is now accepted as a map operation
     json::Json def(R"({"target.field": null})");
-    ASSERT_THROW(baseHelperBuilder(def, ctx, HelperType::MAP), std::runtime_error);
+
+    setupRegistry("map", OpBuilder{makeSimpleMapBuilder()});
+    setupValidationOk();
+    auto cloneCtx = setupClone();
+    EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
+
+    auto expr = baseHelperBuilder(def, ctx, HelperType::MAP);
+    ASSERT_NE(expr, nullptr);
+}
+
+TEST_F(BaseHelperTest, JsonDefinitionNullValueFilter)
+{
+    // null literal is also accepted in filter/check stages
+    json::Json def(R"({"target.field": null})");
+
+    setupRegistry("filter", OpBuilder{makeSimpleFilterBuilder()});
+    setupValidationOk();
+    auto cloneCtx = setupClone();
+    EXPECT_CALL(*ctx, definitions()).WillRepeatedly(ReturnRef(*definitions));
+
+    auto expr = baseHelperBuilder(def, ctx, HelperType::FILTER);
+    ASSERT_NE(expr, nullptr);
 }
 
 TEST_F(BaseHelperTest, JsonDefinitionBoolValueMap)

@@ -2302,7 +2302,7 @@ bool Syscollector::syncModule(Mode mode)
     }
     else
     {
-        m_logFunction(LOG_WARNING, "Syscollector synchronization process failed.");
+        m_logFunction(LOG_INFO, "Syscollector synchronization process failed.");
     }
 
     return success;
@@ -2804,7 +2804,7 @@ int Syscollector::executeFlushSync()
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_WARNING, "Syscollector sync protocol not initialized, flush skipped");
+            m_logFunction(LOG_INFO, "Syscollector sync protocol not initialized, flush skipped");
         }
 
         return 0; // Not an error - just nothing to flush
@@ -4098,7 +4098,7 @@ bool Syscollector::notifyDisableCollectorsDataClean()
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean");
+            m_logFunction(LOG_INFO, "Sync protocol not initialized, cannot notify data clean");
         }
 
         return false;
@@ -4599,13 +4599,15 @@ bool Syscollector::validateSchemaAndLog(const std::string& data, const std::stri
 
     if (!validator)
     {
-        // Validator not found for this index, log warning and allow message through
+        // No validator for this index: be restrictive and discard the message
+        // instead of queuing it unvalidated, since we cannot guarantee it matches
+        // the schema the indexer expects.
         if (m_logFunction)
         {
-            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Queuing message without validation.");
+            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
         }
 
-        return true;
+        return false;
     }
 
     auto validationResult = validator->validate(data);

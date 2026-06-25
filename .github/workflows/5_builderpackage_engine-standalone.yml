@@ -47,9 +47,8 @@ env:
 jobs:
   build:
     name: Build Manager (${{ matrix.arch }})
-    runs-on:
-      group: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
-      labels: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
+    runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
+    timeout-minutes: 60
     outputs:
       version: ${{ steps.set_version.outputs.version }}
     strategy:
@@ -85,15 +84,24 @@ jobs:
               ;;
           esac
 
-      - name: Install docker
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
         run: |
-          if ! command -v docker &> /dev/null; then
-            echo "Installing Docker..."
-
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
             sudo apt-get update
             sudo apt-get install -y docker.io
-            sudo systemctl start docker
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
             sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # Install pip3
+          if ! command -v pip3 >/dev/null 2>&1; then
+            sudo apt-get install -y python3-pip
           fi
 
       - name: Download docker image for package building
@@ -117,9 +125,7 @@ jobs:
   check_standalone_engine:
     name: Test standalone engine (${{ matrix.arch }})
 
-    runs-on:
-      group: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
-      labels: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'wz-linux-amd64' }}
+    runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
     needs: build
     timeout-minutes: 60
     strategy:

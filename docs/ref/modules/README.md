@@ -1,16 +1,31 @@
 # Modules
 
 - [Active Response](active-response/) - Automated security response actions triggered by detected events
+- [Agent Info](agent_info/) - Agent metadata collection and reporting
 - [Agent Management](agent-management/) - Centralized configuration and group management for agents
 - [Integrations](integrations/) - Cloud services and third-party platform integrations
+- [Engine](engine/) - Event decoding, enrichment, and detection pipeline
 - [Control](control/) - Manager control operations (restart, reload) via wm_control module
 - [Command](command/) - Scheduled command execution through the command wodle
 - [Syscollector](syscollector/) - System inventory collection and monitoring
 - [Logcollector](logcollector/) - Log ingestion
 - [FIM](fim/) - File Integrity Monitoring with persistent state synchronization
+- [Rootcheck](rootcheck/) - Rootkit and anomaly detection
 - [SCA](sca/) - Security Configuration Assessment for compliance evaluation
 - [Vulnerability Scanner](vulnerability-scanner/) - CVE detection and vulnerability assessment
 - [Inventory Sync](inventory-sync/) - Manager-side synchronization service for agent inventory and context data
+- [Remoted](remoted/) - Agent communication daemon
+- [Server API](server-api/) - RESTful management API
+- [RBAC](rbac/) - Role-based access control for the API
+- [Router](router/) - Internal message routing
 - [Agent Sync Protocol](utils/sync-protocol/) - Agent-side library for synchronizing data with the manager
+- [Schema Validator](utils/schema-validator/) - JSON schema validation for synchronized data
 - [FlatBuffers](utils/flatbuffers/) - High-performance serialization for synchronization protocol
-- [Cluster](utils/cluster/) - Manages the Wazuh server cluster
+- [Cluster](cluster/) - Manages the Wazuh server cluster
+- [Indexer Connector](indexer_connector/) - OpenSearch indexing library (Filebeat replacement)
+- [Wazuh DB](wazuh_db/) - Persistent SQLite database daemon for agent and task state
+- [Authd](authd/) - Agent enrollment service (TLS, key generation)
+- [Content Manager](content_manager/) - CTI feed fetcher for Vulnerability Detection
+- [Agent Upgrade](agent_upgrade/) - Remote agent upgrade via WPK distribution
+- [Monitord](monitord/) - Agent disconnection monitoring and log rotation
+- [Keystore](keystore/) - Encrypted credential storage (AES-256, RocksDB)

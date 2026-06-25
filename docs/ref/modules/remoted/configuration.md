@@ -2,6 +2,8 @@
 
 Configuration options for remoted module.
 
+For the full per-option reference (all options, defaults and allowed values verified against the parser) see [Remote Configuration](../../configuration/remote.md).
+
 ## XML Configuration
 
 File: `/var/wazuh-manager/etc/wazuh-manager.conf`
@@ -14,7 +16,9 @@ File: `/var/wazuh-manager/etc/wazuh-manager.conf`
     <port>1514</port>
     <protocol>tcp</protocol>
     <queue_size>131072</queue_size>
-    <allow_higher_versions>yes</allow_higher_versions>
+    <agents>
+      <allow_higher_versions>no</allow_higher_versions>
+    </agents>
   </remote>
 </wazuh_config>
 ```
@@ -22,9 +26,9 @@ File: `/var/wazuh-manager/etc/wazuh-manager.conf`
 | Option | Default | Description |
 |--------|---------|-------------|
 | `port` | `1514` | Listening port |
-| `protocol` | `tcp` | Protocol: tcp, udp, or tcp,udp |
-| `queue_size` | `131072` | Message queue size |
-| `allow_higher_versions` | `yes` | Allow agents with higher version |
+| `protocol` | `tcp` | Protocol: `tcp`, `udp`, or `tcp,udp` |
+| `queue_size` | `131072` | Message queue size (warn if > 262144) |
+| `agents/allow_higher_versions` | `no` | Accept agents with a higher Wazuh version than the manager |
 
 ## Internal Options
 
@@ -134,7 +138,7 @@ remoted.debug=2
 
 ## References
 
+- [Remote Configuration reference](../../configuration/remote.md)
 - [Stateless Metadata](stateless-metadata.md)
 - [Remoted Architecture](architecture.md)
 - [Event Protocol](event-protocol.md)
-- [Wazuh Configuration Guide](https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/remote.html)

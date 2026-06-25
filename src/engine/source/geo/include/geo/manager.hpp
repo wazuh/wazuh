@@ -7,6 +7,8 @@
 #include <shared_mutex>
 #include <string>
 
+#include <base/statusSnapshot.hpp>
+#include <base/syncStatus.hpp>
 #include <geo/idownloader.hpp>
 #include <geo/imanager.hpp>
 #include <store/istore.hpp>
@@ -38,6 +40,17 @@ private:
 
     std::shared_ptr<std::atomic<bool>> m_shouldRun {std::make_shared<std::atomic<bool>>(
         true)}; ///< Flag for graceful shutdown; false signals sync operations to stop.
+
+    /// Per-type status working state (available, status, hash, last update). Mutated ONLY by the sync
+    /// thread; the source of truth that the status snapshot is rebuilt from. Decoupled from m_dbs.
+    std::map<Type, GeoDbStatus> m_typeState;
+
+    /// Lock-free status snapshot of all geo types. Read via load() (wait-free). Rebuilt and published
+    /// via store() by updateGeoStatusSnapshot() on the single sync thread.
+    base::StatusSnapshot<GeoDbStatus> m_geoStatus;
+
+    /// Rebuild the geo status from m_typeState and publish it atomically (lock-free reads).
+    void updateGeoStatusSnapshot();
 
     /**
      * @brief Upsert the internal store entry for a local database (computes hash from file).
@@ -118,6 +131,11 @@ public:
      * @copydoc IManager::getLocator
      */
     Result<std::shared_ptr<ILocator>> getLocator(Type type) const override;
+
+    /**
+     * @copydoc IManager::getGeoStatus
+     */
+    std::vector<GeoDbStatus> getGeoStatus() const override;
 };
 
 } // namespace geo

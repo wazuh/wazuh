@@ -535,7 +535,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed.");
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization failed.");
     }
 
     return result;
@@ -756,7 +756,7 @@ int SecurityConfigurationAssessment::executeFlushSync()
 
     if (!m_spSyncProtocol)
     {
-        LoggingHelper::getInstance().log(LOG_WARNING, "SCA sync protocol not initialized, flush skipped");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync protocol not initialized, flush skipped");
         return 0;  // Not an error - just nothing to flush
     }
 
@@ -1049,7 +1049,7 @@ bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string&
 {
     if (!m_spSyncProtocol)
     {
-        LoggingHelper::getInstance().log(LOG_ERROR, "Sync protocol not initialized, cannot check recovery status");
+        LoggingHelper::getInstance().log(LOG_DEBUG, "Sync protocol not initialized, cannot check recovery status");
         return false;
     }
 
@@ -1096,7 +1096,7 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
 
         if (!m_spSyncProtocol)
         {
-            LoggingHelper::getInstance().log(LOG_ERROR, "Sync protocol not initialized, cannot synchronize SCA snapshot");
+            LoggingHelper::getInstance().log(LOG_DEBUG, "Sync protocol not initialized, cannot synchronize SCA snapshot");
             return false;
         }
 
@@ -1179,6 +1179,13 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
                         LoggingHelper::getInstance().log(LOG_DEBUG, "Skipping invalid SCA snapshot event for check " + checkId);
                         shouldPersist = false;
                     }
+                }
+                else
+                {
+                    // No validator for this index: be restrictive and discard the message.
+                    LoggingHelper::getInstance().log(LOG_WARNING,
+                                                     "No schema validator found for index: " + std::string(SCA_SYNC_INDEX) + ". Discarding message.");
+                    shouldPersist = false;
                 }
             }
 

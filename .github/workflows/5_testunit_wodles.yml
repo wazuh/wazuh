@@ -29,6 +29,7 @@ jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -36,6 +37,7 @@ jobs:
     env:
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
       TEST_REPORT_PATH: /home/runner/work/test_report.txt
+      COVERAGE_REPORT_PATH: /home/runner/work/coverage_report
     steps:
       - uses: actions/checkout@v4
 
@@ -52,9 +54,69 @@ jobs:
           pip install -r framework/requirements-wodles-dev.txt --no-build-isolation
 
       - name: Run Wodles tests
+        env:
+          COLUMNS: 200
         run: |
           set -o pipefail
-          python -m pytest wodles -vv --ignore=tests --cov=wodles | tee ${TEST_REPORT_PATH}
+          printf '[run]\nomit =\n    wodles/tests/*\n    wodles/*/tests/*\n' > .coveragerc
+          python -m pytest wodles --no-header --tb=short --color=yes --cov=wodles --cov-config=.coveragerc --cov-report=term --cov-report=html:${COVERAGE_REPORT_PATH} | tee ${TEST_REPORT_PATH}
+          rm -f .coveragerc
+
+      - name: Show test summary by file
+        if: always()
+        run: |
+          python3 - <<'EOF'
+          import re
+          from collections import OrderedDict
+
+          ansi = re.compile(r'\x1b\[[0-9;]*m')
+          section_hdr = re.compile(r'^=+ (.+?) =+\s*$')
+
+          with open("${{ env.TEST_REPORT_PATH }}") as f:
+              lines = [ansi.sub('', l.rstrip()) for l in f]
+
+          # Per-file summary
+          counts = OrderedDict()
+          for line in lines:
+              m = re.match(r'(wodles/\S+\.py)\s+([.FEsxX ]+)\s*\[', line)
+              if m:
+                  path, dots = m.group(1), m.group(2)
+                  counts[path] = {
+                      'passed':  dots.count('.'),
+                      'failed':  dots.count('F'),
+                      'error':   dots.count('E'),
+                      'skipped': dots.count('s'),
+                  }
+
+          for path, c in counts.items():
+              parts = [f"{c['passed']} passed"]
+              if c['failed']:  parts.append(f"{c['failed']} failed")
+              if c['error']:   parts.append(f"{c['error']} error")
+              if c['skipped']: parts.append(f"{c['skipped']} skipped")
+              print(f"{path}: {', '.join(parts)}")
+
+          # Show failure details when any test failed or errored
+          any_failures = any(c['failed'] or c['error'] for c in counts.values())
+          if any_failures:
+              print()
+              capture = False
+              for line in lines:
+                  m = section_hdr.match(line)
+                  if m:
+                      name = m.group(1).strip()
+                      capture = name in ('FAILURES', 'ERRORS', 'short test summary info')
+                  if capture:
+                      print(line)
+          EOF
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: wodles-unit-tests-coverage
+          path: ${{ env.COVERAGE_REPORT_PATH }}
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Generate test report
         if: inputs.generate_report

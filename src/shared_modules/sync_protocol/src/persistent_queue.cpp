@@ -92,7 +92,7 @@ void PersistentQueue::clearSyncedItems()
     }
     catch (const std::exception& ex)
     {
-        m_logger(LOG_ERROR, std::string("PersistentQueue: Error clrearing synchronized items: ") + ex.what());
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error clearing synchronized items: ") + ex.what());
         throw;
     }
 }

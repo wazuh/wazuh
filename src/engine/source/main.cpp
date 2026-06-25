@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <api/handlers.hpp>
+#include <api/status/handlers.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>
 #include <base/libwazuhshared.hpp>
@@ -776,6 +777,10 @@ int main(int argc, char* argv[])
             api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiServer);
             LOG_DEBUG("IOC CRUD API registered.");
 
+            // Status
+            api::status::handlers::registerHandlers(cmSyncService, iocSyncService, geoManager, apiServer);
+            LOG_DEBUG("Status API registered.");
+
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
 
@@ -878,7 +883,6 @@ int main(int argc, char* argv[])
                     LOG_INFO("[CMSync] Event processing is now active.");
                 }
             };
-
 
             // Async Synchronize on startup
             scheduler->scheduleTask(

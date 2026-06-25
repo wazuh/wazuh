@@ -23,7 +23,7 @@ Active Response is implemented through `wazuh-execd`, a daemon running on agents
                                  │ {"command": "enable", ...}
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        wazuh-remoted                                │
+│                     wazuh-manager-remoted                           │
 │                                                                     │
 │  Forwards AR commands to target agents                             │
 └────────────────────────────────┬────────────────────────────────────┘

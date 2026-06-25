@@ -7,6 +7,31 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/5_testcomponent_windows-dll-hijack.yml"
+      - ".github/actions/reinstall_cmake/**"
+      - "!src/engine/**"
+      - "!src/remoted/**"
+      - "!src/util/**"
+      - "!src/shared_modules/indexer_connector/**"
+      - "!src/shared_modules/keystore/**"
+      # Only src/ for these server trees: agent modules compile against their include/
+      - "!src/monitord/src/**"
+      - "!src/os_auth/src/**"
+      - "!src/wazuh_db/src/**"
+      - "!src/wazuh_db/schemas/**"
+      - "!src/shared_modules/content_manager/src/**"
+      - "!src/shared_modules/router/src/**"
+      - "!src/wazuh_modules/vulnerability_scanner/src/**"
+      - "!src/wazuh_modules/inventory_sync/src/**"
+      # Test trees: UNIT_TEST-gated, never built by this workflow
+      - "!src/unit_tests/**"
+      - "!src/**/tests/**"
+      - "!src/**/integrationTests/**"
+      # qa/ suites run in other workflows; win32/qa stays (executed here)
+      - "!src/data_provider/qa/**"
+      - "!src/shared_modules/indexer_connector/qa/**"
+      - "!src/shared_modules/keystore/qa/**"
+      - "!src/wazuh_modules/inventory_sync/qa/**"
+      - "!src/wazuh_modules/vulnerability_scanner/qa/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -16,6 +41,7 @@ jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -61,6 +87,7 @@ jobs:
 
   check_dll_on_windows:
     runs-on: windows-2025
+    timeout-minutes: 30
     needs: build
     steps:
       - uses: actions/checkout@v4
