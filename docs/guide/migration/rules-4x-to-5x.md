@@ -42,6 +42,7 @@ Integrations are stored in the `wazuh-threatintel-integrations` index. Each inte
 | `network-activity` | `wazuh-events-v5-network-activity-*` | `wazuh-findings-v5-network-activity-*` |
 | `access-management` | `wazuh-events-v5-access-management-*` | `wazuh-findings-v5-access-management-*` |
 | `other` | `wazuh-events-v5-other-*` | `wazuh-findings-v5-other-*` |
+| `unclassified` | `wazuh-events-v5-unclassified-*` | `wazuh-findings-v5-unclassified-*` |
 
 ### Spaces and content lifecycle
 
@@ -60,9 +61,9 @@ The promotion path for user-created content is: **Draft → Test → Custom**.
 
 | Aspect | 4.x (XML) | 5.x (YAML) |
 |---|---|---|
-| **Format** | XML files on disk (`/var/ossec/ruleset/rules/`) | JSON documents in Wazuh indices (`wazuh-threatintel-*`) |
-| **Processing** | Single analysis daemon handles decoding + rule matching | Wazuh Engine decodes and indexes events; Security Analytics detectors match rules via percolator |
-| **Output** | Alerts | Events (all decoded logs) + Findings (events that matched a rule, enriched) |
+| **Format** | XML files on disk (`/var/ossec/ruleset/rules/`) | JSON documents in Wazuh indices (`wazuh-threatintel-rules`) |
+| **Processing** | Single analysis daemon handles decoding + rule matching | Wazuh Engine decodes and indexes events; Security Analytics detectors match rules via percolator queries |
+| **Output** | Alerts | Events (all decoded logs) + Findings (events that matched a rule) |
 | **Rule identification** | Numeric ID (1–999999) | UUID |
 | **Severity** | Numeric level 0–16 | Keyword: `informational`, `low`, `medium`, `high`, `critical` |
 | **Detection logic** | Decoder fields + regex matching + parent rule chaining | Sigma detection blocks with selections, conditions, and value modifiers |
@@ -130,9 +131,15 @@ document:
 
   mitre:
     tactic:
-      - "TA0006"
+      id:
+        - "TA0006"
+      name:
+        - "Credential Access"
     technique:
-      - "T1110"
+      id:
+        - "T1110"
+      name:
+        - "Brute Force"
 
   compliance:
     pci_dss:
@@ -220,36 +227,36 @@ All fields referenced in detection blocks are **validated against the WCS**. Rul
 | `<decoded_as>` | `logsource.product` | Log source binding replaces decoder-based matching. The rule is linked to an integration. |
 | `<category>` | `logsource.category` | The decoder type category (e.g., `syslog`, `firewall`) maps to the logsource object. |
 | `<location>` | `logsource` object or `wazuh.integration.name` | Depends on source type. The 4.x location (e.g., `EventChannel`, `syscheck`) is now implicit in the integration. |
-| `<program_name>` | `detection.selection: { "process.name": "..." }` | |
+| `<program_name>` | `detection.selection` with `process.name: "..."` | |
 | **Pattern matching** | | |
 | `<match>` | `detection.selection` field values | Regex replaced by field-value matching with modifiers. Use `keywords` detection for raw string matching. |
 | `<regex>` | `detection.selection` with `\|re` modifier | For complex patterns, use the `\|re` modifier. Prefer exact/contains/startswith/endswith when possible. |
-| `<field name="X">value</field>` | `detection.selection: { "X": "value" }` | Fields are now WCS-normalized. |
+| `<field name="X">value</field>` | `detection.selection` with `X: "value"` | Fields are now WCS-normalized. |
 | **Network fields** | | |
-| `<srcip>` | `detection.selection: { "source.ip": "..." }` | IPv4 and IPv6 (including CIDR) supported. |
-| `<dstip>` | `detection.selection: { "destination.ip": "..." }` | IPv4 and IPv6 (including CIDR) supported. |
-| `<srcport>` | `detection.selection: { "source.port": ... }` | |
-| `<dstport>` | `detection.selection: { "destination.port": ... }` | |
-| `<protocol>` | `detection.selection: { "network.protocol": "..." }` | |
-| `<srcgeoip>` | `detection.selection: { "source.geo.country_iso_code": "..." }` | GeoIP fields are now structured under `source.geo.*` / `destination.geo.*`. |
-| `<dstgeoip>` | `detection.selection: { "destination.geo.country_iso_code": "..." }` | GeoIP fields are now structured under `source.geo.*` / `destination.geo.*`. |
+| `<srcip>` | `detection.selection` with `source.ip: "..."` | IPv4 and IPv6 (including CIDR) supported. |
+| `<dstip>` | `detection.selection` with `destination.ip: "..."` | IPv4 and IPv6 (including CIDR) supported. |
+| `<srcport>` | `detection.selection` with `source.port: ...` | |
+| `<dstport>` | `detection.selection` with `destination.port: ...` | |
+| `<protocol>` | `detection.selection` with `network.protocol: "..."` | |
+| `<srcgeoip>` | `detection.selection` with `source.geo.country_iso_code: "..."` | GeoIP fields are now structured under `source.geo.*` / `destination.geo.*`. |
+| `<dstgeoip>` | `detection.selection` with `destination.geo.country_iso_code: "..."` | GeoIP fields are now structured under `source.geo.*` / `destination.geo.*`. |
 | **Identity fields** | | |
-| `<user>` | `detection.selection: { "user.name": "..." }` | |
-| `<system_name>` | `detection.selection: { "host.name": "..." }` | |
-| `<hostname>` | `detection.selection: { "observer.hostname": "..." }` | |
+| `<user>` | `detection.selection` with `user.name: "..."` | |
+| `<system_name>` | `detection.selection` with `host.name: "..."` | |
+| `<hostname>` | `detection.selection` with `observer.hostname: "..."` | |
 | **Event fields** | | |
-| `<action>` | `detection.selection: { "event.action": "..." }` | |
-| `<status>` | `detection.selection: { "event.outcome": "..." }` | |
-| `<id>` | `detection.selection: { "event.code": "..." }` | |
-| `<url>` | `detection.selection: { "url.original": "..." }` | |
-| `<data>` | `detection.selection: { "event.original": "..." }` | Context-dependent — may map to other fields depending on the decoder. |
+| `<action>` | `detection.selection` with `event.action: "..."` | |
+| `<status>` | `detection.selection` with `event.outcome: "..."` | |
+| `<id>` | `detection.selection` with `event.code: "..."` | |
+| `<url>` | `detection.selection` with `url.original: "..."` | |
+| `<data>` | `detection.selection` with `event.original: "..."` | Context-dependent — may map to other fields depending on the decoder. |
 | `<extra_data>` | No direct equivalent | Map to the appropriate WCS field based on what the decoder extracts. |
 | **Metadata and output** | | |
 | `<description>` | `metadata.title` + `metadata.description` | Split: `title` is short (required), `description` is detailed. |
 | `<info>` | `metadata.references` | Convert URLs to the references array. |
 | `<group>` (categorization) | `tags` | Functional groups become Sigma-style tags (e.g., `attack.credential-access`). |
 | `<group>` (compliance) | `compliance` object | Extract compliance prefixes into structured object. See [Step 8](#step-8-migrate-compliance-mappings). |
-| `<mitre><id>` | `mitre` object | Must now include `tactic`, `technique`, and `subtechnique` arrays. See [Step 7](#step-7-migrate-mitre-attck-mappings). |
+| `<mitre><id>` | `mitre` object | Must now include `tactic`, `technique`, and `subtechnique` objects, each with `id` and `name` arrays. See [Step 7](#step-7-migrate-mitre-attck-mappings). |
 | `<options>` | No direct equivalent | Options like `alert_by_email`, `no_full_log`, `no_log` must be configured externally (alert routing, index settings). |
 | `<var>` | No direct equivalent | Variable definitions are not supported — inline the values. |
 | **Rule attributes** | | |
@@ -370,14 +377,23 @@ To create rules and integrations via the API, provide the integration UUID when 
 ```yaml
 mitre:
   tactic:
-    - "TA0006"      # Map technique to its parent tactic ID
+    id:
+      - "TA0006"
+    name:
+      - "Credential Access"
   technique:
-    - "T1110"
+    id:
+      - "T1110"
+    name:
+      - "Brute Force"
   subtechnique:     # If applicable
-    - "T1110.001"
+    id:
+      - "T1110.001"
+    name:
+      - "Password Guessing"
 ```
 
-In 4.x, only technique IDs were listed. In 5.x, you must also provide the parent tactic IDs (e.g., `TA0006`) and, when applicable, subtechnique IDs (e.g., `T1562.001`).
+In 4.x, only technique IDs were listed. In 5.x, you must also provide the parent tactic IDs (e.g., `TA0006`) with their names and, when applicable, subtechnique IDs (e.g., `T1110.001`) with their names.
 
 ### Step 8: Migrate compliance mappings
 
@@ -521,20 +537,68 @@ document:
       wazuh.integration.name: "wazuh-vd"
 
   mitre:
-    tactic: ["TA0001", "TA0004"]
-    technique: ["T1068", "T1190"]
+    tactic:
+      id:
+        - "TA0001"
+        - "TA0004"
+      name:
+        - "Initial Access"
+        - "Privilege Escalation"
+    technique:
+      id:
+        - "T1068"
+        - "T1190"
+      name:
+        - "Exploitation for Privilege Escalation"
+        - "Exploit Public-Facing Application"
 
   compliance:
-    pci_dss: ["6.2", "6.3.3", "11.3"]
-    nist_800_53: ["CA-7", "RA-5", "SI-2", "SI-4"]
-    gdpr: ["32", "33"]
-    hipaa: ["164.308.a.1.ii.D", "164.308.a.5.ii.B", "164.308.a.8"]
-    iso_27001: ["A.12.6.1", "A.14.2.3", "A.16.1.2"]
-    tsc: ["A1.2", "CC7.1", "CC7.2"]
-    nis2: ["21.2.a", "21.2.e", "23"]
-    nist_800_171: ["3.11.1", "3.11.2", "3.11.3", "3.14.1", "3.14.4"]
-    fedramp: ["CA-7", "RA-5", "SI-2", "SI-4"]
-    cmmc: ["AU.L2-3.3.1", "CA.L2-3.12.1", "RA.L2-3.11.1", "RA.L2-3.11.2", "RA.L2-3.11.3", "SI.L2-3.14.1"]
+    pci_dss:
+      - "6.2"
+      - "6.3.3"
+      - "11.3"
+    nist_800_53:
+      - "CA-7"
+      - "RA-5"
+      - "SI-2"
+      - "SI-4"
+    gdpr:
+      - "32"
+      - "33"
+    hipaa:
+      - "164.308.a.1.ii.D"
+      - "164.308.a.5.ii.B"
+      - "164.308.a.8"
+    iso_27001:
+      - "A.12.6.1"
+      - "A.14.2.3"
+      - "A.16.1.2"
+    tsc:
+      - "A1.2"
+      - "CC7.1"
+      - "CC7.2"
+    nis2:
+      - "21.2.a"
+      - "21.2.e"
+      - "23"
+    nist_800_171:
+      - "3.11.1"
+      - "3.11.2"
+      - "3.11.3"
+      - "3.14.1"
+      - "3.14.4"
+    fedramp:
+      - "CA-7"
+      - "RA-5"
+      - "SI-2"
+      - "SI-4"
+    cmmc:
+      - "AU.L2-3.3.1"
+      - "CA.L2-3.12.1"
+      - "RA.L2-3.11.1"
+      - "RA.L2-3.11.2"
+      - "RA.L2-3.11.3"
+      - "SI.L2-3.14.1"
 
   tags:
     - "attack.initial-access"
@@ -595,16 +659,47 @@ document:
       wazuh.integration.name: "o365"
 
   mitre:
-    tactic: ["TA0010"]
-    technique: ["T1567"]
+    tactic:
+      id:
+        - "TA0010"
+      name:
+        - "Exfiltration"
+    technique:
+      id:
+        - "T1567"
+      name:
+        - "Exfiltration Over Web Service"
 
   compliance:
-    pci_dss: ["3.4", "6.2", "10.2.5", "11.4"]
-    nist_800_53: ["AU-6", "IR-4", "SC-28", "SI-4"]
-    gdpr: ["25", "32", "33", "35"]
-    hipaa: ["164.308.a.1.ii.D", "164.308.a.6", "164.312.a.2.iv", "164.312.e.1"]
-    iso_27001: ["A.8.2.3", "A.12.4.1", "A.16.1.2", "A.18.1.4"]
-    tsc: ["A1.2", "CC6.7", "CC7.2"]
+    pci_dss:
+      - "3.4"
+      - "6.2"
+      - "10.2.5"
+      - "11.4"
+    nist_800_53:
+      - "AU-6"
+      - "IR-4"
+      - "SC-28"
+      - "SI-4"
+    gdpr:
+      - "25"
+      - "32"
+      - "33"
+      - "35"
+    hipaa:
+      - "164.308.a.1.ii.D"
+      - "164.308.a.6"
+      - "164.312.a.2.iv"
+      - "164.312.e.1"
+    iso_27001:
+      - "A.8.2.3"
+      - "A.12.4.1"
+      - "A.16.1.2"
+      - "A.18.1.4"
+    tsc:
+      - "A1.2"
+      - "CC6.7"
+      - "CC7.2"
 
   tags:
     - "attack.exfiltration"
@@ -665,9 +760,27 @@ document:
       event.action: "EXECVE"
 
   mitre:
-    tactic: ["TA0004", "TA0005"]
-    technique: ["T1562", "T1055"]
-    subtechnique: ["T1562.001", "T1055.009"]
+    tactic:
+      id:
+        - "TA0004"
+        - "TA0005"
+      name:
+        - "Privilege Escalation"
+        - "Defense Evasion"
+    technique:
+      id:
+        - "T1562"
+        - "T1055"
+      name:
+        - "Impair Defenses"
+        - "Process Injection"
+    subtechnique:
+      id:
+        - "T1562.001"
+        - "T1055.009"
+      name:
+        - "Disable or Modify Tools"
+        - "Proc Memory"
 
   tags:
     - "attack.privilege-escalation"
@@ -728,8 +841,16 @@ document:
       wazuh.integration.name: "wazuh-it-hygiene"
 
   mitre:
-    tactic: ["TA0007"]
-    technique: ["T1518"]
+    tactic:
+      id:
+        - "TA0007"
+      name:
+        - "Discovery"
+    technique:
+      id:
+        - "T1518"
+      name:
+        - "Software Discovery"
 
   tags:
     - "attack.discovery"
