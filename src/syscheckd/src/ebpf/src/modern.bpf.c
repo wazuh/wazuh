@@ -98,26 +98,12 @@ struct {
 extern int LINUX_KERNEL_VERSION __kconfig;
 
 /*
- * Minimal renamedata definition for kernels >= 5.12 where vfs_rename
- * takes a single struct renamedata * argument instead of separate params.
- * We only need old_dentry and new_dentry so we define just enough fields.
- *
- * The ___local suffix tells libbpf to use this local definition instead
- * of looking it up in the kernel BTF, avoiding CO-RE failures on kernels
- * where renamedata is not exposed in BTF (e.g. Ubuntu 22.04 / kernel 5.15).
- *
- * Field layout matches fs/namei.c in kernel 5.12-5.15 (6 pointer fields):
- *   struct renamedata {
- *       struct user_namespace *old_mnt_userns;  // offset  0
- *       struct inode          *old_dir;         // offset  8
- *       struct dentry         *old_dentry;      // offset 16
- *       struct user_namespace *new_mnt_userns;  // offset 24  <-- must not be omitted
- *       struct inode          *new_dir;         // offset 32
- *       struct dentry         *new_dentry;      // offset 40
- *       ...
- *   };
- * On kernel 6.3+ old_mnt_userns/new_mnt_userns became mnt_idmap/new_mnt_idmap
- * but the layout (two pointer fields before each dir/dentry pair) is the same.
+ * Local renamedata shadow for kernels >= 5.12 (vfs_rename takes a single
+ * struct renamedata * instead of separate params). The ___local suffix tells
+ * libbpf to use this definition instead of kernel BTF, avoiding CO-RE
+ * failures on kernels where renamedata is not in BTF (e.g. 5.15).
+ * new_mnt_userns must be present to keep new_dentry at the correct offset
+ * (field layout stable across 5.12-6.3+).
  */
 struct renamedata___local {
     void          *old_mnt_userns;  /* user_namespace* on 5.12-5.15, mnt_idmap* on 6.3+ */
@@ -593,27 +579,10 @@ int kprobe__vfs_unlink(struct pt_regs *ctx)
 }
 
 /*
-* Intercepts vfs_rename calls to detect file move/rename operations.
-*
-* This program is always compiled in. The user-space loader decides
-* whether to autoload it based on whether BPF LSM hooks are active
-* on the running system (see ebpf_whodata.cpp).
-*
-* vfs_rename signature evolved across kernels:
-*   pre-5.12 :  vfs_rename(struct inode *old_dir,
-*                          struct dentry *old_dentry,        -> PARM2
-*                          struct inode *new_dir,
-*                          struct dentry *new_dentry,        -> PARM4
-*                          struct inode **delegated_inode,
-*                          unsigned int flags)
-*
-*   5.12+    :  vfs_rename(struct renamedata *rd)            -> PARM1
-*                          rd->old_dentry, rd->new_dentry
-*
-* Both old and new paths are submitted so FIM can detect:
-*   - Files moved INTO a monitored folder  (new path -> "added")
-*   - Files moved OUT OF a monitored folder (old path -> "deleted")
-*   - Files renamed WITHIN a monitored folder (both)
+* Intercepts vfs_rename to detect file move/rename events.
+* Pre-5.12: old_dentry=PARM2, new_dentry=PARM4. 5.12+: single renamedata *=PARM1.
+* Fires before rename executes so new_dentry is negative; use old_dentry->d_inode
+* for validation and new_dentry only for destination path reconstruction.
 */
 SEC("kprobe/vfs_rename")
 int kprobe__vfs_rename(struct pt_regs *ctx)
@@ -702,7 +671,6 @@ int kprobe__vfs_rename(struct pt_regs *ctx)
     return 0;
 }
 
-#ifdef ENABLE_BPF_LSM
 /*
 * LSM hook for file open. Reports newly-created or write-opened regular
 * files. Only invoked when "bpf" is part of the active LSM list
@@ -796,9 +764,7 @@ int BPF_PROG(file_open_walk, struct file *file)
     submit_event((const char *)full_path, inode, dev);
     return 0;
 }
-#endif /* ENABLE_BPF_LSM */
 
-#ifdef ENABLE_BPF_LSM
 /*
 * LSM hook for path-based unlink. Same activation rules as lsm/file_open.
 * Requires CONFIG_SECURITY_PATH=y in the running kernel.
@@ -904,9 +870,7 @@ int BPF_PROG(path_unlink_walk, struct path *path, struct dentry *dentry)
     submit_event((const char *)full_path, inode, dev);
     return 0;
 }
-#endif /* ENABLE_BPF_LSM */
 
-#ifdef ENABLE_BPF_LSM
 /*
 * LSM hook for path-based rename. Same activation rules as lsm/path_unlink.
 * Only invoked when "bpf" is part of the active LSM list.
@@ -958,7 +922,6 @@ int BPF_PROG(path_rename, struct path *old_dir, struct dentry *old_dentry,
         bpf_probe_read_kernel(&file_name_ptr, sizeof(file_name_ptr),
                               &new_dentry->d_name.name);
         if (file_name_ptr) {
-            full_path = NULL;
             ret = concat_strings_bpf(&full_path, dir_path, file_name_ptr, string_buf);
             if (ret >= 0)
                 submit_event((const char *)full_path, inode, dev);
@@ -967,6 +930,5 @@ int BPF_PROG(path_rename, struct path *old_dir, struct dentry *old_dentry,
 
     return 0;
 }
-#endif /* ENABLE_BPF_LSM */
 
 char LICENSE[] SEC("license") = "GPL";

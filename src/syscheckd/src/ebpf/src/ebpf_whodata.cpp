@@ -442,7 +442,8 @@ static void select_programs(bpf_object* obj, bool use_lsm, bool prefer_dpath) {
         const bool is_create_or_unlink_kprobe =
             (strncmp(sec, "kprobe/", 7) == 0) &&
             (strstr(sec, "vfs_open") != nullptr ||
-             strstr(sec, "vfs_unlink") != nullptr);
+             strstr(sec, "vfs_unlink") != nullptr ||
+             strstr(sec, "vfs_rename") != nullptr);
         const bool is_dpath_variant = name && strstr(name, "_dpath") != nullptr;
         const bool is_walk_variant  = name && strstr(name, "_walk")  != nullptr;
 
