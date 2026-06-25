@@ -162,7 +162,7 @@ typename Expression<Event>::FunctionType getDijstraEvaluator(const std::shared_p
     Expression<Event>::visitPreOrder(expression, visitor);
 
     // Evaluator function
-    return [operators](Event event) -> bool
+    return [operators = std::move(operators)](Event event) -> bool
     {
         std::stack<bool> operands;
         bool result {false};
