@@ -200,7 +200,7 @@ protected:
      */
     Term(std::string name, T fn)
         : Formula(name, "Term")
-        , m_fn {fn}
+        , m_fn {std::move(fn)}
     {
     }
 

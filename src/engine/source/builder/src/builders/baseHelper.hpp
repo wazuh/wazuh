@@ -37,7 +37,7 @@ runType(const OpBuilder& builder, const Reference& targetField, const schemf::Va
  * @param builder The filter builder.
  * @return TransformBuilder The equivalent transform builder.
  */
-TransformBuilder filterToTransform(const FilterBuilder& builder);
+TransformBuilder filterToTransform(FilterBuilder builder);
 
 /**
  * @brief Convert a MapBuilder to a TransformBuilder for a target field.
@@ -46,7 +46,7 @@ TransformBuilder filterToTransform(const FilterBuilder& builder);
  * @param targetField Target field reference.
  * @return TransformBuilder The equivalent transform builder.
  */
-TransformBuilder mapToTransform(const MapBuilder& builder, const Reference& targetField);
+TransformBuilder mapToTransform(MapBuilder builder, Reference targetField);
 
 /**
  * @brief Convert any OpBuilder variant to a TransformBuilder.
@@ -55,7 +55,7 @@ TransformBuilder mapToTransform(const MapBuilder& builder, const Reference& targ
  * @param targetField Target field reference.
  * @return TransformBuilder The resulting transform builder.
  */
-TransformBuilder toTransform(const OpBuilder& builder, const Reference& targetField);
+TransformBuilder toTransform(OpBuilder builder, const Reference& targetField);
 
 /**
  * @brief Wrap a TransformOp into a base::Expression term.
@@ -64,7 +64,7 @@ TransformBuilder toTransform(const OpBuilder& builder, const Reference& targetFi
  * @param name Name of the expression node.
  * @return base::Expression The expression wrapping the operation.
  */
-base::Expression toExpression(const TransformOp& op, const std::string& name);
+base::Expression toExpression(TransformOp op, const std::string& name);
 
 /**
  * @brief Helper type enumeration.

@@ -63,7 +63,7 @@ getTermBuilder(const std::shared_ptr<const IBuildCtx>& buildCtx)
                     throw std::runtime_error("Check stage: Only 1 level of AND is supported.");
                 }
             }
-            buildedFn = [andOps](base::Event event) -> bool
+            buildedFn = [andOps = std::move(andOps)](base::Event event) -> bool
             {
                 for (auto& op : andOps)
                 {
@@ -107,7 +107,9 @@ base::Expression checkExpressionBuilder(const std::string& logicExpr, const std:
 
     // Return expression
     return base::Term<base::EngineOp>::create("stage.check",
-                                              [=](base::Event event)
+                                              [evaluator = std::move(evaluator),
+                                               successTrace = std::move(successTrace),
+                                               failureTrace = std::move(failureTrace)](base::Event event)
                                               {
                                                   if (evaluator(event))
                                                   {
