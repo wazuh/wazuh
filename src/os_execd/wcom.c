@@ -384,7 +384,7 @@ size_t wcom_check_manager_config(char **output) {
                                     "bin/wazuh-execd", "bin/wazuh-analysisd", "bin/wazuh-logcollector",
                                     "bin/wazuh-integratord", "bin/wazuh-syscheckd", "bin/wazuh-maild",
                                     "bin/wazuh-modulesd", "bin/wazuh-clusterd", "bin/wazuh-agentlessd",
-                                    "bin/wazuh-integratord", "bin/wazuh-dbd", "bin/wazuh-csyslogd", NULL
+                                    "bin/wazuh-integratord", "bin/wazuh-csyslogd", NULL
                                     };
 
     int response_retval = 0;
