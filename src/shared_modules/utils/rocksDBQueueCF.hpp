@@ -80,8 +80,8 @@ private:
     }
 
 public:
-    explicit RocksDBQueueCF(const std::string& path, std::string logTag, bool useSharedBuffers = false)
-        : m_logTag(composeTag(logTag, "rocksdb"))
+    explicit RocksDBQueueCF(const std::string& path, LogFn logFn, bool useSharedBuffers = false)
+        : m_logFn(logFn.compose("rocksdb"))
     {
         // RocksDB initialization.
         // Read cache is used to cache the data read from the disk.
@@ -129,7 +129,7 @@ public:
                         throw std::runtime_error("Failed to open RocksDB database after repairing. Reason: " +
                                                  std::string {status.getState()});
                     }
-                    logWarn(m_logTag.c_str(), "Database '%s' was repaired because it was corrupt.", path.c_str());
+                    LOG_WARN(m_logFn, "Database '%s' was repaired because it was corrupt.", path.c_str());
                 }
             }
             else
@@ -360,7 +360,7 @@ private:
     std::shared_ptr<rocksdb::Cache> m_readCache;
     std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager;
     std::map<std::string, QueueMetadata> m_queueMetadata; ///< Map queue.
-    std::string m_logTag;
+    LogFn m_logFn;
 };
 
 #endif // _ROCKSDB_QUEUE_CF_HPP

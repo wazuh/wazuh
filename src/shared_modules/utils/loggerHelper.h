@@ -240,4 +240,107 @@ namespace Log
         }
     };
 } // namespace Log
+
+/**
+ * @brief Pre-bound log wrapper — stores a tag and calls GLOBAL_LOG_FUNCTION with it.
+ *
+ * Each component receives a LogFn from its caller and calls compose("myname") to
+ * build its own LogFn. The tag shown in every log line is always
+ * "<process>(<current-library>)" — only the library currently executing, not the
+ * full call chain.
+ *
+ * Use the LOG_WARN / LOG_INFO / LOG_DEBUG1 / LOG_DEBUG2 / LOG_ERROR macros so that
+ * __FILE__ / __LINE__ / __func__ are captured at the actual call site.
+ */
+struct LogFn
+{
+    std::string m_tag;
+
+    LogFn() : m_tag(LOGGER_DEFAULT_TAG) {}
+    LogFn(std::string_view tag) : m_tag(tag) {}  // NOLINT(google-explicit-constructor)
+    LogFn(std::string tag) : m_tag(std::move(tag)) {}  // NOLINT(google-explicit-constructor)
+    LogFn(const char* tag) : m_tag(tag ? tag : LOGGER_DEFAULT_TAG) {}  // NOLINT(google-explicit-constructor)
+
+    /**
+     * Returns a new LogFn for @p component within the same process.
+     * Replaces the library part of the tag — does NOT accumulate a chain.
+     *   LogFn{"proc"}.compose("rocksdb")          → "proc(rocksdb)"
+     *   LogFn{"proc(keystore)"}.compose("rocksdb") → "proc(rocksdb)"
+     */
+    LogFn compose(std::string_view component) const
+    {
+        const auto open = m_tag.find('(');
+        const auto base = (open != std::string::npos) ? m_tag.substr(0, open) : m_tag;
+        if (base.empty())
+            return LogFn {std::string(component)};
+        return LogFn {base + "(" + std::string(component) + ")"};
+    }
+
+    const char* c_str() const { return m_tag.c_str(); }
+
+    void info(Log::SourceFile src, const char* fmt, ...) const
+    {
+        if (Log::GLOBAL_LOG_FUNCTION)
+        {
+            std::va_list args;
+            va_start(args, fmt);
+            Log::GLOBAL_LOG_FUNCTION(Log::LOGLEVEL_INFO, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+            va_end(args);
+        }
+    }
+
+    void warn(Log::SourceFile src, const char* fmt, ...) const
+    {
+        if (Log::GLOBAL_LOG_FUNCTION)
+        {
+            std::va_list args;
+            va_start(args, fmt);
+            Log::GLOBAL_LOG_FUNCTION(Log::LOGLEVEL_WARNING, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+            va_end(args);
+        }
+    }
+
+    void debug1(Log::SourceFile src, const char* fmt, ...) const
+    {
+        if (Log::GLOBAL_LOG_FUNCTION)
+        {
+            std::va_list args;
+            va_start(args, fmt);
+            Log::GLOBAL_LOG_FUNCTION(Log::LOGLEVEL_DEBUG, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+            va_end(args);
+        }
+    }
+
+    void debug2(Log::SourceFile src, const char* fmt, ...) const
+    {
+        if (Log::GLOBAL_LOG_FUNCTION)
+        {
+            std::va_list args;
+            va_start(args, fmt);
+            Log::GLOBAL_LOG_FUNCTION(
+                Log::LOGLEVEL_DEBUG_VERBOSE, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+            va_end(args);
+        }
+    }
+
+    void error(Log::SourceFile src, const char* fmt, ...) const
+    {
+        if (Log::GLOBAL_LOG_FUNCTION)
+        {
+            std::va_list args;
+            va_start(args, fmt);
+            Log::GLOBAL_LOG_FUNCTION(Log::LOGLEVEL_ERROR, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+            va_end(args);
+        }
+    }
+};
+
+// clang-format off
+#define LOG_INFO(fn, fmt, ...)   (fn).info( {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
+#define LOG_WARN(fn, fmt, ...)   (fn).warn( {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
+#define LOG_DEBUG1(fn, fmt, ...) (fn).debug1({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
+#define LOG_DEBUG2(fn, fmt, ...) (fn).debug2({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
+#define LOG_ERROR(fn, fmt, ...)  (fn).error( {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
+// clang-format on
+
 #endif // LOGGER_HELPER_H

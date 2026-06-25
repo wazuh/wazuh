@@ -34,7 +34,7 @@ class TThreadEventDispatcher
 public:
     explicit TThreadEventDispatcher(Functor functor,
                                     const std::string& dbPath,
-                                    std::string logTag,
+                                    LogFn logFn,
                                     const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
                                     const size_t retryDelay = 1,
@@ -45,15 +45,14 @@ public:
         , m_bulkSize {bulkSize}
         , m_retryDelay {retryDelay}
         , m_flushInterval {flushInterval}
-        , m_queue {std::make_unique<TSafeQueueType>(
-              TQueueType(dbPath, composeTag(logTag, "thread-dispatcher"), useSharedBuffers))}
-        , m_logTag(composeTag(logTag, "thread-dispatcher"))
+        , m_logFn {logFn.compose("thread-dispatcher")}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, m_logFn, useSharedBuffers))}
     {
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
     }
 
     explicit TThreadEventDispatcher(const std::string& dbPath,
-                                    std::string logTag,
+                                    LogFn logFn,
                                     const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
                                     const size_t retryDelay = 1,
@@ -62,8 +61,8 @@ public:
         , m_bulkSize {bulkSize}
         , m_retryDelay {retryDelay}
         , m_flushInterval {flushInterval}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, composeTag(logTag, "thread-dispatcher")))}
-        , m_logTag(composeTag(logTag, "thread-dispatcher"))
+        , m_logFn {logFn.compose("thread-dispatcher")}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, m_logFn))}
     {
     }
 
@@ -90,7 +89,7 @@ public:
                 // If we were previously discarding, log that we're accepting again
                 if (m_discardedCount.load() > 0)
                 {
-                    logInfo(m_logTag.c_str(),
+                    LOG_INFO(m_logFn,
                             "Queue size normalized. Resuming event acceptance after %zu discarded events.",
                             m_discardedCount.load());
                     m_discardedCount = 0;
@@ -107,7 +106,7 @@ public:
                 // Log the first discard immediately
                 if (!m_firstDiscardLogged.exchange(true))
                 {
-                    logWarn(m_logTag.c_str(),
+                    LOG_WARN(m_logFn,
                             "Queue is full (size: %zu, max: %zu). Starting to discard events. "
                             "Periodic summaries will be logged every %zu seconds.",
                             m_queue->size(),
@@ -122,7 +121,7 @@ public:
                         std::chrono::duration_cast<std::chrono::seconds>(now - m_lastSummaryLog).count();
                     if (elapsed >= m_summaryInterval)
                     {
-                        logWarn(m_logTag.c_str(),
+                        LOG_WARN(m_logFn,
                                 "Queue overflow continues: %zu events discarded in the last %lld seconds "
                                 "(queue size: %zu, max: %zu, total discarded: %zu).",
                                 discarded - m_lastDiscardedCount.load(),
@@ -154,7 +153,7 @@ public:
                 // If we were previously discarding, log that we're accepting again
                 if (m_discardedCount.load() > 0)
                 {
-                    logInfo(m_logTag.c_str(),
+                    LOG_INFO(m_logFn,
                             "Queue '%.*s' size normalized. Resuming event acceptance after %zu discarded events.",
                             static_cast<int>(prefix.size()),
                             prefix.data(),
@@ -173,7 +172,7 @@ public:
                 // Log the first discard immediately
                 if (!m_firstDiscardLogged.exchange(true))
                 {
-                    logWarn(m_logTag.c_str(),
+                    LOG_WARN(m_logFn,
                             "Queue '%.*s' is full (size: %zu, max: %zu). Starting to discard events. "
                             "Periodic summaries will be logged every %zu seconds.",
                             static_cast<int>(prefix.size()),
@@ -190,7 +189,7 @@ public:
                         std::chrono::duration_cast<std::chrono::seconds>(now - m_lastSummaryLog).count();
                     if (elapsed >= m_summaryInterval)
                     {
-                        logWarn(m_logTag.c_str(),
+                        LOG_WARN(m_logFn,
                                 "Queue '%.*s' overflow continues: %zu events discarded in the last %lld seconds "
                                 "(queue size: %zu, max: %zu, total discarded: %zu).",
                                 static_cast<int>(prefix.size()),
@@ -338,11 +337,11 @@ private:
                 if (m_running)
                 {
                     std::this_thread::sleep_for(std::chrono::seconds(m_retryDelay));
-                    logWarn(m_logTag.c_str(), "Dispatch handler error, %s", ex.what());
+                    LOG_WARN(m_logFn, "Dispatch handler error, %s", ex.what());
                 }
                 else
                 {
-                    logDebug1(m_logTag.c_str(), "ThreadEventDispatcher dispatch end.");
+                    LOG_DEBUG1(m_logFn, "ThreadEventDispatcher dispatch end.");
                 }
             }
         }
@@ -360,11 +359,12 @@ private:
     Functor m_functor;
     const size_t m_maxQueueSize;
     std::atomic<uint64_t> m_bulkSize;
+    const size_t m_retryDelay;
+    const size_t m_flushInterval;
+    LogFn m_logFn;                          // must be before m_queue (used in its constructor)
     std::unique_ptr<TSafeQueueType> m_queue;
     std::thread m_thread;
     std::atomic_bool m_running = true;
-    const size_t m_retryDelay;
-    const size_t m_flushInterval;
 
     std::atomic<size_t> m_discardedCount {0}; // Number of events discarded since the last time the queue was normalized
                                               // (reset to 0 when queue resumes accepting events)
@@ -374,7 +374,6 @@ private:
     std::atomic_bool m_firstDiscardLogged {false};
     std::chrono::steady_clock::time_point m_lastSummaryLog;
     const size_t m_summaryInterval {30}; // Log summary every 30 seconds
-    std::string m_logTag;
 };
 
 template<typename Type, typename Functor>

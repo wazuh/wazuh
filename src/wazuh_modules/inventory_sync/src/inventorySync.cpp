@@ -60,7 +60,7 @@ extern "C"
         }
         catch (const std::exception& e)
         {
-            logError(WM_INVENTORY_SYNC_LOGTAG, "Error starting inventory sync: %s", e.what());
+            LOG_ERROR(LogFn{WM_INVENTORY_SYNC_LOGTAG}, "Error starting inventory sync: %s", e.what());
         }
     }
 

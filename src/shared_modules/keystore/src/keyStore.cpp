@@ -23,7 +23,7 @@ namespace Log
         GLOBAL_LOG_FUNCTION;
 };
 
-static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& columnFamily, const std::string& tag)
+static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& columnFamily, const LogFn& logFn)
 {
     std::string versionValue;
 
@@ -49,12 +49,12 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
                 // Get the encrypted RSA value
                 if (keystoreDB.get(key, encryptedRSAValue, columnFamily))
                 {
-                    logInfo(tag.c_str(), "Upgrading '%s' key pair.", key.c_str());
+                    LOG_INFO(logFn, "Upgrading '%s' key pair.", key.c_str());
                 }
 
                 // Decrypt the RSA value
                 RSAHelper().rsaDecrypt(PRIVATE_KEY_FILE, encryptedRSAValue, rawValue);
-                logDebug2(tag.c_str(), "Decryption successful for key: '%s'", key.c_str());
+                LOG_DEBUG2(logFn, "Decryption successful for key: '%s'", key.c_str());
 
                 // Encrypt the value with AES 256
                 EVPHelper().encryptAES256(rawValue, encryptedValue);
@@ -62,16 +62,16 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
                 // Insert the key-value pair using AES encryption
                 keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
 
-                logInfo(tag.c_str(), "Key pair '%s' upgraded.", key.c_str());
+                LOG_INFO(logFn, "Key pair '%s' upgraded.", key.c_str());
             }
         }
         catch (const std::exception& exception)
         {
             // If the upgrade fails, delete all keys and log the error.
             keystoreDB.deleteAll(columnFamily);
-            logWarn(tag.c_str(),
-                    "Keystore upgrade failed, re-run the tool again for all keys to save them. Error: %s",
-                    exception.what());
+            LOG_WARN(logFn,
+                     "Keystore upgrade failed, re-run the tool again for all keys to save them. Error: %s",
+                     exception.what());
         }
     }
 
@@ -85,14 +85,14 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
     }
 }
 
-void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value, std::string_view logTag)
+void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value, LogFn logFn)
 {
-    const auto tag = composeTag(logTag, "keystore");
+    auto ksLogFn = logFn.compose("keystore");
     std::vector<char> encryptedValue;
 
     EVPHelper().encryptAES256(value, encryptedValue);
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, tag, false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, ksLogFn, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -102,7 +102,7 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
     // algorithm. If the version field does not exist, it means that the keystore has not been upgraded yet. If the
     // version is different from the current version, update it. If the upgrade fails, the version is set to the current
     // version, because all keys have been deleted.
-    upgrade(keystoreDB, columnFamily, tag);
+    upgrade(keystoreDB, columnFamily, ksLogFn);
 
     // Insert the key-value pair using AES encryption.
     keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
@@ -115,12 +115,12 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
  * @param key The key to be inserted or updated.
  * @param value The corresponding value to be returned.
  */
-void Keystore::get(const std::string& columnFamily, const std::string& key, std::string& value, std::string_view logTag)
+void Keystore::get(const std::string& columnFamily, const std::string& key, std::string& value, LogFn logFn)
 {
-    const auto tag = composeTag(logTag, "keystore");
+    auto ksLogFn = logFn.compose("keystore");
     std::string encryptedValue;
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, tag, false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, ksLogFn, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -128,7 +128,7 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
     }
 
     // Upgrade the keystore if necessary and get the key-value pair, to get all keys encrypted with the same algorithm.
-    upgrade(keystoreDB, columnFamily, tag);
+    upgrade(keystoreDB, columnFamily, ksLogFn);
 
     // Get the key-value pair using AES decryption.
     if (keystoreDB.get(key, encryptedValue, columnFamily))
@@ -145,13 +145,13 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
  * @param key The key to be inserted or updated.
  * @return The corresponding value to be returned.
  */
-std::string Keystore::get(const std::string& columnFamily, const std::string& key, std::string_view logTag)
+std::string Keystore::get(const std::string& columnFamily, const std::string& key, LogFn logFn)
 {
-    const auto tag = composeTag(logTag, "keystore");
+    auto ksLogFn = logFn.compose("keystore");
     std::string value;
     std::string encryptedValue;
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, tag, false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, ksLogFn, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -159,7 +159,7 @@ std::string Keystore::get(const std::string& columnFamily, const std::string& ke
     }
 
     // Upgrade the keystore if necessary and get the key-value pair, to get all keys encrypted with the same algorithm.
-    upgrade(keystoreDB, columnFamily, tag);
+    upgrade(keystoreDB, columnFamily, ksLogFn);
 
     // Get the key-value pair using AES decryption.
     if (keystoreDB.get(key, encryptedValue, columnFamily))

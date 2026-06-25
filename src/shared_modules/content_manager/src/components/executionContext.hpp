@@ -117,7 +117,7 @@ private:
         }
 
         // Initialize RocksDB driver instance.
-        context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath + databaseName, WM_CONTENTUPDATER);
+        context.spRocksDB = std::make_unique<Utils::RocksDBWrapper>(databasePath + databaseName, LogFn{WM_CONTENTUPDATER});
 
         // Create database columns if necessary.
         const std::vector<std::string> COLUMNS {Components::Columns::CURRENT_OFFSET,

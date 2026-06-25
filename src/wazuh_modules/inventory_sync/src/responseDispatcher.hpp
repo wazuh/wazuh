@@ -51,32 +51,32 @@ class ResponseDispatcherImpl
 {
 private:
     std::unique_ptr<TQueue> m_responseDispatcher;
-    std::string m_logTag;
+    LogFn m_logFn;
 
 public:
-    explicit ResponseDispatcherImpl(std::string logTag = std::string(WM_INVENTORY_SYNC_LOGTAG))
-        : m_logTag(std::move(logTag))
+    explicit ResponseDispatcherImpl(LogFn logFn = LogFn{WM_INVENTORY_SYNC_LOGTAG})
+        : m_logFn(std::move(logFn))
     {
         auto responseSocketClient =
             std::make_shared<SocketClient<Socket<OSPrimitives, NoHeaderProtocol>, EpollWrapper>>(ARQUEUE_PATH);
         responseSocketClient->connect(
-            [logTag = m_logTag](const char*, uint32_t, const char*, uint32_t)
+            [logFn = m_logFn](const char*, uint32_t, const char*, uint32_t)
             {
-                logDebug2(logTag.c_str(), "OnRead to %s", ARQUEUE_PATH);
+                LOG_DEBUG2(logFn, "OnRead to %s", ARQUEUE_PATH);
                 // Not used
             },
-            [logTag = m_logTag]()
+            [logFn = m_logFn]()
             {
-                logDebug2(logTag.c_str(), "Connected to %s", ARQUEUE_PATH);
+                LOG_DEBUG2(logFn, "Connected to %s", ARQUEUE_PATH);
                 // Not used
             },
             SOCK_DGRAM);
 
         // Response queue callback - uses ARQUEUE for all agents
         m_responseDispatcher = std::make_unique<ResponseQueue>(
-            [responseSocketClient, logTag = m_logTag](const ResponseMessage& data)
+            [responseSocketClient, logFn = m_logFn](const ResponseMessage& data)
             {
-                logDebug2(logTag.c_str(),
+                LOG_DEBUG2(logFn,
                           "ResponseDispatcher: Sending response to agent '%s', module '%s'",
                           data.agentId.c_str(),
                           data.moduleName.c_str());
@@ -105,7 +105,7 @@ public:
 
                 responseSocketClient->send(reinterpret_cast<const char*>(messageVector.data()), messageVector.size());
             },
-            m_logTag);
+            m_logFn);
     }
 
     explicit ResponseDispatcherImpl(TQueue* responseDispatcher)

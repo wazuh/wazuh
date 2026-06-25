@@ -27,13 +27,13 @@ namespace Utils
     class ReadNode : public Dispatcher<Input, Functor>
     {
         public:
-            ReadNode(Functor functor, std::string logTag = "pipeline-node")
-                : DispatcherType{ functor, std::move(logTag) }
+            ReadNode(Functor functor, LogFn logFn = LogFn {"pipeline-node"})
+                : DispatcherType{ functor, std::move(logFn) }
             {}
             ReadNode(Functor functor,
                      const unsigned int numberOfThreads,
-                     std::string logTag = "pipeline-node")
-                : DispatcherType{ functor, std::move(logTag), numberOfThreads, UNLIMITED_QUEUE_SIZE }
+                     LogFn logFn = LogFn {"pipeline-node"})
+                : DispatcherType{ functor, std::move(logFn), numberOfThreads, UNLIMITED_QUEUE_SIZE }
             {}
             // LCOV_EXCL_START
             ~ReadNode() = default;

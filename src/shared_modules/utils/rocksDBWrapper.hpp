@@ -81,13 +81,13 @@ namespace Utils
          *                        WARNING: this process might not recover all data.
          */
         explicit TRocksDBWrapper(std::string dbPath,
-                                 std::string logTag,
+                                 LogFn logFn,
                                  const bool enableWal = true,
                                  const bool repairIfCorrupt = true,
                                  const bool useSharedBuffers = false)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
-            , m_logTag(composeTag(logTag, "rocksdb"))
+            , m_logFn(logFn.compose("rocksdb"))
         {
 
             if (useSharedBuffers)
@@ -762,7 +762,7 @@ namespace Utils
         const std::string m_path;                                    ///< Location of the DB.
         std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
         std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager; ///< Write buffer manager.
-        std::string m_logTag;
+        LogFn m_logFn;
 
         /**
          * @brief Will try to repair the database if it is corrupt or throw exception if something failed.
@@ -779,7 +779,7 @@ namespace Utils
                     throw std::runtime_error("Failed to repair RocksDB database. Reason: " +
                                              std::string {repairStatus.getState()});
                 }
-                logWarn(m_logTag.c_str(), "Database '%s' was repaired because it was corrupt.", m_path.c_str());
+                LOG_WARN(m_logFn, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
             }
             else
             {
