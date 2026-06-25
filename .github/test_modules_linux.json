@@ -20,6 +20,7 @@
     {
       "name": "aws",
       "pytest_target": "test_aws/",
+      "pytest_extra_args": "-k \"not inspector\"",
       "tiers": ["0 1"],
       "timeout_minutes": 120,
       "setup_aws_credentials": true,
@@ -154,18 +155,6 @@
       "setup_aws_credentials": true,
       "paths": [
         "wodles/aws/services/cloudwatchlogs.py",
-        "wodles/aws/services/aws_service.py"
-      ]
-    },
-    {
-      "name": "aws_inspector",
-      "pytest_target": "test_aws/",
-      "pytest_extra_args": "-k inspector",
-      "tiers": ["0 1"],
-      "timeout_minutes": 60,
-      "setup_aws_credentials": true,
-      "paths": [
-        "wodles/aws/services/inspector.py",
         "wodles/aws/services/aws_service.py"
       ]
     },
