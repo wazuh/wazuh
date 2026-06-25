@@ -342,15 +342,13 @@ When migrating, you must **create a new custom integration** in user space (Draf
 
 To create rules and integrations via the API, provide the integration UUID when submitting the rule:
 
-```json
-{
-  "integration": "6b7b7645-00da-44d0-a74b-cffa7911e89c",
-  "resource": {
-    "metadata": { "title": "My custom rule" },
-    "detection": { ... },
-    ...
-  }
-}
+```yaml
+integration: "6b7b7645-00da-44d0-a74b-cffa7911e89c"
+resource:
+  metadata:
+    title: "My custom rule"
+  detection:
+    # ...
 ```
 
 ### Step 6: Migrate metadata
