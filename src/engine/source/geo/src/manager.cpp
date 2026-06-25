@@ -36,7 +36,7 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
     auto docResp = m_store->readDoc(base::Name(INTERNAL_NAME));
     if (base::isError(docResp))
     {
-        LOG_DEBUG("Geo module do not have dbs in the store: {}", base::getError(docResp).message);
+        LOG_DEBUG("[Geo::Manager] Geo module do not have dbs in the store: {}", base::getError(docResp).message);
         updateGeoStatusSnapshot(); // Publish initial status even with no dbs
         return;
     }
@@ -53,7 +53,10 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
             auto addResp = addDbUnsafe(pathStr, hashStr, createdAt.value(), type);
             if (base::isError(addResp))
             {
-                LOG_ERROR("Geo cannot add {} db '{}': {}", typeName(type), pathStr, base::getError(addResp).message);
+                LOG_ERROR("[Geo::Manager] Geo cannot add {} db '{}': {}",
+                          typeName(type),
+                          pathStr,
+                          base::getError(addResp).message);
             }
             else
             {
@@ -70,7 +73,7 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
         }
         else
         {
-            LOG_WARNING("Geo store has incomplete {} database information, skipping", typeName(type));
+            LOG_WARNING("[Geo::Manager] Geo store has incomplete {} database information, skipping", typeName(type));
         }
     };
 
@@ -426,7 +429,7 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
 void Manager::requestShutdown()
 {
     m_shouldRun->store(false);
-    LOG_INFO("[Geo::Manager] Shutdown requested.");
+    LOG_INFO("[Geo::Manager] Shutdown requested");
 }
 
 Result<std::shared_ptr<ILocator>> Manager::getLocator(Type type) const

@@ -225,22 +225,29 @@ bool IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
         // Consumer is not idle — rollback and signal caller
         if (!processedDocsOpt.has_value())
         {
-            LOG_DEBUG(
-                "[IOC::Sync] Consumer is not idle for IOC type '{}', rolling back database '{}'", iocType, dbName);
+            LOG_DEBUG("[IOC::Sync] Consumer is not idle for IOC type '{}', "
+                      "rolling back database '{}'",
+                      iocType,
+                      dbName);
             try
             {
                 kvdbiocPtr->remove(dbName);
             }
             catch (const std::exception& ex)
             {
-                LOG_WARNING(
-                    "[IOC::Sync] Failed to rollback database '{}' after consumer not idle: {}", dbName, ex.what());
+                LOG_WARNING("[IOC::Sync] Failed to rollback database '{}' after consumer "
+                            "not idle: {}",
+                            dbName,
+                            ex.what());
             }
             return false;
         }
 
-        LOG_DEBUG(
-            "[IOC::Sync] Downloaded {} IOCs of type '{}' (processed {} docs)", stored, iocType, *processedDocsOpt);
+        LOG_DEBUG("[IOC::Sync] Downloaded {} IOCs of type '{}' "
+                  "(processed {} docs)",
+                  stored,
+                  iocType,
+                  *processedDocsOpt);
 
         if (stored == 0)
         {
@@ -256,9 +263,7 @@ bool IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
         }
         catch (const std::exception& ex)
         {
-            LOG_WARNING("[IocSync::downloadAndPopulateDB] Failed to rollback database '{}' after download failure: {}",
-                        dbName,
-                        ex.what());
+            LOG_WARNING("[IOC::Sync] Failed to rollback database '{}' after download failure: {}", dbName, ex.what());
         }
         throw std::runtime_error(fmt::format("Failed to download IOCs to database '{}': {}", dbName, e.what()));
     }

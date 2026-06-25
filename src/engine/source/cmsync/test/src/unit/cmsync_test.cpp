@@ -99,6 +99,8 @@ protected:
         std::make_shared<::testing::StrictMock<store::mocks::MockStore>>()};
     std::shared_ptr<::testing::StrictMock<router::mocks::MockRouterAPI>> router {
         std::make_shared<::testing::StrictMock<router::mocks::MockRouterAPI>>()};
+
+    void SetUp() override { logging::testInit(); }
 };
 
 class CMSyncSynchronizeTest : public ::testing::Test
@@ -123,6 +125,8 @@ protected:
 
         return std::make_unique<cm::sync::CMSync>(indexer, crud, store, router, DEFAULT_ATTEMPTS, DEFAULT_WAIT_SECONDS);
     }
+
+    void SetUp() override { logging::testInit(); }
 };
 
 } // namespace

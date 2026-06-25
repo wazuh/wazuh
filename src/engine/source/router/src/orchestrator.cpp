@@ -109,7 +109,7 @@ void saveConfig(const std::weak_ptr<store::IStore>& wStore, const base::Name& st
     auto store = wStore.lock();
     if (!store)
     {
-        LOG_ERROR("Store is unavailable for dumping entries");
+        LOG_ERROR("[Orchestrator] Store is unavailable for dumping entries");
     }
     else
     {
@@ -154,7 +154,7 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     const auto jsonEntry = store->readDoc(tableName);
     if (base::isError(jsonEntry))
     {
-        LOG_DEBUG("Router: {} table not found in store. Creating new table: {}",
+        LOG_DEBUG("[Orchestrator] {} table not found in store ({}). Creating new table",
                   tableName.toStr(),
                   base::getError(jsonEntry).message);
         store->createDoc(tableName, json::Json {"[]"});
@@ -164,7 +164,7 @@ std::vector<EntryConverter> getEntriesFromStore(const std::shared_ptr<store::ISt
     auto json = base::getResponse(jsonEntry);
     if (json.isEmpty())
     {
-        LOG_DEBUG("Router: {} table is empty", tableName.toStr());
+        LOG_DEBUG("[Orchestrator] {} table is empty", tableName.toStr());
     }
     // Create empty table.
 
@@ -254,7 +254,8 @@ void Orchestrator::postEvent(IngestEvent&& event)
 
     m_lastContentionWarningUsec.store(nowUsec, std::memory_order_relaxed);
 
-    LOG_WARNING("Event queue has remained contended for at least {} seconds. Dropped events during contention: {}. "
+    LOG_WARNING("[Orchestrator::Router] Event queue has remained contended for at least {} seconds. Dropped events "
+                "during contention: {}. "
                 "Approx queue size: {}, approx free slots: {}.",
                 CONTENTION_WARNING_INTERVAL_SEC,
                 m_droppedEventsInContention.load(std::memory_order_relaxed),
@@ -355,7 +356,8 @@ Orchestrator::Orchestrator(const Options& opt)
         {
             numThreads = 1; // Fallback if hardware_concurrency cannot be determined
         }
-        LOG_DEBUG("No thread count provided. Using {} worker threads based on system hardware.", numThreads);
+        LOG_DEBUG("[Orchestrator] No thread count provided. Using {} worker threads based on system hardware.",
+                  numThreads);
     }
 
     m_targetWorkerCount = numThreads;
@@ -368,19 +370,21 @@ Orchestrator::Orchestrator(const Options& opt)
         auto r = std::make_shared<router::RouterWorker>(m_envBuilder, m_eventQueue, m_rawIndexer, m_epsRate);
         if (auto err = initRouterWorker(r, routerEntries))
         {
-            LOG_ERROR("Router: Cannot load initial states from store for primary worker: {}", err->message);
+            LOG_ERROR("[Orchestrator::Router] Cannot load initial states from store for primary worker: {}",
+                      err->message);
         }
         m_routerWorkers.emplace_back(std::move(r));
     }
-    LOG_DEBUG("Router: Primary worker initialized. Target pool size: {} (expansion requires explicit call to "
-              "expandWorkerPool).",
-              m_targetWorkerCount);
+    LOG_DEBUG(
+        "[Orchestrator::Router] Primary worker initialized. Target pool size: {} (expansion requires explicit call to "
+        "expandWorkerPool).",
+        m_targetWorkerCount);
 
     {
         auto t = std::make_shared<router::TesterWorker>(m_envBuilder, m_testQueue);
         if (auto err = initTesterWorker(t, testerEntries))
         {
-            LOG_ERROR("Tester: Cannot load initial states from store: {}", err->message);
+            LOG_ERROR("[Orchestrator::Tester] Cannot load initial states from store: {}", err->message);
         }
         m_testerWorker = std::move(t);
     }
@@ -571,7 +575,7 @@ base::OptError Orchestrator::hotSwapNamespace(const std::string& name, const cm:
     // Save the updated configuration (lock already held, use Internal version)
     dumpRoutersInternal();
 
-    LOG_INFO("[Router::hotSwapSpace] Hot swapped namespace for entry '{}' to '{}'", name, newNamespace.toStr());
+    LOG_INFO("[Orchestrator] Hot swapped namespace for entry '{}' to '{}'", name, newNamespace.toStr());
     return std::nullopt;
 }
 

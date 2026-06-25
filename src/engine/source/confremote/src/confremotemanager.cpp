@@ -13,8 +13,9 @@ namespace confremote
 
 namespace
 {
-const base::Name REMOTE_CONF_CACHE_DOC {"remote-config/engine-cnf/0"};
-}
+const base::Name REMOTE_CONF_CACHE_DOC {"remote-config/engine-cnf/0"}; ///< Store doc name for caching config
+constexpr std::string_view LOG_MODULE_NAME = "RemoteConfig";           ///< Log module name for ConfRemoteManager
+} // namespace
 
 ConfRemoteManager::ConfRemoteManager(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerConnector,
                                      const std::shared_ptr<store::IStore>& store,
@@ -35,7 +36,7 @@ void ConfRemoteManager::synchronize()
 {
     if (m_shutdownRequested.load(std::memory_order_relaxed))
     {
-        LOG_INFO("[ConfRemote] Synchronization aborted before start");
+        LOG_INFO("[{}] Synchronization aborted before start", LOG_MODULE_NAME);
         return;
     }
 
@@ -55,18 +56,18 @@ void ConfRemoteManager::synchronize()
     {
         if (m_shutdownRequested.load(std::memory_order_relaxed))
         {
-            LOG_INFO("[ConfRemote] Synchronization aborted during remote fetch");
+            LOG_INFO("[{}] Synchronization aborted during remote fetch", LOG_MODULE_NAME);
             return;
         }
 
-        LOG_WARNING("[ConfRemote] Failed to synchronize remote settings: {}. Keeping current state.", e.what());
+        LOG_WARNING("[{}] Failed to synchronize remote settings: {}. Keeping current state.", LOG_MODULE_NAME, e.what());
         return;
     }
 
     const auto fields = remoteSettings.getObject();
     if (!fields.has_value())
     {
-        LOG_WARNING("Remote config payload is not a valid JSON object. Skipping synchronize.");
+        LOG_WARNING("[{}] Remote config payload is not a valid JSON object. Skipping synchronize", LOG_MODULE_NAME);
         return;
     }
 
@@ -77,14 +78,14 @@ void ConfRemoteManager::synchronize()
     {
         if (m_shutdownRequested.load(std::memory_order_relaxed))
         {
-            LOG_INFO("[ConfRemote] Synchronization aborted during settings application");
+            LOG_INFO("[{}] Synchronization aborted during settings application", LOG_MODULE_NAME);
             return;
         }
 
         const auto it = m_settings.find(key);
         if (it == m_settings.end() || !it->second.onConfigChange)
         {
-            LOG_DEBUG("Ignoring unregistered remote setting '{}'.", key);
+            LOG_DEBUG("[{}] Ignoring unregistered remote setting '{}'", LOG_MODULE_NAME, key);
             continue;
         }
 
@@ -99,8 +100,12 @@ void ConfRemoteManager::synchronize()
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING(
-                "Remote setting '{}' rejected (value: {}): {}. Keeping current value.", key, value.str(), e.what());
+            LOG_WARNING("[{}] Remote setting '{}' rejected (value: {}): {}. "
+                        "Keeping current value",
+                        LOG_MODULE_NAME,
+                        key,
+                        value.str(),
+                        e.what());
             continue;
         }
 
@@ -110,14 +115,14 @@ void ConfRemoteManager::synchronize()
 
     if (stateChanged)
     {
-        LOG_INFO("Remote settings synchronized: changes detected and applied.");
+        LOG_INFO("[{}] Remote settings synchronized: changes detected and applied", LOG_MODULE_NAME);
         try
         {
             saveSettingsToStore();
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("Failed to persist remote settings cache: {}", e.what());
+            LOG_WARNING("[{}] Failed to persist remote settings cache: {}", LOG_MODULE_NAME, e.what());
         }
     }
 }
@@ -125,7 +130,7 @@ void ConfRemoteManager::synchronize()
 void ConfRemoteManager::requestShutdown()
 {
     m_shutdownRequested.store(true, std::memory_order_relaxed);
-    LOG_INFO("[ConfRemote] Shutdown requested");
+    LOG_INFO("[{}] Shutdown requested", LOG_MODULE_NAME);
 }
 
 json::Json ConfRemoteManager::addTrigger(std::string_view key,
@@ -150,8 +155,9 @@ void ConfRemoteManager::loadSettingsFromStore()
     const auto docResp = m_store.lock()->readDoc(REMOTE_CONF_CACHE_DOC);
     if (base::isError(docResp))
     {
-        throw std::runtime_error(
-            fmt::format("Failed to load remote settings from store: {}", base::getError(docResp).message));
+        throw std::runtime_error(fmt::format("Failed to load remote settings "
+                                             "from store: {}",
+                                             base::getError(docResp).message));
     }
 
     const auto& cached = base::getResponse(docResp);
@@ -189,8 +195,9 @@ void ConfRemoteManager::saveSettingsToStore() const
     auto storePtr = base::utils::lockWeakPtr(m_store, "StoreInternal");
     if (auto err = storePtr->upsertDoc(REMOTE_CONF_CACHE_DOC, persisted); base::isError(err))
     {
-        throw std::runtime_error(
-            fmt::format("Failed to save remote settings to store: {}", base::getError(err).message));
+        throw std::runtime_error(fmt::format("Failed to save remote settings "
+                                             "to store: {}",
+                                             base::getError(err).message));
     }
 }
 
