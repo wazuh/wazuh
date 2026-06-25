@@ -77,8 +77,8 @@ curl -k -X GET "https://localhost:55000/?pretty=true" \
 {
   "data": {
     "title": "Wazuh API REST",
-    "api_version": "5.0.0",
-    "revision": "beta3",
+    "api_version": "5.0.1",
+    "revision": "alpha0",
     "license_name": "GPL 2.0",
     "hostname": "wazuh-manager",
     "timestamp": "2026-02-20T12:00:00Z"

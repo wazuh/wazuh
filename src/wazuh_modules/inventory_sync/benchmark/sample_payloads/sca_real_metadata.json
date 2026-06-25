@@ -1,0 +1,24 @@
+{
+  "agent": {
+    "id": "002",
+    "name": "wazuh-agent-5x-ubuntu",
+    "version": "v5.0.0",
+    "os": "Ubuntu 22.04.5 LTS",
+    "architecture": "x86_64"
+  },
+  "policy": {
+    "id": "cis_ubuntu22-04",
+    "name": "CIS Ubuntu Linux 22.04 LTS Benchmark v2.0.0",
+    "file": "cis_ubuntu22-04.yml",
+    "total_checks": 207,
+    "passed": 67,
+    "failed": 81,
+    "score": 45.27
+  },
+  "index": "wazuh-states-sca",
+  "module": "sca",
+  "checksumModule": {
+    "sha1": "4568d3966f6a9f15db8cd60431577e62e6c5e83c",
+    "docs": 207
+  }
+}

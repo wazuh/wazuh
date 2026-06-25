@@ -338,7 +338,7 @@ bool AgentInfoImpl::parseResponseBuffer(const uint8_t* data, size_t length)
         return m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
-    m_logFunction(LOG_ERROR, "Sync protocol not initialized or invalid data");
+    m_logFunction(LOG_WARNING, "Sync protocol not initialized or invalid data");
     return false;
 }
 
@@ -1135,7 +1135,7 @@ void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModul
 
         if (!response.success)
         {
-            m_logFunction(LOG_ERROR, "Failed to resume module " + module + ": " + response.response);
+            m_logFunction(LOG_WARNING, "Failed to resume module " + module + ": " + response.response);
         }
     }
 }
@@ -1247,7 +1247,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
                     if (!pauseSucceeded)
                     {
-                        m_logFunction(LOG_ERROR, moduleName + " pause completed with error");
+                        m_logFunction(LOG_WARNING, moduleName + " pause completed with error");
                         return PauseProbeResult::Failed;
                     }
 
@@ -1278,7 +1278,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
         m_deferralLogged = false;
     }
 
-    m_logFunction(LOG_ERROR,
+    m_logFunction(LOG_WARNING,
                   moduleName + " pause did not complete within " + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) +
                   " seconds (scan mutex may be held by a long sync cycle, or IPC communication failure)");
     return PauseProbeResult::Failed;
@@ -1311,7 +1311,7 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
             if (!pollResponse.success)
             {
-                m_logFunction(LOG_WARNING,
+                m_logFunction(LOG_DEBUG,
                               "Failed to poll flush status for " + moduleName + " (attempt " +
                               std::to_string(attempt) + "), will retry...");
                 continue;
@@ -1483,7 +1483,7 @@ bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_ERROR,
+            m_logFunction(LOG_WARNING,
                           "Failed to trigger flush for " + module + " (error " + std::to_string(response.errorCode) +
                           "), aborting coordination");
             return false;
@@ -1517,7 +1517,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_ERROR,
+            m_logFunction(LOG_WARNING,
                           "Failed to get version from " + module + " (error " + std::to_string(response.errorCode) +
                           "), aborting coordination");
             return -1;
@@ -1544,7 +1544,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
         }
         catch (const std::exception& e)
         {
-            m_logFunction(LOG_ERROR,
+            m_logFunction(LOG_WARNING,
                           "Failed to parse JSON response from " + module + ": " + std::string(e.what()) +
                           " - Response: " + response.response);
             return -1;
@@ -1703,7 +1703,7 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
         }
         else
         {
-            m_logFunction(LOG_WARNING, "Sync protocol not available, skipping synchronization");
+            m_logFunction(LOG_INFO, "Sync protocol not available, skipping synchronization");
         }
 
         m_logFunction(LOG_INFO, "Synchronization coordination completed successfully");
@@ -2104,7 +2104,7 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
 
         if (!m_spSyncProtocol)
         {
-            m_logFunction(LOG_WARNING, "Sync protocol not available, skipping integrity check");
+            m_logFunction(LOG_INFO, "Sync protocol not available, skipping integrity check");
             return false;
         }
 

@@ -6,6 +6,7 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/5_codeanalysis_scanbuild.yml"
+      - ".github/actions/reinstall_cmake/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -15,6 +16,7 @@ jobs:
   scan-build-linux:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -44,6 +46,7 @@ jobs:
   scan-build-ubuntu-mingw-windows:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:
@@ -71,6 +74,7 @@ jobs:
   scan-build-macos-agent:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: macos-15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:

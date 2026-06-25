@@ -214,7 +214,7 @@ module(load="imudp")
 module(load="imtcp")
 
 template(name="RemoteHostLogs" type="string"
-         string="/var/log/remote/remote.log")
+         string="/var/log/remote/%FROMHOST-IP%.log")
 
 ruleset(name="remote_to_file") {
     action(type="omfile" dynaFile="RemoteHostLogs")
@@ -230,6 +230,12 @@ If you previously used `<allowed-ips>` in Wazuh 4.x, add the equivalent restrict
 sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.0/24" port port="514" protocol="udp" accept'
 sudo firewall-cmd --permanent --add-rich-rule='rule family="ipv4" source address="192.168.1.0/24" port port="514" protocol="tcp" accept'
 sudo firewall-cmd --reload
+```
+
+Create the destination directory before starting rsyslog. On Debian/Ubuntu, rsyslog drops privileges to the unprivileged `syslog` user, which cannot create directories under `/var/log` on its own, so the per-host log directory must exist and be writable by that user before rsyslog can write the `%FROMHOST-IP%` files (on RHEL-based systems rsyslog runs as `root` and creates it automatically):
+
+```bash
+sudo install -d -o syslog -g adm /var/log/remote
 ```
 
 Restart rsyslog to apply the changes:
@@ -301,7 +307,7 @@ In the Wazuh dashboard, go to **Explore -> Discover** and filter by `location: /
 
 Existing Wazuh decoders and rules for network device syslog (for example, `cisco-asa`, `pf`, `juniper`) continue to work without modification under both options. The syslog message body forwarded by rsyslog is identical to what `remoted` previously received on port 514. No decoder updates are required as part of this migration.
 
-> **Note:** In Wazuh 4.x, the source IP of the remote device was available in `remoted`.
+> **Note:** In Wazuh 4.x, the source IP of the remote device was available because `remoted` received the connection directly. In Wazuh 5.x the agent reads from a local file or the journal, so the original source IP is only preserved if rsyslog records it — either in the file path (Option B uses `%FROMHOST-IP%` in the `dynaFile` template, so each device gets its own file) or as part of the message via a custom template property such as `%fromhost-ip%`.
 
 ---
 

@@ -8,6 +8,10 @@ on:
       - ".github/actions/cpp_test_pipeline/**"
       - "src/shared_modules/utils/**"
       - "src/wazuh_modules/inventory_sync/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
   workflow_dispatch:
 
 concurrency:
@@ -18,6 +22,7 @@ jobs:
   inventorysync-modules:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -36,10 +41,8 @@ jobs:
 
   inventorysync-asan:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    strategy:
-      matrix:
-        os: [ubuntu-24.04]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

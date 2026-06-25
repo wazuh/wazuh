@@ -1442,7 +1442,7 @@ void test_handle_all_paths_removed_no_sync_handle(void **state) {
     will_return(__wrap_fim_db_get_count_file_entry, 10);
 
     expect_string(__wrap__mdebug1, formatted_msg, "All monitored paths removed from configuration but database has data. Initiating DataClean process.");
-    expect_string(__wrap__merror, formatted_msg, "Sync protocol not initialized, cannot send DataClean notification.");
+    expect_string(__wrap__minfo, formatted_msg, "Sync protocol not initialized, cannot send DataClean notification.");
 
     bool result = handle_all_paths_removed();
 

@@ -8,6 +8,10 @@ on:
       - ".github/actions/cpp_test_pipeline/**"
       - "src/shared_modules/utils/**"
       - "src/shared_modules/router/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
   workflow_dispatch:
 
 concurrency:
@@ -18,6 +22,7 @@ jobs:
   router-modules:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -37,6 +42,7 @@ jobs:
   router-asan:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6

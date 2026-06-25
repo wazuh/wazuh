@@ -1,0 +1,5 @@
+# Compiled Go sender binary
+/tool_simulator/benchmark_sender
+
+# Benchmark output directories
+/results_*/

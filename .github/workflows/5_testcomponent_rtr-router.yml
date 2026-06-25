@@ -112,6 +112,7 @@ jobs:
         module: ${{ fromJSON(needs.detect-changes.outputs.modules) }}
         target: [agent, winagent]
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     name: RTR - ${{ matrix.module }} (${{ matrix.target }})
     steps:
       - name: Checkout Repo

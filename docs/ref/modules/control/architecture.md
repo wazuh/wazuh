@@ -72,10 +72,10 @@ Incoming control commands from the manager arrive via `wazuh-agentd`'s `request.
          │                                           ▲
          │ fork + execv                              │ CONTROL_SOCK
          ▼                                           │ (forwarded by agentd/request.c)
-┌──────────────────────┐                  ┌──────────────────────┐
-│  systemctl/          │                  │  wazuh-remoted /     │
-│  wazuh-control       │                  │  API / Framework     │
-└──────────────────────┘                  └──────────────────────┘
+┌──────────────────────┐                  ┌────────────────────────┐
+│  systemctl/          │                  │ wazuh-manager-remoted/ │
+│  wazuh-control       │                  │ API / Framework        │
+└──────────────────────┘                  └────────────────────────┘
 ```
 
 ### Agent Side (Windows)
@@ -95,7 +95,7 @@ On Windows, there is no separate socket listener. `wazuh-agentd`'s `request.c` c
 │            └─► return "ok " immediately                      │
 └──────────────────────────────────────────────────────────────┘
                                            ▲
-                                           │ via wazuh-remoted
+                                           │ via wazuh-manager-remoted
                                            │
                                 ┌──────────────────────┐
                                 │  API / Framework     │
@@ -326,7 +326,7 @@ static bool wm_control_wait_for_service_active(const char *service) {
 1. API/Framework
    └─► WazuhSocket(REMOTED_SOCKET).send("{agent_id} control restart")
 
-2. wazuh-remoted
+2. wazuh-manager-remoted
    └─► Forwards message to target agent
 
 3. wazuh-agentd (request.c, agent side)
@@ -351,7 +351,7 @@ static bool wm_control_wait_for_service_active(const char *service) {
 1. API/Framework
    └─► WazuhSocket(REMOTED_SOCKET).send("{agent_id} control restart")
 
-2. wazuh-remoted
+2. wazuh-manager-remoted
    └─► Forwards message to target agent
 
 3. wazuh-agentd (request.c, Windows)
@@ -505,5 +505,5 @@ Potential improvements for future versions:
 ## See Also
 
 - [Control Module README](README.md) - Module overview
-- [wazuh-modulesd](../modulesd/) - Host daemon documentation
+- wazuh-manager-modulesd / wazuh-modulesd - Host daemon (no dedicated page yet; see the [Modules index](../README.md))
 - [Manager Installation](../../getting-started/installation.md) - Manager setup and systemctl

@@ -10,8 +10,13 @@ on:
       - "ruleset/**"
       - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-macos.yml"
+      - ".github/workflows/5_testintegration_agent-start.yml"
       - ".github/workflows/5_testintegration_macos-integration-tests.yml"
       - ".github/test_modules_macos.json"
+      - ".github/actions/5_builderpackage_get-last-stable-version/**"
+      - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
+      - ".github/actions/5_builderpackage_macos-smoke-upgrade-test/**"
+      - ".github/actions/5_testintegration_detect-changes/**"
   workflow_dispatch:
     inputs:
       architecture:
@@ -202,7 +207,7 @@ jobs:
   upload-macos-intel64-to-s3:
     needs: [build-macos-intel64, test-macos-intel64]
     if: success()
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 15
     name: Upload PKG to S3 (intel64)
 
@@ -433,7 +438,7 @@ jobs:
   upload-macos-arm64-to-s3:
     needs: [build-macos-arm64, test-macos-arm64]
     if: success()
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 15
     name: Upload PKG to S3 (arm64)
 

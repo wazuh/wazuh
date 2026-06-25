@@ -4119,11 +4119,64 @@ static void test_dbsync_attributes_json(void **state) {
     free(json_attributes_str);
 }
 
+/* Validates fix for (6960): when dbsync delivers `inode` as a JSON number
+ * (the column is INTEGER), it must be normalized to a string instead of
+ * being dropped and logged. No __wrap__minfo expectation is set on purpose:
+ * the buggy code path calls minfo(FIM_WARN_INODE_WRONG_TYPE) -> cmocka fails. */
+static void test_fim_attributes_json_inode_number(void **state) {
+    (void) state;
+    directory_t configuration = { .options = CHECK_INODE };
+
+    // inode arrives as a NUMBER (note: no quotes), and a large >INT_MAX value
+    // to prove %llu is required (a %d/valueint conversion would truncate it).
+    cJSON *dbsync_event = cJSON_Parse("{\"inode\":4294967296}");
+
+    cJSON *attributes = fim_attributes_json(dbsync_event, NULL, &configuration);
+
+    assert_non_null(attributes);
+    cJSON *inode = cJSON_GetObjectItem(attributes, "inode");
+    assert_non_null(inode);
+    assert_true(cJSON_IsString(inode));
+    assert_string_equal(inode->valuestring, "4294967296");
+
+    cJSON_Delete(dbsync_event);
+    cJSON_Delete(attributes);
+}
+
+/* Same fix, "changed/old" path: numeric inode must become a string in
+ * old_attributes and "file.inode" must be reported as a changed field. */
+static void test_fim_calculate_dbsync_difference_inode_number(void **state) {
+    (void) state;
+    directory_t configuration = { .options = CHECK_INODE };
+
+    cJSON *changed_data_json   = cJSON_Parse("{\"inode\":4294967296}");
+    cJSON *old_attributes      = cJSON_CreateObject();
+    cJSON *changed_attributes  = cJSON_CreateArray();
+
+    fim_calculate_dbsync_difference(&configuration,
+                                    changed_data_json,
+                                    changed_attributes,
+                                    old_attributes);
+
+    cJSON *inode = cJSON_GetObjectItem(old_attributes, "inode");
+    assert_non_null(inode);
+    assert_true(cJSON_IsString(inode));
+    assert_string_equal(inode->valuestring, "4294967296");
+
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 1);
+    assert_string_equal(cJSON_GetArrayItem(changed_attributes, 0)->valuestring, "file.inode");
+
+    cJSON_Delete(changed_data_json);
+    cJSON_Delete(old_attributes);
+    cJSON_Delete(changed_attributes);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
         cmocka_unit_test_setup_teardown(test_dbsync_attributes_json, setup_json_event_attributes, teardown_json_event_attributes),
+        cmocka_unit_test(test_fim_attributes_json_inode_number),
 
         /* fim_audit_json */
         cmocka_unit_test_teardown(test_fim_audit_json, teardown_delete_json),
@@ -4263,6 +4316,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_create_unix_who_data_events, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test(test_fim_calculate_dbsync_difference_inode_number),
     };
     const struct CMUnitTest fim_regex_tests[] = {
         /* fim_check_ignore */

@@ -665,13 +665,13 @@ public:
         static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
         if (username.empty() && password.empty())
         {
-            username = "admin";
-            password = "admin";
+            username = "wazuh-server";
+            password = "wazuh-server";
             logWarn(m_logTag.c_str(), "No username and password found in the keystore, using default values.");
         }
         if (username.empty())
         {
-            username = "admin";
+            username = "wazuh-server";
             logWarn(m_logTag.c_str(), "No username found in the keystore, using default value.");
         }
         m_secureCommunication = SecureCommunication::builder();

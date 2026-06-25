@@ -11,7 +11,12 @@ on:
       - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-windows.yml"
       - ".github/test-modules-windows.json"
+      - ".github/workflows/5_testintegration_agent-start.yml"
       - ".github/workflows/5_testintegration_windows-integration-tests.yml"
+      - ".github/actions/5_builderpackage_get-last-stable-version/**"
+      - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
+      - ".github/actions/5_builderpackage_windows-smoke-upgrade-test/**"
+      - ".github/actions/5_testintegration_detect-changes/**"
   workflow_dispatch:
     inputs:
       revision:
@@ -64,7 +69,7 @@ jobs:
 
   build-windows-i686:
     needs: detect-changes
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
     name: Build Windows agent binaries
     outputs:
@@ -78,6 +83,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc-mingw-w64 g++-mingw-w64 make
+
+      - name: Install a compatible CMake
+        # TODO(codebuild-temp): Remove when CodeBuild base images ship cmake.
+        # The winagent deps build (make -C src deps) builds cmocka with cmake internally.
+        uses: ./.github/actions/reinstall_cmake
 
       - name: Set VERSION
         id: set-version
@@ -280,6 +290,13 @@ jobs:
           & checkfiles_env\Scripts\Activate.ps1
           python -m pip install --upgrade pip
           python -m pip install -r .github/actions/check_files/requirements.txt
+          # pywin32 is Windows-only, so it is NOT in the shared check_files
+          # requirements.txt (that file is also installed on Linux/macOS runners).
+          # check_files.py imports win32file on Windows; install it here and run the
+          # post-install so the win32 DLLs load inside the isolated venv (otherwise
+          # it fails with "No module named 'win32file'" / "DLL load failed").
+          python -m pip install pywin32==308
+          python checkfiles_env\Scripts\pywin32_postinstall.py -install
 
       - name: Check installed files
         shell: pwsh
@@ -322,7 +339,7 @@ jobs:
   upload-windows-i686-to-s3:
     needs: [package-windows-i686, test-windows-i686]
     if: success()
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 15
     name: Upload MSI to S3
 

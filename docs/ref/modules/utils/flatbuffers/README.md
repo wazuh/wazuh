@@ -26,7 +26,7 @@ All synchronization messages (Start, Data, End, Acknowledgments) are encoded as 
 - **Schema evolution**: Backward and forward compatibility for protocol updates
 - **Type safety**: Compile-time validation of message structures
 
-See [Inventory Sync FlatBuffers documentation](../inventory-sync/flatbuffers.md) for detailed schema information.
+See [Inventory Sync FlatBuffers documentation](../../inventory-sync/flatbuffers.md) for detailed schema information.
 
 ### Vulnerability Scanner Module
 

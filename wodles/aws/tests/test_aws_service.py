@@ -91,3 +91,18 @@ def test_aws_service_format_message(mock_wazuh_integration, mock_wazuh_aws_datab
     expected_msg = copy.deepcopy(aws_service.AWS_SERVICE_MSG_TEMPLATE)
     expected_msg['aws'] = output_msg
     assert instance.format_message(input_msg) == expected_msg
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+@patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
+def test_aws_service_format_message_sets_source_to_inspector2_when_finding_arn_present(
+        mock_wazuh_integration, mock_wazuh_aws_database, mock_sts):
+    """Test 'format_message' sets source to 'inspector2' when 'findingArn' is in the message."""
+    input_msg = {'findingArn': 'arn:aws:inspector2:us-east-1:123456789012:finding/abc123', 'key': 'value'}
+    instance = utils.get_mocked_service(only_logs_after=utils.TEST_ONLY_LOGS_AFTER)
+
+    result = instance.format_message(input_msg)
+
+    assert result['aws']['source'] == 'inspector2'
+    assert 'findingArn' not in result['aws'] or result['aws'].get('findingArn') == input_msg['findingArn']

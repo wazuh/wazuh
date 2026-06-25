@@ -14,8 +14,8 @@ PLIST=${DIR}/bin/.process_list;
 WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
 
 # Installation info
-VERSION="v5.0.0"
-REVISION="beta3"
+VERSION="v5.0.1"
+REVISION="alpha0"
 TYPE="manager"
 
 ###  Do not modify below here ###

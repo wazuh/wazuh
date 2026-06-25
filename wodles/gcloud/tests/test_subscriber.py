@@ -148,3 +148,41 @@ def test_WazuhGCloudSubscriber_process_messages(mock_credentials):
     pubsub.pull_request = MagicMock(return_value=MAX_MESSAGES/2)
     assert pubsub.process_messages(max_messages=MAX_MESSAGES) == MAX_MESSAGES
     pubsub.pull_request.assert_has_calls([call(MAX_MESSAGES), call(MAX_MESSAGES/2)])
+
+
+# ---------------------------------------------------------------------------
+# Module-level import error
+# ---------------------------------------------------------------------------
+
+def test_subscriber_import_error_raises_GCloudError():
+    """Importing subscriber.py without pubsub_v1 available hits the except ImportError block."""
+    import runpy
+    import sys
+    import google.cloud
+
+    subscriber_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'pubsub', 'subscriber.py')
+
+    # Block pubsub_v1: must remove both the sys.modules entry AND the attribute on
+    # the google.cloud namespace package, because Python finds the already-imported
+    # attribute before checking sys.modules for the None sentinel.
+    _sentinel = object()
+    saved_mod = sys.modules.get('google.cloud.pubsub_v1', _sentinel)
+    saved_attr = getattr(google.cloud, 'pubsub_v1', _sentinel)
+
+    if saved_attr is not _sentinel:
+        delattr(google.cloud, 'pubsub_v1')
+    sys.modules['google.cloud.pubsub_v1'] = None
+
+    try:
+        with pytest.raises(GCloudError) as exc_info:
+            runpy.run_path(subscriber_path, run_name='subscriber_import_error_test')
+    finally:
+        if saved_mod is _sentinel:
+            sys.modules.pop('google.cloud.pubsub_v1', None)
+        else:
+            sys.modules['google.cloud.pubsub_v1'] = saved_mod
+        if saved_attr is not _sentinel:
+            google.cloud.pubsub_v1 = saved_attr
+
+    assert exc_info.value.errcode == 1003
+    assert 'google.cloud.pubsub_v1' in str(exc_info.value)

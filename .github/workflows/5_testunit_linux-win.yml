@@ -6,6 +6,11 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/5_testunit_linux-win.yml"
+      - ".github/actions/build_test_flags/**"
+      - ".github/actions/install_build_deps/**"
+      - ".github/actions/legacy_unit_tests_build/**"
+      - ".github/actions/legacy_unit_tests_run/**"
+      - ".github/actions/reinstall_cmake/**"
   workflow_dispatch:
     inputs:
       base_branch:
@@ -25,6 +30,7 @@ jobs:
       matrix:
         target: [agent, winagent, manager]
     runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6

@@ -159,3 +159,117 @@ def test_aws_inspector_v2_get_alerts(mock_send_msg, mock_sts_client, mock_debug,
         }
     )
     assert datetime.strptime(last_scan_date.split(' ')[0], "%Y-%m-%d").strftime("%Y%m%d") == datetime.utcnow().strftime("%Y%m%d")
+
+
+@patch('wazuh_integration.WazuhIntegration.send_msg')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('inspector.aws_tools.debug')
+def test_aws_inspector_send_describe_findings_skips_event_matching_discard_field(
+        mock_debug, mock_sts_client, mock_send_msg):
+    """Test send_describe_findings skips an event when event_should_be_skipped returns True."""
+    instance = utils.get_mocked_service(
+        class_=inspector.AWSInspector,
+        discard_field='severity',
+        discard_regex='LOW'
+    )
+    instance.client = MagicMock()
+    instance.client.describe_findings.return_value = {
+        'findings': [{'severity': 'LOW', 'arn': 'arn:low'}]
+    }
+
+    instance.send_describe_findings(['arn:low'])
+
+    mock_send_msg.assert_not_called()
+    mock_debug.assert_any_call(
+        f'+++ [InspectorV1] The "LOW" regex found a match in the '
+        f'"severity" field. The event will be skipped.', 2)
+
+
+@patch('wazuh_integration.WazuhAWSDatabase.init_db')
+@patch('wazuh_integration.WazuhAWSDatabase.close_db')
+@patch('wazuh_integration.WazuhIntegration.send_msg')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('inspector.aws_tools.debug')
+def test_aws_inspector_v2_get_alerts_logs_no_findings_when_sent_events_v2_is_zero(
+        mock_debug, mock_sts_client, mock_send_msg, mock_close_db, mock_init_db, custom_database):
+    """Test get_alerts logs 'No findings' message when InspectorV2 returns 0 findings."""
+    utils.database_execute_script(custom_database, TEST_SERVICES_SCHEMA)
+    region = inspector.INSPECTOR_V2_REGIONS[-1]  # V2-only region (not in V1)
+    # Ensure the chosen region is NOT in V1
+    while region in inspector.INSPECTOR_V1_REGIONS:
+        region = [r for r in inspector.INSPECTOR_V2_REGIONS if r not in inspector.INSPECTOR_V1_REGIONS][0]
+        break
+
+    instance = utils.get_mocked_service(class_=inspector.AWSInspector, region=region)
+    instance.account_id = utils.TEST_ACCOUNT_ID
+    instance.db_connector = custom_database
+    instance.db_cursor = instance.db_connector.cursor()
+
+    v2_client = MagicMock()
+    v2_client.list_findings.return_value = {'findings': []}
+
+    with patch.object(instance, 'get_client', return_value=v2_client):
+        instance.get_alerts()
+
+    mock_debug.assert_any_call(
+        f"+++ [InspectorV2] No findings with recent updates in the specified time range", 1)
+
+
+@patch('wazuh_integration.WazuhAWSDatabase.init_db')
+@patch('wazuh_integration.WazuhAWSDatabase.close_db')
+@patch('wazuh_integration.WazuhIntegration.send_msg')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('inspector.aws_tools.debug')
+def test_aws_inspector_get_alerts_logs_no_new_events_when_nothing_sent(
+        mock_debug, mock_sts_client, mock_send_msg, mock_close_db, mock_init_db, custom_database):
+    """Test get_alerts logs 'no new events' when sent_events is 0 (both V1 and V2 return nothing)."""
+    utils.database_execute_script(custom_database, TEST_SERVICES_SCHEMA)
+    region = inspector.INSPECTOR_V1_REGIONS[0]
+
+    instance = utils.get_mocked_service(class_=inspector.AWSInspector, region=region)
+    instance.account_id = utils.TEST_ACCOUNT_ID
+    instance.db_connector = custom_database
+    instance.db_cursor = instance.db_connector.cursor()
+
+    # V1 returns no ARNs, V2 returns no findings
+    v1_client = MagicMock()
+    v1_client.list_findings.return_value = {'findingArns': []}
+
+    v2_client = MagicMock()
+    v2_client.list_findings.return_value = {'findings': []}
+
+    instance.client = v1_client
+
+    with patch.object(instance, 'get_client', return_value=v2_client):
+        instance.get_alerts()
+
+    mock_debug.assert_any_call(
+        f'+++ There are no new events in the "{region}" region', 1)
+
+
+@patch('wazuh_integration.WazuhIntegration.send_msg')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('inspector.aws_tools.debug')
+def test_aws_inspector_v2_get_alerts_inspector_v2_skips_event_matching_discard_field(
+        mock_debug, mock_sts_client, mock_send_msg):
+    """Test get_alerts_inspector_v2 skips a finding when event_should_be_skipped returns True."""
+    instance = utils.get_mocked_service(
+        class_=inspector.AWSInspector,
+        region=inspector.INSPECTOR_V2_REGIONS[0],
+        discard_field='severity',
+        discard_regex='LOW'
+    )
+
+    v2_client = MagicMock()
+    v2_client.list_findings.return_value = {
+        'findings': [{'severity': 'LOW', 'findingArn': 'arn:low'}]
+    }
+
+    with patch.object(instance, 'get_client', return_value=v2_client):
+        from datetime import datetime as dt
+        instance.get_alerts_inspector_v2(dt.utcnow(), dt.utcnow())
+
+    mock_send_msg.assert_not_called()
+    mock_debug.assert_any_call(
+        f'+++ [InspectorV2] The "LOW" regex found a match in the '
+        f'"severity" field. The event will be skipped.', 2)

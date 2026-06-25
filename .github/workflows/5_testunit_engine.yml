@@ -5,11 +5,13 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - "src/engine/**"
+      - ".github/actions/reinstall_cmake/**"
       - ".github/workflows/5_testunit_engine.yml"
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   BUILD_DIR: ${{github.workspace}}/src/build
@@ -20,6 +22,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build Manager
     runs-on: ubuntu-24.04
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v6
 
