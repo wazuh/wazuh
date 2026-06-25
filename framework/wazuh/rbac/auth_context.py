@@ -4,11 +4,15 @@
 
 import json
 import re
+import logging
 from collections import defaultdict
 from typing import Union
-
 from wazuh.rbac import orm
 
+# Sets the find_item recursive max depth
+MAX_FIND_ITEM_DEPTH = 8
+
+logger = logging.getLogger('wazuh')
 
 class RBAChecker:
     """
@@ -228,6 +232,7 @@ class RBAChecker:
                 return False
         return False
 
+
     def match_item(self, role_chunk: Union[list, dict], auth_context: Union[list, dict] = None,
                    mode: str = 'MATCH') -> Union[int, bool]:
         """This function will go through all authorization contexts and system roles recursively until it finds the
@@ -282,7 +287,7 @@ class RBAChecker:
         return False
 
     def find_item(self, role_chunk: Union[list, dict], auth_context: dict = None, mode: str = 'FIND',
-                  role_id: int = None) -> bool:
+                  role_id: int = None, depth: int = 0) -> bool:
         """This function will use the match function and will launch it recursively on all the authorization context
         tree, on all the levels.
 
@@ -296,6 +301,8 @@ class RBAChecker:
             FIND -> MATCH | FIND$ -> MATCH$.
         role_id : int
             ID of the current role.
+        depth : int
+            Current depth level reached in recursive calls.
 
         Returns
         -------
@@ -303,6 +310,11 @@ class RBAChecker:
             True if the item was found, false otherwise.
         """
         auth_context = self.authorization_context if auth_context is None else auth_context
+
+        if depth >= MAX_FIND_ITEM_DEPTH:
+            logger.warning("auth_context depth limit reached for role_id=%s", role_id)
+            raise RecursionError
+
         mode = self.set_mode(mode, role_id)
 
         validator_counter = self.match_item(role_chunk, auth_context, mode)
@@ -313,12 +325,12 @@ class RBAChecker:
             if self.match_item(role_chunk, value, mode):
                 return True
             elif isinstance(value, dict):
-                if self.find_item(role_chunk, value, mode=mode):
+                if self.find_item(role_chunk, value, mode=mode, role_id=role_id, depth=depth + 1):
                     return True
             elif isinstance(value, list):
                 for v in value:
                     if isinstance(v, dict):
-                        if self.find_item(role_chunk, v, mode=mode):
+                        if self.find_item(role_chunk, v, mode=mode, role_id=role_id, depth=depth + 1):
                             return True
 
         return False
@@ -372,10 +384,12 @@ class RBAChecker:
         for role in self.roles_list:
             for rule in role['rules']:
                 # wazuh-wui has id 2
-                if (rule['id'] > orm.MAX_ID_RESERVED or self.user_id == 2) and self.check_rule(rule['rule']):
-                    list_roles.append(role['id'])
+                try:
+                    if (rule['id'] > orm.MAX_ID_RESERVED or self.user_id == 2) and self.check_rule(rule['rule']):
+                        list_roles.append(role['id'])
+                        break
+                except RecursionError:
                     break
-
         return list_roles
 
     def run_auth_context(self) -> defaultdict:
