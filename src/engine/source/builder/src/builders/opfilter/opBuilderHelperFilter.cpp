@@ -398,13 +398,24 @@ FilterOp getStringCmpFunction(const std::string& targetField,
     }
 
     const auto name = buildCtx->context().opName;
+    // Pre-extract value string to avoid lazy json::Json creation per-event
+    std::optional<std::string> preExtractedValueStr;
     if (rightParameter->isValue())
     {
-        std::string value;
-        if (std::static_pointer_cast<Value>(rightParameter)->value().getString(value) != json::RetGet::Success)
+        auto asValue = std::static_pointer_cast<const Value>(rightParameter);
+        if (asValue->isStringValue())
         {
-            throw std::runtime_error(
-                fmt::format(R"({} function: Expected a string but got {}.)", name, rightParameter->str()));
+            preExtractedValueStr = std::string(asValue->getStringDirect());
+        }
+        else
+        {
+            std::string_view sv;
+            if (asValue->value().getString(sv) != json::RetGet::Success)
+            {
+                throw std::runtime_error(
+                    fmt::format(R"({} function: Expected a string but got {}.)", name, rightParameter->str()));
+            }
+            preExtractedValueStr = std::string(sv);
         }
     }
     else
@@ -453,14 +464,9 @@ FilterOp getStringCmpFunction(const std::string& targetField,
         }
 
         std::string_view rValue {};
-        if (rightParameter->isValue())
+        if (preExtractedValueStr.has_value())
         {
-            if (std::static_pointer_cast<Value>(rightParameter)->value().getString(rValue) != json::RetGet::Success)
-            {
-                RETURN_FAILURE(isTestMode,
-                               false,
-                               fmt::format("{} function: Expected a string but got {}.", name, rightParameter->str()));
-            }
+            rValue = *preExtractedValueStr;
         }
         else
         {

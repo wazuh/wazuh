@@ -126,6 +126,16 @@ public:
     /** @brief Get the string directly (zero-cost). Only valid if isStringValue() is true. */
     std::string_view getStringDirect() const { return std::get<std::string>(m_value); }
 
+    /** @brief Get the JSON type without triggering lazy json::Json creation for string Values. */
+    json::Json::Type type() const
+    {
+        if (std::holds_alternative<std::string>(m_value))
+        {
+            return json::Json::Type::String;
+        }
+        return std::get<std::shared_ptr<const json::Json>>(m_value)->type();
+    }
+
     /** @brief Get the stored JSON value. Creates one lazily for string-only Values. */
     const json::Json& value() const
     {
