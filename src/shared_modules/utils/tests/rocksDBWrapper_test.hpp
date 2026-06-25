@@ -44,7 +44,7 @@ protected:
     // cppcheck-suppress unusedFunction
     void SetUp() override
     {
-        db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder, "test");
+        db_wrapper = std::make_unique<Utils::RocksDBWrapper>(m_databaseFolder);
     }
 
     /**

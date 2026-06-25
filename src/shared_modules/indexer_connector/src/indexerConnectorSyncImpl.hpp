@@ -612,9 +612,12 @@ public:
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
         std::string callerName = "")
-        : m_logFn(LogFn{callerName}.compose("indexer-connector"))
+        : m_logFn {}
         , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
     {
+        Log::setModuleLogFn(LogFn{callerName});
+        m_logFn = makeLibLogFn("indexer-connector");
+
         if (logFunction)
         {
             Log::assignLogFunction(logFunction);
@@ -663,8 +666,8 @@ public:
         }
 
         std::lock_guard lock(G_CREDENTIAL_MUTEX);
-        static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY, m_logFn);
-        static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY, m_logFn);
+        static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY);
+        static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
         if (username.empty() && password.empty())
         {
             username = "wazuh-server";

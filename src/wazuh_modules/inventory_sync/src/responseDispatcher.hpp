@@ -54,8 +54,8 @@ private:
     LogFn m_logFn;
 
 public:
-    explicit ResponseDispatcherImpl(LogFn logFn = LogFn{WM_INVENTORY_SYNC_LOGTAG})
-        : m_logFn(std::move(logFn))
+    explicit ResponseDispatcherImpl()
+        : m_logFn(Log::currentModuleLogFn())
     {
         auto responseSocketClient =
             std::make_shared<SocketClient<Socket<OSPrimitives, NoHeaderProtocol>, EpollWrapper>>(ARQUEUE_PATH);
@@ -104,8 +104,7 @@ public:
                                   std::back_inserter(messageVector));
 
                 responseSocketClient->send(reinterpret_cast<const char*>(messageVector.data()), messageVector.size());
-            },
-            m_logFn);
+            });
     }
 
     explicit ResponseDispatcherImpl(TQueue* responseDispatcher)

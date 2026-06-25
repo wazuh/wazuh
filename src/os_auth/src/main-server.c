@@ -641,7 +641,7 @@ int main(int argc, char **argv)
     }
 
     /* Initialize router module for inventory-sync communication */
-    router_initialize(taggedLogFunction);
+    router_initialize(taggedLogFunction, ARGV0);
 
     /* Start working threads */
 

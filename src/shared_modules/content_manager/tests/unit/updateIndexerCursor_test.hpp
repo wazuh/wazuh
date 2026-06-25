@@ -41,7 +41,7 @@ protected:
         m_spUpdaterBaseContext = std::make_shared<UpdaterBaseContext>(
             m_spStopActionCondition, [](nlohmann::json msg) -> FileProcessingResult { return {0, "", false}; });
         m_spUpdaterBaseContext->spRocksDB =
-            std::make_unique<Utils::RocksDBWrapper>(CURSOR_DB_FOLDER.string(), WM_CONTENTUPDATER);
+            std::make_unique<Utils::RocksDBWrapper>(CURSOR_DB_FOLDER.string());
         m_spUpdaterBaseContext->spRocksDB->createColumn(Components::Columns::CURRENT_OFFSET);
         m_spUpdaterBaseContext->spRocksDB->put(
             Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);

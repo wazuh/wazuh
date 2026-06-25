@@ -71,7 +71,7 @@ mRUOzQ0+gdZF139yMrSAoAo=
 )";
 std::string getKeystoreVersion()
 {
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
     std::string value;
     keystoreDB.get(KS_VERSION_FIELD, value, "default");
     return value;
@@ -121,9 +121,9 @@ TEST(KeyStoreComponentTest, TestUpgrade)
     // Encrypt the value and store it in the keystore. to simulate the previous algorithm
     std::string out;
     RSAHelper().rsaEncrypt("etc/sslmanager.cert", "value1", out, true);
-    Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false).put("key1", out, "default");
+    Utils::RocksDBWrapper(DATABASE_PATH, false).put("key1", out, "default");
     RSAHelper().rsaEncrypt("etc/sslmanager.cert", "value2", out, true);
-    Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false).put("key2", out, "default");
+    Utils::RocksDBWrapper(DATABASE_PATH, false).put("key2", out, "default");
 
     // Get the value and decrypt it with the new algorithm
     Keystore::get("default", "key1", out);
@@ -138,7 +138,7 @@ TEST(KeyStoreComponentTest, TestUpgrade)
 TEST(KeyStoreComponentTest, TestUpgradeFail)
 {
     std::filesystem::remove_all(DATABASE_PATH);
-    Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false).put("key1", "rawrawraw", "default");
+    Utils::RocksDBWrapper(DATABASE_PATH, false).put("key1", "rawrawraw", "default");
 
     // Check if in the case of an invalid value the keystore is upgraded and the values are deleted
     std::string out;
@@ -169,9 +169,9 @@ TEST(KeyStoreComponentTest, TestUpgradeFailWithInvalidCerts)
     // Encrypt the value and store it in the keystore. to simulate the previous algorithm
     std::string out;
     RSAHelper().rsaEncrypt("etc/sslmanager.cert", "value1", out, true);
-    Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false).put("key1", out, "default");
+    Utils::RocksDBWrapper(DATABASE_PATH, false).put("key1", out, "default");
     RSAHelper().rsaEncrypt("etc/sslmanager.cert", "value2", out, true);
-    Utils::RocksDBWrapper(DATABASE_PATH, "keystore", false).put("key2", out, "default");
+    Utils::RocksDBWrapper(DATABASE_PATH, false).put("key2", out, "default");
 
     // Write invalid certificates
     std::ofstream cert("etc/sslmanager.cert");

@@ -17,7 +17,7 @@ void RocksDBQueueTest::SetUp()
 {
     std::error_code ec;
     std::filesystem::remove_all(TEST_DB, ec);
-    queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB, "test-rocksdb-queue");
+    queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB);
 };
 
 void RocksDBQueueTest::TearDown() {};
@@ -111,7 +111,7 @@ TEST_F(RocksDBQueueTest, KeyPaddingIsCorrectPreExistentKeysNotPadded)
     delete db;
 
     // Retrieve the values
-    queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB, "test-rocksdb-queue");
+    queue = std::make_unique<RocksDBQueue<std::string>>(TEST_DB);
 
     EXPECT_EQ(queue->size(), 3);
 

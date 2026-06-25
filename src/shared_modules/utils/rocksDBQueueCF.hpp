@@ -80,8 +80,8 @@ private:
     }
 
 public:
-    explicit RocksDBQueueCF(const std::string& path, LogFn logFn, bool useSharedBuffers = false)
-        : m_logFn(logFn.compose("rocksdb"))
+    explicit RocksDBQueueCF(const std::string& path, bool useSharedBuffers = false)
+        : m_logFn(makeLibLogFn("rocksdb"))
     {
         // RocksDB initialization.
         // Read cache is used to cache the data read from the disk.

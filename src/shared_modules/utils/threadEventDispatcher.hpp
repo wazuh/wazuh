@@ -34,7 +34,6 @@ class TThreadEventDispatcher
 public:
     explicit TThreadEventDispatcher(Functor functor,
                                     const std::string& dbPath,
-                                    LogFn logFn,
                                     const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
                                     const size_t retryDelay = 1,
@@ -45,14 +44,13 @@ public:
         , m_bulkSize {bulkSize}
         , m_retryDelay {retryDelay}
         , m_flushInterval {flushInterval}
-        , m_logFn {logFn.compose("thread-dispatcher")}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, m_logFn, useSharedBuffers))}
+        , m_logFn {makeLibLogFn("thread-dispatcher")}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, useSharedBuffers))}
     {
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
     }
 
     explicit TThreadEventDispatcher(const std::string& dbPath,
-                                    LogFn logFn,
                                     const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
                                     const size_t retryDelay = 1,
@@ -61,8 +59,8 @@ public:
         , m_bulkSize {bulkSize}
         , m_retryDelay {retryDelay}
         , m_flushInterval {flushInterval}
-        , m_logFn {logFn.compose("thread-dispatcher")}
-        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, m_logFn))}
+        , m_logFn {makeLibLogFn("thread-dispatcher")}
+        , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
     {
     }
 
@@ -361,7 +359,6 @@ private:
     std::atomic<uint64_t> m_bulkSize;
     const size_t m_retryDelay;
     const size_t m_flushInterval;
-    LogFn m_logFn;                          // must be before m_queue (used in its constructor)
     std::unique_ptr<TSafeQueueType> m_queue;
     std::thread m_thread;
     std::atomic_bool m_running = true;
@@ -374,6 +371,7 @@ private:
     std::atomic_bool m_firstDiscardLogged {false};
     std::chrono::steady_clock::time_point m_lastSummaryLog;
     const size_t m_summaryInterval {30}; // Log summary every 30 seconds
+    LogFn m_logFn;
 };
 
 template<typename Type, typename Functor>

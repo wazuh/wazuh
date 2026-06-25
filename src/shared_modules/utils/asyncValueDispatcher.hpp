@@ -56,13 +56,12 @@ namespace Utils
          *                     unbounded queue.
          */
         explicit AsyncValueDispatcher(Functor functor,
-                                      LogFn logFn,
                                       const unsigned int numberOfThreads = std::thread::hardware_concurrency(),
                                       const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
             : m_functor {functor}
             , m_numberOfThreads {numberOfThreads ? numberOfThreads : 1}
             , m_maxQueueSize {maxQueueSize}
-            , m_logFn(logFn.compose("async-dispatcher"))
+            , m_logFn(makeLibLogFn("async-dispatcher"))
         {
             m_threads.reserve(m_numberOfThreads);
 

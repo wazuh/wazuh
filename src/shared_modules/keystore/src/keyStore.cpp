@@ -85,14 +85,14 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
     }
 }
 
-void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value, LogFn logFn)
+void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value)
 {
-    auto ksLogFn = logFn.compose("keystore");
+    const auto logFn = makeLibLogFn("keystore");
     std::vector<char> encryptedValue;
 
     EVPHelper().encryptAES256(value, encryptedValue);
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, ksLogFn, false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -102,7 +102,7 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
     // algorithm. If the version field does not exist, it means that the keystore has not been upgraded yet. If the
     // version is different from the current version, update it. If the upgrade fails, the version is set to the current
     // version, because all keys have been deleted.
-    upgrade(keystoreDB, columnFamily, ksLogFn);
+    upgrade(keystoreDB, columnFamily, logFn);
 
     // Insert the key-value pair using AES encryption.
     keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
@@ -115,12 +115,12 @@ void Keystore::put(const std::string& columnFamily, const std::string& key, cons
  * @param key The key to be inserted or updated.
  * @param value The corresponding value to be returned.
  */
-void Keystore::get(const std::string& columnFamily, const std::string& key, std::string& value, LogFn logFn)
+void Keystore::get(const std::string& columnFamily, const std::string& key, std::string& value)
 {
-    auto ksLogFn = logFn.compose("keystore");
+    const auto logFn = makeLibLogFn("keystore");
     std::string encryptedValue;
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, ksLogFn, false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -128,7 +128,7 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
     }
 
     // Upgrade the keystore if necessary and get the key-value pair, to get all keys encrypted with the same algorithm.
-    upgrade(keystoreDB, columnFamily, ksLogFn);
+    upgrade(keystoreDB, columnFamily, logFn);
 
     // Get the key-value pair using AES decryption.
     if (keystoreDB.get(key, encryptedValue, columnFamily))
@@ -145,13 +145,13 @@ void Keystore::get(const std::string& columnFamily, const std::string& key, std:
  * @param key The key to be inserted or updated.
  * @return The corresponding value to be returned.
  */
-std::string Keystore::get(const std::string& columnFamily, const std::string& key, LogFn logFn)
+std::string Keystore::get(const std::string& columnFamily, const std::string& key)
 {
-    auto ksLogFn = logFn.compose("keystore");
+    const auto logFn = makeLibLogFn("keystore");
     std::string value;
     std::string encryptedValue;
 
-    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, ksLogFn, false);
+    auto keystoreDB = Utils::RocksDBWrapper(DATABASE_PATH, false);
 
     if (!keystoreDB.columnExists(columnFamily))
     {
@@ -159,7 +159,7 @@ std::string Keystore::get(const std::string& columnFamily, const std::string& ke
     }
 
     // Upgrade the keystore if necessary and get the key-value pair, to get all keys encrypted with the same algorithm.
-    upgrade(keystoreDB, columnFamily, ksLogFn);
+    upgrade(keystoreDB, columnFamily, logFn);
 
     // Get the key-value pair using AES decryption.
     if (keystoreDB.get(key, encryptedValue, columnFamily))

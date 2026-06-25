@@ -343,4 +343,41 @@ struct LogFn
 #define LOG_ERROR(fn, fmt, ...)  (fn).error( {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
 // clang-format on
 
+namespace Log
+{
+    /**
+     * @brief Returns the thread-local LogFn for the current module/process context.
+     *
+     * Each module thread sets this once via setModuleLogFn() so that shared
+     * libraries can read the right base tag without being explicitly passed one.
+     */
+    inline LogFn& currentModuleLogFn()
+    {
+        thread_local LogFn tl_logFn;
+        return tl_logFn;
+    }
+
+    /**
+     * @brief Sets the module log context for the calling thread.
+     *
+     * Call this once per module thread before creating any shared-library objects.
+     * Example: Log::setModuleLogFn(LogFn{WM_INVENTORY_SYNC_LOGTAG});
+     */
+    inline void setModuleLogFn(LogFn fn) { currentModuleLogFn() = std::move(fn); }
+} // namespace Log
+
+/**
+ * @brief Creates a LogFn for a shared library by composing the library name
+ *        onto the current thread's module LogFn.
+ *
+ * Result: "<process>:<module>(<libName>)"  e.g. "wazuh-manager-modulesd:inventory-sync(rocksdb)"
+ *         or "<process>(<libName>)"         e.g. "wazuh-manager-analysisd(indexer-connector)"
+ *
+ * The base context must have been set with Log::setModuleLogFn() on this thread.
+ */
+inline LogFn makeLibLogFn(std::string_view libName)
+{
+    return Log::currentModuleLogFn().compose(libName);
+}
+
 #endif // LOGGER_HELPER_H

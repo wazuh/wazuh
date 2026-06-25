@@ -368,8 +368,7 @@ class InventorySyncFacadeImpl final
                                                         startMsg,
                                                         *m_dataStore,
                                                         *m_indexerQueue,
-                                                        *m_responseDispatcher,
-                                                        m_logFn);
+                                                        *m_responseDispatcher);
                         }
                         catch (...)
                         {
@@ -599,6 +598,7 @@ public:
           const nlohmann::json& configuration)
     {
         Log::assignLogFunction(logFunction);
+        Log::setModuleLogFn(LogFn{WM_INVENTORY_SYNC_LOGTAG});
 
         std::error_code errorCodeFS;
         std::filesystem::remove_all(INVENTORY_SYNC_PATH, errorCodeFS);
@@ -606,8 +606,8 @@ public:
         {
             LOG_WARN(m_logFn, "Error removing inventory_sync directory: %s", errorCodeFS.message().c_str());
         }
-        m_dataStore = std::make_unique<TRocksDBWrapper>(INVENTORY_SYNC_PATH, m_logFn);
-        m_responseDispatcher = std::make_unique<TResponseDispatcher>(m_logFn);
+        m_dataStore = std::make_unique<TRocksDBWrapper>(INVENTORY_SYNC_PATH);
+        m_responseDispatcher = std::make_unique<TResponseDispatcher>();
 
         LOG_DEBUG2(m_logFn, "Configuration: %s", configuration.dump().c_str());
 
@@ -691,7 +691,6 @@ public:
                     LOG_ERROR(m_logFn, "InventorySyncFacade::start: %s", e.what());
                 }
             },
-            m_logFn,
             std::thread::hardware_concurrency(),
             m_workersQueueSize);
 
@@ -1515,7 +1514,6 @@ public:
                     m_indexerConnector->invokePendingCallbacks();
                 }
             },
-            m_logFn,
             m_threadCount,
             UNLIMITED_QUEUE_SIZE);
 

@@ -252,7 +252,7 @@ void HandleSecure()
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
     // Router module logging initialization
-    router_initialize(taggedLogFunction);
+    router_initialize(taggedLogFunction, ARGV0);
 
     // Router providers initialization
     if (router_upgrade_ack_handle = router_provider_create("upgrade_notifications", false), !router_upgrade_ack_handle) {

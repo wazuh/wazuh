@@ -52,7 +52,6 @@ TEST_F(AsyncValueDispatcherTest, Ctor)
                 promise.set_value();
             }
         },
-        "test-dispatcher",
         1,
         BULK_SIZE);
     ENABLE_ALLOCATION_COUNTER = true;
@@ -84,7 +83,6 @@ TEST_F(AsyncValueDispatcherTest, MultiThreadedProcessing)
                 promise.set_value();
             }
         },
-        "test-dispatcher",
         THREAD_COUNT,
         BULK_SIZE);
 
@@ -120,7 +118,6 @@ TEST_F(AsyncValueDispatcherTest, QueueSizeLimits)
                 promise.set_value();
             }
         },
-        "test-dispatcher",
         1,
         QUEUE_SIZE);
 
@@ -159,7 +156,6 @@ TEST_F(AsyncValueDispatcherTest, ExceptionHandling)
                 promise.set_value();
             }
         },
-        "test-dispatcher",
         1,
         BULK_SIZE);
 
@@ -187,7 +183,6 @@ TEST_F(AsyncValueDispatcherTest, CancelFunctionality)
                 promise.set_value();
             }
         },
-        "test-dispatcher",
         1,
         BULK_SIZE);
 
@@ -224,7 +219,6 @@ TEST_F(AsyncValueDispatcherTest, DifferentDataTypes)
                 promise.set_value();
             }
         },
-        "test-dispatcher",
         1,
         BULK_SIZE);
 
@@ -251,7 +245,6 @@ TEST_F(AsyncValueDispatcherTest, LargeBulkProcessing)
                 promise.set_value();
             }
         },
-        "test-dispatcher",
         2,
         LARGE_COUNT);
 
@@ -305,8 +298,7 @@ TEST_F(AsyncValueDispatcherTest, CaptureWarningMsg)
         {
             EXPECT_EQ(testMsg, data);
             throw std::runtime_error("Test exception");
-        },
-        "test-dispatcher");
+        });
 
     dispatcher.push(testMsg);
     // Wait for the warning log to be captured.
@@ -323,7 +315,7 @@ TEST_F(AsyncValueDispatcherTest, CaptureWarningMsg)
 TEST_F(AsyncValueDispatcherTest, Push_ReturnsTrueWhenAccepted)
 {
     Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher(
-        [](int) {}, "test-dispatcher", 1, /*maxQueueSize*/ 10);
+        [](int) {}, 1, /*maxQueueSize*/ 10);
     EXPECT_TRUE(dispatcher.push(42));
 }
 
@@ -337,7 +329,6 @@ TEST_F(AsyncValueDispatcherTest, Push_ReturnsFalseWhenQueueFull)
     // the queue until it hits maxQueueSize. Any push beyond that must return
     // false, signalling the drop to the caller.
     Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher([blockFuture](int) { blockFuture.wait(); },
-                                                                          "test-dispatcher",
                                                                           /*numberOfThreads*/ 1,
                                                                           QUEUE_SIZE);
 
@@ -361,7 +352,7 @@ TEST_F(AsyncValueDispatcherTest, Push_ReturnsFalseWhenQueueFull)
 TEST_F(AsyncValueDispatcherTest, Push_ReturnsFalseAfterCancel)
 {
     Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher(
-        [](int) {}, "test-dispatcher", 1, /*maxQueueSize*/ 10);
+        [](int) {}, 1, /*maxQueueSize*/ 10);
     dispatcher.cancel();
     EXPECT_FALSE(dispatcher.push(7));
 }
@@ -372,7 +363,7 @@ TEST_F(AsyncValueDispatcherTest, Push_ReturnsTrueOnUnlimitedQueue)
     std::promise<void> blockWorker;
     std::shared_future<void> blockFuture = blockWorker.get_future().share();
     Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher(
-        [blockFuture](int) { blockFuture.wait(); }, "test-dispatcher", 1);
+        [blockFuture](int) { blockFuture.wait(); }, 1);
 
     // Push more items than any reasonable bounded queue would accept; with the
     // unlimited size, every push must succeed.

@@ -81,13 +81,12 @@ namespace Utils
          *                        WARNING: this process might not recover all data.
          */
         explicit TRocksDBWrapper(std::string dbPath,
-                                 LogFn logFn,
                                  const bool enableWal = true,
                                  const bool repairIfCorrupt = true,
                                  const bool useSharedBuffers = false)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
-            , m_logFn(logFn.compose("rocksdb"))
+            , m_logFn(makeLibLogFn("rocksdb"))
         {
 
             if (useSharedBuffers)

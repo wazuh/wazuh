@@ -94,11 +94,10 @@ public:
                               Wazuh::SyncSchema::Start const* data,
                               TStore& store,
                               TIndexerQueue& indexerQueue,
-                              const TResponseDispatcher& responseDispatcher,
-                              LogFn logFn = LogFn{WM_INVENTORY_SYNC_LOGTAG})
+                              const TResponseDispatcher& responseDispatcher)
         : m_store {store}
         , m_indexerQueue {indexerQueue}
-        , m_logFn(std::move(logFn))
+        , m_logFn(Log::currentModuleLogFn())
 
     {
         if (data == nullptr)

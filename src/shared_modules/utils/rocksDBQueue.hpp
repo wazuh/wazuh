@@ -30,9 +30,9 @@ template<typename T, typename U = T>
 class RocksDBQueue final
 {
 public:
-    explicit RocksDBQueue(const std::string& connectorName, LogFn logFn, bool useSharedBuffers = false)
+    explicit RocksDBQueue(const std::string& connectorName, bool useSharedBuffers = false)
         : m_legacyKeyMode {false}
-        , m_logFn(logFn.compose("rocksdb"))
+        , m_logFn(makeLibLogFn("rocksdb"))
     {
         // RocksDB initialization using shared buffers.
         // Get shared buffers to reduce memory usage across multiple instances

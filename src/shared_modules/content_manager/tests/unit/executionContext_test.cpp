@@ -278,7 +278,7 @@ TEST_F(ExecutionContextTest, ReadLastDownloadedFileHash)
     constexpr auto FILE_HASH {"hash"};
     {
         const auto EXPECTED_DB_PATH {m_databasePath / (std::string("updater_") + TOPIC_NAME + "_metadata")};
-        auto wrapper {Utils::RocksDBWrapper(EXPECTED_DB_PATH, "test")};
+        auto wrapper {Utils::RocksDBWrapper(EXPECTED_DB_PATH)};
         wrapper.createColumn(Components::Columns::DOWNLOADED_FILE_HASH);
         wrapper.put("test_key", FILE_HASH, Components::Columns::DOWNLOADED_FILE_HASH);
     }
