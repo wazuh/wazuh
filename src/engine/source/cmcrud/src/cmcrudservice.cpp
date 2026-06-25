@@ -1,5 +1,7 @@
 #include <fmt/format.h>
 
+#include <algorithm>
+
 #include <base/logging.hpp>
 #include <cmstore/detail.hpp>
 #include <cmstore/types.hpp>
@@ -52,15 +54,66 @@ cm::store::dataType::KVDB kvdbFromDocument(const json::Json& kvdbDocument, bool 
     return cm::store::dataType::KVDB::fromJson(kvdbDocument, requireUUID);
 }
 
-base::Name assetNameFromJson(const json::Json& jsonDoc)
+std::string resourceNameStringFromJson(const json::Json& jsonDoc)
 {
     std::string name;
     if (jsonDoc.getString(name, "/name") != json::RetGet::Success || name.empty())
     {
         throw std::runtime_error("Missing or empty asset name at JSON path '/name'");
     }
+    return name;
+}
+
+bool isValidResourceNameComponent(std::string_view component)
+{
+    return !component.empty()
+           && std::all_of(component.begin(),
+                          component.end(),
+                          [](char c)
+                          {
+                              return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+                                     || c == '_' || c == '-';
+                          });
+}
+
+void validateSimpleResourceName(std::string_view name, cm::store::ResourceType type)
+{
+    if (!isValidResourceNameComponent(name))
+    {
+        throw std::runtime_error(
+            fmt::format("Invalid resource name: '{}' for resource '{}'", name, cm::store::resourceTypeToString(type)));
+    }
+}
+
+void validateAssetResourceName(std::string_view name, cm::store::ResourceType type)
+{
+    std::size_t start = 0;
+    while (true)
+    {
+        const auto end = name.find('/', start);
+        const auto part = name.substr(start, end == std::string_view::npos ? std::string_view::npos : end - start);
+
+        if (!isValidResourceNameComponent(part))
+        {
+            throw std::runtime_error(fmt::format(
+                "Invalid resource name: '{}' for resource '{}'", name, cm::store::resourceTypeToString(type)));
+        }
+
+        if (end == std::string_view::npos)
+        {
+            break;
+        }
+        start = end + 1;
+    }
+}
+
+base::Name validatedAssetNameFromJson(const json::Json& jsonDoc, cm::store::ResourceType type)
+{
+    const auto name = resourceNameStringFromJson(jsonDoc);
+    validateAssetResourceName(name, type);
     return base::Name {name};
 }
+
 } // namespace
 
 namespace cm::crud
@@ -250,6 +303,7 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
                         case cm::store::ResourceType::INTEGRATION:
                         {
                             auto integ = cm::store::dataType::Integration::fromJson(item, /*requireUUID:*/ true);
+                            validateSimpleResourceName(integ.getName(), type);
                             if (!force)
                             {
                                 validateIntegration(nsReader, integ);
@@ -263,6 +317,7 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
                         case cm::store::ResourceType::KVDB:
                         {
                             auto kvdb = cm::store::dataType::KVDB::fromJson(item, /*requireUUID:*/ true);
+                            validateSimpleResourceName(kvdb.getName(), type);
 
                             const std::string& name = kvdb.getName();
                             ns->createResource(name, type, kvdb.toJson());
@@ -284,7 +339,7 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
                                 __builtin_unreachable();
                             }();
 
-                            auto name = assetNameFromJson(assetJson);
+                            auto name = validatedAssetNameFromJson(assetJson, type);
 
                             (void)assetUuidFromJson(assetJson, name);
 
@@ -372,13 +427,14 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     for (const auto& jkvdb : kvdbs)
     {
         auto kvdb = cm::store::dataType::KVDB::fromJson(jkvdb, true);
+        validateSimpleResourceName(kvdb.getName(), cm::store::ResourceType::KVDB);
         ns->createResource(kvdb.getName(), cm::store::ResourceType::KVDB, kvdb.toJson());
     }
 
     for (const auto& jdec : decoders)
     {
         auto assetJson = store::detail::adaptDecoder(jdec);
-        auto name = assetNameFromJson(assetJson);
+        auto name = validatedAssetNameFromJson(assetJson, cm::store::ResourceType::DECODER);
         const auto resourceStr = cm::store::resourceTypeToString(cm::store::ResourceType::DECODER);
 
         if (resourceStr != name.parts().front())
@@ -397,7 +453,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     for (const auto& jfilt : filters)
     {
         auto assetJson = store::detail::adaptFilter(jfilt);
-        auto name = assetNameFromJson(assetJson);
+        auto name = validatedAssetNameFromJson(assetJson, cm::store::ResourceType::FILTER);
         const auto resourceStr = cm::store::resourceTypeToString(cm::store::ResourceType::FILTER);
 
         if (resourceStr != name.parts().front())
@@ -416,6 +472,7 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     for (const auto& jinteg : integrations)
     {
         auto integ = cm::store::dataType::Integration::fromJson(jinteg, true);
+        validateSimpleResourceName(integ.getName(), cm::store::ResourceType::INTEGRATION);
         if (!softValidation)
         {
             validator->softIntegrationValidate(nsReader, integ);
@@ -604,7 +661,7 @@ void CrudService::upsertResource(const cm::store::NamespaceId& nsId,
                     __builtin_unreachable();
                 }();
 
-                auto name = assetNameFromJson(adaptedPayload);
+                auto name = validatedAssetNameFromJson(adaptedPayload, type);
                 const auto resource = resourceTypeToString(type);
 
                 if (resource != name.parts().front())
@@ -674,7 +731,7 @@ void CrudService::validateResource(cm::store::ResourceType type, const json::Jso
                     adaptedPayload = cm::store::detail::adaptFilter(payload);
                 }
 
-                auto name = assetNameFromJson(adaptedPayload);
+                auto name = validatedAssetNameFromJson(adaptedPayload, type);
 
                 (void)assetUuidFromJson(adaptedPayload, name);
 
@@ -693,13 +750,15 @@ void CrudService::validateResource(cm::store::ResourceType type, const json::Jso
 
             case cm::store::ResourceType::INTEGRATION:
             {
-                (void)cm::store::dataType::Integration::fromJson(payload, /*requireUUID:*/ true);
+                auto integration = cm::store::dataType::Integration::fromJson(payload, /*requireUUID:*/ true);
+                validateSimpleResourceName(integration.getName(), type);
                 return;
             }
 
             case cm::store::ResourceType::KVDB:
             {
-                (void)cm::store::dataType::KVDB::fromJson(payload, /*requireUUID:*/ true);
+                auto kvdb = cm::store::dataType::KVDB::fromJson(payload, /*requireUUID:*/ true);
+                validateSimpleResourceName(kvdb.getName(), type);
                 return;
             }
 

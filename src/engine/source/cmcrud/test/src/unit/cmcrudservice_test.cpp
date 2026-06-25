@@ -844,17 +844,43 @@ TEST_F(CrudServiceValidateResourceTest, ValidateResource_Decoder_CallsValidateAs
 {
     static constexpr const char* kDecoderJsonStr = R"(
     {
-      "name": "decoder/syslog/0",
+      "name": "decoder/my-decoder/0",
       "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
       "enabled": true,
       "metadata": { "module": "syslog" }
     })";
 
     json::Json payload {kDecoderJsonStr};
-    payload = cm::store::detail::adaptDecoder(payload);
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(1).WillOnce(Return(base::noError()));
 
     EXPECT_NO_THROW(service->validateResource(ResourceType::DECODER, payload));
+}
+
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Decoder_InvalidNameThrowsBeforeValidation)
+{
+    static constexpr const char* kDecoderJsonStr = R"(
+    {
+      "name": "decoder/my decoder/0",
+      "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+      "enabled": true,
+      "metadata": { "module": "syslog" }
+    })";
+
+    json::Json payload {kDecoderJsonStr};
+
+    EXPECT_CALL(*validator, validateAssetShallow(_)).Times(0);
+
+    try
+    {
+        service->validateResource(ResourceType::DECODER, payload);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid resource name"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("decoder/my decoder/0"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("decoder"));
+    }
 }
 
 TEST_F(CrudServiceValidateResourceTest, ValidateResource_Decoder_ValidationFailureThrows)
@@ -868,7 +894,6 @@ TEST_F(CrudServiceValidateResourceTest, ValidateResource_Decoder_ValidationFailu
     })";
 
     json::Json payload {kDecoderJsonStr};
-    payload = cm::store::detail::adaptDecoder(payload);
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(1).WillOnce(Return(base::Error {"bad asset"}));
 
     try
@@ -882,13 +907,42 @@ TEST_F(CrudServiceValidateResourceTest, ValidateResource_Decoder_ValidationFailu
     }
 }
 
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Filter_InvalidNameThrowsBeforeValidation)
+{
+    static constexpr const char* kFilterJsonStr = R"(
+    {
+      "name": "filter/bad filter/0",
+      "id": "f1111111-1111-4111-a111-111111111111",
+      "enabled": true,
+      "type": "pre-filter",
+      "metadata": { "title": "Test Pre-Filter" },
+      "check": "$host.os.platform == 'ubuntu'"
+    })";
+
+    json::Json payload {kFilterJsonStr};
+
+    EXPECT_CALL(*validator, validateAssetShallow(_)).Times(0);
+
+    try
+    {
+        service->validateResource(ResourceType::FILTER, payload);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid resource name"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("filter/bad filter/0"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("filter"));
+    }
+}
+
 TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_SuccessDoesNotTouchValidator)
 {
     static constexpr const char* kIntegrationJsonStr = R"(
     {
       "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
       "metadata": {
-        "title": "windows"
+        "title": "windows-security"
       },
       "enabled": true,
       "category": "security",
@@ -909,13 +963,45 @@ TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_SuccessDoes
     EXPECT_NO_THROW(service->validateResource(ResourceType::INTEGRATION, payload));
 }
 
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_Integration_InvalidNameThrows)
+{
+    static constexpr const char* kIntegrationJsonStr = R"(
+    {
+      "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+      "metadata": {
+        "title": "bad integration"
+      },
+      "enabled": true,
+      "category": "security",
+      "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+      "decoders": [
+        "85853f26-5779-469b-86c4-c47ee7d400b4"
+      ],
+      "kvdbs": []
+    })";
+
+    json::Json payload {kIntegrationJsonStr};
+
+    try
+    {
+        service->validateResource(ResourceType::INTEGRATION, payload);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid resource name"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad integration"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("integration"));
+    }
+}
+
 TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_SuccessDoesNotTouchValidator)
 {
     static constexpr const char* kKvdbJsonStr = R"(
     {
       "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
       "metadata": {
-        "title": "windows_kerberos_status_code_to_code_name"
+        "title": "windows-kerberos_status_code_to_code_name"
       },
       "content": {
         "0x0": "KDC_ERR_NONE",
@@ -929,6 +1015,35 @@ TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_SuccessDoesNotTouc
     EXPECT_CALL(*validator, validateAssetShallow(_)).Times(0);
 
     EXPECT_NO_THROW(service->validateResource(ResourceType::KVDB, payload));
+}
+
+TEST_F(CrudServiceValidateResourceTest, ValidateResource_KVDB_InvalidNameThrows)
+{
+    static constexpr const char* kKvdbJsonStr = R"(
+    {
+      "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
+      "metadata": {
+        "title": "bad/kvdb"
+      },
+      "content": {
+        "0x0": "KDC_ERR_NONE"
+      },
+      "enabled": true
+    })";
+
+    json::Json payload {kKvdbJsonStr};
+
+    try
+    {
+        service->validateResource(ResourceType::KVDB, payload);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid resource name"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad/kvdb"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("kvdb"));
+    }
 }
 
 // ---------------------------------------------------------------------
@@ -1249,6 +1364,59 @@ TEST_F(CrudServiceImportNsFromVectorTest, ImportsIntegration)
 
     EXPECT_NO_THROW(service->importNamespace(
         nsId, {}, {}, {}, integrations, makeJsonPayload(kPolicyJson), /*softValidation=*/true));
+}
+
+TEST_F(CrudServiceImportNsFromVectorTest, InvalidDecoderNameThrowsBeforeCreate)
+{
+    static constexpr const char* kDecoderJsonInvalidName = R"({
+      "name": "decoder/my decoder/0",
+      "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+      "enabled": true,
+      "metadata": {"module": "syslog", "title": "Syslog Decoder"}
+    })";
+
+    std::vector<json::Json> decoders = {makeJsonPayload(kDecoderJsonInvalidName)};
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, decoders, {}, {}, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid resource name"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("decoder/my decoder/0"));
+    }
+}
+
+TEST_F(CrudServiceImportNsFromVectorTest, InvalidIntegrationNameThrowsBeforeCreate)
+{
+    static constexpr const char* kIntegrationJsonInvalidName = R"({
+      "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+      "metadata": {"title": "bad/integration"},
+      "enabled": true,
+      "category": "security",
+      "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+      "decoders": [],
+      "kvdbs": []
+    })";
+
+    std::vector<json::Json> integrations = {makeJsonPayload(kIntegrationJsonInvalidName)};
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, {}, {}, {}, integrations, makeJsonPayload(kPolicyJson), /*softValidation=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid resource name"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad/integration"));
+    }
 }
 
 // Policy is upserted after all resources
@@ -1766,6 +1934,165 @@ TEST_F(CrudServiceImportNsFromDocTest, ImportsIntegration)
     EXPECT_CALL(*nsPtr, createResource("windows", ResourceType::INTEGRATION, _)).Times(1);
 
     EXPECT_NO_THROW(service->importNamespace(nsId, kImportDocWithIntegration, "", /*force=*/true));
+}
+
+TEST_F(CrudServiceImportNsFromDocTest, InvalidKVDBNameThrowsBeforeCreate)
+{
+    static constexpr const char* kImportDocWithInvalidKVDB = R"({
+      "policy": {
+        "enabled": true,
+        "root_decoder": "decoder/wazuh-core-message/0",
+        "integrations": [],
+        "filters": [],
+        "enrichments": [],
+        "index_unclassified_events": false,
+        "index_discarded_events": false
+      },
+      "resources": {
+        "kvdbs": [
+          {
+            "id": "82e215c4-988a-4f64-8d15-b98b2fc03a4f",
+            "metadata": {"title": "bad kvdb"},
+            "content": {"0x0": "KDC_ERR_NONE"},
+            "enabled": true
+          }
+        ]
+      }
+    })";
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, kImportDocWithInvalidKVDB, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to import namespace"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid resource name"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad kvdb"));
+    }
+}
+
+TEST_F(CrudServiceImportNsFromDocTest, InvalidDecoderNameThrowsBeforeCreate)
+{
+    static constexpr const char* kImportDocWithInvalidDecoder = R"({
+      "policy": {
+        "enabled": true,
+        "root_decoder": "decoder/wazuh-core-message/0",
+        "integrations": [],
+        "filters": [],
+        "enrichments": [],
+        "index_unclassified_events": false,
+        "index_discarded_events": false
+      },
+      "resources": {
+        "decoders": [
+          {
+            "name": "decoder/my:decoder/0",
+            "id": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+            "enabled": true,
+            "metadata": {"module": "syslog", "title": "Syslog Decoder"}
+          }
+        ]
+      }
+    })";
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, kImportDocWithInvalidDecoder, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to import namespace"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid resource name"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("decoder/my:decoder/0"));
+    }
+}
+
+TEST_F(CrudServiceImportNsFromDocTest, InvalidIntegrationNameThrowsBeforeCreate)
+{
+    static constexpr const char* kImportDocWithInvalidIntegration = R"({
+      "policy": {
+        "enabled": true,
+        "root_decoder": "decoder/wazuh-core-message/0",
+        "integrations": [],
+        "filters": [],
+        "enrichments": [],
+        "index_unclassified_events": false,
+        "index_discarded_events": false
+      },
+      "resources": {
+        "integrations": [
+          {
+            "id": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
+            "metadata": {"title": "bad@integration"},
+            "enabled": true,
+            "category": "security",
+            "default_parent": "3f086ce2-32a4-42b0-be7e-40dcfb9c6160",
+            "decoders": [],
+            "kvdbs": []
+          }
+        ]
+      }
+    })";
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, kImportDocWithInvalidIntegration, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to import namespace"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid resource name"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("bad@integration"));
+    }
+}
+
+TEST_F(CrudServiceImportNsFromDocTest, InvalidOutputNameThrowsBeforeCreate)
+{
+    static constexpr const char* kImportDocWithInvalidOutput = R"({
+      "policy": {
+        "enabled": true,
+        "root_decoder": "decoder/wazuh-core-message/0",
+        "integrations": [],
+        "filters": [],
+        "enrichments": [],
+        "index_unclassified_events": false,
+        "index_discarded_events": false
+      },
+      "resources": {
+        "outputs": [
+          {
+            "name": "output/bad output/0",
+            "id": "b1111111-1111-4111-a111-111111111111",
+            "enabled": true,
+            "metadata": {"title": "Indexer Output"}
+          }
+        ]
+      }
+    })";
+
+    EXPECT_CALL(*nsPtr, createResource(_, _, _)).Times(0);
+
+    try
+    {
+        service->importNamespace(nsId, kImportDocWithInvalidOutput, "", /*force=*/true);
+        FAIL() << "Expected std::runtime_error";
+    }
+    catch (const std::runtime_error& e)
+    {
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Failed to import namespace"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("Invalid resource name"));
+        EXPECT_THAT(std::string {e.what()}, HasSubstr("output/bad output/0"));
+    }
 }
 
 // Policy is upserted after resources
