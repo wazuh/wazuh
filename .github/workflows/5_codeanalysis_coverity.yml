@@ -15,6 +15,14 @@ on:
         required: false
         default: 0
         type: number
+      target:
+        description: "Compilation target (manager or agent)"
+        required: true
+        type: choice
+        default: 'manager'
+        options:
+          - manager
+          - agent
       docker_image_tag:
         description: |
           Tag name of the Docker image to be uploaded.
@@ -76,7 +84,7 @@ jobs:
           ref: ${{ github.ref_name }}
 
       - name: Download dependencies
-        run: make -C src deps -j${{ needs.prepare.outputs.jobs }}
+        run: make -C src deps TARGET=${{ github.event.inputs.target }} -j${{ needs.prepare.outputs.jobs }}
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -95,7 +103,7 @@ jobs:
       - name: Build Coverity artifact
         uses: ./.github/actions/coverity/build
         with:
-          command: make -C src TARGET=manager COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
+          command: make -C src TARGET=${{ github.event.inputs.target }} COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
           docker_image_tag: ${{ github.event.inputs.docker_image_tag }}
 
       - name: List files
