@@ -72,6 +72,10 @@ private:
 
     static constexpr std::chrono::seconds INDEXER_RETRY_INTERVAL {30};
 
+    /// Failed initial-load attempts logged below WARNING before escalating (indexer is commonly
+    /// overloaded right after a restart, so early failures are expected).
+    static constexpr std::size_t INDEXER_WARN_AFTER_ATTEMPTS {3};
+
     nlohmann::json m_config;
     mutable std::mutex m_callbackMutex; ///< Serializes processPage calls across parallel slices.
 
@@ -447,9 +451,13 @@ private:
      * @param context   Updater context.
      * @param query     Elasticsearch query object (match_all or range).
      * @param startCursor  Starting cursor value (empty for initial load, lastCursor for incremental).
+     * @param escalateLogs  If false, transient failures are logged at DEBUG instead of WARNING.
      * @return Number of documents processed.
      */
-    size_t fetchWithPit(UpdaterContext& context, const nlohmann::json& query, const std::string& startCursor) const
+    size_t fetchWithPit(UpdaterContext& context,
+                        const nlohmann::json& query,
+                        const std::string& startCursor,
+                        const bool escalateLogs = true) const
     {
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
@@ -466,7 +474,7 @@ private:
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
         auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
             &pit,
-            [&syncConnector](auto* p)
+            [&syncConnector, escalateLogs](auto* p)
             {
                 try
                 {
@@ -474,7 +482,14 @@ private:
                 }
                 catch (const std::exception& e)
                 {
-                    logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    if (escalateLogs)
+                    {
+                        logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    }
+                    else
+                    {
+                        logDebug2(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    }
                 }
             });
 
@@ -533,12 +548,14 @@ private:
      * @param query      Elasticsearch query object.
      * @param startCursor Starting cursor value.
      * @param numSlices  Number of parallel slices.
+     * @param escalateLogs  If false, transient failures are logged at DEBUG instead of ERROR/WARNING.
      * @return Total number of documents processed across all slices.
      */
     size_t fetchWithSlicedPit(UpdaterContext& context,
                               const nlohmann::json& query,
                               const std::string& startCursor,
-                              size_t numSlices) const
+                              size_t numSlices,
+                              const bool escalateLogs = true) const
     {
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
@@ -555,7 +572,7 @@ private:
         auto pit = syncConnector.createPointInTime({indexName}, PIT_KEEP_ALIVE);
         auto pitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>(
             &pit,
-            [&syncConnector](auto* p)
+            [&syncConnector, escalateLogs](auto* p)
             {
                 try
                 {
@@ -563,7 +580,14 @@ private:
                 }
                 catch (const std::exception& e)
                 {
-                    logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    if (escalateLogs)
+                    {
+                        logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    }
+                    else
+                    {
+                        logDebug2(WM_CONTENTUPDATER, "IndexerDownloader: Failed to delete PIT: %s", e.what());
+                    }
                 }
             });
 
@@ -670,7 +694,14 @@ private:
             {
                 std::lock_guard<std::mutex> lock(errorsMutex);
                 errors.push_back("Slice " + std::to_string(sliceId) + ": " + e.what());
-                logError(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
+                if (escalateLogs)
+                {
+                    logError(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
+                }
+                else
+                {
+                    logDebug2(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
+                }
             }
         };
 
@@ -724,6 +755,9 @@ private:
                     WM_CONTENTUPDATER, "IndexerDownloader: Retrying initial full load (attempt %zu) ...", attempt + 1);
             }
 
+            // Stay at INFO/DEBUG for the first attempts, escalate to WARNING/ERROR afterwards.
+            const bool escalate = (attempt + 1) >= INDEXER_WARN_AFTER_ATTEMPTS;
+
             size_t totalProcessed = 0;
             bool exceptionOccurred = false;
 
@@ -731,20 +765,33 @@ private:
             {
                 if (numSlices > 1)
                 {
-                    totalProcessed = fetchWithSlicedPit(context, query, "", numSlices);
+                    totalProcessed = fetchWithSlicedPit(context, query, "", numSlices, escalate);
                 }
                 else
                 {
-                    totalProcessed = fetchWithPit(context, query, "");
+                    totalProcessed = fetchWithPit(context, query, "", escalate);
                 }
             }
             catch (const std::exception& e)
             {
                 exceptionOccurred = true;
-                logWarn(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Initial load failed (%s) — retrying in %zu s.",
-                        e.what(),
-                        static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                if (escalate)
+                {
+                    logWarn(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Initial load failed (%s) — retrying in %zu s.",
+                            e.what(),
+                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                }
+                else
+                {
+                    logInfo(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Indexer not available yet (%s) — retrying in %zu s "
+                            "(attempt %zu/%zu).",
+                            e.what(),
+                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                            attempt + 1,
+                            INDEXER_WARN_AFTER_ATTEMPTS);
+                }
             }
 
             if (totalProcessed > 0)
@@ -760,9 +807,21 @@ private:
 
             if (!exceptionOccurred)
             {
-                logWarn(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Indexer index not ready (0 documents) — retrying in %zu s.",
-                        static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                if (escalate)
+                {
+                    logWarn(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Indexer index not ready (0 documents) — retrying in %zu s.",
+                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+                }
+                else
+                {
+                    logInfo(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Indexer index not ready yet (0 documents) — retrying in %zu s "
+                            "(attempt %zu/%zu).",
+                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                            attempt + 1,
+                            INDEXER_WARN_AFTER_ATTEMPTS);
+                }
             }
 
             ++attempt;
