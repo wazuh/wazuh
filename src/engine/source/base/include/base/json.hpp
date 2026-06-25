@@ -376,6 +376,19 @@ public:
     bool equals(std::string_view pointerPath, const Json& value) const;
 
     /**
+     * @brief Check if a field's string value equals the given string.
+     * Returns false if the field is not found or is not a string type.
+     *
+     * @param pointerPath The pointer path to the field.
+     * @param str The string to compare against.
+     * @return true The field exists and its string value equals str.
+     * @return false Otherwise.
+     *
+     * @throws std::runtime_error If the pointer path is invalid.
+     */
+    bool equalsString(std::string_view pointerPath, std::string_view str) const;
+
+    /**
      * @brief Check if basePointerPath field's value is equal to referencePointerPath
      * field's value. If basePointerPath or referencePointerPath is not found, returns
      * false.

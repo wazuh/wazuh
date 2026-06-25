@@ -23,8 +23,22 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
     const auto failure = fmt::format("{} -> Failure", buildCtx->context().opName);
     const auto targetNotString =
         fmt::format("{} -> Target field '{}' is not a string", buildCtx->context().opName, targetField.dotPath());
+
+    // Capture string directly (avoids json::Json steady-state overhead)
+    std::string valueStr;
+    if (value.isStringValue())
+    {
+        valueStr = std::string(value.getStringDirect());
+    }
+    else
+    {
+        std::string tmp;
+        value.value().getString(tmp);
+        valueStr = std::move(tmp);
+    }
+
     return [targetField = targetField.jsonPath(),
-            value = json::Json(value.value()),
+            valueStr = std::move(valueStr),
             isTestMode = buildCtx->isTestMode(),
             targetNotFound,
             failure,
@@ -47,13 +61,8 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
         {
             RETURN_FAILURE(isTestMode, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
         }
-        std::string_view valueString;
-        if (auto ret = value.getString(valueString); ret != json::RetGet::Success)
-        {
-            RETURN_FAILURE(isTestMode, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
-        }
 
-        if (!base::utils::string::startsWith(targetString, valueString))
+        if (!base::utils::string::startsWith(targetString, valueStr))
         {
             RETURN_FAILURE(isTestMode, false, failure);
         }
