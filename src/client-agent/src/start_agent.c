@@ -400,7 +400,11 @@ bool connect_server(int server_id, bool verbose)
         }
     } else {
         if (OS_SetKeepalive(agt->sock) < 0) {
+#ifdef WIN32
+            mwarn("OS_SetKeepalive failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
             mwarn("OS_SetKeepalive failed with error '%s'", strerror(errno));
+#endif
         } else {
             int keepidle  = getDefine_Int("agent", "tcp_keepidle",  1, 7200);
             int keepintvl = getDefine_Int("agent", "tcp_keepintvl", 1, 100);
@@ -409,7 +413,11 @@ bool connect_server(int server_id, bool verbose)
         }
         int send_timeout = getDefine_Int("agent", "send_timeout", 1, 600);
         if (OS_SetSendTimeout(agt->sock, send_timeout) < 0) {
+#ifdef WIN32
+            mwarn("OS_SetSendTimeout failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
             mwarn("OS_SetSendTimeout failed with error '%s'", strerror(errno));
+#endif
         }
         agt->rip_id = server_id;
         last_connection_time = (int)time(NULL);
