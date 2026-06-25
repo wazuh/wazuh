@@ -120,16 +120,16 @@ runType(const OpBuilder& builder, const Reference& targetField, const schemf::Va
     };
 }
 
-TransformBuilder filterToTransform(const FilterBuilder& builder)
+TransformBuilder filterToTransform(FilterBuilder builder)
 {
-    return [builder](const Reference& targetField,
+    return [builder = std::move(builder)](const Reference& targetField,
                      const std::vector<OpArg>& opArgs,
                      const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
     {
         auto filterOp = builder(targetField, opArgs, buildCtx);
 
         // Wrapper TransformOp
-        return [filterOp, isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
+        return [filterOp = std::move(filterOp), isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
         {
             auto filterRes = filterOp(event);
             if (filterRes.failure())
@@ -142,9 +142,9 @@ TransformBuilder filterToTransform(const FilterBuilder& builder)
     };
 }
 
-TransformBuilder mapToTransform(const MapBuilder& builder, const Reference& targetField)
+TransformBuilder mapToTransform(MapBuilder builder, Reference targetField)
 {
-    return [builder, targetField](const Reference&,
+    return [builder = std::move(builder), targetField = std::move(targetField)](const Reference&,
                                   const std::vector<OpArg>& opArgs,
                                   const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
     {
@@ -161,7 +161,7 @@ TransformBuilder mapToTransform(const MapBuilder& builder, const Reference& targ
         auto mapOp = builder(opArgs, buildCtx);
 
         // Wrapper TransformOp
-        return [mapOp, targetField, isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
+        return [mapOp = std::move(mapOp), targetField, isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
         {
             auto mapRes = mapOp(event);
             if (mapRes.failure())
@@ -176,20 +176,20 @@ TransformBuilder mapToTransform(const MapBuilder& builder, const Reference& targ
     };
 }
 
-TransformBuilder toTransform(const OpBuilder& builder, const Reference& targetField)
+TransformBuilder toTransform(OpBuilder builder, const Reference& targetField)
 {
     switch (builder.index())
     {
-        case 0: return mapToTransform(std::get<0>(builder), targetField); // MapBuilder
-        case 1: return std::get<1>(builder);                              // TransformBuilder
-        case 2: return filterToTransform(std::get<2>(builder));           // FilterBuilder
+        case 0: return mapToTransform(std::move(std::get<0>(builder)), targetField); // MapBuilder
+        case 1: return std::move(std::get<1>(builder));                              // TransformBuilder
+        case 2: return filterToTransform(std::move(std::get<2>(builder)));           // FilterBuilder
         default: throw std::runtime_error("Invalid builder type");
     }
 }
 
-base::Expression toExpression(const TransformOp& op, const std::string& name)
+base::Expression toExpression(TransformOp op, const std::string& name)
 {
-    return base::Term<base::EngineOp>::create(name, op);
+    return base::Term<base::EngineOp>::create(name, std::move(op));
 }
 
 base::Expression baseHelperBuilder(const std::string& helperName,
