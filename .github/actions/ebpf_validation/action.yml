@@ -1,17 +1,26 @@
 name: "eBPF Field Validation"
 description: "Builds the eBPF object and validates hook events across filesystems"
 
+inputs:
+  wazuh-branch:
+    description: "Branch name for modern.bpf.c download in cmake"
+    required: true
+
 runs:
   using: "composite"
   steps:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang llvm libelf-dev build-essential btrfs-progs xfsprogs kmod
+        sudo apt-get install -y clang llvm libelf-dev build-essential btrfs-progs xfsprogs kmod cmake git
       shell: bash
 
-    - name: Build BPF object
-      run: make -C src/ -j$(nproc) external/libbpf-bootstrap
+    - name: Download and build libbpf-bootstrap
+      run: |
+        curl -so src/external/libbpf-bootstrap.tar.gz \
+          https://packages.wazuh.com/deps/52/libraries/sources/libbpf-bootstrap.tar.gz
+        (cd src/external && gunzip libbpf-bootstrap.tar.gz && tar xf libbpf-bootstrap.tar && rm libbpf-bootstrap.tar)
+        (cd src/external/libbpf-bootstrap && mkdir -p build && cd build && cmake -DWAZUH_BRANCH=${{ inputs.wazuh-branch }} .. && make -j$(nproc))
       shell: bash
 
     - name: Compile validation runner

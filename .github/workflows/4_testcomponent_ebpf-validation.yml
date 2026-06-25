@@ -5,7 +5,6 @@ on:
   pull_request:
     paths:
       - "src/syscheckd/src/ebpf/**"
-      - "src/external/libbpf-bootstrap/**"
       - ".github/workflows/4_testcomponent_ebpf-validation.yml"
       - ".github/actions/ebpf_validation/**"
       - "src/Makefile"
@@ -19,6 +18,8 @@ jobs:
         uses: actions/checkout@v6
       - name: Run eBPF Validation
         uses: ./.github/actions/ebpf_validation
+        with:
+          wazuh-branch: ${{ github.head_ref || github.ref_name }}
 
   ebpf-validation-arm64:
     name: eBPF Validation (arm64)
@@ -27,16 +28,19 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v6
       - name: Run eBPF Validation (arm64 via QEMU)
-        uses: uraimo/run-on-arch-action@v2
+        uses: uraimo/run-on-arch-action@v3
         with:
           arch: aarch64
           distro: ubuntu24.04
           githubToken: ${{ github.token }}
           install: |
             apt-get update
-            apt-get install -y clang llvm libelf-dev build-essential btrfs-progs xfsprogs kmod sudo
+            apt-get install -y clang llvm libelf-dev build-essential btrfs-progs xfsprogs kmod sudo cmake git curl
           run: |
-            make -C src/ -j$(nproc) external/libbpf-bootstrap
+            curl -so src/external/libbpf-bootstrap.tar.gz \
+              https://packages.wazuh.com/deps/52/libraries/sources/libbpf-bootstrap.tar.gz
+            (cd src/external && gunzip libbpf-bootstrap.tar.gz && tar xf libbpf-bootstrap.tar && rm libbpf-bootstrap.tar)
+            (cd src/external/libbpf-bootstrap && mkdir -p build && cd build && cmake -DWAZUH_BRANCH=${{ github.head_ref || github.ref_name }} .. && make -j$(nproc))
 
             SRC_DIR=src
             g++ -O2 -Wall -std=c++17 \
