@@ -87,6 +87,8 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
 
 void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value)
 {
+    // Keystore methods are static so there is no instance to cache the LogFn on.
+    // Each call builds a fresh one — acceptable because put/get are low-frequency operations.
     const auto logFn = makeLibLogFn("keystore");
     std::vector<char> encryptedValue;
 

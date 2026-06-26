@@ -77,9 +77,9 @@ public:
             [responseSocketClient, logFn = m_logFn](const ResponseMessage& data)
             {
                 LOG_DEBUG2(logFn,
-                          "ResponseDispatcher: Sending response to agent '%s', module '%s'",
-                          data.agentId.c_str(),
-                          data.moduleName.c_str());
+                           "ResponseDispatcher: Sending response to agent '%s', module '%s'",
+                           data.agentId.c_str(),
+                           data.moduleName.c_str());
 
                 // Send via ARQUEUE for all agents
                 thread_local std::vector<uint8_t> messageVector;

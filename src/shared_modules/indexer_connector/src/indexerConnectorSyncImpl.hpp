@@ -380,10 +380,10 @@ class IndexerConnectorSyncImpl final
                 if (const size_t currentOperations = m_boundaries.size(); currentOperations <= 1)
                 {
                     LOG_ERROR(m_logFn,
-                             "Unable to send data even with single operation. "
-                             "Consider increasing http.max_content_length in OpenSearch settings. "
-                             "Current data size: %zu bytes.",
-                             m_bulkData.size());
+                              "Unable to send data even with single operation. "
+                              "Consider increasing http.max_content_length in OpenSearch settings. "
+                              "Current data size: %zu bytes.",
+                              m_bulkData.size());
                     m_bulkData.clear();
                     m_boundaries.clear();
                     throw IndexerConnectorException("Single operation exceeds server payload limits");
@@ -393,8 +393,8 @@ class IndexerConnectorSyncImpl final
             else if (statusCode == HTTP_VERSION_CONFLICT)
             {
                 LOG_WARN(m_logFn,
-                        "Bulk request returned 409 version conflict at request level. Document-level conflicts are "
-                        "handled by validateBulkResponse().");
+                         "Bulk request returned 409 version conflict at request level. Document-level conflicts are "
+                         "handled by validateBulkResponse().");
                 m_bulkData.clear();
                 m_boundaries.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
@@ -556,8 +556,8 @@ class IndexerConnectorSyncImpl final
             else if (statusCode == HTTP_VERSION_CONFLICT)
             {
                 LOG_WARN(m_logFn,
-                        "Bulk chunk returned 409 version conflict at request level. Document-level conflicts are "
-                        "handled by validateBulkResponse().");
+                         "Bulk chunk returned 409 version conflict at request level. Document-level conflicts are "
+                         "handled by validateBulkResponse().");
                 throw IndexerConnectorException("Bulk version conflict at request level");
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
@@ -615,8 +615,7 @@ public:
         : m_logFn {}
         , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
     {
-        Log::setModuleLogFn(LogFn{callerName});
-        m_logFn = makeLibLogFn("indexer-connector");
+        m_logFn = LogFn {callerName}.compose("indexer-connector");
 
         if (logFunction)
         {
@@ -753,9 +752,9 @@ public:
         if (!isSafeIndexName(index))
         {
             LOG_WARN(m_logFn,
-                    "Refusing deleteByQuery for unsafe index name '%s' (empty or contains characters outside "
-                    "[a-zA-Z0-9._*-]).",
-                    index.c_str());
+                     "Refusing deleteByQuery for unsafe index name '%s' (empty or contains characters outside "
+                     "[a-zA-Z0-9._*-]).",
+                     index.c_str());
             throw IndexerConnectorException("Unsafe index name");
         }
 
@@ -790,9 +789,9 @@ public:
             if (!isSafeIndexName(idx))
             {
                 LOG_WARN(m_logFn,
-                        "Skipping index '%s' for update by query: empty or contains characters outside "
-                        "[a-zA-Z0-9._*-].",
-                        idx.c_str());
+                         "Skipping index '%s' for update by query: empty or contains characters outside "
+                         "[a-zA-Z0-9._*-].",
+                         idx.c_str());
                 continue;
             }
 
@@ -806,8 +805,8 @@ public:
         if (indexList.empty())
         {
             LOG_WARN(m_logFn,
-                    "Update by query skipped: no valid indices after filtering (input had %zu entries)",
-                    indices.size());
+                     "Update by query skipped: no valid indices after filtering (input had %zu entries)",
+                     indices.size());
             // No HTTP request needed, but pending notify callbacks (e.g. unlockAgent +
             // sendEndAck) must still fire so the session terminates cleanly. Treat the
             // missing/filtered indices as a no-op success.
@@ -850,20 +849,20 @@ public:
                     if (updated > 0)
                     {
                         LOG_INFO(m_logFn,
-                                "Update by query completed: %d documents updated out of %d total (%d unchanged, %zu "
-                                "failures)",
-                                updated,
-                                total,
-                                noops,
-                                failures);
+                                 "Update by query completed: %d documents updated out of %d total (%d unchanged, %zu "
+                                 "failures)",
+                                 updated,
+                                 total,
+                                 noops,
+                                 failures);
                     }
                     else
                     {
                         LOG_DEBUG2(m_logFn,
-                                  "Update by query completed: no documents needed updating (all %d documents already "
-                                  "up-to-date, %zu failures)",
-                                  total,
-                                  failures);
+                                   "Update by query completed: no documents needed updating (all %d documents already "
+                                   "up-to-date, %zu failures)",
+                                   total,
+                                   failures);
                     }
                 }
             }
@@ -881,8 +880,8 @@ public:
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
                 LOG_WARN(m_logFn,
-                        "Update by query returned 409 version conflict. This indicates documents were modified by "
-                        "another process.");
+                         "Update by query returned 409 version conflict. This indicates documents were modified by "
+                         "another process.");
                 m_notify.clear();
                 throw IndexerConnectorException("Update by query version conflict");
             }
@@ -1024,8 +1023,8 @@ public:
             else
             {
                 LOG_DEBUG2(m_logFn,
-                          "Pagination loop finished: Last hit has no 'sort' field, it is not an array, or it is "
-                          "empty.");
+                           "Pagination loop finished: Last hit has no 'sort' field, it is not an array, or it is "
+                           "empty.");
                 break;
             }
         }
@@ -1102,10 +1101,8 @@ public:
                 creationTime = jsonResponse["creation_time"].get<uint64_t>();
                 success = true;
 
-                LOG_DEBUG2(m_logFn,
-                          "PIT created successfully. PIT ID: %s, Creation time: %lu",
-                          pitId.c_str(),
-                          creationTime);
+                LOG_DEBUG2(
+                    m_logFn, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
             }
             catch (const std::exception& e)
             {
@@ -1252,12 +1249,12 @@ public:
         if (!isSafeIndexName(index))
         {
             LOG_ERROR(m_logFn,
-                     "Refusing bulkDelete for unsafe index name '%.*s' (empty or contains characters outside "
-                     "[a-zA-Z0-9._*-]) on document '%.*s'",
-                     static_cast<int>(index.size()),
-                     index.data(),
-                     static_cast<int>(id.size()),
-                     id.data());
+                      "Refusing bulkDelete for unsafe index name '%.*s' (empty or contains characters outside "
+                      "[a-zA-Z0-9._*-]) on document '%.*s'",
+                      static_cast<int>(index.size()),
+                      index.data(),
+                      static_cast<int>(id.size()),
+                      id.data());
             throw IndexerConnectorException("Unsafe index name");
         }
 
@@ -1290,23 +1287,23 @@ public:
         if (!isSafeIndexName(index))
         {
             LOG_ERROR(m_logFn,
-                     "Refusing bulkIndex for unsafe index name '%.*s' (empty or contains characters outside "
-                     "[a-zA-Z0-9._*-]) on document '%.*s'",
-                     static_cast<int>(index.size()),
-                     index.data(),
-                     static_cast<int>(id.size()),
-                     id.data());
+                      "Refusing bulkIndex for unsafe index name '%.*s' (empty or contains characters outside "
+                      "[a-zA-Z0-9._*-]) on document '%.*s'",
+                      static_cast<int>(index.size()),
+                      index.data(),
+                      static_cast<int>(id.size()),
+                      id.data());
             throw IndexerConnectorException("Unsafe index name");
         }
 
         if (data.empty())
         {
             LOG_WARN(m_logFn,
-                    "Empty data provided for document %.*s in index %.*s",
-                    static_cast<int>(id.size()),
-                    id.data(),
-                    static_cast<int>(index.size()),
-                    index.data());
+                     "Empty data provided for document %.*s in index %.*s",
+                     static_cast<int>(id.size()),
+                     id.data(),
+                     static_cast<int>(index.size()),
+                     index.data());
         }
 
         const auto totalSize =
@@ -1337,11 +1334,11 @@ public:
             m_bulkData.append(version);
             m_bulkData.append(R"(","version_type":"external_gte)");
             LOG_DEBUG2(m_logFn,
-                      "Using external version %.*s for document %.*s",
-                      static_cast<int>(version.size()),
-                      version.data(),
-                      static_cast<int>(id.size()),
-                      id.data());
+                       "Using external version %.*s for document %.*s",
+                       static_cast<int>(version.size()),
+                       version.data(),
+                       static_cast<int>(id.size()),
+                       id.data());
         }
         else
         {
@@ -1351,9 +1348,9 @@ public:
                 appendEscapedId(m_bulkData, id);
             }
             LOG_DEBUG2(m_logFn,
-                      "No version specified for document %.*s, using default versioning",
-                      static_cast<int>(id.size()),
-                      id.data());
+                       "No version specified for document %.*s, using default versioning",
+                       static_cast<int>(id.size()),
+                       id.data());
         }
         m_bulkData.append(R"("}})");
         m_bulkData.append("\n");

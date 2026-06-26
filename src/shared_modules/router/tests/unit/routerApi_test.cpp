@@ -807,7 +807,7 @@ TEST_F(RouterAPITest, TestProviderSendSyncLeadingZeros)
 
 TEST_F(RouterAPITest, TestProviderSendSyncClusterNameMatch)
 {
-    router_initialize(NULL);
+    router_initialize(NULL, "test");
 
     const char* providerName = "inventory-sync";
     ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
@@ -827,7 +827,7 @@ TEST_F(RouterAPITest, TestProviderSendSyncClusterNameMatch)
 
 TEST_F(RouterAPITest, TestProviderSendSyncClusterNameSpoofing)
 {
-    router_initialize(NULL);
+    router_initialize(NULL, "test");
 
     const char* providerName = "inventory-sync";
     ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
@@ -847,7 +847,7 @@ TEST_F(RouterAPITest, TestProviderSendSyncClusterNameSpoofing)
 
 TEST_F(RouterAPITest, TestProviderSendSyncEmptyClusterName)
 {
-    router_initialize(NULL);
+    router_initialize(NULL, "test");
 
     const char* providerName = "inventory-sync";
     ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);

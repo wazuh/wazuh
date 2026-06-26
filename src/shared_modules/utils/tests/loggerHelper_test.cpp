@@ -149,3 +149,94 @@ TEST_F(LoggerHelperTest, simpleWarningFormattedTest)
     logWarn(TAG, "%s", "Testing Warning log");
     EXPECT_TRUE(std::regex_match(ssOutput.str(), std::regex(WARNING_REGEX)));
 }
+
+TEST_F(LogFnTest, ComposeSimpleTag)
+{
+    EXPECT_EQ(LogFn {"proc"}.compose("rocksdb").m_tag, "proc(rocksdb)");
+}
+
+TEST_F(LogFnTest, ComposeReplacesExistingLibPart)
+{
+    EXPECT_EQ(LogFn {"proc(keystore)"}.compose("rocksdb").m_tag, "proc(rocksdb)");
+}
+
+TEST_F(LogFnTest, ComposeTagWithColonAndExistingLib)
+{
+    EXPECT_EQ(LogFn {"proc:mod(oldlib)"}.compose("newlib").m_tag, "proc:mod(newlib)");
+}
+
+TEST_F(LogFnTest, ComposeFullModuleTag)
+{
+    EXPECT_EQ(LogFn {"wazuh-manager-modulesd:inventory-sync"}.compose("rocksdb").m_tag,
+              "wazuh-manager-modulesd:inventory-sync(rocksdb)");
+}
+
+TEST_F(LogFnTest, ComposeEmptyBaseReturnsComponent)
+{
+    EXPECT_EQ(LogFn {""}.compose("rocksdb").m_tag, "rocksdb");
+}
+
+TEST_F(LogFnTest, ComposeDefaultTagUsesLoggerHelper)
+{
+    EXPECT_EQ(LogFn {}.compose("rocksdb").m_tag, std::string(LOGGER_DEFAULT_TAG) + "(rocksdb)");
+}
+
+TEST_F(LogFnTest, MakeLibLogFnWithModuleSet)
+{
+    Log::setModuleLogFn(LogFn {"my-module"});
+    EXPECT_EQ(makeLibLogFn("rocksdb").m_tag, "my-module(rocksdb)");
+}
+
+TEST_F(LogFnTest, MakeLibLogFnDefaultFallback)
+{
+    EXPECT_EQ(makeLibLogFn("rocksdb").m_tag, std::string(LOGGER_DEFAULT_TAG) + "(rocksdb)");
+}
+
+TEST_F(LogFnTest, MakeLibLogFnEmptyModuleTag)
+{
+    Log::setModuleLogFn(LogFn {""});
+    EXPECT_EQ(makeLibLogFn("rocksdb").m_tag, "rocksdb");
+}
+
+TEST_F(LogFnTest, MakeLibLogFnReplacesExistingLib)
+{
+    Log::setModuleLogFn(LogFn {"proc(oldlib)"});
+    EXPECT_EQ(makeLibLogFn("newlib").m_tag, "proc(newlib)");
+}
+
+TEST_F(LogFnTest, ThreadLocalStartsWithDefault)
+{
+    std::string workerTag;
+    std::thread t([&workerTag]() { workerTag = Log::currentModuleLogFn().m_tag; });
+    t.join();
+    EXPECT_EQ(workerTag, LOGGER_DEFAULT_TAG);
+}
+
+TEST_F(LogFnTest, ThreadLocalDoesNotPropagateToSpawnedThread)
+{
+    Log::setModuleLogFn(LogFn {"main-thread"});
+
+    std::string workerTag;
+    std::thread t([&workerTag]() { workerTag = Log::currentModuleLogFn().m_tag; });
+    t.join();
+
+    EXPECT_EQ(Log::currentModuleLogFn().m_tag, "main-thread");
+    EXPECT_EQ(workerTag, LOGGER_DEFAULT_TAG);
+}
+
+TEST_F(LogFnTest, ThreadLocalIsIndependentPerThread)
+{
+    Log::setModuleLogFn(LogFn {"main-thread"});
+
+    std::string workerResult;
+    std::thread t(
+        [&workerResult]()
+        {
+            Log::setModuleLogFn(LogFn {"worker-thread"});
+            workerResult = makeLibLogFn("rocksdb").m_tag;
+        });
+    t.join();
+
+    EXPECT_EQ(workerResult, "worker-thread(rocksdb)");
+    EXPECT_EQ(makeLibLogFn("rocksdb").m_tag, "main-thread(rocksdb)");
+}

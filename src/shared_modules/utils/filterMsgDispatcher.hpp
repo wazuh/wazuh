@@ -39,7 +39,8 @@ namespace Utils
             // clang-format off
             : ThreadType {std::bind(&DispatcherType::dispatch, this, std::placeholders::_1),
                           threadPoolSize,
-                          maxQueueSize} // clang-format on
+                          maxQueueSize}
+            // clang-format on
             , m_callback {callback}
             , m_filterCallback {filterCallback}
         {

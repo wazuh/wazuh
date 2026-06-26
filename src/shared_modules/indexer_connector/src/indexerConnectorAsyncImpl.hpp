@@ -141,8 +141,7 @@ public:
         , m_dbPath((std::filesystem::path(std::move(basePath)) / m_queueId).string())
         , m_logFn {}
     {
-        Log::setModuleLogFn(LogFn{callerName});
-        m_logFn = makeLibLogFn("indexer-connector");
+        m_logFn = LogFn {callerName}.compose("indexer-connector");
 
         if (m_queueId.empty())
         {
@@ -277,9 +276,9 @@ public:
                 if (data.m_boundaries.size() != itemsSize)
                 {
                     LOG_WARN(m_logFn,
-                            "Mismatch between the number of events (%zu) and response items (%zu)",
-                            data.m_boundaries.size(),
-                            itemsSize);
+                             "Mismatch between the number of events (%zu) and response items (%zu)",
+                             data.m_boundaries.size(),
+                             itemsSize);
                     return;
                 }
 
@@ -362,29 +361,29 @@ public:
                     if (!causedByReason.empty() && !causedByType.empty())
                     {
                         LOG_WARN(m_logFn,
-                                "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
-                                "Associated event: %.*s",
-                                static_cast<int>(errorType.size()),
-                                errorType.data(),
-                                static_cast<int>(errorReason.size()),
-                                errorReason.data(),
-                                static_cast<int>(causedByType.size()),
-                                causedByType.data(),
-                                static_cast<int>(causedByReason.size()),
-                                causedByReason.data(),
-                                static_cast<int>(payload.size()),
-                                payload.data());
+                                 "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
+                                 "Associated event: %.*s",
+                                 static_cast<int>(errorType.size()),
+                                 errorType.data(),
+                                 static_cast<int>(errorReason.size()),
+                                 errorReason.data(),
+                                 static_cast<int>(causedByType.size()),
+                                 causedByType.data(),
+                                 static_cast<int>(causedByReason.size()),
+                                 causedByReason.data(),
+                                 static_cast<int>(payload.size()),
+                                 payload.data());
                     }
                     else
                     {
                         LOG_WARN(m_logFn,
-                                "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
-                                static_cast<int>(errorType.size()),
-                                errorType.data(),
-                                static_cast<int>(errorReason.size()),
-                                errorReason.data(),
-                                static_cast<int>(payload.size()),
-                                payload.data());
+                                 "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                 static_cast<int>(errorType.size()),
+                                 errorType.data(),
+                                 static_cast<int>(errorReason.size()),
+                                 errorReason.data(),
+                                 static_cast<int>(payload.size()),
+                                 payload.data());
                     }
 
                     ++itemIndex;
@@ -444,10 +443,10 @@ public:
                         if (const size_t currentOperations = bulkData.size(); currentOperations <= 1)
                         {
                             LOG_ERROR(m_logFn,
-                                     "Unable to send data even with single operation. "
-                                     "Consider increasing http.max_content_length in OpenSearch settings. "
-                                     "Current data size: %zu bytes.",
-                                     bulkData.size());
+                                      "Unable to send data even with single operation. "
+                                      "Consider increasing http.max_content_length in OpenSearch settings. "
+                                      "Current data size: %zu bytes.",
+                                      bulkData.size());
                         }
                         else
                         {
@@ -460,10 +459,10 @@ public:
                                 {
                                     m_error413Logged = true;
                                     LOG_ERROR(m_logFn,
-                                             "The amount of elements to process is too small, review the "
-                                             "'http.max_content_length' value in "
-                                             "the wazuh-indexer settings. Current data size: %llu.",
-                                             bulkData.size());
+                                              "The amount of elements to process is too small, review the "
+                                              "'http.max_content_length' value in "
+                                              "the wazuh-indexer settings. Current data size: %llu.",
+                                              bulkData.size());
                                 }
 
                                 throw IndexerConnectorException(
@@ -473,9 +472,8 @@ public:
                             }
                             else
                             {
-                                LOG_DEBUG2(m_logFn,
-                                          "Reducing the elements to be sent to the indexer: %llu.",
-                                          bulkSize / 2);
+                                LOG_DEBUG2(
+                                    m_logFn, "Reducing the elements to be sent to the indexer: %llu.", bulkSize / 2);
                                 this->m_dispatcher->bulkSize(bulkSize / 2);
                                 m_successCount = 0;
                                 throw IndexerConnectorException(
@@ -532,21 +530,18 @@ public:
         // Validate input parameters
         if (index.empty())
         {
-            LOG_ERROR(m_logFn,
-                     "Index name cannot be empty for document: %.*s",
-                     static_cast<int>(id.size()),
-                     id.data());
+            LOG_ERROR(m_logFn, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
             throw IndexerConnectorException("Index name cannot be empty");
         }
 
         if (data.empty())
         {
             LOG_WARN(m_logFn,
-                    "Empty data provided for document %.*s in index %.*s",
-                    static_cast<int>(id.size()),
-                    id.data(),
-                    static_cast<int>(index.size()),
-                    index.data());
+                     "Empty data provided for document %.*s in index %.*s",
+                     static_cast<int>(id.size()),
+                     id.data(),
+                     static_cast<int>(index.size()),
+                     index.data());
         }
 
         std::string bulkData;
@@ -572,11 +567,11 @@ public:
             bulkData.append(version);
             bulkData.append(R"(","version_type":"external_gte)");
             LOG_DEBUG2(m_logFn,
-                      "Using external version %.*s for document %.*s",
-                      static_cast<int>(version.size()),
-                      version.data(),
-                      static_cast<int>(id.size()),
-                      id.data());
+                       "Using external version %.*s for document %.*s",
+                       static_cast<int>(version.size()),
+                       version.data(),
+                       static_cast<int>(id.size()),
+                       id.data());
         }
         else
         {
@@ -586,9 +581,9 @@ public:
                 appendEscapedId(bulkData, id);
             }
             LOG_DEBUG2(m_logFn,
-                      "No version specified for document %.*s, using default versioning",
-                      static_cast<int>(id.size()),
-                      id.data());
+                       "No version specified for document %.*s, using default versioning",
+                       static_cast<int>(id.size()),
+                       id.data());
         }
         bulkData.append(R"("}})");
         bulkData.append("\n");
@@ -719,10 +714,8 @@ public:
                 creationTime = jsonResponse["creation_time"].get<uint64_t>();
                 success = true;
 
-                LOG_DEBUG2(m_logFn,
-                          "PIT created successfully. PIT ID: %s, Creation time: %lu",
-                          pitId.c_str(),
-                          creationTime);
+                LOG_DEBUG2(
+                    m_logFn, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
             }
             catch (const std::exception& e)
             {

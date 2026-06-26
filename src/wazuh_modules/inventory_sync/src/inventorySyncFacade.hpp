@@ -136,16 +136,13 @@ class InventorySyncFacadeImpl final
             std::shared_lock lock(m_agentSessionsMutex);
             if (auto it = m_agentSessions.find(data->session()); it == m_agentSessions.end())
             {
-                LOG_DEBUG2(m_logFn,
-                          "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                          data->session());
+                LOG_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", data->session());
             }
             else
             {
                 // Handle data - pass the raw flatbuffer bytes directly
                 it->second.handleData(data, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
-                LOG_DEBUG2(
-                    m_logFn, "InventorySyncFacade::start: Data handled for session %llu", data->session());
+                LOG_DEBUG2(m_logFn, "InventorySyncFacade::start: Data handled for session %llu", data->session());
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataClean)
@@ -161,16 +158,15 @@ class InventorySyncFacadeImpl final
             if (auto it = m_agentSessions.find(dataClean->session()); it == m_agentSessions.end())
             {
                 LOG_DEBUG2(m_logFn,
-                          "InventorySyncFacade::start: Session not found for DataClean, sessionId: %llu",
-                          dataClean->session());
+                           "InventorySyncFacade::start: Session not found for DataClean, sessionId: %llu",
+                           dataClean->session());
             }
             else
             {
                 // Handle DataClean - stores index and tracks seq number
                 it->second.handleDataClean(dataClean);
-                LOG_DEBUG2(m_logFn,
-                          "InventorySyncFacade::start: DataClean handled for session %llu",
-                          dataClean->session());
+                LOG_DEBUG2(
+                    m_logFn, "InventorySyncFacade::start: DataClean handled for session %llu", dataClean->session());
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataContext)
@@ -186,8 +182,8 @@ class InventorySyncFacadeImpl final
             if (auto it = m_agentSessions.find(dataContext->session()); it == m_agentSessions.end())
             {
                 LOG_DEBUG2(m_logFn,
-                          "InventorySyncFacade::start: Session not found for DataContext, sessionId: %llu",
-                          dataContext->session());
+                           "InventorySyncFacade::start: Session not found for DataContext, sessionId: %llu",
+                           dataContext->session());
             }
             else
             {
@@ -195,8 +191,8 @@ class InventorySyncFacadeImpl final
                 it->second.handleDataContext(
                     dataContext, reinterpret_cast<const uint8_t*>(dataRaw.data()), dataRaw.size());
                 LOG_DEBUG2(m_logFn,
-                          "InventorySyncFacade::start: DataContext handled for session %llu",
-                          dataContext->session());
+                           "InventorySyncFacade::start: DataContext handled for session %llu",
+                           dataContext->session());
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_DataBatch)
@@ -208,8 +204,8 @@ class InventorySyncFacadeImpl final
             }
 
             LOG_DEBUG2(m_logFn,
-                      "InventorySyncFacade::start: Received DataBatch with %zu DataValues.",
-                      dataBatch->values()->size());
+                       "InventorySyncFacade::start: Received DataBatch with %zu DataValues.",
+                       dataBatch->values()->size());
 
             std::shared_lock lock(m_agentSessionsMutex);
             for (const auto* dataValue : *dataBatch->values())
@@ -222,8 +218,8 @@ class InventorySyncFacadeImpl final
                 if (auto it = m_agentSessions.find(dataValue->session()); it == m_agentSessions.end())
                 {
                     LOG_DEBUG2(m_logFn,
-                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                              dataValue->session());
+                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                               dataValue->session());
                 }
                 else
                 {
@@ -256,16 +252,16 @@ class InventorySyncFacadeImpl final
 
                         it->second.handleData(dataValue, dvBuilder.GetBufferPointer(), dvBuilder.GetSize());
                         LOG_DEBUG2(m_logFn,
-                                  "InventorySyncFacade::start: DataBatch item handled for session %llu",
-                                  dataValue->session());
+                                   "InventorySyncFacade::start: DataBatch item handled for session %llu",
+                                   dataValue->session());
                     }
                     catch (const std::exception& e)
                     {
                         LOG_ERROR(m_logFn,
-                                 "InventorySyncFacade::start: DataBatch item failed for session %llu, seq %llu: %s",
-                                 dataValue->session(),
-                                 dataValue->seq(),
-                                 e.what());
+                                  "InventorySyncFacade::start: DataBatch item failed for session %llu, seq %llu: %s",
+                                  dataValue->session(),
+                                  dataValue->seq(),
+                                  e.what());
                     }
                 }
             }
@@ -292,8 +288,8 @@ class InventorySyncFacadeImpl final
             if (isAgentLocked(agentIdStr, isVDModule))
             {
                 LOG_DEBUG2(m_logFn,
-                          "InventorySyncFacade::start: Agent %s is locked, rejecting new session",
-                          agentIdStr.c_str());
+                           "InventorySyncFacade::start: Agent %s is locked, rejecting new session",
+                           agentIdStr.c_str());
                 m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Error, agentId, -1, moduleName);
             }
             else if (!m_indexerConnector->isAvailable())
@@ -313,11 +309,11 @@ class InventorySyncFacadeImpl final
                 if (m_agentSessions.size() >= static_cast<size_t>(m_maxSessions))
                 {
                     LOG_WARN(m_logFn,
-                            "InventorySyncFacade::start: Session limit reached (%zu/%d active sessions). "
-                            "Rejecting new session for agent %s - agent will retry later",
-                            m_agentSessions.size(),
-                            m_maxSessions,
-                            std::string(agentId).c_str());
+                             "InventorySyncFacade::start: Session limit reached (%zu/%d active sessions). "
+                             "Rejecting new session for agent %s - agent will retry later",
+                             m_agentSessions.size(),
+                             m_maxSessions,
+                             std::string(agentId).c_str());
                     m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
                 }
                 else
@@ -338,11 +334,11 @@ class InventorySyncFacadeImpl final
                     if (!admitted)
                     {
                         LOG_WARN(m_logFn,
-                                "InventorySyncFacade::start: DataValue quota exhausted "
-                                "(requested=%llu, remaining=%llu); rejecting session for agent %s",
-                                static_cast<unsigned long long>(requestedSize),
-                                static_cast<unsigned long long>(remaining),
-                                std::string(agentId).c_str());
+                                 "InventorySyncFacade::start: DataValue quota exhausted "
+                                 "(requested=%llu, remaining=%llu); rejecting session for agent %s",
+                                 static_cast<unsigned long long>(requestedSize),
+                                 static_cast<unsigned long long>(remaining),
+                                 std::string(agentId).c_str());
                         m_responseDispatcher->sendStartAck(Wazuh::SyncSchema::Status_Offline, agentId, -1, moduleName);
                     }
                     else
@@ -368,7 +364,8 @@ class InventorySyncFacadeImpl final
                                                         startMsg,
                                                         *m_dataStore,
                                                         *m_indexerQueue,
-                                                        *m_responseDispatcher);
+                                                        *m_responseDispatcher,
+                                                        m_logFn);
                         }
                         catch (...)
                         {
@@ -394,16 +391,16 @@ class InventorySyncFacadeImpl final
             if (auto it = m_agentSessions.find(checksumModule->session()); it == m_agentSessions.end())
             {
                 LOG_DEBUG2(m_logFn,
-                          "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                          checksumModule->session());
+                           "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                           checksumModule->session());
             }
             else
             {
                 // Handle checksum module.
                 it->second.handleChecksumModule(checksumModule);
                 LOG_DEBUG2(m_logFn,
-                          "InventorySyncFacade::start: ChecksumModule handled for session %llu",
-                          checksumModule->session());
+                           "InventorySyncFacade::start: ChecksumModule handled for session %llu",
+                           checksumModule->session());
             }
         }
         else if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_End)
@@ -418,8 +415,7 @@ class InventorySyncFacadeImpl final
             std::shared_lock lock(m_agentSessionsMutex);
             if (auto it = m_agentSessions.find(end->session()); it == m_agentSessions.end())
             {
-                LOG_DEBUG2(
-                    m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", end->session());
+                LOG_DEBUG2(m_logFn, "InventorySyncFacade::start: Session not found, sessionId: %llu", end->session());
             }
             else
             {
@@ -441,8 +437,7 @@ class InventorySyncFacadeImpl final
         constexpr size_t BATCH_SIZE = 1000;
         size_t totalDocs = 0;
 
-        LOG_DEBUG2(
-            m_logFn, "Querying indexer for checksums: agent=%s, index=%s", agentId.c_str(), index.c_str());
+        LOG_DEBUG2(m_logFn, "Querying indexer for checksums: agent=%s, index=%s", agentId.c_str(), index.c_str());
 
         while (true)
         {
@@ -598,7 +593,7 @@ public:
           const nlohmann::json& configuration)
     {
         Log::assignLogFunction(logFunction);
-        Log::setModuleLogFn(LogFn{WM_INVENTORY_SYNC_LOGTAG});
+        Log::setModuleLogFn(LogFn {WM_INVENTORY_SYNC_LOGTAG});
 
         std::error_code errorCodeFS;
         std::filesystem::remove_all(INVENTORY_SYNC_PATH, errorCodeFS);
@@ -653,9 +648,9 @@ public:
                                             std::memory_order_relaxed);
         }
         LOG_DEBUG1(m_logFn,
-                  "InventorySync queue size: %zu, DataValue quota: %llu",
-                  m_workersQueueSize,
-                  static_cast<unsigned long long>(m_dataValueQuotaRemaining.load()));
+                   "InventorySync queue size: %zu, DataValue quota: %llu",
+                   m_workersQueueSize,
+                   static_cast<unsigned long long>(m_dataValueQuotaRemaining.load()));
 
         LOG_DEBUG2(m_logFn, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
 
@@ -707,8 +702,8 @@ public:
                     if (shouldLogThrottled(m_lastQueueDropLogNs))
                     {
                         LOG_WARN(m_logFn,
-                                "InventorySyncFacade: workers queue full (max=%zu); dropping inbound message",
-                                m_workersQueueSize);
+                                 "InventorySyncFacade: workers queue full (max=%zu); dropping inbound message",
+                                 m_workersQueueSize);
                     }
                 }
             });
@@ -722,8 +717,8 @@ public:
                     if (m_agentSessions.find(res.context->sessionId) == m_agentSessions.end())
                     {
                         LOG_WARN(m_logFn,
-                                "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                res.context->sessionId);
+                                 "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                 res.context->sessionId);
                         return;
                     }
                 }
@@ -767,10 +762,10 @@ public:
                             size_t cleanedCount = cleanupZombieSessions(res.context->agentId, res.context->sessionId);
 
                             LOG_INFO(m_logFn,
-                                    "Cleaned up %zu zombie session(s) for agent %s - proceeding with metadata/groups "
-                                    "update",
-                                    cleanedCount,
-                                    res.context->agentId.c_str());
+                                     "Cleaned up %zu zombie session(s) for agent %s - proceeding with metadata/groups "
+                                     "update",
+                                     cleanedCount,
+                                     res.context->agentId.c_str());
                         }
 
                         // All sessions completed (or zombies cleaned) - safe to proceed with metadata/groups update
@@ -782,8 +777,8 @@ public:
                     if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataDelta)
                     {
                         LOG_DEBUG2(m_logFn,
-                                  "InventorySyncFacade::start: Updating agent metadata for agent %s...",
-                                  res.context->agentId.c_str());
+                                   "InventorySyncFacade::start: Updating agent metadata for agent %s...",
+                                   res.context->agentId.c_str());
 
                         // Register notify callback BEFORE starting async operation to avoid race condition
                         m_indexerConnector->registerNotify(
@@ -800,8 +795,8 @@ public:
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     LOG_DEBUG2(m_logFn,
-                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                              ctx->sessionId);
+                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                               ctx->sessionId);
                                 }
                             });
 
@@ -825,8 +820,8 @@ public:
                     else if (res.context->mode == Wazuh::SyncSchema::Mode_GroupDelta)
                     {
                         LOG_DEBUG2(m_logFn,
-                                  "InventorySyncFacade::start: Updating agent groups for agent %s...",
-                                  res.context->agentId.c_str());
+                                   "InventorySyncFacade::start: Updating agent groups for agent %s...",
+                                   res.context->agentId.c_str());
 
                         // Register notify callback BEFORE starting async operation to avoid race condition
                         m_indexerConnector->registerNotify(
@@ -843,8 +838,8 @@ public:
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     LOG_DEBUG2(m_logFn,
-                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                              ctx->sessionId);
+                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                               ctx->sessionId);
                                 }
                             });
 
@@ -859,8 +854,8 @@ public:
                     else if (res.context->mode == Wazuh::SyncSchema::Mode_MetadataCheck)
                     {
                         LOG_DEBUG2(m_logFn,
-                                  "InventorySyncFacade::start: Disaster recovery - checking metadata for agent %s...",
-                                  res.context->agentId.c_str());
+                                   "InventorySyncFacade::start: Disaster recovery - checking metadata for agent %s...",
+                                   res.context->agentId.c_str());
 
                         // Register notify callback BEFORE starting async operation to avoid race condition
                         m_indexerConnector->registerNotify(
@@ -877,8 +872,8 @@ public:
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     LOG_DEBUG2(m_logFn,
-                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                              ctx->sessionId);
+                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                               ctx->sessionId);
                                 }
                             });
 
@@ -896,10 +891,10 @@ public:
                         InventorySyncQueryBuilder::addClusterScope(metadataCheckQuery, m_clusterName);
 
                         LOG_INFO(m_logFn,
-                                "Disaster recovery: Checking and recovering metadata inconsistencies for agent %s "
-                                "across %zu indices",
-                                res.context->agentId.c_str(),
-                                res.context->indices.size());
+                                 "Disaster recovery: Checking and recovering metadata inconsistencies for agent %s "
+                                 "across %zu indices",
+                                 res.context->agentId.c_str(),
+                                 res.context->indices.size());
 
                         // Execute the metadata check update
                         m_indexerConnector->executeUpdateByQuery(res.context->indices, metadataCheckQuery);
@@ -907,8 +902,8 @@ public:
                     else if (res.context->mode == Wazuh::SyncSchema::Mode_GroupCheck)
                     {
                         LOG_DEBUG2(m_logFn,
-                                  "InventorySyncFacade::start: Disaster recovery - checking groups for agent %s...",
-                                  res.context->agentId.c_str());
+                                   "InventorySyncFacade::start: Disaster recovery - checking groups for agent %s...",
+                                   res.context->agentId.c_str());
 
                         // Register notify callback BEFORE starting async operation to avoid race condition
                         m_indexerConnector->registerNotify(
@@ -925,8 +920,8 @@ public:
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
                                     LOG_DEBUG2(m_logFn,
-                                              "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                              ctx->sessionId);
+                                               "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                               ctx->sessionId);
                                 }
                             });
 
@@ -935,11 +930,12 @@ public:
                             InventorySyncQueryBuilder::buildGroupsCheckQuery(res.context->agentId, res.context->groups);
                         InventorySyncQueryBuilder::addClusterScope(groupsCheckQuery, m_clusterName);
 
-                        LOG_INFO(m_logFn,
-                                "Disaster recovery: Checking and recovering groups inconsistencies for agent %s across "
-                                "%zu indices",
-                                res.context->agentId.c_str(),
-                                res.context->indices.size());
+                        LOG_INFO(
+                            m_logFn,
+                            "Disaster recovery: Checking and recovering groups inconsistencies for agent %s across "
+                            "%zu indices",
+                            res.context->agentId.c_str(),
+                            res.context->indices.size());
 
                         // Execute the groups check update
                         m_indexerConnector->executeUpdateByQuery(res.context->indices, groupsCheckQuery);
@@ -947,17 +943,17 @@ public:
                     else if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleCheck)
                     {
                         LOG_DEBUG2(m_logFn,
-                                  "InventorySyncFacade::start: Processing ModuleCheck for agent %s, module %s",
-                                  res.context->agentId.c_str(),
-                                  res.context->moduleName.c_str());
+                                   "InventorySyncFacade::start: Processing ModuleCheck for agent %s, module %s",
+                                   res.context->agentId.c_str(),
+                                   res.context->moduleName.c_str());
 
                         try
                         {
                             if (res.context->checksumIndex.empty())
                             {
                                 LOG_ERROR(m_logFn,
-                                         "ModuleCheck: No index specified for agent %s",
-                                         res.context->agentId.c_str());
+                                          "ModuleCheck: No index specified for agent %s",
+                                          res.context->agentId.c_str());
                                 m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                                  res.context->agentId,
                                                                  res.context->sessionId,
@@ -977,10 +973,10 @@ public:
                                     if (attempt > 0)
                                     {
                                         LOG_DEBUG2(m_logFn,
-                                                  "ModuleCheck: Retry attempt %d for agent %s after %ds delay",
-                                                  attempt,
-                                                  res.context->agentId.c_str(),
-                                                  RETRY_DELAY_SEC);
+                                                   "ModuleCheck: Retry attempt %d for agent %s after %ds delay",
+                                                   attempt,
+                                                   res.context->agentId.c_str(),
+                                                   RETRY_DELAY_SEC);
                                         std::this_thread::sleep_for(std::chrono::seconds(RETRY_DELAY_SEC));
                                     }
 
@@ -988,15 +984,15 @@ public:
                                         calculateChecksumOfChecksums(res.context->checksumIndex, res.context->agentId);
 
                                     LOG_INFO(m_logFn,
-                                            "ModuleCheck (attempt %d/%d): agent=%s, module=%s, index=%s, "
-                                            "agent_checksum=%s, manager_checksum=%s",
-                                            attempt + 1,
-                                            MAX_RETRIES,
-                                            res.context->agentId.c_str(),
-                                            res.context->moduleName.c_str(),
-                                            res.context->checksumIndex.c_str(),
-                                            res.context->checksum.c_str(),
-                                            managerChecksum.c_str());
+                                             "ModuleCheck (attempt %d/%d): agent=%s, module=%s, index=%s, "
+                                             "agent_checksum=%s, manager_checksum=%s",
+                                             attempt + 1,
+                                             MAX_RETRIES,
+                                             res.context->agentId.c_str(),
+                                             res.context->moduleName.c_str(),
+                                             res.context->checksumIndex.c_str(),
+                                             res.context->checksum.c_str(),
+                                             managerChecksum.c_str());
 
                                     if (managerChecksum == res.context->checksum)
                                     {
@@ -1008,8 +1004,8 @@ public:
                                 if (checksumMatch)
                                 {
                                     LOG_INFO(m_logFn,
-                                            "ModuleCheck: Checksums match for agent %s - no full resync needed",
-                                            res.context->agentId.c_str());
+                                             "ModuleCheck: Checksums match for agent %s - no full resync needed",
+                                             res.context->agentId.c_str());
                                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok,
                                                                      res.context->agentId,
                                                                      res.context->sessionId,
@@ -1018,10 +1014,10 @@ public:
                                 else
                                 {
                                     LOG_INFO(m_logFn,
-                                            "ModuleCheck: Checksums DO NOT match for agent %s after %d attempts - "
-                                            "full resync required",
-                                            res.context->agentId.c_str(),
-                                            MAX_RETRIES);
+                                             "ModuleCheck: Checksums DO NOT match for agent %s after %d attempts - "
+                                             "full resync required",
+                                             res.context->agentId.c_str(),
+                                             MAX_RETRIES);
                                     m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
                                                                      res.context->agentId,
                                                                      res.context->sessionId,
@@ -1031,10 +1027,8 @@ public:
                         }
                         catch (const std::exception& e)
                         {
-                            LOG_ERROR(m_logFn,
-                                     "ModuleCheck failed for agent %s: %s",
-                                     res.context->agentId.c_str(),
-                                     e.what());
+                            LOG_ERROR(
+                                m_logFn, "ModuleCheck failed for agent %s: %s", res.context->agentId.c_str(), e.what());
                             m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                              res.context->agentId,
                                                              res.context->sessionId,
@@ -1044,8 +1038,8 @@ public:
                         if (eraseSession(res.context->sessionId) == 0)
                         {
                             LOG_DEBUG2(m_logFn,
-                                      "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                      res.context->sessionId);
+                                       "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                       res.context->sessionId);
                         }
                     }
                     else
@@ -1063,15 +1057,15 @@ public:
                         if (!res.context->dataCleanIndices.empty())
                         {
                             LOG_DEBUG2(m_logFn,
-                                      "InventorySyncFacade::start: Processing DataClean for %zu indices...",
-                                      res.context->dataCleanIndices.size());
+                                       "InventorySyncFacade::start: Processing DataClean for %zu indices...",
+                                       res.context->dataCleanIndices.size());
                             // Delete from each index specified in DataClean messages
                             for (const auto& index : res.context->dataCleanIndices)
                             {
                                 LOG_DEBUG2(m_logFn,
-                                          "InventorySyncFacade::start: Deleting data from index '%s' for agent %s",
-                                          index.c_str(),
-                                          res.context->agentId.c_str());
+                                           "InventorySyncFacade::start: Deleting data from index '%s' for agent %s",
+                                           index.c_str(),
+                                           res.context->agentId.c_str());
                                 try
                                 {
                                     m_indexerConnector->deleteByQuery(index, res.context->agentId, m_clusterName);
@@ -1080,11 +1074,11 @@ public:
                                 catch (const std::exception& e)
                                 {
                                     LOG_WARN(m_logFn,
-                                            "InventorySyncFacade::start: deleteByQuery rejected for index '%s' "
-                                            "(session %llu): %s",
-                                            index.c_str(),
-                                            res.context->sessionId,
-                                            e.what());
+                                             "InventorySyncFacade::start: deleteByQuery rejected for index '%s' "
+                                             "(session %llu): %s",
+                                             index.c_str(),
+                                             res.context->sessionId,
+                                             e.what());
                                 }
                             }
                         }
@@ -1093,8 +1087,8 @@ public:
                         if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
                         {
                             LOG_DEBUG2(m_logFn,
-                                      "InventorySyncFacade::start: Deleting by query for %zu indices...",
-                                      res.context->indices.size());
+                                       "InventorySyncFacade::start: Deleting by query for %zu indices...",
+                                       res.context->indices.size());
                             // Delete from all indices specified in the Start message
                             for (const auto& index : res.context->indices)
                             {
@@ -1106,11 +1100,11 @@ public:
                                 catch (const std::exception& e)
                                 {
                                     LOG_WARN(m_logFn,
-                                            "InventorySyncFacade::start: deleteByQuery rejected for index '%s' "
-                                            "(session %llu): %s",
-                                            index.c_str(),
-                                            res.context->sessionId,
-                                            e.what());
+                                             "InventorySyncFacade::start: deleteByQuery rejected for index '%s' "
+                                             "(session %llu): %s",
+                                             index.c_str(),
+                                             res.context->sessionId,
+                                             e.what());
                                 }
                             }
                         }
@@ -1126,9 +1120,8 @@ public:
                             // Skip DataContext entries - they are stored with "_context" suffix and not sent to indexer
                             if (key.ends_with("_context"))
                             {
-                                LOG_DEBUG2(m_logFn,
-                                          "InventorySyncFacade::start: Skipping DataContext entry: %s",
-                                          key.c_str());
+                                LOG_DEBUG2(
+                                    m_logFn, "InventorySyncFacade::start: Skipping DataContext entry: %s", key.c_str());
                                 continue;
                             }
 
@@ -1149,11 +1142,11 @@ public:
                                 if (!isAgentScopedStateIndex(rawIndex))
                                 {
                                     LOG_WARN(m_logFn,
-                                            "InventorySyncFacade::start: skipping bulk entry for session %llu - "
-                                            "index '%.*s' is outside the agent's authorized state-index scope.",
-                                            res.context->sessionId,
-                                            static_cast<int>(rawIndex.size()),
-                                            rawIndex.data());
+                                             "InventorySyncFacade::start: skipping bulk entry for session %llu - "
+                                             "index '%.*s' does not belong to wazuh-states-* family.",
+                                             res.context->sessionId,
+                                             static_cast<int>(rawIndex.size()),
+                                             rawIndex.data());
                                     continue;
                                 }
 
@@ -1171,9 +1164,9 @@ public:
                                 if (!data->id() || data->id()->string_view().empty())
                                 {
                                     LOG_WARN(m_logFn,
-                                            "InventorySyncFacade::start: skipping bulk entry for session %llu - "
-                                            "DataValue missing required 'id' field",
-                                            res.context->sessionId);
+                                             "InventorySyncFacade::start: skipping bulk entry for session %llu - "
+                                             "DataValue missing required 'id' field",
+                                             res.context->sessionId);
                                     continue;
                                 }
 
@@ -1190,10 +1183,10 @@ public:
                                     if (!data->data())
                                     {
                                         LOG_WARN(m_logFn,
-                                                "InventorySyncFacade::start: skipping bulk entry for session "
-                                                "%llu (seq %llu) - DataValue missing required 'data' field for Upsert",
-                                                res.context->sessionId,
-                                                data->seq());
+                                                 "InventorySyncFacade::start: skipping bulk entry for session "
+                                                 "%llu (seq %llu) - DataValue missing required 'data' field for Upsert",
+                                                 res.context->sessionId,
+                                                 data->seq());
                                         continue;
                                     }
 
@@ -1205,20 +1198,20 @@ public:
                                     catch (const nlohmann::json::parse_error& e)
                                     {
                                         LOG_WARN(m_logFn,
-                                                "InventorySyncFacade::start: skipping bulk entry for session "
-                                                "%llu (seq %llu) - DataValue body is not valid JSON: %s",
-                                                res.context->sessionId,
-                                                data->seq(),
-                                                e.what());
+                                                 "InventorySyncFacade::start: skipping bulk entry for session "
+                                                 "%llu (seq %llu) - DataValue body is not valid JSON: %s",
+                                                 res.context->sessionId,
+                                                 data->seq(),
+                                                 e.what());
                                         continue;
                                     }
                                     if (!document.is_object())
                                     {
                                         LOG_WARN(m_logFn,
-                                                "InventorySyncFacade::start: skipping bulk entry for session "
-                                                "%llu (seq %llu) - DataValue body is not a JSON object",
-                                                res.context->sessionId,
-                                                data->seq());
+                                                 "InventorySyncFacade::start: skipping bulk entry for session "
+                                                 "%llu (seq %llu) - DataValue body is not a JSON object",
+                                                 res.context->sessionId,
+                                                 data->seq());
                                         continue;
                                     }
                                 }
@@ -1313,9 +1306,9 @@ public:
                                     if (skipScan)
                                     {
                                         LOG_INFO(m_logFn,
-                                                "InventorySyncFacade: Skipping VDSync scan for agent %s — "
-                                                "feed-update full scan in progress, covers all packages.",
-                                                res.context->agentId.c_str());
+                                                 "InventorySyncFacade: Skipping VDSync scan for agent %s — "
+                                                 "feed-update full scan in progress, covers all packages.",
+                                                 res.context->agentId.c_str());
                                     }
                                     else
                                     {
@@ -1367,10 +1360,10 @@ public:
                                                 }
 
                                                 LOG_ERROR(m_logFn,
-                                                         "InventorySyncFacade: Vulnerability scanner exception for "
-                                                         "agent %s: %s",
-                                                         res.context->agentId.c_str(),
-                                                         e.what());
+                                                          "InventorySyncFacade: Vulnerability scanner exception for "
+                                                          "agent %s: %s",
+                                                          res.context->agentId.c_str(),
+                                                          e.what());
                                                 m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                                                  res.context->agentId,
                                                                                  res.context->sessionId,
@@ -1385,17 +1378,17 @@ public:
                                 else
                                 {
                                     LOG_DEBUG1(m_logFn,
-                                              "InventorySyncFacade: Scanner stopped while waiting for CVE feed — "
-                                              "skipping scan for agent %s.",
-                                              res.context->agentId.c_str());
+                                               "InventorySyncFacade: Scanner stopped while waiting for CVE feed — "
+                                               "skipping scan for agent %s.",
+                                               res.context->agentId.c_str());
                                 }
                             }
                             else
                             {
                                 LOG_DEBUG1(m_logFn,
-                                          "InventorySyncFacade: Vulnerability scanner disabled — "
-                                          "skipping scan for agent %s.",
-                                          res.context->agentId.c_str());
+                                           "InventorySyncFacade: Vulnerability scanner disabled — "
+                                           "skipping scan for agent %s.",
+                                           res.context->agentId.c_str());
                             }
                         }
 
@@ -1421,8 +1414,8 @@ public:
                                     if (eraseSession(ctx->sessionId) == 0)
                                     {
                                         LOG_DEBUG2(m_logFn,
-                                                  "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                                  ctx->sessionId);
+                                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                                   ctx->sessionId);
                                     }
                                     m_sessionCompletedCV.notify_all();
                                 });
@@ -1432,9 +1425,9 @@ public:
                             // No bulk data and no deleteByQuery - send immediate response (e.g., DataContext-only
                             // session)
                             LOG_DEBUG2(m_logFn,
-                                      "InventorySyncFacade::start: No bulk data or deleteByQuery, sending immediate "
-                                      "response for session %llu",
-                                      res.context->sessionId);
+                                       "InventorySyncFacade::start: No bulk data or deleteByQuery, sending immediate "
+                                       "response for session %llu",
+                                       res.context->sessionId);
                             m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Ok,
                                                              res.context->agentId,
                                                              res.context->sessionId,
@@ -1443,8 +1436,8 @@ public:
                             if (eraseSession(res.context->sessionId) == 0)
                             {
                                 LOG_DEBUG2(m_logFn,
-                                          "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                          res.context->sessionId);
+                                           "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                           res.context->sessionId);
                             }
                             m_sessionCompletedCV.notify_all();
                         }
@@ -1477,8 +1470,8 @@ public:
                     if (eraseSession(res.context->sessionId) == 0)
                     {
                         LOG_DEBUG2(m_logFn,
-                                  "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                  res.context->sessionId);
+                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                   res.context->sessionId);
                     }
                     m_sessionCompletedCV.notify_all();
 
@@ -1506,8 +1499,8 @@ public:
                     if (eraseSession(res.context->sessionId) == 0)
                     {
                         LOG_DEBUG2(m_logFn,
-                                  "InventorySyncFacade::start: Session not found, sessionId: %llu",
-                                  res.context->sessionId);
+                                   "InventorySyncFacade::start: Session not found, sessionId: %llu",
+                                   res.context->sessionId);
                     }
                     m_sessionCompletedCV.notify_all();
 
@@ -1549,9 +1542,9 @@ public:
                             {
                                 unlockAgent(context->agentId);
                                 LOG_DEBUG1(m_logFn,
-                                          "Session %llu for agent %s timed out - agent unlocked",
-                                          it->first,
-                                          context->agentId.c_str());
+                                           "Session %llu for agent %s timed out - agent unlocked",
+                                           it->first,
+                                           context->agentId.c_str());
                             }
 
                             // Delete data from database.
@@ -1592,9 +1585,9 @@ public:
             }
             m_allAgentsLocked.store(true);
             LOG_INFO(m_logFn,
-                    "Locked ALL agents from creating new sessions%s%s",
-                    reason.empty() ? "" : " - Reason: ",
-                    reason.c_str());
+                     "Locked ALL agents from creating new sessions%s%s",
+                     reason.empty() ? "" : " - Reason: ",
+                     reason.c_str());
             return true;
         }
         else
@@ -1603,10 +1596,10 @@ public:
             if (inserted)
             {
                 LOG_INFO(m_logFn,
-                        "Locked agent %s from creating new sessions%s%s",
-                        agentId.c_str(),
-                        reason.empty() ? "" : " - Reason: ",
-                        reason.c_str());
+                         "Locked agent %s from creating new sessions%s%s",
+                         agentId.c_str(),
+                         reason.empty() ? "" : " - Reason: ",
+                         reason.c_str());
             }
             else
             {
@@ -1783,11 +1776,11 @@ public:
                 if (timeout > std::chrono::seconds(0))
                 {
                     LOG_INFO(m_logFn,
-                            "Feed update scan waiting for VDSync session to complete for agent %s "
-                            "(timeout: %lds, max retries: %u).",
-                            agentId.c_str(),
-                            static_cast<long>(timeout.count()),
-                            maxRetries);
+                             "Feed update scan waiting for VDSync session to complete for agent %s "
+                             "(timeout: %lds, max retries: %u).",
+                             agentId.c_str(),
+                             static_cast<long>(timeout.count()),
+                             maxRetries);
 
                     const auto isSessionGone = [&]()
                     {
@@ -1815,19 +1808,19 @@ public:
                         if (attemptsLeft > 0)
                         {
                             LOG_WARN(m_logFn,
-                                    "Feed update scan timeout waiting for VDSync session for agent %s (%lds). "
-                                    "Retrying (%u retries left).",
-                                    agentId.c_str(),
-                                    static_cast<long>(timeout.count()),
-                                    attemptsLeft);
+                                     "Feed update scan timeout waiting for VDSync session for agent %s (%lds). "
+                                     "Retrying (%u retries left).",
+                                     agentId.c_str(),
+                                     static_cast<long>(timeout.count()),
+                                     attemptsLeft);
                         }
                         else
                         {
                             LOG_WARN(m_logFn,
-                                    "Feed update scan timeout waiting for VDSync session for agent %s (%lds). "
-                                    "Proceeding with current indexer data.",
-                                    agentId.c_str(),
-                                    static_cast<long>(timeout.count()));
+                                     "Feed update scan timeout waiting for VDSync session for agent %s (%lds). "
+                                     "Proceeding with current indexer data.",
+                                     agentId.c_str(),
+                                     static_cast<long>(timeout.count()));
                         }
                     }
                 }
@@ -1922,10 +1915,10 @@ public:
                 const auto& context = it->second.getContext();
 
                 LOG_WARN(m_logFn,
-                        "Cleaning up zombie session %llu for agent %s (module: %s)",
-                        sessionId,
-                        context->agentId.c_str(),
-                        context->moduleName.c_str());
+                         "Cleaning up zombie session %llu for agent %s (module: %s)",
+                         sessionId,
+                         context->agentId.c_str(),
+                         context->moduleName.c_str());
 
                 // Delete data from database
                 m_dataStore->deleteByPrefix(std::to_string(sessionId));
@@ -1940,9 +1933,9 @@ public:
         {
             m_sessionCompletedCV.notify_all();
             LOG_INFO(m_logFn,
-                    "Cleaned up %zu zombie session(s) for agent %s",
-                    cleanedCount,
-                    agentId.empty() ? "ALL" : agentId.c_str());
+                     "Cleaned up %zu zombie session(s) for agent %s",
+                     cleanedCount,
+                     agentId.empty() ? "ALL" : agentId.c_str());
         }
 
         return cleanedCount;
@@ -1969,10 +1962,10 @@ public:
         }
 
         LOG_INFO(m_logFn,
-                "Waiting for %zu active session(s) of agent %s to complete (timeout: %llds)",
-                initialCount,
-                agentId.empty() ? "ALL" : agentId.c_str(),
-                timeout.count());
+                 "Waiting for %zu active session(s) of agent %s to complete (timeout: %llds)",
+                 initialCount,
+                 agentId.empty() ? "ALL" : agentId.c_str(),
+                 timeout.count());
 
         while (true)
         {
@@ -1983,10 +1976,10 @@ public:
                 auto elapsed =
                     std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - startTime);
                 LOG_INFO(m_logFn,
-                        "All %zu session(s) of agent %s completed after %lldms",
-                        initialCount,
-                        agentId.empty() ? "ALL" : agentId.c_str(),
-                        elapsed.count());
+                         "All %zu session(s) of agent %s completed after %lldms",
+                         initialCount,
+                         agentId.empty() ? "ALL" : agentId.c_str(),
+                         elapsed.count());
                 return 0; // Success - no sessions remaining
             }
 
@@ -1994,9 +1987,9 @@ public:
             if (elapsed >= timeout)
             {
                 LOG_DEBUG1(m_logFn,
-                          "Timeout waiting for agent %s sessions to complete. %zu session(s) still active",
-                          agentId.empty() ? "ALL" : agentId.c_str(),
-                          currentCount);
+                           "Timeout waiting for agent %s sessions to complete. %zu session(s) still active",
+                           agentId.empty() ? "ALL" : agentId.c_str(),
+                           currentCount);
                 return currentCount; // Timeout - return number of remaining sessions
             }
 
@@ -2061,15 +2054,15 @@ private:
         if (!m_indexerConnector->isAvailable())
         {
             LOG_WARN(m_logFn,
-                    "InventorySyncFacade::deleteAgent: Indexer not available, skipping deletion for agent '%s'",
-                    agentId.c_str());
+                     "InventorySyncFacade::deleteAgent: Indexer not available, skipping deletion for agent '%s'",
+                     agentId.c_str());
             return;
         }
 
         LOG_INFO(m_logFn,
-                "InventorySyncFacade::deleteAgent: Deleting data for agent '%s' from %s indexes",
-                agentId.c_str(),
-                WAZUH_STATES_INDEX_PATTERN);
+                 "InventorySyncFacade::deleteAgent: Deleting data for agent '%s' from %s indexes",
+                 agentId.c_str(),
+                 WAZUH_STATES_INDEX_PATTERN);
 
         try
         {
@@ -2077,16 +2070,15 @@ private:
             auto lock = m_indexerConnector->scopeLock();
             m_indexerConnector->deleteByQuery(WAZUH_STATES_INDEX_PATTERN, agentId, m_clusterName);
 
-            LOG_INFO(m_logFn,
-                    "InventorySyncFacade::deleteAgent: Successfully deleted data for agent '%s'",
-                    agentId.c_str());
+            LOG_INFO(
+                m_logFn, "InventorySyncFacade::deleteAgent: Successfully deleted data for agent '%s'", agentId.c_str());
         }
         catch (const std::exception& e)
         {
             LOG_ERROR(m_logFn,
-                     "InventorySyncFacade::deleteAgent: Failed to delete data for agent '%s': %s",
-                     agentId.c_str(),
-                     e.what());
+                      "InventorySyncFacade::deleteAgent: Failed to delete data for agent '%s': %s",
+                      agentId.c_str(),
+                      e.what());
         }
     }
 
@@ -2112,11 +2104,11 @@ private:
             if (existingContext->agentId == agentId && existingContext->moduleName == moduleName)
             {
                 LOG_INFO(m_logFn,
-                        "Found existing session %llu for agent %s module %s - "
-                        "cleaning up stale session",
-                        existingSessionId,
-                        agentId.c_str(),
-                        moduleName.c_str());
+                         "Found existing session %llu for agent %s module %s - "
+                         "cleaning up stale session",
+                         existingSessionId,
+                         agentId.c_str(),
+                         moduleName.c_str());
                 staleSessionsToRemove.push_back(existingSessionId);
             }
         }
@@ -2134,9 +2126,9 @@ private:
                 {
                     unlockAgent(agentId);
                     LOG_INFO(m_logFn,
-                            "Stale session %llu owned agent lock - unlocked agent %s",
-                            staleSessionId,
-                            agentId.c_str());
+                             "Stale session %llu owned agent lock - unlocked agent %s",
+                             staleSessionId,
+                             agentId.c_str());
                 }
 
                 // Delete data from database

@@ -88,8 +88,8 @@ public:
                 if (m_discardedCount.load() > 0)
                 {
                     LOG_INFO(m_logFn,
-                            "Queue size normalized. Resuming event acceptance after %zu discarded events.",
-                            m_discardedCount.load());
+                             "Queue size normalized. Resuming event acceptance after %zu discarded events.",
+                             m_discardedCount.load());
                     m_discardedCount = 0;
                     m_firstDiscardLogged = false;
                 }
@@ -105,11 +105,11 @@ public:
                 if (!m_firstDiscardLogged.exchange(true))
                 {
                     LOG_WARN(m_logFn,
-                            "Queue is full (size: %zu, max: %zu). Starting to discard events. "
-                            "Periodic summaries will be logged every %zu seconds.",
-                            m_queue->size(),
-                            m_maxQueueSize,
-                            m_summaryInterval);
+                             "Queue is full (size: %zu, max: %zu). Starting to discard events. "
+                             "Periodic summaries will be logged every %zu seconds.",
+                             m_queue->size(),
+                             m_maxQueueSize,
+                             m_summaryInterval);
                     m_lastSummaryLog = now;
                 }
                 // Log periodic summary
@@ -120,13 +120,13 @@ public:
                     if (elapsed >= m_summaryInterval)
                     {
                         LOG_WARN(m_logFn,
-                                "Queue overflow continues: %zu events discarded in the last %lld seconds "
-                                "(queue size: %zu, max: %zu, total discarded: %zu).",
-                                discarded - m_lastDiscardedCount.load(),
-                                elapsed,
-                                m_queue->size(),
-                                m_maxQueueSize,
-                                discarded);
+                                 "Queue overflow continues: %zu events discarded in the last %lld seconds "
+                                 "(queue size: %zu, max: %zu, total discarded: %zu).",
+                                 discarded - m_lastDiscardedCount.load(),
+                                 elapsed,
+                                 m_queue->size(),
+                                 m_maxQueueSize,
+                                 discarded);
                         m_lastSummaryLog = now;
                         m_lastDiscardedCount = discarded;
                     }
@@ -152,10 +152,10 @@ public:
                 if (m_discardedCount.load() > 0)
                 {
                     LOG_INFO(m_logFn,
-                            "Queue '%.*s' size normalized. Resuming event acceptance after %zu discarded events.",
-                            static_cast<int>(prefix.size()),
-                            prefix.data(),
-                            m_discardedCount.load());
+                             "Queue '%.*s' size normalized. Resuming event acceptance after %zu discarded events.",
+                             static_cast<int>(prefix.size()),
+                             prefix.data(),
+                             m_discardedCount.load());
                     m_discardedCount = 0;
                     m_firstDiscardLogged = false;
                 }
@@ -171,13 +171,13 @@ public:
                 if (!m_firstDiscardLogged.exchange(true))
                 {
                     LOG_WARN(m_logFn,
-                            "Queue '%.*s' is full (size: %zu, max: %zu). Starting to discard events. "
-                            "Periodic summaries will be logged every %zu seconds.",
-                            static_cast<int>(prefix.size()),
-                            prefix.data(),
-                            m_queue->size(prefix),
-                            m_maxQueueSize,
-                            m_summaryInterval);
+                             "Queue '%.*s' is full (size: %zu, max: %zu). Starting to discard events. "
+                             "Periodic summaries will be logged every %zu seconds.",
+                             static_cast<int>(prefix.size()),
+                             prefix.data(),
+                             m_queue->size(prefix),
+                             m_maxQueueSize,
+                             m_summaryInterval);
                     m_lastSummaryLog = now;
                 }
                 // Log periodic summary
@@ -188,15 +188,15 @@ public:
                     if (elapsed >= m_summaryInterval)
                     {
                         LOG_WARN(m_logFn,
-                                "Queue '%.*s' overflow continues: %zu events discarded in the last %lld seconds "
-                                "(queue size: %zu, max: %zu, total discarded: %zu).",
-                                static_cast<int>(prefix.size()),
-                                prefix.data(),
-                                discarded - m_lastDiscardedCount.load(),
-                                elapsed,
-                                m_queue->size(prefix),
-                                m_maxQueueSize,
-                                discarded);
+                                 "Queue '%.*s' overflow continues: %zu events discarded in the last %lld seconds "
+                                 "(queue size: %zu, max: %zu, total discarded: %zu).",
+                                 static_cast<int>(prefix.size()),
+                                 prefix.data(),
+                                 discarded - m_lastDiscardedCount.load(),
+                                 elapsed,
+                                 m_queue->size(prefix),
+                                 m_maxQueueSize,
+                                 discarded);
                         m_lastSummaryLog = now;
                         m_lastDiscardedCount = discarded;
                     }
@@ -359,6 +359,7 @@ private:
     std::atomic<uint64_t> m_bulkSize;
     const size_t m_retryDelay;
     const size_t m_flushInterval;
+    LogFn m_logFn;
     std::unique_ptr<TSafeQueueType> m_queue;
     std::thread m_thread;
     std::atomic_bool m_running = true;
@@ -371,7 +372,6 @@ private:
     std::atomic_bool m_firstDiscardLogged {false};
     std::chrono::steady_clock::time_point m_lastSummaryLog;
     const size_t m_summaryInterval {30}; // Log summary every 30 seconds
-    LogFn m_logFn;
 };
 
 template<typename Type, typename Functor>

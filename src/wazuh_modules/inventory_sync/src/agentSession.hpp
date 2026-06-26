@@ -87,17 +87,18 @@ class AgentSessionImpl final
     std::mutex m_mutex;                 ///< Mutex to guard shared state
     bool m_endEnqueued = false;         ///< Whether the END message has been enqueued
     uint64_t m_declaredSize {0};        ///< DataValue count declared in the Start message (for quota accounting)
-    const LogFn& m_logFn;                 ///< Log function for this session
+    const LogFn& m_logFn;               ///< Log function for this session
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
                               Wazuh::SyncSchema::Start const* data,
                               TStore& store,
                               TIndexerQueue& indexerQueue,
-                              const TResponseDispatcher& responseDispatcher)
+                              const TResponseDispatcher& responseDispatcher,
+                              const LogFn& logFn)
         : m_store {store}
         , m_indexerQueue {indexerQueue}
-        , m_logFn(Log::currentModuleLogFn())
+        , m_logFn(logFn)
 
     {
         if (data == nullptr)
@@ -156,12 +157,12 @@ public:
                     if (!isAgentScopedStateIndex(entry))
                     {
                         LOG_WARN(m_logFn,
-                                "Start: ignoring index '%s' (does not belong to wazuh-states-* family) for "
-                                "agent '%.*s' (session %llu).",
-                                entry.c_str(),
-                                static_cast<int>(agentId.size()),
-                                agentId.data(),
-                                sessionId);
+                                 "Start: ignoring index '%s' (does not belong to wazuh-states-* family) for "
+                                 "agent '%.*s' (session %llu).",
+                                 entry.c_str(),
+                                 static_cast<int>(agentId.size()),
+                                 agentId.data(),
+                                 sessionId);
                         continue;
                     }
                     indices.emplace_back(std::move(entry));
@@ -205,16 +206,16 @@ public:
                                                .clusterNode = std::string(clusterNode.data(), clusterNode.size())});
 
         LOG_DEBUG2(m_logFn,
-                  "New session for module '%s' by agent '%s'. (Session %llu)",
-                  m_context->moduleName.c_str(),
-                  m_context->agentId.c_str(),
-                  m_context->sessionId);
+                   "New session for module '%s' by agent '%s'. (Session %llu)",
+                   m_context->moduleName.c_str(),
+                   m_context->agentId.c_str(),
+                   m_context->sessionId);
 
         LOG_DEBUG2(m_logFn,
-                  "Session %llu cluster info - cluster_name: '%s', cluster_node: '%s'",
-                  m_context->sessionId,
-                  m_context->clusterName.c_str(),
-                  m_context->clusterNode.c_str());
+                   "Session %llu cluster info - cluster_name: '%s', cluster_node: '%s'",
+                   m_context->sessionId,
+                   m_context->clusterName.c_str(),
+                   m_context->clusterNode.c_str());
 
         responseDispatcher.sendStartAck(
             Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
@@ -260,13 +261,13 @@ public:
         if (seq >= m_declaredSize)
         {
             LOG_WARN(m_logFn,
-                    "Data sequence number '%llu' exceeds declared size '%llu' for session %llu "
-                    "(agent '%s', module '%s'); rejecting message.",
-                    seq,
-                    m_declaredSize,
-                    m_context->sessionId,
-                    m_context->agentId.c_str(),
-                    m_context->moduleName.c_str());
+                     "Data sequence number '%llu' exceeds declared size '%llu' for session %llu "
+                     "(agent '%s', module '%s'); rejecting message.",
+                     seq,
+                     m_declaredSize,
+                     m_context->sessionId,
+                     m_context->agentId.c_str(),
+                     m_context->moduleName.c_str());
             throw std::out_of_range("Sequence number out of declared size bounds");
         }
 
@@ -278,11 +279,11 @@ public:
         m_gapSet->observe(data->seq());
 
         LOG_DEBUG2(m_logFn,
-                  "Data received: %s %llu %llu %s",
-                  std::format("{}_{}", session, seq).c_str(),
-                  m_context->sessionId,
-                  m_context->agentId,
-                  m_context->moduleName.c_str());
+                   "Data received: %s %llu %llu %s",
+                   std::format("{}_{}", session, seq).c_str(),
+                   m_context->sessionId,
+                   m_context->agentId,
+                   m_context->moduleName.c_str());
 
         if (m_endReceived && !m_endEnqueued)
         {
@@ -316,8 +317,8 @@ public:
         if (m_endEnqueued)
         {
             LOG_DEBUG2(m_logFn,
-                      "ChecksumModule arrived after End was enqueued for session %llu; ignoring",
-                      m_context->sessionId);
+                       "ChecksumModule arrived after End was enqueued for session %llu; ignoring",
+                       m_context->sessionId);
             return;
         }
 
@@ -332,10 +333,10 @@ public:
             if (!isAgentScopedStateIndex(candidate))
             {
                 LOG_WARN(m_logFn,
-                        "ChecksumModule: ignoring index '%s' (does not belong to wazuh-states-* family) for "
-                        "session %llu.",
-                        candidate.c_str(),
-                        m_context->sessionId);
+                         "ChecksumModule: ignoring index '%s' (does not belong to wazuh-states-* family) for "
+                         "session %llu.",
+                         candidate.c_str(),
+                         m_context->sessionId);
             }
             else
             {
@@ -344,10 +345,10 @@ public:
         }
 
         LOG_DEBUG2(m_logFn,
-                  "ChecksumModule received for session %llu, index: %s, checksum: %s",
-                  m_context->sessionId,
-                  m_context->checksumIndex.c_str(),
-                  m_context->checksum.c_str());
+                   "ChecksumModule received for session %llu, index: %s, checksum: %s",
+                   m_context->sessionId,
+                   m_context->checksumIndex.c_str(),
+                   m_context->checksum.c_str());
     }
 
     /**
@@ -381,13 +382,13 @@ public:
         if (seq >= m_declaredSize)
         {
             LOG_WARN(m_logFn,
-                    "DataContext sequence number '%llu' exceeds declared size '%llu' for session %llu "
-                    "(agent '%s', module '%s'); rejecting message.",
-                    seq,
-                    m_declaredSize,
-                    m_context->sessionId,
-                    m_context->agentId.c_str(),
-                    m_context->moduleName.c_str());
+                     "DataContext sequence number '%llu' exceeds declared size '%llu' for session %llu "
+                     "(agent '%s', module '%s'); rejecting message.",
+                     seq,
+                     m_declaredSize,
+                     m_context->sessionId,
+                     m_context->agentId.c_str(),
+                     m_context->moduleName.c_str());
             throw std::out_of_range("Sequence number out of declared size bounds");
         }
 
@@ -400,11 +401,11 @@ public:
         m_gapSet->observe(seq);
 
         LOG_DEBUG2(m_logFn,
-                  "DataContext received: %s %llu %llu %s",
-                  std::format("{}_{}_context", session, seq).c_str(),
-                  m_context->sessionId,
-                  m_context->agentId,
-                  m_context->moduleName.c_str());
+                   "DataContext received: %s %llu %llu %s",
+                   std::format("{}_{}_context", session, seq).c_str(),
+                   m_context->sessionId,
+                   m_context->agentId,
+                   m_context->moduleName.c_str());
 
         if (m_endReceived && !m_endEnqueued)
         {
@@ -444,13 +445,13 @@ public:
         if (seq >= m_declaredSize)
         {
             LOG_WARN(m_logFn,
-                    "DataClean sequence number '%llu' exceeds declared size '%llu' for session %llu "
-                    "(agent '%s', module '%s'); rejecting message.",
-                    seq,
-                    m_declaredSize,
-                    m_context->sessionId,
-                    m_context->agentId.c_str(),
-                    m_context->moduleName.c_str());
+                     "DataClean sequence number '%llu' exceeds declared size '%llu' for session %llu "
+                     "(agent '%s', module '%s'); rejecting message.",
+                     seq,
+                     m_declaredSize,
+                     m_context->sessionId,
+                     m_context->agentId.c_str(),
+                     m_context->moduleName.c_str());
         }
         m_gapSet->observe(seq);
 
@@ -460,29 +461,27 @@ public:
             if (!isAgentScopedStateIndex(index))
             {
                 LOG_WARN(m_logFn,
-                        "DataClean: ignoring index '%s' (does not belong to wazuh-states-* family) for "
-                        "session %llu, seq %llu.",
-                        index.c_str(),
-                        m_context->sessionId,
-                        seq);
+                         "DataClean: ignoring index '%s' (does not belong to wazuh-states-* family) for "
+                         "session %llu, seq %llu.",
+                         index.c_str(),
+                         m_context->sessionId,
+                         seq);
             }
             else
             {
                 m_context->dataCleanIndices.insert(index);
 
                 LOG_DEBUG2(m_logFn,
-                          "DataClean received for session %llu, seq %llu, index: %s",
-                          m_context->sessionId,
-                          seq,
-                          index.c_str());
+                           "DataClean received for session %llu, seq %llu, index: %s",
+                           m_context->sessionId,
+                           seq,
+                           index.c_str());
             }
         }
         else
         {
-            LOG_ERROR(m_logFn,
-                     "DataClean received without index for session %llu, seq %llu",
-                     m_context->sessionId,
-                     seq);
+            LOG_ERROR(
+                m_logFn, "DataClean received without index for session %llu, seq %llu", m_context->sessionId, seq);
         }
 
         if (m_endReceived && !m_endEnqueued)

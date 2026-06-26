@@ -39,16 +39,6 @@ auto constexpr LOGGER_DEFAULT_TAG {"logger-helper"};
 #define logError(X, Y, ...)  Log::Logger::error(X, LogEndl, Y, ##__VA_ARGS__)
 constexpr auto MAXLEN {65536};
 
-inline std::string composeTag(std::string_view parentTag, std::string_view libName)
-{
-    if (parentTag.empty())
-        return std::string(libName);
-    auto open = parentTag.rfind("(");
-    if (open != std::string_view::npos)
-        return std::string(parentTag.substr(0, parentTag.size() - 1)) + "/" + std::string(libName) + ")";
-    return std::string(parentTag) + "(" + std::string(libName) + ")";
-}
-
 namespace Log
 {
     auto constexpr LOGLEVEL_DEBUG_VERBOSE {5};
@@ -373,7 +363,9 @@ namespace Log
  * Result: "<process>:<module>(<libName>)"  e.g. "wazuh-manager-modulesd:inventory-sync(rocksdb)"
  *         or "<process>(<libName>)"         e.g. "wazuh-manager-analysisd(indexer-connector)"
  *
- * The base context must have been set with Log::setModuleLogFn() on this thread.
+ * The base context must have been set with Log::setModuleLogFn() on this thread before calling
+ * this function. If it has not been set, the thread-local defaults to LogFn{"logger-helper"} and
+ * the result will be "logger-helper(<libName>)" — a valid fallback, but without module context.
  */
 inline LogFn makeLibLogFn(std::string_view libName)
 {
