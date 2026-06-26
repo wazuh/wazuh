@@ -9,7 +9,8 @@
         "size": 5,
         "agentid": "001",
         "agentname": "test-agent",
-        "agentversion": "4.8.0"
+        "agentversion": "4.8.0",
+        "cluster_name": "wazuh"
       },
       "description": "Start synchronization session expecting 5 messages (seq 0-4)",
       "delay": 0.5,
@@ -23,7 +24,10 @@
         "operation": 0,
         "id": "doc001",
         "index": "wazuh-states-inventory-system",
-        "data": {"message": "First message", "timestamp": "2025-01-20T10:00:00Z"}
+        "data": {
+          "message": "First message",
+          "timestamp": "2025-01-20T10:00:00Z"
+        }
       },
       "description": "Send first data message (seq=0)",
       "delay": 0.3,
@@ -36,7 +40,10 @@
         "operation": 0,
         "id": "doc003",
         "index": "wazuh-states-inventory-system",
-        "data": {"message": "Third message", "timestamp": "2025-01-20T10:02:00Z"}
+        "data": {
+          "message": "Third message",
+          "timestamp": "2025-01-20T10:02:00Z"
+        }
       },
       "description": "Send third data message (seq=2) - skip seq=1 to create gap",
       "delay": 0.3,
@@ -49,7 +56,10 @@
         "operation": 0,
         "id": "doc005",
         "index": "wazuh-states-inventory-system",
-        "data": {"message": "Fifth message", "timestamp": "2025-01-20T10:04:00Z"}
+        "data": {
+          "message": "Fifth message",
+          "timestamp": "2025-01-20T10:04:00Z"
+        }
       },
       "description": "Send fifth data message (seq=4) - skip seq=3 to create another gap",
       "delay": 0.3,
@@ -69,7 +79,10 @@
         "operation": 0,
         "id": "doc002",
         "index": "wazuh-states-inventory-system",
-        "data": {"message": "Second message (after reqret)", "timestamp": "2025-01-20T10:01:00Z"}
+        "data": {
+          "message": "Second message (after reqret)",
+          "timestamp": "2025-01-20T10:01:00Z"
+        }
       },
       "description": "Retransmit missing seq=1 after receiving ReqRet",
       "delay": 0.3,
@@ -82,7 +95,10 @@
         "operation": 0,
         "id": "doc004",
         "index": "wazuh-states-inventory-system",
-        "data": {"message": "Fourth message (after reqret)", "timestamp": "2025-01-20T10:03:00Z"}
+        "data": {
+          "message": "Fourth message (after reqret)",
+          "timestamp": "2025-01-20T10:03:00Z"
+        }
       },
       "description": "Retransmit missing seq=3 after receiving ReqRet",
       "delay": 0.3,

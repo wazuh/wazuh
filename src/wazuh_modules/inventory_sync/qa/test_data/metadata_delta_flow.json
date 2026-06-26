@@ -8,7 +8,11 @@
         "mode": 3,
         "size": 0,
         "option": 0,
-        "indices": ["wazuh-states-fim-files", "wazuh-states-sca", "wazuh-states-inventory-system"],
+        "indices": [
+          "wazuh-states-fim-files",
+          "wazuh-states-sca",
+          "wazuh-states-inventory-system"
+        ],
         "agentid": "001",
         "agentname": "metadata-test-agent",
         "agentversion": "4.9.0",
@@ -18,8 +22,12 @@
         "osplatform": "ubuntu",
         "ostype": "linux",
         "osversion": "22.04",
-        "groups": ["default", "production"],
-        "global_version": 12345
+        "groups": [
+          "default",
+          "production"
+        ],
+        "global_version": 12345,
+        "cluster_name": "wazuh"
       },
       "description": "Start MetadataDelta synchronization - updates agent metadata across all indices",
       "delay": 0.5,
@@ -37,7 +45,11 @@
   "verification": {
     "check_opensearch": true,
     "expected_updates": {
-      "indices": ["wazuh-states-fim-files", "wazuh-states-sca", "wazuh-states-inventory-system"],
+      "indices": [
+        "wazuh-states-fim-files",
+        "wazuh-states-sca",
+        "wazuh-states-inventory-system"
+      ],
       "agent_id": "001",
       "fields": {
         "wazuh.agent.name": "metadata-test-agent",

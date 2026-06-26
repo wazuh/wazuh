@@ -9,7 +9,8 @@
         "size": 2,
         "agentid": "001",
         "agentname": "dataclean-filter-agent",
-        "agentversion": "5.0.0"
+        "agentversion": "5.0.0",
+        "cluster_name": "wazuh"
       },
       "description": "Start a ModuleDelta session declaring 2 sequenced messages (one DataClean + one DataValue)",
       "delay": 0.5,
@@ -32,7 +33,9 @@
         "operation": 0,
         "id": "doc-valid",
         "index": "wazuh-states-inventory-system",
-        "data": {"value": 1}
+        "data": {
+          "value": 1
+        }
       },
       "description": "Legitimate DataValue with a wazuh-states-* index - must be indexed normally",
       "delay": 0.3,

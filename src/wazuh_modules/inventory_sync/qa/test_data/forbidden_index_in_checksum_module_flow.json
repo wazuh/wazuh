@@ -16,7 +16,8 @@
         "osname": "Linux",
         "osplatform": "linux",
         "ostype": "linux",
-        "osversion": "5.0"
+        "osversion": "5.0",
+        "cluster_name": "wazuh"
       },
       "description": "Start a ModuleCheck (mode=2) session - no indices field so res.context->indices stays empty",
       "delay": 0.5,
