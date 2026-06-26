@@ -28,8 +28,10 @@ If `consumerStatusIndex` and `consumerStatusId` are configured, the downloader p
 
 - missing document: wait 1 minute and retry
 - empty `status`: wait 1 minute and retry
-- `status = updating`: wait 1 minute and retry
-- `status = idle`: start the download
+- `status = running`: wait 1 minute and retry
+- `status = failed`: wait 1 minute and retry (logged at debug, escalating to a warning after repeated failures)
+- `status = ready`: start the download
+- any other value: wait 1 minute and retry (logged as a warning with the received status)
 
 This gate answers only one question: whether it is safe to start reading from Indexer. It does not replace the consumer-side validation of the downloaded local feed.
 

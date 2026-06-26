@@ -65,15 +65,15 @@ private:
     {
         Missing,
         Empty,
-        Updating,
-        Idle,
+        Running,
+        Ready,
+        Failed,
         Unknown
     };
 
     static constexpr std::chrono::seconds INDEXER_RETRY_INTERVAL {30};
 
-    /// Failed initial-load attempts logged below WARNING before escalating (indexer is commonly
-    /// overloaded right after a restart, so early failures are expected).
+    /// Consecutive failures tolerated below WARNING before escalating (indexer settling after restart).
     static constexpr std::size_t INDEXER_WARN_AFTER_ATTEMPTS {3};
 
     nlohmann::json m_config;
@@ -129,16 +129,15 @@ private:
     }
 
     /**
-     * @brief Reads the current consumer status document from `.wazuh-cti-consumers`.
+     * @brief Reads the consumer status from `.wazuh-cti-consumers`: "ready" (safe to query),
+     *        "running" (indexing, wait), "failed", or empty/missing (not ready yet).
      *
-     * The indexer-side contract guarantees that the document status is:
-     *   - empty / missing while the consumer is not ready yet,
-     *   - "updating" while the feed is still being indexed,
-     *   - "idle" only when the consumer can be queried safely.
+     * @param outRawStatus If non-null, receives the raw status string for logging.
      */
     ConsumerStatus readConsumerStatus(IndexerConnectorSync& syncConnector,
                                       std::string_view consumerStatusIndex,
-                                      std::string_view consumerStatusId) const
+                                      std::string_view consumerStatusId,
+                                      std::string* outRawStatus = nullptr) const
     {
         const auto query =
             nlohmann::json {{"ids", {{"values", nlohmann::json::array({std::string {consumerStatusId}})}}}};
@@ -168,29 +167,37 @@ private:
 
         std::string status;
         source.at("status").get_to(status);
+        if (outRawStatus)
+        {
+            *outRawStatus = status;
+        }
         if (status.empty())
         {
             return ConsumerStatus::Empty;
         }
-        if (status == "idle")
+        if (status == "ready")
         {
-            return ConsumerStatus::Idle;
+            return ConsumerStatus::Ready;
         }
-        if (status == "updating")
+        if (status == "running")
         {
-            return ConsumerStatus::Updating;
+            return ConsumerStatus::Running;
+        }
+        if (status == "failed")
+        {
+            return ConsumerStatus::Failed;
         }
 
         return ConsumerStatus::Unknown;
     }
 
     /**
-     * @brief Waits until the consumer status document becomes `idle`.
+     * @brief Waits until the consumer status document becomes `ready`.
      *
      * If the consumer status settings are not configured, the wait is skipped so
      * non-VD users of IndexerDownloader keep the previous behaviour.
      */
-    bool waitUntilConsumerIdle(UpdaterContext& context) const
+    bool waitUntilConsumerReady(UpdaterContext& context) const
     {
         static constexpr auto CONSUMER_STATUS_POLL_INTERVAL {std::chrono::minutes {1}};
 
@@ -205,95 +212,143 @@ private:
         if (context.spUpdaterBaseContext->spStopCondition->check())
         {
             logInfo(WM_CONTENTUPDATER,
-                    "IndexerDownloader: Stop requested before waiting for consumer '%s' to become idle.",
+                    "IndexerDownloader: Stop requested before waiting for consumer '%s' to become ready.",
                     consumerStatusId.c_str());
             return false;
         }
 
         IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
 
+        const auto pollSeconds = static_cast<size_t>(
+            std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL).count());
+
+        // Early query/failed-status results are expected (indexer still settling): DEBUG until the threshold.
+        size_t queryFailures = 0;
+        size_t failedStatusCount = 0;
+
         while (true)
         {
             if (context.spUpdaterBaseContext->spStopCondition->check())
             {
                 logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become idle.",
+                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become ready.",
                         consumerStatusId.c_str());
                 return false;
             }
 
             try
             {
-                switch (readConsumerStatus(syncConnector, consumerStatusIndex, consumerStatusId))
+                std::string rawStatus;
+                const auto status =
+                    readConsumerStatus(syncConnector, consumerStatusIndex, consumerStatusId, &rawStatus);
+                queryFailures = 0; // Indexer reachable again.
+                if (status != ConsumerStatus::Failed)
                 {
-                    case ConsumerStatus::Idle:
+                    failedStatusCount = 0;
+                }
+
+                switch (status)
+                {
+                    case ConsumerStatus::Ready:
                         logInfo(WM_CONTENTUPDATER,
-                                "IndexerDownloader: Consumer '%s' in index '%s' is idle. Starting feed download.",
+                                "IndexerDownloader: Consumer '%s' in index '%s' is ready. Starting feed download.",
                                 consumerStatusId.c_str(),
                                 consumerStatusIndex.c_str());
                         return true;
 
                     case ConsumerStatus::Missing:
                         logInfo(WM_CONTENTUPDATER,
-                                "IndexerDownloader: Consumer '%s' not found in '%s'. Waiting %zu s before retrying.",
+                                "IndexerDownloader: Consumer '%s' not found in '%s'. Waiting %zus before retrying.",
                                 consumerStatusId.c_str(),
                                 consumerStatusIndex.c_str(),
-                                static_cast<size_t>(
-                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
-                                        .count()));
+                                pollSeconds);
                         break;
 
                     case ConsumerStatus::Empty:
                         logInfo(WM_CONTENTUPDATER,
-                                "IndexerDownloader: Consumer '%s' has empty status in '%s'. Waiting %zu s before "
+                                "IndexerDownloader: Consumer '%s' has empty status in '%s'. Waiting %zus before "
                                 "retrying.",
                                 consumerStatusId.c_str(),
                                 consumerStatusIndex.c_str(),
-                                static_cast<size_t>(
-                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
-                                        .count()));
+                                pollSeconds);
                         break;
 
-                    case ConsumerStatus::Updating:
+                    case ConsumerStatus::Running:
                         logInfo(WM_CONTENTUPDATER,
-                                "IndexerDownloader: Consumer '%s' is still updating in '%s'. Waiting %zu s before "
+                                "IndexerDownloader: Consumer '%s' is still running in '%s'. Waiting %zus before "
                                 "retrying.",
                                 consumerStatusId.c_str(),
                                 consumerStatusIndex.c_str(),
-                                static_cast<size_t>(
-                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
-                                        .count()));
+                                pollSeconds);
+                        break;
+
+                    case ConsumerStatus::Failed:
+                        ++failedStatusCount;
+                        if (failedStatusCount >= INDEXER_WARN_AFTER_ATTEMPTS)
+                        {
+                            logWarn(WM_CONTENTUPDATER,
+                                    "IndexerDownloader: Consumer '%s' in '%s' reports a failed status. Waiting %zus "
+                                    "before retrying.",
+                                    consumerStatusId.c_str(),
+                                    consumerStatusIndex.c_str(),
+                                    pollSeconds);
+                        }
+                        else
+                        {
+                            logDebug2(WM_CONTENTUPDATER,
+                                      "IndexerDownloader: Consumer '%s' in '%s' reports a failed status — waiting %zus "
+                                      "before retrying (attempt %zu/%zu).",
+                                      consumerStatusId.c_str(),
+                                      consumerStatusIndex.c_str(),
+                                      pollSeconds,
+                                      failedStatusCount,
+                                      INDEXER_WARN_AFTER_ATTEMPTS);
+                        }
                         break;
 
                     case ConsumerStatus::Unknown:
                         logWarn(WM_CONTENTUPDATER,
-                                "IndexerDownloader: Consumer '%s' in '%s' returned an unknown status. Waiting %zu s "
-                                "before retrying.",
+                                "IndexerDownloader: Consumer '%s' in '%s' returned an unknown status '%s'. Waiting "
+                                "%zus before retrying.",
                                 consumerStatusId.c_str(),
                                 consumerStatusIndex.c_str(),
-                                static_cast<size_t>(
-                                    std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL)
-                                        .count()));
+                                rawStatus.c_str(),
+                                pollSeconds);
                         break;
                 }
             }
             catch (const std::exception& e)
             {
-                logWarn(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Failed to query consumer '%s' in '%s' (%s). Waiting %zu s before "
-                        "retrying.",
-                        consumerStatusId.c_str(),
-                        consumerStatusIndex.c_str(),
-                        e.what(),
-                        static_cast<size_t>(
-                            std::chrono::duration_cast<std::chrono::seconds>(CONSUMER_STATUS_POLL_INTERVAL).count()));
+                ++queryFailures;
+                if (queryFailures >= INDEXER_WARN_AFTER_ATTEMPTS)
+                {
+                    logWarn(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Failed to query consumer '%s' in '%s' (%s). Waiting %zus before "
+                            "retrying.",
+                            consumerStatusId.c_str(),
+                            consumerStatusIndex.c_str(),
+                            e.what(),
+                            pollSeconds);
+                }
+                else
+                {
+                    logDebug2(WM_CONTENTUPDATER,
+                              "IndexerDownloader: Indexer not available yet — cannot query consumer '%s' in '%s' (%s). "
+                              "Waiting %zus before retrying (attempt %zu/%zu).",
+                              consumerStatusId.c_str(),
+                              consumerStatusIndex.c_str(),
+                              e.what(),
+                              pollSeconds,
+                              queryFailures,
+                              INDEXER_WARN_AFTER_ATTEMPTS);
+                }
             }
 
             if (context.spUpdaterBaseContext->spStopCondition->waitFor(
                     std::chrono::duration_cast<std::chrono::milliseconds>(CONSUMER_STATUS_POLL_INTERVAL)))
             {
                 logInfo(WM_CONTENTUPDATER,
-                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become idle.",
+                        "IndexerDownloader: Stop requested while waiting for consumer '%s' to become ready.",
                         consumerStatusId.c_str());
                 return false;
             }
@@ -329,8 +384,8 @@ private:
             return;
         }
 
-        logWarn(WM_CONTENTUPDATER,
-                "IndexerDownloader: invalidating stored cursor and forcing a full reload on the next attempt.");
+        logDebug2(WM_CONTENTUPDATER,
+                  "IndexerDownloader: invalidating stored cursor and forcing a full reload on the next attempt.");
         context.spUpdaterBaseContext->spRocksDB->put(
             Utils::getCompactTimestamp(std::time(nullptr)), "0", Components::Columns::CURRENT_OFFSET);
     }
@@ -696,7 +751,7 @@ private:
                 errors.push_back("Slice " + std::to_string(sliceId) + ": " + e.what());
                 if (escalateLogs)
                 {
-                    logError(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
+                    logWarn(WM_CONTENTUPDATER, "IndexerDownloader: Slice %zu failed: %s", sliceId, e.what());
                 }
                 else
                 {
@@ -778,19 +833,19 @@ private:
                 if (escalate)
                 {
                     logWarn(WM_CONTENTUPDATER,
-                            "IndexerDownloader: Initial load failed (%s) — retrying in %zu s.",
+                            "IndexerDownloader: Initial load failed (%s) — retrying in %zus.",
                             e.what(),
                             static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
                 }
                 else
                 {
-                    logInfo(WM_CONTENTUPDATER,
-                            "IndexerDownloader: Indexer not available yet (%s) — retrying in %zu s "
-                            "(attempt %zu/%zu).",
-                            e.what(),
-                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
-                            attempt + 1,
-                            INDEXER_WARN_AFTER_ATTEMPTS);
+                    logDebug2(WM_CONTENTUPDATER,
+                              "IndexerDownloader: Indexer not available yet (%s) — retrying in %zus "
+                              "(attempt %zu/%zu).",
+                              e.what(),
+                              static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                              attempt + 1,
+                              INDEXER_WARN_AFTER_ATTEMPTS);
                 }
             }
 
@@ -810,17 +865,17 @@ private:
                 if (escalate)
                 {
                     logWarn(WM_CONTENTUPDATER,
-                            "IndexerDownloader: Indexer index not ready (0 documents) — retrying in %zu s.",
+                            "IndexerDownloader: Indexer index not ready (0 documents) — retrying in %zus.",
                             static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
                 }
                 else
                 {
-                    logInfo(WM_CONTENTUPDATER,
-                            "IndexerDownloader: Indexer index not ready yet (0 documents) — retrying in %zu s "
-                            "(attempt %zu/%zu).",
-                            static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
-                            attempt + 1,
-                            INDEXER_WARN_AFTER_ATTEMPTS);
+                    logDebug2(WM_CONTENTUPDATER,
+                              "IndexerDownloader: Indexer index not ready yet (0 documents) — retrying in %zus "
+                              "(attempt %zu/%zu).",
+                              static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                              attempt + 1,
+                              INDEXER_WARN_AFTER_ATTEMPTS);
                 }
             }
 
@@ -880,6 +935,9 @@ public:
     {
         logDebug1(WM_CONTENTUPDATER, "IndexerDownloader - Starting process");
 
+        // Early completion-validation failures are expected (indexer settling): DEBUG until the threshold.
+        size_t completionFailures = 0;
+
         while (!context->spUpdaterBaseContext->spStopCondition->check())
         {
             auto lastCursor = getStoredCursor(*context);
@@ -905,7 +963,7 @@ public:
             }
 
             const bool forceInitialLoad = lastCursor.empty();
-            if (!waitUntilConsumerIdle(*context))
+            if (!waitUntilConsumerReady(*context))
             {
                 break;
             }
@@ -933,10 +991,23 @@ public:
             }
 
             invalidateCursor(*context);
-            logWarn(WM_CONTENTUPDATER,
-                    "IndexerDownloader: downloaded feed is not ready after completion validation. "
-                    "The stored cursor was invalidated and a full reload will be retried in %zu s.",
-                    static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+            ++completionFailures;
+            if (completionFailures >= INDEXER_WARN_AFTER_ATTEMPTS)
+            {
+                logWarn(WM_CONTENTUPDATER,
+                        "IndexerDownloader: downloaded feed is not ready after completion validation. "
+                        "The stored cursor was invalidated and a full reload will be retried in %zus.",
+                        static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()));
+            }
+            else
+            {
+                logDebug2(WM_CONTENTUPDATER,
+                          "IndexerDownloader: downloaded feed not ready yet after completion validation — "
+                          "invalidating cursor and retrying a full reload in %zus (attempt %zu/%zu).",
+                          static_cast<size_t>(INDEXER_RETRY_INTERVAL.count()),
+                          completionFailures,
+                          INDEXER_WARN_AFTER_ATTEMPTS);
+            }
 
             if (context->spUpdaterBaseContext->spStopCondition->waitFor(
                     std::chrono::duration_cast<std::chrono::milliseconds>(INDEXER_RETRY_INTERVAL)))
