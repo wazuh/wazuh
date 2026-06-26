@@ -1298,7 +1298,7 @@ checks:
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare <= 5'
-      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:policyAttributeMinutesUntilFailedAuthenticationReset=(\d+) compare >= 15'
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minutesUntilFailedLoginReset=(\d+) compare >= 15'
 
   # 5.2.2 Ensure Password Minimum Length Is Configured. (Automated)
   - id: 35047
@@ -1624,7 +1624,7 @@ checks:
     condition: all
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"
-      - 'c:stat -f %A /Library/Security/PolicyBanner.* -> r:\d\d4'
+      - 'c:sh -c "stat -f %A /Library/Security/PolicyBanner.*" -> r:\d\d4'
 
   # 5.9 Ensure the Guest Home Folder Does Not Exist. (Automated)
   - id: 35059
@@ -1682,7 +1682,7 @@ checks:
       subtechnique: ["T1562.001", "T1562.002", "T1070.004"]
     condition: all
     rules:
-      - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan" -> r:^1$'
+      - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan$" -> r:^1$'
       - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan.startup" -> r:^1$'
 
   # 6.1.1 Ensure Show All Filename Extensions Setting is Enabled. (Automated) - Not Implemented
