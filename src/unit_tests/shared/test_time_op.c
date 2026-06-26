@@ -21,6 +21,21 @@
 
 /* tests */
 
+void test_w_get_monotonic_time_is_positive(void **state)
+{
+    (void) state;
+    time_t t = w_get_monotonic_time();
+    assert_true(t > 0);
+}
+
+void test_w_get_monotonic_time_is_nondecreasing(void **state)
+{
+    (void) state;
+    time_t t1 = w_get_monotonic_time();
+    time_t t2 = w_get_monotonic_time();
+    assert_true(t2 >= t1);
+}
+
 void test_is_leap_year_two(void **state)
 {
     (void) state;
@@ -84,6 +99,8 @@ void test_is_leap_year_four_hundred(void **state)
 
 int main(void) {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_w_get_monotonic_time_is_positive),
+        cmocka_unit_test(test_w_get_monotonic_time_is_nondecreasing),
         cmocka_unit_test(test_is_leap_year_two),
         cmocka_unit_test(test_is_leap_year_four),
         cmocka_unit_test(test_is_leap_year_one_hundred),
