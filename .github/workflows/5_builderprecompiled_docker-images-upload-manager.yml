@@ -48,15 +48,7 @@ jobs:
       contents: read
       packages: write
       actions: write
-<<<<<<< HEAD
-    runs-on: ${{ matrix.arch == 'arm64' && 'wz-linux-arm64' || 'ubuntu-24.04' }}
-||||||| 32e4bf65c4
-
-    runs-on: ${{ inputs.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-24.04' }}
-=======
-
-    runs-on: ${{ inputs.architecture == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-24.04' }}
->>>>>>> main
+    runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-24.04' }}
     timeout-minutes: 180
     name: Upload pkg_${{ matrix.system }}_manager_builder_${{ matrix.arch }}
     strategy:

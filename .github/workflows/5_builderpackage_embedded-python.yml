@@ -70,7 +70,7 @@ jobs:
     strategy:
       matrix: ${{ fromJSON(needs.pick-architecture.outputs.matrix) }}
       fail-fast: false
-    runs-on: ${{ matrix.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-24.04' }}
+    runs-on: ${{ matrix.architecture == 'arm64' && format('codebuild-github-actions-codebuild-runner-agent-arm-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-24.04' }}
     permissions:
       contents: read
       packages: write
