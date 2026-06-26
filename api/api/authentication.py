@@ -3,7 +3,6 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import asyncio
-from functools import cache
 import hashlib
 import json
 import jwt
@@ -98,17 +97,36 @@ JWT_ALGORITHM = 'ES512'
 _private_key_path = os.path.join(SECURITY_PATH, 'private_key.pem')
 _public_key_path = os.path.join(SECURITY_PATH, 'public_key.pem')
 _keypair_lock = threading.Lock()
+_keypair: tuple = None
 
-@cache
+
+def clear_keypair():
+    """Clears the key pair to leave it empty for a next key generation"""
+    global _keypair
+    with _keypair_lock:
+        _keypair = None
+
+
 def generate_keypair():
     """Generate key files to keep safe or load existing public and private keys.
+
+    Returns the same keypair on every call after the first successful load;
+    the result is cached in the module-level ``_keypair`` variable under
+    ``_keypair_lock`` so concurrent first-callers do not race on the files.
 
     Raises
     ------
     WazuhInternalError(6003)
         If there was an error trying to load the JWT secret.
     """
+    global _keypair
+
+    keypair = _keypair
+    if keypair is not None:
+        return keypair
     with _keypair_lock:
+        if _keypair is not None:
+            return _keypair
         try:
             if not os.path.exists(_private_key_path) or not os.path.exists(_public_key_path):
                 private_key, public_key = change_keypair()
@@ -126,8 +144,8 @@ def generate_keypair():
                     public_key = key_file.read()
         except IOError:
             raise WazuhInternalError(6003)
-
-    return private_key, public_key
+        _keypair = (private_key, public_key)
+    return _keypair
 
 
 def change_keypair():
