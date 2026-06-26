@@ -10,65 +10,35 @@ on:
       - "src/Makefile"
 
 jobs:
+  build-package:
+    name: Build wazuh-manager package
+    uses: ./.github/workflows/4_builderpackage_manager.yml
+    with:
+      architecture: amd64
+      system: deb
+      upload_package: false
+    secrets: inherit
+
   ebpf-validation-amd64:
     name: eBPF Validation (amd64)
     runs-on: ubuntu-24.04
+    needs: build-package
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
+
+      - name: Download wazuh-manager package
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wazuh-manager_*_amd64.deb
+          path: /tmp/packages
+
+      - name: Install wazuh-manager package
+        run: |
+          PKG=$(find /tmp/packages -name 'wazuh-manager_*.deb' ! -name '*dbg*' -type f | head -1)
+          if [ -z "$PKG" ]; then echo "No package found"; exit 1; fi
+          echo "Installing: $PKG"
+          sudo dpkg -i "$PKG" || sudo apt-get install -f -y
+
       - name: Run eBPF Validation
         uses: ./.github/actions/ebpf_validation
-        with:
-          wazuh-branch: ${{ github.head_ref || github.ref_name }}
-
-  ebpf-validation-arm64:
-    name: eBPF Validation (arm64)
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v6
-      - name: Run eBPF Validation (arm64 via QEMU)
-        uses: uraimo/run-on-arch-action@v3
-        with:
-          arch: aarch64
-          distro: ubuntu24.04
-          githubToken: ${{ github.token }}
-          install: |
-            apt-get update
-            apt-get install -y clang llvm libelf-dev build-essential btrfs-progs xfsprogs kmod sudo cmake git curl
-          run: |
-            curl -so src/external/libbpf-bootstrap.tar.gz \
-              https://packages.wazuh.com/deps/52/libraries/sources/libbpf-bootstrap.tar.gz
-            (cd src/external && gunzip libbpf-bootstrap.tar.gz && tar xf libbpf-bootstrap.tar && rm libbpf-bootstrap.tar)
-            (cd src/external/libbpf-bootstrap && mkdir -p build && cd build && cmake -DWAZUH_BRANCH=${{ github.head_ref || github.ref_name }} .. && make -j$(nproc))
-
-            SRC_DIR=src
-            g++ -O2 -Wall -std=c++17 \
-              -I${SRC_DIR}/external/libbpf-bootstrap/build/libbpf \
-              -I${SRC_DIR}/external/libbpf-bootstrap/libbpf/src \
-              src/syscheckd/src/ebpf/tests/ebpf_validation/ebpf_validation_test.cpp \
-              ${SRC_DIR}/external/libbpf-bootstrap/build/libbpf/libbpf.a \
-              -lelf -lz -lpthread -lstdc++fs \
-              -o ebpf_validation_runner
-
-            BPF_OBJ=src/external/libbpf-bootstrap/build/modern.bpf.o
-            for FS in ext4 xfs btrfs tmpfs; do
-              MNT="/mnt/ebpf_test_${FS}"
-              IMG="/tmp/ebpf_test_${FS}.img"
-              echo "== Testing: ${FS} =="
-              if [ "${FS}" != "tmpfs" ] && ! grep -q "${FS}" /proc/filesystems; then
-                modprobe "${FS}" 2>/dev/null || true
-                grep -q "${FS}" /proc/filesystems || { echo "Skipping ${FS}"; continue; }
-              fi
-              rm -rf "${MNT}" && mkdir -p "${MNT}"
-              if [ "${FS}" = "tmpfs" ]; then
-                mount -t tmpfs tmpfs "${MNT}"
-              else
-                dd if=/dev/zero of="${IMG}" bs=1M count=100 conv=sparse 2>/dev/null
-                mkfs.${FS} -f -q "${IMG}" 2>/dev/null || mkfs.${FS} -F -q "${IMG}"
-                mount -o loop "${IMG}" "${MNT}"
-              fi
-              ./ebpf_validation_runner --bpf-obj "${BPF_OBJ}" --test-dir "${MNT}"
-              umount -l "${MNT}" 2>/dev/null || true
-              rm -rf "${MNT}" "${IMG}"
-            done

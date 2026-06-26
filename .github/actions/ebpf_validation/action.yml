@@ -1,10 +1,5 @@
 name: "eBPF Field Validation"
-description: "Builds the eBPF object and validates hook events across filesystems"
-
-inputs:
-  wazuh-branch:
-    description: "Branch name for modern.bpf.c download in cmake"
-    required: true
+description: "Validates eBPF hook events across filesystems using installed wazuh-manager package"
 
 runs:
   using: "composite"
@@ -12,32 +7,24 @@ runs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y clang llvm libelf-dev build-essential btrfs-progs xfsprogs kmod cmake git
-      shell: bash
-
-    - name: Download and build libbpf-bootstrap
-      run: |
-        curl -so src/external/libbpf-bootstrap.tar.gz \
-          https://packages.wazuh.com/deps/52/libraries/sources/libbpf-bootstrap.tar.gz
-        (cd src/external && gunzip libbpf-bootstrap.tar.gz && tar xf libbpf-bootstrap.tar && rm libbpf-bootstrap.tar)
-        (cd src/external/libbpf-bootstrap && mkdir -p build && cd build && cmake -DWAZUH_BRANCH=${{ inputs.wazuh-branch }} .. && make -j$(nproc))
+        sudo apt-get install -y libbpf-dev btrfs-progs xfsprogs kmod
       shell: bash
 
     - name: Compile validation runner
       run: |
-        SRC_DIR=src
         g++ -O2 -Wall -std=c++17 \
-          -I${SRC_DIR}/external/libbpf-bootstrap/build/libbpf \
-          -I${SRC_DIR}/external/libbpf-bootstrap/libbpf/src \
           src/syscheckd/src/ebpf/tests/ebpf_validation/ebpf_validation_test.cpp \
-          ${SRC_DIR}/external/libbpf-bootstrap/build/libbpf/libbpf.a \
-          -lelf -lz -lpthread -lstdc++fs \
+          -lbpf -lelf -lz -lpthread -lstdc++fs \
           -o ebpf_validation_runner
       shell: bash
 
     - name: Run eBPF validation across filesystems
       run: |
-        BPF_OBJ=src/external/libbpf-bootstrap/build/modern.bpf.o
+        BPF_OBJ=/var/ossec/lib/modern.bpf.o
+        if [ ! -f "$BPF_OBJ" ]; then
+          echo "[ERROR] BPF object not found at $BPF_OBJ"
+          exit 1
+        fi
         FAILED=""
 
         for FS in ext4 xfs btrfs tmpfs; do
@@ -66,7 +53,7 @@ runs:
             sudo mount -o loop "${IMG}" "${MNT}"
           fi
 
-          sudo ./ebpf_validation_runner --bpf-obj "${BPF_OBJ}" --test-dir "${MNT}" || FAILED="${FAILED} ${FS}"
+          sudo ./ebpf_validation_runner --test-dir "${MNT}" || FAILED="${FAILED} ${FS}"
 
           sudo umount -l "${MNT}" 2>/dev/null || true
           sudo rm -rf "${MNT}" "${IMG}"
