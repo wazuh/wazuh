@@ -109,6 +109,7 @@ public:
 
     explicit ResponseDispatcherImpl(TQueue* responseDispatcher)
         : m_responseDispatcher(responseDispatcher)
+        , m_logFn(Log::currentModuleLogFn())
     {
     }
 

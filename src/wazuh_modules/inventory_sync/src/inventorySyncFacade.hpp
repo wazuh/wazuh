@@ -2149,7 +2149,7 @@ private:
         }
     }
 
-    LogFn m_logFn {WM_INVENTORY_SYNC_LOGTAG};
+    static inline const LogFn m_logFn {WM_INVENTORY_SYNC_LOGTAG};
     std::string m_clusterName;
     int m_maxSessions {1000};          // Maximum concurrent sessions (configured from internal_options)
     size_t m_workersQueueSize {10000}; // Input queue cap (configured from internal_options)

@@ -87,7 +87,7 @@ class AgentSessionImpl final
     std::mutex m_mutex;                 ///< Mutex to guard shared state
     bool m_endEnqueued = false;         ///< Whether the END message has been enqueued
     uint64_t m_declaredSize {0};        ///< DataValue count declared in the Start message (for quota accounting)
-    LogFn m_logFn;                       ///< Log function for this session
+    const LogFn& m_logFn;                 ///< Log function for this session
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
