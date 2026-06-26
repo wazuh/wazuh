@@ -4,21 +4,21 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - '.github/workflows/5_testunit_api.yml'
-      - 'api/**'
-      - 'framework/requirements-dev.txt'
-      - 'src/Makefile'
+      - ".github/workflows/5_testunit_api.yml"
+      - "api/**"
+      - "framework/requirements-dev.txt"
+      - "src/Makefile"
   workflow_dispatch:
     inputs:
       generate_report:
-        description: 'Generate test report'
+        description: "Generate test report"
         required: false
         type: boolean
         default: false
       qa_branch:
-        description: 'QA repository branch'
+        description: "QA repository branch"
         required: false
-        default: 'main'
+        default: "main"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -29,22 +29,18 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.12']
     env:
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
       TEST_REPORT_PATH: /home/runner/work/test_report.txt
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Setup Python ${{ matrix.python-version }}
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-          cache-dependency-path: 'framework/requirements-dev.txt'
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "framework/requirements-dev.txt"
 
       - name: Install dependencies
         run: |

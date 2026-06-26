@@ -101,7 +101,7 @@ jobs:
 
       - name: Checkout Repo
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.PR_HEAD_SHA }}
       - name: Set up Python

@@ -1,0 +1,72 @@
+name: "C++ Test Pipeline"
+description: "Runs the standard C++ module test pipeline: build external deps, build target, run tests, optional coverage"
+
+inputs:
+  target:
+    required: true
+    description: "CMake test target name"
+  asan:
+    required: false
+    description: "Enable ASAN (disables valgrind and coverage)"
+    default: "false"
+  with_coverage:
+    required: false
+    description: "Run coverage analysis after tests (ignored when asan is true)"
+    default: "false"
+  coverage_path:
+    required: false
+    description: "Path to the module for coverage calculation"
+    default: ""
+  coverage_id:
+    required: false
+    description: "Coverage artifact identifier"
+    default: ""
+  coverage_threshold:
+    required: false
+    description: "Minimum coverage percentage required"
+    default: "90"
+  validate_function_coverage:
+    required: false
+    description: "Whether to validate function-level coverage"
+    default: "true"
+  reinstall_cmake:
+    required: false
+    description: "Whether to reinstall CMake before building"
+    default: "false"
+  flags:
+    required: false
+    description: "Extra CMake flags passed through to build_target_cpp"
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install compatible CMake
+      if: ${{ inputs.reinstall_cmake == 'true' }}
+      uses: ./.github/actions/reinstall_cmake
+
+    - name: Build external dependencies
+      uses: ./.github/actions/build_external_deps
+
+    - name: Build test target
+      uses: ./.github/actions/build_target_cpp
+      with:
+        target: ${{ inputs.target }}
+        test: "true"
+        asan: ${{ inputs.asan }}
+        flags: ${{ inputs.flags }}
+
+    - name: Run tests
+      uses: ./.github/actions/test_cpp
+      with:
+        target: ${{ inputs.target }}
+        valgrind: ${{ inputs.asan == 'false' && 'true' || 'false' }}
+
+    - name: Run coverage
+      if: ${{ inputs.with_coverage == 'true' && inputs.asan == 'false' }}
+      uses: ./.github/actions/coverage_cpp
+      with:
+        path: ${{ inputs.coverage_path }}
+        id: ${{ inputs.coverage_id }}
+        threshold: ${{ inputs.coverage_threshold }}
+        validate_function_coverage: ${{ inputs.validate_function_coverage }}

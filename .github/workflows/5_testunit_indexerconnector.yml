@@ -5,6 +5,7 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_indexerconnector.yml"
+      - ".github/actions/cpp_test_pipeline/**"
       - "src/shared_modules/utils/**"
       - "src/shared_modules/indexer_connector/**"
       - ".github/actions/build_external_deps/**"
@@ -23,39 +24,19 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: 'true'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
-
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Indexer connector - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "indexer_connector_utest"
-          test: "true"
           asan: "false"
-
-      - name: Indexer connector - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          valgrind: "true"
-          target: "indexer_connector_utest"
-
-      - name: Indexer connector - Coverage
-        uses: ./.github/actions/coverage_cpp
-        with:
-          path: src/shared_modules/indexer_connector
-          id: indexer_connector
+          with_coverage: "true"
+          coverage_path: src/shared_modules/indexer_connector
+          coverage_id: indexer_connector
           validate_function_coverage: "false"
 
   indexerconnector-asan:
@@ -64,22 +45,12 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
-
-      - name: Indexer connector - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline (ASAN)
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "indexer_connector_utest"
-          test: "true"
           asan: "true"
-
-      - name: Indexer connector - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          target: "indexer_connector_utest"
-          valgrind: "false"
