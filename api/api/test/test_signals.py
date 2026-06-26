@@ -188,7 +188,7 @@ async def test_register_background_tasks(
 @pytest.mark.asyncio
 @patch('api.signals._private_key_path', new='/path/to/private.key')
 @patch('api.signals._public_key_path', new='/path/to/public.key')
-@patch('api.signals.generate_keypair.cache_clear')
+@patch('api.signals.clear_keypair')
 @pytest.mark.parametrize(
     'filename',
     ['/path/to/private.key', '/path/to/public.key', 'other_file.txt']
