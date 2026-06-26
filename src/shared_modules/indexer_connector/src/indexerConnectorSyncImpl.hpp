@@ -1258,8 +1258,9 @@ public:
             throw IndexerConnectorException("Unsafe index name");
         }
 
+        // Only flush if there is data already buffered.
         if (const auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};
-            m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() > m_maxBulkSize)
+            !m_bulkData.empty() && m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() > m_maxBulkSize)
         {
             processBulk();
         }
@@ -1308,7 +1309,8 @@ public:
         const auto totalSize =
             m_bulkData.length() + FORMATTED_SIZE + VERSION_SIZE + index.size() + id.size() + data.size();
 
-        if (totalSize > m_maxBulkSize)
+        // Only flush if there is data already buffered.
+        if (!m_bulkData.empty() && totalSize > m_maxBulkSize)
         {
             processBulk();
         }

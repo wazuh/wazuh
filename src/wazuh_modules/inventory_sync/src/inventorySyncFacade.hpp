@@ -608,8 +608,23 @@ public:
         m_responseDispatcher = std::make_unique<TResponseDispatcher>();
 
         logDebug2(LOGGER_DEFAULT_TAG, "Configuration: %s", configuration.dump().c_str());
-        m_indexerConnector = std::make_unique<TIndexerConnector>(
-            configuration.at("indexer"), LoggingContext {WM_INVENTORY_SYNC_LOGTAG, logFunction});
+
+        nlohmann::json indexerConfig = configuration.contains("indexer") && configuration.at("indexer").is_object()
+                                           ? configuration.at("indexer")
+                                           : nlohmann::json::object();
+
+        if (configuration.contains("indexerBulkSize") && configuration.at("indexerBulkSize").is_number_integer())
+        {
+            indexerConfig["max_bulk_size"] = configuration.at("indexerBulkSize").get<size_t>();
+        }
+        if (configuration.contains("indexerFlushInterval") &&
+            configuration.at("indexerFlushInterval").is_number_integer())
+        {
+            indexerConfig["flush_interval_seconds"] = configuration.at("indexerFlushInterval").get<size_t>();
+        }
+
+        m_indexerConnector =
+            std::make_unique<TIndexerConnector>(indexerConfig, LoggingContext {WM_INVENTORY_SYNC_LOGTAG, logFunction});
 
         if (!configuration.contains("clusterName"))
         {

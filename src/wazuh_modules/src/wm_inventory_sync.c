@@ -93,6 +93,14 @@
              int data_value_quota = getDefine_Int_default("wazuh_modules", "inventory_sync_data_value_quota", 1, 1000000000, 500000);
              cJSON_AddNumberToObject(config_json, "dataValueQuota", data_value_quota);
 
+             // Add indexer bulk-size threshold (bytes) from internal_options.
+             int indexer_bulk_size_bytes = getDefine_Int_default("wazuh_modules", "inventory_sync_indexer_bulk_size_bytes", 4096, 100 * 1024 * 1024, 10 * 1024 * 1024);
+             cJSON_AddNumberToObject(config_json, "indexerBulkSize", indexer_bulk_size_bytes);
+
+             // Add indexer periodic flush interval (seconds) from internal_options.
+             int indexer_flush_interval = getDefine_Int_default("wazuh_modules", "inventory_sync_indexer_flush_interval", 1, 3600, 20);
+             cJSON_AddNumberToObject(config_json, "indexerFlushInterval", indexer_flush_interval);
+
              wm_inventory_sync_log_config(config_json);
              inventory_sync_start_ptr(mtLoggingFunctionsWrapper, config_json);
              cJSON_Delete(config_json);
