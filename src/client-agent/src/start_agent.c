@@ -41,6 +41,27 @@ static void w_agentd_keys_init (void);
 STATIC bool agent_handshake_to_server(int server_id, bool is_startup);
 STATIC void send_msg_on_startup(void);
 
+#ifdef WIN32
+/* Set by w_agentd_force_stop() (receiver.c) when the Windows service is
+ * stopping.  The connection retry loop polls it so the process can exit
+ * promptly instead of looping here forever when no server is reachable. */
+extern volatile int receiver_should_stop;
+
+/* sleep() that wakes early if a service stop has been signalled, so the retry
+ * back-off never delays shutdown by more than ~1 second. */
+STATIC void w_agentd_retry_sleep(int seconds) {
+    for (int i = 0; i < seconds && !receiver_should_stop; i++) {
+        sleep(1);
+    }
+}
+
+#define AGENTD_STOPPING()     (receiver_should_stop != 0)
+#define AGENTD_RETRY_SLEEP(s) w_agentd_retry_sleep(s)
+#else
+#define AGENTD_STOPPING()     (0)
+#define AGENTD_RETRY_SLEEP(s) sleep(s)
+#endif
+
 /**
  * @brief Get a required integer field from a JSON object
  * @param parent Parent JSON object
@@ -439,6 +460,13 @@ void start_agent(int is_startup)
 
     int current_server_id = agt->rip_id;
     while (1) {
+        /* Abort the retry loop if the service is stopping (Windows), so the
+         * process can exit instead of looping here when no server is reachable.
+         * No-op on other platforms. */
+        if (AGENTD_STOPPING()) {
+            return;
+        }
+
         // (max_retries - 1) attempts
 
         for (int attempts = 0; attempts < agt->server[current_server_id].max_retries - 1; attempts++) {
@@ -446,7 +474,11 @@ void start_agent(int is_startup)
                 return;
             }
 
-            sleep(agt->server[current_server_id].retry_interval);
+            if (AGENTD_STOPPING()) {
+                return;
+            }
+
+            AGENTD_RETRY_SLEEP(agt->server[current_server_id].retry_interval);
         }
 
         // Last attempt
@@ -465,7 +497,11 @@ void start_agent(int is_startup)
             }
         }
 
-        sleep(agt->server[current_server_id].retry_interval);
+        if (AGENTD_STOPPING()) {
+            return;
+        }
+
+        AGENTD_RETRY_SLEEP(agt->server[current_server_id].retry_interval);
 
         /* Wait for server reply */
         mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip, __wazuh_version);

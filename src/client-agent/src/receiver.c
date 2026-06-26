@@ -314,17 +314,35 @@ int receive_msg()
     return 0;
 }
 
-/* Set to 1 by OssecServiceCtrlHandler before reporting SERVICE_STOPPED.
- * receiver_messages() polls this at the top of its loop so the process
- * exits cleanly without relying on ExitProcess(). */
+/* Set to 1 by w_agentd_force_stop() (from OssecServiceCtrlHandler) before
+ * reporting SERVICE_STOPPED.  Both the connection retry loop in start_agent()
+ * and receiver_messages() poll this so the process exits cleanly on service
+ * stop without relying on ExitProcess(). */
 volatile int receiver_should_stop = 0;
 
 #ifdef WIN32
-/* Mirrors the active socket fd so OssecServiceCtrlHandler can close it
- * without needing access to the full agent struct.  Closing the socket
- * unblocks any in-progress OS_SendSecureTCP (SO_SNDTIMEO or select),
- * making the exit latency effectively zero instead of up to 30 s. */
-volatile SOCKET receiver_agent_sock = INVALID_SOCKET;
+/* Called by OssecServiceCtrlHandler on service stop.  Signals the connection
+ * and receive loops to abort and closes whatever socket the agent currently
+ * holds, so any thread blocked inside connect()/recv()/send() returns
+ * immediately and the main thread can unwind.  This keeps wazuh-agent.exe from
+ * lingering after the service reports SERVICE_STOPPED (a lingering process
+ * holds handles under the install dir and delays MSI file removal).
+ *
+ * The socket is closed without taking the send mutex on purpose: the goal is
+ * precisely to interrupt a thread that may be blocked holding it inside
+ * send()/recv().  A connect() that has not yet published its fd into agt->sock
+ * cannot be interrupted this way and will run to its TCP timeout before the
+ * loop next checks the flag; that is bounded and far better than blocking
+ * forever. */
+void w_agentd_force_stop(void)
+{
+    receiver_should_stop = 1;
+
+    const int current_sock = agt->sock;
+    if (current_sock >= 0) {
+        OS_CloseSocket(current_sock);
+    }
+}
 #endif
 
 #ifdef WIN32
@@ -351,22 +369,17 @@ int receiver_messages()
 
         /* sock must be set */
         if (agt->sock == -1) {
-            receiver_agent_sock = INVALID_SOCKET;
             sleep(5);
             continue;
         }
 
-        /* Snapshot the atomic fd before any use: the stop handler (or
-         * sendmsg on a WSAETIMEDOUT) may write -1 concurrently.
+        /* Snapshot the atomic fd before any use: the stop handler (closing the
+         * socket) or sendmsg (on a WSAETIMEDOUT) may write -1 concurrently.
          * FD_SET/select need a stable, non-negative descriptor. */
         const int sock = agt->sock;
         if (sock == -1) {
-            receiver_agent_sock = INVALID_SOCKET;
             continue;
         }
-
-        /* Keep the mirror in sync so the stop handler can close it. */
-        receiver_agent_sock = (SOCKET)sock;
 
         run_notify();
 
