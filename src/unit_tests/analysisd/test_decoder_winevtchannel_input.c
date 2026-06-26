@@ -118,6 +118,49 @@ void test_winevt_dec_provider(void ** state) {
     assert_int_equal(ret, SUCCESS_DECODE);
 }
 
+/* Test that large accumulated data from multiple unnamed <Data> elements is safely truncated.
+ * When total content exceeds OS_MAXSTR, snprintf should cap writes at the buffer size.
+ */
+void test_winevt_dec_join_data_large_accumulation(void ** state) {
+    Eventinfo * lf = *state;
+
+    /* Build a JSON event with 5 unnamed <Data> elements, each containing 16000 bytes.
+     * Total accumulation would be ~80000 bytes, exceeding OS_MAXSTR (65536).
+     */
+    const size_t ELEMENT_SIZE = 16000;
+    const int NUM_ELEMENTS = 5;
+
+    /* Calculate buffer size needed for the JSON payload */
+    size_t json_size = 128 + (NUM_ELEMENTS * (ELEMENT_SIZE + 32));
+    char * json_payload = (char *) calloc(json_size, sizeof(char));
+    assert_non_null(json_payload);
+
+    strcpy(json_payload, "{\"Event\":\"<Event><EventData>");
+
+    char * element_content = (char *) calloc(ELEMENT_SIZE + 1, sizeof(char));
+    assert_non_null(element_content);
+    memset(element_content, 'A', ELEMENT_SIZE);
+    element_content[ELEMENT_SIZE] = '\0';
+
+    for (int i = 0; i < NUM_ELEMENTS; i++) {
+        strcat(json_payload, "<Data>");
+        strcat(json_payload, element_content);
+        strcat(json_payload, "</Data>");
+    }
+
+    strcat(json_payload, "</EventData></Event>\"}");
+
+    free(element_content);
+
+    lf->log = lf->full_log = json_payload;
+
+    /* We use expect_any since the exact output depends on truncation. */
+    expect_any(__wrap__mdebug2, formatted_msg);
+
+    int ret = DecodeWinevt(lf);
+    assert_int_equal(ret, SUCCESS_DECODE);
+}
+
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_winevt_dec_time_created_no_attributes, test_setup, test_cleanup),
@@ -125,6 +168,7 @@ int main() {
         cmocka_unit_test_setup_teardown(test_winevt_dec_execution_one_attribute, test_setup, test_cleanup),
         cmocka_unit_test_setup_teardown(test_winevt_dec_provider_no_attributes, test_setup, test_cleanup),
         cmocka_unit_test_setup_teardown(test_winevt_dec_provider, test_setup, test_cleanup),
+        cmocka_unit_test_setup_teardown(test_winevt_dec_join_data_large_accumulation, test_setup, test_cleanup),
     };
     return cmocka_run_group_tests(tests, test_setup_global, NULL);
 }
