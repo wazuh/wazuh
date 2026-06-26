@@ -351,7 +351,6 @@ class WazuhException(Exception):
         3050: "Payload size exceeds maximum allowed limit",
         3051: "Too many concurrent divided messages",
         3052: "Invalid cluster file parameter",
-        3053: "Decompressed file exceeds the maximum allowed size",
         3060: {'message': "Invalid node name format",
                'remediation': f"Check and fix [worker names](https://documentation.wazuh.com/{DOCU_VERSION}/"
                               f"user-manual/reference/ossec-conf/cluster.html#node-name)"

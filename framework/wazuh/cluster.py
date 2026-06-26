@@ -11,12 +11,11 @@ from wazuh.core.cluster.control import get_health, get_nodes
 from wazuh.core.cluster.utils import get_cluster_status, read_config
 from wazuh.core.exception import WazuhError, WazuhResourceNotFound
 from wazuh.core.results import AffectedItemsWazuhResult, WazuhResult
-from wazuh.rbac.decorators import expose_resources, async_list_handler, mask_sensitive_config
+from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 node_id = get_node().get('node')
 
 
-@mask_sensitive_config()
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'])
 def read_config_wrapper() -> AffectedItemsWazuhResult:
     """Wrapper for read_config.
@@ -30,7 +29,7 @@ def read_config_wrapper() -> AffectedItemsWazuhResult:
                                       none_msg='No information was returned'
                                       )
     try:
-        result.affected_items.append(dict(read_config()))
+        result.affected_items.append(read_config())
     except WazuhError as e:
         result.add_failed_item(id_=node_id, error=e)
     result.total_affected_items = len(result.affected_items)
