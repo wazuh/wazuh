@@ -286,7 +286,7 @@ bool CMSync::downloadNamespace(std::string_view originSpace,
         m_waitSeconds,
         m_shutdownRequested);
 
-    // If consumer is not idle, getPolicy returns nullopt
+    // If consumer is not ready, getPolicy returns nullopt
     if (!policyResource.has_value())
     {
         return false;
@@ -356,7 +356,7 @@ CMSync::downloadAndEnrichNamespace(std::string_view originSpace, const std::opti
 
     if (!downloadNamespace(originSpace, newNs, consumerId))
     {
-        return std::nullopt; // Consumer not idle
+        return std::nullopt; // Consumer not ready
     }
 
     // Enrich the namespace with local-only assets
@@ -587,7 +587,7 @@ void CMSync::synchronize()
                 return;
             }
 
-            // Pre-flight check: verify consumer is idle and has data (local_offset != 0)
+            // Pre-flight check: verify consumer is ready and has data (local_offset != 0)
             if (nsState.getConsumerId().has_value())
             {
                 auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
@@ -616,7 +616,7 @@ void CMSync::synchronize()
             if (!hashResult.has_value())
             {
                 LOG_INFO("[{}] Synchronization skipped for space '{}' because wazuh-indexer is updating the policy "
-                         "or consumer is not idle (consumer ID: '{}')",
+                         "or consumer is not ready (consumer ID: '{}')",
                          LOG_MODULE_NAME,
                          nsState.getOriginSpace(),
                          nsState.getConsumerId().value_or("unknown"));
@@ -745,7 +745,7 @@ void CMSync::synchronize()
             const auto newNsIdOpt = downloadAndEnrichNamespace(nsState.getOriginSpace(), nsState.getConsumerId());
             if (!newNsIdOpt.has_value())
             {
-                LOG_INFO("[{}] Download skipped for space '{}' because consumer is not idle",
+                LOG_INFO("[{}] Download skipped for space '{}' because consumer is not ready",
                          LOG_MODULE_NAME,
                          nsState.getOriginSpace());
                 nsState.setSyncStatus(base::SyncStatus::READY);
