@@ -14,6 +14,7 @@
 #include "logging_helper.h"
 #include <algorithm>
 #include <cctype>
+#include <cstring>
 #include <functional>
 #include <iostream>
 #include <string>
@@ -335,36 +336,37 @@ extern "C"
                     return -1;
                 }
 
-                std::string claimedAgentId(startMsg->agentid()->str());
+                auto claimedAgentId = startMsg->agentid()->string_view();
 
                 // Validate that both IDs contain only digits
-                auto isNumeric = [](const std::string& str)
+                auto isNumeric = [](std::string_view str)
                 {
                     return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
                 };
 
-                std::string authId(authenticated_agent_id);
-                if (!isNumeric(authId) || !isNumeric(claimedAgentId))
+                if (!isNumeric(authenticated_agent_id) || !isNumeric(claimedAgentId))
                 {
                     logMessage(modules_log_level_t::LOG_ERROR,
-                               "Agent ID validation failed: non-numeric ID. Authenticated: '" + authId +
-                                   "', Claimed: '" + claimedAgentId + "'");
+                               std::string("Agent ID validation failed: non-numeric ID. Authenticated: '") +
+                                   authenticated_agent_id + "', Claimed: '" + std::string(claimedAgentId) + "'");
                     return -1;
                 }
 
                 // Compare agent IDs as integers to handle leading zeros
                 int authIdInt = std::atoi(authenticated_agent_id);
-                int claimIdInt = std::atoi(claimedAgentId.c_str());
+                int claimIdInt = std::atoi(claimedAgentId.data());
 
                 if (authIdInt != claimIdInt)
                 {
-                    logMessage(modules_log_level_t::LOG_ERROR,
-                               "Agent ID spoofing detected! Authenticated agent '" + authId + "' claimed to be '" +
-                                   claimedAgentId + "'. Connection rejected.");
+                    logMessage(modules_log_level_t::LOG_WARNING,
+                               std::string("Agent ID spoofing detected! Authenticated agent '") +
+                                   authenticated_agent_id + "' claimed to be '" + std::string(claimedAgentId) +
+                                   "'. Connection rejected.");
                     return -1;
                 }
 
-                logMessage(modules_log_level_t::LOG_DEBUG, "Agent ID validation passed for agent '" + authId + "'");
+                logMessage(modules_log_level_t::LOG_DEBUG,
+                           std::string("Agent ID validation passed for agent '") + authenticated_agent_id + "'");
 
                 // Start message MUST have a cluster name
                 if (!startMsg->cluster_name() || startMsg->cluster_name()->size() == 0)
@@ -374,21 +376,23 @@ extern "C"
                     return -1;
                 }
 
-                std::string claimedClusterName(startMsg->cluster_name()->str());
-                std::string managerClusterName(manager_cluster_name);
+                auto claimedClusterName = startMsg->cluster_name()->string_view();
+                size_t managerClusterNameLen = strlen(manager_cluster_name);
 
-                if (claimedClusterName != managerClusterName)
+                if (claimedClusterName.size() != managerClusterNameLen ||
+                    strncmp(claimedClusterName.data(), manager_cluster_name, managerClusterNameLen) != 0)
                 {
-                    logMessage(modules_log_level_t::LOG_ERROR,
-                               "Cluster name spoofing detected! Agent '" + authId + "' claimed cluster name '" +
-                                   claimedClusterName + "' but manager cluster name is '" + managerClusterName +
+                    logMessage(modules_log_level_t::LOG_WARNING,
+                               std::string("Cluster name spoofing detected! Agent '") + authenticated_agent_id +
+                                   "' claimed cluster name '" + std::string(claimedClusterName) +
+                                   "' but manager cluster name is '" + manager_cluster_name +
                                    "'. Connection rejected.");
                     return -1;
                 }
 
                 logMessage(modules_log_level_t::LOG_DEBUG,
-                           "Cluster name validation passed for agent '" + authId + "' in cluster '" +
-                               managerClusterName + "'");
+                           std::string("Cluster name validation passed for agent '") + authenticated_agent_id +
+                               "' in cluster '" + manager_cluster_name + "'");
             }
 
             // Validation passed, send the message
