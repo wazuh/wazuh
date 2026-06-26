@@ -288,7 +288,8 @@ extern "C"
     int router_provider_send_sync(ROUTER_PROVIDER_HANDLE handle,
                                   const char* message,
                                   unsigned int message_size,
-                                  const char* authenticated_agent_id)
+                                  const char* authenticated_agent_id,
+                                  const char* manager_cluster_name)
     {
         try
         {
@@ -300,6 +301,11 @@ extern "C"
             if (!authenticated_agent_id || strlen(authenticated_agent_id) == 0)
             {
                 throw std::runtime_error("Authenticated agent ID is empty");
+            }
+
+            if (!manager_cluster_name || strlen(manager_cluster_name) == 0)
+            {
+                throw std::runtime_error("Manager cluster name is empty");
             }
 
             // Verify flatbuffer structure
@@ -359,6 +365,30 @@ extern "C"
                 }
 
                 logMessage(modules_log_level_t::LOG_DEBUG, "Agent ID validation passed for agent '" + authId + "'");
+
+                // Start message MUST have a cluster name
+                if (!startMsg->cluster_name() || startMsg->cluster_name()->size() == 0)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Cluster name validation failed: Start message missing cluster name");
+                    return -1;
+                }
+
+                std::string claimedClusterName(startMsg->cluster_name()->str());
+                std::string managerClusterName(manager_cluster_name);
+
+                if (claimedClusterName != managerClusterName)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Cluster name spoofing detected! Agent '" + authId + "' claimed cluster name '" +
+                                   claimedClusterName + "' but manager cluster name is '" + managerClusterName +
+                                   "'. Connection rejected.");
+                    return -1;
+                }
+
+                logMessage(modules_log_level_t::LOG_DEBUG,
+                           "Cluster name validation passed for agent '" + authId + "' in cluster '" +
+                               managerClusterName + "'");
             }
 
             // Validation passed, send the message

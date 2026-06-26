@@ -121,21 +121,23 @@ extern "C"
     /**
      * @brief Send inventory sync message with anti-spoofing validation.
      *
-     * Validates that the agent ID in the flatbuffer message matches the authenticated agent ID.
-     * If validation passes, forwards the message to inventory sync. If validation fails, logs
-     * a security event and returns an error.
+     * Validates that the agent ID and cluster name in the flatbuffer message match the
+     * authenticated values from the manager. If validation passes, forwards the message
+     * to inventory sync. If validation fails, logs a security event and returns an error.
      *
      * @param handle Handle to the router provider.
      * @param message Inventory sync flatbuffer message to send.
      * @param message_size Size of the flatbuffer message.
      * @param authenticated_agent_id Agent ID from the authenticated session (from keystore).
+     * @param manager_cluster_name Manager's authoritative cluster name.
      * @return 0 if the message was validated and sent successfully.
      * @return -1 if validation failed or the message was not sent successfully.
      */
     EXPORTED int router_provider_send_sync(ROUTER_PROVIDER_HANDLE handle,
                                            const char* message,
                                            unsigned int message_size,
-                                           const char* authenticated_agent_id);
+                                           const char* authenticated_agent_id,
+                                           const char* manager_cluster_name);
 
     /**
      * @brief Destroy a router provider.
@@ -221,7 +223,8 @@ typedef bool (*router_provider_send_func)(ROUTER_PROVIDER_HANDLE handle,
 typedef int (*router_provider_send_sync_func)(ROUTER_PROVIDER_HANDLE handle,
                                               const char* message,
                                               unsigned int message_size,
-                                              const char* authenticated_agent_id);
+                                              const char* authenticated_agent_id,
+                                              const char* manager_cluster_name);
 
 typedef void (*router_provider_destroy_func)(ROUTER_PROVIDER_HANDLE handle);
 
