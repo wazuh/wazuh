@@ -64,8 +64,8 @@ public:
      * @param space The name of the space from which to retrieve policy resources
      * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
      *        When provided, the PIT will include `.wazuh-cti-consumers` and the consumer document
-     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
-     * @return An optional PolicyResources. Returns std::nullopt if the consumer is provided and is not idle.
+     *        will be verified as `ready` within the PIT snapshot to ensure consistency.
+     * @return An optional PolicyResources. Returns std::nullopt if the consumer is provided and is not ready.
      * @throws std::invalid_argument if the space name is empty or invalid
      * @throws IndexerConnectorException if there is an error during retrieval
      * @throws std::exception for other unexpected errors
@@ -83,9 +83,9 @@ public:
      * @param space The name of the space to retrieve the information for
      * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
      *        When provided, a PIT will include `.wazuh-cti-consumers` and the consumer document
-     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
+     *        will be verified as `ready` within the PIT snapshot to ensure consistency.
      * @return An optional pair containing the SHA-256 hash and enabled status.
-     *         Returns std::nullopt if the consumer is provided and is not idle.
+     *         Returns std::nullopt if the consumer is provided and is not ready.
      * @throws std::invalid_argument if the space name is empty
      * @throws IndexerConnectorException if the query returns zero or more than one result, or if required fields are
      * missing
@@ -123,8 +123,8 @@ public:
      *
      * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
      *        When provided, a PIT will include `.wazuh-cti-consumers` and the consumer document
-     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
-     * @return An optional map(type -> sha256 hash). Returns std::nullopt if the consumer is provided and is not idle.
+     *        will be verified as `ready` within the PIT snapshot to ensure consistency.
+     * @return An optional map(type -> sha256 hash). Returns std::nullopt if the consumer is provided and is not ready.
      * @throws IndexerConnectorException if the manifest is missing or invalid
      */
     virtual std::optional<std::unordered_map<std::string, std::string>>
@@ -142,9 +142,9 @@ public:
      * @param onIoc Callback invoked for each valid IOC record
      * @param consumerIdToValidate Optional consumer document ID in `.wazuh-cti-consumers` to validate.
      *        When provided, the PIT will include `.wazuh-cti-consumers` and the consumer document
-     *        will be verified as `idle` within the PIT snapshot to ensure consistency.
+     *        will be verified as `ready` within the PIT snapshot to ensure consistency.
      * @return An optional number of IOC documents delivered to the callback.
-     *         Returns std::nullopt if the consumer is provided and is not idle.
+     *         Returns std::nullopt if the consumer is provided and is not ready.
      * @throws IndexerConnectorException if there is an indexer/query error
      */
     virtual std::optional<std::size_t>
@@ -158,7 +158,7 @@ public:
      *
      * Queries `.wazuh-cti-consumers` for the specified consumer document and verifies
      * two conditions:
-     *   1. `status` == `"idle"` — the indexer is not actively updating data.
+     *   1. `status` == `"ready"` — the indexer is not actively updating data.
      *   2. `local_offset` != 0 — the consumer has received at least one CTI update,
      *      so hash/data documents actually exist in the data indices.
      *
@@ -166,7 +166,7 @@ public:
      * hashes or data, to avoid unnecessary network calls when the consumer has no data yet.
      *
      * @param consumerId The `_id` of the consumer document (e.g. `STANDARD_RULESET_CONSUMER_ID`).
-     * @return true if the consumer is idle and has a non-zero local_offset; false otherwise
+     * @return true if the consumer is ready and has a non-zero local_offset; false otherwise
      *         (including on any error — safe default to skip sync).
      */
     virtual bool isConsumerReadyForSync(std::string_view consumerId) = 0;

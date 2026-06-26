@@ -222,10 +222,10 @@ bool IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
             },
             wiconnector::IOC_ENRICHMENT_CONSUMER_ID);
 
-        // Consumer is not idle — rollback and signal caller
+        // Consumer is not ready — rollback and signal caller
         if (!processedDocsOpt.has_value())
         {
-            LOG_DEBUG("[IOC::Sync] Consumer is not idle for IOC type '{}', "
+            LOG_DEBUG("[IOC::Sync] Consumer is not ready for IOC type '{}', "
                       "rolling back database '{}'",
                       iocType,
                       dbName);
@@ -236,7 +236,7 @@ bool IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
             catch (const std::exception& ex)
             {
                 LOG_WARNING("[IOC::Sync] Failed to rollback database '{}' after consumer "
-                            "not idle: {}",
+                            "not ready: {}",
                             dbName,
                             ex.what());
             }
@@ -413,7 +413,7 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
         {
             if (!downloadAndPopulateDB(dbState.getIocType(), tempDBName))
             {
-                LOG_DEBUG("[IOC::Sync] IOC consumer is not idle for type '{}', skipping", dbState.getIocType());
+                LOG_DEBUG("[IOC::Sync] IOC consumer is not ready for type '{}', skipping", dbState.getIocType());
                 return false;
             }
         }
@@ -494,7 +494,7 @@ void IocSync::synchronize()
         const auto kvdbiocPtr = base::utils::lockWeakPtr(m_kvdbiocManagerPtr, "KVDBIOCManager");
         std::unique_lock lock(m_mutex);
 
-        // Pre-flight check: verify IOC consumer is idle and has data (local_offset != 0)
+        // Pre-flight check: verify IOC consumer is ready and has data (local_offset != 0)
         {
             auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
             const bool ready = base::utils::executeWithRetry(
@@ -522,11 +522,11 @@ void IocSync::synchronize()
             return;
         }
 
-        // Get remote hashes (returns nullopt if IOC consumer is not idle)
+        // Get remote hashes (returns nullopt if IOC consumer is not ready)
         const auto remoteTypeHashesOpt = getRemoteHashesFromRemote();
         if (!remoteTypeHashesOpt.has_value())
         {
-            LOG_INFO("[IOC::Sync] IOC syncronization skipped because the IOC consumer is not idle (data/hash is being "
+            LOG_INFO("[IOC::Sync] IOC syncronization skipped because the IOC consumer is not ready (data/hash is being "
                      "updated in the indexer)");
             reportSyncFailure();
             return;

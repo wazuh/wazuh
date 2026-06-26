@@ -59,7 +59,7 @@ private:
      * @param originSpace Define the source space in the indexer
      * @param dstNamespace Define the destination namespace in the local store (Must not exist)
      * @param consumerId Optional consumer ID to validate during policy retrieval
-     * @return true if the download succeeded, false if consumer is not idle
+     * @return true if the download succeeded, false if consumer is not ready
      * @throws std::runtime_error on errors.
      */
     bool downloadNamespace(std::string_view originSpace,
@@ -72,7 +72,7 @@ private:
      * @param space Space name in the indexer
      * @param consumerId Optional consumer ID to validate within PIT
      * @return An optional pair containing the policy hash and enabled status.
-     *         Returns std::nullopt if the consumer is provided and is not idle.
+     *         Returns std::nullopt if the consumer is provided and is not ready.
      * @throws std::runtime_error on errors.
      */
     std::optional<std::pair<std::string, bool>>
@@ -91,7 +91,7 @@ private:
      *
      * @param originSpace The source space name in the wazuh-indexer to download from
      * @param consumerId Optional consumer ID to validate during policy retrieval
-     * @return An optional NamespaceId. Returns std::nullopt if consumer is provided and not idle.
+     * @return An optional NamespaceId. Returns std::nullopt if consumer is provided and not ready.
      * @throws std::runtime_error if any step of the process fails
      * @warning There is no ganrantee that the returned namespace is valid, should be verified by the router.
      * @note If the operation fails at any point, the temporary namespace is automatically deleted
