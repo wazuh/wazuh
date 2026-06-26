@@ -283,14 +283,13 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
 #ifdef OSSECHIDS
                 extern bool is_fim_shutdown;
 
-                extern volatile int receiver_should_stop;
-                extern volatile SOCKET receiver_agent_sock;
-                receiver_should_stop = 1;
-                SOCKET sock_to_close = receiver_agent_sock;
-                if (sock_to_close != INVALID_SOCKET) {
-                    receiver_agent_sock = INVALID_SOCKET;
-                    closesocket(sock_to_close);
-                }
+                /* Signal the connection (start_agent) and receive
+                 * (receiver_messages) loops to stop and close the in-flight
+                 * socket, so the agent's main thread unwinds and the process
+                 * exits promptly instead of lingering after SERVICE_STOPPED.
+                 * Done before the teardown below so it can run in parallel. */
+                extern void w_agentd_force_stop(void);
+                w_agentd_force_stop();
 
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
