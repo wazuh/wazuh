@@ -5,7 +5,6 @@
 import json
 import os
 from unittest.mock import patch, MagicMock
-from wazuh.rbac.auth_context import RBAChecker, MAX_FIND_ITEM_DEPTH
 
 import pytest
 from sqlalchemy import create_engine
@@ -109,6 +108,10 @@ def test_auth_roles(db_setup):
 
 def _make_checker(auth_context=None):
     """Return an RBAChecker with no DB interaction."""
+    # Imported lazily (not at module scope) so collecting this file does not import
+    # wazuh.rbac.orm before sibling tests that reload it under patched engines; a
+    # module-level import leaves a stale orm reference and breaks test_auth_roles.
+    from wazuh.rbac.auth_context import RBAChecker
     with patch('wazuh.rbac.auth_context.orm.RolesManager') as mock_rm, \
          patch('wazuh.rbac.auth_context.orm.RulesManager'):
         mock_rm.return_value.__enter__.return_value.get_roles.return_value = []
@@ -116,14 +119,15 @@ def _make_checker(auth_context=None):
 
 
 def test_find_item_depth_limit_raises():
-    """find_item must raise RecursionError when nesting exceeds MAX_FIND_ITEM_DEPTH."""
+    """find_item must raise AuthContextDepthExceeded when nesting exceeds MAX_FIND_ITEM_DEPTH."""
+    from wazuh.rbac.auth_context import AuthContextDepthExceeded, MAX_FIND_ITEM_DEPTH
     checker = _make_checker()
     # Build a dict nested one level deeper than the allowed maximum
     deep = {"leaf": "value"}
     for _ in range(MAX_FIND_ITEM_DEPTH + 1):
         deep = {"level": deep}
 
-    with pytest.raises(RecursionError):
+    with pytest.raises(AuthContextDepthExceeded):
         checker.find_item({"leaf": "value"}, auth_context=deep, mode='FIND')
 
 
@@ -131,9 +135,10 @@ def test_get_user_roles_denies_when_depth_exceeded():
     """get_user_roles must not grant a role when find_item hits the depth limit.
 
     A NOT+FIND rule would incorrectly grant access if the truncated search returned
-    False (no match found), because NOT(False) evaluates to True. Raising RecursionError
-    instead causes get_user_roles to skip the role entirely.
+    False (no match found), because NOT(False) evaluates to True. Raising
+    AuthContextDepthExceeded instead causes get_user_roles to skip the role entirely.
     """
+    from wazuh.rbac.auth_context import MAX_FIND_ITEM_DEPTH
     deep = {"leaf": "value"}
     for _ in range(MAX_FIND_ITEM_DEPTH + 1):
         deep = {"level": deep}

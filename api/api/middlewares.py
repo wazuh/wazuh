@@ -15,7 +15,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 
-from connexion.exceptions import OAuthProblem, ProblemException
+from connexion.exceptions import OAuthProblem
 from connexion.lifecycle import ConnexionRequest
 from connexion.security import AbstractSecurityHandler
 
@@ -26,7 +26,7 @@ from wazuh.core.utils import get_utc_now
 from api import configuration
 from api.alogging import custom_logging
 from api.authentication import generate_keypair, JWT_ALGORITHM
-from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
+from api.api_exception import BlockedIPException, ExpectFailedException, MaxRequestsException, PayloadTooLargeException
 from api.controllers.util import build_recursion_error_response
 
 # Default of the max event requests allowed per minute
@@ -237,8 +237,7 @@ class CheckAuthContextSizeMiddleware(BaseHTTPMiddleware):
         if request.url.path == RUN_AS_LOGIN_ENDPOINT and request.method == "POST":
             body = await request.body()
             if len(body) > AUTH_CONTEXT_MAX_PAYLOAD_SIZE:
-                raise ProblemException(
-                    status=413,
+                raise PayloadTooLargeException(
                     title="Request Entity Too Large",
                     detail=f"Auth context payload exceeds the maximum allowed size of "
                            f"{AUTH_CONTEXT_MAX_PAYLOAD_SIZE} bytes.",
@@ -279,7 +278,9 @@ class WazuhAccessLoggerMiddleware(BaseHTTPMiddleware):
 
         body = await request.body()
 
-        if body and not(request.url.path == RUN_AS_LOGIN_ENDPOINT and len(body) > AUTH_CONTEXT_MAX_PAYLOAD_SIZE):
+        # Don't allow heavy bodies when trying to authenticate. Necessary because this middleware is executed before
+        # CheckAuthContextSizeMiddleware can be executed
+        if body and (request.url.path != RUN_AS_LOGIN_ENDPOINT or len(body) <= AUTH_CONTEXT_MAX_PAYLOAD_SIZE):
             try:
                 # Load the request body to the _json field before calling the controller so it's cached before the stream
                 # is consumed. If there's a json error we skip it so it's handled later.
