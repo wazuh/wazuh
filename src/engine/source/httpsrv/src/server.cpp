@@ -248,7 +248,7 @@ void Server::start(const std::filesystem::path& socketPath, bool useThread)
     }
     else
     {
-        LOG_INFO("Starting server {} at {}", m_id, socketPath.string());
+        LOG_INFO("[Server] Starting {} at {}", m_id, socketPath.string());
         if (!bindAndListen())
         {
             throw std::runtime_error(fmt::format("[Server] {} failed to start at {}", m_id, socketPath.string()));

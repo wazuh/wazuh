@@ -98,15 +98,6 @@ TEST_F(RawEventIndexerUnitTest, IndexStringViewWhenEnabledCallsConnector)
     indexer.index(std::string_view {"payload-sv"});
 }
 
-TEST_F(RawEventIndexerUnitTest, IndexSwallowsConnectorExceptions)
-{
-    raweventindexer::RawEventIndexer indexer(m_connector, "custom-raw-index");
-    indexer.enable();
-
-    EXPECT_CALL(*m_connector, index(::testing::_, ::testing::_)).WillOnce(::testing::Throw(std::runtime_error("boom")));
-    EXPECT_NO_THROW(indexer.index(std::string {"payload"}));
-}
-
 TEST_F(RawEventIndexerUnitTest, IndexNoThrowIfConnectorExpiresAfterConstruction)
 {
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();

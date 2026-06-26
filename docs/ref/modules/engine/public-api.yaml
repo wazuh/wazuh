@@ -13,7 +13,169 @@ tags:
   description: Operations for testing of events.
 - name: Metrics
   description: Operations for querying and controlling engine metrics.
+- name: Status
+  description: Engine synchronization status.
 paths:
+  /status:
+    get:
+      tags:
+      - Status
+      summary: Get engine status
+      description: |
+        Returns the overall engine readiness state and per-resource synchronization details.
+
+        The engine is considered **ready** when all enabled spaces are available
+        AND all IOC databases are available AND all geo databases are available.
+
+        Resources may still be updating to their latest version — that does NOT
+        block readiness. What matters is having *some* version available.
+
+        Resources are organized into three categories:
+        - **spaces**: Content manager policy spaces (e.g., `standard`, `custom`)
+        - **ioc**: Indicator of Compromise databases (`connection`, `url_domain`, `url_full`, `hash_md5`, `hash_sha1`, `hash_sha256`)
+        - **geo**: Geolocation databases (`city`, `asn`)
+
+        Each resource reports:
+        - `available` — whether a usable version is currently loaded (independent of `status`; an old version can stay available after a failed sync)
+        - `enabled` — (spaces only) whether the space is enabled in the remote policy; disabled spaces do not block readiness
+        - `status` — current sync state: `ready`, `updating`, or `failed`
+        - `hash` — last known content hash (empty if never synced)
+        - `last_successful_update` — Unix timestamp of last successful sync (0 if never)
+
+        **Readiness formula**: `ready = true` when:
+        - All enabled spaces have `available == true`
+        - All IOC types have `available == true`
+        - All geo databases have `available == true`
+      responses:
+        '200':
+          description: Status retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusGet_Response'
+              examples:
+                all_ready:
+                  summary: All enabled resources are ready
+                  value:
+                    status: OK
+                    ready: true
+                    spaces:
+                      standard:
+                        available: true
+                        enabled: true
+                        status: ready
+                        hash: "a1b2c3d4e5f6"
+                        last_successful_update: 1750068600
+                      custom:
+                        available: false
+                        enabled: false
+                        status: ready
+                        hash: ""
+                        last_successful_update: 0
+                    ioc:
+                      connection:
+                        available: true
+                        status: ready
+                        hash: "f6e5d4c3b2a1"
+                        last_successful_update: 1750068600
+                      url_domain:
+                        available: true
+                        status: ready
+                        hash: "1a2b3c4d5e6f"
+                        last_successful_update: 1750068600
+                      url_full:
+                        available: true
+                        status: ready
+                        hash: "0f1e2d3c4b5a"
+                        last_successful_update: 1750068600
+                      hash_md5:
+                        available: true
+                        status: ready
+                        hash: "abcdef123456"
+                        last_successful_update: 1750068600
+                      hash_sha1:
+                        available: true
+                        status: ready
+                        hash: "654321fedcba"
+                        last_successful_update: 1750068600
+                      hash_sha256:
+                        available: true
+                        status: ready
+                        hash: "aabbccddee11"
+                        last_successful_update: 1750068600
+                    geo:
+                      city:
+                        available: true
+                        status: ready
+                        hash: "geo1hash2city"
+                        last_successful_update: 1750066800
+                      asn:
+                        available: true
+                        status: ready
+                        hash: "geo1hash2asn0"
+                        last_successful_update: 1750066800
+                not_ready_syncing:
+                  summary: Engine not ready (IOC not yet available)
+                  value:
+                    status: OK
+                    ready: false
+                    spaces:
+                      standard:
+                        available: true
+                        enabled: true
+                        status: ready
+                        hash: "a1b2c3d4e5f6"
+                        last_successful_update: 1750068600
+                      custom:
+                        available: false
+                        enabled: false
+                        status: ready
+                        hash: ""
+                        last_successful_update: 0
+                    ioc:
+                      connection:
+                        available: false
+                        status: updating
+                        hash: ""
+                        last_successful_update: 0
+                      url_domain:
+                        available: false
+                        status: updating
+                        hash: ""
+                        last_successful_update: 0
+                      url_full:
+                        available: false
+                        status: updating
+                        hash: ""
+                        last_successful_update: 0
+                      hash_md5:
+                        available: false
+                        status: updating
+                        hash: ""
+                        last_successful_update: 0
+                      hash_sha1:
+                        available: false
+                        status: updating
+                        hash: ""
+                        last_successful_update: 0
+                      hash_sha256:
+                        available: false
+                        status: updating
+                        hash: ""
+                        last_successful_update: 0
+                    geo:
+                      city:
+                        available: true
+                        status: ready
+                        hash: "geo1hash2city"
+                        last_successful_update: 1750066800
+                      asn:
+                        available: true
+                        status: ready
+                        hash: "geo1hash2asn0"
+                        last_successful_update: 1750066800
+        '500':
+          $ref: '#/components/responses/InternalServerError_500'
   /content/validate/policy:
     post:
       tags:
@@ -523,7 +685,7 @@ paths:
                     status: ERROR
                     error: 'File not found: /invalid/path/file.json'
                 sync_in_progress:
-                  summary: Another synchronization is already running
+                  summary: Another synchronization is already updating
                   value:
                     status: ERROR
                     error: IOC synchronization already in progress
@@ -1139,6 +1301,74 @@ components:
             type: string
             description: Error message from last failed synchronization. Empty if last sync succeeded.
             example: ''
+    SpaceState:
+      type: object
+      description: State of a content manager space (has enabled flag)
+      properties:
+        available:
+          type: boolean
+          description: Whether a usable version of the space is currently available for event processing. Independent of status — a previously synced version stays available even if the latest sync failed.
+        enabled:
+          type: boolean
+          description: Whether the space is enabled in the remote policy. Disabled spaces do not block readiness.
+        status:
+          type: string
+          enum:
+          - ready
+          - updating
+          - failed
+          description: 'Current synchronization state: ready (idle), updating (syncing), or failed (last sync errored).'
+        hash:
+          type: string
+          description: Last known content hash. Empty string if never synced.
+        last_successful_update:
+          type: integer
+          format: uint32
+          description: Unix timestamp of last successful synchronization. 0 if never synced.
+    ResourceState:
+      type: object
+      description: State of an IOC or Geo resource (always active, no enabled flag)
+      properties:
+        available:
+          type: boolean
+          description: Whether the resource has a version available for processing.
+        status:
+          type: string
+          enum:
+          - ready
+          - updating
+          - failed
+          description: 'Current synchronization state: ready (idle), updating (syncing), or failed (last sync errored).'
+        hash:
+          type: string
+          description: Last known content hash. Empty string if never synced.
+        last_successful_update:
+          type: integer
+          format: uint32
+          description: Unix timestamp of last successful synchronization. 0 if never synced.
+    StatusGet_Response:
+      allOf:
+      - $ref: '#/components/schemas/Response'
+      - type: object
+        properties:
+          ready:
+            type: boolean
+            description: Overall readiness. True when all enabled spaces are available AND all IOC and geo databases are available.
+          spaces:
+            type: object
+            description: Content manager policy spaces keyed by name (e.g., "standard", "custom").
+            additionalProperties:
+              $ref: '#/components/schemas/SpaceState'
+          ioc:
+            type: object
+            description: IOC databases keyed by type name (e.g., "connection", "url_domain").
+            additionalProperties:
+              $ref: '#/components/schemas/ResourceState'
+          geo:
+            type: object
+            description: Geolocation databases keyed by type name (e.g., "city", "asn").
+            additionalProperties:
+              $ref: '#/components/schemas/ResourceState'
     PublicRunPost_Request:
       type: object
       required:

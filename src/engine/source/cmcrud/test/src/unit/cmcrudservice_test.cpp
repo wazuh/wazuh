@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <base/json.hpp>
+#include <base/logging.hpp>
 #include <builder/ivalidator.hpp>
 #include <builder/mockValidator.hpp>
 #include <cmstore/detail.hpp>
@@ -50,7 +51,7 @@ protected:
 class CrudServiceCtorTest : public ::testing::Test
 {
 protected:
-    void SetUp() override {}
+    void SetUp() override { logging::testInit(); }
     void TearDown() override {}
 };
 
@@ -1526,6 +1527,7 @@ protected:
 
     void SetUp() override
     {
+        logging::testInit();
         CrudServiceBase::SetUp();
 
         nsPtr = std::make_shared<NiceMock<MockICMstoreNS>>();

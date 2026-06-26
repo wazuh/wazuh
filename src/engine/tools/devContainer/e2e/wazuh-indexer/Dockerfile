@@ -12,8 +12,6 @@ COPY . .
 # Install wazuh-indexer
 RUN apt install -y /tmp/wazuh-install/wazuh-indexer_5.0.0-latest_amd64.deb
 
-# Configure knn memory circuit breaker limit
-RUN echo "knn.memory.circuit_breaker.limit: 4096mb" >> /etc/wazuh-indexer/opensearch.yml
 
 # Add Java security policy permissions for cgroup access
 RUN cat <<'EOF' >> /etc/wazuh-indexer/jvm.options

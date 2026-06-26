@@ -10,8 +10,8 @@ on:
       - "ruleset/**"
       - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-windows.yml"
-      - ".github/test-modules-windows.json"
       - ".github/workflows/5_testintegration_agent-start.yml"
+      - ".github/test_modules_windows.json"
       - ".github/workflows/5_testintegration_windows-integration-tests.yml"
       - ".github/actions/5_builderpackage_get-last-stable-version/**"
       - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
@@ -47,7 +47,7 @@ concurrency:
 jobs:
   detect-changes:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     name: Detect changed Windows test modules
     outputs:
       matrix: ${{ steps.detect.outputs.matrix }}
@@ -63,7 +63,7 @@ jobs:
         id: detect
         uses: ./.github/actions/5_testintegration_detect-changes
         with:
-          modules-config: .github/test-modules-windows.json
+          modules-config: .github/test_modules_windows.json
           none-matrix: '{"include":[{"name":"none","shard_name":"none","pytest_target":"test_none\\","pytest_extra_args":"","pytest_tier_args":"","pytest_ignore_args":"","start_service":false,"skip_tests":true}]}'
           field-defaults: '{"pytest_extra_args":"","pytest_ignore_args":"","start_service":false,"skip_tests":false}'
 
@@ -123,7 +123,8 @@ jobs:
 
   package-windows-i686:
     needs: build-windows-i686
-    runs-on: windows-2022
+    runs-on:
+      - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     name: Generate MSI package
     outputs:
@@ -192,6 +193,73 @@ jobs:
             exit 1
           }
 
+      - name: Set up Visual C++ Build Tools (cv2pdb PDB writer)
+        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships the VC Build Tools.
+        # cv2pdb needs the Microsoft PDB writer (mspdb*.dll) to convert the DWARF debug info into
+        # PDBs. GitHub-hosted Windows images bundle Visual Studio; the CodeBuild image does not,
+        # so install the VC.Tools workload and put the 32-bit mspdb*.dll directory on PATH (the
+        # winagent build is i686, so cv2pdb.exe and mspdb must both be x86).
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          function Get-MspdbDir {
+            $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+            if (-not (Test-Path $vswhere)) { return $null }
+            $installPath = & $vswhere -latest -products * `
+              -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+              -property installationPath
+            if (-not $installPath) { return $null }
+            $mspdb = Get-ChildItem -Path (Join-Path $installPath 'VC\Tools\MSVC') -Recurse -Filter 'mspdb*.dll' -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -match '\\Host(x86|X86)\\x86\\' } |
+              Select-Object -First 1
+            if ($mspdb) { return $mspdb.Directory.FullName }
+            return $null
+          }
+
+          $mspdbDir = Get-MspdbDir
+          if (-not $mspdbDir) {
+            Write-Host "VC Build Tools not found; installing the VC.Tools.x86.x64 workload..."
+            $bootstrapper = Join-Path $env:TEMP 'vs_buildtools.exe'
+            Invoke-WebRequest -Uri 'https://aka.ms/vs/17/release/vs_buildtools.exe' -OutFile $bootstrapper
+            $proc = Start-Process -FilePath $bootstrapper -Wait -PassThru -ArgumentList @(
+              '--quiet','--wait','--norestart','--nocache',
+              '--add','Microsoft.VisualStudio.Component.VC.Tools.x86.x64'
+            )
+            # 3010 = success, reboot required (safe to ignore in CI)
+            if ($proc.ExitCode -ne 0 -and $proc.ExitCode -ne 3010) {
+              throw "VS Build Tools install failed with exit code $($proc.ExitCode)"
+            }
+            $mspdbDir = Get-MspdbDir
+          }
+
+          if (-not $mspdbDir) {
+            throw "Could not locate a 32-bit mspdb*.dll after installing the VC Build Tools."
+          }
+
+          Write-Host "Using PDB writer from: $mspdbDir"
+          Add-Content -Path $env:GITHUB_PATH -Value $mspdbDir
+
+      - name: Set up WiX Toolset (MSI build)
+        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships the WiX Toolset.
+        # generate_wazuh_msi.ps1 builds the MSI with candle.exe/light.exe (WiX v3). GitHub-hosted
+        # Windows images bundled WiX; the CodeBuild image does not, so download the WiX v3
+        # binaries and put them on PATH (the script also uses WixUtilExtension/WixUIExtension,
+        # which ship in the same zip).
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Get-Command candle.exe -ErrorAction SilentlyContinue) {
+            Write-Host "WiX already available: $((Get-Command candle.exe).Source)"
+          } else {
+            $wixZip = Join-Path $env:TEMP 'wix314-binaries.zip'
+            Invoke-WebRequest -Uri 'https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip' -OutFile $wixZip
+            $wixDir = 'C:\wix314'
+            Expand-Archive -Path $wixZip -DestinationPath $wixDir -Force
+            Add-Content -Path $env:GITHUB_PATH -Value $wixDir
+            Write-Host "WiX extracted to $wixDir"
+          }
+
       - name: Generate MSI package (without signing)
         id: build
         shell: pwsh
@@ -251,7 +319,7 @@ jobs:
 
   test-windows-i686:
     needs: package-windows-i686
-    runs-on: windows-2022
+    runs-on: codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     name: Test MSI package
 

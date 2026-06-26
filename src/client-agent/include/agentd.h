@@ -215,9 +215,6 @@ bool reloadAgent(void);
 // Verify remote configuration. Return 0 on success or -1 on error.
 int verifyRemoteConf();
 
-// Clear merged.mg hash cache value.
-void clear_merged_hash_cache();
-
 // Initialize startup gate state for module workload blocking.
 void startup_gate_initialize(void);
 
