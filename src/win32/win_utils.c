@@ -27,6 +27,10 @@
 HANDLE hMutex;
 int win_debug_level;
 
+/* Handle of the dispatch_buffer thread, stored so the service stop handler
+ * can wait for it to exit before allowing HC_SHUTDOWN to be sent. */
+HANDLE g_dispatch_buffer_thread = NULL;
+
 void *sysinfo_module = NULL;
 sysinfo_networks_func sysinfo_network_ptr = NULL;
 sysinfo_free_result_func sysinfo_free_result_ptr = NULL;
@@ -331,14 +335,15 @@ int local_start()
                         (LPDWORD)&threadID);
     }
 
-    /* Launch dispatch thread */
+    /* Launch dispatch thread — keep the handle so the service stop handler
+     * can wait for it before allowing HC_SHUTDOWN to be sent. */
     if (agt->buffer) {
-        w_create_thread(NULL,
-                         0,
-                         dispatch_buffer,
-                         NULL,
-                         0,
-                         (LPDWORD)&threadID);
+        g_dispatch_buffer_thread = w_create_thread(NULL,
+                                                   0,
+                                                   dispatch_buffer,
+                                                   NULL,
+                                                   0,
+                                                   (LPDWORD)&threadID);
     }
 
     /* Configure and start statistics */

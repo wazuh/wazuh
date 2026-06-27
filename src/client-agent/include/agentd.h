@@ -68,6 +68,16 @@ typedef struct {
 void buffer_init();
 
 /**
+ * @brief Signals the dispatch_buffer thread to stop and exit.
+ *
+ * Sets agt->buffer to 0 and wakes the thread so it can observe the stop
+ * condition.  The caller is responsible for waiting on the thread handle
+ * before allowing the process to exit (e.g. with WaitForSingleObject on
+ * Windows) to prevent sending events after HC_SHUTDOWN.
+ */
+void buffer_stop(void);
+
+/**
  * @brief Appends a message to the event buffer.
  *
  * This function stores a message in the agent's event buffer for later dispatch.

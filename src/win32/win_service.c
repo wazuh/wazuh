@@ -34,6 +34,8 @@ static SERVICE_STATUS_HANDLE   ossecServiceStatusHandle;
 void WINAPI OssecServiceStart (DWORD argc, LPTSTR *argv);
 void wm_kill_children();
 extern void stop_wmodules();
+extern void buffer_stop(void);
+extern HANDLE g_dispatch_buffer_thread;
 
 /* Start OSSEC-HIDS service */
 int os_start_service()
@@ -286,6 +288,19 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                 ossecServiceStatus.dwCurrentState           = SERVICE_STOP_PENDING;
                 SetServiceStatus (ossecServiceStatusHandle, &ossecServiceStatus);
                 plain_minfo("Set pending exit signal.");
+
+                /* Stop the dispatch buffer thread before anything else so that
+                 * no buffered events are sent after HC_SHUTDOWN is transmitted
+                 * by the atexit handler. Only call buffer_stop() when the
+                 * thread was actually started (buffer enabled), since
+                 * buffer_init() — which initializes the internal mutex — is
+                 * also skipped when the buffer is disabled. */
+                if (g_dispatch_buffer_thread) {
+                    buffer_stop();
+                    WaitForSingleObject(g_dispatch_buffer_thread, 2000);
+                    CloseHandle(g_dispatch_buffer_thread);
+                    g_dispatch_buffer_thread = NULL;
+                }
 
                 // Kill children processes spawned by modules, only in wazuh-agent
                 wm_kill_children();
