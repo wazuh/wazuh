@@ -306,6 +306,14 @@ int w_agentd_get_buffer_lenght() {
     return retval;
 }
 
+void buffer_stop(void) {
+    w_mutex_lock(&mutex_lock);
+    agt->buffer = 0;
+    w_cond_signal(&cond_no_empty);
+    w_mutex_unlock(&mutex_lock);
+    mdebug1("Dispatch buffer stop signaled.");
+}
+
 void w_agentd_buffer_free(unsigned int current_capacity) {
     w_mutex_lock(&mutex_lock);
 
