@@ -13,7 +13,7 @@
 policy:
   id: "cis_oracle_linux_9"
   file: "cis_oracle_linux_9.yml"
-  name: "Center for Internet Security Oracle Linux 9 Benchmark v1.0.0."
+  name: "CIS Oracle Linux 9 Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Oracle Linux 9 systems running on x86 and x64 platforms. This document was tested against Oracle Linux 9."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

@@ -13,7 +13,7 @@
 policy:
   id: "cis_debian13"
   file: "cis_debian13.yml"
-  name: "Center for Internet Security Debian Linux 13 Benchmark"
+  name: "CIS Debian Linux 13 Benchmark v1.1.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Debian Linux 13. This document was tested against Debian 13. This document is based on Center for Internet Security Debian 13 Benchmark v1.1.0."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

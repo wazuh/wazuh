@@ -11,7 +11,7 @@
 
 policy:
   id: "cis_sqlserver_2019"
-  file: "cis_sqlserver_2019"
+  file: "cis_sqlserver_2019.yml"
   name: "CIS Microsoft SQL Server 2019 Benchmark v1.1.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Microsoft SQL Server 2019."
   references:

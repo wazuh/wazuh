@@ -13,7 +13,7 @@
 policy:
   id: "cis_rhel10_linux"
   file: "cis_rhel10_linux.yml"
-  name: "CIS Red Hat Enterprise Linux 10 Benchmark."
+  name: "CIS Red Hat Enterprise Linux 10 Benchmark"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Red Hat Enterprise Linux 10 systems running on x86 and x64 platforms. This document was tested against Red Hat Enterprise Linux 10. This document is based on Center for Internet Security Red Hat Enterprise Linux 9 Benchmark v1.0.0."
   references:
     - https://www.cisecurity.org/cis-benchmarks/

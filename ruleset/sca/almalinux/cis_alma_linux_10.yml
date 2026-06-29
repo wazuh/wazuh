@@ -13,7 +13,7 @@
 policy:
   id: "cis_alma_linux_10"
   file: "cis_alma_linux_10.yml"
-  name: "CIS Benchmark for Alma Linux 10"
+  name: "CIS AlmaLinux 10 Benchmark"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Alma Linux 10 systems running on x86 and x64 platforms. This document was tested against Alma Linux 10. This document is based on Center for Internet Security Alma Linux 9 Benchmark v1.0.0."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
