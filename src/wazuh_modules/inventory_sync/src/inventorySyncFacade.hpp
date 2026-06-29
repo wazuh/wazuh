@@ -686,7 +686,7 @@ public:
                     LOG_ERROR(m_logFn, "InventorySyncFacade::start: %s", e.what());
                 }
             },
-            std::thread::hardware_concurrency(),
+            cpp_get_nproc(),
             m_workersQueueSize);
 
         m_inventorySubscription =

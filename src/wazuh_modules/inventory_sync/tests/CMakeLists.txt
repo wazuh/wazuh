@@ -43,7 +43,8 @@ target_link_libraries(
   optimized
   gmock_main
   crypto
-  router)
+  router
+  wazuh_test)
 
 target_include_directories(
   inventory_sync_utest
