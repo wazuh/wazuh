@@ -3402,6 +3402,47 @@ static void test_fim_whodata_event_file_missing(void **state) {
     errno = 0;
 }
 
+static void test_fim_whodata_event_file_missing_null_inode(void **state) {
+    fim_data_t *fim_data = *state;
+    struct stat buf = { .st_mode = 0 };
+
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_wrlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+    expect_function_call_any(__wrap_pthread_mutex_lock);
+    expect_function_call_any(__wrap_pthread_mutex_unlock);
+#ifndef TEST_WINAGENT
+    expect_string(__wrap_lstat, filename, fim_data->w_evt->path);
+    will_return(__wrap_lstat, &buf);
+    will_return(__wrap_lstat, -1);
+
+    // Save original values to restore after test
+    char *saved_inode = fim_data->w_evt->inode;
+    char *saved_dev = fim_data->w_evt->dev;
+
+    // Set inode and dev to NULL to test the null check
+    fim_data->w_evt->inode = NULL;
+    fim_data->w_evt->dev = NULL;
+
+    // Should not call fim_db_file_inode_search when inode/dev are NULL
+#else
+    expect_string(__wrap_utf8_stat64, pathname, fim_data->w_evt->path);
+    will_return(__wrap_utf8_stat64, &buf);
+    will_return(__wrap_utf8_stat64, -1);
+#endif
+    errno = ENOENT;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6319): No configuration found for (file):'./test/test.file'");
+    fim_whodata_event(fim_data->w_evt);
+
+#ifndef TEST_WINAGENT
+    // Restore original values
+    fim_data->w_evt->inode = saved_inode;
+    fim_data->w_evt->dev = saved_dev;
+#endif
+    errno = 0;
+}
+
 /* fim_process_missing_entry */
 
 static void test_fim_process_missing_entry_null_configuration(void **state) {
@@ -4460,6 +4501,7 @@ int main(void) {
         /* fim_whodata_event */
         cmocka_unit_test(test_fim_whodata_event_file_exists),
         cmocka_unit_test(test_fim_whodata_event_file_missing),
+        cmocka_unit_test(test_fim_whodata_event_file_missing_null_inode),
 
         /* fim_process_missing_entry */
         cmocka_unit_test(test_fim_process_missing_entry_null_configuration),
