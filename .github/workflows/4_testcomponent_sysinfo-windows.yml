@@ -10,6 +10,10 @@ on:
       - "src/wazuh_modules/syscollector/**"
       - "src/Makefile"
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -36,32 +40,47 @@ jobs:
           cp src/win32/libwinpthread-1.dll src/shared_libraries/
       # Upload build artifacts for the shared libraries.
       - name: Upload Artifact shared_libraries
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: shared_libraries
           path: src/shared_libraries
       # Upload build artifacts for the data provider.
       - name: Upload Artifact data_provider
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: data_provider
           path: src/data_provider/build/bin
       # Upload build artifacts for dbsync.
       - name: Upload Artifact dbsync
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: dbsync
           path: src/shared_modules/dbsync/build/bin
       # Upload build artifacts for rsync.
       - name: Upload Artifact rsync
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: rsync
           path: src/shared_modules/rsync/build/bin
       # Upload build artifacts for syscollector.
       - name: Upload Artifact syscollector
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: syscollector
           path: src/wazuh_modules/syscollector/build/bin
   run-on-windows:
@@ -76,28 +95,43 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact data_provider
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: data_provider
           path: C:\data_provider\
       - name: Download Artifact dbsync
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: dbsync
           path: C:\dbsync\
       - name: Download Artifact rsync
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: rsync
           path: C:\rsync\
       - name: Download Artifact syscollector
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: syscollector
           path: C:\syscollector\
       - name: Download Artifact shared_libraries
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: shared_libraries
           path: C:\shared_libraries\
       # Copy dbsync, rsync and sysinfo libraries into syscollector.
