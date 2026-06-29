@@ -994,12 +994,14 @@ void fim_whodata_event(whodata_evt * w_evt) {
         fim_process_missing_entry(w_evt->path, FIM_WHODATA, w_evt);
         w_rwlock_unlock(&syscheck.directories_lock);
 #ifndef WIN32
-        const unsigned long int inode = strtoul(w_evt->inode, NULL, 10);
-        const unsigned long int dev = strtoul(w_evt->dev, NULL, 10);
-        callback_context_t callback_data;
-        callback_data.callback = create_windows_who_data_events;
-        callback_data.context = w_evt;
-        fim_db_file_inode_search(inode, dev, callback_data);
+        if (w_evt->inode && w_evt->dev) {
+            const unsigned long int inode = strtoul(w_evt->inode, NULL, 10);
+            const unsigned long int dev = strtoul(w_evt->dev, NULL, 10);
+            callback_context_t callback_data;
+            callback_data.callback = create_windows_who_data_events;
+            callback_data.context = w_evt;
+            fim_db_file_inode_search(inode, dev, callback_data);
+        }
 #endif
     }
 }
