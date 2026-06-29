@@ -22,12 +22,14 @@ on:
     inputs:
       architecture:
         type: choice
-        description: Package architecture [x86_64, amd64].
+        description: Package architecture [x86_64, amd64, arm64, aarch64].
         required: true
         default: amd64
         options:
           - x86_64
           - amd64
+          - arm64
+          - aarch64
       system:
         type: choice
         description: Package OS [deb, rpm].

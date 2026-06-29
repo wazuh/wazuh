@@ -31,12 +31,15 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Docker build
+        env:
+          BINUTILS_MAJOR_VERSION: ${{ inputs.binutils_major_version }}
+          BINUTILS_MINOR_VERSION: ${{ inputs.binutils_minor_version }}
         run: |
           IMAGE_NAME="binutils-${{ matrix.system }}-${{ matrix.arch }}"
-          docker build -t $IMAGE_NAME -f packages/${{ matrix.system }}s/${{ matrix.arch }}/binutils/Dockerfile \
-            --build-arg BINUTILS_MAJOR_VERSION=${{ inputs.binutils_major_version }} \
-            --build-arg BINUTILS_MINOR_VERSION=${{ inputs.binutils_minor_version }} .
-          docker run -v /tmp:/tmp $IMAGE_NAME /bin/bash -c "cp /packages/* /tmp/"
+          docker build -t "$IMAGE_NAME" -f "packages/${{ matrix.system }}s/${{ matrix.arch }}/binutils/Dockerfile" \
+            --build-arg "BINUTILS_MAJOR_VERSION=$BINUTILS_MAJOR_VERSION" \
+            --build-arg "BINUTILS_MINOR_VERSION=$BINUTILS_MINOR_VERSION" .
+          docker run -v /tmp:/tmp "$IMAGE_NAME" /bin/bash -c "cp /packages/* /tmp/"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
