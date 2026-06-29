@@ -323,19 +323,13 @@ public:
      * @brief Class constructor that initializes the publisher.
      *
      * @param config Indexer configuration, including servers and SSL settings.
-     * @param queueId Identifier for this connector instance. Combined with basePath to form
-     *                the RocksDB queue directory: basePath / queueId.
-     *                Must be unique per instance to guarantee queue isolation.
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
      *                "<callerName>(indexer-connector)" (e.g. "wazuh-manager-analysisd(indexer-connector)").
      *                If the caller name is empty, the tag falls back to "indexer-connector".
-     * @param basePath Base directory for the RocksDB queue. Defaults to "queue/indexer/".
      */
     explicit IndexerConnectorAsync(const nlohmann::json& config,
-                                   std::string queueId,
-                                   LoggingContext logging = {},
-                                   std::string basePath = "queue/indexer/");
+                                   LoggingContext logging = {});
 
     ~IndexerConnectorAsync();
 

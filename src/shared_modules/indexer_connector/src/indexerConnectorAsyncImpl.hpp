@@ -12,6 +12,7 @@
 #include "IURLRequest.hpp"
 #include "asyncValueDispatcher.hpp"
 #include "external/nlohmann/json.hpp"
+#include "indexerBulkQueue.hpp"
 #include "indexerConnector.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
@@ -19,16 +20,13 @@
 #include "secureCommunication.hpp"
 #include "shared_modules/utils/certHelper.hpp"
 #include "simdjson.h"
-#include "threadEventDispatcher.hpp"
 #include <filesystem>
 #include <mutex>
-#include <queue>
 #include <string>
 #include <string_view>
 #include <vector>
 
 static std::mutex G_CREDENTIAL_MUTEX;
-constexpr auto DATABASE_BASE_PATH = "queue/indexer/";
 
 constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
 constexpr auto INDEXER_COLUMN {"indexer"};
@@ -98,7 +96,6 @@ public:
     }
 };
 
-using ThreadDispatchQueue = ThreadEventDispatcher<std::string, std::function<void(std::queue<std::string>&)>>;
 using ThreadLoggerQueue = Utils::AsyncValueDispatcher<IndexerResponse, std::function<void(IndexerResponse&&)>>;
 
 template<typename TSelector,
@@ -114,15 +111,13 @@ class IndexerConnectorAsyncImpl final
     THttpRequest* m_httpRequest;
     std::atomic<bool> m_stopping {false};
     std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
-    const std::string m_queueId;
-    const std::string m_dbPath;
-    LogFn m_logFn;
+    const std::string m_logTag;
     bool m_error413Logged {false};
     size_t m_successCount {0};
-    size_t m_maxQueueSize {0};
+    size_t m_maxQueueBytes {0};
     size_t m_flushInterval {FlushInterval};
     size_t m_elementsPerBulk {ElementsPerBulk};
-    std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
+    std::unique_ptr<IndexerBulkQueue> m_queue;
 
 public:
     ~IndexerConnectorAsyncImpl() = default;
@@ -131,32 +126,12 @@ public:
         const nlohmann::json& config,
         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
             logFunction,
-        std::string queueId,
         THttpRequest* httpRequest = nullptr,
         std::unique_ptr<TSelector> selector = nullptr,
-        std::string basePath = DATABASE_BASE_PATH,
         std::string callerName = "")
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
-        , m_queueId(std::move(queueId))
-        , m_dbPath((std::filesystem::path(std::move(basePath)) / m_queueId).string())
-        , m_logFn {}
+        , m_logTag(callerName.empty() ? "indexer-connector" : callerName + " (indexer-connector)")
     {
-        m_logFn = LogFn {callerName}.compose("indexer-connector");
-
-        if (m_queueId.empty())
-        {
-            throw IndexerConnectorException("queueId cannot be empty: each IndexerConnectorAsync instance "
-                                            "must have a unique identifier (e.g. \"engine\", \"inventory-sync\").");
-        }
-
-        if (m_queueId.find('/') != std::string::npos || m_queueId.find('\\') != std::string::npos ||
-            m_queueId.find("..") != std::string::npos)
-        {
-            throw IndexerConnectorException(
-                "queueId must not contain path separators ('/', '\\') or traversal sequences ('..'): \"" + m_queueId +
-                "\".");
-        }
-
         if (logFunction)
         {
             Log::assignLogFunction(logFunction);
@@ -227,9 +202,9 @@ public:
         m_selector =
             selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
 
-        // Read max queue size from config, default to unlimited if not specified
-        m_maxQueueSize = config.contains("max_queue_size") && config.at("max_queue_size").is_number_unsigned()
-                             ? config.at("max_queue_size").get<size_t>()
+        // Read max queue size (in bytes) from config, default to unlimited if not specified
+        m_maxQueueBytes = config.contains("max_queue_bytes") && config.at("max_queue_bytes").is_number_unsigned()
+                             ? config.at("max_queue_bytes").get<size_t>()
                              : 0; // 0 means unlimited
 
         // Read flush interval from config; the template parameter acts as a fallback default.
@@ -390,8 +365,8 @@ public:
                 }
             });
 
-        m_dispatcher = std::make_unique<ThreadDispatchQueue>(
-            [this](std::queue<std::string>& dataQueue)
+        m_queue = std::make_unique<IndexerBulkQueue>(
+            [this](std::vector<std::string>& dataQueue)
             {
                 if (m_stopping.load())
                 {
@@ -406,20 +381,18 @@ public:
                 const auto bulkSize = dataQueue.size();
                 boundaries.reserve(bulkSize);
 
-                while (!dataQueue.empty())
+                for (auto& item : dataQueue)
                 {
                     boundaries.push_back(bulkData.size());
-                    bulkData.append(dataQueue.front());
-
-                    dataQueue.pop();
+                    bulkData.append(item);
                 }
 
                 const auto onSuccess = [this, &bulkData, &boundaries](std::string&& response)
                 {
-                    if (m_dispatcher->bulkSize() != m_elementsPerBulk && m_successCount == MaxSuccessCount)
+                    if (m_queue->bulkSize() != m_elementsPerBulk && m_successCount == MaxSuccessCount)
                     {
-                        LOG_DEBUG2(m_logFn, "Resetting bulk size to %zu.", m_elementsPerBulk);
-                        m_dispatcher->bulkSize(m_elementsPerBulk);
+                        logDebug2(m_logTag.c_str(), "Resetting bulk size to %zu.", m_elementsPerBulk);
+                        m_queue->bulkSize(m_elementsPerBulk);
                         m_error413Logged = false;
                     }
 
@@ -472,9 +445,10 @@ public:
                             }
                             else
                             {
-                                LOG_DEBUG2(
-                                    m_logFn, "Reducing the elements to be sent to the indexer: %llu.", bulkSize / 2);
-                                this->m_dispatcher->bulkSize(bulkSize / 2);
+                                logDebug2(m_logTag.c_str(),
+                                          "Reducing the elements to be sent to the indexer: %llu.",
+                                          bulkSize / 2);
+                                this->m_queue->bulkSize(bulkSize / 2);
                                 m_successCount = 0;
                                 throw IndexerConnectorException(
                                     "Bulk size is too large, reducing the elements to be sent to the "
@@ -509,11 +483,10 @@ public:
                                     PostRequestParametersRValue {.onSuccess = onSuccess, .onError = onError},
                                     {});
             },
-            m_dbPath,
+            m_maxQueueBytes,
             m_elementsPerBulk,
-            m_maxQueueSize,
-            RetryDelay,
-            m_flushInterval);
+            m_flushInterval,
+            RetryDelay);
     }
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
@@ -589,7 +562,7 @@ public:
         bulkData.append("\n");
         bulkData.append(data);
         bulkData.append("\n");
-        m_dispatcher->push(bulkData);
+        m_queue->push(std::move(bulkData));
     }
 
     void bulkIndexDataStream(std::string_view index, std::string_view data)
@@ -616,7 +589,7 @@ public:
         bulkData.append("\n");
         bulkData.append(data);
         bulkData.append("\n");
-        m_dispatcher->push(bulkData);
+        m_queue->push(std::move(bulkData));
     }
 
     bool isAvailable() const
@@ -626,12 +599,12 @@ public:
 
     uint64_t getQueueSize() const
     {
-        return m_dispatcher->size();
+        return m_queue->byteSize();
     }
 
     uint64_t getDroppedEvents() const
     {
-        return m_dispatcher->getDroppedEvents();
+        return m_queue->droppedEvents();
     }
 
     PointInTime

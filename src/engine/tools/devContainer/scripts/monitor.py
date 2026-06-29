@@ -63,7 +63,6 @@ DASHBOARD_NODE_EXECUTABLE = "/usr/share/wazuh-dashboard/node/bin/node"
 
 DEFAULT_DISK_PATHS = [
     "/var/wazuh-manager/queue/inventory_sync",
-    "/var/wazuh-manager/queue/engine-output",
     "/var/wazuh-manager/queue/vd",
     "/var/wazuh-manager/",
 ]
