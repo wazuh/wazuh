@@ -1291,7 +1291,8 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -1387,7 +1388,8 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -1978,7 +1980,8 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -2053,7 +2056,8 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -2205,7 +2209,8 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_no_handle(void** sta
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -2282,7 +2287,8 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_invalid_json(void** 
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -2360,7 +2366,8 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_json_without_paramet
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -2444,7 +2451,8 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_send_failed(void** s
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "042");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '042' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -2524,7 +2532,8 @@ void test_HandleSecureMessage_router_forwarding_disabled(void** state)
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -2690,7 +2699,8 @@ void test_HandleSecureMessage_event_without_trailing_null(void** state)
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_sentinel, NULL);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
@@ -2863,7 +2873,8 @@ void test_HandleSecureMessage_event_with_trailing_null(void** state)
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_trimmed, NULL);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
     expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);

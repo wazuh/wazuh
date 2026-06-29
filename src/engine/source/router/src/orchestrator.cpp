@@ -208,8 +208,12 @@ void Orchestrator::postEvent(IngestEvent&& event)
     const auto queueSize = m_eventQueue->size();
     const auto freeSlots = m_eventQueue->aproxFreeSlots();
     const auto totalSlots = queueSize + freeSlots;
+    const auto bytesUsed = m_eventQueue->bytesUsed();
+    const auto maxBytes = m_eventQueue->maxBytes();
 
-    const bool isContended = totalSlots > 0 && (queueSize * 100) >= (totalSlots * CONTENTION_LOAD_PERCENT_THRESHOLD);
+    const bool isCountContended = totalSlots > 0 && (queueSize * 100) >= (totalSlots * CONTENTION_LOAD_PERCENT_THRESHOLD);
+    const bool isBytesContended = maxBytes > 0 && (bytesUsed * 100) >= (maxBytes * CONTENTION_LOAD_PERCENT_THRESHOLD);
+    const bool isContended = isCountContended || isBytesContended;
 
     if (!isContended)
     {
@@ -256,11 +260,14 @@ void Orchestrator::postEvent(IngestEvent&& event)
 
     LOG_WARNING("[Orchestrator::Router] Event queue has remained contended for at least {} seconds. Dropped events "
                 "during contention: {}. "
-                "Approx queue size: {}, approx free slots: {}.",
+                "Approx queue size: {}, approx free slots: {}. "
+                "Bytes used: {}, max bytes: {}.",
                 CONTENTION_WARNING_INTERVAL_SEC,
                 m_droppedEventsInContention.load(std::memory_order_relaxed),
                 queueSize,
-                freeSlots);
+                freeSlots,
+                bytesUsed,
+                maxBytes);
 }
 
 void Orchestrator::Options::validate() const

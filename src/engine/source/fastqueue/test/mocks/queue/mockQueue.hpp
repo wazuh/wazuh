@@ -20,6 +20,7 @@ public:
     MOCK_METHOD(size_t, size, (), (const, noexcept, override));
     MOCK_METHOD(size_t, aproxFreeSlots, (), (const, noexcept, override));
     MOCK_METHOD(size_t, tryPopBulk, (T * elements, size_t max), (override));
+    MOCK_METHOD(void, setByteLimit, (size_t maxBytes, std::function<size_t(const T&)> sizeOf), (override));
 };
 
 } // namespace fastqueue::mocks
