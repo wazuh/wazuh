@@ -5,14 +5,12 @@
 #include <memory>
 #include <thread>
 
-#include <base/libwazuhshared.hpp>
+#include <proc.hpp>
 
 // Clamp httplib worker threads to the [2, 16] range based on available hardware.
 #ifndef CPPHTTPLIB_THREAD_POOL_COUNT
-#define CPPHTTPLIB_THREAD_POOL_COUNT                                                                                   \
-    ((std::min)(16u,                                                                                                   \
-                (std::max)(2u,                                                                                         \
-                           base::libwazuhshared::get_nproc() > 0 ? base::libwazuhshared::get_nproc() - 1 : 8u)))
+#define CPPHTTPLIB_THREAD_POOL_COUNT \
+    ((std::min)(16u, (std::max)(2u, cpp_get_nproc() > 1u ? cpp_get_nproc() - 1u : 1u)))
 #endif
 
 #include <httplib.h>
