@@ -9,9 +9,9 @@
 # Center for Internet Security mac0S 26 Tahoe Benchmark v1.0.0 - 10-31-2025
 
 policy:
-  id: "cis_macOS_26.x.yml"
-  file: "cis_macOS_26.x.yml"
-  name: "CIS_Apple_macOS_26.0_Tahoe_Benchmark_v1.0.0"
+  id: "cis_apple_macos_26"
+  file: "cis_apple_macOS_26.x.yml"
+  name: "CIS Apple macOS 26.0 Tahoe Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for macOS 26 Tahoe systems."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
