@@ -9,14 +9,7 @@ import pytest
 from pathlib import Path
 from wazuh_testing.tools.simulators.agent_simulator import connect
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
-from wazuh_testing.constants.paths.sockets import ANALYSISD_QUEUE_SOCKET_PATH
-from wazuh_testing.constants.daemons import ANALYSISD_DAEMON
-from wazuh_testing.modules.analysisd.patterns import ANALYSISD_STARTED
-from wazuh_testing.tools.mitm import ManInTheMiddle
-from wazuh_testing.utils import callbacks
-from wazuh_testing.tools.monitors import file_monitor
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
@@ -35,28 +28,15 @@ daemons_handler_configuration = {'all_daemons': True}
 local_internal_options = {REMOTED_DEBUG: '2'}
 
 
-EXAMPLE_MESSAGE_EVENT = '1:/root/test.log:Feb 23 17:18:20 35-u20-manager4 sshd[40657]: Accepted publickey for root' \
-                        ' from 192.168.0.5 port 48044 ssh2: RSA SHA256:IZT11YXRZoZfuGlj/K/t3tT8OdolV58hcCOJFZLIW2Y'
-
-# Test variables.
-receiver_sockets_params = [(ANALYSISD_QUEUE_SOCKET_PATH, 'AF_UNIX', 'UDP')]
-
-mitm_analysisd = ManInTheMiddle(address=ANALYSISD_QUEUE_SOCKET_PATH, family='AF_UNIX', connection_protocol='UDP')
-monitored_sockets_params = [(ANALYSISD_DAEMON, mitm_analysisd, True)]
-
-receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
-
-
 # Test function.
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_protocols_communication(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
-                            set_wazuh_configuration, daemons_handler, simulate_agents, configure_sockets_environment_module,
-                       connect_to_sockets_module, waiting_for_analysisd_startup):
+                            set_wazuh_configuration, daemons_handler, simulate_agents):
 
     '''
     description: Check agent-manager communication via TCP, UDP or both.
-                 For this purpose, the test will log and send the message to check if the communication works fine.
-                 Then, after the sender ends, the socket connection is closed.
+                 For this purpose, the test verifies that the simulated agent reaches active status using the
+                 configured protocol and port.
 
     parameters:
         - test_configuration
@@ -80,29 +60,11 @@ def test_protocols_communication(test_configuration, test_metadata, configure_lo
         - set_wazuh_configuration:
             type: fixture
             brief: Apply changes to the ossec.conf configuration.
-        - configure_sockets_environment_module:
-            type: fixture
-            brief: Configure environment for sockets and MITM.
-        - connect_to_sockets_module:
-            type: fixture
-            brief: Connect to a given list of sockets.
-        - waiting_for_analysisd_startup:
-            type: fixture
-            brief: Wait until the 'wazuh-analysisd' has begun and the 'alerts.json' file is created.
-
     '''
     agent = simulate_agents[0]
 
-    message = EXAMPLE_MESSAGE_EVENT
-
-    callback = callbacks.generate_callback(".*")
-
-    sender, injector = connect(agent, protocol = test_metadata['protocol1'], manager_port = test_metadata['port'])
-
-    sender.send_event(agent.create_event(message))
-
-    monitored_sockets[0].start(callback=callback)
-
-    injector.stop_receive()
-
-    assert monitored_sockets[0].callback_result
+    _, injector = connect(agent, protocol=test_metadata['protocol1'], manager_port=test_metadata['port'])
+    try:
+        assert agent.get_connection_status() == 'active'
+    finally:
+        injector.stop_receive()

@@ -63,6 +63,10 @@ All notable changes to this project will be documented in this file.
 - Updated `cryptography`, `urllib3` and `python-multipart` Python dependencies. ([#35982](https://github.com/wazuh/wazuh/pull/35982))
 - Updated eBPF libraries: `libbpf` to 1.7.0 and `bpftool` to 7.7.0. ([#36467](https://github.com/wazuh/wazuh/pull/36467))
 
+#### Fixed
+
+- Fixed `wazuh-manager` startup failure on RHEL 10 by dropping the `libcrypt` dependency from embedded Python. ([#36782](https://github.com/wazuh/wazuh/pull/36782))
+
 
 ## [v4.14.5]
 

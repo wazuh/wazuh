@@ -276,9 +276,9 @@ int DecodeWinevt(Eventinfo *lf){
 
                                 if (strcmp(filtered_string, "") && !strcmp(child_attr[p]->element, "Data")){
                                     if(strcmp(join_data, "")){
-                                        snprintf(join_data, strlen(join_data) + strlen(filtered_string) + 3, "%s, %s", join_data2, filtered_string);
+                                        snprintf(join_data, OS_MAXSTR, "%s, %s", join_data2, filtered_string);
                                     } else {
-                                        snprintf(join_data, strlen(filtered_string) + 1, "%s", filtered_string);
+                                        snprintf(join_data, OS_MAXSTR, "%s", filtered_string);
                                     }
                                     if (join_data2){
                                         free(join_data2);
