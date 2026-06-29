@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
-import re
+import regex
 import logging
 from collections import defaultdict
 from typing import Union
@@ -12,6 +12,8 @@ from wazuh.rbac import orm
 # Sets the find_item recursive max depth
 MAX_FIND_ITEM_DEPTH = 8
 
+# Sets time limit for user-reachable regex
+REGEX_TIME_LIMIT = 0.1
 
 class AuthContextDepthExceeded(Exception):
     """Raised when find_item exceeds MAX_FIND_ITEM_DEPTH levels of recursion.
@@ -149,10 +151,13 @@ class RBAChecker:
         counter = 0
         for index, value in enumerate(auth_context):
             for v in role_chunk:
-                regex = self.check_regex(v)
-                if regex:
-                    if regex.match(value):
-                        counter += 1
+                pattern = self.check_regex(v)
+                if pattern:
+                    try:
+                        if pattern.match(value, timeout=REGEX_TIME_LIMIT):
+                            counter += 1
+                    except regex.TimeoutError:
+                        continue
                 else:
                     if value == v:
                         counter += 1
@@ -217,7 +222,7 @@ class RBAChecker:
 
         return None
 
-    def check_regex(self, expression: str) -> Union[re.Pattern, bool]:
+    def check_regex(self, expression: str) -> Union[regex.Pattern, bool]:
         """Check if a certain string is a regular expression.
 
         Parameters
@@ -227,16 +232,16 @@ class RBAChecker:
 
         Returns
         -------
-        re.Pattern or bool
+        regex.Pattern or bool
             Compiled regex if a valid regex is provided else return False.
         """
         if isinstance(expression, str):
             if not expression.startswith(self._regex_prefix):
                 return False
             try:
-                regex = ''.join(expression[self._initial_index_for_regex:-2])
-                regex = re.compile(regex)
-                return regex
+                pattern = ''.join(expression[self._initial_index_for_regex:-2])
+                pattern = regex.compile(pattern)
+                return pattern
             except:
                 return False
         return False
@@ -266,23 +271,29 @@ class RBAChecker:
         # We're not in the deep end yet.
         if isinstance(role_chunk, dict) and isinstance(auth_context, dict):
             for key_rule, value_rule in role_chunk.items():
-                regex = self.check_regex(key_rule)
-                if regex:
+                pattern = self.check_regex(key_rule)
+                if pattern:
                     for key_auth in auth_context.keys():
-                        if regex.match(key_auth):
-                            validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_auth], mode)
+                        try:
+                            if pattern.match(key_auth, timeout=REGEX_TIME_LIMIT):
+                                validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_auth], mode)
+                        except regex.TimeoutError:
+                            continue
                 if key_rule in auth_context.keys():
                     validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_rule], mode)
         # It's a possible end
         else:
             role_chunk, auth_context = self.preprocess_to_list(role_chunk, auth_context)
-            regex = self.check_regex(role_chunk)
-            if regex:
+            pattern = self.check_regex(role_chunk)
+            if pattern:
                 if not isinstance(auth_context, list):
                     auth_context = [auth_context]
                 for context in auth_context:
-                    if regex.match(context):
-                        return 1
+                    try:
+                        if pattern.match(context, timeout=REGEX_TIME_LIMIT):
+                            return 1
+                    except regex.TimeoutError:
+                        continue
             if role_chunk == auth_context:
                 return 1
             if isinstance(role_chunk, str):
