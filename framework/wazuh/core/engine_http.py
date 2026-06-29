@@ -46,3 +46,32 @@ class EngineHTTPClient:
             return response.json()
         except ValueError as exc:
             raise WazuhInternalError(2022, extra_message=f'Invalid JSON in Engine API response: {exc}')
+
+    def get_status(self) -> dict:
+        """Retrieve the Engine readiness status from the analysisd socket.
+
+        Returns
+        -------
+        dict
+            The engine status: global `ready` flag plus per-resource state of
+            spaces, IOC databases and geo databases.
+        """
+        try:
+            response = self._client.get(
+                url=f'{self.API_URL}/status',
+                headers={'Content-Type': 'application/json'},
+            )
+        except httpx.TimeoutException as exc:
+            raise WazuhInternalError(2020, extra_message=str(exc))
+        except httpx.ConnectError as exc:
+            raise WazuhInternalError(2021, extra_message=str(exc))
+        except httpx.RequestError as exc:
+            raise WazuhError(2013, extra_message=str(exc))
+
+        if response.is_error:
+            raise WazuhError(2019, extra_message=response.text)
+
+        try:
+            return response.json()
+        except ValueError as exc:
+            raise WazuhInternalError(2022, extra_message=f'Invalid JSON in Engine API response: {exc}')

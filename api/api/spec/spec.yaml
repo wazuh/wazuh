@@ -6921,8 +6921,8 @@ paths:
     get:
       tags:
         - Cluster
-      summary: "Get node status"
-      description: "Return the status of all Wazuh daemons in node node_id"
+      summary: "Get node readiness"
+      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node-level ready is true only when every daemon is ready."
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -6932,7 +6932,7 @@ paths:
         - $ref: '#/components/parameters/node_id'
       responses:
         '200':
-          description: "Node wazuh daemons statuses"
+          description: "Node readiness"
           content:
             application/json:
               schema:
@@ -6941,22 +6941,54 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/WazuhDaemonsStatus'
+                        type: object
+                        properties:
+                          affected_items:
+                            type: array
+                            items:
+                              type: object
+                              additionalProperties: true
+                          total_affected_items:
+                            type: integer
+                          total_failed_items:
+                            type: integer
+                          failed_items:
+                            type: array
+                            items:
+                              type: object
               example:
                 data:
                   affected_items:
-                    - wazuh-manager-analysisd: running
-                      wazuh-manager-authd: stopped
-                      wazuh-manager-monitord: running
-                      wazuh-manager-remoted: running
-                      wazuh-manager-apid: running
-                      wazuh-manager-clusterd: running
-                      wazuh-manager-db: running
-                      wazuh-manager-modulesd: running
+                    - ready: false
+                      wazuh-manager-analysisd:
+                        ready: false
+                        running: true
+                        spaces:
+                          standard: { available: true, enabled: true, status: ready, hash: "abc", last_successful_update: 1750068600 }
+                          custom: { available: false, enabled: false, status: ready, hash: "", last_successful_update: 0 }
+                        ioc:
+                          connection: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          url_domain: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          url_full: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          hash_md5: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          hash_sha1: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          hash_sha256: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                        geo:
+                          city: { available: true, status: ready, hash: "h", last_successful_update: 1750066800 }
+                          asn: { available: false, status: running, hash: "", last_successful_update: 0 }
+                      wazuh-manager-modulesd:
+                        ready: true
+                        running: true
+                        vulnerability-detector: { available: true, status: ready, enabled: true, offset: 0, last_successful_update: 0 }
+                      wazuh-manager-remoted: { ready: true, running: true }
+                      wazuh-manager-db: { ready: true, running: true }
+                      wazuh-manager-authd: { ready: false, running: false }
+                      wazuh-manager-clusterd: { ready: true, running: true }
+                      wazuh-manager-apid: { ready: true, running: true }
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "Processes status was successfully read in specified node"
+                message: "Node readiness was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

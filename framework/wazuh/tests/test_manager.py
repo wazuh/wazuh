@@ -53,14 +53,77 @@ manager_status = {'wazuh-manager-analysisd': 'running', 'wazuh-manager-authd': '
  'wazuh-manager-clusterd': 'running', 'wazuh-manager-modulesd': 'running',
  'wazuh-manager-db': 'running', 'wazuh-manager-apid': 'running'}
 
-@patch('wazuh.core.manager.status', return_value=manager_status)
-def test_get_status(mock_status):
-    """Tests get_status() function works"""
-    result = get_status()
+ENGINE_STATUS_READY = {
+    'ready': True,
+    'spaces': {'standard': {'available': True, 'enabled': True, 'status': 'ready', 'hash': 'h',
+                            'last_successful_update': 1}},
+    'ioc': {'connection': {'available': True, 'status': 'ready', 'hash': 'h', 'last_successful_update': 1}},
+    'geo': {'city': {'available': True, 'status': 'ready', 'hash': 'h', 'last_successful_update': 1}},
+}
 
-    # Assert there are no errors and type returned
-    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
-    assert result.render()['data']['total_failed_items'] == 0
+
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_all_ready(mock_status, mock_engine_cls):
+    """Node ready: all daemons running, analysisd engine ready, modulesd mock ready."""
+    mock_engine = MagicMock()
+    mock_engine.get_status.return_value = ENGINE_STATUS_READY
+    mock_engine_cls.return_value = mock_engine
+
+    result = get_status()
+    assert isinstance(result, AffectedItemsWazuhResult)
+    data = result.affected_items[0]
+
+    assert data['ready'] is True
+    # analysisd embeds the engine resources
+    assert data['wazuh-manager-analysisd']['running'] is True
+    assert data['wazuh-manager-analysisd']['ready'] is True
+    assert 'spaces' in data['wazuh-manager-analysisd']
+    assert 'ioc' in data['wazuh-manager-analysisd']
+    assert 'geo' in data['wazuh-manager-analysisd']
+    # modulesd is mocked
+    assert data['wazuh-manager-modulesd']['ready'] is True
+    assert 'vulnerability-detector' in data['wazuh-manager-modulesd']
+    # plain daemon: ready iff running, no extra resources
+    assert data['wazuh-manager-remoted'] == {'ready': True, 'running': True}
+
+
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_analysisd_not_ready(mock_status, mock_engine_cls):
+    """analysisd engine not ready → node not ready."""
+    mock_engine = MagicMock()
+    mock_engine.get_status.return_value = {'ready': False, 'spaces': {}, 'ioc': {}, 'geo': {}}
+    mock_engine_cls.return_value = mock_engine
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-analysisd']['ready'] is False
+    assert data['ready'] is False
+
+
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value=manager_status)
+def test_get_status_engine_unreachable(mock_status, mock_engine_cls):
+    """Engine unreachable → analysisd not ready → node not ready."""
+    from wazuh.core.exception import WazuhInternalError
+    mock_engine = MagicMock()
+    mock_engine.get_status.side_effect = WazuhInternalError(2021)
+    mock_engine_cls.return_value = mock_engine
+
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-analysisd']['ready'] is False
+    assert data['ready'] is False
+
+
+@patch('wazuh.manager.EngineHTTPClient')
+@patch('wazuh.manager.status', return_value={**manager_status, 'wazuh-manager-analysisd': 'stopped'})
+def test_get_status_analysisd_stopped(mock_status, mock_engine_cls):
+    """analysisd stopped → not running, not ready, engine not queried."""
+    data = get_status().affected_items[0]
+    assert data['wazuh-manager-analysisd']['running'] is False
+    assert data['wazuh-manager-analysisd']['ready'] is False
+    assert data['ready'] is False
+    mock_engine_cls.assert_not_called()
 
 
 @pytest.mark.parametrize('tag, level, total_items, sort_by, sort_ascending', [
