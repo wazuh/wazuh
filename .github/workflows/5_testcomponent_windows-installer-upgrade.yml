@@ -36,6 +36,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
@@ -62,8 +66,11 @@ jobs:
       - name: Compress folder
         run: 7z a win-agent-base.zip ./*
       - name: Upload base branch folder
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: win-agent-base.zip
           path: win-agent-base.zip
 
@@ -128,8 +135,11 @@ jobs:
           mkdir C:\win-agent-released
           python -m wget https://packages.wazuh.com/4.x/windows/wazuh-agent-${{ matrix.wazuh_version }}.msi -o C:\win-agent-released
       - name: Download base folder
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: win-agent-base.zip
           path: C:\win-agent-base
       - name: Unzip base folder
@@ -153,13 +163,19 @@ jobs:
           python -m pytest -vv ./test_win_upgrade.py
       - name: Upload release installation log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: release_log
           path: C:\win-agent-released\win-agent-released.log
       - name: Upload base installation log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: base_log
           path: C:\win-agent-base\win-agent-base.log

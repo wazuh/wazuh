@@ -36,6 +36,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
@@ -69,8 +73,11 @@ jobs:
           rm -f src/bin_files/libgcc_s_dw2-1.dll
           rm -f src/bin_files/libstdc++-6.dll
       - name: Upload Artifact binaries
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: binaries
           path: src/bin_files
   check_binaries_details:
@@ -87,8 +94,11 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact binaries
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: binaries
           path: C:\binaries\
       - name: Install dependencies

@@ -37,6 +37,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
@@ -67,8 +71,11 @@ jobs:
           cp src/build/bin/*.dll src/exe_files/ 2>/dev/null || true
           cp src/build/lib/*.dll src/exe_files/ 2>/dev/null || true
 
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: executables
           path: src/exe_files
 
@@ -80,8 +87,11 @@ jobs:
           sed -i 's+windows.debug=0+windows.debug=2+g' etc/internal_options.conf || exit 1
           cp etc/internal_options.conf src/configuration_files/internal_options.conf || exit 1
 
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: configuration
           path: src/configuration_files
 
@@ -100,13 +110,19 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
 
-      - uses: actions/download-artifact@v4
+      - uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: executables
           path: C:\executables\
 
-      - uses: actions/download-artifact@v4
+      - uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: configuration
           path: C:\configuration_files\
 
@@ -140,7 +156,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: csv_files_${{ matrix.os }}
           path: C:\executables\*.csv
