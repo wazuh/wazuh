@@ -74,6 +74,7 @@ python-multipart==0.0.27
 pytz==2020.1
 PyYAML==6.0.3
 referencing==0.31.1
+regex==2026.5.9
 requests==2.33.1
 rfc3339-validator==0.1.4
 rpds-py==0.15.2
