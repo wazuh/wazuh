@@ -30,9 +30,25 @@ PersistentQueue::PersistentQueue(const std::string& dbPath, LoggerFunc logger, s
         m_logger(LOG_ERROR, std::string("PersistentQueue: Error on DB: ") + ex.what());
         throw;
     }
+
+    m_buffers[0].reserve(FLUSH_BATCH_SIZE);
+    m_buffers[1].reserve(FLUSH_BATCH_SIZE);
+    m_flushThread = std::thread(&PersistentQueue::flushLoop, this);
 }
 
-PersistentQueue::~PersistentQueue() = default;
+PersistentQueue::~PersistentQueue()
+{
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_stop = true;
+    }
+    m_cv.notify_one();
+
+    if (m_flushThread.joinable())
+    {
+        m_flushThread.join();
+    }
+}
 
 void PersistentQueue::submit(const std::string& id,
                              const std::string& index,
@@ -41,25 +57,85 @@ void PersistentQueue::submit(const std::string& id,
                              uint64_t version,
                              bool isDataContext)
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    PersistedData msg{0, id, index, data, operation, version, isDataContext};
+    bool shouldNotify = false;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        m_buffers[m_currentIdx].push_back(PersistedData{0, id, index, data, operation, version, isDataContext});
+        shouldNotify = (m_buffers[m_currentIdx].size() >= FLUSH_BATCH_SIZE);
+    }
 
+    if (shouldNotify)
+    {
+        m_cv.notify_one();
+    }
+}
+
+void PersistentQueue::flushLoop()
+{
+    while (true)
+    {
+        std::size_t flushIdx;
+        {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            m_cv.wait_for(lock, FLUSH_INTERVAL, [this]
+            {
+                return m_buffers[m_currentIdx].size() >= FLUSH_BATCH_SIZE || m_stop.load();
+            });
+
+            flushIdx = m_currentIdx;
+            m_currentIdx ^= 1;
+        }
+
+        if (!m_buffers[flushIdx].empty())
+        {
+            flushBuffer(m_buffers[flushIdx]);
+            m_buffers[flushIdx].clear();
+        }
+
+        if (m_stop.load())
+        {
+            break;
+        }
+    }
+}
+
+void PersistentQueue::flushBuffer(const std::vector<PersistedData>& batch)
+{
     try
     {
-        m_storage->submitOrCoalesce(msg);
+        std::lock_guard<std::mutex> storageLock(m_storageMutex);
+        m_storage->submitBatch(batch);
     }
     catch (const std::exception& ex)
     {
-        m_logger(LOG_ERROR, std::string("PersistentQueue: Error persisting message: ") + ex.what());
-        throw;
+        m_logger(LOG_ERROR, std::string("PersistentQueue: Error flushing batch to storage: ") + ex.what());
     }
+}
+
+void PersistentQueue::flushPendingBuffer()
+{
+    std::size_t flushIdx;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        if (m_buffers[m_currentIdx].empty())
+        {
+            return;
+        }
+        flushIdx = m_currentIdx;
+        m_currentIdx ^= 1;
+    }
+
+    flushBuffer(m_buffers[flushIdx]);
+    m_buffers[flushIdx].clear();
 }
 
 std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync()
 {
+    flushPendingBuffer();
+
     try
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> storageLock(m_storageMutex);
         return m_storage->fetchAndMarkForSync();
     }
     catch (const std::exception& ex)
@@ -71,9 +147,11 @@ std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync()
 
 std::vector<PersistedData> PersistentQueue::fetchPendingItems(bool onlyDataValues)
 {
+    flushPendingBuffer();
+
     try
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> storageLock(m_storageMutex);
         return m_storage->fetchPending(onlyDataValues);
     }
     catch (const std::exception& ex)
@@ -87,7 +165,7 @@ void PersistentQueue::clearSyncedItems()
 {
     try
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> storageLock(m_storageMutex);
         m_storage->removeAllSynced();
     }
     catch (const std::exception& ex)
@@ -101,7 +179,7 @@ void PersistentQueue::resetSyncingItems()
 {
     try
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> storageLock(m_storageMutex);
         m_storage->resetAllSyncing();
     }
     catch (const std::exception& ex)
@@ -115,7 +193,7 @@ void PersistentQueue::clearItemsByIndex(const std::string& index)
 {
     try
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> storageLock(m_storageMutex);
         m_storage->removeByIndex(index);
     }
     catch (const std::exception& ex)
@@ -129,7 +207,7 @@ void PersistentQueue::clearAllDataContext()
 {
     try
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> storageLock(m_storageMutex);
         m_storage->removeAllDataContext();
     }
     catch (const std::exception& ex)
@@ -143,7 +221,7 @@ void PersistentQueue::deleteDatabase()
 {
     try
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
+        std::lock_guard<std::mutex> storageLock(m_storageMutex);
         m_storage->deleteDatabase();
     }
     catch (const std::exception& ex)
