@@ -11,6 +11,12 @@ on:
       - ".github/workflows/5_builderprecompiled_vdscanner-testtools.yml"
   workflow_dispatch:
 
+inputs:
+  aws_region:
+    description: 'AWS region to upload the artifact'
+    required: true
+    default: 'us-east-1'
+
 # Ensures only one instance of this workflow is running per PR
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -103,10 +109,9 @@ jobs:
       # Upload vdscanner tools
       - name: Upload vdscanner tools
         if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ inputs.aws_region }}
           name: ${{ env.TOOLS_FILE_NAME }}
           path: ${{ env.TOOLS_FILE_NAME }}.tar.xz
-          if-no-files-found: error
-          compression-level: 0
-          overwrite: true
+
