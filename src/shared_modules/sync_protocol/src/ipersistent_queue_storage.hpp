@@ -29,6 +29,12 @@ class IPersistentQueueStorage
         /// @param data The new message data to submit.
         virtual void submitOrCoalesce(const PersistedData& data) = 0;
 
+        /// @brief Submits a batch of messages in a single transaction, applying coalescing logic
+        /// to each item. Reduces per-event transaction overhead compared to calling
+        /// submitOrCoalesce() individually.
+        /// @param batch Vector of messages to persist atomically.
+        virtual void submitBatch(const std::vector<PersistedData>& batch) = 0;
+
         /// @brief Fetches a batch of pending messages and marks them as SYNCING.
         /// @return A vector of messages now marked as SYNCING.
         virtual std::vector<PersistedData> fetchAndMarkForSync() = 0;
