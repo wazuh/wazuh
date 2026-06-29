@@ -115,6 +115,8 @@ class FlatBuffersManager:
                 agentid_str = builder.CreateString(data.get('agentid', '001'))
                 agentname_str = builder.CreateString(data.get('agentname', 'test-agent'))
                 agentversion_str = builder.CreateString(data.get('agentversion', '4.8.0'))
+                cluster_name_str = builder.CreateString(data.get('cluster_name', ''))
+                cluster_node_str = builder.CreateString(data.get('cluster_node', ''))
 
                 StartModule.StartStart(builder)
                 StartModule.StartAddModule(builder, module_str)
@@ -123,6 +125,8 @@ class FlatBuffersManager:
                 StartModule.StartAddAgentid(builder, agentid_str)
                 StartModule.StartAddAgentname(builder, agentname_str)
                 StartModule.StartAddAgentversion(builder, agentversion_str)
+                StartModule.StartAddClusterName(builder, cluster_name_str)
+                StartModule.StartAddClusterNode(builder, cluster_node_str)
                 start = StartModule.StartEnd(builder)
                 content = start
 
