@@ -32,6 +32,8 @@ echo '<?xml version="1.0" encoding="UTF-8"?>
          </array>
          <key>RunAtLoad</key>
          <true/>
+         <key>ExitTimeOut</key>
+         <integer>60</integer>
      </dict>
  </plist>' > $SERVICE
 
@@ -112,6 +114,14 @@ capture_sigterm() {
 # fresh with the current configuration, so a stale request must not trigger a
 # spurious reload.
 rm -f "$CONTROL_REQUEST" "$CONTROL_REQUEST_INFLIGHT" "$CONTROL_REQUEST.tmp"
+
+# Clean slate before starting. A previous bootout may have been killed by launchd
+# (ExitTimeOut) before wazuh-control stop finished, leaving a daemon still alive;
+# wazuh-control start would then see it as "already running" and skip it, leaving e.g.
+# wazuh-modulesd down after a restart. A stop here terminates any such
+# leftover (it is a fast no-op on a clean boot) so the start below always brings every
+# daemon up fresh.
+'${INSTALLATION_PATH}'/bin/wazuh-control stop > /dev/null 2>&1
 
 if ! '${INSTALLATION_PATH}'/bin/wazuh-control start; then
     '${INSTALLATION_PATH}'/bin/wazuh-control stop
