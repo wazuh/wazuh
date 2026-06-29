@@ -33,7 +33,6 @@ PROCESS_NAME=""
 MANAGER_LOG="/var/wazuh-manager/logs/wazuh-manager.log"
 DISK_PATHS=(
     "/var/wazuh-manager/queue/inventory_sync"
-    "/var/wazuh-manager/queue/engine-output"
     "/var/wazuh-manager/queue/vd"
 )
 

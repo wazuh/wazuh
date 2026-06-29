@@ -419,10 +419,10 @@ int main(int argc, char* argv[])
                                              ? standAloneConfig()
                                              : base::libwazuhshared::getJsonIndexerCnf();
 
-                // Parse JSON and add max_queue_size from engine configuration
+                // Parse JSON and add max_queue_bytes from engine configuration
                 json::Json jsonCnf(baseJsonCnf);
-                const auto maxQueueSize = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_EVENTS);
-                jsonCnf.setUint64(maxQueueSize, "/max_queue_size");
+                const auto maxQueueBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
+                jsonCnf.setUint64(maxQueueBytes, "/max_queue_bytes");
 
                 constexpr size_t INDEXER_ELEMENTS_PER_BULK_MAX = 1000000;
                 const auto elementsPerBulk = confManager.get<size_t>(conf::key::INDEXER_ELEMENTS_PER_BULK);
@@ -474,11 +474,11 @@ int main(int argc, char* argv[])
                                      return connector ? connector->getDroppedEvents() : 0;
                                  });
 
-                auto indexerQueueUsageGetter = [wIndexer, maxQueueSize]()
+                auto indexerQueueUsageGetter = [wIndexer, maxQueueBytes]()
                 {
                     auto connector = wIndexer.lock();
                     auto currentSize = connector ? connector->getQueueSize() : 0;
-                    return maxQueueSize > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueSize) : 0.0;
+                    return maxQueueBytes > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueBytes) : 0.0;
                 };
                 FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 

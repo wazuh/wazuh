@@ -26,7 +26,7 @@ struct Config
     std::vector<std::string> hosts; ///< The list of hosts to connect to. i.e. ["https://localhost:9200"]
     std::string username;           ///< The username to authenticate with OpenSearch, admin by default.
     std::string password;           ///< The password to authenticate with OpenSearch, admin by default.
-    size_t maxQueueSize {0};        ///< Maximum number of events in the indexer queue. 0 means unlimited.
+    size_t maxQueueBytes {0};       ///< Maximum bytes in the indexer queue. 0 means unlimited.
 
     struct
     {
