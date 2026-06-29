@@ -732,8 +732,9 @@ DBSync::DBSync(const HostType                  hostType,
                const std::string&              path,
                const std::string&              sqlStatement,
                const DbManagement              dbManagement,
-               const std::vector<std::string>& upgradeStatements)
-    : m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement, dbManagement, upgradeStatements) }
+               const std::vector<std::string>& upgradeStatements,
+               const std::string&              journalMode)
+    : m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement, dbManagement, upgradeStatements, journalMode) }
     , m_shouldBeRemoved{ true }
     , m_dbPath{ path }
 { }
