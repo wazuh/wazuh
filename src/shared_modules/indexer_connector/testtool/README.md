@@ -40,7 +40,7 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
 | `ssl.key` | Optional | Path to client TLS private key (mutual TLS) |
 | `name` | Optional | Connector instance name (informational) |
 | `index` | Optional | Default index name for `push-events` |
-| `max_queue_size` | Optional | Async mode — max pending events before dropping (0 = unlimited) |
+| `max_queue_bytes` | Optional | Async mode — max pending bytes before dropping (0 = unlimited) |
 | `flush_interval_seconds` | Optional | Async mode — flush interval in seconds |
 
 ### Example: dev e2e environment (HTTPS + TLS)

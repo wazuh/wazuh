@@ -196,7 +196,7 @@ int runPushEvents(const int argc, const char* argv[])
                 const auto cfg = nlohmann::json::parse(cfgFile);
 
                 connectors.push_back(std::make_unique<IndexerConnectorAsync>(
-                    cfg, queueId, LoggingContext {"testtool", loggingFunction}));
+                    cfg, LoggingContext {"testtool", loggingFunction}));
 
                 const std::string idxName = (cfg.contains("index") && cfg["index"].is_string())
                                                 ? cfg["index"].get<std::string>()
@@ -268,7 +268,7 @@ int runPushEvents(const int argc, const char* argv[])
         {
             std::cout << "Using Indexer Connector ASYNC implementation.\n";
             asyncConnector = std::make_unique<IndexerConnectorAsync>(
-                configuration, "tool", LoggingContext {"testtool", loggingFunction});
+                configuration, LoggingContext {"testtool", loggingFunction});
         }
         else
         {

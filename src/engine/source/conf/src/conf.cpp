@@ -63,7 +63,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<std::vector<std::string>>(key::INDEXER_SSL_CA_BUNDLE, "WAZUH_INDEXER_SSL_CA_BUNDLE", {});
     addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
     addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
-    addUnit<size_t>(key::INDEXER_QUEUE_MAX_EVENTS, "WAZUH_INDEXER_QUEUE_MAX_EVENTS", 0x1 << 17);
+    addUnit<size_t>(key::INDEXER_QUEUE_MAX_BYTES, "WAZUH_INDEXER_QUEUE_MAX_BYTES", size_t{0x1} << 27); // 128 MB
     addUnit<size_t>(key::INDEXER_ELEMENTS_PER_BULK, "WAZUH_INDEXER_ELEMENTS_PER_BULK", 25000);
     addUnit<size_t>(key::INDEXER_FLUSH_INTERVAL, "WAZUH_INDEXER_FLUSH_INTERVAL", 20);
     addUnit<size_t>(

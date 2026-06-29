@@ -117,7 +117,7 @@ struct Config
     std::vector<std::string> hosts;  // e.g. ["https://localhost:9200"]
     std::string username;            // OpenSearch username
     std::string password;            // OpenSearch password
-    size_t maxQueueSize {0};         // 0 = unlimited
+    size_t maxQueueBytes {0};        // 0 = unlimited (bytes)
 
     struct {
         std::vector<std::string> cacert; // CA bundle paths
