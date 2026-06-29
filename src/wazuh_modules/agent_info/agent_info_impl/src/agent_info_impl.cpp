@@ -1287,7 +1287,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 {
     const int FLUSH_POLL_DELAY_MS = m_flushPollDelayMs > 0 ? m_flushPollDelayMs : 1;
-    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6; // Log progress every 6 poll intervals
+    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 30; // Log INFO every 5 minutes (30 x 10 s polls)
     std::map<std::string, int> attempts;
     bool anyFailed = false;
 
