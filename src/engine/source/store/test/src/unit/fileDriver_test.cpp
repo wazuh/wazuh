@@ -118,11 +118,11 @@ TEST_F(FileDriverTest, AddMultipleVersions)
     FileDriver fDriver(m_path);
     base::OptError error;
 
-    base::Name name1({TEST_NAME.parts()[0], TEST_NAME.parts()[1], "1.0.0"});
+    base::Name name1({TEST_NAME.parts()[0], TEST_NAME.parts()[1], "1_0_0"});
     ASSERT_NO_THROW(error = fDriver.createDoc(name1, TEST_JSON));
     ASSERT_FALSE(error);
 
-    base::Name name2({TEST_NAME.parts()[0], TEST_NAME.parts()[1], "2.0.0"});
+    base::Name name2({TEST_NAME.parts()[0], TEST_NAME.parts()[1], "2_0_0"});
     ASSERT_NO_THROW(error = fDriver.createDoc(name2, TEST_JSON));
     ASSERT_FALSE(error);
 
