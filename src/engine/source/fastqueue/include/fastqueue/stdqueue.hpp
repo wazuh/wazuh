@@ -227,6 +227,12 @@ public:
     }
 
     /**
+     * @copydoc IQueue::setByteLimit
+     * @note StdQueue does not implement byte-based capacity; this is a no-op.
+     */
+    void setByteLimit(std::size_t /*maxBytes*/, std::function<std::size_t(const T&)> /*sizeOf*/) override {}
+
+    /**
      * @copydoc IQueue::tryPopBulk
      * @note If rate limiting is enabled, this method will acquire tokens for ALL requested elements
      *       or return 0 if insufficient tokens are available. This maintains the atomicity of bulk operations.

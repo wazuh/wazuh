@@ -29,6 +29,9 @@
 #define STATIC static
 #endif
 
+static time_t s_last_events_drop_warn = 0;
+static size_t s_pending_events_drop = 0;
+
 /* Global variables */
 w_indexed_queue_t *control_msg_queue = NULL;
 w_rr_queue_t *events_queue = NULL;
@@ -169,6 +172,11 @@ static void dispose_evt_item(void *p) {
     os_free(e);
 }
 
+static size_t evt_item_get_bytes(const void *p) {
+    const evt_item_t *e = (const evt_item_t *)p;
+    return e ? e->len : 0;
+}
+
 void * dispach_events_thread(void * queue);
 
 typedef struct {
@@ -190,8 +198,9 @@ void HandleSecure()
 
     events_queue = batch_queue_init(batch_events_capacity);
     batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
-
+    batch_queue_set_get_item_bytes(events_queue, evt_item_get_bytes);
     batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
+    batch_queue_set_bytes_limit(events_queue, batch_events_max_bytes);
 
     uhttp_global_init();
 
@@ -213,8 +222,9 @@ void HandleSecure()
     /* Initialize manager */
     manager_init();
 
-    // Initialize messag equeue
+    // Initialize message queue
     rem_msginit(logr.queue_size);
+    rem_set_input_queue_max_bytes(queue_max_bytes);
 
     /* Initialize the agent key table mutex */
     key_lock_init();
@@ -1036,8 +1046,9 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
         if (rc < 0) {
             dispose_evt_item(e);
-            mwarn("Dropping event for agent '%s' (rc=%d)", agentid_str, rc);
             rem_inc_recv_events_failed();
+            s_pending_events_drop++;
+            { time_t _t = time(NULL); if (_t - s_last_events_drop_warn >= 5) { mwarn("Events queue discarded %zu event(s) in the last 5 seconds.", s_pending_events_drop); s_pending_events_drop = 0; s_last_events_drop_warn = _t; } }
         } else {
             rem_inc_recv_events(agentid_str);
         }

@@ -163,14 +163,23 @@ static void free_slot(w_rr_queue_t *sched, w_rr_agent_slot_t *s, int adjust_glob
     w_linked_queue_node_t *chain = NULL;
     size_t n = steal_chain(s->q, &chain);
 
+    size_t freed_bytes = 0;
     while (chain) {
         w_linked_queue_node_t *nx = chain->next;
+        if (adjust_global && sched->get_item_bytes && chain->data) {
+            freed_bytes += sched->get_item_bytes(chain->data);
+        }
         if (sched->dispose) sched->dispose(chain->data);
         os_free(chain);
         chain = nx;
     }
-    if (adjust_global && n) {
-        atomic_fetch_sub_explicit(&sched->items_global, n, memory_order_relaxed);
+    if (adjust_global) {
+        if (n) {
+            atomic_fetch_sub_explicit(&sched->items_global, n, memory_order_relaxed);
+        }
+        if (freed_bytes) {
+            atomic_fetch_sub_explicit(&sched->bytes_global, freed_bytes, memory_order_relaxed);
+        }
     }
 
     linked_queue_free(s->q);
@@ -202,7 +211,10 @@ w_rr_queue_t *batch_queue_init(size_t max_items_global) {
     q->max_items_per_agent = 0;
     q->ring_slots = 0;
     atomic_store(&q->items_global, 0);
+    q->max_bytes_global = 0;
+    atomic_store(&q->bytes_global, 0);
     q->dispose = NULL;
+    q->get_item_bytes = NULL;
     return q;
 }
 
@@ -250,6 +262,26 @@ void batch_queue_set_agent_max(w_rr_queue_t *sched, size_t max_items_per_agent) 
     w_mutex_unlock(&sched->ring_mu);
 }
 
+/**
+ * @brief Set the global byte capacity limit (0 = unlimited).
+ */
+void batch_queue_set_bytes_limit(w_rr_queue_t *sched, size_t max_bytes) {
+    if (!sched) return;
+    w_mutex_lock(&sched->ring_mu);
+    sched->max_bytes_global = max_bytes;
+    w_mutex_unlock(&sched->ring_mu);
+}
+
+/**
+ * @brief Set the callback used to measure the byte size of an item.
+ */
+void batch_queue_set_get_item_bytes(w_rr_queue_t *sched, size_t (*get_bytes)(const void *)) {
+    if (!sched) return;
+    w_mutex_lock(&sched->ring_mu);
+    sched->get_item_bytes = get_bytes;
+    w_mutex_unlock(&sched->ring_mu);
+}
+
 // ======================= Enqueue (multi-producer) =======================
 //
 // Single monitor: ring_mu protects the index, ring, and slot lifecycles.
@@ -271,10 +303,36 @@ void batch_queue_set_agent_max(w_rr_queue_t *sched, size_t max_items_per_agent) 
 int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *data) {
     if (!sched || !agent_key || !data) return -EINVAL;
 
-    // 0) Approximate global limit (lock-free). Roll back if later steps fail.
+    // 0) Approximate global limits (lock-free). Roll back if later steps fail.
+
+    // Byte tracking and optional limit enforcement, before taking any lock.
+    size_t item_bytes = 0;
+    if (sched->get_item_bytes) {
+        item_bytes = sched->get_item_bytes(data);
+        if (sched->max_bytes_global) {
+            if (item_bytes > sched->max_bytes_global) {
+                // Single oversized item can never fit.
+                if (sched->dispose) sched->dispose(data);
+                return -ENOSPC;
+            }
+            size_t prev_bytes = atomic_fetch_add_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
+            if (prev_bytes + item_bytes > sched->max_bytes_global) {
+                atomic_fetch_sub_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
+                if (sched->dispose) sched->dispose(data);
+                return -ENOSPC;
+            }
+        } else {
+            // No limit configured — just track bytes for observability.
+            atomic_fetch_add_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
+        }
+    }
+
     size_t prev = atomic_fetch_add_explicit(&sched->items_global, 1, memory_order_relaxed);
     if (sched->max_items_global && prev + 1 > sched->max_items_global) {
         atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
+        if (item_bytes) {
+            atomic_fetch_sub_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
+        }
         if (sched->dispose) sched->dispose(data);
         return -ENOSPC;
     }
@@ -291,6 +349,9 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
         if (!slot) {
             w_mutex_unlock(&sched->ring_mu);
             atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
+            if (item_bytes) {
+                atomic_fetch_sub_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
+            }
             if (sched->dispose) sched->dispose(data);
             return -ENOMEM;
         }
@@ -298,6 +359,9 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
             w_mutex_unlock(&sched->ring_mu);
             free_slot(sched, slot, /*adjust_global=*/0);
             atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
+            if (item_bytes) {
+                atomic_fetch_sub_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
+            }
             if (sched->dispose) sched->dispose(data);
             return -ENOMEM;
         }
@@ -324,6 +388,9 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
         if (!n) {
             w_mutex_unlock(&slot->q->mutex);
             atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
+            if (item_bytes) {
+                atomic_fetch_sub_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
+            }
             if (sched->dispose) sched->dispose(data);
             return -ENOMEM;
         }
@@ -345,6 +412,9 @@ int batch_queue_enqueue_ex(w_rr_queue_t *sched, const char *agent_key, void *dat
 
     if (reject) {
         atomic_fetch_sub_explicit(&sched->items_global, 1, memory_order_relaxed);
+        if (item_bytes) {
+            atomic_fetch_sub_explicit(&sched->bytes_global, item_bytes, memory_order_relaxed);
+        }
         if (sched->dispose) sched->dispose(data);
         return -ENOSPC;
     }
@@ -418,17 +488,24 @@ size_t batch_queue_drain_next_ex(w_rr_queue_t *sched,
 
     // Process detached chain without any locks
     size_t drained = 0;
+    size_t drained_bytes = 0;
     for (w_linked_queue_node_t *n = head; n; ) {
         w_linked_queue_node_t *next = n->next;
         drained++;
+        if (sched->get_item_bytes && n->data) {
+            drained_bytes += sched->get_item_bytes(n->data);
+        }
         consume(n->data, user);
         os_free(n);
         n = next;
     }
 
-    // Adjust global items metric
+    // Adjust global counters
     if (drained) {
         atomic_fetch_sub_explicit(&sched->items_global, drained, memory_order_relaxed);
+    }
+    if (drained_bytes) {
+        atomic_fetch_sub_explicit(&sched->bytes_global, drained_bytes, memory_order_relaxed);
     }
 
     // If new items arrived meanwhile, producers have already re-appended this slot
@@ -456,6 +533,14 @@ int batch_queue_empty(const w_rr_queue_t *sched) {
 size_t batch_queue_size(const w_rr_queue_t *sched) {
     if (!sched) return 0;
     return atomic_load_explicit(&sched->items_global, memory_order_relaxed);
+}
+
+/**
+ * @brief Total bytes enqueued across all agents (approximate).
+ */
+size_t batch_queue_bytes(const w_rr_queue_t *sched) {
+    if (!sched) return 0;
+    return atomic_load_explicit(&sched->bytes_global, memory_order_relaxed);
 }
 
 /**

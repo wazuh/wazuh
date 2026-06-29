@@ -60,6 +60,22 @@ private:
     std::size_t m_minCapacity;                            ///< The minimum capacity of the queue.
     std::unique_ptr<RateLimiter> m_rateLimiter;           ///< Optional rate limiter (nullptr = no limiting)
 
+    // Byte-capacity tracking (disabled when m_maxBytes == 0)
+    std::size_t m_maxBytes {0};
+    std::atomic<std::size_t> m_currentBytes {0};
+    std::function<std::size_t(const T&)> m_sizeOf;
+
+    // Atomically subtract sz from m_currentBytes, clamping to 0 on underflow.
+    inline void releaseBytes(std::size_t sz) noexcept
+    {
+        const std::size_t prev = m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
+        if (prev < sz)
+        {
+            // Underflow: another thread already clamped; restore to 0.
+            m_currentBytes.store(0, std::memory_order_relaxed);
+        }
+    }
+
 public:
     /**
      * @brief Construct a new Concurrent Queue object
@@ -125,14 +141,94 @@ public:
     }
 
     /**
+     * @copydoc IQueue::setByteLimit
+     */
+    void setByteLimit(std::size_t maxBytes, std::function<std::size_t(const T&)> sizeOf) override
+    {
+        m_maxBytes = maxBytes;
+        m_sizeOf = std::move(sizeOf);
+        m_currentBytes.store(0, std::memory_order_relaxed);
+    }
+
+    /**
+     * @copydoc IQueue::bytesUsed
+     */
+    std::size_t bytesUsed() const noexcept override { return m_currentBytes.load(std::memory_order_relaxed); }
+
+    /**
+     * @copydoc IQueue::maxBytes
+     */
+    std::size_t maxBytes() const noexcept override { return m_maxBytes; }
+
+    /**
      * @copydoc IQueue::push
      */
-    inline bool push(T&& element) override { return m_queue.try_enqueue(std::move(element)); }
+    inline bool push(T&& element) override
+    {
+        if (m_sizeOf)
+        {
+            const std::size_t sz = m_sizeOf(element);
+            if (m_maxBytes > 0)
+            {
+                if (sz > m_maxBytes)
+                {
+                    return false; // Single element exceeds the entire byte budget.
+                }
+                const std::size_t prev = m_currentBytes.fetch_add(sz, std::memory_order_relaxed);
+                if (prev + sz > m_maxBytes)
+                {
+                    m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
+                    return false; // Byte quota exceeded.
+                }
+            }
+            else
+            {
+                m_currentBytes.fetch_add(sz, std::memory_order_relaxed);
+            }
+            if (!m_queue.try_enqueue(std::move(element)))
+            {
+                m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
+                return false; // Element-count limit hit.
+            }
+            return true;
+        }
+        return m_queue.try_enqueue(std::move(element));
+    }
 
     /**
      * @copydoc IQueue::tryPush
      */
-    inline bool tryPush(const T& element) override { return m_queue.try_enqueue(element); }
+    inline bool tryPush(const T& element) override
+    {
+        if (m_sizeOf)
+        {
+            const std::size_t sz = m_sizeOf(element);
+            if (m_maxBytes > 0)
+            {
+                if (sz > m_maxBytes)
+                {
+                    return false;
+                }
+                const std::size_t prev = m_currentBytes.fetch_add(sz, std::memory_order_relaxed);
+                if (prev + sz > m_maxBytes)
+                {
+                    m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
+                    return false;
+                }
+            }
+            else
+            {
+                m_currentBytes.fetch_add(sz, std::memory_order_relaxed);
+            }
+            if (!m_queue.try_enqueue(element))
+            {
+                m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
+                return false;
+            }
+            return true;
+        }
+        return m_queue.try_enqueue(element);
+    }
 
     /**
      * @copydoc IQueue::waitPop
@@ -146,6 +242,7 @@ public:
     {
         const int64_t normalizedTimeout = (timeout < 0) ? 0 : timeout;
 
+        bool result;
         if (m_rateLimiter)
         {
             auto startTime = std::chrono::steady_clock::now();
@@ -162,10 +259,18 @@ public:
             int64_t remainingTimeout = normalizedTimeout - elapsed.count();
             remainingTimeout = (remainingTimeout < 0) ? 0 : remainingTimeout;
 
-            return m_queue.wait_dequeue_timed(element, remainingTimeout);
+            result = m_queue.wait_dequeue_timed(element, remainingTimeout);
+        }
+        else
+        {
+            result = m_queue.wait_dequeue_timed(element, normalizedTimeout);
         }
 
-        return m_queue.wait_dequeue_timed(element, normalizedTimeout);
+        if (result && m_sizeOf)
+        {
+            releaseBytes(m_sizeOf(element));
+        }
+        return result;
     }
 
     /**
@@ -178,7 +283,15 @@ public:
         {
             return false;
         }
-        return m_queue.try_dequeue(element);
+        if (!m_queue.try_dequeue(element))
+        {
+            return false;
+        }
+        if (m_sizeOf)
+        {
+            releaseBytes(m_sizeOf(element));
+        }
+        return true;
     }
 
     /**
@@ -217,7 +330,17 @@ public:
         {
             return 0;
         }
-        return m_queue.try_dequeue_bulk(elements, max);
+        const std::size_t dequeued = m_queue.try_dequeue_bulk(elements, max);
+        if (dequeued > 0 && m_sizeOf)
+        {
+            std::size_t totalBytes = 0;
+            for (std::size_t i = 0; i < dequeued; ++i)
+            {
+                totalBytes += m_sizeOf(elements[i]);
+            }
+            releaseBytes(totalBytes);
+        }
+        return dequeued;
     }
 };
 

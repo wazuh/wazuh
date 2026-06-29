@@ -52,6 +52,7 @@ constexpr std::string_view REMOTE_CONF_SYNC_INTERVAL = "analysisd.remote_conf_sy
 
 constexpr std::string_view EVENT_QUEUE_SIZE = "analysisd.event_queue_size";
 constexpr std::string_view EVENT_QUEUE_EPS = "analysisd.event_queue_eps";
+constexpr std::string_view EVENT_QUEUE_MAX_BYTES = "analysisd.event_queue_max_bytes";
 
 constexpr std::string_view ORCHESTRATOR_THREADS = "analysisd.orchestrator_threads";
 

@@ -63,8 +63,12 @@ typedef struct w_rr_queue {
     size_t max_items_per_agent;       ///< Per-agent item limit (0 = unlimited)
     _Atomic size_t items_global;      ///< Approximate global item count
 
+    size_t max_bytes_global;          ///< Global byte limit (0 = unlimited)
+    _Atomic size_t bytes_global;      ///< Approximate total bytes currently enqueued
+
     /* Callbacks */
     void (*dispose)(void *);          ///< Called to dispose an item dropped without processing (optional)
+    size_t (*get_item_bytes)(const void *); ///< Returns the byte size of an item (optional; NULL = no byte accounting)
 } w_rr_queue_t;
 
 /*==============================================================================
@@ -106,6 +110,29 @@ void batch_queue_set_dispose(w_rr_queue_t *sched, void (*dispose)(void *));
  * @param max_items_per_agent Maximum number of queued items per agent
  */
 void batch_queue_set_agent_max(w_rr_queue_t *sched, size_t max_items_per_agent);
+
+/**
+ * @brief Set a global byte capacity limit (0 = unlimited).
+ *
+ * Enqueue operations that would exceed this limit return `-ENOSPC`.
+ * An individual item whose size exceeds this limit is always rejected.
+ * Requires `get_item_bytes` to be configured; no-op otherwise.
+ *
+ * @param sched     Scheduler
+ * @param max_bytes Maximum total bytes of enqueued items (0 = unlimited)
+ */
+void batch_queue_set_bytes_limit(w_rr_queue_t *sched, size_t max_bytes);
+
+/**
+ * @brief Set the callback used to measure the byte size of an enqueued item.
+ *
+ * Must be called before byte accounting takes effect.  The callback receives
+ * a const pointer to the item and must return its size in bytes.
+ *
+ * @param sched     Scheduler
+ * @param get_bytes Size callback; may be NULL to disable byte accounting
+ */
+void batch_queue_set_get_item_bytes(w_rr_queue_t *sched, size_t (*get_bytes)(const void *));
 
 /*==============================================================================
  * Production (Multiple Producers)
@@ -187,6 +214,14 @@ int batch_queue_empty(const w_rr_queue_t *sched);
  * @return Approximate number of queued items.
  */
 size_t batch_queue_size(const w_rr_queue_t *sched);
+
+/**
+ * @brief Approximate total bytes currently enqueued across all agents.
+ *
+ * @param sched Scheduler
+ * @return Approximate number of bytes.
+ */
+size_t batch_queue_bytes(const w_rr_queue_t *sched);
 
 /**
  * @brief Number of active slots currently in the ring.
