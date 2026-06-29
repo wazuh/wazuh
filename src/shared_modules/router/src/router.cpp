@@ -14,6 +14,8 @@
 #include "logging_helper.h"
 #include <algorithm>
 #include <cctype>
+#include <cstring>
+#include <fmt/format.h>
 #include <functional>
 #include <iostream>
 #include <string>
@@ -288,7 +290,8 @@ extern "C"
     int router_provider_send_sync(ROUTER_PROVIDER_HANDLE handle,
                                   const char* message,
                                   unsigned int message_size,
-                                  const char* authenticated_agent_id)
+                                  const char* authenticated_agent_id,
+                                  const char* manager_cluster_name)
     {
         try
         {
@@ -300,6 +303,11 @@ extern "C"
             if (!authenticated_agent_id || strlen(authenticated_agent_id) == 0)
             {
                 throw std::runtime_error("Authenticated agent ID is empty");
+            }
+
+            if (!manager_cluster_name || strlen(manager_cluster_name) == 0)
+            {
+                throw std::runtime_error("Manager cluster name is empty");
             }
 
             // Verify flatbuffer structure
@@ -329,36 +337,68 @@ extern "C"
                     return -1;
                 }
 
-                std::string claimedAgentId(startMsg->agentid()->str());
+                auto claimedAgentId = startMsg->agentid()->string_view();
 
                 // Validate that both IDs contain only digits
-                auto isNumeric = [](const std::string& str)
+                auto isNumeric = [](std::string_view str)
                 {
                     return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
                 };
 
-                std::string authId(authenticated_agent_id);
-                if (!isNumeric(authId) || !isNumeric(claimedAgentId))
+                if (!isNumeric(authenticated_agent_id) || !isNumeric(claimedAgentId))
                 {
-                    logMessage(modules_log_level_t::LOG_ERROR,
-                               "Agent ID validation failed: non-numeric ID. Authenticated: '" + authId +
-                                   "', Claimed: '" + claimedAgentId + "'");
+                    logMessage(
+                        modules_log_level_t::LOG_ERROR,
+                        fmt::format("Agent ID validation failed: non-numeric ID. Authenticated: '{}', Claimed: '{}'",
+                                    authenticated_agent_id,
+                                    claimedAgentId));
                     return -1;
                 }
 
                 // Compare agent IDs as integers to handle leading zeros
                 int authIdInt = std::atoi(authenticated_agent_id);
-                int claimIdInt = std::atoi(claimedAgentId.c_str());
+                int claimIdInt = std::atoi(claimedAgentId.data());
 
                 if (authIdInt != claimIdInt)
                 {
-                    logMessage(modules_log_level_t::LOG_ERROR,
-                               "Agent ID spoofing detected! Authenticated agent '" + authId + "' claimed to be '" +
-                                   claimedAgentId + "'. Connection rejected.");
+                    logMessage(modules_log_level_t::LOG_WARNING,
+                               fmt::format("Agent ID spoofing detected! Authenticated agent '{}' claimed to be '{}'. "
+                                           "Connection rejected.",
+                                           authenticated_agent_id,
+                                           claimedAgentId));
                     return -1;
                 }
 
-                logMessage(modules_log_level_t::LOG_DEBUG, "Agent ID validation passed for agent '" + authId + "'");
+                logMessage(modules_log_level_t::LOG_DEBUG,
+                           fmt::format("Agent ID validation passed for agent '{}'", authenticated_agent_id));
+
+                // Start message MUST have a cluster name
+                if (!startMsg->cluster_name() || startMsg->cluster_name()->size() == 0)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Cluster name validation failed: Start message missing cluster name");
+                    return -1;
+                }
+
+                auto claimedClusterName = startMsg->cluster_name()->string_view();
+                size_t managerClusterNameLen = strlen(manager_cluster_name);
+
+                if (claimedClusterName.size() != managerClusterNameLen ||
+                    strncmp(claimedClusterName.data(), manager_cluster_name, managerClusterNameLen) != 0)
+                {
+                    logMessage(modules_log_level_t::LOG_WARNING,
+                               fmt::format("Cluster name spoofing detected! Agent '{}' claimed cluster name '{}' but "
+                                           "manager cluster name is '{}'. Connection rejected.",
+                                           authenticated_agent_id,
+                                           claimedClusterName,
+                                           manager_cluster_name));
+                    return -1;
+                }
+
+                logMessage(modules_log_level_t::LOG_DEBUG,
+                           fmt::format("Cluster name validation passed for agent '{}' in cluster '{}'",
+                                       authenticated_agent_id,
+                                       manager_cluster_name));
             }
 
             // Validation passed, send the message
