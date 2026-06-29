@@ -113,6 +113,15 @@ void setLoggerTag(std::string_view tag);
  */
 std::string getJsonIndexerCnf();
 
+/**
+ * @brief Get the nproc object
+ * @return int The number of processors available on the system.
+ *
+ * This wrapper function retrieves the number of processors available on the
+ * system by calling the corresponding function in the shared library.
+ */
+int get_nproc();
+
 } // namespace base::libwazuhshared
 
 #endif // _BASE_LIBWAZUHSHARED_HPP
