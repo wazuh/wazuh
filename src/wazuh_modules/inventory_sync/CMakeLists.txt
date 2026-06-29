@@ -31,10 +31,6 @@ target_link_libraries(
   inventory_sync PRIVATE vulnerability_scanner indexer_connector router gcc_s
                          flatbuffers)
 
-if(TARGET wazuhshared)
-  target_link_libraries(inventory_sync PRIVATE wazuhshared)
-endif()
-
 set_target_properties(inventory_sync PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                 BUILD_RPATH "$ORIGIN/../lib")
 
