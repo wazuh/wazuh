@@ -56,8 +56,7 @@ namespace DbSync
                                      const std::string&              path,
                                      const std::string&              sqlStatement,
                                      const DbManagement              dbManagement,
-                                     const std::vector<std::string>& upgradeStatements,
-                                     const std::string&              journalMode = "truncate");
+                                     const std::vector<std::string>& upgradeStatements);
 
             void setMaxRows(const DBSYNC_HANDLE handle,
                             const std::string& table,

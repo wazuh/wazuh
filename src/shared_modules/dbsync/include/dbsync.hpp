@@ -51,10 +51,6 @@ class EXPORTED DBSync : public IDBSync
          * @param sqlStatement      SQL sentence to create tables in a SQL engine.
          * @param dbManagement      Database management type to be used at startup.
          * @param upgradeStatements SQL sentences to be executed when upgrading the database.
-         * @param journalMode       SQLite journal mode to use (default: "truncate"). Pass "wal"
-         *                          to enable WAL mode for reduced write amplification under high
-         *                          realtime event load. All other dbsync consumers should use
-         *                          the default to preserve existing behavior.
          *
          */
         explicit DBSync(const HostType                  hostType,
@@ -62,8 +58,7 @@ class EXPORTED DBSync : public IDBSync
                         const std::string&              path,
                         const std::string&              sqlStatement,
                         const DbManagement              dbManagement = DbManagement::VOLATILE,
-                        const std::vector<std::string>& upgradeStatements = {},
-                        const std::string&              journalMode = "truncate");
+                        const std::vector<std::string>& upgradeStatements = {});
 
         /**
          * @brief DBSync Constructor.

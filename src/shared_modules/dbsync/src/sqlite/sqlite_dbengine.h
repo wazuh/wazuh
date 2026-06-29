@@ -120,8 +120,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
                        const std::string&                     path,
                        const std::string&                     tableStmtCreation,
                        const DbManagement                     dbManagement = DbManagement::VOLATILE,
-                       const std::vector<std::string>&        upgradeStatements = {},
-                       const std::string&                     journalMode = "truncate");
+                       const std::vector<std::string>&        upgradeStatements = {});
         ~SQLiteDBEngine();
 
         void bulkInsert(const std::string& table,
@@ -163,8 +162,7 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         void initialize(const std::string&              path,
                         const std::string&              tableStmtCreation,
                         const DbManagement              dbManagement,
-                        const std::vector<std::string>& upgradeStatements,
-                        const std::string&              journalMode = "truncate");
+                        const std::vector<std::string>& upgradeStatements);
 
         bool cleanDB(const std::string& path);
 
