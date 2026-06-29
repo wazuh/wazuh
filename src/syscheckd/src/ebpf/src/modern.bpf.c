@@ -886,23 +886,38 @@ int BPF_PROG(path_unlink_walk, struct path *path, struct dentry *dentry)
 *   - Files moved OUT OF a monitored folder (old path -> "deleted")
 *   - Files renamed WITHIN a monitored folder (both)
 */
-SEC("lsm/path_rename")
-int BPF_PROG(path_rename, struct path *old_dir, struct dentry *old_dentry,
-             struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+/*
+* Two variants are shipped (see the lsm/file_open comment above): a
+* bpf_d_path-based one (preferred) and a manual-walker fallback for kernels
+* that disallow bpf_d_path for bpf_lsm_path_rename (e.g. Amazon Linux 2/2023).
+* The names MUST carry the _dpath/_walk suffix so select_programs() can pick
+* the right one per pass.
+*/
+static __always_inline bool path_rename_filter(struct dentry *old_dentry,
+                                               __u64 *inode, __u64 *dev)
 {
     /* Validate source inode: must be a regular file */
     struct inode *d_inode = NULL;
     bpf_probe_read_kernel(&d_inode, sizeof(d_inode), &old_dentry->d_inode);
     if (!d_inode)
-        return 0;
+        return false;
 
     __u32 mode = 0;
     bpf_probe_read_kernel(&mode, sizeof(mode), &d_inode->i_mode);
     if ((mode & 00170000) != 0100000)
-        return 0;
+        return false;
 
+    get_inode_dev(d_inode, inode, dev);
+    return true;
+}
+
+SEC("lsm/path_rename")
+int BPF_PROG(path_rename_dpath, struct path *old_dir, struct dentry *old_dentry,
+             struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+{
     __u64 inode = 0, dev = 0;
-    get_inode_dev(d_inode, &inode, &dev);
+    if (!path_rename_filter(old_dentry, &inode, &dev))
+        return 0;
 
     struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
     if (!string_buf)
@@ -927,6 +942,41 @@ int BPF_PROG(path_rename, struct path *old_dir, struct dentry *old_dentry,
                 submit_event((const char *)full_path, inode, dev);
         }
     }
+
+    return 0;
+}
+
+SEC("lsm/path_rename")
+int BPF_PROG(path_rename_walk, struct path *old_dir, struct dentry *old_dentry,
+             struct path *new_dir, struct dentry *new_dentry, unsigned int flags)
+{
+    __u64 inode = 0, dev = 0;
+    if (!path_rename_filter(old_dentry, &inode, &dev))
+        return 0;
+
+    /*
+     * Build the destination path from new_dentry + the mount of new_dir,
+     * then walk it manually (no bpf_d_path). Mirrors kprobe/vfs_rename:
+     * new_dentry may be negative, but get_path_str_from_path only walks
+     * d_parent (which is set to new_dir's dentry), so the path resolves.
+     */
+    struct vfsmount *mnt = NULL;
+    bpf_probe_read_kernel(&mnt, sizeof(mnt), &new_dir->mnt);
+    if (!mnt)
+        return 0;
+
+    struct buffer *string_buf = bpf_map_lookup_elem(&heaps_map, &(u32){0});
+    if (!string_buf)
+        return 0;
+
+    struct path new_path = {
+        .dentry = new_dentry,
+        .mnt    = mnt,
+    };
+
+    u8 *full_path = NULL;
+    if (get_path_str_from_path(&full_path, &new_path, string_buf) >= 0)
+        submit_event((const char *)full_path, inode, dev);
 
     return 0;
 }
