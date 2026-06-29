@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <base/statusSnapshot.hpp>
 #include <iockvdb/iManager.hpp>
 #include <store/istore.hpp>
 #include <wiconnector/iwindexerconnector.hpp>
@@ -38,6 +39,18 @@ private:
 
     std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal graceful shutdown of sync operations
 
+    /// Lock-free status snapshot of all IOC types. Read via load() (wait-free). Rebuilt and published
+    /// via store() by updateIocStatusSnapshot() on the single sync thread.
+    base::StatusSnapshot<IocTypeStatus> m_iocStatus;
+
+    /// Rebuild the IOC status from m_databasesState and publish it atomically (lock-free reads).
+    void updateIocStatusSnapshot();
+
+    /// Report a sync cycle that could not complete: types without a usable version yet (empty hash)
+    /// or that were mid-sync (RUNNING) are marked FAILED. Types with an existing version keep it
+    /// (READY, old data still usable). Publishes the snapshot.
+    void reportSyncFailure();
+
     /**
      * @brief Check if IOC data index exists in wazuh-indexer
      *
@@ -49,7 +62,7 @@ private:
     /**
      * @brief Get remote per-type hashes from special IOC hashes document.
      *
-     * @return Optional Map(type -> hash). Returns std::nullopt if the IOC consumer is not idle.
+     * @return Optional Map(type -> hash). Returns std::nullopt if the IOC consumer is not ready.
      * @throws std::runtime_error on errors.
      */
     std::optional<std::unordered_map<std::string, std::string>> getRemoteHashesFromRemote();
@@ -62,7 +75,7 @@ private:
      *
      * @param iocType IOC type to filter (e.g., connection, url_domain, url_full, hash_md5, hash_sha1, hash_sha256)
      * @param dbName Database name in kvdbioc to populate
-     * @return true if the download succeeded, false if the IOC consumer is not idle (data is being updated)
+     * @return true if the download succeeded, false if the IOC consumer is not ready (data is being updated)
      * @throws std::runtime_error on errors.
      */
     bool downloadAndPopulateDB(std::string_view iocType, const std::string& dbName);
@@ -116,6 +129,11 @@ public:
      * @copydoc IIocSync::requestShutdown
      */
     void requestShutdown() override;
+
+    /**
+     * @copydoc IIocSync::getIocStatus
+     */
+    std::vector<IocTypeStatus> getIocStatus() const override;
 };
 
 } // namespace ioc::sync

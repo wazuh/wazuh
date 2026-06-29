@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <base/logging.hpp>
 #include <bk/mockController.hpp>
 #include <builder/mockBuilder.hpp>
 #include <builder/mockPolicy.hpp>
@@ -22,6 +23,7 @@ protected:
 public:
     void SetUp() override
     {
+        logging::testInit();
         m_mockBuilder = std::make_shared<builder::mocks::MockBuilder>();
         m_mockControllerMaker = std::make_shared<bk::mocks::MockMakerController>();
         m_mockController = std::make_shared<bk::mocks::MockController>();
@@ -48,8 +50,7 @@ public:
 
     void makeControllerBuildPolicySuccess()
     {
-        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_))
-            .WillOnce(::testing::Return(m_mockPolicy));
+        EXPECT_CALL(*m_mockBuilder, buildPolicy(testing::_, testing::_)).WillOnce(::testing::Return(m_mockPolicy));
     }
 
     void makeControllerPolicyAssetsFailure(router::prod::EntryPost entryPost)

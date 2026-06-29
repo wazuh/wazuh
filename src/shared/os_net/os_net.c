@@ -612,18 +612,14 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive count parameter: unsupported platform.");
 #endif
     }
 
     if (idle > 0) {
 #if !defined(WIN32) && !defined(OpenBSD)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
-            merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
+            merror("OS_SetKeepalive_Options(TCP_KEEPIDLE) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive idle parameter: unsupported platform.");
 #endif
     }
 
@@ -632,8 +628,6 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive interval parameter: unsupported platform.");
 #endif
     }
 }

@@ -98,6 +98,7 @@
     - [Database Schema](ref/modules/fim/database-schema.md)
     - [Windows Registry monitoring](ref/modules/fim/windows-registry-monitoring.md)
   - [Logcollector](ref/modules/logcollector/README.md)
+    - [Log collectors](ref/modules/logcollector/collectors.md)
     - [Configuration](ref/modules/logcollector/configuration.md)
   - [Rootcheck](ref/modules/rootcheck/README.md)
     - [Architecture](ref/modules/rootcheck/architecture.md)

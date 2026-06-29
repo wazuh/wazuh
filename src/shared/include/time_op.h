@@ -98,4 +98,15 @@ bool is_leap_year(int year);
  */
 void get_iso8601_utc_time(char *buffer, size_t size);
 
+/**
+ * @brief Get monotonic elapsed seconds since an arbitrary fixed point.
+ *
+ * Uses CLOCK_MONOTONIC on Linux, Mach SYSTEM_CLOCK on macOS,
+ * and GetTickCount64 on Windows. Never goes backwards regardless of
+ * system clock changes (NTP sync, manual adjustment, VM time warp).
+ *
+ * @return Seconds since an unspecified epoch (not wall-clock time).
+ */
+time_t w_get_monotonic_time(void);
+
 #endif // TIME_OP_H

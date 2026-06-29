@@ -94,7 +94,7 @@ jobs:
       BUILD_WORKFLOW: 5_builderpackage_agent-linux.yml
       PACKAGES_PATH: /tmp/packages
       AGENT_PACKAGE_REGEXP: wazuh-agent.*amd64.*\.deb
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
@@ -162,7 +162,13 @@ jobs:
               QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
+          # The framework is installed for the system python3 that `sudo python`
+          # uses to run the tests. CodeBuild images ship no pip for it (the
+          # GitHub-hosted runner did), so install it and target it explicitly.
+          if ! sudo python3 -m pip --version >/dev/null 2>&1; then
+            sudo apt-get update && sudo apt-get install -y python3-pip
+          fi
+          sudo python3 -m pip install --break-system-packages qa-integration-framework/
           sudo rm -rf qa-integration-framework/
 
       - name: Configure AWS credentials
