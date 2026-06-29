@@ -68,17 +68,4 @@ std::string getJsonIndexerCnf()
     free(result);
     return jsonCnf;
 }
-
-// Wrapper for get_nproc
-int get_nproc()
-{
-    using GetNProcFnType = int (*)();
-    const auto getNProcFn = getFunction<GetNProcFnType>("get_nproc");
-    if (!getNProcFn)
-    {
-        throw std::runtime_error("Failed to get get_nproc function pointer.");
-    }
-    return getNProcFn();
 }
-
-} // namespace base::libwazuhshared
