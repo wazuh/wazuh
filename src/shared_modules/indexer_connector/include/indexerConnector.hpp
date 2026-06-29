@@ -119,12 +119,12 @@ public:
     ~IndexerConnectorSync();
 
     /**
-     * @brief Publish a message into the queue map.
-     *
-     * @param message Message to be published.
-     * @param index Index name.
+     * @brief Stage a delete-by-query for one agent.
+     * @param index Target index name.
+     * @param agentId wazuh.agent.id filter.
+     * @param clusterName Manager-side cluster name; when set, also filters by wazuh.cluster.name.
      */
-    void deleteByQuery(const std::string& index, const std::string& agentId);
+    void deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName = {});
 
     /**
      * @brief Execute an update by query operation on OpenSearch/Elasticsearch.
