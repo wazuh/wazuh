@@ -44,6 +44,9 @@ static void* run_remote_server(void *arg);
 /* Thread for writing keystore onto disk */
 static void* run_writer(void *arg);
 
+/* Thread that watches for authd.pass to appear on a worker node */
+static void* run_authpass_watcher(void *arg);
+
 /* Signal handler */
 static void handler(int signum);
 
@@ -52,6 +55,7 @@ static void cleanup();
 
 /* Shared variables */
 static char *authpass = NULL;
+static time_t authpass_mtime = 0;  /* shared between process_message and run_authpass_watcher */
 static SSL_CTX *ctx;
 static int remote_sock = -1;
 static int g_epfd = -1;
@@ -66,6 +70,7 @@ extern struct keynode * volatile *insert_tail;
 extern struct keynode * volatile *remove_tail;
 
 pthread_mutex_t mutex_keys = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t mutex_authpass = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond_pending = PTHREAD_COND_INITIALIZER;
 
 static int g_stopFD[2] = {-1, -1};
@@ -83,7 +88,7 @@ static void help_authd(char * home_path)
     print_out("    -g <group>  Group to run as. Default: %s.", GROUPGLOBAL);
     print_out("    -D <dir>    Directory to chdir into. Default: %s.", home_path);
     print_out("    -p <port>   Manager port. Default: %d.", DEFAULT_PORT);
-    print_out("    -P          Enable shared password authentication, at %s or random.", AUTHD_PASS);
+    print_out("    -P          Force shared-password enrollment on (already enabled by default); password read from %s or generated.", AUTHD_PASS);
     print_out("    -c          SSL cipher list (default: %s)", DEFAULT_CIPHERS);
     print_out("    -v <path>   Full path to CA certificate used to verify clients.");
     print_out("    -s          Used with -v, enable source host verification.");
@@ -108,6 +113,50 @@ static void set_non_blocking(int fd) {
     }
 }
 
+static void* run_authpass_watcher(void *arg) {
+    (void)arg;
+    while (running) {
+        /* Interruptible wait: poll the shutdown flag every second instead of sleeping a
+         * full interval, so the thread exits promptly and can be joined at shutdown. */
+        for (int i = 0; i < 5 && running; i++) {
+            sleep(1);
+        }
+        if (!running) {
+            break;
+        }
+
+        time_t mtime = File_DateofChange(AUTHD_PASS);
+        if (mtime < 0) {
+            continue;  /* file not there yet */
+        }
+
+        w_mutex_lock(&mutex_authpass);
+
+        if (mtime == authpass_mtime) {
+            /* File unchanged since last check. */
+            w_mutex_unlock(&mutex_authpass);
+            continue;
+        }
+
+        char *pass = w_authd_read_password(AUTHD_PASS);
+        authpass_mtime = mtime;
+
+        if (pass) {
+            int first_load = (authpass == NULL);
+            os_free(authpass);
+            authpass = pass;
+            if (first_load) {
+                minfo("Enrollment password synchronized from the master node and now available at '%s'.", AUTHD_PASS);
+            } else {
+                minfo("Enrollment password reloaded from '%s'.", AUTHD_PASS);
+            }
+        }
+
+        w_mutex_unlock(&mutex_authpass);
+    }
+    return NULL;
+}
+
 int main(int argc, char **argv)
 {
 
@@ -119,11 +168,12 @@ int main(int argc, char **argv)
     int run_foreground = 0;
     gid_t gid;
     const char *group = GROUPGLOBAL;
-    char buf[4096 + 1];
 
     pthread_t thread_local_server = 0;
     pthread_t thread_remote_server = 0;
     pthread_t thread_writer = 0;
+    pthread_t thread_authpass_watcher = 0;
+    bool authpass_watcher_started = false;
 
     for (int i = 0; i < AUTH_POOL; i++) {
         g_client_pool[i] = NULL;
@@ -542,42 +592,26 @@ int main(int argc, char **argv)
 
         /* Check if password is enabled */
         if (config.flags.use_password) {
-            fp = wfopen(AUTHD_PASS, "r");
-            buf[0] = '\0';
+            if (config.worker_node) {
+                /* Owned by the master and synced to workers; never generated here.
+                 * If not synced yet, picked up later in process_message. */
+                authpass = w_authd_read_password(AUTHD_PASS);
 
-            /* Checking if there is a custom password file */
-            if (fp) {
-                fseek(fp, 0, SEEK_END);
-
-                if (ftell(fp) <= 1) {
-                    merror("Empty password provided.");
-                    exit(1);
-                }
-
-                fseek(fp, 0, SEEK_SET);
-
-                buf[4096] = '\0';
-                char *ret = fgets(buf, 4095, fp);
-
-                if (ret && strlen(buf) > 2) {
-                    /* Remove newline */
-                    if (buf[strlen(buf) - 1] == '\n') {
-                        buf[strlen(buf) - 1] = '\0';
-                    }
-                    authpass = strdup(buf);
-                }
-
-                fclose(fp);
-            }
-
-            if (buf[0] != '\0') {
-                mdebug1("Accepting connections on port %hu. Using password specified on file: %s", config.port, AUTHD_PASS);
-            } else {
-                /* Getting temporary pass. */
-                if (authpass = w_generate_random_pass(), authpass) {
-                    mdebug1("Accepting connections on port %hu. Random password chosen for agent authentication: %s", config.port, authpass);
+                if (authpass) {
+                    authpass_mtime = File_DateofChange(AUTHD_PASS);
+                    minfo("Accepting connections on port %hu. Using password synchronized from the master node.", config.port);
                 } else {
-                    merror_exit("Unable to generate random password. Exiting.");
+                    minfo("Shared-password enrollment is enabled but '%s' has not been synchronized from the master node yet. Enrollment requests will be rejected until it is available.", AUTHD_PASS);
+                }
+            } else {
+                bool pass_generated = false;
+
+                authpass = w_authd_load_password(AUTHD_PASS, &pass_generated);
+
+                if (pass_generated) {
+                    minfo("Accepting connections on port %hu. A new authentication password was generated and written to '%s'", config.port, AUTHD_PASS);
+                } else {
+                    minfo("Accepting connections on port %hu. Using existing authentication password from '%s'. To rotate the password, delete the file and restart.", config.port, AUTHD_PASS);
                 }
             }
         } else {
@@ -633,6 +667,14 @@ int main(int argc, char **argv)
         }
     }
 
+    if (config.worker_node && config.flags.use_password) {
+        if (status = pthread_create(&thread_authpass_watcher, NULL, run_authpass_watcher, NULL), status != 0) {
+            merror("Couldn't create authpass watcher thread: %s", strerror(status));
+        } else {
+            authpass_watcher_started = true;
+        }
+    }
+
     /* Join threads */
     pthread_join(thread_local_server, NULL);
     if (config.flags.remote_enrollment) {
@@ -644,6 +686,11 @@ int main(int argc, char **argv)
         w_cond_signal(&cond_pending);
         w_mutex_unlock(&mutex_keys);
         pthread_join(thread_writer, NULL);
+    }
+
+    /* Join the watcher so it cannot touch authpass/mutex_authpass during shutdown. */
+    if (authpass_watcher_started) {
+        pthread_join(thread_authpass_watcher, NULL);
     }
 
     minfo("Exiting...");
@@ -689,7 +736,52 @@ static void process_message(struct client *client) {
 
     mdebug2("Request received: <%s>", client->read_buffer);
 
-    if (OS_SUCCESS == w_auth_parse_data(client->read_buffer, response, authpass, client->ip, &client->agentname, &client->centralized_group, &key_hash)) {
+    /* authpass is only mutable on the worker: the watcher thread reloads it and so does the
+     * block below. The master sets it once at startup, so it needs no serialisation there and
+     * enrollment parsing stays concurrent. Only enter the critical section on the worker. */
+    const bool serialize_authpass = config.flags.use_password && config.worker_node;
+
+    if (serialize_authpass) {
+        w_mutex_lock(&mutex_authpass);
+    }
+
+    /* Worker: re-read on mtime change so a synced/rotated password is picked up without
+     * restart. A failed read keeps the current password. */
+    if (config.flags.use_password && config.worker_node) {
+        time_t mtime = File_DateofChange(AUTHD_PASS);
+
+        if (mtime >= 0 && (authpass == NULL || mtime != authpass_mtime)) {
+            char *fresh = w_authd_read_password(AUTHD_PASS);
+
+            if (fresh) {
+                os_free(authpass);
+                authpass = fresh;
+                minfo("Enrollment password reloaded from '%s'.", AUTHD_PASS);
+            }
+            /* Record the mtime regardless of success: avoids re-logging a corrupt file
+             * on every request until the file is replaced with a valid one. */
+            authpass_mtime = mtime;
+        }
+    }
+
+    /* Fail closed: required password missing (worker not synced yet) -> reject, never
+     * validate against NULL (which skips the check). */
+    if (config.flags.use_password && authpass == NULL) {
+        if (serialize_authpass) {
+            w_mutex_unlock(&mutex_authpass);
+        }
+        merror("Enrollment password required but not available yet. Rejecting request from %s.", client->ip);
+        snprintf(client->write_buffer, MAX_SSL_MSG_SIZE, "ERROR: Enrollment password not available. Unable to add agent");
+        client->write_len = strlen(client->write_buffer);
+        return;
+    }
+
+    int auth_parse_result = w_auth_parse_data(client->read_buffer, response, authpass, client->ip, &client->agentname, &client->centralized_group, &key_hash);
+    if (serialize_authpass) {
+        w_mutex_unlock(&mutex_authpass);
+    }
+
+    if (OS_SUCCESS == auth_parse_result) {
         if (config.worker_node) {
             minfo("Dispatching request to master node");
             // The force registration settings are ignored for workers. The master decides.
