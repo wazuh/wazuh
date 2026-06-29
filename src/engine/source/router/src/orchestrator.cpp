@@ -351,7 +351,7 @@ Orchestrator::Orchestrator(const Options& opt)
     std::size_t numThreads = opt.m_numThreads;
     if (numThreads == 0)
     {
-        numThreads = std::thread::hardware_concurrency();
+        numThreads = base::libwazuhshared::get_nproc();
         if (numThreads == 0)
         {
             numThreads = 1; // Fallback if hardware_concurrency cannot be determined
