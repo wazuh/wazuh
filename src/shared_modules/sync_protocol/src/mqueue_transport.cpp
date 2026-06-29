@@ -24,7 +24,7 @@ bool MQueueTransport::checkStatus()
 {
     if (!ensureQueueAvailable())
     {
-        m_logger(LOG_ERROR, "Failed to open queue: " + std::string(DEFAULTQUEUE));
+        m_logger(LOG_WARNING, "Failed to open queue: " + std::string(DEFAULTQUEUE));
         return false;
     }
 

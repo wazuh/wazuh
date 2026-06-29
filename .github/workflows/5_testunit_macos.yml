@@ -6,6 +6,22 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/5_testunit_macos.yml"
+      - "!src/engine/**"
+      - "!src/remoted/**"
+      - "!src/util/**"
+      # Windows-only, never built for the macOS agent
+      - "!src/win32/**"
+      - "!src/shared_modules/indexer_connector/**"
+      - "!src/shared_modules/keystore/**"
+      # Only src/ for these server trees: agent modules compile against their include/
+      - "!src/monitord/src/**"
+      - "!src/os_auth/src/**"
+      - "!src/wazuh_db/src/**"
+      - "!src/wazuh_db/schemas/**"
+      - "!src/shared_modules/content_manager/src/**"
+      - "!src/shared_modules/router/src/**"
+      - "!src/wazuh_modules/vulnerability_scanner/src/**"
+      - "!src/wazuh_modules/inventory_sync/src/**"
   workflow_dispatch:
 
 concurrency:
@@ -16,9 +32,10 @@ jobs:
   build-sonoma:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: macos-15
+    timeout-minutes: 45
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Install cmocka 1.1.7 and lcov
         run: |
           brew install lcov
@@ -31,7 +48,7 @@ jobs:
           sudo make install
       - name: Build wazuh agent for macOS 15 with tests flags
         env:
-            CMAKE_POLICY_VERSION_MINIMUM: 3.5
+          CMAKE_POLICY_VERSION_MINIMUM: 3.5
         run: |
           make deps -C src TARGET=agent -j3
           C_INCLUDE_PATH=$C_INCLUDE_PATH:/opt/homebrew/include LIBRARY_PATH=/usr/local/lib:/opt/homebrew/lib make -C src TARGET=agent -j3 TEST=1

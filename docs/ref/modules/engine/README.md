@@ -1656,7 +1656,7 @@ Decoders can parse date and timestamp fields in a wide range of formats and time
 schema fields (e.g., `@timestamp`, `event.start`) are applied automatically when those fields appear in a
 `parse|<field>` expression. Once parsed, the Engine normalizes all timestamps to UTC, ensuring consistency across
 event processing and indexing. For the full list of supported formats and parameters, see the
-[date parser documentation](ref-parser.html#date-parser).
+[date parser documentation](ref-parser.md#date-parser).
 
 #### Geolocation
 
@@ -1846,7 +1846,7 @@ kanban
 
 - **Outputs**: The delivery stage. Defines how the event is sent to its destination. Each entry can be a direct
   output operation (e.g., `wazuh-indexer:`, `file:`) or a `first_of` block with conditional branching. Cannot
-  modify the event. See the [Outputs stage](#stages-1) for syntax details.
+  modify the event. See the [Outputs stage](#output) for syntax details.
 
 ### Filters
 

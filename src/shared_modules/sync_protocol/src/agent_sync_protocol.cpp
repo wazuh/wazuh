@@ -294,7 +294,7 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
 
     if (!sendStartAndWaitAck(Mode::CHECK, 0, indices))
     {
-        m_logger(LOG_ERROR, "Failed to send Start message for integrity check");
+        m_logger(LOG_DEBUG, "Failed to send Start message for integrity check");
         clearSyncState();
         return false; // Return false as this is not a checksum error from manager
     }
@@ -302,7 +302,7 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
     // Step 2: Send ChecksumModule message
     if (!sendChecksumMessage(m_syncState.session, index, checksum))
     {
-        m_logger(LOG_ERROR, "Failed to send ChecksumModule message");
+        m_logger(LOG_DEBUG, "Failed to send ChecksumModule message");
         clearSyncState();
         return false; // Return false as this is not a checksum error from manager
     }
@@ -329,7 +329,7 @@ bool AgentSyncProtocol::requiresFullSync(const std::string& index,
             ? "Checksum validation failed, full sync required"
             : "Manager is offline";
 
-        m_logger(LOG_WARNING, "Module integrity check failed for index: " + index + " - " + message);
+        m_logger(LOG_DEBUG, "Module integrity check failed for index: " + index + " - " + message);
 
         clearSyncState();
         return result;
@@ -387,7 +387,7 @@ bool AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     }
     else
     {
-        m_logger(LOG_WARNING, "Synchronization failed for metadata/groups mode");
+        m_logger(LOG_DEBUG, "Synchronization failed for metadata/groups mode");
     }
 
     clearSyncState();
@@ -459,7 +459,7 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
         }
         else
         {
-            m_logger(LOG_WARNING, "DataClean notification failed.");
+            m_logger(LOG_DEBUG, "DataClean notification failed.");
         }
     }
     catch (const std::exception& e)
@@ -527,7 +527,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         }
         else
         {
-            m_logger(LOG_WARNING, "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.");
+            m_logger(LOG_DEBUG, "No groups available in metadata. Waiting for the server to synchronize the groups. Cannot proceed with synchronization.");
 
             if (has_metadata)
             {
@@ -610,7 +610,9 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
         {
             if (!sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_WARNING, "Failed to send Start message.");
+                // Internal transport retry: the calling module owns the user-facing
+                // warning for a failed synchronization, so log this at debug only.
+                m_logger(LOG_DEBUG, "Failed to send Start message.");
                 continue;
             }
 
@@ -620,7 +622,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
                 if (m_syncState.syncFailed)
                 {
-                    m_logger(LOG_ERROR, "Synchronization failed due to manager error.");
+                    m_logger(LOG_DEBUG, "Synchronization failed due to manager error.");
 
                     // Clean up metadata before returning
                     if (has_metadata)
@@ -642,7 +644,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 return true;
             }
 
-            m_logger(LOG_WARNING, "Timed out waiting for StartAck. Retrying...");
+            m_logger(LOG_DEBUG, "Timed out waiting for StartAck. Retrying...");
         }
 
         // Clean up metadata if we successfully retrieved it
@@ -651,7 +653,15 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
             metadata_provider_free_metadata(&metadata);
         }
 
-        m_logger(LOG_ERROR, "Exceeded maximum retries for Start message. Exiting...");
+        if (shouldStop())
+        {
+            // Expected during agent restart/shutdown: keep it as a debug breadcrumb.
+            m_logger(LOG_DEBUG, "Sync Start message retries exhausted because module is stopping.");
+        }
+        else
+        {
+            m_logger(LOG_DEBUG, "Exceeded maximum retries for Start message.");
+        }
 
         return false;
     }
@@ -717,7 +727,7 @@ bool AgentSyncProtocol::sendDataMessages(uint64_t session,
 
             if (!sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_ERROR, "Failed to send DataBatch message.");
+                m_logger(LOG_DEBUG, "Failed to send DataBatch message.");
                 return false;
             }
 
@@ -813,7 +823,7 @@ bool AgentSyncProtocol::sendDataContextMessages(uint64_t session,
 
             if (!sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_ERROR, "Failed to send Data context message.");
+                m_logger(LOG_DEBUG, "Failed to send Data context message.");
                 return false;
             }
         }
@@ -853,7 +863,7 @@ bool AgentSyncProtocol::sendChecksumMessage(uint64_t session,
 
         if (!sendFlatBufferMessageAsString(messageVector))
         {
-            m_logger(LOG_ERROR, "Failed to send Checksum message.");
+            m_logger(LOG_DEBUG, "Failed to send Checksum message.");
             return false;
         }
 
@@ -892,7 +902,7 @@ bool AgentSyncProtocol::sendDataCleanMessages(uint64_t session,
 
             if (!sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_ERROR, "Failed to send Dataclean message.");
+                m_logger(LOG_DEBUG, "Failed to send Dataclean message.");
                 return false;
             }
         }
@@ -945,7 +955,9 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
         {
             if (resendEnd && !sendFlatBufferMessageAsString(messageVector))
             {
-                m_logger(LOG_WARNING, "Failed to send End message.");
+                // Internal transport retry: the calling module owns the user-facing
+                // warning for a failed synchronization, so log this at debug only.
+                m_logger(LOG_DEBUG, "Failed to send End message.");
                 attempt++;
                 continue;
             }
@@ -980,7 +992,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
                 // Don't log error for checksum mismatch - it's an expected condition
                 if (m_syncState.lastSyncResult != SyncResult::CHECKSUM_ERROR)
                 {
-                    m_logger(LOG_ERROR, "Synchronization failed: Manager reported an error status.");
+                    m_logger(LOG_DEBUG, "Synchronization failed: Manager reported an error status.");
                 }
 
                 return false;
@@ -1001,7 +1013,7 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
                 if (ranges.empty())
                 {
-                    m_logger(LOG_ERROR, "Received ReqRet with empty ranges. Aborting current sync attempt.");
+                    m_logger(LOG_DEBUG, "Received ReqRet with empty ranges. Aborting current sync attempt.");
                     return false;
                 }
 
@@ -1009,13 +1021,13 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
                 if (rangeData.empty())
                 {
-                    m_logger(LOG_ERROR, "ReqRet asked for ranges that yield no data. Aborting.");
+                    m_logger(LOG_DEBUG, "ReqRet asked for ranges that yield no data. Aborting.");
                     return false;
                 }
 
                 if (!sendDataMessages(session, rangeData))
                 {
-                    m_logger(LOG_ERROR, "Failed to resend data for ReqRet.");
+                    m_logger(LOG_DEBUG, "Failed to resend data for ReqRet.");
                     return false;
                 }
 
@@ -1040,11 +1052,12 @@ bool AgentSyncProtocol::sendEndAndWaitAck(uint64_t session,
 
         if (shouldStop())
         {
-            m_logger(LOG_INFO, "Sync End message retries exhausted because module is stopping.");
+            // Expected during agent restart/shutdown: keep it as a debug breadcrumb.
+            m_logger(LOG_DEBUG, "Sync End message retries exhausted because module is stopping.");
         }
         else
         {
-            m_logger(LOG_ERROR, "Exceeded maximum retries for End message. Exiting...");
+            m_logger(LOG_DEBUG, "Exceeded maximum retries for End message.");
         }
 
         return false;
@@ -1096,7 +1109,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         if (startAck->status() == Wazuh::SyncSchema::Status::Error ||
                                 startAck->status() == Wazuh::SyncSchema::Status::Offline)
                         {
-                            m_logger(LOG_ERROR, "Received StartAck with error status. Aborting synchronization.");
+                            m_logger(LOG_DEBUG, "Received StartAck with error status. Aborting synchronization.");
                             m_syncState.syncFailed = true;
                             m_syncState.cv.notify_all();
                             break;
@@ -1136,7 +1149,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         if (endAck->status() == Wazuh::SyncSchema::Status::Offline)
                         {
                             m_syncState.lastSyncResult = SyncResult::COMMUNICATION_ERROR;
-                            m_logger(LOG_ERROR, "Received EndAck with Offline status. Aborting synchronization.");
+                            m_logger(LOG_DEBUG, "Received EndAck with Offline status. Aborting synchronization.");
                         }
                         else if (endAck->status() == Wazuh::SyncSchema::Status::ChecksumMismatch)
                         {
@@ -1146,7 +1159,7 @@ bool AgentSyncProtocol::parseResponseBuffer(const uint8_t* data, size_t length)
                         else if (endAck->status() == Wazuh::SyncSchema::Status::Error)
                         {
                             m_syncState.lastSyncResult = SyncResult::GENERIC_ERROR;
-                            m_logger(LOG_ERROR, "Received EndAck with Error status. Aborting synchronization.");
+                            m_logger(LOG_DEBUG, "Received EndAck with Error status. Aborting synchronization.");
                         }
 
                         m_syncState.syncFailed = true;

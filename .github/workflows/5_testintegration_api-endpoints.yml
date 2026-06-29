@@ -32,6 +32,7 @@ jobs:
   api_endpoints_integration_tests_setup:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     outputs:
       custom_matrix: ${{ steps.test_files.outputs.files }}
     name: Generate execution matrix for API endpoints integration tests
@@ -138,6 +139,7 @@ jobs:
     needs: api_endpoints_integration_tests_setup
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     name: Build and cache Docker images for integration tests
     outputs:
       checksum: ${{ steps.calculate_checksum.outputs.checksum }}
@@ -182,6 +184,7 @@ jobs:
     needs: [api_endpoints_integration_tests_setup, build_docker_images]
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     name: Run smoke test for API endpoints
 
     steps:
@@ -219,6 +222,7 @@ jobs:
     needs: [api_endpoints_integration_tests_setup, build_docker_images, smoke_test]
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:

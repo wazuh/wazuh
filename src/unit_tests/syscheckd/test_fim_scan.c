@@ -1803,6 +1803,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1830,6 +1833,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     will_return(__wrap_fim_db_transaction_start, &mock_handle);
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1891,6 +1897,9 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -1955,6 +1964,9 @@ static void test_fim_scan_realtime_enabled(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2028,6 +2040,9 @@ static void test_fim_scan_no_limit(void **state) {
     // First scan
     OSList_foreach(node_it, syscheck.directories) {
         dir_it = node_it->data;
+        expect_string(__wrap_IsLink, file, dir_it->path);
+        will_return(__wrap_IsLink, -1);
+
         expect_string(__wrap_lstat, filename, dir_it->path);
         will_return(__wrap_lstat, &directory_buf);
         will_return(__wrap_lstat, 0);
@@ -2054,6 +2069,153 @@ static void test_fim_scan_no_limit(void **state) {
 
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
+}
+
+static int setup_fim_file_scan_symlink_test(void **state) {
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    syscheck.file_limit_enabled = false;
+
+    syscheck.directories = OSList_Create();
+    if (!syscheck.directories) {
+        return -1;
+    }
+    OSList_SetFreeDataPointer(syscheck.directories, (void (*)(void *))free_directory);
+
+    directory_t *dir = fim_create_directory("/test/symdir", CHECK_SIZE, NULL, 256, NULL, 1024, 0);
+    if (!dir) {
+        return -1;
+    }
+    OSList_InsertData(syscheck.directories, NULL, dir);
+
+    *state = dir;
+    return 0;
+}
+
+static int teardown_fim_file_scan_symlink_test(void **state) {
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    OSList_Destroy(syscheck.directories);
+    syscheck.directories = NULL;
+    *state = NULL;
+    return 0;
+}
+
+static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
+    directory_t *dir = *state;
+    struct stat directory_buf = { .st_mode = S_IFDIR };
+    TXN_HANDLE mock_handle = NULL;
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_IsLink, file, "/test/symdir");
+    will_return(__wrap_IsLink, 0);
+
+    expect_string(__wrap_realpath, path, "/test/symdir");
+    will_return(__wrap_realpath, strdup("/actual/dir"));
+
+    expect_string(__wrap__minfo, formatted_msg,
+        "(6961): Configured path '/test/symdir' is a symbolic link to '/actual/dir'. "
+        "Without 'follow_symbolic_link' enabled, only the symlink itself will be monitored, "
+        "not the directory contents. Consider monitoring '/actual/dir' directly or enabling "
+        "'follow_symbolic_link'.");
+
+    expect_string(__wrap_lstat, filename, "/test/symdir");
+    will_return(__wrap_lstat, &directory_buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test/symdir");
+    will_return(__wrap_HasFilesystem, 1);
+
+    expect_string(__wrap_realtime_adddir, dir, "/test/symdir");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
+    fim_file_scan();
+
+    assert_true(dir->symlink_warned);
+}
+
+static void test_fim_file_scan_no_warn_second_scan(void **state) {
+    directory_t *dir = *state;
+    dir->symlink_warned = true;
+    struct stat directory_buf = { .st_mode = S_IFDIR };
+    TXN_HANDLE mock_handle = NULL;
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_lstat, filename, "/test/symdir");
+    will_return(__wrap_lstat, &directory_buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test/symdir");
+    will_return(__wrap_HasFilesystem, 1);
+
+    expect_string(__wrap_realtime_adddir, dir, "/test/symdir");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
+    fim_file_scan();
+
+    assert_true(dir->symlink_warned);
+}
+
+static void test_fim_file_scan_no_warn_not_symlink(void **state) {
+    struct stat directory_buf = { .st_mode = S_IFDIR };
+    TXN_HANDLE mock_handle = NULL;
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_IsLink, file, "/test/symdir");
+    will_return(__wrap_IsLink, -1);
+
+    expect_string(__wrap_lstat, filename, "/test/symdir");
+    will_return(__wrap_lstat, &directory_buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test/symdir");
+    will_return(__wrap_HasFilesystem, 1);
+
+    expect_string(__wrap_realtime_adddir, dir, "/test/symdir");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
+    fim_file_scan();
 }
 
 #else
@@ -3957,11 +4119,64 @@ static void test_dbsync_attributes_json(void **state) {
     free(json_attributes_str);
 }
 
+/* Validates fix for (6960): when dbsync delivers `inode` as a JSON number
+ * (the column is INTEGER), it must be normalized to a string instead of
+ * being dropped and logged. No __wrap__minfo expectation is set on purpose:
+ * the buggy code path calls minfo(FIM_WARN_INODE_WRONG_TYPE) -> cmocka fails. */
+static void test_fim_attributes_json_inode_number(void **state) {
+    (void) state;
+    directory_t configuration = { .options = CHECK_INODE };
+
+    // inode arrives as a NUMBER (note: no quotes), and a large >INT_MAX value
+    // to prove %llu is required (a %d/valueint conversion would truncate it).
+    cJSON *dbsync_event = cJSON_Parse("{\"inode\":4294967296}");
+
+    cJSON *attributes = fim_attributes_json(dbsync_event, NULL, &configuration);
+
+    assert_non_null(attributes);
+    cJSON *inode = cJSON_GetObjectItem(attributes, "inode");
+    assert_non_null(inode);
+    assert_true(cJSON_IsString(inode));
+    assert_string_equal(inode->valuestring, "4294967296");
+
+    cJSON_Delete(dbsync_event);
+    cJSON_Delete(attributes);
+}
+
+/* Same fix, "changed/old" path: numeric inode must become a string in
+ * old_attributes and "file.inode" must be reported as a changed field. */
+static void test_fim_calculate_dbsync_difference_inode_number(void **state) {
+    (void) state;
+    directory_t configuration = { .options = CHECK_INODE };
+
+    cJSON *changed_data_json   = cJSON_Parse("{\"inode\":4294967296}");
+    cJSON *old_attributes      = cJSON_CreateObject();
+    cJSON *changed_attributes  = cJSON_CreateArray();
+
+    fim_calculate_dbsync_difference(&configuration,
+                                    changed_data_json,
+                                    changed_attributes,
+                                    old_attributes);
+
+    cJSON *inode = cJSON_GetObjectItem(old_attributes, "inode");
+    assert_non_null(inode);
+    assert_true(cJSON_IsString(inode));
+    assert_string_equal(inode->valuestring, "4294967296");
+
+    assert_int_equal(cJSON_GetArraySize(changed_attributes), 1);
+    assert_string_equal(cJSON_GetArrayItem(changed_attributes, 0)->valuestring, "file.inode");
+
+    cJSON_Delete(changed_data_json);
+    cJSON_Delete(old_attributes);
+    cJSON_Delete(changed_attributes);
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         /* fim_attributes_json */
         cmocka_unit_test_teardown(test_fim_attributes_json, teardown_delete_json),
         cmocka_unit_test_setup_teardown(test_dbsync_attributes_json, setup_json_event_attributes, teardown_json_event_attributes),
+        cmocka_unit_test(test_fim_attributes_json_inode_number),
 
         /* fim_audit_json */
         cmocka_unit_test_teardown(test_fim_audit_json, teardown_delete_json),
@@ -4101,6 +4316,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_create_unix_who_data_events, setup_fim_data, teardown_fim_data),
         cmocka_unit_test_setup_teardown(test_fim_db_remove_entry, setup_fim_entry, teardown_fim_entry),
         cmocka_unit_test_setup_teardown(test_fim_db_process_missing_entry, setup_fim_entry, teardown_fim_entry),
+        cmocka_unit_test(test_fim_calculate_dbsync_difference_inode_number),
     };
     const struct CMUnitTest fim_regex_tests[] = {
         /* fim_check_ignore */
@@ -4131,6 +4347,21 @@ int main(void) {
     retval += cmocka_run_group_tests(fim_regex_tests, setup_fim_regex_group, teardown_group);
     retval += cmocka_run_group_tests(root_monitor_tests, setup_root_group, teardown_group);
     retval += cmocka_run_group_tests(wildcards_tests, setup_wildcards, teardown_wildcards);
+
+#ifndef TEST_WINAGENT
+    const struct CMUnitTest fim_file_scan_symlink_tests[] = {
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_symlink_warns_when_no_follow,
+                                        setup_fim_file_scan_symlink_test,
+                                        teardown_fim_file_scan_symlink_test),
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_no_warn_second_scan,
+                                        setup_fim_file_scan_symlink_test,
+                                        teardown_fim_file_scan_symlink_test),
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_no_warn_not_symlink,
+                                        setup_fim_file_scan_symlink_test,
+                                        teardown_fim_file_scan_symlink_test),
+    };
+    retval += cmocka_run_group_tests(fim_file_scan_symlink_tests, NULL, NULL);
+#endif
 
     return retval;
 

@@ -182,6 +182,7 @@ build_standalone() {
 
     # Generate engine schemas
     echo "Generating engine schemas..."
+    python3 -m pip install -r ${WAZUH_PATH}/src/engine/tools/engine-schema/requirements.txt || return 1
     python3 ${WAZUH_PATH}/src/engine/tools/engine-schema/engine_schema.py generate \
         --output-dir ${WAZUH_PATH}/src/engine/ruleset/schemas/ \
         --wcs-path ${WAZUH_PATH}/src/external/wcs-flat-files/ \

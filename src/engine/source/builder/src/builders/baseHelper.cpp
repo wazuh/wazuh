@@ -95,7 +95,8 @@ runType(const OpBuilder& builder, const Reference& targetField, const schemf::Va
 
         // Wrapper MapOp
         const auto& invalidTrace = fmt::format("{} -> schema validation failed: ", buildCtx->context().opName);
-        return [invalidTrace, mapOp, runValidator, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
+        return [invalidTrace, mapOp, runValidator, isTestMode = buildCtx->isTestMode()](
+                   base::ConstEvent event) -> MapResult
         {
             auto mapRes = mapOp(event);
             if (mapRes.failure())
@@ -105,12 +106,15 @@ runType(const OpBuilder& builder, const Reference& targetField, const schemf::Va
 
             const auto& value = mapRes.payload();
 
-            auto error = runValidator(value);
-            if (error)
+            // Allow null values
+            if (!value.isNull())
             {
-                RETURN_FAILURE(isTestMode, json::Json(), invalidTrace + error.value().message);
+                auto error = runValidator(value);
+                if (error)
+                {
+                    RETURN_FAILURE(isTestMode, json::Json(), invalidTrace + error.value().message);
+                }
             }
-
             return std::move(mapRes);
         };
     };
@@ -421,7 +425,18 @@ baseHelperBuilder(const json::Json& definition, const std::shared_ptr<const IBui
             default: return base::Chain::create(opName, subExpressions);
         };
     }
-    else // Null
+    else if (jValue.isNull())
+    {
+        // Null values accepted
+        switch (helperType)
+        {
+            case HelperType::MAP: helperName = "map"; break;
+            case HelperType::FILTER: helperName = "filter"; break;
+            default: throw std::runtime_error("Invalid helper type");
+        }
+        opArgs.emplace_back(std::make_shared<Value>(json::Json(jValue)));
+    }
+    else
     {
         throw std::runtime_error(
             fmt::format("Invalid type for operation definition, got '{}'", json::Json::typeToStr(jValue.type())));

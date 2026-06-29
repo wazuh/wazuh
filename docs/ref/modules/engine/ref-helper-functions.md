@@ -1614,7 +1614,7 @@ field: index_unclassified_events()
 
 | Path | Type | Possible values |
 | ---- | ---- | --------------- |
-| wazuh.integration.decoders | array | [number, string, boolean, object, array] |
+| wazuh.integration.category | string | unclassified, access-management, applications, cloud-services, network-activity, other, security, system-activity |
 
 
 ## Description
@@ -1622,20 +1622,21 @@ field: index_unclassified_events()
 Determines whether unclassified events should be indexed based on policy configuration.
 This filter returns true if and only if:
 1. The policy flag 'indexUnclassifiedEvents' is enabled (configured at build time)
-2. The target field is exactly 'wazuh.integration.decoders'
-3. 'wazuh.integration.decoders' is an array containing exactly 1 element
+2. The target field is exactly 'wazuh.integration.category'
+3. 'wazuh.integration.category' equals the string "unclassified"
 
-This helper is used in output routing to decide whether to index events that have only
-one decoder (unclassified events) when the policy allows it. If the policy flag is
-disabled or the array has a different size, the validation fails.
+This helper is used in output routing to decide whether to index events that the
+root decoder tagged as unclassified (no integration decoder matched) when the policy
+allows it. If the policy flag is disabled, the category differs from "unclassified",
+or the field is missing / not a string, the validation fails.
 
 Note: This helper does not accept any arguments, rejects any target field other than
-'wazuh.integration.decoders', and depends on the policy context configured at build time.
+'wazuh.integration.category', and depends on the policy context configured at build time.
 
 
 ## Keywords
 
-- `array` 
+- `string` 
 
 - `policy` 
 
@@ -1643,22 +1644,20 @@ Note: This helper does not accept any arguments, rejects any target field other 
 
 ### Example 1
 
-Array with exactly one element (unclassified event)
+Category equals "unclassified" (event tagged by the root decoder)
 
 #### Asset
 
 ```yaml
 check:
-  - wazuh.integration.decoders: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "wazuh.integration.decoders": [
-    "single_decoder"
-  ]
+  "wazuh.integration.category": "unclassified"
 }
 ```
 
@@ -1666,42 +1665,41 @@ check:
 
 ### Example 2
 
-Empty array - not an unclassified event
+Category is a known one different from "unclassified"
 
 #### Asset
 
 ```yaml
 check:
-  - wazuh.integration.decoders: index_unclassified_events()
-```
-
-#### Input Event
-
-```json
-{}
-```
-
-*The check was performed with errors*
-
-### Example 3
-
-Array with two elements - classified event
-
-#### Asset
-
-```yaml
-check:
-  - wazuh.integration.decoders: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "wazuh.integration.decoders": [
-    "decoder1",
-    "decoder2"
-  ]
+  "wazuh.integration.category": "security"
+}
+```
+
+*The check was performed with errors*
+
+### Example 3
+
+Category is a known one different from "unclassified"
+
+#### Asset
+
+```yaml
+check:
+  - wazuh.integration.category: index_unclassified_events()
+```
+
+#### Input Event
+
+```json
+{
+  "wazuh.integration.category": "system-activity"
 }
 ```
 
@@ -1709,24 +1707,20 @@ check:
 
 ### Example 4
 
-Array with three elements - classified event
+Category is an empty string
 
 #### Asset
 
 ```yaml
 check:
-  - wazuh.integration.decoders: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "wazuh.integration.decoders": [
-    "d1",
-    "d2",
-    "d3"
-  ]
+  "wazuh.integration.category": ""
 }
 ```
 
@@ -1734,20 +1728,20 @@ check:
 
 ### Example 5
 
-Target field is not an array
+Target field is a number, not a string
 
 #### Asset
 
 ```yaml
 check:
-  - wazuh.integration.decoders: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "wazuh.integration.decoders": "not_an_array"
+  "wazuh.integration.category": 42
 }
 ```
 
@@ -1755,20 +1749,22 @@ check:
 
 ### Example 6
 
-Target field is a number, not an array
+Target field is an array, not a string
 
 #### Asset
 
 ```yaml
 check:
-  - wazuh.integration.decoders: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "wazuh.integration.decoders": 42
+  "wazuh.integration.category": [
+    "unclassified"
+  ]
 }
 ```
 
@@ -3627,7 +3623,7 @@ check:
 {}
 ```
 
-*The check was performed with errors*
+*The check was successful*
 
 ### Example 2
 

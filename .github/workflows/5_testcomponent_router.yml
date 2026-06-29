@@ -8,6 +8,9 @@ on:
       - ".github/workflows/5_testcomponent_router.yml"
       - "src/shared_modules/utils/**"
       - "src/shared_modules/router/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/test_cpp/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -17,6 +20,7 @@ jobs:
   router-tests:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     strategy:
       fail-fast: true
       matrix:
@@ -30,7 +34,7 @@ jobs:
     name: Run tests (${{ matrix.test_type }})
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
 

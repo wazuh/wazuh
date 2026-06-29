@@ -27,5 +27,6 @@ runs:
           sudo rm /usr/local/bin/cmake || true
           sudo rm /usr/local/bin/ctest || true
           sudo tools/devContainer/reinstall-cmake.sh "${requested_version}"
+          hash -r
           cmake --version
         shell: bash

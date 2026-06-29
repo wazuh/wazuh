@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ------------------------------------------------------------------------------
 # pr-clang.sh — Format all .cpp/.hpp files changed in the current PR
-#               (or vs main if no PR is associated) under src/engine/source/.
+#               (or vs main if no PR is associated) under src/.
 #
 # Usage:
 #   ./pr-clang.sh [--check]   # --check: only verify, don't modify (exit 1 if diff)
@@ -12,7 +12,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 WAZUH_REPO="${WAZUH_REPO:-$(cd "$SCRIPT_DIR/../../../../.." && pwd)}"
-ENGINE_DIR="${WAZUH_REPO}/src/engine"
 CLANG_FORMAT="${CLANG_FORMAT:-clang-format}"
 CHECK_ONLY=0
 
@@ -60,18 +59,18 @@ UNTRACKED_FILES="$(git -C "$WAZUH_REPO" ls-files --others --exclude-standard)"
 CHANGED_FILES="$(printf '%s\n%s\n%s\n%s' "$COMMITTED_FILES" "$STAGED_FILES" "$UNSTAGED_FILES" "$UNTRACKED_FILES" | sort -u)"
 
 # ------------------------------------------------------------------------------
-# Filter: only src/engine/source/**/*.{cpp,hpp}
+# Filter: only src/**/*.{cpp,hpp}
 # ------------------------------------------------------------------------------
 FILTERED_FILES=()
 while IFS= read -r file; do
   [[ -z "$file" ]] && continue
-  [[ "$file" == src/engine/source/*.cpp ]] || [[ "$file" == src/engine/source/*.hpp ]] || continue
+  [[ "$file" =~ ^src/.*\.(cpp|hpp)$ ]] || continue
   [[ -f "${WAZUH_REPO}/${file}" ]] || continue
   FILTERED_FILES+=("${WAZUH_REPO}/${file}")
 done <<< "$CHANGED_FILES"
 
 if [[ ${#FILTERED_FILES[@]} -eq 0 ]]; then
-  echo "==> No .cpp/.hpp files changed under src/engine/source/. Nothing to do."
+  echo "==> No .cpp/.hpp files changed under src/. Nothing to do."
   exit 0
 fi
 
@@ -88,7 +87,7 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
   echo "==> Checking formatting (dry-run)..."
   NEEDS_FMT=0
   for f in "${FILTERED_FILES[@]}"; do
-    if ! "$CLANG_FORMAT" --style=file:"${ENGINE_DIR}/.clang-format" --dry-run --Werror "$f" 2>/dev/null; then
+    if ! "$CLANG_FORMAT" --style=file --dry-run --Werror "$f" 2>/dev/null; then
       echo "    NEEDS FORMAT: ${f#"${WAZUH_REPO}/"}"
       NEEDS_FMT=1
     fi
@@ -104,6 +103,8 @@ if [[ "$CHECK_ONLY" -eq 1 ]]; then
 else
   echo ""
   echo "==> Formatting in-place..."
-  "$CLANG_FORMAT" --style=file:"${ENGINE_DIR}/.clang-format" -i "${FILTERED_FILES[@]}"
+  for f in "${FILTERED_FILES[@]}"; do
+    "$CLANG_FORMAT" --style=file -i "$f"
+  done
   echo "==> Done. ${#FILTERED_FILES[@]} file(s) formatted."
 fi

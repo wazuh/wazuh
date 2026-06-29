@@ -353,16 +353,21 @@ update_file_api() {
         local version_short
         version_short=$(echo "$new_version" | awk -F. '{print $1 "." $2}')
         if [[ -z "$skip_urls" ]]; then
-            # Build the target Git ref for blob/ URLs. Pre-release stages tag as
-            # vMAJOR.MINOR.PATCH-STAGE (e.g. v5.0.0-beta2), so without the stage
-            # suffix the URL would point to a tag that does not exist yet.
-            local tag_ref="v${new_version}"
-            [[ -n "$new_stage" ]] && tag_ref="${tag_ref}-${new_stage}"
+            # Build the target ref for blob/ URLs.
+            # - Pre-release (stage non-empty): tag format vMAJOR.MINOR.PATCH-STAGE (e.g. v5.0.0-beta3)
+            # - Release branch (stage empty): branch name format MAJOR.MINOR.PATCH (e.g. 5.0.0, no v)
+            local url_ref
+            if [[ -n "$new_stage" ]]; then
+                url_ref="v${new_version}-${new_stage}"
+            else
+                url_ref="${new_version}"
+            fi
 
-            # blob/ paths: match main, vMAJOR.MINOR.PATCH, and vMAJOR.MINOR.PATCH-STAGE
-            # so subsequent stage bumps can replace an existing tagged ref.
+            # blob/ paths: match main, vMAJOR.MINOR.PATCH, vMAJOR.MINOR.PATCH-STAGE,
+            # and MAJOR.MINOR.PATCH (branch name without v) so any existing ref format
+            # can be replaced on subsequent bumps.
             sed -i -E \
-                "s~(blob/)(v?main|v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+[0-9]+)?)(/)~\1${tag_ref}\4~g" \
+                "s~(blob/)(v?main|v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+[0-9]+)?|[0-9]+\.[0-9]+\.[0-9]+)(/)~\1${url_ref}\4~g" \
                 "$spec_file"
             # documentation URLs use 2-part version without v prefix (e.g. wazuh.com/5.0/)
             sed -i -E \
@@ -425,72 +430,46 @@ update_file_packages() {
     formatted_date=$(date -d "$new_date" +"%a, %d %b %Y 00:00:00 +0000")
     spec_date=$(date -d "$new_date" +"%a %b %d %Y")
 
-    # Update .spec files
-    for spec_file in $(find "$DIR_PACKAGE" -type f -name "*.spec"); do
-        local existing_line
-        existing_line=$(grep -E "^\\* .+ - ${final_version}$" "$spec_file" || true)
+    local version_dashed="${final_version//./-}"
 
-        if [[ -n "$existing_line" ]]; then
-            sed -i -E \
-                "s|^\* .+ - ${final_version}$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" \
-                "$spec_file"
-            log_action "Updated changelog date for version ${final_version} in: $spec_file"
-        else
-            sed -i -E \
-                "/^%changelog\s*$/a * ${spec_date} support <info@wazuh.com> - ${final_version}\n- More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html" \
-                "$spec_file"
-            log_action "Prepended changelog entry for version ${final_version} in: $spec_file"
-        fi
+    # Update .spec files - always update the first changelog entry in place
+    for spec_file in $(find "$DIR_PACKAGE" -type f -name "*.spec"); do
+        sed -i -E \
+            "0,/^\* .+ support <info@wazuh\.com> - [0-9]+\.[0-9]+\.[0-9]+$/s|^\* .+ support <info@wazuh\.com> - [0-9]+\.[0-9]+\.[0-9]+$|* ${spec_date} support <info@wazuh.com> - ${final_version}|" \
+            "$spec_file"
+        sed -i -E \
+            "0,/^- More info: https:\/\/documentation\.wazuh\.com\/current\/release-notes\/release-[0-9]+-[0-9]+-[0-9]+\.html$/s|^- More info: .*$|- More info: https://documentation.wazuh.com/current/release-notes/release-${version_dashed}.html|" \
+            "$spec_file"
+        log_action "Updated changelog entry for version ${final_version} in: $spec_file"
     done
 
-    # Update changelog files (prepend entry)
+    # Update changelog files - always update the first entry in place
     for changelog_file in $(find "$DIR_PACKAGE" -type f -name "changelog"); do
         local INSTALL_TYPE
         INSTALL_TYPE=$(basename "$(dirname "$(dirname "$changelog_file")")")
-        local changelog_entry
-        changelog_entry="$(
-cat <<EOF
-${INSTALL_TYPE} (${final_version}-RELEASE) stable; urgency=low
 
-  * More info: https://documentation.wazuh.com/current/release-notes/release-${final_version//./-}.html
+        awk -v pkg="$INSTALL_TYPE" -v new_ver="$final_version" -v new_url="https://documentation.wazuh.com/current/release-notes/release-${version_dashed}.html" -v new_date="$formatted_date" '
+        BEGIN { header_done = 0; url_done = 0; date_done = 0 }
+        {
+            if (!header_done && $0 ~ ("^" pkg " \\([0-9]+\\.[0-9]+\\.[0-9]+-RELEASE\\) stable; urgency=low$")) {
+                print pkg " (" new_ver "-RELEASE) stable; urgency=low"
+                header_done = 1
+                next
+            }
+            if (!url_done && $0 ~ /^  \* More info: https:\/\/documentation\.wazuh\.com\/current\/release-notes\/release-[0-9]+-[0-9]+-[0-9]+\.html$/) {
+                print "  * More info: " new_url
+                url_done = 1
+                next
+            }
+            if (!date_done && $0 ~ /^ -- Wazuh, Inc <info@wazuh\.com>  /) {
+                print " -- Wazuh, Inc <info@wazuh.com>  " new_date
+                date_done = 1
+                next
+            }
+            print
+        }' "$changelog_file" > "${changelog_file}.tmp" && mv "${changelog_file}.tmp" "$changelog_file"
 
- -- Wazuh, Inc <info@wazuh.com>  ${formatted_date}
-
-EOF
-)"
-        local version_pattern_grep
-        local version_pattern_awk
-        version_pattern_grep="^${INSTALL_TYPE} \(${final_version//./\\.}-RELEASE\) stable; urgency=low"
-        version_pattern_awk="^${INSTALL_TYPE} [(]${final_version//./.}-RELEASE[)] stable; urgency=low"
-
-        if grep -qE "$version_pattern_grep" "$changelog_file"; then
-            awk -v version_regex="$version_pattern_awk" -v new_date="$formatted_date" '
-            BEGIN { inside_match = 0 }
-            {
-                if ($0 ~ version_regex) {
-                    inside_match = 1
-                    print
-                    next
-                }
-                if (inside_match && $0 ~ /^ -- Wazuh, Inc <info@wazuh.com>  /) {
-                    print " -- Wazuh, Inc <info@wazuh.com>  " new_date
-                    inside_match = 0
-                    next
-                }
-                print
-            }' "$changelog_file" > "${changelog_file}.tmp" && mv "${changelog_file}.tmp" "$changelog_file"
-
-            log_action "Updated changelog date for version ${final_version} in: $changelog_file"
-        else
-            local tmp_file
-            tmp_file=$(mktemp)
-            {
-                printf "%s\n\n" "$changelog_entry"
-                cat "$changelog_file"
-            } > "$tmp_file" && mv "$tmp_file" "$changelog_file"
-
-            log_action "Prepended changelog entry for version ${final_version} in: $changelog_file"
-        fi
+        log_action "Updated changelog entry for version ${final_version} in: $changelog_file"
     done
 
     # Update copyright files
@@ -556,6 +535,27 @@ update_root_changelog() {
     log_action "Modified $changelog_file with new version: $new_version"
 }
 
+update_file_git_refs() {
+    local new_version="$1"
+
+    [[ -z "$new_version" ]] && return
+
+    local refs_file="$DIR_ROOT/tools/get_git_refs.sh"
+    local current_version
+    current_version=$(grep -E 'if \[ "\$version" = "[0-9]+\.[0-9]+\.[0-9]+" \]' "$refs_file" \
+        | sed -E 's/.*if \[ "\$version" = "([0-9]+\.[0-9]+\.[0-9]+)" \].*/\1/')
+
+    if [[ -n "$current_version" && "$current_version" != "$new_version" ]]; then
+        local old_escaped="${current_version//./\\.}"
+        sed -i -E "s|(if \[ \"\\\$version\" = \")${old_escaped}(\" \])|\1${new_version}\2|" "$refs_file"
+        sed -i -E "s|(# Special case: for version )${old_escaped}(,)|\1${new_version}\2|" "$refs_file"
+        sed -i -E "s|(- Special case: version )${old_escaped}( also returns)|\1${new_version}\2|" "$refs_file"
+        sed -i -E "s|(refs/heads/)${old_escaped}$|\1${new_version}|" "$refs_file"
+        sed -i -E "s|(refs/tags/v)${old_escaped}$|\1${new_version}|" "$refs_file"
+        log_action "Modified $refs_file with new version: $new_version"
+    fi
+}
+
 update_version() {
     local current_version="$1"
     local current_stage="$2"
@@ -572,6 +572,7 @@ update_version() {
     update_file_sources "$new_version" "$new_stage"
     update_file_framework "$new_version" "$new_stage"
     update_file_api "$new_version" "$new_stage"
+    update_file_git_refs "$new_version"
     update_root_changelog "$new_version"
 
     local final_version="${new_version:-$current_version}"

@@ -124,7 +124,7 @@
   metadata:
     test_case:
     - input: global get-all-agents last_id -1
-      output: ok [{"id":0},{"id":1},{"id":2}]
+      output: ok [{"id":1},{"id":2}]
       stage: global get-all-agents success
 
 - name: sync-agent-info-get command
@@ -188,18 +188,14 @@
       output: ok
       stage: global update-connection-status active success
     - input: global sql SELECT id,sync_status FROM agent
-      output: ok [{"id":0,"sync_status":"synced"},{"id":1,"sync_status":"synced"},{"id":2,"sync_status":"synced"},{"id":3,"sync_status":"synced"}]
+      output: ok [{"id":1,"sync_status":"synced"},{"id":2,"sync_status":"synced"},{"id":3,"sync_status":"synced"}]
       stage: global checking sync_status before reset-agents-connection
     - input: global reset-agents-connection syncreq
       output: ok
       stage: global reset-agents-connection success
     - input: global sql SELECT id,sync_status FROM agent
-      output: ok [{"id":0,"sync_status":"synced"},{"id":1,"sync_status":"syncreq"},{"id":2,"sync_status":"synced"},{"id":3,"sync_status":"syncreq"}]
+      output: ok [{"id":1,"sync_status":"syncreq"},{"id":2,"sync_status":"synced"},{"id":3,"sync_status":"syncreq"}]
       stage: global checking sync_status after reset-agents-connection
-    - input: global get-agent-info 0
-      output: ok [{"id":0,*,"last_keepalive":253402300799,"group_sync_status":"synced","sync_status":"synced","connection_status":"active","disconnection_time":0,"group_config_status":"synced","status_code":0}]
-      stage: global manager get-agent-info success post reset connection status
-      use_regex: "yes"
     - input: global get-agent-info 1
       output: ok [{"id":1,"name":"TestName2","ip":"0.0.0.1","register_ip":"0.0.0.1","internal_key":"TopSecret","os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor","os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","merged_sum":"TestMergedSum","node_name":"TestNodeName","date_add":1599223378,"last_keepalive":*,"group":"TestGroup1","group_sync_status":"synced","sync_status":"syncreq","connection_status":"disconnected","disconnection_time":*,"group_config_status":"not synced","status_code":5}]
       stage: global agent get-agent-info success post reset connection status
@@ -237,13 +233,13 @@
       output: ok [{"id":3}]
       stage: global get-agents-by-connection-status active success
     - input: global sql SELECT id,sync_status FROM agent
-      output: ok [{"id":0,"sync_status":"synced"},{"id":1,"sync_status":"syncreq"},{"id":2,"sync_status":"syncreq"},{"id":3,"sync_status":"syncreq"}]
+      output: ok [{"id":1,"sync_status":"syncreq"},{"id":2,"sync_status":"syncreq"},{"id":3,"sync_status":"syncreq"}]
       stage: global checking sync_status before reset-agents-connection
     - input: global reset-agents-connection synced
       output: ok
       stage: global reset-agents-connection
     - input: global sql SELECT id,sync_status FROM agent
-      output: ok [{"id":0,"sync_status":"synced"},{"id":1,"sync_status":"syncreq"},{"id":2,"sync_status":"synced"},{"id":3,"sync_status":"synced"}]
+      output: ok [{"id":1,"sync_status":"syncreq"},{"id":2,"sync_status":"synced"},{"id":3,"sync_status":"synced"}]
       stage: global checking sync_status after reset-agents-connection
     - input: global get-agents-by-connection-status 0 disconnected
       output: ok [{"id":2},{"id":3}]
@@ -306,35 +302,111 @@
       output: ok
       stage: global delete-agent after insert
 
-- name: Manager keepalive
-  description: Check success use cases for manager keepalive.
+- name: update-status-code command
+  description: Check success and error use cases for update-status-code command on global DB.
   configuration_parameters:
   metadata:
     test_case:
-    - input: global get-agent-info 0
-      output: ok [{"id":0,*,"last_keepalive":253402300799,"group_sync_status":"synced","sync_status":"synced","connection_status":"active","disconnection_time":0,"group_config_status":"synced","status_code":0}]
-      stage: global manager get-agent-info success pre update
-      use_regex: "yes"
-    - input:
-        global update-agent-data {"id":0,"os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor",
-        "os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","group_config_status":"not synced","merged_sum":"TestMergedSum",
-        "node_name":"TestNodeName","agent_ip":"127.0.0.1","sync_status":"synced","connection_status":"active",
-        "disconnection_time":0,"status_code":0}
+    - input: global delete-agent 1
       output: ok
-      stage: global manager update-agent-data success
-    - input: global get-agent-info 0
-      output: ok [{"id":0,*,"last_keepalive":253402300799,"group_sync_status":"synced","sync_status":"synced","connection_status":"active","disconnection_time":0,"group_config_status":"not synced","status_code":0}]
-      stage: global manager get-agent-info success post update with IP
-      use_regex: "yes"
-    - input:
-        global update-agent-data {"id":0,"os_name":"TestOsName","os_version":"TestOsVersion","os_major":"TestOsMajor",
-        "os_minor":"TestOsMinor","os_platform":"TestOsPlatfor","os_arch":"TestOsArch","version":"TestVersion","merged_sum":"TestMergedSum",
-        "node_name":"TestNodeName","sync_status":"synced","connection_status":"active","group_config_status":"synced","status_code":0}
+      stage: global delete-agent previous insert
+    - input: global insert-agent {"id":1,"name":"TestName1","date_add":1599223378}
       output: ok
-      stage: global manager update-agent-data success
-    - input: global get-agent-info 0
-      output: ok [{"id":0,*,"last_keepalive":253402300799,"group_sync_status":"synced","sync_status":"synced","connection_status":"active","disconnection_time":0,"group_config_status":"synced","status_code":0}]
-      stage: global manager get-agent-info success post update without IP
+      stage: global insert-agent success
+    - input: global update-status-code {"id":1,"status_code":0,"version":"Wazuh v5.0.0","sync_status":"synced"}
+      output: ok
+      stage: global update-status-code with version success
+    - input: global sql SELECT id,version,status_code,sync_status FROM agent WHERE id=1
+      output: ok [{"id":1,"version":"Wazuh v5.0.0","status_code":0,"sync_status":"synced"}]
+      stage: global checking fields after update-status-code with version
+    - input: global update-status-code {"id":1,"status_code":1,"sync_status":"syncreq"}
+      output: ok
+      stage: global update-status-code without version success
+    - input: global sql SELECT id,version,status_code,sync_status FROM agent WHERE id=1
+      output: ok [{"id":1,"status_code":1,"sync_status":"syncreq"}]
+      stage: global checking fields after update-status-code without version clears it
+    - input: global update-status-code not-json
+      output: err Invalid JSON syntax, near 'not-json'
+      stage: global update-status-code invalid json error
+    - input: global delete-agent 1
+      output: ok
+      stage: global delete-agent cleanup
+
+- name: Group membership commands
+  description: Check success and error use cases for get-distinct-groups, get-group-agents, select-group-belong and recalculate-agent-group-hashes commands on global DB.
+  configuration_parameters:
+  metadata:
+    test_case:
+    - input: global delete-agent 1
+      output: ok
+      stage: global delete-agent previous insert
+    - input: global delete-agent 2
+      output: ok
+      stage: global delete-agent previous insert
+    - input: global delete-group GroupA
+      output: ok
+      stage: global delete-group previous insert
+    - input: global delete-group GroupB
+      output: ok
+      stage: global delete-group previous insert
+    - input: global insert-agent {"id":1,"name":"TestName1","date_add":1599223378}
+      output: ok
+      stage: global insert-agent 1 success
+    - input: global insert-agent {"id":2,"name":"TestName2","date_add":1599223378}
+      output: ok
+      stage: global insert-agent 2 success
+    - input: global insert-agent-group GroupA
+      output: ok
+      stage: global insert-agent-group GroupA success
+    - input: global insert-agent-group GroupB
+      output: ok
+      stage: global insert-agent-group GroupB success
+    - input: global set-agent-groups {"mode":"append","sync_status":"syncreq","source":"remote","data":[{"id":1,"groups":["GroupA"]}]}
+      output: ok
+      stage: global set-agent-groups agent 1 to GroupA success
+    - input: global set-agent-groups {"mode":"append","sync_status":"syncreq","source":"remote","data":[{"id":2,"groups":["GroupB"]}]}
+      output: ok
+      stage: global set-agent-groups agent 2 to GroupB success
+    - input: global get-distinct-groups
+      output: ok [{"group":"GroupA","group_hash":"*"},{"group":"GroupB","group_hash":"*"}]
+      stage: global get-distinct-groups success
+      use_regex: "yes"
+    - input: global get-group-agents GroupA last_id 0
+      output: ok [1]
+      stage: global get-group-agents success
+    - input: global get-group-agents GroupA
+      output: err Invalid arguments, 'last_id' not found.
+      stage: global get-group-agents missing last_id error
+    - input: global select-group-belong 1
+      output: ok ["GroupA"]
+      stage: global select-group-belong agent 1 success
+    - input: global select-group-belong 2
+      output: ok ["GroupB"]
+      stage: global select-group-belong agent 2 success
+    - input: global recalculate-agent-group-hashes
+      output: ok
+      stage: global recalculate-agent-group-hashes success
+    - input: global delete-agent 1
+      output: ok
+      stage: global delete-agent 1 cleanup
+    - input: global delete-agent 2
+      output: ok
+      stage: global delete-agent 2 cleanup
+    - input: global delete-group GroupA
+      output: ok
+      stage: global delete-group GroupA cleanup
+    - input: global delete-group GroupB
+      output: ok
+      stage: global delete-group GroupB cleanup
+
+- name: vacuum command
+  description: Check success use case for vacuum command on global DB.
+  configuration_parameters:
+  metadata:
+    test_case:
+    - input: global vacuum
+      output: ok {"fragmentation_after_vacuum":*}
+      stage: global vacuum success
       use_regex: "yes"
 
 - name: Synchronization value
@@ -345,4 +417,14 @@
     - input: global sql PRAGMA synchronous
       output: ok [{"synchronous":1}]
       stage: global sync type
+      use_regex: "no"
+
+- name: Database user version
+  description: Check global db schema user version.
+  configuration_parameters:
+  metadata:
+    test_case:
+    - input: global sql PRAGMA user_version
+      output: ok [{"user_version":1}]
+      stage: global db user version
       use_regex: "no"

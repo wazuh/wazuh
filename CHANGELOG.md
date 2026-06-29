@@ -1,6 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## [v5.0.1]
+
 ## [v5.0.0]
 
 ### Manager
@@ -50,6 +52,8 @@ All notable changes to this project will be documented in this file.
 - Added caller module context to indexer-connector logs. ([#35905](https://github.com/wazuh/wazuh/issues/35905))
 - Updated JSON property names in the Wodle event payload. ([#35992](https://github.com/wazuh/wazuh/issues/35992))
 - Included `os_type` in the agent keepalive cluster synchronization. ([#36072](https://github.com/wazuh/wazuh/issues/36072))
+- Changed the default Indexer user used by the Manager from `admin` to the restricted `wazuh-server` user, aligning with the Indexer RBAC least-privilege model. ([#36311](https://github.com/wazuh/wazuh/issues/36311))
+- Randomized the cluster key generated during manager installation instead of using a hardcoded default. ([#36805](https://github.com/wazuh/wazuh/issues/36805))
 
 #### Removed
 

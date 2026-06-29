@@ -120,10 +120,24 @@ exit 0
 %pre
 
 # ============================================================
-# HARD BLOCK: Prevent upgrade from 4.X to 5.X
+# HARD BLOCK: Prevent upgrade from versions prior to 5.x
 # ============================================================
+print_unsupported_manager_upgrade() {
+  DETECTED_VERSION=$(echo "${1:-unknown}" | sed 's/^v//')
+  cat <<EOF >&2
+==============================================================
+ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+
+Detected installed version: ${DETECTED_VERSION}
+
+A clean installation of Wazuh manager 5.x is required.
+Refer to the 5.x migration guide for more information.
+==============================================================
+EOF
+}
+
 if [ "$1" -eq 2 ]; then
-  # Check if this is an upgrade from 4.X
+  # Check if this is an upgrade from versions prior to 5.x.
   if [ -f %{_sysconfdir}/ossec-init.conf ]; then
     . %{_sysconfdir}/ossec-init.conf
     OLD_VERSION="${VERSION}"
@@ -134,13 +148,7 @@ if [ "$1" -eq 2 ]; then
   if [ -n "${OLD_VERSION}" ]; then
     OLD_MAJOR=$(echo "${OLD_VERSION}" | sed 's/^v//' | cut -d. -f1)
     if [ -n "${OLD_MAJOR}" ] && [ "${OLD_MAJOR}" -le 4 ] 2>/dev/null; then
-      cat <<EOF
-==============================================================
-ERROR: Direct upgrade from Wazuh Manager 4.X to 5.X is not supported.
-
-Detected installed version: ${OLD_VERSION}
-==============================================================
-EOF
+      print_unsupported_manager_upgrade "${OLD_VERSION}"
       exit 1
     fi
   fi
@@ -174,36 +182,13 @@ if [ "$1" -eq 2 ]; then
   # Determine if upgrade should be blocked
   if [ -z "$MAJOR" ]; then
     ERROR_TYPE="no_version"
-    ERROR_TITLE="Cannot detect current version"
-    ERROR_MESSAGE="Unable to detect the currently installed Wazuh version."
   elif [ "$MAJOR" -lt 5 ]; then
     ERROR_TYPE="old_version"
-    ERROR_TITLE="Clean installation required"
-    ERROR_MESSAGE="Current version: $OLD_VERSION
-Target version:  5.0.0
-
-Direct upgrade from 4.x to 5.0.0 is NOT supported for Wazuh Manager
-due to breaking changes in database schema and architecture."
   fi
 
   # If any error was detected, show message and block
   if [ -n "$ERROR_TYPE" ]; then
-    cat <<EOF >&2
-═════════════════════════════════════════════════════════════════
-  UPGRADE BLOCKED: $ERROR_TITLE
-═════════════════════════════════════════════════════════════════
-
-$ERROR_MESSAGE
-
-Required action:
-  1. Backup your configuration and data
-  2. Perform a clean installation of Wazuh 5.0.0
-  3. Restore configuration as needed
-
-For migration guide, visit:
-  https://documentation.wazuh.com/current/migration-guide/
-═════════════════════════════════════════════════════════════════
-EOF
+    print_unsupported_manager_upgrade "${OLD_VERSION}"
     exit 1
   fi
 fi
@@ -655,8 +640,8 @@ rm -fr %{buildroot}
 %files -n wazuh-manager-debuginfo -f debugfiles.list
 
 %changelog
-* Wed Jun 24 2026 support <info@wazuh.com> - 5.0.0
-- More info: https://documentation.wazuh.com/current/release-notes/release-5-0-0.html
+* Wed Sep 09 2026 support <info@wazuh.com> - 5.0.1
+- More info: https://documentation.wazuh.com/current/release-notes/release-5-0-1.html
 * Thu May 14 2026 support <info@wazuh.com> - 4.14.6
 - More info: https://documentation.wazuh.com/current/release-notes/release-4-14-6.html
 * Thu Apr 23 2026 support <info@wazuh.com> - 4.14.5

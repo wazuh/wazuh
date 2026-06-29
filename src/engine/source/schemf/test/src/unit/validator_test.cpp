@@ -235,6 +235,19 @@ TEST_F(ValidatorTest, Validate_NullToken_RuntimeOnly)
     EXPECT_TRUE(base::getResponse(res).needsRuntimeValidation());
 }
 
+TEST_F(ValidatorTest, Validate_NullValue_AlwaysAccepted)
+{
+    // A ValueToken carrying JSON null must be accepted for every schema type.
+    auto token = ValueToken::create(json::Json {"null"});
+    for (const char* field : {"source.ip", "source.port", "event.kind", "event.duration", "host.name", "@timestamp"})
+    {
+        SCOPED_TRACE(field);
+        auto res = m_validator->validate(DotPath {field}, token);
+        EXPECT_OK(res);
+        EXPECT_FALSE(base::getResponse(res).needsRuntimeValidation());
+    }
+}
+
 TEST_F(ValidatorTest, Validate_BaseTokenDispatchReturnsRuntimeValidator)
 {
     // BaseToken is not JType/SType/Value — falls through to the last branch

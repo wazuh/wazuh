@@ -1,0 +1,19 @@
+{
+    "package": {
+        "architecture": "amd64",
+        "category": "libs",
+        "description": "Secure Sockets Layer toolkit - cryptographic utility",
+        "installed": "2024-01-15T10:30:00Z",
+        "multiarch": "same",
+        "name": "openssl",
+        "path": "/usr/bin/openssl",
+        "priority": "optional",
+        "size": 1234567,
+        "source": "openssl",
+        "type": "deb",
+        "vendor": "Ubuntu Developers",
+        "version": "3.0.2-0ubuntu1.15"
+    },
+    "checksum": {"hash": {"sha1": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"}},
+    "state": {"document_version": 1, "modified_at": "2024-01-15T10:30:00Z"}
+}

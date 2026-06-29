@@ -547,7 +547,7 @@ class InventorySyncFacadeImpl final
                         }
                         else
                         {
-                            result["value"] = "admin";
+                            result["value"] = "wazuh-server";
                         }
                     }
                     else if (queryOp == "PUT")
@@ -1136,6 +1136,16 @@ public:
                                     continue;
                                 }
 
+                                // Validate required FlatBuffer fields before dereferencing them
+                                if (!data->id() || data->id()->string_view().empty())
+                                {
+                                    logWarn(LOGGER_DEFAULT_TAG,
+                                            "InventorySyncFacade::start: skipping bulk entry for session %llu - "
+                                            "DataValue missing required 'id' field",
+                                            res.context->sessionId);
+                                    continue;
+                                }
+
                                 // For Upsert: parse the agent-supplied document body up-front. nlohmann::json
                                 // rejects unescaped control characters (literal '\n' / '\r' that would otherwise
                                 // enable bulk request smuggling against the NDJSON stream), trailing garbage,
@@ -1145,6 +1155,17 @@ public:
                                 const bool isUpsert = data->operation() == Wazuh::SyncSchema::Operation_Upsert;
                                 if (isUpsert)
                                 {
+                                    // Validate that the data field is present for Upsert operations
+                                    if (!data->data())
+                                    {
+                                        logWarn(LOGGER_DEFAULT_TAG,
+                                                "InventorySyncFacade::start: skipping bulk entry for session "
+                                                "%llu (seq %llu) - DataValue missing required 'data' field for Upsert",
+                                                res.context->sessionId,
+                                                data->seq());
+                                        continue;
+                                    }
+
                                     try
                                     {
                                         document = nlohmann::json::parse(std::string_view(
@@ -1211,21 +1232,20 @@ public:
                                     dataString = document.dump();
 
                                     const auto version = data->version();
-                                    const auto indexName = data->index()->string_view();
                                     if (version && version > 0)
                                     {
                                         m_indexerConnector->bulkIndex(
-                                            elementId, indexName, dataString, std::to_string(version));
+                                            elementId, rawIndex, dataString, std::to_string(version));
                                     }
                                     else
                                     {
-                                        m_indexerConnector->bulkIndex(elementId, indexName, dataString);
+                                        m_indexerConnector->bulkIndex(elementId, rawIndex, dataString);
                                     }
                                 }
                                 else
                                 {
                                     logDebug2(LOGGER_DEFAULT_TAG, "InventorySyncFacade::start: Deleting data...");
-                                    m_indexerConnector->bulkDelete(elementId, data->index()->string_view());
+                                    m_indexerConnector->bulkDelete(elementId, rawIndex);
                                 }
                             }
                             else

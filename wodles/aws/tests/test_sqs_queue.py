@@ -144,3 +144,39 @@ def test_aws_sqs_queue_sync_events(mock_wazuh_integration, mock_sts_client):
 
         mock_process.assert_called()
         mock_delete.assert_called()
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
+def test_aws_sqs_queue_get_sqs_url_exits_20_on_client_error(mock_wazuh_integration, mock_sts_client):
+    """Test '_get_sqs_url' exits with code 20 when a ClientError is raised (queue does not exist)."""
+    import botocore.exceptions
+    instance = utils.get_mocked_aws_sqs_queue()
+    instance.client.get_queue_url.side_effect = botocore.exceptions.ClientError(
+        {'Error': {'Code': 'AWS.SimpleQueueService.NonExistentQueue', 'Message': 'Queue not found'}},
+        'GetQueueUrl'
+    )
+
+    with pytest.raises(SystemExit) as e:
+        instance._get_sqs_url()
+    assert e.value.code == 20
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
+def test_aws_sqs_queue_sync_events_skips_message_without_route_key(mock_wazuh_integration, mock_sts_client):
+    """Test 'sync_events' logs a debug message and continues when a processed message lacks the 'route' key."""
+    instance = utils.get_mocked_aws_sqs_queue()
+
+    bad_message = {"raw_message": {"some": "data"}, "handle": "h1"}
+
+    with patch('sqs_queue.AWSSQSQueue.get_messages', side_effect=[[bad_message], []]), \
+            patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete, \
+            patch('sqs_queue.aws_tools.debug') as mock_debug:
+        instance.sync_events()
+
+    mock_delete.assert_not_called()
+    expected_msg_without_handle = {k: v for k, v in bad_message.items() if k != 'handle'}
+    mock_debug.assert_any_call(
+        f"Processed message {expected_msg_without_handle} does not contain the expected format, "
+        f"omitting message.", 2)

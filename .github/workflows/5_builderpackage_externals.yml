@@ -69,13 +69,33 @@ jobs:
         # windows-i686 is MinGW cross-compile inside the compile_windows_agent
         # container on the Linux amd64 runner — see "Resolve image tag" below.
         include:
-          - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: agent }
-          - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: agent }
+          - system: rpm
+            architecture: amd64
+            runner: "codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}"
+            leg: rpm-amd64
+            target: agent
+          - system: rpm
+            architecture: arm64
+            runner: "codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}"
+            leg: rpm-arm64
+            target: agent
           - { system: macos,   architecture: intel64, runner: macos-14-large, leg: macos-intel64, target: agent }
           - { system: macos,   architecture: arm64,   runner: macos-14,       leg: macos-arm64,   target: agent }
-          - { system: windows, architecture: i686,    runner: wz-linux-amd64, leg: windows-i686,  target: agent }
-          - { system: rpm,     architecture: amd64,   runner: wz-linux-amd64, leg: rpm-amd64,     target: manager }
-          - { system: rpm,     architecture: arm64,   runner: wz-linux-arm64, leg: rpm-arm64,     target: manager }
+          - system: windows
+            architecture: i686
+            runner: "codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}"
+            leg: windows-i686
+            target: agent
+          - system: rpm
+            architecture: amd64
+            runner: "codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}"
+            leg: rpm-amd64
+            target: manager
+          - system: rpm
+            architecture: arm64
+            runner: "codebuild-github-actions-codebuild-runner-server-arm-${{ github.run_id }}-${{ github.run_attempt }}"
+            leg: rpm-arm64
+            target: manager
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: Build externals (${{ matrix.leg }}-${{ matrix.target }})
@@ -298,11 +318,26 @@ jobs:
         # `flatc`) that was built on a newer glibc than the consumer slips
         # through the smoke check.
         include:
-          - { architecture: amd64, runner: wz-linux-amd64, target: agent,    image: pkg_rpm_agent_builder_amd64 }
-          - { architecture: amd64, runner: wz-linux-amd64, target: manager,  image: pkg_rpm_manager_builder_amd64 }
-          - { architecture: arm64, runner: wz-linux-arm64, target: agent,    image: pkg_rpm_agent_builder_arm64 }
-          - { architecture: arm64, runner: wz-linux-arm64, target: manager,  image: pkg_rpm_manager_builder_arm64 }
-          - { architecture: i686,  runner: wz-linux-amd64, target: winagent, image: compile_windows_agent }
+          - architecture: amd64
+            runner: "codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}"
+            target: agent
+            image: pkg_rpm_agent_builder_amd64
+          - architecture: amd64
+            runner: "codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}"
+            target: manager
+            image: pkg_rpm_manager_builder_amd64
+          - architecture: arm64
+            runner: "codebuild-github-actions-codebuild-runner-agent-arm-${{ github.run_id }}-${{ github.run_attempt }}"
+            target: agent
+            image: pkg_rpm_agent_builder_arm64
+          - architecture: arm64
+            runner: "codebuild-github-actions-codebuild-runner-server-arm-${{ github.run_id }}-${{ github.run_attempt }}"
+            target: manager
+            image: pkg_rpm_manager_builder_arm64
+          - architecture: i686
+            runner: "codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}"
+            target: winagent
+            image: compile_windows_agent
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
     name: Smoke build (${{ matrix.target }}-${{ matrix.architecture }})
