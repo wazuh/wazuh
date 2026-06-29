@@ -173,7 +173,7 @@ update_file_sources() {
 
     # Update defs.h
     if [[ -n "$new_version" ]]; then
-        local defs_file="$DIR_SRC/headers/defs.h"
+        local defs_file="$DIR_SRC/shared/include/defs.h"
         local current_defs_version
         current_defs_version=$(grep -E '^#define __wazuh_version' "$defs_file" \
             | sed -E 's/^#define __wazuh_version\s+"v([0-9]+\.[0-9]+\.[0-9]+)".*/\1/')

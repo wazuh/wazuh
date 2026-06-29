@@ -96,8 +96,13 @@ on:
         type: string
         required: false
 
+# Scope the group per system/architecture so the matrix invocations from the
+# build-multiples caller don't share a group (github.workflow resolves to the
+# CALLER's name in a reusable workflow). Without the suffix the parallel matrix
+# jobs — and the parent run — share one group with cancel-in-progress and cancel
+# each other, so no manager package is built.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}-${{ inputs.system }}-${{ inputs.architecture }}
   cancel-in-progress: true
 
 jobs:
