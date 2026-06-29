@@ -168,7 +168,8 @@ else()
       pthread
       rt
       z
-      minizip)
+      minizip
+      wazuh_test)
   endif(APPLE)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 

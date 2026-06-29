@@ -71,7 +71,8 @@ else()
     sqlite3
     crypto
     cjson
-    dl)
+    dl
+    wazuh_test)
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME dbsyncPipelineFactory_unit_test

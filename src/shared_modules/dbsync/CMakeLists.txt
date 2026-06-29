@@ -61,6 +61,10 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 target_link_libraries(dbsync PUBLIC wazuhext)
 
+if(TARGET wazuhshared)
+  target_link_libraries(dbsync PRIVATE wazuhshared)
+endif()
+
 if(UNIT_TEST)
   enable_testing()
   add_coverage_libraries(dbsync)
