@@ -16,6 +16,10 @@ on:
         - "tests/integration/conftest.py"
         - "tests/integration/test_api/**"
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     env:
@@ -112,7 +116,10 @@ jobs:
       # Upload logs artifact if test fails
       - name: Upload logs artifact
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: wazuh-logs-${{ github.job }}
           path: /tmp/wazuh-logs

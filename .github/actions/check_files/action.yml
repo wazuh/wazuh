@@ -2,6 +2,19 @@ name: "Check installed files"
 description: "Validates that the installed files are the ones expected and with the right stats"
 
 inputs:
+  aws_region:
+    description: "AWS region for S3 (pass the CI_AWS_REGION secret)."
+    required: false
+    default: "us-east-1"
+
+  bucket:
+    description: "Target S3 bucket URI (pass the CI_INTERNAL_S3_BUCKET secret)."
+    required: false
+    default: ""
+  aws_role:
+    description: "IAM role (OIDC) to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+    required: false
+    default: ""
   expected_files:
     required: true
     description: "Path to the 'expected files' CSV file"
@@ -68,8 +81,11 @@ runs:
 
   - name: Upload current stats
     if: success()
-    uses: actions/upload-artifact@v4
+    uses: ./.github/actions/upload_s3_artifact
     with:
+      aws_region: ${{ inputs.aws_region }}
+      bucket: ${{ inputs.bucket }}
+      aws_role: ${{ inputs.aws_role }}
       name: current_stats_${{ env.UUID }}
       path: ${{ inputs.current_status }}
 
@@ -88,8 +104,11 @@ runs:
 
   - name: Upload validation results
     if: always()
-    uses: actions/upload-artifact@v4
+    uses: ./.github/actions/upload_s3_artifact
     with:
+      aws_region: ${{ inputs.aws_region }}
+      bucket: ${{ inputs.bucket }}
+      aws_role: ${{ inputs.aws_role }}
       name: validation_results_${{ env.UUID }}
       path: ${{ inputs.report_file }}
 

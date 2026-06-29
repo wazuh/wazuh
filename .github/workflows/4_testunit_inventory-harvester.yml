@@ -11,6 +11,10 @@ on:
       - "src/shared_modules/utils/**"
       - "src/wazuh_modules/inventory_harvester/**"
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   inventory-harvester-modules:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -49,6 +53,8 @@ jobs:
       - name: Inventory harvester - Coverage
         uses: ./.github/actions/coverage_cpp
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/wazuh_modules/inventory_harvester
           id: inventory_harvester
 

@@ -13,6 +13,11 @@ on:
       - "src/shared_modules/indexer_connector/**"
       - "src/wazuh_modules/http-request/**"
 
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
 jobs:
   indexer_connector-qa:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -63,7 +68,10 @@ jobs:
       # Upload log files of the tests
       - name: Upload log files
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: QA log files
           path: ${{ github.workspace }}/qa_logs
