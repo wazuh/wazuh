@@ -87,7 +87,7 @@ Current manager-side behavior:
 
 Inventory Sync reads the indexer bulk-size threshold from the internal option `wazuh_modules.inventory_sync_indexer_bulk_size_bytes`.
 
-The value is forwarded to the Indexer Connector as the `max_bulk_size` field of its JSON configuration and bounds the NDJSON payload size accumulated in the bulk buffer before a synchronous flush to `wazuh-indexer` is triggered. It applies independently of any other connector instance (the vulnerability scanner module has its own equivalent option, `wazuh_modulesd.indexer_bulk_size_bytes`).
+The value is forwarded to the Indexer Connector as the `max_bulk_size` field of its JSON configuration and bounds the NDJSON payload size accumulated in the bulk buffer before a synchronous flush to `wazuh-indexer` is triggered. It applies independently of any other connector instance (the vulnerability scanner module has its own equivalent option, `wazuh_modules.indexer_bulk_size_bytes`).
 
 Current manager-side behavior:
 
@@ -99,7 +99,7 @@ Current manager-side behavior:
 
 Inventory Sync reads the indexer periodic flush interval from the internal option `wazuh_modules.inventory_sync_indexer_flush_interval`.
 
-The value is forwarded to the Indexer Connector as the `flush_interval_seconds` field of its JSON configuration and drives the background timer that flushes the bulk buffer when the size threshold has not been reached. It applies independently of any other connector instance (the vulnerability scanner module has its own equivalent option, `wazuh_modulesd.indexer_flush_interval`).
+The value is forwarded to the Indexer Connector as the `flush_interval_seconds` field of its JSON configuration and drives the background timer that flushes the bulk buffer when the size threshold has not been reached. It applies independently of any other connector instance (the vulnerability scanner module has its own equivalent option, `wazuh_modules.indexer_flush_interval`).
 
 Current manager-side behavior:
 
