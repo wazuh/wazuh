@@ -16,6 +16,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   shared_modules_utils-modules:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
@@ -56,6 +60,8 @@ jobs:
       - name: Shared modules utils - Coverage
         uses: ./.github/actions/coverage_cpp
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/shared_modules/utils
           id: utils_utest
           validate_function_coverage: "false"

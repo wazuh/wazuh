@@ -50,6 +50,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}-${{ inputs.module_name || inputs.modules || 'all' }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   expand:
     name: Build execution matrix
@@ -140,19 +144,14 @@ jobs:
 
       # ── Path A: use pre-built artifact ────────────────────────────────────
 
-      - name: Download manager package artifact
+      - name: Download manager package from S3
         if: inputs.build_run_id != ''
-        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
+        uses: ./.github/actions/download_manager_package
         with:
-          workflow: 5_builderpackage_manager-multiples.yml
-          run_id: ${{ inputs.build_run_id }}
-          workflow_conclusion: success
-          name_is_regexp: true
-          name: wazuh-manager.*amd64.*\.deb
-          path: /tmp/packages
-          if_no_artifact_found: fail
-          check_artifacts: true
-          search_artifacts: true
+          build_run_id: ${{ inputs.build_run_id }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
 
       - name: Install wazuh-manager from artifact
         if: inputs.build_run_id != ''
@@ -276,17 +275,20 @@ jobs:
 
       - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: ${{ matrix.name }}-test-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: ./tests/integration/results.html
-          retention-days: 7
 
       - name: Upload wazuh logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: wazuh-logs-${{ matrix.name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: /tmp/wazuh-logs
-          retention-days: 7
-          if-no-files-found: warn

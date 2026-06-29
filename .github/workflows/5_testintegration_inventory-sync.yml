@@ -34,6 +34,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   run-test:
     timeout-minutes: ${{ fromJSON(inputs.timeout_minutes || '60') }}
@@ -62,19 +66,14 @@ jobs:
 
       # ── Path A: use pre-built artifact ────────────────────────────────────
 
-      - name: Download manager package artifact
+      - name: Download manager package from S3
         if: inputs.build_run_id != ''
-        uses: dawidd6/action-download-artifact@bf251b5aa9c2f7eeb574a96ee720e24f801b7c11 # v6
+        uses: ./.github/actions/download_manager_package
         with:
-          workflow: 5_builderpackage_manager-multiples.yml
-          run_id: ${{ inputs.build_run_id }}
-          workflow_conclusion: success
-          name_is_regexp: true
-          name: wazuh-manager.*amd64.*\.deb
-          path: /tmp/packages
-          if_no_artifact_found: fail
-          check_artifacts: true
-          search_artifacts: true
+          build_run_id: ${{ inputs.build_run_id }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
 
       - name: Install wazuh-manager from artifact
         if: inputs.build_run_id != ''

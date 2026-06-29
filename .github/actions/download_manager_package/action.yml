@@ -1,0 +1,88 @@
+name: "Download manager package from S3"
+description: >
+  Downloads the manager package(s) produced by a manager-multiples build run from
+  the internal CI S3 bucket (passed via the CI_INTERNAL_S3_BUCKET secret), matching the package name by regexp.
+  A drop-in replacement for the dawidd6/action-download-artifact step used before
+  the manager package upload was migrated to S3 (see wazuh-automation#3502).
+  AWS credentials are configured by the action itself via OIDC, so the calling job
+  only needs `permissions: id-token: write`. Requires the AWS CLI on the runner.
+
+inputs:
+  build_run_id:
+    description: "Run ID of the manager-multiples build that produced the package."
+    required: true
+  name_regexp:
+    description: "Regexp the package name segment must match."
+    required: false
+    default: 'wazuh-manager.*amd64.*\.deb'
+  path:
+    description: "Destination directory for the extracted package(s)."
+    required: false
+    default: "/tmp/packages"
+  producer_workflow:
+    description: "Workflow segment of the S3 key (the build's entry workflow)."
+    required: false
+    default: "5_builderpackage_manager-multiples"
+  repository:
+    description: "Repository segment of the S3 key."
+    required: false
+    default: "wazuh"
+  bucket:
+    description: "Source S3 bucket URI."
+    required: false
+    default: ""
+  aws_role:
+    description: "IAM role (OIDC) to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+    required: false
+    default: ""
+  aws_region:
+    description: "Fallback AWS region."
+    required: false
+    default: "us-east-1"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v6
+      with:
+        role-to-assume: ${{ inputs.aws_role }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - name: Download manager package from S3
+      shell: bash
+      env:
+        BUCKET: ${{ inputs.bucket }}
+        REPO: ${{ inputs.repository }}
+        PRODUCER_WF: ${{ inputs.producer_workflow }}
+        BUILD_RUN_ID: ${{ inputs.build_run_id }}
+        NAME_RE: ${{ inputs.name_regexp }}
+        DEST: ${{ inputs.path }}
+      run: |
+        set -euo pipefail
+        base="${BUCKET}/${REPO}/${PRODUCER_WF}"
+        mkdir -p "$DEST"
+        # The producer uploads each artifact at <repo>/<workflow>/<name>/artifacts_<run_id>.zip,
+        # so list the producer workflow's objects and keep those whose <name> segment matches
+        # the regexp for this build run (the package name carries a commit hash, so it can't be
+        # addressed by exact name).
+        keys="$(aws s3 ls "${base}/" --recursive | awk '{print $4}' \
+          | grep -E "/${PRODUCER_WF}/${NAME_RE}/artifacts_${BUILD_RUN_ID}\.zip$" || true)"
+        if [ -z "$keys" ]; then
+          echo "::error::No artifact matching '${NAME_RE}' found in S3 for build run ${BUILD_RUN_ID} under ${base}/"
+          exit 1
+        fi
+        while IFS= read -r key; do
+          [ -z "$key" ] && continue
+          tmp="$(mktemp -d)"
+          aws s3 cp "${BUCKET}/${key}" "${tmp}/pkg.zip" --only-show-errors
+          if command -v 7z >/dev/null 2>&1; then
+            7z x -y "${tmp}/pkg.zip" -o"$DEST" >/dev/null
+          elif command -v unzip >/dev/null 2>&1; then
+            unzip -o -q "${tmp}/pkg.zip" -d "$DEST"
+          else
+            python3 -c "import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "${tmp}/pkg.zip" "$DEST"
+          fi
+        done <<< "$keys"
+        echo "Downloaded artifact(s) to ${DEST}:"
+        ls -la "$DEST"
