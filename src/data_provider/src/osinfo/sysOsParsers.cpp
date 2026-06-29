@@ -194,7 +194,10 @@ bool UbuntuOsParser::parseFile(std::istream& in, nlohmann::json& output)
 
 bool CentosOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
-    constexpr auto PATTERN_MATCH{R"([0-9].*\.[0-9]*)"};
+    // Matches "major.minor[.patch]" optionally followed by " (Codename)", e.g.
+    // "8.10 (Cerulean Leopard)" or "8.2.2004 (Core)".
+    // The dot is required so CentOS Stream versions like "9" are not matched.
+    constexpr auto PATTERN_MATCH{R"([0-9][0-9]*\.[0-9.]*(?:\s+\([^)]+\))?)"};
 
     if (!output.contains("os_name")) output["os_name"] = "Centos Linux";
 

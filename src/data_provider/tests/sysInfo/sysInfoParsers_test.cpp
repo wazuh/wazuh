@@ -172,7 +172,7 @@ TEST_F(SysInfoParsersTest, Centos)
     std::stringstream info{CENTOS_RELEASE_FILE};
     const auto spParser{FactorySysOsParser::create("centos")};
     EXPECT_TRUE(spParser->parseFile(info, output));
-    EXPECT_EQ("8.2.2004", output["os_version"]);
+    EXPECT_EQ("8.2.2004 (Core)", output["os_version"]);
     EXPECT_EQ("Centos Linux", output["os_name"]);
     EXPECT_EQ("centos", output["os_platform"]);
     EXPECT_EQ("Core", output["os_codename"]);
@@ -251,7 +251,7 @@ TEST_F(SysInfoParsersTest, CentosBased)
     EXPECT_EQ("8", output["os_minor"]);
     EXPECT_EQ("Rocky Linux", output["os_name"]);
     EXPECT_EQ("rocky", output["os_platform"]);
-    EXPECT_EQ("8.8", output["os_version"]);
+    EXPECT_EQ("8.8 (Green Obsidian)", output["os_version"]);
 }
 
 TEST_F(SysInfoParsersTest, BSDFreeBSD)
