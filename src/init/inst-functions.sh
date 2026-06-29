@@ -864,12 +864,13 @@ installIndexerTemplates()
 {
     local SRC_DIR="external/indexer-plugins"
     local DEST_DIR="${INSTALLDIR}/etc/indexer-plugins"
+    local STREAMS="metrics-agents.json metrics-comms.json metrics-normalization.json"
 
     if [ -d "${SRC_DIR}" ]; then
         ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} "${DEST_DIR}"
-        for f in "${SRC_DIR}"/*.json; do
-            [ -f "$f" ] || continue
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} "$f" "${DEST_DIR}/"
+        for f in ${STREAMS}; do
+            [ -f "${SRC_DIR}/${f}" ] || continue
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} "${SRC_DIR}/${f}" "${DEST_DIR}/"
         done
     fi
 }
