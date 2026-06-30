@@ -19,7 +19,7 @@ on:
       - 'src/Makefile'
 
 jobs:
-  build: 
+  build:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     strategy:
       fail-fast: false
@@ -45,9 +45,9 @@ jobs:
 
       - name: Run Framework tests
         run: |
-          set -o pipefail 
+          set -o pipefail
           python -m pytest framework -vv --ignore=tests --cov=framework | tee ${TEST_REPORT_PATH}
-      
+
       - name: Generate test report
         if: inputs.generate_report
         run: |

@@ -198,6 +198,7 @@ class AbstractClient(common.Handler):
             'None' means a regular EOF is received, or the connection was aborted or closed
             by this side of the connection.
         """
+        self._cancel_payload_deadline()
         if exc is None:
             self.logger.info('The master closed the connection')
         else:
