@@ -424,16 +424,18 @@ int main(int argc, char* argv[])
                 const auto maxQueueBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
                 jsonCnf.setUint64(maxQueueBytes, "/max_queue_bytes");
 
-                constexpr size_t INDEXER_ELEMENTS_PER_BULK_MAX = 1000000;
-                const auto elementsPerBulk = confManager.get<size_t>(conf::key::INDEXER_ELEMENTS_PER_BULK);
-                if (elementsPerBulk == 0 || elementsPerBulk > INDEXER_ELEMENTS_PER_BULK_MAX)
+                constexpr size_t INDEXER_BULK_MAX_BYTES_MIN = size_t{0x1} << 16; // 64 KB
+                constexpr size_t INDEXER_BULK_MAX_BYTES_MAX = size_t{100} << 20; // 100 MB
+                const auto bulkMaxBytes = confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES);
+                if (bulkMaxBytes < INDEXER_BULK_MAX_BYTES_MIN || bulkMaxBytes > INDEXER_BULK_MAX_BYTES_MAX)
                 {
                     throw std::runtime_error(
-                        fmt::format("analysisd.indexer_bulk_size_events must be between 1 and {} (got {})",
-                                    INDEXER_ELEMENTS_PER_BULK_MAX,
-                                    elementsPerBulk));
+                        fmt::format("analysisd.indexer_bulk_max_bytes must be between {} and {} (got {})",
+                                    INDEXER_BULK_MAX_BYTES_MIN,
+                                    INDEXER_BULK_MAX_BYTES_MAX,
+                                    bulkMaxBytes));
                 }
-                jsonCnf.setUint64(elementsPerBulk, "/elements_per_bulk");
+                jsonCnf.setUint64(bulkMaxBytes, "/bulk_max_bytes");
 
                 constexpr size_t INDEXER_FLUSH_INTERVAL_MAX = 3600;
                 const auto flushInterval = confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL);
