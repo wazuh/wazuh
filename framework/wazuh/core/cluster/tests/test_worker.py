@@ -1112,8 +1112,10 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
             path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, 'filename1'),
                                              call(core_common.WAZUH_PATH, 'name'),
                                              call(core_common.WAZUH_PATH, 'filename1'),
+                                             call(core_common.WAZUH_PATH, 'cluster_item_key'),
                                              call('/zip/path', 'filename1'),
-                                             call(core_common.WAZUH_PATH, 'filename3')])
+                                             call(core_common.WAZUH_PATH, 'filename3'),
+                                             call(core_common.WAZUH_PATH, 'cluster_item_key')])
             wazuh_uid_mock.assert_called_with()
             wazuh_gid_mock.assert_called_with()
             mkdir_with_mode_mock.assert_any_call("queue/testing")
@@ -1210,6 +1212,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                                                            "File filename3 doesn't exist."]}
             assert result_logs['generic_errors'] == []
             path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
+                                             call(core_common.WAZUH_PATH, "cluster_item_key"),
                                              call(core_common.WAZUH_PATH, "")])
             wazuh_uid_mock.assert_not_called()
             wazuh_gid_mock.assert_not_called()
@@ -1236,6 +1239,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
     assert result_logs['generic_errors'] == ["Found errors: 0 overwriting, 0 creating and 1 removing"]
 
     path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
+                                     call(core_common.WAZUH_PATH, "cluster_item_key"),
                                      call(core_common.WAZUH_PATH, "")])
     wazuh_uid_mock.assert_not_called()
     wazuh_gid_mock.assert_not_called()
