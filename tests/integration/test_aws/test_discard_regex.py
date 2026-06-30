@@ -485,6 +485,7 @@ def test_inspector_discard_regex(
         - The `cases_inspector_discard_regex` file provides the test cases.
     """
     service_type = metadata.get('service_type')
+    aws_profile = metadata.get('aws_profile')
     only_logs_after = metadata.get('only_logs_after')
     regions: str = metadata.get('regions')
     discard_field = metadata.get('discard_field', '')
@@ -497,6 +498,7 @@ def test_inspector_discard_regex(
     parameters = [
         'wodles/aws/aws-s3',
         '--service', service_type,
+        '--aws_profile', aws_profile,
         '--only_logs_after', only_logs_after,
         '--regions', regions,
         '--discard-field', discard_field,
