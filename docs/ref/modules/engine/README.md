@@ -2707,6 +2707,8 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 | Setting | Description | Default |
 |:--------|:------------|:-------:|
 | `analysisd.indexer_queue_max_events` | Maximum number of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `131072` |
+| `analysisd.indexer_bulk_size` | Maximum number of **documents** accumulated in the asynchronous indexer bulk buffer before a `_bulk` request is dispatched to `wazuh-indexer`. Counts documents, not bytes (the byte-oriented threshold used by `wazuh-modulesd` lives under different keys). Allowed range: `1` to `1000000`. | `25000` |
+| `analysisd.indexer_flush_interval` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the document-count threshold has not been reached. Allowed range: `1` to `3600`. | `20` |
 
 ### Synchronization settings
 

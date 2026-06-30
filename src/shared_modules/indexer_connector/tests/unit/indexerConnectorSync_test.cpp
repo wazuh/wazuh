@@ -4304,3 +4304,223 @@ TEST_F(IndexerConnectorSyncTest, IsSafeIndexName_Allowlist)
     EXPECT_TRUE(isSafeIndexName("wazuh-states-*"));
     EXPECT_TRUE(isSafeIndexName("Idx_With.MixedCase-1.2.3"));
 }
+
+// JSON config override tests for max_bulk_size and flush_interval_seconds
+TEST_F(IndexerConnectorSyncTest, MaxBulkSizeFromJsonConfigTriggersFlush)
+{
+    // SmallBulk but setting max_bulk_size=100 in config overrides the 1024-byte threshold to 100 bytes.
+    // processBulk() is called synchronously from within bulkIndex() when the size check fires,
+    // so callCount increments on the calling thread—no race with the 20s background timer.
+    //
+    // Size math for bulkIndex("id1", "test_index", R"({"data":"x"})"):
+    //   FORMATTED_SIZE(33) + VERSION_SIZE(32) + "test_index"(10) + "id1"(3) + R"({"data":"x"})"(13) = 91
+    // First call:  m_bulkData(0) + 91 = 91 <= 100 → no flush, ~60 bytes appended to buffer.
+    // Second call: m_bulkData(60) + 91 = 151 > 100 → processBulk() called synchronously.
+    config["max_bulk_size"] = 100;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    // SmallBulk
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id1", "test_index", R"({"data":"x"})");
+    EXPECT_EQ(callCount, 0) << "Flush should not occur before the configured size is exceeded";
+
+    connector.bulkIndex("id2", "test_index", R"({"data":"x"})");
+    EXPECT_GT(callCount, 0) << "processBulk() was not called when max_bulk_size was exceeded";
+}
+
+TEST_F(IndexerConnectorSyncTest, MaxBulkSizeMinValueTriggersFlushOnSecondElement)
+{
+    // Extreme low value: max_bulk_size=91 is the smallest value where the first element still fits
+    // (totalSize check = 91, condition is strictly >, so 91 > 91 is false → element added).
+    // The second element's check (60 + 91 = 151 > 91) triggers an immediate synchronous flush.
+    config["max_bulk_size"] = 91;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkIndex("id1", "test_index", R"({"data":"x"})"))
+        << "First element should fit at max_bulk_size=91 without triggering processBulk on empty buffer";
+    EXPECT_EQ(callCount, 0) << "No flush expected after first element";
+
+    EXPECT_NO_THROW(connector.bulkIndex("id2", "test_index", R"({"data":"x"})"))
+        << "Second element should trigger flush without throwing";
+    EXPECT_GT(callCount, 0) << "Flush should have been triggered by second element";
+}
+
+TEST_F(IndexerConnectorSyncTest, MaxBulkSizeDefaultUsedWhenAbsentFromJsonConfig)
+{
+    // No max_bulk_size in JSON config. SmallBulk's template default is MaxBulkSize=1024 bytes
+    // Two small elements whose total size check (~151 bytes) is below 1024 must NOT trigger a flush.
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // SmallBulk
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id1", "test_index", R"({"data":"x"})");
+    connector.bulkIndex("id2", "test_index", R"({"data":"x"})");
+
+    EXPECT_EQ(callCount, 0) << "No flush should occur: total ~151 bytes is below the 1024-byte template default";
+}
+
+TEST_F(IndexerConnectorSyncTest, FlushIntervalSecondsFromJsonConfigTimerFires)
+{
+    // Verify that flush_interval_seconds from JSON config actually drives the background timer.
+    // Pushing one small element (well below the 10 MB size threshold) means only the timer
+    // can cause a flush.
+    config["flush_interval_seconds"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id1", "test_index", R"({"data":"timer-test"})");
+
+    // 2s is enough for the 1s timer.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    EXPECT_GT(callCount, 0) << "Expected 1s timer (from JSON flush_interval_seconds) to fire within 2s";
+}
+
+TEST_F(IndexerConnectorSyncTest, FlushIntervalTimerDoesNotFlushWhenNoData)
+{
+    // When the periodic timer fires but the buffer is empty, processBulk() must NOT be called.
+    config["flush_interval_seconds"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Let the timer fire at least once with no data in the buffer.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    EXPECT_EQ(callCount, 0) << "No HTTP post should be made when the timer fires on an empty buffer";
+}
+
+// Empty-buffer guard tests
+TEST_F(IndexerConnectorSyncTest, BulkIndexOnEmptyBufferDoesNotThrowWhenSingleDocExceedsMaxBulkSize)
+{
+    // max_bulk_size=1 forces totalSize > m_maxBulkSize on every call.
+    config["max_bulk_size"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkIndex("id1", "test_index", R"({"data":"x"})"))
+        << "First bulkIndex must not throw when totalSize > max_bulk_size on an empty buffer";
+    EXPECT_EQ(callCount, 0) << "Empty-buffer guard must suppress the flush on the first call";
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkIndexFlushesPreviousBufferWhenMaxBulkSizeIsTiny)
+{
+    // With max_bulk_size=1, every call after the first sees a non-empty buffer
+    // and totalSize > 1, so the guard does NOT inhibit flushing.
+    config["max_bulk_size"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(2))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkIndex("id1", "test_index", R"({"data":"x"})"));
+    EXPECT_EQ(callCount, 0) << "First call: empty buffer, no flush expected";
+
+    EXPECT_NO_THROW(connector.bulkIndex("id2", "test_index", R"({"data":"x"})"));
+    EXPECT_EQ(callCount, 1) << "Second call must flush the previously buffered element";
+
+    EXPECT_NO_THROW(connector.bulkIndex("id3", "test_index", R"({"data":"x"})"));
+    EXPECT_EQ(callCount, 2) << "Third call must flush the second element";
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkDeleteOnEmptyBufferDoesNotThrowWhenSingleDocExceedsMaxBulkSize)
+{
+    // Symmetric to BulkIndexOnEmptyBufferDoesNotThrow… but for the delete path,
+    // which has its own size guard using DELETE_FORMATTED_LENGTH as overhead.
+    config["max_bulk_size"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkDelete("id1", "test_index"))
+        << "First bulkDelete must not throw when totalSize > max_bulk_size on an empty buffer";
+    EXPECT_EQ(callCount, 0) << "Empty-buffer guard must suppress the flush on the first delete";
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkDeleteFlushesPreviousBufferWhenMaxBulkSizeIsTiny)
+{
+    // Symmetric to BulkIndexFlushesPreviousBufferWhenMaxBulkSizeIsTiny for the
+    // delete path.
+    config["max_bulk_size"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(2))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkDelete("id1", "test_index"));
+    EXPECT_EQ(callCount, 0) << "First call: empty buffer, no flush expected";
+
+    EXPECT_NO_THROW(connector.bulkDelete("id2", "test_index"));
+    EXPECT_EQ(callCount, 1) << "Second delete must flush the previously buffered delete";
+
+    EXPECT_NO_THROW(connector.bulkDelete("id3", "test_index"));
+    EXPECT_EQ(callCount, 2) << "Third delete must flush the second delete";
+}
+
+TEST_F(IndexerConnectorSyncTest, MixedBulkIndexAndDeleteRespectEmptyBufferGuard)
+{
+    // Proves the guard and the size check share buffer state across both entry points
+    config["max_bulk_size"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkDelete("id1", "test_index"));
+    EXPECT_EQ(callCount, 0) << "Empty buffer + bulkDelete: guard suppresses flush";
+
+    EXPECT_NO_THROW(connector.bulkIndex("id2", "test_index", R"({"data":"x"})"));
+    EXPECT_EQ(callCount, 1) << "bulkIndex must flush the previously buffered bulkDelete";
+}

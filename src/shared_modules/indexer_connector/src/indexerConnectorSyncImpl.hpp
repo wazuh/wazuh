@@ -286,6 +286,8 @@ class IndexerConnectorSyncImpl final
     std::atomic<bool> m_stopping {false};
     std::vector<size_t> m_boundaries;
     bool m_shouldNotifyAfterBulk {false};
+    size_t m_maxBulkSize {MaxBulkSize};
+    size_t m_flushInterval {FlushInterval};
 
     void processBulk()
     {
@@ -683,6 +685,15 @@ public:
         m_selector =
             selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
 
+        m_maxBulkSize = config.contains("max_bulk_size") && config.at("max_bulk_size").is_number_integer()
+                            ? config.at("max_bulk_size").get<size_t>()
+                            : MaxBulkSize;
+
+        m_flushInterval =
+            config.contains("flush_interval_seconds") && config.at("flush_interval_seconds").is_number_integer()
+                ? config.at("flush_interval_seconds").get<size_t>()
+                : FlushInterval;
+
         m_lastBulkTime = std::chrono::steady_clock::now();
         m_bulkThread = std::thread(
             [this]()
@@ -691,7 +702,7 @@ public:
                 while (!m_stopping.load())
                 {
                     auto timeoutResult = m_cv.wait_for(
-                        timeoutLock, std::chrono::seconds(FlushInterval), [this] { return m_stopping.load(); });
+                        timeoutLock, std::chrono::seconds(m_flushInterval), [this] { return m_stopping.load(); });
 
                     // Process bulk data or deleteByQuery if there's data to process
                     if (!m_bulkData.empty() || !m_deleteByQuery.empty())
@@ -1247,8 +1258,9 @@ public:
             throw IndexerConnectorException("Unsafe index name");
         }
 
-        if (constexpr auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};
-            m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() > MaxBulkSize)
+        // Only flush if there is data already buffered.
+        if (const auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};
+            !m_bulkData.empty() && m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() > m_maxBulkSize)
         {
             processBulk();
         }
@@ -1297,7 +1309,8 @@ public:
         const auto totalSize =
             m_bulkData.length() + FORMATTED_SIZE + VERSION_SIZE + index.size() + id.size() + data.size();
 
-        if (totalSize > MaxBulkSize)
+        // Only flush if there is data already buffered.
+        if (!m_bulkData.empty() && totalSize > m_maxBulkSize)
         {
             processBulk();
         }
