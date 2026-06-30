@@ -1963,6 +1963,82 @@ TEST_F(AgentInfoCoordinationTest, ShutdownDuringPausePollAbortsCleanly)
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("pause did not complete within 30 seconds")));
 }
 
+// A stop requested while waiting for module flush completion must break the poll loop
+// immediately instead of sleeping FLUSH_POLL_DELAY_MS between cycles. The flush poll has
+// no attempt cap, so without a working abort it would spin on a never-completing module;
+// on macOS the module thread is joined without a timeout, so the back-off would otherwise
+// stall modulesd shutdown, leak its PID file and prevent the next start from bringing
+// modulesd back up (issue #37017). Flush-phase sibling of ShutdownDuringPausePollAbortsCleanly.
+TEST_F(AgentInfoCoordinationTest, ShutdownDuringFlushPollAbortsCleanly)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    int flushPollCount = 0;
+    auto* agentInfoPtr = &m_agentInfo; // capture by pointer so stop() can be called
+
+    auto queryModuleFunc = [&flushPollCount, agentInfoPtr](const std::string & module_name,
+                                                           const std::string & query, char** response) -> int
+    {
+        (void)module_name;
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed")
+        {
+            // Pause completes immediately so coordination advances to the flush phase.
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "is_flush_completed")
+        {
+            // Never completes: without an interruptible wait the poll loop would spin
+            // forever. Request the stop on the first poll so the loop must break out.
+            responseJson["data"]["status"] = "in_progress";
+
+            if (++flushPollCount == 1 && *agentInfoPtr)
+            {
+                (*agentInfoPtr)->stop();
+            }
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+    m_agentInfo->setFlushPollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // The flush poll broke out on stop instead of spinning on the never-completing
+    // module. If the abort path regressed, the poll loop would never terminate.
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Module stopping, aborting pending flush monitoring"));
+}
+
 // A stop requested while a coordination query is failing must abort the retry loop
 // immediately instead of sleeping COORDINATION_RETRY_DELAY_MS before each remaining
 // attempt. On macOS the module thread is joined without a timeout, so this back-off

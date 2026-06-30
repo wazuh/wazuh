@@ -1145,6 +1145,7 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
                 aborted.response = errorJson.dump();
                 aborted.errorCode = MQ_ERR_INTERNAL;
                 aborted.isModuleUnavailable = false;
+                // coverity[double_unlock]
                 return aborted;
             }
         }
@@ -1421,7 +1422,19 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
         if (!pendingModules.empty())
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
+            // Interruptible back-off: wake up at once if a stop is requested during the
+            // delay so shutdown is not held for FLUSH_POLL_DELAY_MS. On macOS the module
+            // thread is joined without a timeout (see the non-Linux branch in
+            // src/wazuh_modules/src/main.c), so a non-interruptible sleep here would stall
+            // modulesd shutdown.
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            if (m_cv.wait_for(lock,
+                              std::chrono::milliseconds(FLUSH_POLL_DELAY_MS),
+                              [this] { return m_stopped.load(); }))
+            {
+                break; // stop requested - exit the poll loop immediately
+            }
         }
     }
 
@@ -1449,6 +1462,12 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
         std::string pauseMessage = createJsonCommand("pause");
         ModuleResponse response = queryModuleWithRetry(module, pauseMessage);
         m_logFunction(LOG_DEBUG, "Response from " + module + " pause: " + response.response);
+
+        if (m_stopped)
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pause phase");
+            return PauseCoordinationResult::Failed;
+        }
 
         if (response.success)
         {
