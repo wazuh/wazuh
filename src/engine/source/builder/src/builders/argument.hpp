@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <string>
+#include <variant>
 
 #include <base/json.hpp>
 
@@ -73,38 +74,113 @@ public:
 
 /**
  * @brief An argument holding a literal JSON value.
+ *
+ * Stores either a json::Json (for complex values like objects, arrays, numbers, bools)
+ * or a plain std::string (for string-only values), avoiding the overhead of a full
+ * rapidjson::Document when only a string is needed.
  */
 class Value : public Argument
 {
 private:
-    json::Json m_value; ///< The JSON value.
+    /// Storage: either a shared json::Json or a plain string.
+    std::variant<std::shared_ptr<const json::Json>, std::string> m_value;
+
+    /// Lazily-created json::Json for string variant (used by value()/sharedValue()).
+    mutable std::shared_ptr<const json::Json> m_cachedJson;
 
 public:
-    Value() = default;
+    Value()
+        : m_value(std::make_shared<const json::Json>()) {}
 
     /**
-     * @brief Set the value.
+     * @brief Construct a Value from a JSON value (copy).
      * @param value JSON value to store.
      */
-    void set(const json::Json& value)
+    explicit Value(const json::Json& value)
+        : m_value(std::make_shared<const json::Json>(value)) {}
+
+    /**
+     * @brief Construct a Value from a JSON value (move).
+     * @param value JSON value to store.
+     */
+    explicit Value(json::Json&& value)
+        : m_value(std::make_shared<const json::Json>(std::move(value))) {}
+
+    /**
+     * @brief Construct a Value from a string (no json::Json overhead).
+     * @param str String value to store.
+     */
+    explicit Value(std::string&& str)
+        : m_value(std::move(str)) {}
+
+    /**
+     * @brief Construct a Value from a string (copy).
+     * @param str String value to store.
+     */
+    explicit Value(const std::string& str)
+        : m_value(str) {}
+
+    /** @brief Check if this Value stores a string directly (without json::Json). */
+    bool isStringValue() const { return std::holds_alternative<std::string>(m_value); }
+
+    /** @brief Get the string directly (zero-cost). Only valid if isStringValue() is true. */
+    std::string_view getStringDirect() const { return std::get<std::string>(m_value); }
+
+    /** @brief Get the JSON type without triggering lazy json::Json creation for string Values. */
+    json::Json::Type type() const
     {
-        auto tmp = json::Json(value);
-        m_value = std::move(tmp);
+        if (std::holds_alternative<std::string>(m_value))
+        {
+            return json::Json::Type::String;
+        }
+        return std::get<std::shared_ptr<const json::Json>>(m_value)->type();
     }
 
-    /**
-     * @brief Construct a Value from a JSON value.
-     * @param value JSON value to store.
-     */
-    explicit Value(const json::Json& value) { set(value); }
+    /** @brief Get the stored JSON value. Creates one lazily for string-only Values. */
+    const json::Json& value() const
+    {
+        if (std::holds_alternative<std::shared_ptr<const json::Json>>(m_value))
+        {
+            return *std::get<std::shared_ptr<const json::Json>>(m_value);
+        }
+        // Lazy creation for string variant
+        if (!m_cachedJson)
+        {
+            json::Json j;
+            j.setString(std::get<std::string>(m_value));
+            m_cachedJson = std::make_shared<const json::Json>(std::move(j));
+        }
+        return *m_cachedJson;
+    }
 
-    /** @brief Get the stored JSON value. */
-    const json::Json& value() const { return m_value; }
+    /** @brief Get the shared pointer to the stored JSON value (zero-copy sharing). */
+    std::shared_ptr<const json::Json> sharedValue() const
+    {
+        if (std::holds_alternative<std::shared_ptr<const json::Json>>(m_value))
+        {
+            return std::get<std::shared_ptr<const json::Json>>(m_value);
+        }
+        // Lazy creation for string variant
+        if (!m_cachedJson)
+        {
+            json::Json j;
+            j.setString(std::get<std::string>(m_value));
+            m_cachedJson = std::make_shared<const json::Json>(std::move(j));
+        }
+        return m_cachedJson;
+    }
 
     /** @copydoc Argument::isValue */
     bool isValue() const override { return true; }
     /** @copydoc Argument::str */
-    std::string str() const override { return m_value.str(); }
+    std::string str() const override
+    {
+        if (std::holds_alternative<std::string>(m_value))
+        {
+            return "\"" + std::get<std::string>(m_value) + "\"";
+        }
+        return std::get<std::shared_ptr<const json::Json>>(m_value)->str();
+    }
 };
 
 using OpArg = std::shared_ptr<Argument>; ///< Shared pointer to an operation argument.

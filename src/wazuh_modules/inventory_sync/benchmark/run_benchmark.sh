@@ -18,24 +18,44 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Added FlatBuffer
 PATH="$SCRIPT_DIR/../../../external/flatbuffers/build:$PATH"
 
-# Detect the right Python: prefer VIRTUAL_ENV, then the python3 that has psutil
-if [[ -n "${VIRTUAL_ENV:-}" ]]; then
+# Detect local Python for helper scripts. psutil is only required by monitor.py,
+# so defer that check until we know the manager is running locally.
+if [[ -n "${VIRTUAL_ENV:-}" && -x "$VIRTUAL_ENV/bin/python3" ]]; then
     PYTHON="$VIRTUAL_ENV/bin/python3"
-elif python3 -c "import psutil" 2>/dev/null; then
+elif command -v python3 >/dev/null 2>&1; then
     PYTHON="$(command -v python3)"
 else
     for candidate in /usr/local/python/current/bin/python3 /usr/bin/python3; do
-        if "$candidate" -c "import psutil" 2>/dev/null; then
+        if [[ -x "$candidate" ]]; then
             PYTHON="$candidate"
             break
         fi
     done
     if [[ -z "${PYTHON:-}" ]]; then
-        echo "Error: No python3 with psutil found."
-        echo "  Run: $SCRIPT_DIR/../../../engine/tools/devContainer/scripts/setup_monitor.sh"
+        echo "Error: python3 not found locally."
         exit 1
     fi
 fi
+
+_find_local_monitor_python() {
+    local candidate
+    for candidate in \
+        "${VIRTUAL_ENV:-}/bin/python3" \
+        "$PYTHON" \
+        /opt/wazuh-monitor-venv/bin/python3 \
+        /usr/local/python/current/bin/python3 \
+        /usr/bin/python3; do
+        [[ -x "$candidate" ]] || continue
+        if "$candidate" -c "import psutil" 2>/dev/null; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+
+    echo "Error: No local python3 with psutil found." >&2
+    echo "  Run: $SCRIPT_DIR/../../../engine/tools/devContainer/scripts/setup_monitor.sh" >&2
+    return 1
+}
 
 # Defaults
 SCENARIO=""
@@ -43,7 +63,6 @@ LABEL=""
 MANAGER="127.0.0.1"
 PORT=1514
 REG_PORT=1515
-DRAIN_TIMEOUT=60
 # Post-run grace — how long monitor.py stays alive after the sender exits,
 # so RSS / CPU / disk / queue stats keep being sampled while the system
 # settles. CLI default is empty (let scenario decide); resolution order:
@@ -66,6 +85,7 @@ SSH_KEY=""
 SSH_PORT=22
 SSH_PASSWORD=false
 INDEXER_PORT=9200
+INDEXER_TUNNEL=true
 GRACE_TIME=20
 
 usage() {
@@ -78,9 +98,6 @@ Benchmark mode:
   -l, --label LABEL       Run label for results directory (default: scenario name)
   -m, --manager HOST      Manager address (default: $MANAGER)
   -p, --port PORT         Manager port (default: $PORT)
-      --drain-timeout N   (sender-side) seconds stats_collector keeps
-                          sampling bench.csv after agents finish, to capture
-                          late EndAcks. Default: $DRAIN_TIMEOUT.
       --post-run-grace N  (script-side) seconds to keep monitor.py alive
                           after the sender exits, so RSS / CPU / disk
                           stabilise on the recorded charts. Overrides
@@ -100,6 +117,11 @@ Remote manager (SSH) — activated when --manager is not 127.0.0.1:
                           locally). Mutually exclusive with --ssh-key.
       --indexer-port N    Local wazuh-indexer port to reverse-tunnel so the
                           remote manager can reach it (default: $INDEXER_PORT)
+      --no-indexer-tunnel
+                          Do not create the reverse SSH tunnel for the indexer.
+                          Use this when the remote manager already uses a
+                          local/all-in-one indexer.
+
       --grace N           Seconds to wait before sending and after sender
                           finishes, so the manager detects the indexer and
                           queues drain (default: $GRACE_TIME)
@@ -124,7 +146,6 @@ while [[ $# -gt 0 ]]; do
         -l|--label)       LABEL="$2"; shift 2 ;;
         -m|--manager)     MANAGER="$2"; shift 2 ;;
         -p|--port)        PORT="$2"; shift 2 ;;
-        --drain-timeout)  DRAIN_TIMEOUT="$2"; shift 2 ;;
         --post-run-grace) POST_RUN_GRACE_CLI="$2"; shift 2 ;;
         --cleanup-after)  CLEANUP_AFTER=true; shift ;;
         --manager-log)    MANAGER_LOG="$2"; shift 2 ;;
@@ -132,6 +153,7 @@ while [[ $# -gt 0 ]]; do
         --ssh-port)       SSH_PORT="$2"; shift 2 ;;
         --ssh-password)   SSH_PASSWORD=true; shift ;;
         --indexer-port)   INDEXER_PORT="$2"; shift 2 ;;
+        --no-indexer-tunnel) INDEXER_TUNNEL=false; shift ;;
         --grace)          GRACE_TIME="$2"; shift 2 ;;
         --format)         CHART_FORMAT="$2"; shift 2 ;;
         --compare)
@@ -317,12 +339,25 @@ if $REMOTE_MODE; then
     echo "  -L $PORT:localhost:$PORT (agent → manager)"
     echo "  -L $REG_PORT:localhost:$REG_PORT (registration)"
     echo "  -L 55000:localhost:55000 (Wazuh API)"
-    echo "  -R $INDEXER_PORT:localhost:$INDEXER_PORT (indexer → remote)"
+
+    SSH_TUNNEL_ARGS=(
+        -L "$PORT:localhost:$PORT"
+        -L "$REG_PORT:localhost:$REG_PORT"
+        -L "55000:localhost:55000"
+    )
+
+    if $INDEXER_TUNNEL; then
+        echo "  -R $INDEXER_PORT:localhost:$INDEXER_PORT (local indexer → remote manager)"
+        SSH_TUNNEL_ARGS+=(
+            -R "$INDEXER_PORT:localhost:$INDEXER_PORT"
+        )
+    else
+        echo "  indexer reverse tunnel: disabled"
+    fi
+
     "${SSH_PREFIX[@]}" ssh -f -N -M -S "$SSH_SOCKET" "${SSH_OPTS[@]}" \
-        -L "$PORT:localhost:$PORT" \
-        -L "$REG_PORT:localhost:$REG_PORT" \
-        -L "55000:localhost:55000" \
-        -R "$INDEXER_PORT:localhost:$INDEXER_PORT" \
+        -o ExitOnForwardFailure=yes \
+        "${SSH_TUNNEL_ARGS[@]}" \
         "root@$MANAGER"
 
     if ! ssh -S "$SSH_SOCKET" -O check "root@$MANAGER" 2>/dev/null; then
@@ -461,7 +496,8 @@ else
         --pidfile "$MONITOR_PID_FILE"
         --timeout 30
     )
-    "$PYTHON" "$MONITOR_PY" "${MONITOR_ARGS[@]}" &
+    LOCAL_MONITOR_PYTHON="$(_find_local_monitor_python)" || exit 1
+    "$LOCAL_MONITOR_PYTHON" "$MONITOR_PY" "${MONITOR_ARGS[@]}" &
     MONITOR_BG_PID=$!
     sleep 3
     if ! kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
@@ -496,7 +532,6 @@ GO_ARGS=(
     --manager "$SENDER_MANAGER"
     --port "$PORT"
     --reg-port "$REG_PORT"
-    --drain-timeout "$DRAIN_TIMEOUT"
     --summary-json "$SENDER_JSON"
     -o "$BENCH_CSV"
 )

@@ -135,10 +135,10 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
 
     if (opArgs[0]->isValue())
     {
-        if (!std::static_pointer_cast<Value>(opArgs[0])->value().isString())
+        if (std::static_pointer_cast<const Value>(opArgs[0])->type() != json::Json::Type::String)
         {
             throw std::runtime_error(fmt::format("Expected 'string' parameter but got type '{}'",
-                                                 std::static_pointer_cast<Value>(opArgs[0])->value().typeName()));
+                                                 json::Json::typeToStr(std::static_pointer_cast<const Value>(opArgs[0])->type())));
         }
     }
     else
@@ -194,6 +194,25 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
             ? std::make_optional<json::PointerPath>(std::static_pointer_cast<Reference>(rightParameter)->jsonPath())
             : std::nullopt;
 
+    // Pre-extract value string to avoid lazy json::Json creation per-event
+    std::optional<std::string> preExtractedValueStr;
+    if (rightParameter->isValue())
+    {
+        auto asValue = std::static_pointer_cast<const Value>(rightParameter);
+        if (asValue->isStringValue())
+        {
+            preExtractedValueStr = std::string(asValue->getStringDirect());
+        }
+        else
+        {
+            std::string_view sv;
+            if (asValue->value().getString(sv) == json::RetGet::Success)
+            {
+                preExtractedValueStr = std::string(sv);
+            }
+        }
+    }
+
     // Function that implements the helper
     return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> MapResult
     {
@@ -221,14 +240,11 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
         }
         else
         {
-            // TODO: should we check the result?
-            std::string rightParamStr;
-            if (std::static_pointer_cast<Value>(rightParameter)->value().getString(rightParamStr)
-                != json::RetGet::Success)
+            if (!preExtractedValueStr.has_value())
             {
                 RETURN_FAILURE(isTestMode, json::Json {}, failureTrace2);
             }
-            const auto res {transformFunction(rightParamStr)};
+            const auto res {transformFunction(*preExtractedValueStr)};
             json::Json result;
             result.setString(res);
             RETURN_SUCCESS(isTestMode, result, successTrace);

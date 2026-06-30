@@ -46,21 +46,77 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                 const auto& asValue = std::static_pointer_cast<const Value>(opArgs[i]);
                 if (isInSchema)
                 {
-                    if (asValue->value().type() != targetFieldtype)
+                    if (asValue->type() != targetFieldtype)
                     {
                         throw std::runtime_error(fmt::format("Expected '{}' value but got value of type '{}'",
                                                              json::Json::typeToStr(targetFieldtype),
-                                                             json::Json::typeToStr(asValue->value().type())));
+                                                             json::Json::typeToStr(asValue->type())));
                     }
                 }
 
+                if (asValue->isStringValue())
+                {
+                    // For string Values, capture string directly to avoid permanent json::Json allocation
+                    appendOps.emplace_back(
+                        [targetField = targetField.jsonPath(),
+                         i,
+                         targetFieldtype,
+                         unique,
+                         isInSchema,
+                         strValue = std::string(asValue->getStringDirect())](std::vector<json::Json>& targetArray,
+                                                   json::Json::Type& valueType,
+                                                   const base::Event& event) -> base::OptError
+                        {
+                            if (json::Json::Type::Unknown == valueType)
+                            {
+                                if (!isInSchema)
+                                {
+                                    if (!event->getArray(targetField).has_value())
+                                    {
+                                        valueType = json::Json::Type::String;
+                                    }
+                                    else
+                                    {
+                                        valueType = event->getArray(targetField).value()[0].type();
+                                    }
+                                }
+                                else
+                                {
+                                    valueType = targetFieldtype;
+                                }
+                            }
+
+                            if (json::Json::Type::String != valueType)
+                            {
+                                return base::Error {fmt::format("Expected '{}' value but got value of type '{}'",
+                                                                json::Json::typeToStr(valueType),
+                                                                json::Json::typeToStr(json::Json::Type::String))};
+                            }
+
+                            json::Json jValue;
+                            jValue.setString(strValue);
+
+                            if (unique)
+                            {
+                                if (std::find(targetArray.begin(), targetArray.end(), jValue) != targetArray.end())
+                                {
+                                    return base::noError();
+                                }
+                            }
+
+                            targetArray.emplace_back(std::move(jValue));
+                            return base::noError();
+                        });
+                }
+                else
+                {
                 appendOps.emplace_back(
                     [targetField = targetField.jsonPath(),
                      i,
                      targetFieldtype,
                      unique,
                      isInSchema,
-                     value = asValue->value()](std::vector<json::Json>& targetArray,
+                     value = asValue->sharedValue()](std::vector<json::Json>& targetArray,
                                                json::Json::Type& valueType,
                                                const base::Event& event) -> base::OptError
                     {
@@ -72,7 +128,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                                 // otherwise take the type of the first element of the target field.
                                 if (!event->getArray(targetField).has_value())
                                 {
-                                    valueType = value.type();
+                                    valueType = value->type();
                                 }
                                 else
                                 {
@@ -85,24 +141,25 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                             }
                         }
 
-                        if (value.type() != valueType)
+                        if (value->type() != valueType)
                         {
                             return base::Error {fmt::format("Expected '{}' value but got value of type '{}'",
                                                             json::Json::typeToStr(valueType),
-                                                            json::Json::typeToStr(value.type()))};
+                                                            json::Json::typeToStr(value->type()))};
                         }
 
                         if (unique)
                         {
-                            if (std::find(targetArray.begin(), targetArray.end(), value) != targetArray.end())
+                            if (std::find(targetArray.begin(), targetArray.end(), *value) != targetArray.end())
                             {
                                 return base::noError();
                             }
                         }
 
-                        targetArray.emplace_back(value);
+                        targetArray.emplace_back(*value);
                         return base::noError();
                     });
+                }
             }
             else
             {

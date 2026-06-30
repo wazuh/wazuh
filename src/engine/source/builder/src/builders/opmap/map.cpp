@@ -7,12 +7,26 @@ namespace
 {
 MapOp mapValue(const Value& value, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto jValue(value.value());
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
-    return
-        [successTrace, isTestMode = buildCtx->isTestMode(), jValue = std::move(jValue)](base::ConstEvent event) -> MapResult
+    auto isTestMode = buildCtx->isTestMode();
+
+    // For string-only Values, capture the string directly (avoids json::Json steady-state overhead)
+    if (value.isStringValue())
     {
-        RETURN_SUCCESS(isTestMode, json::Json(jValue), successTrace);
+        auto strValue = std::string(value.getStringDirect());
+        return [successTrace, isTestMode, strValue](base::ConstEvent event) -> MapResult
+        {
+            json::Json jv;
+            jv.setString(strValue);
+            RETURN_SUCCESS(isTestMode, jv, successTrace);
+        };
+    }
+
+    auto jValue = value.sharedValue();
+    return
+        [successTrace, isTestMode, jValue](base::ConstEvent event) -> MapResult
+    {
+        RETURN_SUCCESS(isTestMode, json::Json(*jValue), successTrace);
     };
 }
 

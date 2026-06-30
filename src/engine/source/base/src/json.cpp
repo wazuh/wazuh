@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <limits>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "rapidjson/schema.h"
@@ -160,6 +161,22 @@ bool Json::equals(std::string_view ptrPath, const Json& value) const
     {
         const auto got {fieldPtr.Get(m_document)};
         return (got && *got == value.m_document);
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
+}
+
+bool Json::equalsString(std::string_view ptrPath, std::string_view str) const
+{
+    const auto fieldPtr = rapidjson::Pointer(ptrPath.data(), ptrPath.size());
+    if (fieldPtr.IsValid())
+    {
+        const auto got {fieldPtr.Get(m_document)};
+        if (!got || !got->IsString())
+        {
+            return false;
+        }
+        return std::string_view(got->GetString(), got->GetStringLength()) == str;
     }
 
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
@@ -447,6 +464,26 @@ std::optional<std::vector<std::tuple<std::string, Json>>> Json::getObject(std::s
     }
 
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
+std::unordered_map<std::string, Json> Json::extractObjectMembers()
+{
+    if (!m_document.IsObject())
+    {
+        throw std::runtime_error("extractObjectMembers called on non-object Json");
+    }
+
+    std::unordered_map<std::string, Json> result;
+    result.reserve(m_document.MemberCount());
+
+    for (auto& m : m_document.GetObject())
+    {
+        Json entry;
+        entry.m_document.Swap(m.value); // Zero-copy: steals value, leaves null in source
+        result.try_emplace(std::string(m.name.GetString(), m.name.GetStringLength()), std::move(entry));
+    }
+
+    return result;
 }
 
 std::optional<std::vector<std::string>> Json::getFields() const
