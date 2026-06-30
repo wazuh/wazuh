@@ -17,7 +17,7 @@
 set -euo pipefail
 
 REF="${REF:-}"
-TARGET="${TARGET:-server}"
+TARGET="${TARGET:-manager}"
 RUN_NAME="${RUN_NAME:-wazuh-${REF}-infer}"
 WAZUH_DIR="${WAZUH_DIR:-/workspace/wazuh}"
 URL="${URL:-http://127.0.0.1:8001/Default}"
@@ -36,6 +36,18 @@ git checkout --force "$REF" || { echo "[FAIL] checkout"; exit 1; }
 git submodule update --init --recursive || true
 git clean -xdf -e 'reports_*' -e 'compile_commands_*.json' -e 'infer-out' || true
 find . -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+
+# 4.x trees recognise only "server"; 5.x+ use "manager".
+if [ "$TARGET" = "manager" ] && [ -f "$WAZUH_DIR/VERSION.json" ]; then
+    _major=$(python3 -c \
+        "import json,sys; d=json.load(open(sys.argv[1])); print(d['version'].split('.')[0])" \
+        "$WAZUH_DIR/VERSION.json" 2>/dev/null || echo "5")
+    if [ "$_major" = "4" ]; then
+        TARGET="server"
+        echo "[OK] 4.x compat — using make TARGET=server"
+    fi
+fi
+
 ( cd src && make deps TARGET="$TARGET" -j"$JOBS" ) || { echo "[FAIL] make deps"; exit 1; }
 
 echo "==> Build with CodeChecker log -> $COMPILE_DB"

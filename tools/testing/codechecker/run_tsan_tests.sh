@@ -35,11 +35,27 @@ SKIP_SYSTEM_TEST="${SKIP_SYSTEM_TEST:-}"
 SYSTEM_TEST_SECS="${SYSTEM_TEST_SECS:-60}"
 
 OSSEC_DIR="${OSSEC_DIR:-/tmp/wazuh_tsan_ossec}"
+TARGET="${TARGET:-manager}"
 
 ok()  { printf '\033[0;32m  [OK]   %s\033[0m\n' "$*"; }
 warn(){ printf '\033[1;33m  [WARN] %s\033[0m\n' "$*"; }
 fail(){ printf '\033[0;31m  [FAIL] %s\033[0m\n' "$*"; }
 step(){ printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
+
+# 4.x trees recognise only "server"; 5.x+ use "manager".
+if [ "$TARGET" = "manager" ]; then
+    _vfile="$WAZUH_DIR/VERSION.json"
+    _major="5"
+    if [ -f "$_vfile" ]; then
+        _major=$(python3 -c \
+            "import json,sys; d=json.load(open(sys.argv[1])); print(d['version'].split('.')[0])" \
+            "$_vfile" 2>/dev/null || echo "5")
+    fi
+    if [ "$_major" = "4" ]; then
+        TARGET="server"
+        warn "4.x compat — using make TARGET=server"
+    fi
+fi
 
 mkdir -p "$TSAN_LOG_DIR" "$PERSIST"
 rm -f "$TSAN_LOG_DIR"/tsan_*.log
@@ -108,7 +124,7 @@ if [ -z "$SKIP_SYSTEM_TEST" ]; then
         cd "$WAZUH_DIR/src"
         CFLAGS="-fsanitize=thread -g -O1 -fno-omit-frame-pointer" \
         LDFLAGS="-fsanitize=thread" \
-        make wazuh_db TARGET=server DEBUG=1 -j"$JOBS" 2>&1 | tail -10
+        make wazuh_db TARGET="$TARGET" DEBUG=1 -j"$JOBS" 2>&1 | tail -10
     ) || { warn "wazuh_db TSan build failed — skipping system test"; SKIP_SYSTEM_TEST=1; }
 fi
 

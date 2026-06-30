@@ -13,7 +13,7 @@
 #   TARGET_REF   target ref (tag or SHA)
 #
 # Optional:
-#   SCAN_TARGET  wazuh make target (default: server)
+#   SCAN_TARGET  wazuh make target: manager · agent (default: manager; manager resolves to server on 4.x)
 #   SCAN_NAME    dashboard name for base run
 #   TARGET_NAME  dashboard name for target run
 #   ENABLE_CTU       cross-translation-unit analysis (default: 1)
@@ -31,7 +31,7 @@ SERVER_URL="http://${CC_HOST}:${CC_PORT}/Default"
 
 SCAN_REF="${SCAN_REF:-}"
 TARGET_REF="${TARGET_REF:-}"
-SCAN_TARGET="${SCAN_TARGET:-server}"
+SCAN_TARGET="${SCAN_TARGET:-manager}"
 SCAN_NAME="${SCAN_NAME:-}"
 TARGET_NAME="${TARGET_NAME:-}"
 ENABLE_CTU="${ENABLE_CTU:-1}"
@@ -163,6 +163,7 @@ if [ "$RUN_TSAN" = "1" ]; then
     step "ThreadSanitizer: unit tests + system test"
     RUN_NAME="wazuh-tsan-${TARGET_REF}" \
     WAZUH_REF="$TARGET_REF" \
+    TARGET="$SCAN_TARGET" \
     URL="$SERVER_URL" \
     JOBS="$JOBS" \
         bash "$SCRIPTS_DIR/run_tsan_tests.sh" \

@@ -38,7 +38,7 @@ Related issue: [#36748](https://github.com/wazuh/wazuh/issues/36748) · CodeChec
 
 - Docker Engine ≥ 24
 - `gh` CLI authenticated to `wazuh/wazuh` (required for GitHub Actions and issue posting)
-- ~60–90 min and ~20 GB disk for a full `server` scan of two refs
+- ~60–90 min and ~20 GB disk for a full `manager` scan of two refs
 
 ---
 
@@ -81,7 +81,7 @@ Expected results in `results/diff_new.txt`: `flawfinder.race.chmod`, `flawfinder
 ```bash
 SCAN_REF=4.14.7 \
 TARGET_REF=main \
-SCAN_TARGET=server \
+SCAN_TARGET=manager \
 ./tools/testing/codechecker/codechecker.sh --scan
 ```
 
@@ -147,7 +147,7 @@ Removes `workspace/`, `results/`, and `cc-db/`.
 |---|---|---|---|
 | `SCAN_REF` | — | **yes** | Base ref — the "before" snapshot. Tag, branch, or SHA. |
 | `TARGET_REF` | — | **yes** | Target ref — the "after" snapshot to diff against base. |
-| `SCAN_TARGET` | `server` | no | Wazuh build target: `server` · `agent` · `manager` |
+| `SCAN_TARGET` | `manager` | no | Wazuh component to scan: `manager` · `agent`. `manager` auto-resolves to `server` on 4.x and `manager` on 5.x by reading `VERSION.json` from the checked-out tree. |
 | `SCAN_NAME` | `wazuh-$SCAN_REF` | no | Dashboard run label for the base run. |
 | `TARGET_NAME` | `wazuh-$TARGET_REF` | no | Dashboard run label for the target run. |
 | `ENABLE_CTU` | `1` | no | Cross-translation-unit analysis. Finds interprocedural bugs. Adds ~2–3× scan time. Set `0` to disable. |
@@ -193,7 +193,7 @@ Detects resource leaks, lock imbalances, and thread-safety violations interproce
 RUN_INFER=1 \
 SCAN_REF=4.14.7 \
 TARGET_REF=main \
-SCAN_TARGET=server \
+SCAN_TARGET=manager \
 ./tools/testing/codechecker/codechecker.sh --scan
 ```
 
@@ -209,7 +209,7 @@ sudo sysctl -w vm.mmap_rnd_bits=28
 RUN_TSAN=1 \
 SCAN_REF=4.14.7 \
 TARGET_REF=main \
-SCAN_TARGET=server \
+SCAN_TARGET=manager \
 ./tools/testing/codechecker/codechecker.sh --scan
 
 sudo sysctl -w vm.mmap_rnd_bits=32   # restore after scan
@@ -250,7 +250,7 @@ sudo sysctl -w vm.mmap_rnd_bits=28
 
 SCAN_REF=4.14.7 \
 TARGET_REF=main \
-SCAN_TARGET=server \
+SCAN_TARGET=manager \
 ENABLE_CTU=1 \
 RUN_INFER=1 \
 RUN_TSAN=1 \
@@ -278,7 +278,7 @@ artifact or re-running locally):
   --results   <results_dir>   \   # path to results/ from --scan (required)
   --scan-ref  <base_ref>      \   # SCAN_REF used in the scan (required)
   --target-ref <target_ref>   \   # TARGET_REF used in the scan (required)
-  --target    <build_target>  \   # server / agent / manager (default: server)
+  --target    <build_target>  \   # manager / agent (default: manager)
   --output    <output.md>         # output path (default: <results_dir>/report.md)
 ```
 
@@ -289,7 +289,7 @@ artifact or re-running locally):
   --results    tools/testing/codechecker/results \
   --scan-ref   4.14.7 \
   --target-ref main \
-  --target     server \
+  --target     manager \
   --output     tools/testing/codechecker/results/report.md
 
 cat tools/testing/codechecker/results/report.md
@@ -304,7 +304,7 @@ The generated `report.md` follows this structure:
 
 | Run ID | CodeChecker version | Platform | Total detected | Newly detected | Newly eliminated |
 |---|---|---|---|---|---|
-| wazuh-main-server | **6.27.3** | Ubuntu 24.04 | 371 | 26 | 2 |
+| wazuh-main-manager | **6.27.3** | Ubuntu 24.04 | 371 | 26 | 2 |
 
 ## Results
 
@@ -359,7 +359,7 @@ gh issue comment 36748 \
 # Or create a new dedicated issue
 gh issue create \
   --repo wazuh/wazuh \
-  --title "CodeChecker scan: wazuh-4.14.7 → main (server)" \
+  --title "CodeChecker scan: wazuh-4.14.7 → main (manager)" \
   --body-file tools/testing/codechecker/results/report.md \
   --label "static-analysis"
 ```
@@ -446,7 +446,7 @@ gh workflow run \
   --ref main \
   -f scan_ref=4.14.7 \
   -f target_ref=main \
-  -f scan_target=server \
+  -f scan_target=manager \
   -f enable_ctu=true \
   -f run_infer=true \
   -f run_tsan=true \
@@ -462,7 +462,7 @@ gh workflow run \
   --ref main \
   -f scan_ref=4.14.7 \
   -f target_ref=fix/37131-ebpf-toctou \
-  -f scan_target=server \
+  -f scan_target=manager \
   -f enable_ctu=false \
   -f run_infer=false \
   -f run_tsan=false \

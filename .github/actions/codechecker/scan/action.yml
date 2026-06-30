@@ -9,9 +9,9 @@ inputs:
     description: Target ref (tag or SHA)
     required: true
   scan_target:
-    description: Wazuh make target (server/agent/manager)
+    description: Wazuh make target (manager = server on 4.x, manager on 5.x)
     required: false
-    default: server
+    default: manager
   scan_name:
     description: Dashboard run name for the base scan
     required: false

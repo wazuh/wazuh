@@ -16,7 +16,7 @@
 ###############################################################################
 set -euo pipefail
 
-TARGET="${TARGET:-agent}"
+TARGET="${TARGET:-manager}"
 BASE_REF="${BASE_REF:-}"
 TARGET_REF="${TARGET_REF:-}"
 REPO_URL="${REPO_URL:-https://github.com/wazuh/wazuh.git}"
@@ -62,6 +62,24 @@ print_ok()   { echo -e "${GREEN}  [OK]   $1${NC}"; }
 print_warn() { echo -e "${YELLOW}  [WARN] $1${NC}"; }
 print_err()  { echo -e "${RED}  [FAIL] $1${NC}"; }
 die()        { print_err "$1"; exit 1; }
+
+# Resolve the effective make target from the current checkout's VERSION.json.
+# When the user picks "manager", 4.x trees recognise only "server" (manager was added in 5.x);
+# 5.x+ trees use "manager".  Any target other than "manager" is returned unchanged.
+resolve_make_target() {
+    if [ "$TARGET" != "manager" ]; then
+        echo "$TARGET"
+        return
+    fi
+    local vfile="$WAZUH_DIR/VERSION.json"
+    local major="5"
+    if [ -f "$vfile" ]; then
+        major=$(python3 -c \
+            "import json,sys; d=json.load(open(sys.argv[1])); print(d['version'].split('.')[0])" \
+            "$vfile" 2>/dev/null || echo "5")
+    fi
+    [ "$major" = "4" ] && echo "server" || echo "manager"
+}
 
 check_prereqs() {
     print_step "Checking analyzer prerequisites"
@@ -142,12 +160,17 @@ run_scan() {
     git -C "$WAZUH_DIR" clean -xdf -e 'reports_*' -e 'compile_commands_*.json' || true
     find "$WAZUH_DIR" -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
 
-    print_step "[$slug] make deps TARGET=$TARGET"
-    ( cd "$WAZUH_DIR/src" && make deps TARGET="$TARGET" -j"$JOBS" ) || die "[$slug] make deps failed"
+    local make_target
+    make_target=$(resolve_make_target)
+    [ "$make_target" != "$TARGET" ] && \
+        print_ok "[$slug] 4.x compat — using make TARGET=$make_target (user selected: $TARGET)"
+
+    print_step "[$slug] make deps TARGET=$make_target"
+    ( cd "$WAZUH_DIR/src" && make deps TARGET="$make_target" -j"$JOBS" ) || die "[$slug] make deps failed"
 
     print_step "[$slug] CodeChecker log (ld-logger build capture)"
     ( cd "$WAZUH_DIR/src" && \
-      CodeChecker log -b "make TARGET=$TARGET DEBUG=1 -j$JOBS" -o "$cc_json" ) \
+      CodeChecker log -b "make TARGET=$make_target DEBUG=1 -j$JOBS" -o "$cc_json" ) \
         || die "[$slug] CodeChecker log failed"
     [ -s "$cc_json" ] || die "[$slug] empty compile_commands"
     print_ok "[$slug] captured $(grep -c '"file"' "$cc_json" 2>/dev/null || echo '?') TUs"

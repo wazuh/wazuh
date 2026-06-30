@@ -12,14 +12,13 @@ on:
         required: true
         type: string
       scan_target:
-        description: 'Wazuh build target'
+        description: 'Wazuh build target (manager resolves to server on 4.x, manager on 5.x)'
         required: true
         type: choice
-        default: server
+        default: manager
         options:
-          - server
-          - agent
           - manager
+          - agent
       enable_ctu:
         description: 'Enable cross-translation-unit (CTU) analysis (~2-3x slower but finds interprocedural bugs)'
         required: false

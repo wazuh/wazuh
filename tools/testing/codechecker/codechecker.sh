@@ -8,7 +8,7 @@
 # Usage:
 #   ./codechecker.sh --build-image
 #   SCAN_REF=coverity-w51-4.14.2 TARGET_REF=coverity-w52-4.14.2 \
-#     SCAN_TARGET=server ./codechecker.sh --scan
+#     SCAN_TARGET=manager ./codechecker.sh --scan
 #   ./codechecker.sh --clean
 ###############################################################################
 set -euo pipefail
@@ -20,7 +20,7 @@ IMAGE="${IMAGE:-ghcr.io/wazuh/codechecker:latest}"
 # Scan knobs (consumed by run_ci.sh inside the container)
 SCAN_REF="${SCAN_REF:-}"
 TARGET_REF="${TARGET_REF:-}"
-SCAN_TARGET="${SCAN_TARGET:-server}"
+SCAN_TARGET="${SCAN_TARGET:-manager}"
 SCAN_NAME="${SCAN_NAME:-}"
 TARGET_NAME="${TARGET_NAME:-}"
 ENABLE_CTU="${ENABLE_CTU:-1}"
@@ -51,7 +51,7 @@ Options:
 Scan environment variables (required for --scan):
   SCAN_REF        Base ref (tag or SHA)                        [required]
   TARGET_REF      Target ref (tag or SHA)                      [required]
-  SCAN_TARGET     Wazuh make target (default: server)
+  SCAN_TARGET     Wazuh component: manager (default) · agent  [manager auto-resolves to server on 4.x]
   SCAN_NAME       Dashboard run name for base  (default: wazuh-\$SCAN_REF)
   TARGET_NAME     Dashboard run name for target (default: wazuh-\$TARGET_REF)
   ENABLE_CTU      Cross-TU analysis (default: 1; set 0 to disable)
@@ -63,7 +63,7 @@ Scan environment variables (required for --scan):
 Example:
   SCAN_REF=coverity-w51-4.14.2 \\
   TARGET_REF=coverity-w52-4.14.2 \\
-  SCAN_TARGET=server \\
+  SCAN_TARGET=manager \\
   $0 --scan
   $0 --serve    # open http://localhost:8001 in your browser
 EOF
