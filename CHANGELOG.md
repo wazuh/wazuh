@@ -52,6 +52,7 @@ All notable changes to this project will be documented in this file.
 - Included `os_type` in the agent keepalive cluster synchronization. ([#36072](https://github.com/wazuh/wazuh/issues/36072))
 - Randomized the cluster key generated during manager installation instead of using a hardcoded default. ([#36805](https://github.com/wazuh/wazuh/issues/36805))
 - Changed the default Indexer user used by the Manager from `admin` to the restricted `wazuh-server` user, aligning with the Indexer RBAC least-privilege model. ([#36311](https://github.com/wazuh/wazuh/issues/36311))
+- Enabled shared-password agent enrollment by default, persisting the auto-generated `authd.pass` and synchronizing it to worker nodes, with fail-closed password validation. ([#36705](https://github.com/wazuh/wazuh/issues/36705))
 
 #### Removed
 

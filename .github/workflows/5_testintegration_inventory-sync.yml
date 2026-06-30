@@ -139,6 +139,10 @@ jobs:
           sudo sed -i '/manager\.pem/d' "${CONF}"
           sudo sed -i '/manager-key\.pem/d' "${CONF}"
           sudo sed -i 's|<ca>etc|<ca>/var/wazuh-manager/etc|' "${CONF}"
+          # This suite exercises inventory sync, not password enrollment; the agent
+          # harness registers without a password, so keep use_password off regardless
+          # of the shipped default.
+          sudo sed -i 's|<use_password>yes</use_password>|<use_password>no</use_password>|' "${CONF}"
           sudo systemctl start wazuh-manager
           sleep 10
           if ! systemctl is-active --quiet wazuh-manager; then

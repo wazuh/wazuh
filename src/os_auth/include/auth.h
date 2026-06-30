@@ -198,6 +198,14 @@ cJSON* local_add(const char *id,
  */
 char *w_generate_random_pass();
 
+/* Load the shared password (master): read it from @p path or generate+persist one.
+ * Fail-closed on an invalid existing file; never returns NULL. Sets @p generated. */
+char *w_authd_load_password(const char *path, bool *generated);
+
+/* Read the shared password from @p path (cluster worker): never generates, persists,
+ * nor exits. Returns NULL when missing/empty/short/unreadable. */
+char *w_authd_read_password(const char *path);
+
 extern char shost[512];
 extern keystore keys;
 extern volatile int write_pending;

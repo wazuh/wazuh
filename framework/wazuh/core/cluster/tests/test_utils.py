@@ -315,12 +315,12 @@ def test_get_cluster_items():
             "etc/": {
                 "permissions": 416,
                 "source": "master",
-                "files": ["client.keys"],
+                "files": ["client.keys", "authd.pass"],
                 "recursive": False,
                 "restart": False,
                 "remove_subdirs_if_empty": False,
                 "extra_valid": False,
-                "description": "client keys file database",
+                "description": "client keys file database and enrollment shared password",
             },
             "etc/shared/": {
                 "permissions": 432,

@@ -47,10 +47,34 @@ Remove all previous keys for an agent when it re-enrolls with the same name.
 
 Require agents to provide a shared enrollment password.
 
-- **Default value**: `no`
+- **Default value**: `no` (the configuration shipped by the installer sets it to `yes`)
 - **Allowed values**: `yes`, `no`
 
-When enabled, place the password in `/var/wazuh-manager/etc/authd.pass` (one line, no trailing newline).
+When enabled, the password is read from `/var/wazuh-manager/etc/authd.pass` (a single line). If the file does not exist, `wazuh-authd` generates a random password on start, stores it in that file, and reuses it on later starts. If the file exists but is empty or invalid, `wazuh-authd` does not start. In a cluster, the password belongs to the master and is distributed to the workers automatically; a worker rejects enrollment until it receives the file.
+
+**Agent-side setup:** Because `use_password` is `yes` by default, agents must supply the enrollment password or their enrollment request will be rejected. First retrieve the password from the manager:
+
+```bash
+sudo cat /var/wazuh-manager/etc/authd.pass
+```
+
+The recommended way to provide it to an agent is the `WAZUH_REGISTRATION_PASSWORD` install variable, which writes `etc/authd.pass` and sets its ownership and permissions automatically:
+
+```bash
+WAZUH_MANAGER="<manager-ip>" WAZUH_REGISTRATION_PASSWORD="<password>" apt install ./wazuh-agent.deb
+```
+
+To add it to an already-installed agent, write the file manually. The agent daemon (`wazuh-agentd`) runs as the `wazuh` user, so the file must be readable by that user:
+
+```bash
+echo "<password>" | sudo tee /var/ossec/etc/authd.pass
+sudo chown root:wazuh /var/ossec/etc/authd.pass
+sudo chmod 640 /var/ossec/etc/authd.pass
+```
+
+The agent reads the password from `etc/authd.pass` (relative to its install directory, typically `/var/ossec/etc/authd.pass`) at startup.
+
+**Password rotation:** The generated password persists across restarts. To rotate it (for example after a security incident), delete `/var/wazuh-manager/etc/authd.pass` on the master and restart `wazuh-authd`. A new random password will be generated, persisted, and distributed to workers automatically. The reuse of an existing password is logged at `INFO` level on every start.
 
 ### remote_enrollment
 
@@ -173,7 +197,7 @@ Accept enrollment from agents running a newer Wazuh version than the manager.
   <port>1515</port>
   <use_source_ip>no</use_source_ip>
   <purge>yes</purge>
-  <use_password>no</use_password>
+  <use_password>yes</use_password>
   <ssl_verify_host>no</ssl_verify_host>
   <ssl_manager_cert>/var/wazuh-manager/etc/sslmanager.cert</ssl_manager_cert>
   <ssl_manager_key>/var/wazuh-manager/etc/sslmanager.key</ssl_manager_key>

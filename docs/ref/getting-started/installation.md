@@ -328,7 +328,13 @@ Specifies the IP address or hostname of the enrollment server. When not specifie
 Defines the port used for agent enrollment. Default: `1515`.
 
 **`WAZUH_REGISTRATION_PASSWORD`**\
-Sets the password required for agent enrollment. This password must match the one configured on the server.
+Sets the password required for agent enrollment. This password must match the one configured on the server. Enrollment password protection is enabled by default, so retrieve the auto-generated password from the manager before enrolling agents:
+
+```bash
+sudo cat /var/wazuh-manager/etc/authd.pass
+```
+
+Passing it through this variable is the recommended approach: the installer writes `etc/authd.pass` on the agent and sets its ownership and permissions automatically. See [`use_password`](../configuration/auth.md#use_password) for details and for adding the password to an already-installed agent.
 
 **`WAZUH_REGISTRATION_CA`**\
 Specifies the path to the CA certificate used to verify the manager's identity during enrollment.
