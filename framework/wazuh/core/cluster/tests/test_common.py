@@ -13,7 +13,7 @@ import struct
 import sys
 from contextvars import ContextVar
 from datetime import datetime
-from unittest.mock import patch, MagicMock, call, ANY, AsyncMock, mock_open
+from unittest.mock import patch, MagicMock, Mock, call, ANY, AsyncMock, mock_open
 
 import cryptography
 import pytest
@@ -131,7 +131,8 @@ def test_inbuffer_get_info_from_header(unpack_mock):
     # If the flag value is the same as divide_flag, we will forward this value to the flag_divided attribute.
     assert in_buffer.cmd == b"pw"
     assert in_buffer.flag_divided == b"d"
-    assert in_buffer.payload == bytearray(in_buffer.total)
+    # Payload starts empty; memory is committed only as bytes arrive (lazy allocation).
+    assert in_buffer.payload == bytearray()
 
     unpack_mock.return_value = (0, 2048, b'echo')
     in_buffer.get_info_from_header(b"header", "hhl", 1)
@@ -171,6 +172,69 @@ def test_inbuffer_receive_data():
 
     assert isinstance(in_buffer.receive_data(b"data"), bytes)
     assert in_buffer.received == 1028
+
+
+def test_inbuffer_lazy_allocation():
+    """Validate that get_info_from_header does not pre-allocate the full declared payload.
+
+    A peer can declare any size up to MAX_TOTAL_SIZE.  Memory must only be
+    committed as bytes actually arrive, so that a connection that sends only
+    the 20-byte header cannot pin the full declared amount.
+    """
+    buf = cluster_common.InBuffer()
+    # Simulate parsing a header that declares the maximum allowed payload size.
+    with patch('struct.unpack', return_value=(1, cluster_common.MAX_TOTAL_SIZE, b'cmd---------')):
+        buf.get_info_from_header(b'x' * 20, '!2I12s', 20)
+
+    # Payload buffer must be empty immediately after header parsing — no pre-allocation.
+    assert buf.total == cluster_common.MAX_TOTAL_SIZE
+    assert len(buf.payload) == 0
+
+    # After receiving some bytes the payload grows by exactly that amount.
+    remaining = buf.receive_data(b'hello')
+    assert len(buf.payload) == 5
+    assert buf.received == 5
+    assert remaining == b''
+
+
+@pytest.mark.asyncio
+async def test_handler_payload_deadline_fires():
+    """Validate that a connection is closed if declared payload bytes never arrive.
+
+    The deadline must fire after PRE_AUTH_PAYLOAD_TIMEOUT and call
+    transport.close() so memory for the outstanding payload is released.
+    """
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    transport_mock = Mock()
+    handler.transport = transport_mock
+
+    handler._start_payload_deadline()
+    assert handler._payload_deadline is not None
+
+    # Advance the event loop past the deadline.
+    await asyncio.sleep(cluster_common.PRE_AUTH_PAYLOAD_TIMEOUT + 0.1)
+
+    transport_mock.close.assert_called_once()
+    # Timer handle is consumed once it fires.
+    assert handler._payload_deadline is None
+
+
+@pytest.mark.asyncio
+async def test_handler_payload_deadline_cancelled_on_complete():
+    """Validate that the deadline is cancelled once the full payload arrives."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    transport_mock = Mock()
+    handler.transport = transport_mock
+
+    handler._start_payload_deadline()
+    assert handler._payload_deadline is not None
+
+    handler._cancel_payload_deadline()
+    assert handler._payload_deadline is None
+
+    # Give the loop a turn — transport must not be closed.
+    await asyncio.sleep(0)
+    transport_mock.close.assert_not_called()
 
 
 # Test SendStringTask methods
