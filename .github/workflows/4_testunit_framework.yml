@@ -16,7 +16,7 @@ on:
     paths:
       - '.github/workflows/4_testunit_framework.yml'
       - 'framework/**'
-      - 'src/Makefile'
+      - 'api/**'
 
 jobs:
   build: 

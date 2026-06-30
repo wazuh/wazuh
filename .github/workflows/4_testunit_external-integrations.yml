@@ -16,7 +16,8 @@ on:
     paths:
       - '.github/workflows/4_testunit_external-integrations.yml'
       - 'integrations/**'
-      - 'src/Makefile'
+      - 'framework/requirements.txt'
+      - 'framework/requirements-dev.txt'
 
 jobs:
   build: 

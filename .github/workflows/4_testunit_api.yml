@@ -16,7 +16,9 @@ on:
     paths:
       - '.github/workflows/4_testunit_api.yml'
       - 'api/**'
-      - 'src/Makefile'
+      - 'framework/wazuh/**'
+      - 'framework/requirements.txt'
+      - 'framework/requirements-dev.txt'
 
 jobs:
   build: 
