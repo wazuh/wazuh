@@ -1063,8 +1063,14 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
         if (m_stopped)
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting query to " + moduleName);
+
+            nlohmann::json errorJson;
+            errorJson["error"] = MQ_ERR_INTERNAL;
+            errorJson["message"] = "Agent stopping, query to " + moduleName + " aborted";
+
             ModuleResponse aborted;
             aborted.success = false;
+            aborted.response = errorJson.dump();
             aborted.errorCode = MQ_ERR_INTERNAL;
             aborted.isModuleUnavailable = false;
             return aborted;
@@ -1129,8 +1135,14 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
             {
                 lock.unlock();
                 m_logFunction(LOG_INFO, "Agent stopping, aborting query to " + moduleName);
+
+                nlohmann::json errorJson;
+                errorJson["error"] = MQ_ERR_INTERNAL;
+                errorJson["message"] = "Agent stopping, query to " + moduleName + " aborted";
+
                 ModuleResponse aborted;
                 aborted.success = false;
+                aborted.response = errorJson.dump();
                 aborted.errorCode = MQ_ERR_INTERNAL;
                 aborted.isModuleUnavailable = false;
                 return aborted;

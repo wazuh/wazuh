@@ -3,6 +3,7 @@
 
 #include <agent_info_impl.hpp>
 #include <agent_sync_protocol.hpp>
+#include "module_query_errors.h"
 
 #include <dbsync.hpp>
 #include <mock_dbsync.hpp>
@@ -1986,11 +1987,11 @@ TEST_F(AgentInfoCoordinationTest, QueryRetryAbortsOnStopDuringCoordination)
 
         if (command == "pause" && module_name == "fim")
         {
-            // Retryable failure (98 == MQ_ERR_INTERNAL, not "module unavailable"), so
+            // Retryable failure (MQ_ERR_INTERNAL, not "module unavailable"), so
             // queryModuleWithRetry would normally retry MAX_COORDINATION_RETRIES times
             // with a 1 s back-off between attempts.
             ++fimPauseAttempts;
-            responseJson["error"] = 98;
+            responseJson["error"] = MQ_ERR_INTERNAL;
 
             // Signal the stop during the first attempt: the retry back-off must then
             // wake up immediately instead of sleeping.
@@ -2001,7 +2002,7 @@ TEST_F(AgentInfoCoordinationTest, QueryRetryAbortsOnStopDuringCoordination)
 
             std::string responseStr = responseJson.dump();
             * response = strdup(responseStr.c_str());
-            return 98;
+            return MQ_ERR_INTERNAL;
         }
 
         responseJson["error"] = 0;
