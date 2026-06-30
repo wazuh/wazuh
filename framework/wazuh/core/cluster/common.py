@@ -43,6 +43,11 @@ MAX_TOTAL_SIZE = 268435456  # maximum total size of the message to receive in by
 
 MAX_CHUNK_SIZE = 10485760  # maximum chunk size of the message to receive in bytes (10 MiB)
 
+# Seconds a connection may hold an open header (sent header bytes but not yet
+# the declared payload) before being closed.  Bounds memory hold-time for
+# half-open messages regardless of source IP.
+PRE_AUTH_PAYLOAD_TIMEOUT = 30
+
 MAX_CONCURRENT_DIVIDED_MSGS = 10  # maximum number of concurrent divided messages being received. This is used to mitigate DoS attacks with many divided messages.
 
 class Response:
@@ -91,7 +96,7 @@ class InBuffer:
         """
         if total > MAX_TOTAL_SIZE:
             raise exception.WazuhClusterError(3050, extra_message=str(total))
-        self.payload = bytearray(total)  # array to store the message's data
+        self.payload = bytearray()  # grows incrementally as data is received
         self.total = total  # total of bytes to receive
         self.received = 0  # number of received bytes
         self.cmd = ''  # request's command in header
@@ -124,7 +129,7 @@ class InBuffer:
         self.cmd = cmd[:-1].split(b' ')[0]
         if self.total > MAX_TOTAL_SIZE :
             raise exception.WazuhClusterError(3050, extra_message=f"Header total size out of range: {self.total}")
-        self.payload = bytearray(self.total)
+        self.payload = bytearray()  # grows incrementally; no pre-allocation on peer-controlled size
         return header[header_size:]
 
     def receive_data(self, data: bytes) -> bytes:
@@ -139,8 +144,9 @@ class InBuffer:
         -------
             Extended data buffer.
         """
-        len_data = len(data[:self.total - self.received])
-        self.payload[self.received:len_data + self.received] = data[:self.total - self.received]
+        chunk = data[:self.total - self.received]
+        len_data = len(chunk)
+        self.payload.extend(chunk)
         self.received += len_data
         return data[len_data:]
 
@@ -374,6 +380,30 @@ class Handler(asyncio.Protocol):
         self.loop = None
         # Abstract server object.
         self.server = None
+        # Handle for the per-message payload-completion deadline timer.
+        self._payload_deadline = None
+
+    def _start_payload_deadline(self) -> None:
+        """Arm a timer that closes this connection if the payload never completes."""
+        self._cancel_payload_deadline()
+        try:
+            loop = asyncio.get_running_loop()
+            self._payload_deadline = loop.call_later(PRE_AUTH_PAYLOAD_TIMEOUT, self._close_on_payload_deadline)
+        except RuntimeError:
+            pass  # no running event loop (e.g. unit tests calling msg_parse directly)
+
+    def _cancel_payload_deadline(self) -> None:
+        """Cancel an armed payload-completion deadline, if any."""
+        if self._payload_deadline is not None:
+            self._payload_deadline.cancel()
+            self._payload_deadline = None
+
+    def _close_on_payload_deadline(self) -> None:
+        """Close the transport when a declared payload never arrives within the deadline."""
+        self.logger.warning("Closing connection: incomplete message payload not received within deadline.")
+        if self.transport is not None:
+            self.transport.close()
+        self._payload_deadline = None
 
     def push(self, message: bytes):
         """Send a message to peer.
@@ -475,6 +505,10 @@ class Handler(asyncio.Protocol):
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
+                # If payload bytes are still outstanding, arm the completion deadline so a
+                # peer that stops after the header cannot hold memory indefinitely.
+                if self.in_msg.total > 0 and self.in_msg.received < self.in_msg.total:
+                    self._start_payload_deadline()
                 return True
             elif self.in_msg.received != 0:
                 # The previous message has not been completely received yet. No header to parse, just payload.
@@ -505,6 +539,8 @@ class Handler(asyncio.Protocol):
 
         while parsed:
             if self.in_msg.received == self.in_msg.total:
+                # Full payload received — cancel any outstanding completion deadline.
+                self._cancel_payload_deadline()
                 # Decrypt received message if it is not a part of a divided message
                 try:
                     decrypted_payload = \

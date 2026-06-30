@@ -20,6 +20,9 @@ from wazuh.core import common, exception, utils
 from wazuh.core.cluster import common as c_common
 from wazuh.core.cluster.utils import ClusterFilter, context_tag
 
+# Maximum simultaneous cluster TCP connections accepted from a single source IP.
+MAX_CONNECTIONS_PER_IP = 10
+
 
 class AbstractServerHandler(c_common.Handler):
     """
@@ -57,6 +60,8 @@ class AbstractServerHandler(c_common.Handler):
         self.transport = None
         self.handler_tasks = []
         self.broadcast_queue = asyncio.Queue()
+        # Tracks whether this handler was counted in server.connection_counts.
+        self._counted_connection = False
 
     def to_dict(self) -> Dict:
         """Get basic info from AbstractServerHandler instance.
@@ -77,8 +82,15 @@ class AbstractServerHandler(c_common.Handler):
             Socket to write data on.
         """
         peername = transport.get_extra_info('peername')
-        self.logger.info(f'Connection from {peername}')
         self.ip = peername[0]
+        count = self.server.connection_counts.get(self.ip, 0)
+        if count >= MAX_CONNECTIONS_PER_IP:
+            self.logger.warning(f"Too many connections from {self.ip} ({count}), rejecting.")
+            transport.close()
+            return
+        self.server.connection_counts[self.ip] = count + 1
+        self._counted_connection = True
+        self.logger.info(f'Connection from {peername}')
         self.transport = transport
 
     def process_request(self, command: bytes, data: bytes) -> Tuple[bytes, bytes]:
@@ -183,6 +195,13 @@ class AbstractServerHandler(c_common.Handler):
         exc : Exception
             In case the connection was lost due to an exception, it will be contained in this variable.
         """
+        self._cancel_payload_deadline()
+        if self._counted_connection:
+            count = self.server.connection_counts.get(self.ip, 0)
+            if count <= 1:
+                self.server.connection_counts.pop(self.ip, None)
+            else:
+                self.server.connection_counts[self.ip] = count - 1
         if self.name:
             if exc is None:
                 self.logger.debug(f"Disconnected {self.name}.")
@@ -281,6 +300,8 @@ class AbstractServer:
         self.handler_class = AbstractServerHandler
         self.loop = asyncio.get_running_loop()
         self.broadcast_results = {}
+        # Per-source-IP connection counts; bounded by MAX_CONNECTIONS_PER_IP.
+        self.connection_counts = {}
 
     def broadcast(self, f, *args, **kwargs):
         """Add a function to the broadcast_queue of each server handler.

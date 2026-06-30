@@ -64,20 +64,45 @@ async def test_AbstractServerHandler_to_dict(event_loop):
 def test_AbstractServerHandler_connection_made(event_loop):
     """Check that the connection_made function correctly assigns the IP and the transport."""
 
+    class ServerMock:
+        def __init__(self):
+            self.connection_counts = {}
+
     def get_extra_info(self, name):
         return ["peername", "mock"]
 
     transport = Transport()
     logger = Logger("test_connection_made")
+    server_mock = ServerMock()
     with patch("logging.getLogger", return_value=logger):
         with patch.object(logger, "info") as mock_logger:
-            abstract_server_handler = AbstractServerHandler(server="Test", loop=event_loop, fernet_key=fernet_key,
+            abstract_server_handler = AbstractServerHandler(server=server_mock, loop=event_loop,
+                                                            fernet_key=fernet_key,
                                                             cluster_items={"test": "server"})
             with patch.object(asyncio.Transport, "get_extra_info", get_extra_info):
                 abstract_server_handler.connection_made(transport=transport)
                 assert abstract_server_handler.ip == "peername"
                 assert abstract_server_handler.transport == transport
+                assert abstract_server_handler._counted_connection is True
+                assert server_mock.connection_counts == {"peername": 1}
                 mock_logger.assert_called_once_with("Connection from ['peername', 'mock']")
+
+    # Verify that a second handler from the same IP up to the limit is accepted,
+    # and that a connection that exceeds MAX_CONNECTIONS_PER_IP is rejected.
+    with patch("logging.getLogger", return_value=logger):
+        server_mock2 = ServerMock()
+        server_mock2.connection_counts = {"1.2.3.4": MAX_CONNECTIONS_PER_IP}
+
+        rejected_handler = AbstractServerHandler(server=server_mock2, loop=event_loop,
+                                                 fernet_key=fernet_key,
+                                                 cluster_items={"test": "server"})
+        mock_transport = Mock()
+        mock_transport.get_extra_info = lambda name: ["1.2.3.4", 9999]
+        rejected_handler.connection_made(transport=mock_transport)
+        mock_transport.close.assert_called_once()
+        assert rejected_handler._counted_connection is False
+        # Count must not have been incremented for the rejected connection.
+        assert server_mock2.connection_counts["1.2.3.4"] == MAX_CONNECTIONS_PER_IP
 
 
 @pytest.mark.asyncio
@@ -211,6 +236,28 @@ async def test_AbstractServerHandler_connection_lost(event_loop):
             mock_debug_logger.assert_called_once_with("Disconnected unit.")
             task_mock.cancel.assert_called_once()
 
+    # Verify that connection_counts is decremented when _counted_connection is True.
+    class ServerMockCounts:
+        def __init__(self):
+            self.clients = {}
+            self.configuration = {"node_name": "elif_test"}
+            self.connection_counts = {"1.2.3.4": 3}
+
+    with patch("logging.getLogger", return_value=logger):
+        counted_handler = AbstractServerHandler(server=ServerMockCounts(), loop=event_loop,
+                                                fernet_key=fernet_key,
+                                                cluster_items={"test": "server"})
+        counted_handler.ip = "1.2.3.4"
+        counted_handler._counted_connection = True
+        counted_handler.connection_lost(exc=None)
+        assert counted_handler.server.connection_counts["1.2.3.4"] == 2
+
+        # When count reaches 1, the key is removed entirely.
+        counted_handler.server.connection_counts["1.2.3.4"] = 1
+        counted_handler._counted_connection = True
+        counted_handler.connection_lost(exc=None)
+        assert "1.2.3.4" not in counted_handler.server.connection_counts
+
 
 @pytest.mark.asyncio
 @patch("asyncio.Queue")
@@ -278,6 +325,7 @@ def test_AbstractServer_init(AbstractServerHandler_mock, keepalive_mock):
         assert mock_contextvar.get() == "test"
         assert abstract_server.logger == logger
         assert abstract_server.broadcast_results == {}
+        assert abstract_server.connection_counts == {}
 
 
 @patch("asyncio.get_running_loop", new=Mock())
