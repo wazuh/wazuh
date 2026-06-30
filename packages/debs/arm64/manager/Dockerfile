@@ -25,10 +25,11 @@ RUN /usr/local/bin/retry.sh --attempts 5 --delay 10 --backoff 2 --max-delay 40 -
     apt-get update
 RUN /usr/local/bin/retry.sh --attempts 5 --delay 10 --backoff 2 --max-delay 40 --timeout 900 -- \
     apt-get build-dep python3.5 -y --allow-change-held-packages
-RUN /usr/local/bin/retry.sh --attempts 4 --delay 10 --backoff 2 --max-delay 40 --timeout 300 -- \
-    bash -lc 'curl -fsSL --connect-timeout 20 --max-time 180 https://deb.nodesource.com/setup_12.x | bash -'
-RUN /usr/local/bin/retry.sh --attempts 5 --delay 10 --backoff 2 --max-delay 40 --timeout 600 -- \
-    apt-get install --allow-change-held-packages -y nodejs
+RUN /usr/local/bin/retry.sh --attempts 5 --delay 5 --backoff 2 --max-delay 30 --timeout 360 -- \
+    curl -fsSL --connect-timeout 20 --max-time 300 -o node-v12.16.1-linux-arm64.tar.xz http://packages.wazuh.com/utils/nodejs/node-v12.16.1-linux-arm64.tar.xz && \
+    tar -xJf node-v12.16.1-linux-arm64.tar.xz && \
+    cd node-v12.16* && cp -R * /usr/local/ && cd / && rm -rf node-v*
+
 
 RUN /usr/local/bin/retry.sh --attempts 5 --delay 5 --backoff 2 --max-delay 30 --timeout 360 -- \
     curl -fsSL --connect-timeout 20 --max-time 300 -o /tmp/gcc_14.3-1_arm64.deb \
