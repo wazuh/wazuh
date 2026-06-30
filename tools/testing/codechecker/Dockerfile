@@ -65,7 +65,10 @@ RUN pip3 install --no-cache-dir --break-system-packages \
         flawfinder
 
 # Meta Infer (RacerD static race detection).
+# SHA-256 pinned to v1.2.0 x86_64 tarball — update when bumping INFER_VERSION.
+ARG INFER_SHA256=21504063fb3a1dbc7919f34dc6e50ca0d35f50b996d91deb7b8bea8243d52d82
 RUN curl -fsSL "https://github.com/facebook/infer/releases/download/v${INFER_VERSION}/infer-linux-x86_64-v${INFER_VERSION}.tar.xz" -o /tmp/infer.tar.xz && \
+    echo "${INFER_SHA256}  /tmp/infer.tar.xz" | sha256sum -c - && \
     mkdir -p /opt/infer && \
     tar -xJf /tmp/infer.tar.xz -C /opt/infer --strip-components=1 && \
     ln -sf /opt/infer/bin/infer /usr/local/bin/infer && \

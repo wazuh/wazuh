@@ -14,7 +14,7 @@
 #   docker compose exec -e REF=6376a98 -e TARGET=server \
 #     -e RUN_NAME=wazuh-coverity-w15-infer analyzer bash /cc/run_infer.sh
 ###############################################################################
-set -u
+set -euo pipefail
 
 REF="${REF:-}"
 TARGET="${TARGET:-server}"

@@ -37,9 +37,12 @@ inputs:
     required: false
     default: 'true'
   results_dir:
-    description: Host path where artifacts are written
+    description: Host path where artifacts are written; use runner.temp to avoid collisions on shared runners
+    required: true
+  jobs:
+    description: Parallel analysis jobs (default uses all available cores)
     required: false
-    default: /tmp/codechecker-results
+    default: ''
   image:
     description: Docker image to use
     required: false
@@ -64,6 +67,7 @@ runs:
         RUN_INFER: ${{ inputs.run_infer == 'true' && '1' || '0' }}
         RUN_TSAN: ${{ inputs.run_tsan == 'true' && '1' || '0' }}
         RUN_FLAWFINDER: ${{ inputs.run_flawfinder == 'true' && '1' || '0' }}
+        JOBS: ${{ inputs.jobs }}
       run: |
         docker run --rm \
           -v "${{ inputs.results_dir }}:/results" \
@@ -76,5 +80,6 @@ runs:
           -e RUN_INFER \
           -e RUN_TSAN \
           -e RUN_FLAWFINDER \
+          ${JOBS:+-e JOBS} \
           "${{ inputs.image }}" \
           bash /cc/run_ci.sh

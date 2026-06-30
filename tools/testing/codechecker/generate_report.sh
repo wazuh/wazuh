@@ -57,6 +57,8 @@ RESOLVED_JSON="$RESULTS_DIR/diff_resolved.json/reports.json"
 RESOLVED_TXT="$RESULTS_DIR/diff_resolved.txt"
 SUMMARY_TXT="$RESULTS_DIR/summary_target.txt"
 
+CC_VERSION="$(CodeChecker version 2>/dev/null | grep -oP '(?<=Base package version: )\S+' || echo "unknown")"
+
 # ---------------------------------------------------------------------------
 # Helper: Python3 generates the Markdown body (no jq dependency)
 # ---------------------------------------------------------------------------
@@ -69,6 +71,7 @@ python3 - \
     "$TARGET_REF" \
     "$TARGET" \
     "$OUTPUT" \
+    "$CC_VERSION" \
 << 'PYEOF'
 import json, os, re, sys
 from datetime import datetime, timezone
@@ -81,6 +84,7 @@ scan_ref          = sys.argv[5]
 target_ref        = sys.argv[6]
 target            = sys.argv[7]
 output_path       = sys.argv[8]
+cc_version        = sys.argv[9] if len(sys.argv) > 9 else "unknown"
 
 # ── severity → impact label ────────────────────────────────────────────────
 SEV_LABEL = {
@@ -170,7 +174,6 @@ if os.path.isfile(summary_txt):
 
 # ── Run name & version ─────────────────────────────────────────────────────
 run_id = f"wazuh-{target_ref}-{target}"
-cc_version = "6.27.3"
 platform = "Ubuntu 24.04"
 report_date = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 

@@ -99,5 +99,5 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
         print(f"Usage: {sys.argv[0]} <fw.csv|-> <output_dir>", file=sys.stderr)
         sys.exit(1)
-    n = convert(sys.argv[1], sys.argv[2])
-    sys.exit(0 if n > 0 else 1)
+    convert(sys.argv[1], sys.argv[2])
+    sys.exit(0)

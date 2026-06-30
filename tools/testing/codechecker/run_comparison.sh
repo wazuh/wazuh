@@ -14,7 +14,7 @@
 #   5. STORE both runs to the server while the tree still matches each ref.
 #   6. Mirror compile_commands + summaries to /results/.
 ###############################################################################
-set -u
+set -euo pipefail
 
 TARGET="${TARGET:-agent}"
 BASE_REF="${BASE_REF:-}"

@@ -22,7 +22,7 @@
 #   RUN_FLAWFINDER   run Flawfinder CWE-362/CWE-119 scan (default: 1)
 #   JOBS             parallelism (default: nproc)
 ###############################################################################
-set -u
+set -euo pipefail
 
 CC_DB_DIR="${CC_DB_DIR:-/tmp/cc-db}"
 CC_HOST="127.0.0.1"

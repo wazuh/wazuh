@@ -19,7 +19,7 @@
 #   SKIP_SYSTEM_TEST=1   skip Phase 2
 #   SYSTEM_TEST_SECS=60  wazuh-db load duration in seconds
 ###############################################################################
-set -u
+set -euo pipefail
 
 WAZUH_DIR="${WAZUH_DIR:-/workspace/wazuh}"
 URL="${URL:-http://127.0.0.1:8001/Default}"
