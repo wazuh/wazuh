@@ -5718,7 +5718,7 @@ checks:
           - "Pass the Hash"
     condition: all
     rules:
-      - 'f:/etc/pam.d/common-password -> r:password\s*\t*requisite\s*\t*pam_pwquality.so\s*\t*retry=(\d+)'
+      - 'f:/etc/pam.d/common-password -> r:password\s*\t*requisite\s*\t*pam_pwquality\.so\s*\t*retry=(\d+)'
 
   # 5.3.2.4 Ensure pam_pwhistory module is enabled. (Automated)
   - id: 33189
