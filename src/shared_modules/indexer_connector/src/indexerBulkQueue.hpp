@@ -40,18 +40,18 @@ public:
     /**
      * @param processor  Callback invoked on the worker thread with each batch.
      * @param maxBytes   Maximum bytes before push() starts discarding (0 = unlimited).
-     * @param bulkSize   Target number of items per batch.
+     * @param bulkMaxBytes  Target byte threshold per batch before dispatch.
      * @param flushIntervalSec  Max seconds to wait before flushing a partial batch.
      * @param retryDelaySec     Seconds to sleep after a failed processor call.
      */
     IndexerBulkQueue(Processor processor,
                      size_t maxBytes,
-                     size_t bulkSize,
+                     size_t bulkMaxBytes,
                      size_t flushIntervalSec,
                      size_t retryDelaySec)
         : m_processor(std::move(processor))
         , m_maxBytes(maxBytes)
-        , m_bulkSize(bulkSize)
+        , m_bulkMaxBytes(bulkMaxBytes)
         , m_flushInterval(flushIntervalSec)
         , m_retryDelay(retryDelaySec)
     {
@@ -96,8 +96,8 @@ public:
             m_firstOverflowLogged = false;
         }
 
-        // Wake worker if we have enough items for a full batch
-        if (m_buffer.size() >= m_bulkSize.load())
+        // Wake worker if accumulated bytes reach the bulk threshold
+        if (m_totalBytes >= m_bulkMaxBytes.load())
         {
             m_cv.notify_one();
         }
@@ -138,16 +138,16 @@ public:
         return m_totalDroppedCount.load();
     }
 
-    /// Current bulk size target.
-    size_t bulkSize() const
+    /// Current bulk max bytes threshold.
+    size_t bulkMaxBytes() const
     {
-        return m_bulkSize.load();
+        return m_bulkMaxBytes.load();
     }
 
-    /// Dynamically adjust bulk size (e.g. after 413 errors).
-    void bulkSize(size_t newSize)
+    /// Dynamically adjust bulk max bytes (e.g. after 413 errors).
+    void bulkMaxBytes(size_t newSize)
     {
-        m_bulkSize.store(newSize);
+        m_bulkMaxBytes.store(newSize);
     }
 
 private:
@@ -160,7 +160,7 @@ private:
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
                 m_cv.wait_for(lock, std::chrono::seconds(m_flushInterval), [this]()
-                              { return !m_running || m_buffer.size() >= m_bulkSize.load(); });
+                              { return !m_running || m_totalBytes >= m_bulkMaxBytes.load(); });
 
                 if (!m_running && m_buffer.empty())
                     break;
@@ -168,12 +168,16 @@ private:
                 if (m_buffer.empty())
                     continue;
 
-                const size_t count = std::min(m_buffer.size(), static_cast<size_t>(m_bulkSize.load()));
-                batch.reserve(count);
+                // Drain items until batch bytes >= bulkMaxBytes or buffer empty.
+                // Always take at least 1 item (handles oversized single items).
+                const size_t threshold = m_bulkMaxBytes.load();
+                size_t batchBytes = 0;
 
-                for (size_t i = 0; i < count; ++i)
+                while (!m_buffer.empty() && (batchBytes < threshold || batch.empty()))
                 {
-                    m_totalBytes -= m_buffer.front().size();
+                    const auto itemSize = m_buffer.front().size();
+                    m_totalBytes -= itemSize;
+                    batchBytes += itemSize;
                     batch.push_back(std::move(m_buffer.front()));
                     m_buffer.pop_front();
                 }
@@ -234,7 +238,7 @@ private:
     std::deque<std::string> m_buffer;
     uint64_t m_totalBytes {0};
     const size_t m_maxBytes;
-    std::atomic<size_t> m_bulkSize;
+    std::atomic<size_t> m_bulkMaxBytes;
     const size_t m_flushInterval;
     const size_t m_retryDelay;
 

@@ -2453,13 +2453,13 @@ TEST_F(IndexerConnectorAsyncTest, GetDroppedEventsInitiallyZero)
     EXPECT_EQ(connector.getDroppedEvents(), 0ULL);
 }
 
-// JSON config override tests for elements_per_bulk and flush_interval_seconds
+// JSON config override tests for bulk_max_bytes and flush_interval_seconds
 TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkFromJsonConfigTriggersBulk)
 {
-    // elements_per_bulk=5 in JSON overrides the template default of 25000.
+    // bulk_max_bytes=5 in JSON overrides the template default of 25000.
     // flush_interval_seconds=60 prevents the periodic timer from firing during the test window.
     // If the JSON value is honoured, pushing exactly 5 elements immediately triggers a bulk send.
-    config["elements_per_bulk"] = 5;
+    config["bulk_max_bytes"] = 200;
     config["flush_interval_seconds"] = 60;
 
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -2485,7 +2485,7 @@ TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkFromJsonConfigTriggersBulk)
             }));
 
     IndexerConnectorAsyncImplLargeBulk connector(
-        config, nullptr, "test-elements-per-bulk-json", &mockHttpRequest, std::move(mockSelector));
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-elements-per-bulk-json");
 
     for (int i = 0; i < 5; ++i)
     {
@@ -2493,15 +2493,15 @@ TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkFromJsonConfigTriggersBulk)
     }
 
     auto status = bulkSentFuture.wait_for(std::chrono::seconds(5));
-    EXPECT_EQ(status, std::future_status::ready) << "Bulk not sent after pushing elements_per_bulk items";
+    EXPECT_EQ(status, std::future_status::ready) << "Bulk not sent after pushing bulk_max_bytes items";
     EXPECT_GT(callCount, 0);
 }
 
 TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkMinValueOneFlushesImmediately)
 {
-    // Extreme low value: elements_per_bulk=1 means every single element triggers its own bulk send.
+    // Extreme low value: bulk_max_bytes=1 means every single element triggers its own bulk send.
     // flush_interval_seconds=60 ensures the count trigger —not the timer— is responsible.
-    config["elements_per_bulk"] = 1;
+    config["bulk_max_bytes"] = 1;
     config["flush_interval_seconds"] = 60;
 
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -2527,27 +2527,27 @@ TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkMinValueOneFlushesImmediately)
             }));
 
     IndexerConnectorAsyncImplLargeBulk connector(
-        config, nullptr, "test-min-elements-per-bulk", &mockHttpRequest, std::move(mockSelector));
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-min-elements-per-bulk");
 
     connector.bulkIndex("id0", "test_index", R"({"data":"x"})");
 
     auto status = bulkSentFuture.wait_for(std::chrono::seconds(5));
     EXPECT_EQ(status, std::future_status::ready)
-        << "Single element should trigger immediate bulk with elements_per_bulk=1";
+        << "Single element should trigger immediate bulk with bulk_max_bytes=1";
     EXPECT_GT(callCount, 0);
 }
 
 TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkBelowThresholdNoFlush)
 {
-    // Negative path: pushing N-1 elements must NOT trigger a bulk send.
-    config["elements_per_bulk"] = 5;
+    // Negative path: pushing a few items whose total bytes remain below bulk_max_bytes must NOT trigger a bulk send.
+    config["bulk_max_bytes"] = 4096;
     config["flush_interval_seconds"] = 60;
 
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
     IndexerConnectorAsyncImplLargeBulk connector(
-        config, nullptr, "test-below-threshold", &mockHttpRequest, std::move(mockSelector));
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-below-threshold");
 
     for (int i = 0; i < 4; ++i)
     {
@@ -2557,7 +2557,7 @@ TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkBelowThresholdNoFlush)
     // Allow the async worker enough time to process any spurious flush.
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-    EXPECT_EQ(callCount, 0) << "No bulk should be sent when fewer than elements_per_bulk items are queued";
+    EXPECT_EQ(callCount, 0) << "No bulk should be sent when fewer than bulk_max_bytes items are queued";
 }
 
 TEST_F(IndexerConnectorAsyncTest, FlushIntervalSecondsFromJsonConfigTimerFires)
@@ -2588,7 +2588,7 @@ TEST_F(IndexerConnectorAsyncTest, FlushIntervalSecondsFromJsonConfigTimerFires)
             }));
 
     IndexerConnectorAsyncImplLargeBulk connector(
-        config, nullptr, "test-flush-interval-timer", &mockHttpRequest, std::move(mockSelector));
+        config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-flush-interval-timer");
 
     // 3 items — below the 25000-element count threshold
     connector.bulkIndex("id0", "test_index", R"({"data":"x"})");
