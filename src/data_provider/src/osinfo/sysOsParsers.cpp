@@ -105,7 +105,7 @@ static bool findVersionInStream(std::istream& in,
         line = Utils::trim(line);
         ret |= Utils::findRegexInString(line, data, pattern, matchIndex, start);
 
-        if (ret)
+        if (ret && !output.contains("os_version"))
         {
             output["os_version"] = data;
             findMajorMinorVersionInString(data, output);
