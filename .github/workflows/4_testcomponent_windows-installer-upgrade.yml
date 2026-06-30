@@ -55,25 +55,7 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Set up WiX Toolset (MSI build)
-        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships WiX.
-        # wazuh-installer-build-msi.bat builds the MSI with candle.exe/light.exe (WiX v3).
-        # GitHub-hosted images bundled WiX (exposed via $WIX); the CodeBuild image does not.
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          if (Get-Command candle.exe -ErrorAction SilentlyContinue) {
-            Write-Host "WiX already available: $((Get-Command candle.exe).Source)"
-          } elseif ($env:WIX -and (Test-Path (Join-Path $env:WIX 'bin\candle.exe'))) {
-            Add-Content -Path $env:GITHUB_PATH -Value (Join-Path $env:WIX 'bin')
-            Write-Host "WiX found via `$WIX: $env:WIX"
-          } else {
-            $wixZip = Join-Path $env:TEMP 'wix314-binaries.zip'
-            Invoke-WebRequest -Uri 'https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip' -OutFile $wixZip
-            $wixDir = 'C:\wix314'
-            Expand-Archive -Path $wixZip -DestinationPath $wixDir -Force
-            Add-Content -Path $env:GITHUB_PATH -Value $wixDir
-            Write-Host "WiX extracted to $wixDir"
-          }
+        uses: ./.github/actions/setup_wix
       - name: Set up 7-Zip (MSI/zip extraction)
         # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships 7-Zip.
         # The upgrade test unzips the base archive and extracts the MSI (`7z e`); an MSI is an
