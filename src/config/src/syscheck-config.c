@@ -77,6 +77,8 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->nodiff_regex                    = NULL;
     syscheck->scan_day                        = NULL;
     syscheck->scan_time                       = NULL;
+    syscheck->scan_day_str                    = NULL;
+    syscheck->scan_time_str                   = NULL;
     syscheck->file_limit_enabled              = true;
     syscheck->file_entry_limit                = 100000;
     syscheck->directories                     = OSList_Create();
@@ -1759,21 +1761,35 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
         }
         /* Get scan time */
         else if (strcmp(node[i]->element, xml_scantime) == 0) {
-            syscheck->scan_time = OS_IsValidUniqueTime(node[i]->content);
-            if (!syscheck->scan_time) {
+            char *validated_time = OS_IsValidUniqueTime(node[i]->content);
+            if (!validated_time) {
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+            /* Free previous values in case the option is set more than once */
+            os_free(syscheck->scan_time);
+            os_free(syscheck->scan_time_str);
+            /* Keep the internal encoded value for the scheduler and the
+             * original string for the configuration report */
+            syscheck->scan_time = validated_time;
+            os_strdup(node[i]->content, syscheck->scan_time_str);
         }
 
         /* Get scan day */
         else if (strcmp(node[i]->element, xml_scanday) == 0) {
-            syscheck->scan_day = OS_IsValidDay(node[i]->content);
-            if (!syscheck->scan_day) {
+            char *validated_day = OS_IsValidDay(node[i]->content);
+            if (!validated_day) {
                 mwarn(INVALID_DAY, node[i]->content);
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+            /* Free previous values in case the option is set more than once */
+            os_free(syscheck->scan_day);
+            os_free(syscheck->scan_day_str);
+            /* Keep the internal bitmap for the scheduler and the original
+             * string for the configuration report */
+            syscheck->scan_day = validated_day;
+            os_strdup(node[i]->content, syscheck->scan_day_str);
         }
 
         /* Get file limit */
@@ -2287,6 +2303,12 @@ void Free_Syscheck(syscheck_config * config) {
         }
         if (config->scan_time) {
             free(config->scan_time);
+        }
+        if (config->scan_day_str) {
+            free(config->scan_day_str);
+        }
+        if (config->scan_time_str) {
+            free(config->scan_time_str);
         }
         if (config->ignore) {
             for (i=0; config->ignore[i] != NULL; i++) {
