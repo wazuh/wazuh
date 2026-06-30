@@ -664,15 +664,8 @@ def test_inspector_with_only_logs_after(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
-    # For inspector, validate V1 and V2 APIs both execute successfully
+    # For inspector, validate InspectorV2 API executed successfully
     if service_type == 'inspector' and expected_results_min is not None:
-        # Validate InspectorV1 API executed (can return 0+ events)
-        log_monitor.start(
-            timeout=TIMEOUT[10],
-            callback=event_monitor.make_aws_callback(r'.*\[InspectorV1\] \d+ events collected and processed'),
-        )
-        assert log_monitor.callback_result is not None, 'InspectorV1 API did not execute - check logs'
-
         # Validate InspectorV2 API executed (can return 0+ events or report no updates)
         log_monitor.start(
             timeout=TIMEOUT[10],
@@ -951,14 +944,6 @@ def test_inspector_multiple_calls(
     # Call the module with only_logs_after set in the past and check that the expected number of logs were processed.
     # Validate V1 and V2 APIs both execute successfully, and total events meets minimum (106)
     command_output = call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2025-SEP-15')
-
-    # Validate InspectorV1 API executed (can return 0+ events)
-    analyze_command_output(
-        command_output=command_output,
-        callback=event_monitor.make_aws_callback(r'.*\[InspectorV1\] \d+ events collected and processed'),
-        expected_results=1,
-        error_message='InspectorV1 API did not execute - check logs'
-    )
 
     # Validate InspectorV2 API executed (can return 0+ events or report no updates)
     analyze_command_output(

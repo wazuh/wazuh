@@ -60,7 +60,7 @@ def test_main(mock_arguments, args: list[str], class_):
         instance.iter_bucket.assert_called_once()
     elif 'service' in args[1]:
         if args[2] == 'inspector':
-            total_regions = len(services.inspector.INSPECTOR_V1_REGIONS) + len(services.inspector.INSPECTOR_V2_REGIONS)
+            total_regions = len(services.inspector.INSPECTOR_V2_REGIONS)
             assert mocked_class.call_count == total_regions
             assert instance.get_alerts.call_count == total_regions
         else:
