@@ -7,6 +7,10 @@ on:
       - "src/**"
       - ".github/workflows/4_testcomponent_windows-dll-hijack.yml"
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -31,8 +35,11 @@ jobs:
           rm -f src/win32/setup-*.exe
           cp src/win32/*.exe src/exe_files/
       - name: Upload Artifact executables
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: executables
           path: src/exe_files
       - name: Copy configuration files
@@ -44,8 +51,11 @@ jobs:
           sed -i 's+windows.debug=0+windows.debug=2+g' etc/internal_options.conf
           cp src/win32/internal_options.conf src/configuration_files/
       - name: Upload Artifact configuration files
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: configuration
           path: src/configuration_files
   check_dll_on_windows:
@@ -63,13 +73,19 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact executables
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: executables
           path: C:\executables\
       - name: Download Artifact configuration files
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: configuration
           path: C:\configuration_files\
       - name: Copy configuration files
@@ -89,7 +105,10 @@ jobs:
           python -m pytest -vv ./test_dll_hijack.py
       - name: Upload .csv files
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: csv_files ${{ matrix.os }}
           path: C:\executables\*.csv

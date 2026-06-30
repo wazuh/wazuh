@@ -2,6 +2,19 @@ name: "Coding style check"
 description: "Validates the Coding style of a given module"
 
 inputs:
+  aws_region:
+    description: "AWS region for S3 (pass the CI_AWS_REGION secret)."
+    required: false
+    default: "us-east-1"
+
+  bucket:
+    description: "Target S3 bucket URI (pass the CI_INTERNAL_S3_BUCKET secret)."
+    required: false
+    default: ""
+  aws_role:
+    description: "IAM role (OIDC) to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+    required: false
+    default: ""
   path:
     required: true
     description: "Path to validate"
@@ -113,9 +126,11 @@ runs:
           fi
 
       # Upload errors as an artifact, when failed
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/upload_s3_artifact
         if: failure()
         with:
+          aws_region: ${{ inputs.aws_region }}
+          bucket: ${{ inputs.bucket }}
+          aws_role: ${{ inputs.aws_role }}
           name: Clang-format errors - ${{ inputs.id }}
           path: ${{ inputs.path }}/clang_format_errors.txt
-          retention-days: 1

@@ -6,6 +6,10 @@ on:
       - "src/**"
       - ".github/workflows/4_testcomponent_windows-files.yml"
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -33,8 +37,11 @@ jobs:
           rm -f src/win32/libstdc++-6.dll
           find src/ -name "*.dll" -not -path "src/external/*" -not -path "src/win32/SimpleSC/*" -not -path "src/win32/nsProcess/*" -exec cp {} src/bin_files/ \;
       - name: Upload Artifact binaries
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: binaries
           path: src/bin_files
   check_binaries_details:
@@ -49,8 +56,11 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
       - name: Download Artifact binaries
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: binaries
           path: C:\binaries\
       - name: Install dependencies

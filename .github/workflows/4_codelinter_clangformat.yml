@@ -6,6 +6,10 @@ on:
     # Pull request events
     types: [synchronize, opened, reopened, ready_for_review]
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   style:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -25,4 +29,6 @@ jobs:
       - name: Inventory harvester - Coding style
         uses: ./.github/actions/clang_format
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/wazuh_modules/inventory_harvester

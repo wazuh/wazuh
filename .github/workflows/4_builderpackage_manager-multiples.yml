@@ -30,6 +30,11 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
 
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
 jobs:
   select-targets:
     name: Select build targets (Wazuh Managers)

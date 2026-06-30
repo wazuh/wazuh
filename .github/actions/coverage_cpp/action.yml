@@ -2,6 +2,19 @@ name: "Coverage CPP"
 description: "Calculates the coverage for a module located on a given path"
 
 inputs:
+  aws_region:
+    description: "AWS region for S3 (pass the CI_AWS_REGION secret)."
+    required: false
+    default: "us-east-1"
+
+  bucket:
+    description: "Target S3 bucket URI (pass the CI_INTERNAL_S3_BUCKET secret)."
+    required: false
+    default: ""
+  aws_role:
+    description: "IAM role (OIDC) to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+    required: false
+    default: ""
   path:
     required: true
     description: "Path to the module"
@@ -84,11 +97,13 @@ runs:
       # Upload the coverage report as an artifact
       - name: Uploading coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ inputs.aws_region }}
+          bucket: ${{ inputs.bucket }}
+          aws_role: ${{ inputs.aws_role }}
           name: Coverage Report - ${{ inputs.id }}
           path: ./src/build/coverage_report
-          retention-days: 1
 
       # Check whether the coverage is greater than 90% both for lines and functions
       - name: Validate coverage
