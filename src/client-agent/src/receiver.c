@@ -314,6 +314,37 @@ int receive_msg()
     return 0;
 }
 
+/* Set to 1 by w_agentd_force_stop() (from OssecServiceCtrlHandler) before
+ * reporting SERVICE_STOPPED.  Both the connection retry loop in start_agent()
+ * and receiver_messages() poll this so the process exits cleanly on service
+ * stop without relying on ExitProcess(). */
+volatile int receiver_should_stop = 0;
+
+#ifdef WIN32
+/* Called by OssecServiceCtrlHandler on service stop.  Signals the connection
+ * and receive loops to abort and closes whatever socket the agent currently
+ * holds, so any thread blocked inside connect()/recv()/send() returns
+ * immediately and the main thread can unwind.  This keeps wazuh-agent.exe from
+ * lingering after the service reports SERVICE_STOPPED (a lingering process
+ * holds handles under the install dir and delays MSI file removal).
+ *
+ * The socket is closed without taking the send mutex on purpose: the goal is
+ * precisely to interrupt a thread that may be blocked holding it inside
+ * send()/recv().  A connect() that has not yet published its fd into agt->sock
+ * cannot be interrupted this way and will run to its TCP timeout before the
+ * loop next checks the flag; that is bounded and far better than blocking
+ * forever. */
+void w_agentd_force_stop(void)
+{
+    receiver_should_stop = 1;
+
+    const int current_sock = agt->sock;
+    if (current_sock >= 0) {
+        OS_CloseSocket(current_sock);
+    }
+}
+#endif
+
 #ifdef WIN32
 /* Receive events from the server */
 int receiver_messages()
@@ -329,24 +360,44 @@ int receiver_messages()
             ExecdTimeoutRun();
         }
 
+        /* Exit cleanly when the service stop handler has signalled shutdown.
+         * Checked before the sock==-1 sleep so the process does not wait an
+         * extra 5 seconds after OssecServiceCtrlHandler returns. */
+        if (receiver_should_stop) {
+            return 0;
+        }
+
         /* sock must be set */
         if (agt->sock == -1) {
             sleep(5);
             continue;
         }
 
+        /* Snapshot the atomic fd before any use: the stop handler (closing the
+         * socket) or sendmsg (on a WSAETIMEDOUT) may write -1 concurrently.
+         * FD_SET/select need a stable, non-negative descriptor. */
+        const int sock = agt->sock;
+        if (sock == -1) {
+            continue;
+        }
+
         run_notify();
 
         FD_ZERO(&fdset);
-        FD_SET(agt->sock, &fdset);
+        FD_SET(sock, &fdset);
 
-        /* Wait for 1 second */
+        /* Wait up to 1 second for incoming data */
         selecttime.tv_sec = 1;
         selecttime.tv_usec = 0;
 
         /* Wait with a timeout for any descriptor */
-        rc = select(agt->sock + 1, &fdset, NULL, NULL, &selecttime);
+        rc = select(sock + 1, &fdset, NULL, NULL, &selecttime);
         if (rc == -1) {
+            /* WSAEBADF / WSAENOTSOCK can occur when the stop handler closes
+             * agt->sock while select() is in flight; treat it as shutdown. */
+            if (receiver_should_stop) {
+                return 0;
+            }
             merror(SELECT_ERROR, WSAGetLastError(), win_strerror(WSAGetLastError()));
             sleep(30);
             continue;
