@@ -38,9 +38,10 @@ public:
      */
     explicit ContentProvider(const std::string& topicName,
                              const nlohmann::json& parameters,
-                             FileProcessingCallback fileProcessingCallback)
+                             FileProcessingCallback fileProcessingCallback,
+                             ContentUpdateCallbacks updateCallbacks = {})
     {
-        m_action = std::make_shared<Action>(topicName, parameters, fileProcessingCallback);
+        m_action = std::make_shared<Action>(topicName, parameters, fileProcessingCallback, std::move(updateCallbacks));
     }
 
     /**
@@ -79,6 +80,11 @@ public:
     void changeSchedulerInterval(const size_t interval)
     {
         m_action->changeSchedulerInterval(interval);
+    }
+
+    uint64_t getCurrentOffset() const
+    {
+        return m_action->getCurrentOffset();
     }
 };
 

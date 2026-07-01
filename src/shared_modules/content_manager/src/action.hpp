@@ -39,14 +39,15 @@ public:
      */
     explicit Action(std::string topicName,
                     nlohmann::json parameters,
-                    const FileProcessingCallback fileProcessingCallback)
+                    const FileProcessingCallback fileProcessingCallback,
+                    ContentUpdateCallbacks updateCallbacks = {})
         : m_actionInProgress {false}
         , m_cv {}
         , m_topicName {std::move(topicName)}
         , m_interval {0}
         , m_stopActionCondition {std::make_shared<ConditionSync>(false)}
-        , m_orchestration {
-              std::make_unique<ActionOrchestrator>(parameters, m_stopActionCondition, fileProcessingCallback)}
+        , m_orchestration {std::make_unique<ActionOrchestrator>(
+              parameters, m_stopActionCondition, fileProcessingCallback, std::move(updateCallbacks))}
     {
         m_parameters = std::move(parameters);
     }
@@ -191,6 +192,11 @@ public:
     {
         m_interval = interval;
         m_cv.notify_one();
+    }
+
+    uint64_t getCurrentOffset() const
+    {
+        return m_orchestration->getCurrentOffset();
     }
 
 private:

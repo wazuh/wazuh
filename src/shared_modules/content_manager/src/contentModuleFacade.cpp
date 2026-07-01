@@ -37,7 +37,8 @@ void ContentModuleFacade::removeProvider(const std::string& name)
 
 void ContentModuleFacade::addProvider(const std::string& name,
                                       const nlohmann::json& parameters,
-                                      const FileProcessingCallback fileProcessingCallback)
+                                      const FileProcessingCallback fileProcessingCallback,
+                                      ContentUpdateCallbacks updateCallbacks)
 {
     std::lock_guard<std::shared_mutex> lock {m_mutex};
     // If already exist throw exception
@@ -46,7 +47,8 @@ void ContentModuleFacade::addProvider(const std::string& name,
         throw std::runtime_error("Provider already exist");
     }
 
-    m_providers.emplace(name, std::make_unique<ContentProvider>(name, parameters, fileProcessingCallback));
+    m_providers.emplace(
+        name, std::make_unique<ContentProvider>(name, parameters, fileProcessingCallback, std::move(updateCallbacks)));
 }
 
 void ContentModuleFacade::startScheduling(const std::string& name, size_t interval)
@@ -100,4 +102,14 @@ void ContentModuleFacade::changeSchedulerInterval(const std::string& name, const
     {
         logError(WM_CONTENTUPDATER, "Couldn't change scheduled interval: %s.", e.what());
     }
+}
+
+uint64_t ContentModuleFacade::getCurrentOffset(const std::string& name) const
+{
+    std::shared_lock<std::shared_mutex> lock {m_mutex};
+    if (const auto providerIt = m_providers.find(name); providerIt != m_providers.end())
+    {
+        return providerIt->second->getCurrentOffset();
+    }
+    return 0;
 }

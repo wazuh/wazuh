@@ -57,6 +57,11 @@ struct UpdaterBaseContext
     FileProcessingCallback fileProcessingCallback;
 
     /**
+     * @brief Callbacks that report the lifecycle of a content update attempt.
+     */
+    ContentUpdateCallbacks updateCallbacks;
+
+    /**
      * @brief Pointer to the RocksDB instance.
      *
      */
@@ -100,9 +105,11 @@ struct UpdaterBaseContext
      *
      */
     explicit UpdaterBaseContext(std::shared_ptr<ConditionSync> spStopCondition,
-                                FileProcessingCallback fileProcessingCallback)
+                                FileProcessingCallback fileProcessingCallback,
+                                ContentUpdateCallbacks updateCallbacks = {})
         : spStopCondition(std::move(spStopCondition))
         , fileProcessingCallback(std::move(fileProcessingCallback))
+        , updateCallbacks(std::move(updateCallbacks))
     {
     }
 };
