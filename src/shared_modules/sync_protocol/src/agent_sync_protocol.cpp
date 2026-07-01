@@ -175,7 +175,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     if (!m_syncInProgress.compare_exchange_strong(expected, true))
     {
         m_logger(LOG_DEBUG, "Synchronization already in progress, skipping concurrent request");
-        return {true, ""};
+        return {true, {}};
     }
 
     struct SyncInProgressGuard
@@ -220,7 +220,7 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     {
         const std::string modeStr = (mode == Mode::FULL) ? "FULL" : "DELTA";
         m_logger(LOG_DEBUG, "No items to synchronize in " + modeStr + " mode");
-        return {true, ""};
+        return {true, {}};
     }
 
     for (size_t i = 0; i < dataToSync.size(); ++i)

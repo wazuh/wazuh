@@ -45,8 +45,8 @@ bool __wrap_asp_parse_response_buffer(AgentSyncProtocolHandle* handle, const uin
 
 void __wrap_asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
 
-bool __wrap_asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
-                                        int mode);
+SyncModuleResult_t __wrap_asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
+                                                      int mode);
 
 bool __wrap_asp_notify_data_clean(AgentSyncProtocolHandle* handle,
                                   const char** indices,

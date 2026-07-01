@@ -2826,8 +2826,8 @@ int Syscollector::executeFlushSync()
     }
 
     // Trigger immediate synchronization to flush pending messages.
-    SyncModuleResult result = {true, ""};
-    SyncModuleResult vdResult = {true, ""};
+    SyncModuleResult result = {true, {}};
+    SyncModuleResult vdResult = {true, {}};
 
     if (m_spSyncProtocol)
     {

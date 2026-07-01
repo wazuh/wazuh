@@ -197,15 +197,15 @@ extern "C" {
         }
     }
 
-    bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
-                                     Mode_t mode,
-                                     const char** indices,
-                                     size_t indices_count,
-                                     uint64_t global_version)
+    SyncModuleResult_t asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
+                                                    Mode_t mode,
+                                                    const char** indices,
+                                                    size_t indices_count,
+                                                    uint64_t global_version)
     {
         try
         {
-            if (!handle || !indices || indices_count == 0) return false;
+            if (!handle || !indices || indices_count == 0) return {false, {}};
 
             // Convert C array of strings to C++ vector
             std::vector<std::string> indices_vec;
@@ -219,21 +219,27 @@ extern "C" {
                 }
             }
 
-            if (indices_vec.empty()) return false;
+            if (indices_vec.empty()) return {false, {}};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
-            return wrapper->impl->synchronizeMetadataOrGroups(static_cast<Mode>(mode),
-                                                              indices_vec,
-                                                              global_version).success;
+            SyncModuleResult cppResult = wrapper->impl->synchronizeMetadataOrGroups(static_cast<Mode>(mode),
+                                                                                     indices_vec,
+                                                                                     global_version);
+            SyncModuleResult_t cResult;
+            cResult.success = cppResult.success;
+            strncpy(cResult.failure_reason, cppResult.failureReason.c_str(), SYNC_FAILURE_REASON_MAX_LEN - 1);
+            cResult.failure_reason[SYNC_FAILURE_REASON_MAX_LEN - 1] = '\0';
+
+            return cResult;
         }
         catch (const std::exception& ex)
         {
-            return false;
+            return {false, {}};
         }
         catch (...)
         {
-            return false;
+            return {false, {}};
         }
     }
 

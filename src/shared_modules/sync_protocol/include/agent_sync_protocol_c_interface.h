@@ -107,12 +107,12 @@ void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
 /// @param indices Array of index name strings that will be updated by the manager.
 /// @param indices_count Number of indices in the array.
 /// @param global_version Global version to include in the Start message
-/// @return true if synchronization completed successfully, false otherwise
-bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
-                                 Mode_t mode,
-                                 const char** indices,
-                                 size_t indices_count,
-                                 uint64_t global_version);
+/// @return SyncModuleResult_t with success flag and failure reason if unsuccessful
+SyncModuleResult_t asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
+                                               Mode_t mode,
+                                               const char** indices,
+                                               size_t indices_count,
+                                               uint64_t global_version);
 
 /// @brief Notifies the manager about data cleaning for specified indices.
 ///

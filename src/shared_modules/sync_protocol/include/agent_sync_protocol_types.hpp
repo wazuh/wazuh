@@ -29,6 +29,6 @@ enum class SyncResult
 
 struct SyncModuleResult
 {
-    bool success;
+    bool success{false};
     std::string failureReason;
 };
