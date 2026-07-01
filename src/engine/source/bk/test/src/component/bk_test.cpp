@@ -88,6 +88,32 @@ TEST_P(PipelineTest, RxProcessTraces)
     GTEST_SKIP(); // TODO
 }
 
+TEST(RxControllerTest, DoesNotRetainSourceExpression)
+{
+    std::weak_ptr<base::Formula> sourceExpression;
+    std::unique_ptr<bk::rx::Controller> controller;
+    std::weak_ptr<base::Formula> sourceTerm;
+    {
+        auto term = base::Term<base::EngineOp>::create("term",
+                                                       [](const base::Event& event)
+                                                       {
+                                                           event->setBool(true, PATH_RESULT);
+                                                           return base::result::makeSuccess(event);
+                                                       });
+        auto expression = base::Chain::create("chain", {term});
+        controller = std::make_unique<bk::rx::Controller>(expression, std::unordered_set<std::string> {});
+        sourceTerm = term;
+        sourceExpression = expression;
+    }
+
+    ASSERT_TRUE(sourceExpression.expired());
+
+    ASSERT_TRUE(sourceTerm.expired());
+    auto event = std::make_shared<json::Json>();
+    ASSERT_NO_THROW(event = controller->ingestGet(std::move(event)));
+    ASSERT_TRUE(event->getBool(PATH_RESULT).value());
+}
+
 INSTANTIATE_TEST_SUITE_P(
     BK,
     PipelineTest,

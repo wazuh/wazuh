@@ -13,7 +13,6 @@ Controller::Controller(const base::Expression& expression,
                        const std::unordered_set<std::string>& traceables,
                        const std::function<void()>& endCallback)
     : m_traceables {traceables}
-    , m_expression {expression}
     , m_policyInput {m_policySubject.get_subscriber()}
 {
     detail::ExprBuilder builder;
