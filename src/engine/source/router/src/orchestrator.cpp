@@ -7,8 +7,8 @@
 
 #include <base/json.hpp>
 #include <base/logging.hpp>
-#include <proc.hpp>
 #include <fastmetrics/registry.hpp>
+#include <proc.hpp>
 
 #include <router/orchestrator.hpp>
 
