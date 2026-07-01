@@ -125,14 +125,36 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Set ARCH and PACKAGE_ARCH
+        env:
+          INPUT_SYSTEM: ${{ inputs.system }}
+          INPUT_ARCHITECTURE: ${{ inputs.architecture }}
         run: |
-          if [ "${{ inputs.architecture }}" = "x86_64" ] || [ "${{ inputs.architecture }}" = "amd64" ]; then
-            pkg_arch="amd64"
-            [ "${{ inputs.system }}" = "rpm" ] && arch="x86_64" || arch="amd64"
-          else
-            pkg_arch="arm64"
-            [ "${{ inputs.system }}" = "rpm" ] && arch="aarch64" || arch="arm64"
-          fi
+          case "$INPUT_SYSTEM" in
+            rpm)
+              case "$INPUT_ARCHITECTURE" in
+                x86_64|amd64)
+                  arch="x86_64"
+                  pkg_arch="amd64"
+                  ;;
+                aarch64|arm64)
+                  arch="aarch64"
+                  pkg_arch="arm64"
+                  ;;
+              esac
+              ;;
+            deb)
+              case "$INPUT_ARCHITECTURE" in
+                x86_64|amd64)
+                  arch="amd64"
+                  pkg_arch="amd64"
+                  ;;
+                aarch64|arm64)
+                  arch="arm64"
+                  pkg_arch="arm64"
+                  ;;
+              esac
+              ;;
+          esac
 
           cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
           ARCH=$arch
@@ -140,12 +162,16 @@ jobs:
           EOF
 
       - name: Set tag and container name
+        env:
+          INPUT_DOCKER_IMAGE_TAG: ${{ inputs.docker_image_tag }}
+          INPUT_SYSTEM: ${{ inputs.system }}
+          GIT_REF_NAME: ${{ github.ref_name }}
         run: |
           VERSION="$(grep '"version"' $GITHUB_WORKSPACE/VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
-          if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
-          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ github.ref_name }})" >> $GITHUB_ENV;
-          else echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV; fi
-          echo "CONTAINER_NAME=pkg_${{ inputs.system }}_manager_builder_${{ env.PACKAGE_ARCH }}" >> $GITHUB_ENV
+          if [ "$INPUT_DOCKER_IMAGE_TAG" == "auto" ]; then echo "TAG=$VERSION" >> $GITHUB_ENV;
+          elif [ "$INPUT_DOCKER_IMAGE_TAG" == "developer" ]; then echo "TAG=$(sed 's|[/\]|--|g' <<< "$GIT_REF_NAME")" >> $GITHUB_ENV;
+          else echo "TAG=$INPUT_DOCKER_IMAGE_TAG" >> $GITHUB_ENV; fi
+          echo "CONTAINER_NAME=pkg_${INPUT_SYSTEM}_manager_builder_${PACKAGE_ARCH}" >> $GITHUB_ENV
 
       - name: CodeBuild workarounds
         # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
@@ -176,7 +202,7 @@ jobs:
       - name: Download docker image for package building
         timeout-minutes: 20
         run: |
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor }} $CONTAINER_NAME ${{ env.TAG }}
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.GITHUB_TOKEN }}" "${{ github.actor }}" "$CONTAINER_NAME" "$TAG"
 
       - name: Append short commit to VERSION file
         run: |
@@ -189,23 +215,31 @@ jobs:
       - name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
         timeout-minutes: 45
         working-directory: packages
+        env:
+          INPUT_REVISION: ${{ inputs.revision }}
+          INPUT_IS_STAGE: ${{ inputs.is_stage }}
+          INPUT_CHECKSUM: ${{ inputs.checksum }}
+          INPUT_DEBUG: ${{ inputs.debug }}
+          INPUT_SYSTEM: ${{ inputs.system }}
         run: |
           SHORT_COMMIT=$(git rev-parse --short HEAD)
-          REVISION=${{ inputs.revision }}
+          REVISION="$INPUT_REVISION"
           FLAGS="--verbose -t manager -s /tmp --dont-build-docker -j $(nproc) "
           if [ -z "$REVISION" ]; then FLAGS+="-r 0 "; else FLAGS+="-r $REVISION "; fi
-          if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
-          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
-          if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
-          echo "generate_package.sh -a ${{ env.PACKAGE_ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
-          bash generate_package.sh -a ${{ env.PACKAGE_ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
+          if [ "$INPUT_IS_STAGE" == "true" ]; then FLAGS+="--is_stage "; fi
+          if [ "$INPUT_CHECKSUM" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "$INPUT_DEBUG" == "true" ]; then FLAGS+="--debug "; fi
+          # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
+          echo "generate_package.sh -a $PACKAGE_ARCH --tag $TAG --system $INPUT_SYSTEM $FLAGS"
+          bash generate_package.sh -a "$PACKAGE_ARCH" --tag "$TAG" --system "$INPUT_SYSTEM" $FLAGS
 
-          if [ "${{ inputs.system }}" == "deb" ]; then
+          if [ "$INPUT_SYSTEM" == "deb" ]; then
             SYMBOLS_TAG="dbg"
           else
             SYMBOLS_TAG="debuginfo"
           fi
-          for file in $(find /tmp -maxdepth 1 -type f -name 'wazuh-manager*.${{ inputs.system }}' -exec basename {} 2>/dev/null \;); do
+          # Find all files starting with 'wazuh-manager' and ending with '.rpm or .deb'
+          for file in $(find /tmp -maxdepth 1 -type f -name "wazuh-manager*.$INPUT_SYSTEM" -exec basename {} 2>/dev/null \;); do
             if [[ "$file" == *"$SYMBOLS_TAG"* ]]; then
               PACKAGE_SYMBOLS_NAME="$file"
             else
@@ -221,10 +255,10 @@ jobs:
         timeout-minutes: 15
         run: |
           TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
-          if [ -z "${{ env.PACKAGE_NAME }}" ]; then echo "No package found matching the pattern!"; exit 1; fi
+          if [ -z "$PACKAGE_NAME" ]; then echo "No package found matching the pattern!"; exit 1; fi
 
           CONTAINER_ID=$(sudo docker run -d -v $TESTS_PATH/:/tests -v /tmp/:/packages -v /var/wazuh-manager:/var/wazuh-manager \
-            --entrypoint '/bin/sh' $CONTAINER_NAME:${{ env.TAG }} -c "tail -f /dev/null")
+            --entrypoint '/bin/sh' "$CONTAINER_NAME:$TAG" -c "tail -f /dev/null")
 
           sudo docker exec $CONTAINER_ID /tests/install_component.sh $PACKAGE_NAME manager
 
@@ -269,7 +303,7 @@ jobs:
       - name: Test uninstall built manager
         timeout-minutes: 10
         run: |
-          if [ -z "${{ env.PACKAGE_NAME }}" ] || [ -z "${{ env.CONTAINER_ID }}" ]; then
+          if [ -z "$PACKAGE_NAME" ] || [ -z "$CONTAINER_ID" ]; then
             echo "No package or container found!";
             exit 1;
           fi
@@ -290,7 +324,7 @@ jobs:
               sudo apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=60 install -y curl jq
           fi
 
-          CURRENT_TAG="${{ env.TAG }}"
+          CURRENT_TAG="$TAG"
           RELEASES_FILE=$(mktemp)
           trap 'rm -f "$RELEASES_FILE"' EXIT
 
@@ -320,18 +354,17 @@ jobs:
       - name: Download latest public wazuh-manager package
         if: env.HAS_PREVIOUS_RELEASE == 'true'
         timeout-minutes: 10
+        env:
+          INPUT_SYSTEM: ${{ inputs.system }}
         run: |
-          ARCH=${{ env.ARCH }}
-          VERSION=${{ env.PUBLIC_RELEASE_VERSION }}
-
-          if [ "${{ inputs.system }}" = "deb" ]; then
-            FILE_NAME_PUBLIC="wazuh-manager_${VERSION}-1_${ARCH}.deb"
+          if [ "$INPUT_SYSTEM" = "deb" ]; then
+            FILE_NAME_PUBLIC="wazuh-manager_${PUBLIC_RELEASE_VERSION}-1_${ARCH}.deb"
             BASE_URL="https://packages.wazuh.com/5.x/apt/pool/main/w/wazuh-manager"
-          elif [ "${{ inputs.system }}" = "rpm" ]; then
-            FILE_NAME_PUBLIC="wazuh-manager-${VERSION}-1.${ARCH}.rpm"
+          elif [ "$INPUT_SYSTEM" = "rpm" ]; then
+            FILE_NAME_PUBLIC="wazuh-manager-${PUBLIC_RELEASE_VERSION}-1.${ARCH}.rpm"
             BASE_URL="https://packages.wazuh.com/5.x/yum"
           else
-            echo "Unsupported system type: ${{ inputs.system }}"
+            echo "Unsupported system type: $INPUT_SYSTEM"
             exit 1
           fi
 
@@ -344,12 +377,14 @@ jobs:
 
       - name: Run container and install upgrade baseline
         timeout-minutes: 20
+        env:
+          INPUT_SYSTEM: ${{ inputs.system }}
         run: |
-          SYSTEM=${{ inputs.system }}
-          if [ "${{ env.HAS_PREVIOUS_RELEASE }}" = "true" ]; then
-            FILE_NAME=${{ env.PUBLIC_PACKAGE_NAME }}
+          SYSTEM="$INPUT_SYSTEM"
+          if [ "$HAS_PREVIOUS_RELEASE" = "true" ]; then
+            FILE_NAME="$PUBLIC_PACKAGE_NAME"
           else
-            FILE_NAME=${{ env.PACKAGE_NAME }}
+            FILE_NAME="$PACKAGE_NAME"
           fi
 
           if [ "$SYSTEM" = "deb" ]; then
@@ -388,13 +423,15 @@ jobs:
 
       - name: Upgrade to current Wazuh version
         timeout-minutes: 20
+        env:
+          INPUT_SYSTEM: ${{ inputs.system }}
         run: |
-          SYSTEM=${{ inputs.system }}
-          FILE_NAME=${{ env.PACKAGE_NAME }}
+          SYSTEM="$INPUT_SYSTEM"
+          FILE_NAME="$PACKAGE_NAME"
 
           if [ "$SYSTEM" = "deb" ]; then
             INSTALL_CMD="dpkg -i /packages/$FILE_NAME || apt-get -o Acquire::Retries=5 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=60 -f install -y"
-          elif [ "${{ env.HAS_PREVIOUS_RELEASE }}" = "true" ]; then
+          elif [ "$HAS_PREVIOUS_RELEASE" = "true" ]; then
             INSTALL_CMD="yum --setopt=retries=5 --setopt=timeout=30 localinstall -y /packages/$FILE_NAME"
           else
             INSTALL_CMD="rpm -Uvh --replacepkgs /packages/$FILE_NAME"
@@ -448,8 +485,8 @@ jobs:
         run: |
           "$RETRY_SCRIPT" --attempts 3 --delay 10 --backoff 2 --max-delay 30 --timeout 600 \
             --label "Upload package to S3" -- \
-            aws s3 cp /tmp/${{ env.PACKAGE_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}"
+            aws s3 cp "/tmp/$PACKAGE_NAME" s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/$PACKAGE_NAME"
           echo "S3 URI: ${s3uri}"
 
       - name: Upload checksum to S3
@@ -458,8 +495,8 @@ jobs:
         run: |
           "$RETRY_SCRIPT" --attempts 3 --delay 10 --backoff 2 --max-delay 30 --timeout 600 \
             --label "Upload package checksum to S3" -- \
-            aws s3 cp /tmp/${{ env.PACKAGE_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_NAME }}.sha512"
+            aws s3 cp "/tmp/$PACKAGE_NAME.sha512" s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          s3uri="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/$PACKAGE_NAME.sha512"
           echo "S3 sha512 URI: ${s3uri}"
 
       - name: Upload debug symbols to S3
@@ -468,8 +505,8 @@ jobs:
         run: |
           "$RETRY_SCRIPT" --attempts 3 --delay 10 --backoff 2 --max-delay 30 --timeout 600 \
             --label "Upload debug symbols to S3" -- \
-            aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }} s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}"
+            aws s3 cp "/tmp/$PACKAGE_SYMBOLS_NAME" s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/$PACKAGE_SYMBOLS_NAME"
           echo "S3 symbols URI: ${symbols}"
 
       - name: Upload debug symbols checksum to S3
@@ -478,6 +515,6 @@ jobs:
         run: |
           "$RETRY_SCRIPT" --attempts 3 --delay 10 --backoff 2 --max-delay 30 --timeout 600 \
             --label "Upload debug symbols checksum to S3" -- \
-            aws s3 cp /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512 s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
-          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/${{ env.PACKAGE_SYMBOLS_NAME }}.sha512"
+            aws s3 cp "/tmp/$PACKAGE_SYMBOLS_NAME.sha512" s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/
+          symbols="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages/$PACKAGE_SYMBOLS_NAME.sha512"
           echo "S3 symbols sha512 URI: ${symbols}"

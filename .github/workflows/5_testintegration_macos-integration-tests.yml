@@ -147,20 +147,10 @@ jobs:
           ' /Library/Ossec/etc/ossec.conf > /tmp/ossec.conf.fixed && sudo mv /tmp/ossec.conf.fixed /Library/Ossec/etc/ossec.conf
 
       - name: Download and install integration tests framework
-        run: |
-          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_BASE}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION}`" != "X" ]; then
-              QA_BRANCH=${VERSION}
-          else
-              QA_BRANCH="main"
-          fi
-          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install qa-integration-framework/
-          sudo rm -rf qa-integration-framework/
+        uses: ./.github/actions/install_qa_framework
+        with:
+          branch_name: ${{ env.BRANCH_NAME }}
+          branch_base: ${{ env.BRANCH_BASE }}
 
       - name: Run pre-install steps
         if: inputs.pre_install != ''

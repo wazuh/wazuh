@@ -154,11 +154,13 @@ jobs:
 
       - name: Set PKG_NAME
         shell: bash
+        env:
+          INPUT_REVISION: ${{ inputs.revision }}
         run: |
           VERSION="${{ needs.build-windows-i686.outputs.version }}"
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           COMMIT_HASH="$(git rev-parse --short=7 HEAD)"
-          REVISION="${{ inputs.revision }}"
+          REVISION="$INPUT_REVISION"
           if [ -z "$REVISION" ]; then REVISION="0"; fi
           PKG_NAME="wazuh-agent_${VERSION}-${REVISION}_windows_${COMMIT_HASH}"
           echo "PKG_NAME=$PKG_NAME" >> $GITHUB_ENV
@@ -265,13 +267,13 @@ jobs:
         shell: pwsh
         run: |
           cd src/win32
-          ./generate_wazuh_msi.ps1 -MSI_NAME ${{ env.PKG_NAME }}.msi -SIGN no
+          ./generate_wazuh_msi.ps1 -MSI_NAME "$env:PKG_NAME.msi" -SIGN no
 
-          $PACKAGE_NAME = "${{ env.PKG_NAME }}.msi"
+          $PACKAGE_NAME = "$env:PKG_NAME.msi"
           $PACKAGE_SYMBOLS_NAME = ""
-          if (Test-Path "${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip") {
-            $PACKAGE_SYMBOLS_NAME = "${{ env.PACKAGE_SYMBOLS_NAME }}.zip"
-            Rename-Item "${{ env.PKG_NAME_SYMBOLS_SHORT }}.zip" "$PACKAGE_SYMBOLS_NAME"
+          if (Test-Path "$env:PKG_NAME_SYMBOLS_SHORT.zip") {
+            $PACKAGE_SYMBOLS_NAME = "$env:PACKAGE_SYMBOLS_NAME.zip"
+            Rename-Item "$env:PKG_NAME_SYMBOLS_SHORT.zip" "$PACKAGE_SYMBOLS_NAME"
           }
 
           echo "package-name=$PACKAGE_NAME" >> $env:GITHUB_OUTPUT
@@ -342,7 +344,7 @@ jobs:
       - name: Test install Windows agent
         shell: pwsh
         run: |
-          Start-Process -FilePath "src/win32/${{ env.PACKAGE_NAME }}" -ArgumentList '/q WAZUH_MANAGER="1.1.1.1" /l installer.log' -Wait
+          Start-Process -FilePath "src/win32/$env:PACKAGE_NAME" -ArgumentList '/q WAZUH_MANAGER="1.1.1.1" /l installer.log' -Wait
           $installerfile = Get-Content installer.log
           if ($installerfile -match "Wazuh Agent -- Installation completed successfully") {
             Write-Output "Installation successfully."
@@ -396,7 +398,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path C:\win-agent-base
-          Copy-Item "src/win32/${{ env.PACKAGE_NAME }}" -Destination "C:\win-agent-base\" -Force
+          Copy-Item "src/win32/$env:PACKAGE_NAME" -Destination "C:\win-agent-base\" -Force
 
       - name: Test uninstall and upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
         uses: ./.github/actions/5_builderpackage_windows-smoke-upgrade-test

@@ -104,13 +104,17 @@ jobs:
 
       - name: Compile embedded Python
         working-directory: framework/cpython
+        env:
+          INPUT_BUILD_CPYTHON: ${{ inputs.build_cpython }}
+          INPUT_BUILD_DEPS: ${{ inputs.build_deps }}
         run: |
+          FLAGS=""
+          [ "$INPUT_BUILD_CPYTHON" = "true" ] && FLAGS+="--build-cpython "
+          [ "$INPUT_BUILD_DEPS" = "true" ] && FLAGS+="--build-deps "
           docker run --env ARCH="$PACKAGE_ARCH" \
             -v $GITHUB_WORKSPACE:/wazuh_host -v /tmp:/output \
             --entrypoint=bash "$CONTAINER_NAME:$TAG" \
-            /wazuh_host/framework/cpython/compile.sh \
-              ${{ inputs.build_cpython == true && '--build-cpython' || '' }} \
-              ${{ inputs.build_deps == true && '--build-deps' || '' }}
+            /wazuh_host/framework/cpython/compile.sh $FLAGS
 
       - name: Upload sources
         uses: actions/upload-artifact@v4

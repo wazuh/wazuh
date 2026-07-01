@@ -50,13 +50,14 @@ runs:
         sudo mkdir -p "$INSTALL_DIR/etc/certs"
         if [[ "$CERT_MODE" == "openssl" ]]; then
           sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
-            -keyout "$INSTALL_DIR/etc/certs/root-ca.pem" -out "$INSTALL_DIR/etc/certs/root-ca.pem" \
+            -keyout "$INSTALL_DIR/etc/certs/root-ca-key.pem" -out "$INSTALL_DIR/etc/certs/root-ca.pem" \
             -days 1 -subj "/CN=test" 2>/dev/null
           sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
             -keyout "$INSTALL_DIR/etc/certs/manager-key.pem" -out "$INSTALL_DIR/etc/certs/manager.pem" \
             -days 1 -subj "/CN=test" 2>/dev/null
         elif [[ "$CERT_MODE" == "stub" ]]; then
           sudo touch "$INSTALL_DIR/etc/certs/root-ca.pem"
+          sudo touch "$INSTALL_DIR/etc/certs/root-ca-key.pem"
           sudo touch "$INSTALL_DIR/etc/certs/manager.pem"
           sudo touch "$INSTALL_DIR/etc/certs/manager-key.pem"
         fi

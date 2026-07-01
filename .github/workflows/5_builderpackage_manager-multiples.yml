@@ -98,9 +98,11 @@ jobs:
       - name: Generate dynamic matrix
         id: set-matrix
         uses: actions/github-script@v7
+        env:
+          INPUT_TARGETS: ${{ inputs.targets || 'rpm-x86_64,rpm-aarch64,deb-amd64,deb-arm64' }}
         with:
           script: |
-            const targets = '${{ inputs.targets || 'rpm-x86_64,rpm-aarch64,deb-amd64,deb-arm64' }}'.split(',');
+            const targets = process.env.INPUT_TARGETS.split(',');
             const matrix = targets.map(target => {
               const [system, architecture] = target.split('-');
               return { system, architecture };

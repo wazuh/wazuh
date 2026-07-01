@@ -31,12 +31,15 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Docker build
+        env:
+          GCC_MAJOR_VERSION: ${{ inputs.gcc_major_version }}
+          GCC_MINOR_VERSION: ${{ inputs.gcc_minor_version }}
         run: |
           IMAGE_NAME="gcc-${{ matrix.system }}-${{ matrix.arch }}"
-          docker build -t $IMAGE_NAME -f packages/${{ matrix.system }}s/${{ matrix.arch }}/gcc/Dockerfile \
-            --build-arg GCC_MAJOR_VERSION=${{ inputs.gcc_major_version }} \
-            --build-arg GCC_MINOR_VERSION=${{ inputs.gcc_minor_version }} .
-          docker run -v /tmp:/tmp $IMAGE_NAME /bin/bash -c "cp /packages/* /tmp/"
+          docker build -t "$IMAGE_NAME" -f "packages/${{ matrix.system }}s/${{ matrix.arch }}/gcc/Dockerfile" \
+            --build-arg "GCC_MAJOR_VERSION=$GCC_MAJOR_VERSION" \
+            --build-arg "GCC_MINOR_VERSION=$GCC_MINOR_VERSION" .
+          docker run -v /tmp:/tmp "$IMAGE_NAME" /bin/bash -c "cp /packages/* /tmp/"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

@@ -150,26 +150,10 @@ jobs:
           ' /var/ossec/etc/ossec.conf > /tmp/ossec.conf.fixed && sudo mv /tmp/ossec.conf.fixed /var/ossec/etc/ossec.conf
 
       - name: Download and install integration tests framework
-        run: |
-          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
-          if [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_NAME}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_NAME}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${BRANCH_BASE}`" != "X" ]; then
-              QA_BRANCH=${BRANCH_BASE}
-          elif [ "X`git ls-remote https://github.com/wazuh/qa-integration-framework.git ${VERSION}`" != "X" ]; then
-              QA_BRANCH=${VERSION}
-          else
-              QA_BRANCH="main"
-          fi
-          git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          # The framework is installed for the system python3 that `sudo python`
-          # uses to run the tests. CodeBuild images ship no pip for it (the
-          # GitHub-hosted runner did), so install it and target it explicitly.
-          if ! sudo python3 -m pip --version >/dev/null 2>&1; then
-            sudo apt-get update && sudo apt-get install -y python3-pip
-          fi
-          sudo python3 -m pip install --break-system-packages qa-integration-framework/
-          sudo rm -rf qa-integration-framework/
+        uses: ./.github/actions/install_qa_framework
+        with:
+          branch_name: ${{ env.BRANCH_NAME }}
+          branch_base: ${{ env.BRANCH_BASE }}
 
       - name: Configure AWS credentials
         if: inputs.setup_aws_credentials == true || inputs.setup_aws_credentials == 'true'
