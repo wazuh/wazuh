@@ -14,6 +14,11 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
+/* When non-zero, __wrap_send sets errno to this value on a failing (mock < 0)
+ * call. Lets a test drive OS_SendUnix's ENOBUFS backpressure retry. Default 0
+ * leaves errno untouched (historical behaviour). Reset it in test teardown. */
+extern int test_wrap_send_errno;
+
 int __wrap_socket(__attribute__((unused))int __domain,__attribute__((unused))int __type,__attribute__((unused))int __protocol);
 
 int __wrap_bind(__attribute__((unused))int __fd, __attribute__((unused))__CONST_SOCKADDR_ARG __addr, __attribute__((unused))socklen_t __len);

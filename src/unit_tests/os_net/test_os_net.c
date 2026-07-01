@@ -12,6 +12,7 @@
 #include <cmocka.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "shared.h"
 #include "os_err.h"
@@ -525,6 +526,54 @@ void test_send_unix(void **state) {
     assert_int_equal(OS_SendUnix(data->client_socket, SENDSTRING, 0), 0);
 }
 
+/* ENOBUFS is transient backpressure: OS_SendUnix must retry and, if the buffer
+ * drains within the backoff budget, succeed instead of dropping the message. */
+void test_send_unix_enobufs_retry_success(void **state) {
+    test_struct_t *data = (test_struct_t *)*state;
+    const int size = strlen(SENDSTRING);
+
+    data->client_socket = 3;
+    test_wrap_send_errno = ENOBUFS;         /* every failing send() reports ENOBUFS */
+    will_return(__wrap_send, -1);           /* attempt 0: busy */
+    expect_function_call(__wrap_usleep);
+    will_return(__wrap_send, -1);           /* attempt 1: busy */
+    expect_function_call(__wrap_usleep);
+    will_return(__wrap_send, size);         /* attempt 2: drained -> sent */
+
+    assert_int_equal(OS_SendUnix(data->client_socket, SENDSTRING, size), OS_SUCCESS);
+    test_wrap_send_errno = 0;
+}
+
+/* If congestion outlasts the retry budget, keep the original contract:
+ * return OS_SOCKBUSY so the caller drops the message and warns once. */
+void test_send_unix_enobufs_retry_exhausted(void **state) {
+    test_struct_t *data = (test_struct_t *)*state;
+    const int size = strlen(SENDSTRING);
+
+    data->client_socket = 3;
+    test_wrap_send_errno = ENOBUFS;
+    for (int i = 0; i <= OS_UNIX_SEND_RETRIES; i++) {   /* initial send + retries */
+        will_return(__wrap_send, -1);
+    }
+    expect_function_calls(__wrap_usleep, OS_UNIX_SEND_RETRIES);
+
+    assert_int_equal(OS_SendUnix(data->client_socket, SENDSTRING, size), OS_SOCKBUSY);
+    test_wrap_send_errno = 0;
+}
+
+/* A non-ENOBUFS send error is a real socket failure: fail fast, no retry. */
+void test_send_unix_non_enobufs_no_retry(void **state) {
+    test_struct_t *data = (test_struct_t *)*state;
+    const int size = strlen(SENDSTRING);
+
+    data->client_socket = 3;
+    test_wrap_send_errno = EPIPE;
+    will_return(__wrap_send, -1);           /* single send, then immediate error */
+
+    assert_int_equal(OS_SendUnix(data->client_socket, SENDSTRING, size), OS_SOCKTERR);
+    test_wrap_send_errno = 0;
+}
+
 void test_recv_unix(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     char buffer[BUFFERSIZE];
@@ -1020,6 +1069,9 @@ int main(void) {
         /* Send a message using a Unix socket */
         cmocka_unit_test_setup_teardown(test_send_unix, test_setup, test_teardown),
         cmocka_unit_test(test_send_unix_invalid_sockets),
+        cmocka_unit_test_setup_teardown(test_send_unix_enobufs_retry_success, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_unix_enobufs_retry_exhausted, test_setup, test_teardown),
+        cmocka_unit_test_setup_teardown(test_send_unix_non_enobufs_no_retry, test_setup, test_teardown),
 
         /* Receive a message using a Unix socket */
         cmocka_unit_test_setup_teardown(test_recv_unix, test_setup, test_teardown),
