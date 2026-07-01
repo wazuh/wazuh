@@ -752,7 +752,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 
         if (!m_dBSync)
         {
-            m_logFunction(LOG_WARNING, "DBSync not available for table " + table);
+            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
             return false;
         }
 
@@ -1695,7 +1695,7 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
 
             if (!syncSuccess)
             {
-                m_logFunction(LOG_WARNING, "Failed to synchronize " + table);
+                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed to synchronize " + table);
                 return CoordinationResult::Failed;
             }
 
@@ -1793,7 +1793,7 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 
             if (!m_dBSync)
             {
-                m_logFunction(LOG_WARNING, "Cannot set sync flag: DBSync not available");
+                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
                 return;
             }
         }
@@ -1830,7 +1830,7 @@ void AgentInfoImpl::loadSyncFlags()
 
             if (!m_dBSync)
             {
-                m_logFunction(LOG_WARNING, "Cannot load sync flags: DBSync not available");
+                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
                 return;
             }
 
@@ -2010,7 +2010,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
                 return;
             }
         }
@@ -2130,7 +2130,7 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         }
         else
         {
-            m_logFunction(LOG_WARNING, "Failed integrity check for " + table);
+            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed integrity check for " + table);
         }
 
         return success;
