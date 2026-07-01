@@ -53,6 +53,8 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/agent_info/agent_info_impl/include
   ${SRC_FOLDER}/wazuh_modules/sca/include
   ${SRC_FOLDER}/wazuh_modules/sca/sca_impl/include
+  ${SRC_FOLDER}/wazuh_modules/container_images/include
+  ${SRC_FOLDER}/wazuh_modules/container_images/container_images_impl/include
   ${SRC_FOLDER}/wazuh_modules/syscollector/include
   ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include
   ${SRC_FOLDER}/wazuh_modules/inventory_sync/include
@@ -97,6 +99,7 @@ else()
   # Modules - Agent only
   add_subdirectory(agent_info)
   add_subdirectory(sca)
+  add_subdirectory(container_images)
   add_subdirectory(syscollector)
 endif()
 
@@ -117,6 +120,7 @@ endif()
 # Remove agent-only modules from server build
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/wm_sca.c")
+  list(REMOVE_ITEM WAZUH_MODULES_SRC "${SRC_FOLDER}/wazuh_modules/src/wm_container_images.c")
 endif()
 
 # Build static library (without main.c)
@@ -153,6 +157,14 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
   endif()
 else()
   # Agent build
+  # NOTE: container_images is intentionally NOT link-time linked here. The module
+  # is loaded lazily at runtime via so_get_module_handle("container_images") in
+  # wm_container_images.c, only when a <container_images> block is configured.
+  # Load-time linking the container_images shared lib (.dll on Windows) forced
+  # modulesd to load it (and its wazuhext/C++ deps) at process start even when the
+  # module is dormant, which slowed agent startup and broke the enrollment and
+  # syscollector integration tests. The library is still built via
+  # add_subdirectory(container_images) above.
   target_link_libraries(
     wazuh_modulesd_lib
     PUBLIC agent_info
@@ -182,6 +194,10 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   if(UNIT_TEST)
     target_compile_definitions(wazuh-modulesd PRIVATE WAZUH_UNIT_TESTING)
   endif()
+  # container_images is loaded lazily at runtime (so_get_module_handle), not
+  # link-time linked. See the note on the agent build above: load-time linking the
+  # container_images.dll made modulesd load it at startup even when dormant, which
+  # broke the Windows enrollment and syscollector ITs. The library is still built.
   target_link_libraries(
     wazuh-modulesd
     PRIVATE agent_info
