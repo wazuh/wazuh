@@ -964,17 +964,23 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         if (pause_requested && flush_request_detected) {
             minfo("Starting FIM synchronization requested by agent-info.");
 
-            bool sync_result = asp_sync_module(syscheck.sync_handle,
+            SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
 
-            minfo("FIM synchronization requested by agent-info finished.");
+            if (sync_result.success) {
+                minfo("FIM synchronization requested by agent-info finished successfully.");
+            } else {
+                mwarn("FIM synchronization requested by agent-info failed%s%s",
+                      sync_result.failure_reason[0] != '\0' ? ": " : "",
+                      sync_result.failure_reason);
+            }
 
             // Mark the flush as completed (flush_request_detected is always true here).
-            int result = sync_result ? 0 : -1;
+            int result = sync_result.success ? 0 : -1;
             atomic_int_set(&fim_flush_result, result);
             atomic_int_set(&fim_flush_in_progress, 0);
 
-            if (sync_result && !first_sync_completed) {
+            if (sync_result.success && !first_sync_completed) {
                 fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
                 first_sync_completed = true;
                 atomic_int_set(&syscheck.fim_first_sync_completed, 1);
@@ -994,9 +1000,9 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
             minfo("Starting FIM synchronization.");
 
-            bool sync_result = asp_sync_module(syscheck.sync_handle,
+            SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
-            if (sync_result) {
+            if (sync_result.success) {
                 minfo("FIM synchronization finished successfully.");
 
                 if (!first_sync_completed) {
@@ -1005,14 +1011,14 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     atomic_int_set(&syscheck.fim_first_sync_completed, 1);
                 }
             } else {
-                minfo("FIM synchronization failed.");
+                mwarn("FIM synchronization failed%s%s", sync_result.failure_reason[0] != '\0' ? ": " : "", sync_result.failure_reason);
             }
 
             // If a flush was triggered while paused but processed here (after resume),
             // clear the flush state so pollFlushCompletion() can return "completed".
             // Touches only atomics, so it stays outside the scan mutex.
             if (flush_request_detected) {
-                int result = sync_result ? 0 : -1;
+                int result = sync_result.success ? 0 : -1;
                 atomic_int_set(&fim_flush_result, result);
                 atomic_int_set(&fim_flush_in_progress, 0);
                 mdebug1("Pending flush request completed via normal sync path.");
@@ -1020,7 +1026,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
             // Lock FIM's scheduled and realtime scans only for the recovery/integrity
             // process, which reads and writes the file_entry table.
-            if (sync_result) {
+            if (sync_result.success) {
                 w_mutex_lock(&syscheck.fim_scan_mutex);
                 w_mutex_lock(&syscheck.fim_realtime_mutex);
                 #ifdef WIN32

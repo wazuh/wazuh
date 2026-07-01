@@ -15,6 +15,7 @@
 #include <thread>
 
 #include "agent_sync_protocol.hpp"
+#include "agent_sync_protocol_types.hpp"
 #include "logging_helper.hpp"
 #include "hashHelper.h"
 #include "sca.h"
@@ -499,7 +500,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
 
     const bool firstSyncPending = !m_firstSyncCompleted.load();
 
-    bool result = false;
+    SyncModuleResult result;
 
     if (firstSyncPending)
     {
@@ -513,7 +514,7 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
         result = m_spSyncProtocol->synchronizeModule(mode);
     }
 
-    if (result)
+    if (result.success)
     {
         if (firstSyncPending)
         {
@@ -529,16 +530,16 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
         m_pauseCv.notify_all();
     }
 
-    if (result)
+    if (result.success)
     {
         LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization finished successfully.");
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization failed.");
+        LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed" + (result.failureReason.empty() ? "." : ": " + result.failureReason));
     }
 
-    return result;
+    return result.success;
 }
 
 void SecurityConfigurationAssessment::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
@@ -761,9 +762,9 @@ int SecurityConfigurationAssessment::executeFlushSync()
     }
 
     // Trigger immediate synchronization to flush pending messages
-    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
+    SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
 
-    if (result)
+    if (result.success)
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA flush completed successfully");
         return 0;
@@ -1079,10 +1080,10 @@ bool SecurityConfigurationAssessment::checkIfRecoveryRequired(const std::string&
 
 bool SecurityConfigurationAssessment::performRecovery()
 {
-    return synchronizeDatabaseSnapshot(true, "recovery");
+    return synchronizeDatabaseSnapshot(true, "recovery").success;
 }
 
-bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason)
+SyncModuleResult SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason)
 {
     LoggingHelper::getInstance().log(LOG_DEBUG, "Starting SCA " + syncReason + " full synchronization");
 
@@ -1091,13 +1092,13 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
         if (!m_dBSync)
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "DBSync is null, cannot synchronize SCA snapshot");
-            return false;
+            return {false, {}};
         }
 
         if (!m_spSyncProtocol)
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "Sync protocol not initialized, cannot synchronize SCA snapshot");
-            return false;
+            return {false, {}};
         }
 
         if (increaseVersions)
@@ -1210,9 +1211,9 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
         }
 
         LoggingHelper::getInstance().log(LOG_DEBUG, "Triggering full synchronization for SCA " + syncReason);
-        const bool success = m_spSyncProtocol->synchronizeModule(Mode::FULL);
+        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(Mode::FULL);
 
-        if (success)
+        if (result.success)
         {
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " completed successfully");
         }
@@ -1223,12 +1224,12 @@ bool SecurityConfigurationAssessment::synchronizeDatabaseSnapshot(bool increaseV
             LoggingHelper::getInstance().log(LOG_DEBUG, "SCA " + syncReason + " failed");
         }
 
-        return success;
+        return result;
     }
     catch (const std::exception& err)
     {
         LoggingHelper::getInstance().log(LOG_ERROR, "Error during SCA " + syncReason + ": " + std::string(err.what()));
-        return false;
+        return {false, {}};
     }
 }
 

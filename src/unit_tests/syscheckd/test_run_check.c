@@ -441,7 +441,7 @@ static void expect_fim_flush_sync_body(AgentSyncProtocolHandle* handle, bool per
     expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
-    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished.");
+    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished successfully.");
 
     if (persist_first_sync_marker) {
 #ifndef TEST_WINAGENT

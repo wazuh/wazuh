@@ -69,12 +69,12 @@ void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
                                 const char* data,
                                 uint64_t version);
 
-// @brief Triggers synchronization of a module.
+/// @brief Triggers synchronization of a module.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param mode Synchronization mode (e.g., full, delta).
-/// @return true if the sync was successfully processed; false otherwise.
-bool asp_sync_module(AgentSyncProtocolHandle* handle,
+/// @return SyncModuleResult_t with success flag and an optional failure reason string.
+SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
                      Mode_t mode);
 
 /// @brief Checks if a module index requires full synchronization.
@@ -107,12 +107,12 @@ void asp_clear_in_memory_data(AgentSyncProtocolHandle* handle);
 /// @param indices Array of index name strings that will be updated by the manager.
 /// @param indices_count Number of indices in the array.
 /// @param global_version Global version to include in the Start message
-/// @return true if synchronization completed successfully, false otherwise
-bool asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
-                                 Mode_t mode,
-                                 const char** indices,
-                                 size_t indices_count,
-                                 uint64_t global_version);
+/// @return SyncModuleResult_t with success flag and failure reason if unsuccessful
+SyncModuleResult_t asp_sync_metadata_or_groups(AgentSyncProtocolHandle* handle,
+                                               Mode_t mode,
+                                               const char** indices,
+                                               size_t indices_count,
+                                               uint64_t global_version);
 
 /// @brief Notifies the manager about data cleaning for specified indices.
 ///

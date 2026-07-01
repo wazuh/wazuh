@@ -83,7 +83,7 @@ int main()
         proto.persistDifference("id1", Operation::CREATE, "idx1", "{\"k\":\"v1\"}", 1);
         proto.persistDifference("id2", Operation::MODIFY, "idx2", "{\"k\":\"v2\"}", 2);
 
-        bool ok = proto.synchronizeModule(Mode::FULL);
+        bool ok = proto.synchronizeModule(Mode::FULL).success;
         std::cout << (ok ? "OK" : "FAIL") << std::endl;
         return ok ? 0 : 1;
     }

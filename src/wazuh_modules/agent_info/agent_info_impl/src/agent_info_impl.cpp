@@ -1751,12 +1751,13 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
 
         if (m_spSyncProtocol)
         {
-            bool syncSuccess = m_spSyncProtocol->synchronizeMetadataOrGroups(
-                                   TABLE_DELTA_MODE_MAP.at(table), indicesToSync, newVersion);
+            SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(
+                                              TABLE_DELTA_MODE_MAP.at(table), indicesToSync, newVersion);
 
-            if (!syncSuccess)
+            if (!syncResult.success)
             {
-                m_logFunction(LOG_WARNING, "Failed to synchronize " + table);
+                m_logFunction(LOG_WARNING, "Failed to synchronize " + table +
+                              (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
                 return CoordinationResult::Failed;
             }
 
@@ -2179,22 +2180,23 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         }
 
         // Perform integrity check - no globalVersion needed for CHECK modes
-        bool success = m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
+        SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
 
         // Update the last sync time regardless of the synchronization result
         // This ensures we always wait for integrity_interval before trying again
         updateLastIntegrityTime(table);
 
-        if (success)
+        if (syncResult.success)
         {
             m_logFunction(LOG_INFO, "Successfully completed integrity check for " + table);
         }
         else
         {
-            m_logFunction(LOG_WARNING, "Failed integrity check for " + table);
+            m_logFunction(LOG_WARNING, "Failed integrity check for " + table +
+                          (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
         }
 
-        return success;
+        return syncResult.success;
     }
     catch (const std::exception& e)
     {

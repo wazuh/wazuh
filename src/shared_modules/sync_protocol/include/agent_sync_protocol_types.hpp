@@ -20,7 +20,15 @@ using LoggerFunc = std::function<void(modules_log_level_t, const std::string&)>;
 enum class SyncResult
 {
     SUCCESS,             ///< Operation completed successfully
-    COMMUNICATION_ERROR, ///< Manager is offline or unreachable
+    COMMUNICATION_ERROR, ///< Failed to communicate with the manager
     CHECKSUM_ERROR,      ///< Checksum validation failed
-    GENERIC_ERROR        ///< Generic synchronization error
+    TIMEOUT_ERROR,       ///< Exceeded maximum retries waiting for a response
+    PROTOCOL_ERROR,       ///< Manager sent an unexpected or invalid response
+    NO_GROUPS_ERROR,     ///< No groups available in metadata.
+};
+
+struct SyncModuleResult
+{
+    bool success{false};
+    std::string failureReason;
 };
