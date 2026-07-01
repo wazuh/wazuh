@@ -59,6 +59,10 @@ jobs:
           name: configuration
           path: src/configuration_files
   check_dll_on_windows:
+    # NOTE: stays on the GitHub-hosted Windows runners. This test drives Process Monitor, which
+    # captures via a kernel minifilter driver. CodeBuild's Windows fleet runs process-isolated
+    # containers (no FltMgr / kernel-driver loading), so Procmon captures zero events there.
+    # Tracked in wazuh-automation#3497.
     strategy:
           matrix:
               os: [windows-2025, windows-2022]

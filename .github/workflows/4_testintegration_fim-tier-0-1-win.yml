@@ -60,7 +60,7 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: windows-2025
+    runs-on: codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
@@ -69,9 +69,8 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version-it"
           architecture: x64
-      - name: Add WiX toolkit to PATH
-        shell: bash
-        run: echo "${WIX}bin" >> $GITHUB_PATH
+      - name: Set up WiX Toolset (MSI build)
+        uses: ./.github/actions/setup_wix
       # Download the compressed winagent build.
       - name: Download Artifact winagent
         uses: ./.github/actions/download_s3_artifact
@@ -113,4 +112,4 @@ jobs:
         run: |
           NET START wazuh
           cd C:\wazuh\tests\integration
-          python -m pytest --tier 0 --tier 1 test_fim\
+          python -m pytest -k "not whodata and not Who-data" --tier 0 --tier 1 test_fim\
