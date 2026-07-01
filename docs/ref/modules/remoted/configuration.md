@@ -51,7 +51,7 @@ remoted.batch_events_capacity=131072
 
 # Queue byte limits (0 = unlimited)
 remoted.queue_max_bytes=67108864
-remoted.batch_events_max_bytes=24117248
+remoted.batch_events_max_bytes=33554432
 ```
 
 ## Stateless Metadata Configuration

@@ -29,8 +29,28 @@
 #define STATIC static
 #endif
 
-static time_t s_last_events_drop_warn = 0;
-static size_t s_pending_events_drop = 0;
+static _Atomic time_t s_last_events_drop_warn = 0;
+static _Atomic size_t s_pending_events_drop = 0;
+
+/**
+ * @brief Increment the pending-drop counter and emit a rate-limited warning.
+ *
+ * At most one warning per 5-second window is printed. The CAS on
+ * s_last_events_drop_warn ensures exactly one thread wins the print slot when
+ * multiple handler threads discard events simultaneously.
+ */
+static void maybe_log_events_queue_drop(void) {
+    atomic_fetch_add_explicit(&s_pending_events_drop, 1, memory_order_relaxed);
+
+    time_t now  = time(NULL);
+    time_t last = atomic_load_explicit(&s_last_events_drop_warn, memory_order_relaxed);
+    if (now - last >= 5 &&
+        atomic_compare_exchange_strong_explicit(&s_last_events_drop_warn, &last, now,
+                                                memory_order_relaxed, memory_order_relaxed)) {
+        size_t count = atomic_exchange_explicit(&s_pending_events_drop, 0, memory_order_relaxed);
+        mwarn("Events queue discarded %zu event(s) in the last 5 seconds.", count);
+    }
+}
 
 /* Global variables */
 w_indexed_queue_t *control_msg_queue = NULL;
@@ -1047,8 +1067,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         if (rc < 0) {
             dispose_evt_item(e);
             rem_inc_recv_events_failed();
-            s_pending_events_drop++;
-            { time_t _t = time(NULL); if (_t - s_last_events_drop_warn >= 5) { mwarn("Events queue discarded %zu event(s) in the last 5 seconds.", s_pending_events_drop); s_pending_events_drop = 0; s_last_events_drop_warn = _t; } }
+            maybe_log_events_queue_drop();
         } else {
             rem_inc_recv_events(agentid_str);
         }
