@@ -751,9 +751,13 @@ def test_bucket_multiple_calls(
 
     bucket_type = metadata['bucket_type']
     bucket_name = metadata['bucket_name']
+    data_bucket_name = metadata.get('original_bucket_name', bucket_name)
     expected_results = metadata['expected_results']
     path = metadata.get('path')
     region = US_EAST_1_REGION
+    # Use the original YAML bucket name for generate_file / get_last_file_key so the
+    # framework can resolve custom types (kms/macie/trusted) via bucket_name.split('-')[1].
+    data_bucket_name = metadata.get('original_bucket_name', bucket_name)
 
     base_parameters = [
         '--bucket', bucket_name,
@@ -764,6 +768,11 @@ def test_bucket_multiple_calls(
 
     if path is not None:
         base_parameters.extend(['--trail_prefix', path])
+
+    # Scope to the test data account so the module doesn't iterate other account prefixes
+    # in the shared bucket (which would produce extra "No logs to process" messages).
+    if metadata.get('account_id'):
+        base_parameters.extend(['--aws_account_id', metadata['account_id']])
 
     # Call the module without only_logs_after and check that no logs were processed
     # Get bucket type
@@ -840,7 +849,7 @@ def test_bucket_multiple_calls(
     last_marker_key = get_last_file_key(bucket_type, bucket_name, datetime.utcnow(), region, s3_client)
     if bucket_type == VPC_FLOW_TYPE:
         data, key = generate_file(bucket_type=bucket_type,
-                                  bucket_name=bucket_name,
+                                  bucket_name=data_bucket_name,
                                   region=region,
                                   prefix='',
                                   suffix='',
@@ -848,7 +857,7 @@ def test_bucket_multiple_calls(
                                   flow_log_id=metadata['flow_log_id'])
     else:
         data, key = generate_file(bucket_type=bucket_type,
-                                  bucket_name=bucket_name,
+                                  bucket_name=data_bucket_name,
                                   region=region,
                                   prefix='',
                                   suffix='',
