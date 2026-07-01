@@ -68,7 +68,7 @@
 
 /* Some global names */
 #define __wazuh_name    "Wazuh"
-#define __wazuh_version "v5.0.0"
+#define __wazuh_version "v5.0.1"
 #define __author        "Wazuh Inc."
 #define __contact       "info@wazuh.com"
 #define __site          "http://www.wazuh.com"

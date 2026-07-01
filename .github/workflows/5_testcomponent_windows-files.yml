@@ -39,12 +39,14 @@ concurrency:
 jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - name: Install mingw
-        run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y
+        run: |
+          sudo apt-get update
+          sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 make -y
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
       - name: make deps
@@ -72,12 +74,13 @@ jobs:
           name: binaries
           path: src/bin_files
   check_binaries_details:
-    runs-on: windows-2025
+    runs-on:
+      - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     needs: build
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
       - name: Set up Python
         uses: actions/setup-python@v4
         with:

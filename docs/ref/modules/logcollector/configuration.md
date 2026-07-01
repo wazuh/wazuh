@@ -381,8 +381,7 @@ Add the following configuration to the Wazuh agent's `ossec.conf`:
 <localfile>
   <location>journald</location>
   <log_format>journald</log_format>
-  <filter_type>value</filter_type>
-  <filter field="CONTAINER_NAME">my-container</filter>
+  <filter field="CONTAINER_NAME">^my-container$</filter>
 </localfile>
 ```
 
@@ -392,9 +391,7 @@ This configuration collects journal entries from a specific Docker container. To
 <localfile>
   <location>journald</location>
   <log_format>journald</log_format>
-  <filter_type>value</filter_type>
-  <filter field="_TRANSPORT">journal</filter>
-  <filter field="CONTAINER_NAME">.*</filter>
+  <filter field="_TRANSPORT">^journal$</filter>
 </localfile>
 ```
 
@@ -402,8 +399,7 @@ This configuration collects journal entries from a specific Docker container. To
 
 | Option | Description |
 |--------|-------------|
-| `filter_type` | Type of filter matching. Use `value` for exact match. |
-| `filter field` | Journal field to filter by. Docker sets fields such as `CONTAINER_NAME`, `CONTAINER_ID`, `CONTAINER_TAG`, and `IMAGE_NAME`. |
+| `filter field` | Journal field to filter by. The value is a PCRE2 regular expression. Docker sets fields such as `CONTAINER_NAME`, `CONTAINER_ID`, `CONTAINER_TAG`, and `IMAGE_NAME`. Use anchors (`^`, `$`) for exact matching. |
 
 ### Restart the agent
 

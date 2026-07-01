@@ -5,6 +5,11 @@
 #include "fileutils.hpp"
 #include "storens.hpp"
 
+namespace
+{
+inline constexpr std::string_view LOG_MODULE_NAME = "CM::Store::NS"; ///< Log module name for CMStoreNS
+}
+
 namespace cm::store
 {
 
@@ -16,7 +21,7 @@ void CMStoreNS::flushCacheToDisk()
     if (error.has_value())
     {
         // This never should happen.
-        LOG_ERROR("Failed to dump cache of namespace to disk: {}", error.value());
+        LOG_ERROR("[{}] Failed to dump cache of namespace to disk: {}", LOG_MODULE_NAME, error.value());
         throw std::runtime_error("Failed to dump cache to disk: " + error.value());
     }
     LOG_TRACE("Cache flushed to disk successfully at {}", m_cachePath.string());
@@ -32,7 +37,10 @@ void CMStoreNS::loadCacheFromDisk()
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("Failed to load cache from disk: {}. Rebuilding cache from storage.", e.what());
+        LOG_WARNING("[{}] Failed to load cache from disk: {}."
+                    " Rebuilding cache from storage",
+                    LOG_MODULE_NAME,
+                    e.what());
         rebuildCacheFromStorage();
         flushCacheToDisk();
     }
@@ -76,7 +84,10 @@ void CMStoreNS::rebuildCacheFromStorage()
         }
         else
         {
-            LOG_WARNING("Unknown resource type directory '{}' found in storage, skipping.", dirName);
+            LOG_WARNING("[{}] Unknown resource type directory '{}' "
+                        "found in storage, skipping",
+                        LOG_MODULE_NAME,
+                        dirName);
             continue;
         }
 
@@ -126,7 +137,10 @@ void CMStoreNS::rebuildCacheFromStorage()
             }
             catch (const std::exception& e)
             {
-                LOG_WARNING("Failed to process resource file '{}': {}", fileEntry.path().string(), e.what());
+                LOG_WARNING("[{}] Failed to process resource file '{}': {}",
+                            LOG_MODULE_NAME,
+                            fileEntry.path().string(),
+                            e.what());
             }
         }
     }

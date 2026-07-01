@@ -1,0 +1,62 @@
+name: "Install Wazuh Manager"
+description: "Installs the Wazuh manager using the interactive installer with preloaded variables"
+
+inputs:
+  install_dir:
+    required: false
+    description: "Installation directory"
+    default: "/var/wazuh-manager"
+  auto_start:
+    required: false
+    description: "Start the manager after installation (y/n)"
+    default: "n"
+  disable_extra_modules:
+    required: false
+    description: "Disable email, syscheck, rootcheck, syscollector and sca at install time"
+    default: "false"
+  cert_mode:
+    required: false
+    description: "Certificate setup mode: 'openssl' (self-signed), 'stub' (empty files), 'none'"
+    default: "openssl"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install Wazuh manager
+      shell: bash
+      env:
+        INSTALL_DIR: ${{ inputs.install_dir }}
+        AUTO_START: ${{ inputs.auto_start }}
+        DISABLE_EXTRA_MODULES: ${{ inputs.disable_extra_modules }}
+        CERT_MODE: ${{ inputs.cert_mode }}
+      run: |
+        {
+          echo 'USER_LANGUAGE="en"'
+          echo 'USER_INSTALL_TYPE="manager"'
+          echo "USER_DIR=$INSTALL_DIR"
+          if [[ "$DISABLE_EXTRA_MODULES" == "true" ]]; then
+            echo 'USER_ENABLE_EMAIL="n"'
+            echo 'USER_ENABLE_SYSCHECK="n"'
+            echo 'USER_ENABLE_ROOTCHECK="n"'
+            echo 'USER_ENABLE_SYSCOLLECTOR="n"'
+            echo 'USER_ENABLE_SCA="n"'
+          fi
+          echo 'USER_ENABLE_AUTHD="n"'
+          echo "USER_AUTO_START=\"$AUTO_START\""
+        } > ./etc/preloaded-vars.conf
+        sudo sh install.sh
+        rm ./etc/preloaded-vars.conf
+
+        sudo mkdir -p "$INSTALL_DIR/etc/certs"
+        if [[ "$CERT_MODE" == "openssl" ]]; then
+          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
+            -keyout "$INSTALL_DIR/etc/certs/root-ca.pem" -out "$INSTALL_DIR/etc/certs/root-ca.pem" \
+            -days 1 -subj "/CN=test" 2>/dev/null
+          sudo openssl req -x509 -new -nodes -newkey rsa:2048 \
+            -keyout "$INSTALL_DIR/etc/certs/manager-key.pem" -out "$INSTALL_DIR/etc/certs/manager.pem" \
+            -days 1 -subj "/CN=test" 2>/dev/null
+        elif [[ "$CERT_MODE" == "stub" ]]; then
+          sudo touch "$INSTALL_DIR/etc/certs/root-ca.pem"
+          sudo touch "$INSTALL_DIR/etc/certs/manager.pem"
+          sudo touch "$INSTALL_DIR/etc/certs/manager-key.pem"
+        fi

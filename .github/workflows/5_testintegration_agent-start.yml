@@ -4,27 +4,27 @@ on:
   workflow_call:
     inputs:
       base_branch:
-        description: 'Base branch to download artifacts from (empty = use artifacts from current run)'
+        description: "Base branch to download artifacts from (empty = use artifacts from current run)"
         required: false
         type: string
-        default: ''
+        default: ""
       platform:
-        description: 'Platform to test (linux, windows, macos, all)'
+        description: "Platform to test (linux, windows, macos, all)"
         required: false
         type: string
-        default: 'all'
+        default: "all"
 
   workflow_dispatch:
     inputs:
       base_branch:
-        description: 'Base branch'
+        description: "Base branch"
         required: true
-        default: 'main'
+        default: "main"
       platform:
-        description: 'Platform to test'
+        description: "Platform to test"
         required: false
         type: choice
-        default: 'all'
+        default: "all"
         options:
           - all
           - linux
@@ -36,7 +36,7 @@ env:
 
 jobs:
   setup-matrix:
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -47,7 +47,7 @@ jobs:
           ENTRIES='[]'
 
           DEB=$(jq -cn '{
-            runner: "ubuntu-24.04", platform: "linux-deb",
+            runner: "codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}", platform: "linux-deb",
             "display-name": "Linux DEB (amd64)",
             "artifact-pattern": "wazuh-agent*amd64*.deb",
             "artifact-regexp": "wazuh-agent.*amd64.*\\.deb",
@@ -55,7 +55,7 @@ jobs:
             "packages-path": "/tmp/packages"
           }')
           RPM=$(jq -cn '{
-            runner: "ubuntu-24.04", platform: "linux-rpm",
+            runner: "codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}", platform: "linux-rpm",
             "display-name": "Linux RPM (x86_64)",
             "artifact-pattern": "*x86_64*.rpm",
             "artifact-regexp": "wazuh-agent.*x86_64.*\\.rpm",
@@ -63,7 +63,7 @@ jobs:
             "packages-path": "/tmp/packages"
           }')
           WIN=$(jq -cn '{
-            runner: "windows-2025", platform: "windows",
+            runner: "codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}", platform: "windows",
             "display-name": "Windows",
             "artifact-pattern": "wazuh-agent*windows*.msi",
             "artifact-regexp": "wazuh-agent.*windows.*\\.msi",
@@ -100,7 +100,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download package artifact
         uses: actions/download-artifact@v4
@@ -123,6 +123,21 @@ jobs:
           check_artifacts: true
           search_artifacts: true
           branch: ${{ inputs.base_branch }}
+
+      - name: CodeBuild workarounds (Linux Docker)
+        # The Linux smoke test runs the package inside a Docker container, but
+        # CodeBuild has no systemd so dockerd never starts on its own. VFS avoids
+        # overlay-on-overlay, which is unsupported inside the CodeBuild container.
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild.
+        if: matrix.platform == 'linux-deb' || matrix.platform == 'linux-rpm'
+        run: |
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
 
       - name: Run smoke test
         uses: ./.github/actions/5_testintegration_agent-start/run-test

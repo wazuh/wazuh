@@ -96,6 +96,15 @@ on:
         type: string
         required: false
 
+# Scope the group per system/architecture so the matrix invocations from the
+# build-multiples caller don't share a group (github.workflow resolves to the
+# CALLER's name in a reusable workflow). Without the suffix the parallel matrix
+# jobs — and the parent run — share one group with cancel-in-progress and cancel
+# each other, so no manager package is built.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}-${{ inputs.system }}-${{ inputs.architecture }}
+  cancel-in-progress: true
+
 jobs:
   Build-manager-packages:
     permissions:
@@ -113,46 +122,22 @@ jobs:
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
     steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: "true"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: "false"
-
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set ARCH and PACKAGE_ARCH
         run: |
-          case "${{ inputs.system }}" in
-            rpm)
-              case "${{ inputs.architecture }}" in
-                x86_64|amd64)
-                  arch="x86_64"
-                  pkg_arch="amd64"
-                  ;;
-                aarch64|arm64)
-                  arch="aarch64"
-                  pkg_arch="arm64"
-                  ;;
-              esac
-              ;;
-            deb)
-              case "${{ inputs.architecture }}" in
-                x86_64|amd64)
-                  arch="amd64"
-                  pkg_arch="amd64"
-                  ;;
-                aarch64|arm64)
-                  arch="arm64"
-                  pkg_arch="arm64"
-                  ;;
-              esac
-              ;;
-          esac
+          if [ "${{ inputs.architecture }}" = "x86_64" ] || [ "${{ inputs.architecture }}" = "amd64" ]; then
+            pkg_arch="amd64"
+            [ "${{ inputs.system }}" = "rpm" ] && arch="x86_64" || arch="amd64"
+          else
+            pkg_arch="arm64"
+            [ "${{ inputs.system }}" = "rpm" ] && arch="aarch64" || arch="arm64"
+          fi
 
-          echo "ARCH=$arch" >> $GITHUB_ENV
-          echo "PACKAGE_ARCH=$pkg_arch" >> $GITHUB_ENV
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
+          ARCH=$arch
+          PACKAGE_ARCH=$pkg_arch
+          EOF
 
       - name: Set tag and container name
         run: |
@@ -212,7 +197,6 @@ jobs:
           if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
-          # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
           echo "generate_package.sh -a ${{ env.PACKAGE_ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
           bash generate_package.sh -a ${{ env.PACKAGE_ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
@@ -221,7 +205,6 @@ jobs:
           else
             SYMBOLS_TAG="debuginfo"
           fi
-          # Find all files starting with 'wazuh-manager' and ending with '.rpm or .deb'
           for file in $(find /tmp -maxdepth 1 -type f -name 'wazuh-manager*.${{ inputs.system }}' -exec basename {} 2>/dev/null \;); do
             if [[ "$file" == *"$SYMBOLS_TAG"* ]]; then
               PACKAGE_SYMBOLS_NAME="$file"

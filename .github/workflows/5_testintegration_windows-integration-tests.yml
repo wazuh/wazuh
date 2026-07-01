@@ -91,7 +91,8 @@ jobs:
       BUILD_WORKFLOW: 5_builderpackage_agent-windows.yml
       AGENT_PACKAGE_REGEXP: wazuh-agent.*windows.*\.msi
       PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-    runs-on: windows-2025
+    runs-on:
+      - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 240
     name: Run ${{ inputs.module_name }} integration tests (${{ inputs.shard_name }})
     steps:
@@ -101,7 +102,7 @@ jobs:
 
       - name: Checkout Repo
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           ref: ${{ env.PR_HEAD_SHA }}
       - name: Set up Python

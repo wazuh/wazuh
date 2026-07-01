@@ -5,6 +5,7 @@ on:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_testunit_shared_modules_utils.yml"
+      - ".github/actions/cpp_test_pipeline/**"
       - "src/shared_modules/utils/**"
       - ".github/actions/build_external_deps/**"
       - ".github/actions/build_target_cpp/**"
@@ -19,66 +20,42 @@ concurrency:
 jobs:
   shared_modules_utils-modules:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
     steps:
-      - name: Cancel previous runs
-        uses: fkirc/skip-duplicate-actions@master
-        with:
-          cancel_others: 'true'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
-
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
+      - name: Install a compatible CMake
+        uses: ./.github/actions/reinstall_cmake
 
-      - name: Shared modules utils - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "utils_utest"
-          test: "true"
           asan: "false"
-
-      - name: Shared modules utils - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          valgrind: "true"
-          target: "utils_utest"
-
-      - name: Shared modules utils - Coverage
-        uses: ./.github/actions/coverage_cpp
-        with:
-          path: src/shared_modules/utils
-          id: utils_utest
+          with_coverage: "true"
+          coverage_path: src/shared_modules/utils
+          coverage_id: utils_utest
           validate_function_coverage: "false"
 
   shared_modules_utils-asan:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
 
-      - name: Project dependencies
-        uses: ./.github/actions/build_external_deps
+      - name: Install a compatible CMake
+        uses: ./.github/actions/reinstall_cmake
 
-      - name: Shared modules utils - Build tests
-        uses: ./.github/actions/build_target_cpp
+      - name: C++ test pipeline (ASAN)
+        uses: ./.github/actions/cpp_test_pipeline
         with:
           target: "utils_utest"
-          test: "true"
           asan: "true"
-
-      - name: Shared modules utils - Run tests
-        uses: ./.github/actions/test_cpp
-        with:
-          target: "utils_utest"
-          valgrind: "false"

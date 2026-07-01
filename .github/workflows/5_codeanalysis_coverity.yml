@@ -15,68 +15,96 @@ on:
         required: false
         default: 0
         type: number
+      target:
+        description: "Compilation target (manager or agent)"
+        required: true
+        type: choice
+        default: 'manager'
+        options:
+          - manager
+          - agent
       docker_image_tag:
         description: |
           Tag name of the Docker image to be uploaded.
           Use only '-', '_', '.' and alphanumeric characters.
           Default is '5.x'.
         required: false
-        default: '5.x'
+        default: "5.x"
 
 env:
   REGISTRY: ghcr.io
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
-  prepare:
-    runs-on: ubuntu-24.04
+  build:
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      contents: read
+      packages: read
     outputs:
       project: ${{ steps.vars.outputs.PROJECT }}
-      jobs: ${{ steps.vars.outputs.JOBS }}
       version: ${{ steps.vars.outputs.VERSION }}
       description: ${{ steps.vars.outputs.DESCRIPTION }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
+        uses: actions/checkout@v6
+
+      - name: Ensure jq (CodeBuild)
+        # TODO(codebuild-temp): Remove once the CodeBuild server image ships jq.
+        # GitHub-hosted ubuntu-24.04 bundled jq; the variables step below parses VERSION.json with it.
+        run: command -v jq >/dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y jq; }
 
       - name: Set up project and build variables
         id: vars
-        env:
-          INPUT_PROJECT: ${{ github.event.inputs.project }}
-          INPUT_THREADS: ${{ github.event.inputs.threads }}
         run: |
-          if [[ "$INPUT_PROJECT" == "wazuh" ]]; then
-            echo "PROJECT=wazuh/wazuh" >> $GITHUB_OUTPUT
+          if [[ "${{ inputs.project }}" == "wazuh" ]]; then
+            PROJECT="wazuh/wazuh"
           else
-            echo "PROJECT=wazuh/ossec-wazuh" >> $GITHUB_OUTPUT
+            PROJECT="wazuh/ossec-wazuh"
           fi
 
-          if [[ $INPUT_THREADS -le 0 ]]; then
-            echo "JOBS=$(nproc)" >> $GITHUB_OUTPUT
+          if [[ ${{ inputs.threads }} -le 0 ]]; then
+            JOBS=$(nproc)
           else
-            echo "JOBS=$INPUT_THREADS" >> $GITHUB_OUTPUT
+            JOBS=${{ inputs.threads }}
           fi
 
           VERSION=$(jq -r '.version + "-" + .stage' VERSION.json)
           DESCRIPTION="Version $VERSION - Git ref ${{ github.ref_name }}"
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_OUTPUT
 
-  build:
-    runs-on: ubuntu-24.04
-    needs: prepare
-    permissions:
-      contents: read
-      packages: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
+          JOBS=$JOBS
+          EOF
+
+          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_OUTPUT
+          PROJECT=$PROJECT
+          VERSION=$VERSION
+          DESCRIPTION=$DESCRIPTION
+          EOF
+
+      - name: Print variables
+        run: |
+          echo "Description: ${{ steps.vars.outputs.DESCRIPTION }}"
+          echo "Docker Image Tag: ${{ inputs.docker_image_tag }}"
 
       - name: Download dependencies
-        run: make -C src deps -j${{ needs.prepare.outputs.jobs }}
+        run: make -C src deps -j${{ env.JOBS }}
+
+      - name: Start Docker daemon (CodeBuild)
+        # TODO(codebuild-temp): Remove once CodeBuild exposes a running Docker daemon.
+        # The Coverity build runs inside the coverity-scan container (docker run); CodeBuild has
+        # no systemd so dockerd never starts on its own. VFS avoids overlay-on-overlay in-container.
+        run: |
+          if ! docker info >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -85,18 +113,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Print variables
-        env:
-          DOCKER_IMAGE_TAG: ${{ github.event.inputs.docker_image_tag }}
-        run: |
-          echo Description: ${{ needs.prepare.outputs.description }}
-          echo Docker Image Tag: $DOCKER_IMAGE_TAG
-
       - name: Build Coverity artifact
         uses: ./.github/actions/coverity/build
         with:
-          command: make -C src TARGET=manager COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
-          docker_image_tag: ${{ github.event.inputs.docker_image_tag }}
+          command: make -C src TARGET=manager COVERITY=YES -j${{ env.JOBS }}
+          docker_image_tag: ${{ inputs.docker_image_tag }}
 
       - name: List files
         run: ls -l cov-int/emit/*/emit-db*
@@ -109,15 +130,14 @@ jobs:
         with:
           name: wazuh.tgz
           path: wazuh.tgz
+          retention-days: 1
 
   upload:
-    runs-on: ubuntu-24.04
-    needs: [prepare, build]
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    needs: build
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
+        uses: actions/checkout@v6
 
       - name: Download Coverity artifact
         uses: actions/download-artifact@v4
@@ -127,8 +147,8 @@ jobs:
       - name: Upload to Coverity Scan
         uses: ./.github/actions/coverity/upload
         with:
-          project: ${{ needs.prepare.outputs.project }}
+          project: ${{ needs.build.outputs.project }}
           email: ${{ secrets.COVERITY_SCAN_NOTIFICATION_EMAIL }}
-          token: ${{ github.event.inputs.project == 'wazuh' && secrets.COVERITY_SCAN_WAZUH_TOKEN || secrets.COVERITY_SCAN_OSSEC_TOKEN }}
-          version: ${{ needs.prepare.outputs.version }}
-          description: "${{ needs.prepare.outputs.description }}"
+          token: ${{ inputs.project == 'wazuh' && secrets.COVERITY_SCAN_WAZUH_TOKEN || secrets.COVERITY_SCAN_OSSEC_TOKEN }}
+          version: ${{ needs.build.outputs.version }}
+          description: "${{ needs.build.outputs.description }}"

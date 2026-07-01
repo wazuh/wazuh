@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <api/handlers.hpp>
+#include <api/status/handlers.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>
 #include <base/libwazuhshared.hpp>
@@ -127,7 +128,7 @@ int main(int argc, char* argv[])
 
         if (logConfig.enableRotation)
         {
-            LOG_INFO("Logging initialized in standalone mode with rotation enabled.");
+            LOG_INFO("Logging initialized in standalone mode with rotation enabled");
             LOG_INFO("Log file: {}", logConfig.filePath);
             LOG_INFO("Rotation policy: Daily at {}:{:02d} OR when file reaches {} MB",
                      logConfig.rotationHour,
@@ -197,7 +198,8 @@ int main(int argc, char* argv[])
     }
 
     // Load the configuration
-    auto confManager = conf::Conf(std::make_shared<conf::FileLoader>());
+    const auto confPath = base::process::getWazuhHome() / "etc/wazuh-manager-internal-options.conf";
+    auto confManager = conf::Conf(std::make_shared<conf::FileLoader>(confPath));
     try
     {
         confManager.load();
@@ -302,27 +304,27 @@ int main(int argc, char* argv[])
             auto fileStorage = confManager.get<std::string>(conf::key::STORE_PATH);
             auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
             store = std::make_shared<store::Store>(fileDriver);
-            LOG_INFO("Store initialized.");
+            LOG_INFO("Store initialized");
         }
 
         // Content Manager
         {
             cmStore = std::make_shared<cm::store::CMStore>(confManager.get<std::string>(conf::key::CM_RULESET_PATH),
                                                            confManager.get<std::string>(conf::key::OUTPUTS_PATH));
-            LOG_INFO("Content Manager initialized.");
+            LOG_INFO("Content Manager initialized");
         }
 
         // KVDB
         {
             kvdbManager = std::make_shared<kvdbstore::KVDBManager>();
-            LOG_INFO("KVDB initialized.");
+            LOG_INFO("KVDB initialized");
         }
 
         // KVDB IOC
         {
             auto kvdbPath = std::filesystem::path(confManager.get<std::string>(conf::key::KVDB_IOC_PATH));
             IOCkvdb = std::make_shared<ioc::kvdb::KVDBManager>(kvdbPath, store);
-            LOG_INFO("IOC initialized.");
+            LOG_INFO("IOC initialized");
             // Initialize required DBs for iocs
             ioc::kvdb::details::initializeDBs(IOCkvdb);
         }
@@ -333,13 +335,13 @@ int main(int argc, char* argv[])
             auto geoDownloader = std::make_shared<geo::Downloader>(geoDownloadTimeout);
             geoManager = std::make_shared<geo::Manager>(store, geoDownloader);
             geoDownloader->setShouldRun(geoManager->shouldRunFlag());
-            LOG_INFO("GEO initialized.");
+            LOG_INFO("GEO initialized");
         }
 
         // Fast Metrics
         {
             fastmetrics::registerManager();
-            LOG_INFO("Fast metrics initialized.");
+            LOG_INFO("Fast metrics initialized");
         }
 
         // Schema
@@ -349,14 +351,14 @@ int main(int argc, char* argv[])
             if (std::holds_alternative<base::Error>(result))
             {
                 LOG_WARNING("Error loading schema definition: {}", std::get<base::Error>(result).message);
-                LOG_WARNING("Engine running without schema, consistency with indexer mappings is not guaranteed.");
+                LOG_WARNING("Engine running without schema, consistency with indexer mappings is not guaranteed");
             }
             else
             {
                 auto schemaJson = std::get<json::Json>(result);
                 schemaValidator->load(schemaJson);
             }
-            LOG_INFO("Schema initialized.");
+            LOG_INFO("Schema initialized");
         }
 
         // HLP
@@ -378,13 +380,13 @@ int main(int argc, char* argv[])
             logpar = std::make_shared<hlp::logpar::Logpar>(
                 base::getResponse<store::Doc>(res), std::static_pointer_cast<schemf::IValidator>(schemaValidator));
             hlp::registerParsers(logpar);
-            LOG_INFO("HLP initialized.");
+            LOG_INFO("HLP initialized");
         }
 
         // Scheduler -> Should be terminated before all modules to ensure any scheduled are stopped before shutdown
         {
             scheduler = std::make_shared<scheduler::Scheduler>();
-            LOG_INFO("Scheduler initialized.");
+            LOG_INFO("Scheduler initialized");
             exitHandler.add([scheduler]() { scheduler->stop(); });
         }
 
@@ -461,12 +463,12 @@ int main(int argc, char* argv[])
                 const auto pendingEvents = indexerConnector->getQueueSize();
                 if (pendingEvents > 0)
                 {
-                    LOG_INFO("Indexer Connector initialized with {} pending events from previous session.",
+                    LOG_INFO("Indexer Connector initialized with {} pending events from previous session",
                              pendingEvents);
                 }
                 else
                 {
-                    LOG_INFO("Indexer Connector initialized.");
+                    LOG_INFO("Indexer Connector initialized");
                 }
             }
             catch (const std::exception& e)
@@ -476,7 +478,7 @@ int main(int argc, char* argv[])
         }
         else
         {
-            LOG_INFO("Indexer Connector DISABLED - events will not be indexed.");
+            LOG_INFO("Indexer Connector DISABLED - events will not be indexed");
         }
 
         // Stream log for alerts an archive
@@ -486,7 +488,7 @@ int main(int argc, char* argv[])
             streamLogger = std::make_shared<streamlog::LogManager>(store, scheduler);
             exitHandler.add([streamLogger]() { streamLogger->requestShutdown(); });
 
-            LOG_INFO("Stream logger initialized.");
+            LOG_INFO("Stream logger initialized");
         }
 
         // Builder and registry
@@ -517,7 +519,7 @@ int main(int argc, char* argv[])
             {
                 LOG_DEBUG("Could not load 'schema/allowed-fields/0' document, {}",
                           std::get<base::Error>(allowedFieldsDoc).message);
-                LOG_WARNING("Allowed fields not found, assets will not have restrictions.");
+                LOG_WARNING("Allowed fields not found, assets will not have restrictions");
 
                 allowedFields = std::make_shared<builder::AllowedFields>();
             }
@@ -529,13 +531,13 @@ int main(int argc, char* argv[])
 
             builder =
                 std::make_shared<builder::Builder>(cmStore, schemaValidator, defs, allowedFields, builderDeps, store);
-            LOG_INFO("Builder initialized.");
+            LOG_INFO("Builder initialized");
         }
 
         // Crud Service
         {
             cmCrudService = std::make_shared<cm::crud::CrudService>(cmStore, builder);
-            LOG_INFO("Content Manager CRUD Service initialized.");
+            LOG_INFO("Content Manager CRUD Service initialized");
         }
 
         // Remote runtime settings manager
@@ -554,8 +556,7 @@ int main(int argc, char* argv[])
         {
             rawEventIndexer = std::make_shared<raweventindexer::RawEventIndexer>(
                 indexerConnector, raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
-            LOG_INFO("Raw Event Indexer initialized (index: {}).",
-                     raweventindexer::RawEventIndexer::DEFAULT_INDEX_NAME);
+            LOG_INFO("Raw Event Indexer initialized");
 
             if (remoteConf)
             {
@@ -603,7 +604,7 @@ int main(int argc, char* argv[])
             auto retryInterval = confManager.get<size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_RETRY_INTERVAL);
             cmSyncService = std::make_shared<cm::sync::CMSync>(
                 indexerConnector, cmCrudService, store, orchestrator, maxRetries, retryInterval);
-            LOG_INFO("Content Manager Sync Service initialized.");
+            LOG_INFO("Content Manager Sync Service initialized");
 
             exitHandler.add([cmSyncService]() { cmSyncService->requestShutdown(); });
         }
@@ -617,7 +618,7 @@ int main(int argc, char* argv[])
             auto iocSyncBatchSize = confManager.get<size_t>(conf::key::IOC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
             iocSyncService = std::make_shared<ioc::sync::IocSync>(
                 indexerConnector, IOCkvdb, store, maxRetries, retryInterval, iocSyncBatchSize);
-            LOG_INFO("IOC Sync Service initialized.");
+            LOG_INFO("IOC Sync Service initialized");
 
             exitHandler.add([iocSyncService]() { iocSyncService->requestShutdown(); });
 
@@ -625,14 +626,12 @@ int main(int argc, char* argv[])
             auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
             if (iocSyncInterval > 0)
             {
-                scheduler->scheduleTask("ioc-sync-task",
-                                        scheduler::TaskConfig {.interval = iocSyncInterval,
-                                                               .runImmediately = true,
-                                                               .CPUPriority = 0,
-                                                               .taskFunction = [iocSyncService]()
-                                                               {
-                                                                   iocSyncService->synchronize();
-                                                               }});
+                scheduler->scheduleTask(
+                    "ioc-sync-task",
+                    scheduler::TaskConfig {.interval = iocSyncInterval,
+                                           .runImmediately = true,
+                                           .CPUPriority = 0,
+                                           .taskFunction = [iocSyncService]() { iocSyncService->synchronize(); }});
                 LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
                           "interval and {} for batch size",
                           iocSyncInterval,
@@ -666,10 +665,8 @@ int main(int argc, char* argv[])
                                            .runImmediately = true,
                                            .CPUPriority = 0,
                                            .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
-                                           {
-                                               geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
-                                           }});
-                LOG_DEBUG("Geo sync scheduled with interval: {} seconds.", geoSyncInterval);
+                                           { geoManager->remoteUpsert(manifestUrl, cityPath, asnPath); }});
+                LOG_DEBUG("Geo sync scheduled with interval: {} seconds", geoSyncInterval);
             }
             else
             {
@@ -691,7 +688,7 @@ int main(int argc, char* argv[])
                 .maxAccumulatedSize = confManager.get<size_t>(conf::key::STREAMLOG_MAX_ACCUMULATED_SIZE)};
             dumper = std::make_shared<dumper::Dumper>(
                 streamLogger, dumperConfig, confManager.get<bool>(conf::key::DUMPER_ENABLED));
-            LOG_INFO("Dumper Events initialized.");
+            LOG_INFO("Dumper Events initialized");
             exitHandler.add([dumper, functionName = logging::getLambdaName(__FUNCTION__, "exitHandler")]()
                             { dumper->deactivate(); });
         }
@@ -700,15 +697,13 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
-            scheduler->scheduleTask("remote-conf-sync",
-                                    scheduler::TaskConfig {.interval = remoteConfSyncInterval,
-                                                           .runImmediately = true,
-                                                           .CPUPriority = 0,
-                                                           .taskFunction = [remoteConf]()
-                                                           {
-                                                               remoteConf->synchronize();
-                                                           }});
-            LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds.", remoteConfSyncInterval);
+            scheduler->scheduleTask(
+                "remote-conf-sync",
+                scheduler::TaskConfig {.interval = remoteConfSyncInterval,
+                                       .runImmediately = true,
+                                       .CPUPriority = 0,
+                                       .taskFunction = [remoteConf]() { remoteConf->synchronize(); }});
+            LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds", remoteConfSyncInterval);
         }
 
         // Create and configure the api endpoints
@@ -738,30 +733,30 @@ int main(int argc, char* argv[])
                 std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(), [](fastmetrics::IManager*) {});
             api::metrics::handlers::registerHandlers(
                 metricsManager, apiServer, "wazuh-manager-analysisd", engineUptimeISO);
-            LOG_DEBUG("Metrics API registered.");
+            LOG_DEBUG("Metrics API registered");
 
             // Geo
             api::geo::handlers::registerHandlers(geoManager, apiServer);
-            LOG_DEBUG("Geo API registered.");
+            LOG_DEBUG("Geo API registered");
 
             // Router
             api::router::handlers::registerHandlers(orchestrator, cmStore, apiServer);
-            LOG_DEBUG("Router API registered.");
+            LOG_DEBUG("Router API registered");
 
             // Tester
             api::tester::handlers::registerHandlers(
                 orchestrator, cmStore, std::static_pointer_cast<schemf::IValidator>(schemaValidator), apiServer);
-            LOG_DEBUG("Tester API registered.");
+            LOG_DEBUG("Tester API registered");
 
             // Dumper Events
             api::dumper::handlers::registerHandlers(dumper, apiServer);
-            LOG_DEBUG("Dumper Events API registered.");
+            LOG_DEBUG("Dumper Events API registered");
 
             // Raw Event Indexer
             if (rawEventIndexer)
             {
                 api::rawevtindexer::handlers::registerHandlers(rawEventIndexer, apiServer);
-                LOG_DEBUG("Raw Event Indexer API registered.");
+                LOG_DEBUG("Raw Event Indexer API registered");
             }
 
             // Crud Manager
@@ -770,11 +765,15 @@ int main(int argc, char* argv[])
                 confManager.get<int64_t>(conf::key::API_RESOURCE_KVDB_PAYLOAD_MAX_BYTES);
             api::cmcrud::handlers::registerHandlers(
                 cmCrudService, orchestrator, apiServer, apiResourcePayloadMaxBytes, apiResourceKvdbPayloadMaxBytes);
-            LOG_DEBUG("Content Manager CRUD API registered.");
+            LOG_DEBUG("Content Manager CRUD API registered");
 
             // IOC CRUD
             api::ioccrud::handlers::registerHandlers(IOCkvdb, scheduler, store, apiServer);
-            LOG_DEBUG("IOC CRUD API registered.");
+            LOG_DEBUG("IOC CRUD API registered");
+
+            // Status
+            api::status::handlers::registerHandlers(cmSyncService, iocSyncService, geoManager, apiServer);
+            LOG_DEBUG("Status API registered.");
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
@@ -801,9 +800,7 @@ int main(int argc, char* argv[])
                                                      .runImmediately = false,
                                                      .CPUPriority = 0,
                                                      .taskFunction = [metricsWriter, metricsManager]()
-                                                     {
-                                                         metricsManager->writeAllMetrics(metricsWriter);
-                                                     }};
+                                                     { metricsManager->writeAllMetrics(metricsWriter); }};
 
                 scheduler->scheduleTask("MetricsLogger", std::move(metricsConfig));
                 LOG_INFO("Metrics stream logging enabled (interval: {} seconds, on-demand channel creation).",
@@ -811,7 +808,7 @@ int main(int argc, char* argv[])
             }
             else if (!confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
             {
-                LOG_DEBUG("Metrics stream logging DISABLED.");
+                LOG_DEBUG("Metrics stream logging DISABLED");
             }
         }
 
@@ -828,20 +825,20 @@ int main(int argc, char* argv[])
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
 
-            LOG_INFO("Remote engine's server initialized and started.");
+            LOG_INFO("Remote engine's server initialized and started");
         }
         else
         {
-            LOG_INFO("Remote engine's HTTP event server DISABLED - events will not be received via HTTP.");
+            LOG_INFO("Remote engine's HTTP event server DISABLED - events will not be received via HTTP");
         }
 
         if (base::process::isStandaloneModeEnable())
         {
-            LOG_INFO("Engine started in standalone mode.");
+            LOG_INFO("Engine started in standalone mode");
         }
         else
         {
-            LOG_INFO("Engine started.");
+            LOG_INFO("Engine started");
         }
 
         if (enableProcessing)
@@ -871,14 +868,13 @@ int main(int argc, char* argv[])
                 if (shouldWarn)
                 {
                     LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded "
-                                "until content synchronization completes.");
+                                "until content synchronization completes");
                 }
                 else
                 {
-                    LOG_INFO("[CMSync] Event processing is now active.");
+                    LOG_INFO("[CMSync] Event processing is now active");
                 }
             };
-
 
             // Async Synchronize on startup
             scheduler->scheduleTask(
@@ -905,14 +901,14 @@ int main(int argc, char* argv[])
             scheduler->scheduleTaskFirst("cm-sync-task");
 
             scheduler->start();
-            LOG_INFO("Scheduler started.");
+            LOG_INFO("Scheduler started");
 
             while (engineRemoteServer->isRunning())
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 if (g_shutdown_requested)
                 {
-                    LOG_INFO("Shutdown requested (signal: {}), stopping the engine.", g_shutdown_requested);
+                    LOG_INFO("Shutdown requested (signal: {}), stopping the engine", g_shutdown_requested);
                     engineRemoteServer->stop();
                 }
             }
@@ -921,14 +917,14 @@ int main(int argc, char* argv[])
         else
         {
             scheduler->start();
-            LOG_INFO("Scheduler started.");
+            LOG_INFO("Scheduler started");
             // Event processing disabled, just wait for shutdown signal
             LOG_INFO("Waiting for shutdown signal (event processing is disabled)...");
             while (!g_shutdown_requested)
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
-            LOG_INFO("Shutdown requested (signal: {}), stopping the engine.", g_shutdown_requested);
+            LOG_INFO("Shutdown requested (signal: {}), stopping the engine", g_shutdown_requested);
         }
     }
     catch (const std::exception& e)
@@ -940,7 +936,7 @@ int main(int argc, char* argv[])
     }
     catch (...)
     {
-        LOG_ERROR("An unknown error occurred while initializing the modules.");
+        LOG_ERROR("An unknown error occurred while initializing the modules");
         exitHandler.execute();
         exit(EXIT_FAILURE);
     }

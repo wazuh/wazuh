@@ -15,14 +15,14 @@ concurrency:
 jobs:
   scan-build-linux:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        target: ['agent', 'manager']
+        target: ["agent", "manager"]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Install dependencies
@@ -32,28 +32,23 @@ jobs:
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
       - name: Build
-        id: build_step
-        continue-on-error: true
         run: |
           cd src
           make deps TARGET=${{matrix.target}} -j$(nproc)
           scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=${{ matrix.target }} DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
-        if: steps.build_step.outcome == 'failure'
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.target }}-scan-build-report
           path: src/scan-build-report/
-      - name: Fail job if build failed
-        if: steps.build_step.outcome == 'failure'
-        run: exit 1
 
   scan-build-ubuntu-mingw-windows:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Install dependencies
@@ -63,8 +58,6 @@ jobs:
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
       - name: Build
-        id: build_step
-        continue-on-error: true
         run: |
           cd src
           make deps TARGET=winagent -j$(nproc)
@@ -72,39 +65,31 @@ jobs:
           make clean-internals
           scan-build-14 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 --force-analyze-debug-code -o scan-build-report --exclude external/ --exclude syscheckd/src/registry/ make TARGET=winagent DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
-        if: steps.build_step.outcome == 'failure'
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: windows-agent-scan-build-report
           path: src/scan-build-report/
-      - name: Fail job if build failed
-        if: steps.build_step.outcome == 'failure'
-        run: exit 1
 
   scan-build-macos-agent:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: macos-15
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Install dependencies
         run: |
           brew install llvm@14
       - name: Build
-        id: build_step
-        continue-on-error: true
         run: |
           cd src
           make deps TARGET=agent -j3
           /opt/homebrew/opt/llvm@14/bin/scan-build --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=agent DEBUG=1 -j3
       - name: Upload scan-build report
-        if: steps.build_step.outcome == 'failure'
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: macos-agent-scan-build-report
           path: src/scan-build-report/
-      - name: Fail job if build failed
-        if: steps.build_step.outcome == 'failure'
-        run: exit 1

@@ -9,9 +9,9 @@
 # Center for Internet Security Mac0S 15 Sequoia Benchmark v1.0.0 - 19/09/2024 (Draft)
 
 policy:
-  id: "cis_macOS_15.Sequoia.yml"
-  file: "cis_macOS_15.Sequoia.yml"
-  name: "CIS_Apple_macOS_15.0_Sequoia_Benchmark_v1.0.0"
+  id: "cis_apple_macos_15"
+  file: "cis_apple_macOS_15.x.yml"
+  name: "CIS Apple macOS 15.0 Sequoia Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for MacOS 15 Sequoia systems."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -51,8 +51,22 @@ checks:
       pci_dss: ["6.2"]
       tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0043", "TA0007"]
-      technique: ["T1595", "T1190", "T1203"]
+      tactic:
+        id:
+          - "TA0043"
+          - "TA0007"
+        name:
+          - "Reconnaissance"
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1190"
+          - "T1203"
+        name:
+          - "Active Scanning"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticCheckEnabled'')" -> r:^1$'
@@ -77,8 +91,22 @@ checks:
       pci_dss: ["6.2"]
       tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0043", "TA0007"]
-      technique: ["T1595", "T1190", "T1203"]
+      tactic:
+        id:
+          - "TA0043"
+          - "TA0007"
+        name:
+          - "Reconnaissance"
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1190"
+          - "T1203"
+        name:
+          - "Active Scanning"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticDownload'')" -> r:^1$'
@@ -103,8 +131,22 @@ checks:
       pci_dss: ["6.2"]
       tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0043", "TA0007"]
-      technique: ["T1595", "T1190", "T1203"]
+      tactic:
+        id:
+          - "TA0043"
+          - "TA0007"
+        name:
+          - "Reconnaissance"
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1190"
+          - "T1203"
+        name:
+          - "Active Scanning"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''AutomaticallyInstallMacOSUpdates'')" -> r:^1$'
@@ -129,8 +171,22 @@ checks:
       pci_dss: ["6.2"]
       tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0043", "TA0007"]
-      technique: ["T1595", "T1190", "T1203"]
+      tactic:
+        id:
+          - "TA0043"
+          - "TA0007"
+        name:
+          - "Reconnaissance"
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1190"
+          - "T1203"
+        name:
+          - "Active Scanning"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: all
     rules:
       - "c:defaults read /Library/Preferences/com.apple.commerce AutoUpdate -> r:^1$"
@@ -159,8 +215,22 @@ checks:
       pci_dss: ["6.2"]
       tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0043", "TA0007"]
-      technique: ["T1595", "T1190", "T1203"]
+      tactic:
+        id:
+          - "TA0043"
+          - "TA0007"
+        name:
+          - "Reconnaissance"
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1190"
+          - "T1203"
+        name:
+          - "Active Scanning"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: all
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.SoftwareUpdate'').objectForKey(''ConfigDataInstall'')" -> r:^1$'
@@ -187,8 +257,22 @@ checks:
       pci_dss: ["6.2"]
       tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0043", "TA0007"]
-      technique: ["T1595", "T1190", "T1203"]
+      tactic:
+        id:
+          - "TA0043"
+          - "TA0007"
+        name:
+          - "Reconnaissance"
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1190"
+          - "T1203"
+        name:
+          - "Active Scanning"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.applicationaccess'').objectForKey(''enforcedSoftwareUpdateDelay'')" -> n:^(\d+)$ compare <= 30'
@@ -226,8 +310,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'c:/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate -> r:^Firewall\s*\t*is\s*\t*enabled'
@@ -255,8 +349,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'c:/usr/libexec/ApplicationFirewall/socketfilterfw --getstealthmode -> r:^Firewall\s*\t*stealth\s*\t*mode\s*\t*is\s*\t*on'
@@ -285,9 +389,33 @@ checks:
       pci_dss: ["10.4", "10.6"]
       tsc: ["CC4.1", "CC5.2", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'c:/usr/sbin/systemsetup -getusingnetworktime -> r:Network Time:\s*\t*On'
@@ -311,9 +439,33 @@ checks:
       pci_dss: ["10.4", "10.6"]
       tsc: ["CC4.1", "CC5.2", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:systemsetup -getnetworktimeserver -> r:Network Time Server:"
@@ -337,8 +489,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.ODSAgent" -> r:^0$'
@@ -364,8 +526,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.screensharing" -> r:^0$'
@@ -389,8 +561,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.smbd" -> r:^0$'
@@ -413,8 +595,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:sh -c "cupsctl | grep _share_printers | cut -d ''='' -f2" -> r:^0$'
@@ -438,8 +630,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:systemsetup -getremotelogin -> r:Remote Login:\s*\t*Off'
@@ -463,8 +665,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "not p:/System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent"
@@ -488,8 +700,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:systemsetup -getremoteappleevents -> r:Remote Apple Events:\s*\t*Off'
@@ -513,8 +735,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'not c:defaults read /Library/Preferences/SystemConfiguration/com.apple.nat -> r:Enabled\s*\t*=\s*\t*1'
@@ -542,8 +774,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.AssetCache'').objectForKey(''Activated'')" -> r:^0$'
@@ -572,8 +814,20 @@ checks:
       pci_dss: ["12.10"]
       tsc: ["A1.1", "A1.2", "CC9.1", "CC9.2"]
     mitre:
-      tactic: ["TA0040"]
-      technique: ["T1490", "T1485", "T1486"]
+      tactic:
+        id:
+          - "TA0040"
+        name:
+          - "Impact"
+      technique:
+        id:
+          - "T1490"
+          - "T1485"
+          - "T1486"
+        name:
+          - "Inhibit System Recovery"
+          - "Data Destruction"
+          - "Data Encrypted for Impact"
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.TimeMachine'').objectForKey(''AutoBackup'')" -> r:^1$'
@@ -597,9 +851,33 @@ checks:
       pci_dss: ["3.1", "3.2", "3.3", "3.4", "3.5", "4.1", "4.2", "7.2"]
       tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c: sh -c "defaults read /Library/Preferences/com.apple.TimeMachine.plist | grep -c NotEncrypted" -> r:^0$'
@@ -629,8 +907,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.locationd" -> r:^1$'
@@ -660,9 +948,33 @@ checks:
       pci_dss: ["5.1", "5.2", "5.3"]
       tsc: ["CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0002", "TA0005"]
-      technique: ["T1562", "T1070", "T1059", "T1105"]
-      subtechnique: ["T1562.001", "T1562.002", "T1070.004"]
+      tactic:
+        id:
+          - "TA0002"
+          - "TA0005"
+        name:
+          - "Execution"
+          - "Stealth"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1105"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Ingress Tool Transfer"
+      subtechnique:
+        id:
+          - "T1562.001"
+          - "T1562.002"
+          - "T1070.004"
+        name:
+          - "Disable or Modify Tools"
+          - "Disable Windows Event Logging"
+          - "File Deletion"
     condition: all
     rules:
       - "c:spctl --status -> r:^assessments enabled"
@@ -691,9 +1003,33 @@ checks:
       pci_dss: ["3.1", "3.2", "3.3", "3.4", "3.5", "4.1", "4.2", "7.2"]
       tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: any
     rules:
       - "c:fdesetup status -> r:^FileVault is On"
@@ -720,8 +1056,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:security authorizationdb read system.preferences | grep -A1 shared -> r:<false"
@@ -751,8 +1097,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'not c:sh -c "pmset -g custom" -> r:^\s*\t*powernap\s*\t*1'
@@ -776,8 +1132,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'not c:sh -c "pmset -g custom" -> r:^\s*\t*womp\s*\t*1'
@@ -807,8 +1173,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''LoginwindowText'')" -> r:^.+$'
@@ -831,8 +1207,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''SHOWFULLNAME'')" -> r:^1$|^true$'
@@ -856,8 +1242,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''RetriesUntilHint'')" -> r:^0$'
@@ -881,9 +1277,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - 'not c:dscl . -list /Users hint -> r:^\S+$'
@@ -909,9 +1331,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.MCX'').objectForKey(''DisableGuestAccount'')" -> r:^1$'
@@ -936,9 +1384,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:sysadminctl -smbGuestAccess status -> r:SMB guest access disabled"
@@ -962,8 +1434,18 @@ checks:
       pci_dss: ["2.1", "2.2", "2.3"]
       tsc: ["CC6.3", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.loginwindow'').objectForKey(''com.apple.login.mcx.DisableAutoLoginClient'')" -> r:^1$'
@@ -995,9 +1477,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:launchctl list -> r:com\\.apple\\.auditd"
@@ -1026,9 +1532,33 @@ checks:
       pci_dss: ["10.2", "11.5"]
       tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: any
     rules:
       - "f:/etc/security/audit_control -> r:^flags && r:-fm && r:-ex && r:ad && r:aa && r:lo && r:-fr && r:-fw"
@@ -1053,9 +1583,33 @@ checks:
       pci_dss: ["10.1"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'f:/etc/asl/com.apple.install -> !r:^\s*# && n:ttl=(\d+) compare >= 365'
@@ -1080,9 +1634,33 @@ checks:
       pci_dss: ["10.1"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: any
     rules:
       - 'f:/etc/security/audit_control -> n:^\s*expire-after[*!+-][\w@-]*(\d+)s compare >= 5184000'
@@ -1116,8 +1694,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:osascript -l JavaScript -e "$.NSUserDefaults.alloc.initWithSuiteName(''com.apple.mDNSResponder'').objectForKey(''NoMulticastAdvertisements'')" -> r:^1$'
@@ -1144,8 +1732,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "not c:launchctl list -> r:org\\.apache\\.httpd"
@@ -1169,8 +1767,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:nfsd status -> r:not running"
@@ -1200,8 +1808,18 @@ checks:
       pci_dss: ["12.3"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:csrutil status -> r:^System Integrity Protection status: enabled\\."
@@ -1230,8 +1848,18 @@ checks:
       pci_dss: ["12.3"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "not c:nvram -p -> r:amfi_get_out_of_my_way=1"
@@ -1261,9 +1889,33 @@ checks:
       pci_dss: ["3.1", "3.2", "3.3", "3.4", "3.5", "4.1", "4.2", "7.2"]
       tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:csrutil authenticated-root status -> r:^Authenticated Root status: enabled"
@@ -1293,8 +1945,22 @@ checks:
       pci_dss: ["8.1", "8.2"]
       tsc: ["CC6.2", "CC6.3", "CC6.1", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0004", "TA0005"]
-      technique: ["T1078", "T1098", "T1556"]
+      tactic:
+        id:
+          - "TA0004"
+          - "TA0005"
+        name:
+          - "Privilege Escalation"
+          - "Stealth"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Modify Authentication Process"
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare <= 5'
@@ -1319,9 +1985,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minChars=(\d+) compare >= 15'
@@ -1345,9 +2037,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character\\."
@@ -1372,9 +2090,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one alphabetic character\\."
@@ -1399,9 +2143,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - "c:pwpolicy -getaccountpolicies -> r:Contain at least one number and one special character"
@@ -1426,9 +2196,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 minimumMixedCaseCharacters " -> n:>(\d+)< compare >= 1'
@@ -1452,9 +2248,35 @@ checks:
       pci_dss: ["8.1", "8.3"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxMinutesUntilChangePassword=(\d+) compare <= 525601'
@@ -1478,9 +2300,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - 'c:sh  -c "pwpolicy -getaccountpolicies | grep -A1 usingHistory " -> n:>(\d+)< compare >= 15'
@@ -1507,9 +2355,35 @@ checks:
       pci_dss: ["8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - "c:sudo -V -> r:Authentication timestamp timeout: 0\\.0 minutes"
@@ -1536,9 +2410,35 @@ checks:
       pci_dss: ["8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - "c:sudo -V -> r:Type of authentication timestamp record: tty"
@@ -1562,9 +2462,35 @@ checks:
       pci_dss: ["7.1"]
       tsc: ["CC6.1", "CC6.3", "CC6.2", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - "c:dscl . -read /Users/root AuthenticationAuthority -> r:^No such key: AuthenticationAuthority"
@@ -1591,9 +2517,35 @@ checks:
       pci_dss: ["8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - "c:security authorizationdb read system.login.screensaver -> r:authenticate-session-owner"
@@ -1619,12 +2571,22 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "d:/Library/Security -> r:^PolicyBanner"
-      - 'c:stat -f %A /Library/Security/PolicyBanner.* -> r:\d\d4'
+      - 'c:sh -c "stat -f %A /Library/Security/PolicyBanner.*" -> r:\d\d4'
 
   # 5.9 Ensure the Guest Home Folder Does Not Exist. (Automated)
   - id: 35059
@@ -1645,8 +2607,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "not d:/Users/Guest"
@@ -1677,9 +2649,33 @@ checks:
       pci_dss: ["5.1", "5.2", "5.3"]
       tsc: ["CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0002", "TA0005"]
-      technique: ["T1562", "T1070", "T1059", "T1105"]
-      subtechnique: ["T1562.001", "T1562.002", "T1070.004"]
+      tactic:
+        id:
+          - "TA0002"
+          - "TA0005"
+        name:
+          - "Execution"
+          - "Stealth"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1105"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Ingress Tool Transfer"
+      subtechnique:
+        id:
+          - "T1562.001"
+          - "T1562.002"
+          - "T1070.004"
+        name:
+          - "Disable or Modify Tools"
+          - "Disable Windows Event Logging"
+          - "File Deletion"
     condition: all
     rules:
       - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan" -> r:^1$'
