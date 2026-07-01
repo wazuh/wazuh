@@ -151,7 +151,13 @@ jobs:
       - name: Calculate checksum for environment files
         id: calculate_checksum
         run: |
-          checksum=$(find api/test/integration/env/ -type f -print0 | xargs -0 sha256sum | sha256sum | awk '{print $1}')
+          # Include the version-defining files in the key so a version bump invalidates the
+          # cached images. Otherwise stale agent images built from a previous version are reused
+          # while the manager is rebuilt, causing an agent/manager version skew that breaks the
+          # version-sort and /agents/outdated checks in test_agent_GET_endpoints. VERSION.json
+          # drives the manager/API version; src/shared/include/defs.h (__wazuh_version) drives
+          # the version the agent reports.
+          checksum=$(find api/test/integration/env/ VERSION.json src/shared/include/defs.h -type f -print0 | xargs -0 sha256sum | sha256sum | awk '{print $1}')
           echo "Checksum: $checksum"
           echo "checksum=$checksum" >> $GITHUB_OUTPUT
 

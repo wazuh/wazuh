@@ -36,6 +36,8 @@ runs:
               cat ${{ inputs.doxygen_config }}
               echo "OUTPUT_DIRECTORY = ${{ inputs.path }}/doc"
               echo "INPUT = ${{ inputs.path }}"
+              # Limit parallel dot processes to avoid OOM on memory-constrained runners.
+              echo "DOT_NUM_THREADS = 2"
           } > ${CONFIG_FILE}
 
           # Generate the documentation

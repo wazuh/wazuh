@@ -136,9 +136,9 @@ void CrudService::deleteNamespace(const cm::store::NamespaceId& nsId)
 }
 
 cm::store::dataType::Policy CrudService::importNamespace(const cm::store::NamespaceId& nsId,
-                                  std::string_view jsonDocument,
-                                  std::string_view originSpace,
-                                  bool force)
+                                                         std::string_view jsonDocument,
+                                                         std::string_view originSpace,
+                                                         bool force)
 {
     auto store = getStore();
 
@@ -151,7 +151,11 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
         }
         catch (const std::exception& ex)
         {
-            LOG_WARNING_L(functionName.c_str(), "Rollback delete failed for '{}': {}", id.toStr(), ex.what());
+            LOG_WARNING_L(functionName.c_str(),
+                          "[CM::CRUD] Rollback delete failed "
+                          "for '{}': {}",
+                          id.toStr(),
+                          ex.what());
         }
     };
 
@@ -162,8 +166,9 @@ cm::store::dataType::Policy CrudService::importNamespace(const cm::store::Namesp
         // Reject if destination namespace already exists
         if (store->existsNamespace(nsId))
         {
-            throw std::runtime_error(fmt::format(
-                "Namespace '{}' already exists. Import is only allowed into a new namespace.", nsId.toStr()));
+            throw std::runtime_error(fmt::format("Namespace '{}' already exists. "
+                                                 "Import is only allowed into a new namespace",
+                                                 nsId.toStr()));
         }
 
         // Parse and validate input JSON structure
@@ -355,8 +360,9 @@ void CrudService::importNamespace(const cm::store::NamespaceId& nsId,
     // Reject if destination namespace already exists
     if (store->existsNamespace(nsId))
     {
-        throw std::runtime_error(
-            fmt::format("Namespace '{}' already exists. Import is only allowed into a new namespace.", nsId.toStr()));
+        throw std::runtime_error(fmt::format("Namespace '{}' already exists. "
+                                             "Import is only allowed into a new namespace",
+                                             nsId.toStr()));
     }
 
     // Create empty destination namespace

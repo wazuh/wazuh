@@ -107,7 +107,7 @@ runs:
         # Parse coverage directly from the .info file (avoids lcov version-dependent output format issues)
         linesCoverage=$(awk -F: '/^LH:/{h+=$2}/^LF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' coverage.info)
         echo "Lines coverage is: $linesCoverage %"
-        if ! (( $(echo "$linesCoverage >= $THRESHOLD" | bc -l) )); then
+        if ! awk -v c="$linesCoverage" -v t="$THRESHOLD" 'BEGIN{exit !(c>=t)}'; then
           echo "----------------------------------------"
           echo "FAILED: Lines coverage is lower than $THRESHOLD%"
           echo "----------------------------------------"
@@ -121,7 +121,7 @@ runs:
         functionsCoverage=$(awk -F: '/^FNH:/{h+=$2}/^FNF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' coverage.info)
         echo "Functions coverage is: $functionsCoverage %"
         if [[ "$VALIDATE_FUNCTION_COVERAGE" == "true" ]]; then
-          if ! (( $(echo "$functionsCoverage >= $THRESHOLD" | bc -l) )); then
+          if ! awk -v c="$functionsCoverage" -v t="$THRESHOLD" 'BEGIN{exit !(c>=t)}'; then
             echo "---------------------------------------------"
             echo "FAILED: Functions coverage is lower than $THRESHOLD%"
             echo "--------------------------------------------"

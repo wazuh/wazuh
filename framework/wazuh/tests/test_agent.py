@@ -1082,9 +1082,11 @@ async def test_agent_remove_agents_from_group_exceptions(group_mock, agents_info
         assert error == expected_error
 
 
+@patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
+@patch('wazuh.agent.Wazuh')
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-def test_agent_get_outdated_agents(socket_mock, send_mock):
+def test_agent_get_outdated_agents(socket_mock, send_mock, mock_wazuh, mock_get_agents_info):
     """Test get_oudated_agents function from agent module.
 
     Parameters
@@ -1092,6 +1094,10 @@ def test_agent_get_outdated_agents(socket_mock, send_mock):
     outdated_agents : List of str
         List of agent ID's we expect to be outdated.
     """
+    # Mock manager version to match agent 010's version (v5.0.0)
+    # This ensures agents 001, 002, 005 with older versions are outdated, but agent 010 is up-to-date
+    mock_wazuh.return_value.to_dict.return_value = {'version': 'v5.0.0'}
+
     outdated_agents = ['001', '002', '005']
     result = get_outdated_agents(agent_list=short_agent_list)
     # Check typing

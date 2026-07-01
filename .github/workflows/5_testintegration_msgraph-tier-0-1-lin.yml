@@ -29,7 +29,7 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
     steps:
       - name: Checkout Repo
@@ -59,6 +59,17 @@ jobs:
         with:
           branch_name: ${{ env.BRANCH_NAME }}
           branch_base: ${{ env.BRANCH_BASE }}
+      - name: Set http_proxy for Wazuh ms-graph module
+        # TODO(codebuild-temp): Remove once CodeBuild runners run systemd as PID 1.
+        # proxy_setup calls `systemctl set-environment http_proxy=...` to route Wazuh's
+        # ms-graph module through m365proxy. Without systemd, that call fails silently.
+        # Ubuntu's `service` command uses `env -i` when falling through to init.d, stripping
+        # ALL inherited env vars — so GITHUB_ENV and sudo -E cannot propagate http_proxy to
+        # Wazuh daemons. Patching wazuh-control directly ensures the export survives restarts.
+        # 127.0.0.1 is explicit to avoid localhost→::1 resolution ambiguity.
+        run: |
+          sudo sed -i '/^#!/a export http_proxy=http://127.0.0.1:8000' /var/ossec/bin/wazuh-control
+          echo "http_proxy=http://127.0.0.1:8000" >> $GITHUB_ENV
       - name: Run msgraph integration tests
         run: |
           cd tests/integration

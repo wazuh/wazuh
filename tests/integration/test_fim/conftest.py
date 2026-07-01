@@ -102,6 +102,7 @@ def fill_folder_to_monitor(test_metadata: dict) -> None:
 @pytest.fixture()
 def start_monitoring() -> None:
     FileMonitor(WAZUH_LOG_PATH).start(generate_callback(MONITORING_PATH))
+    FileMonitor(WAZUH_LOG_PATH).start(generate_callback(FIM_SCAN_END), timeout=60)
 
 
 @pytest.fixture(scope="module", autouse=True)

@@ -13,7 +13,7 @@
 policy:
   id: "cis_oracle_linux_9"
   file: "cis_oracle_linux_9.yml"
-  name: "Center for Internet Security Oracle Linux 9 Benchmark v1.0.0."
+  name: "CIS Oracle Linux 9 Benchmark v1.0.0"
   description: "This document provides prescriptive guidance for establishing a secure configuration posture for Oracle Linux 9 systems running on x86 and x64 platforms. This document was tested against Oracle Linux 9."
   references:
     - https://www.cisecurity.org/cis-benchmarks/
@@ -63,8 +63,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:findmnt --kernel /tmp -> r:^/tmp\s'
@@ -88,8 +98,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:findmnt --kernel /tmp -> r:nodev"
@@ -112,9 +132,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /tmp -> r:noexec"
@@ -137,9 +181,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /tmp -> r:nosuid"
@@ -168,9 +236,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:findmnt --kernel /var -> r:^/var\s'
@@ -193,9 +285,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var -> r:nodev"
@@ -218,9 +334,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var -> r:nosuid"
@@ -249,9 +389,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:findmnt --kernel /var/tmp -> r:^/var/tmp\s'
@@ -274,9 +438,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var/tmp -> r:noexec"
@@ -299,9 +487,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var/tmp -> r:nosuid"
@@ -324,9 +536,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var/tmp -> r:nodev"
@@ -355,9 +591,33 @@ checks:
       pci_dss: ["10.7"]
       tsc: ["A1.1", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log -> r:^/var/log\s'
@@ -380,9 +640,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var/log -> r:nodev"
@@ -405,9 +689,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var/log -> r:noexec"
@@ -430,9 +738,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var/log -> r:nosuid"
@@ -461,9 +793,33 @@ checks:
       pci_dss: ["10.7"]
       tsc: ["A1.1", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'c:findmnt --kernel /var/log/audit -> r:^/var/log/audit\s'
@@ -486,9 +842,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var/log/audit -> r:noexec"
@@ -511,9 +891,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var/log/audit -> r:nodev"
@@ -536,9 +940,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /var/log/audit -> r:nosuid"
@@ -567,9 +995,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:findmnt --kernel /home -> r:^/home\s'
@@ -592,9 +1044,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /home -> r:nodev"
@@ -617,9 +1093,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /home -> r:nosuid"
@@ -649,8 +1149,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:findmnt --kernel /dev/shm -> r:^/dev/shm\s'
@@ -673,9 +1183,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:nodev'
@@ -698,9 +1232,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:findmnt --kernel /dev/shm -> r:noexec"
@@ -723,9 +1281,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:mount -> r:\s/dev/shm\s && r:nosuid'
@@ -754,8 +1336,22 @@ checks:
       pci_dss: ["6.2"]
       tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0043", "TA0007"]
-      technique: ["T1595", "T1190", "T1203"]
+      tactic:
+        id:
+          - "TA0043"
+          - "TA0007"
+        name:
+          - "Reconnaissance"
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1190"
+          - "T1203"
+        name:
+          - "Active Scanning"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: all
     rules:
       - "f:/etc/dnf/dnf.conf -> r:gpgcheck=1"
@@ -782,8 +1378,22 @@ checks:
       pci_dss: ["6.2"]
       tsc: ["CC7.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0043", "TA0007"]
-      technique: ["T1595", "T1190", "T1203"]
+      tactic:
+        id:
+          - "TA0043"
+          - "TA0007"
+        name:
+          - "Reconnaissance"
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1190"
+          - "T1203"
+        name:
+          - "Active Scanning"
+          - "Exploit Public-Facing Application"
+          - "Exploitation for Client Execution"
     condition: all
     rules:
       - "f:/etc/dnf/dnf.conf -> r:repo_gpgcheck=1"
@@ -811,9 +1421,33 @@ checks:
       pci_dss: ["10.2", "11.5"]
       tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:rpm -q aide -> r:aide-\S*'
@@ -839,9 +1473,33 @@ checks:
       pci_dss: ["10.2", "11.5"]
       tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:systemctl is-enabled aidecheck.service -> r:enabled"
@@ -866,8 +1524,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - "f:/etc/aide.conf -> r:p\\+i\\+n\\+u\\+g\\+s\\+b\\+acl\\+xattrs\\+sha512"
@@ -895,9 +1565,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'f:/boot/grub2/user.cfg'
@@ -921,9 +1615,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -Lc "%n %#a %u %U %g %G" /boot/grub2/grub.cfg -> r:0\d00\s+0\s+root\s+0\s+root'
@@ -953,8 +1671,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'f:/etc/systemd/coredump.conf -> r:^\s*Storage\s*=\s*none'
@@ -979,8 +1709,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'f:/etc/systemd/coredump.conf -> r:^\s*ProcessSizeMax\s*=\s*0'
@@ -1010,9 +1752,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:rpm -q libselinux -> r:^libselinux-"
@@ -1036,9 +1802,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: none
     rules:
       - 'f:/boot/grub2/grubenv -> r:kernelopts=.*selinux=0|kernelopts=.*enforcing=0'
@@ -1062,9 +1852,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:sestatus -> r:^Loaded policy name:\s+targeted$|^Loaded policy name:\s+mls$'
@@ -1090,9 +1904,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:getenforce -> r:^Enforcing$|^Permissive$"
@@ -1118,9 +1956,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:getenforce -> r:^Enforcing$"
@@ -1144,9 +2006,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: none
     rules:
       - "c:ps -eZ -> r:unconfined_service_t"
@@ -1169,8 +2055,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q setroubleshoot -> r:package setroubleshoot is not installed"
@@ -1193,8 +2089,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q mcstrans -> r:package mcstrans is not installed"
@@ -1220,8 +2126,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: none
     rules:
       - 'f:/etc/motd -> r:\\v|\\r|\\m|\\s|ol'
@@ -1244,8 +2162,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: none
     rules:
       - 'f:/etc/issue -> r:\\v|\\r|\\m|\\s|ol'
@@ -1268,8 +2198,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: none
     rules:
       - 'f:/etc/issue.net -> r:\\v|\\r|\\m|\\s|ol'
@@ -1292,9 +2234,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -L /etc/motd -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -1317,9 +2283,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -L /etc/issue -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -1342,9 +2332,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -L /etc/issue.net -> r:Access:\s*\(0644/-rw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)'
@@ -1373,8 +2387,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q gdm -> r:package gdm is not installed"
@@ -1406,8 +2430,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: none
     rules:
       - 'f:/etc/gdm/custom.conf -> r:^\s*Enable\s*=\s*true'
@@ -1435,9 +2469,33 @@ checks:
       pci_dss: ["2.1", "4.1", "8.2", "2.2", "4.2", "8.3"]
       tsc: ["C1.1", "C1.2", "CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: none
     rules:
       - 'f:/etc/crypto-policies/config -> r:^\s*LEGACY'
@@ -1466,9 +2524,33 @@ checks:
       pci_dss: ["10.4", "10.6"]
       tsc: ["CC4.1", "CC5.2", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:rpm -q chrony -> r:^chrony-"
@@ -1491,9 +2573,33 @@ checks:
       pci_dss: ["10.4", "10.6"]
       tsc: ["CC4.1", "CC5.2", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "f:/etc/chrony.conf"
@@ -1522,8 +2628,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q xorg-x11-server-common -> r:^package xorg-x11-server-common is not installed"
@@ -1546,8 +2662,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q avahi -> r:^package avahi is not installed"
@@ -1573,8 +2699,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q cups -> r:^package cups is not installed"
@@ -1597,8 +2733,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q dhcp-server -> r:^package dhcp-server is not installed"
@@ -1621,8 +2767,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q bind -> r:^package bind is not installed"
@@ -1645,8 +2801,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q vsftpd -> r:^package vsftpd is not installed"
@@ -1670,8 +2836,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q tftp-server -> r:^package tftp-server is not installed"
@@ -1694,8 +2870,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q nginx -> r:^package nginx is not installed"
@@ -1719,8 +2905,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q dovecot -> r:^package dovecot is not installed"
@@ -1744,8 +2940,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q samba -> r:^package samba is not installed"
@@ -1768,8 +2974,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q squid -> r:^package squid is not installed"
@@ -1792,8 +3008,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q net-snmp -> r:^package net-snmp is not installed"
@@ -1816,8 +3042,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q telnet-server -> r:^package telnet-server is not installed"
@@ -1840,8 +3076,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - "c:rpm -q dnsmasq -> r:^package dnsmasq is not installed"
@@ -1864,8 +3112,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'not c:ss -lntu -> r:.*:25\s && !r:127\.0\.0\.1:25\s+|::1\]:25\s+'
@@ -1889,8 +3147,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - "c:rpm -q nfs-utils -> r:^package nfs-utils is not installed"
@@ -1915,8 +3183,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - "c:rpm -q rpcbind -> r:^package rpcbind is not installed"
@@ -1941,8 +3219,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - "c:rpm -q rsync-daemon -> r:^package rsync-daemon is not installed"
@@ -1970,8 +3258,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q telnet -> r:^package telnet is not installed"
@@ -1995,8 +3293,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q openldap-clients -> r:^package openldap-clients is not installed"
@@ -2019,8 +3327,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q tftp -> r:^package tftp is not installed"
@@ -2043,8 +3361,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:rpm -q ftp -> r:^package ftp is not installed"
@@ -2102,9 +3430,31 @@ checks:
       pci_dss: ["1.1", "1.3", "1.2", "1.4"]
       tsc: ["CC6.6", "CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0001", "TA0011"]
-      technique: ["T1046", "T1090", "T1133"]
-      subtechnique: ["T1090.001", "T1090.002", "T1557.001"]
+      tactic:
+        id:
+          - "TA0001"
+          - "TA0011"
+        name:
+          - "Initial Access"
+          - "Command and Control"
+      technique:
+        id:
+          - "T1046"
+          - "T1090"
+          - "T1133"
+        name:
+          - "Network Service Discovery"
+          - "Proxy"
+          - "External Remote Services"
+      subtechnique:
+        id:
+          - "T1090.001"
+          - "T1090.002"
+          - "T1557.001"
+        name:
+          - "Internal Proxy"
+          - "External Proxy"
+          - "LLMNR/NBT-NS Poisoning and SMB Relay"
     condition: all
     rules:
       - "c:rpm -q nftables -> r:^nftables-"
@@ -2135,9 +3485,31 @@ checks:
       pci_dss: ["1.1", "1.3", "1.2", "1.4"]
       tsc: ["CC6.6", "CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0001", "TA0011"]
-      technique: ["T1046", "T1090", "T1133"]
-      subtechnique: ["T1090.001", "T1090.002", "T1557.001"]
+      tactic:
+        id:
+          - "TA0001"
+          - "TA0011"
+        name:
+          - "Initial Access"
+          - "Command and Control"
+      technique:
+        id:
+          - "T1046"
+          - "T1090"
+          - "T1133"
+        name:
+          - "Network Service Discovery"
+          - "Proxy"
+          - "External Remote Services"
+      subtechnique:
+        id:
+          - "T1090.001"
+          - "T1090.002"
+          - "T1557.001"
+        name:
+          - "Internal Proxy"
+          - "External Proxy"
+          - "LLMNR/NBT-NS Poisoning and SMB Relay"
     condition: all
     rules:
       - "c:nft list tables -> r:^table"
@@ -2162,9 +3534,31 @@ checks:
       pci_dss: ["1.1", "1.3", "1.2", "1.4"]
       tsc: ["CC6.6", "CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0001", "TA0011"]
-      technique: ["T1046", "T1090", "T1133"]
-      subtechnique: ["T1090.001", "T1090.002", "T1557.001"]
+      tactic:
+        id:
+          - "TA0001"
+          - "TA0011"
+        name:
+          - "Initial Access"
+          - "Command and Control"
+      technique:
+        id:
+          - "T1046"
+          - "T1090"
+          - "T1133"
+        name:
+          - "Network Service Discovery"
+          - "Proxy"
+          - "External Remote Services"
+      subtechnique:
+        id:
+          - "T1090.001"
+          - "T1090.002"
+          - "T1557.001"
+        name:
+          - "Internal Proxy"
+          - "External Proxy"
+          - "LLMNR/NBT-NS Poisoning and SMB Relay"
     condition: all
     rules:
       - "c:rpm -q nftables -> r:^nftables-"
@@ -2195,9 +3589,31 @@ checks:
       pci_dss: ["1.1", "1.3", "1.2", "1.4"]
       tsc: ["CC6.6", "CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0001", "TA0011"]
-      technique: ["T1046", "T1090", "T1133"]
-      subtechnique: ["T1090.001", "T1090.002", "T1557.001"]
+      tactic:
+        id:
+          - "TA0001"
+          - "TA0011"
+        name:
+          - "Initial Access"
+          - "Command and Control"
+      technique:
+        id:
+          - "T1046"
+          - "T1090"
+          - "T1133"
+        name:
+          - "Network Service Discovery"
+          - "Proxy"
+          - "External Remote Services"
+      subtechnique:
+        id:
+          - "T1090.001"
+          - "T1090.002"
+          - "T1557.001"
+        name:
+          - "Internal Proxy"
+          - "External Proxy"
+          - "LLMNR/NBT-NS Poisoning and SMB Relay"
     condition: all
     rules:
       - "c:systemctl is-enabled nftables.service -> r:enabled"
@@ -2229,9 +3645,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:rpm -q audit -> r:^audit-"
@@ -2254,9 +3694,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:grubby --info=ALL -> r:audit=1"
@@ -2279,9 +3743,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'c:grubby --info=ALL -> n:audit_backlog_limit=(\d+) compare >= 8192'
@@ -2304,9 +3792,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:systemctl is-enabled auditd -> r:enabled"
@@ -2332,9 +3844,33 @@ checks:
       pci_dss: ["10.7"]
       tsc: ["A1.1", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file\s*=\s*\d+'
@@ -2357,9 +3893,33 @@ checks:
       pci_dss: ["10.7"]
       tsc: ["A1.1", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*max_log_file_action\s*=\s*keep_logs'
@@ -2383,9 +3943,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*space_left_action\s*=\s*email'
@@ -2413,9 +3997,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - d:/etc/audit/rules.d/ -> r:.*\.rules -> r:-w /etc/sudoers -p wa -k scope|-w /etc/sudoers -p wa key=scope
@@ -2441,9 +4049,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-a && r:exit,always|always,exit && r:-F arch=b64 && r:-C euid!=uid|-C uid!=euid  && r:-F auid!=unset|-F auid!=-1|-F auid!=4294967295 && r:-S execve && r:-k user_emulation|key=user_emulation'
@@ -2471,9 +4103,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:adjtimex && r:settimeofday && r:clock_settime && r:-k time-change|key=time-change'
@@ -2501,9 +4157,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-a && r:exit,always|always,exit && r:-F arch=b32 && r:-S && r:sethostname && r:setdomainname && r:-k system-locale|key=system-locale'
@@ -2542,9 +4222,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-w && r:/etc/group && r:-p wa && r:-k identity|key=identity'
@@ -2578,9 +4282,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b32 && r:-S mount && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k mounts|key=mounts'
@@ -2606,9 +4334,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-w && r:/var/run/utmp && r:-p wa && r:-k session|key=session'
@@ -2636,9 +4388,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-w && r:/var/log/lastlog && r:-p wa && r:-k logins|key=logins'
@@ -2664,9 +4440,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b64 && r:-S && r:unlink && r:unlinkat && r:rename && r:renameat && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k delete|key=delete'
@@ -2692,9 +4492,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-w && r:/etc/apparmor && r:-p wa && r:-k MAC-policy|key=MAC-policy'
@@ -2720,9 +4544,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chcon && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|key=perm_chng'
@@ -2746,9 +4594,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/setfacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
@@ -2772,9 +4644,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/chacl && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k perm_chng|-F key=perm_chng'
@@ -2798,9 +4694,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k usermod|-F key=usermod'
@@ -2824,9 +4744,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'd:/etc/audit/rules.d -> r:.*\.rules -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:finit_module && r:delete_module && r:create_module && r:query_module && r:-F auid>=\d+ && r:-F auid!=-1|-F auid!=4294967295|-F auid!=unset && r:-k kernel_modules|-F key=kernel_modules'
@@ -2858,9 +4802,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: any
     rules:
       - "f:/etc/audit/audit.rules -> r:^-e 2"
@@ -2884,9 +4852,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:augenrules --check -> r:No change$"
@@ -2915,9 +4907,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'f:/etc/audit/auditd.conf -> r:^\s*\t*log_group\s*\t*=\s*\t*adm|^\s*\t*log_group\s*\t*=\s*\t*root'
@@ -2942,9 +4958,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'not c:sh -c "stat -Lc \"%n %a\" /etc/audit/*.rules" -> r:^/etc/audit && !r:640|600|400'
@@ -2968,9 +5008,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'not c:sh -c "stat -Lc \"%n %U\" /etc/audit/*.rules" -> r:^/etc/audit && !r:root'
@@ -2994,9 +5058,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'not c:sh -c "stat -Lc \"%n %G\" /etc/audit/*.rules" -> r:^/etc/audit && !r:root'
@@ -3020,9 +5108,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
@@ -3046,9 +5158,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
@@ -3072,9 +5208,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'not c:stat -c "%n %a %U %G" /sbin/auditctl /sbin/aureport /sbin/ausearch /sbin/autrace /sbin/auditd /sbin/augenrules -> r:^/sbin && !r:000|010|040|050|001|011|041|051|004|014|044|054|005|015|045|055|700|710|740|750|701|711|741|751|704|714|744|754|705|715|745|755'
@@ -3103,9 +5263,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:rpm -q rsyslog -> r:^rsyslog-"
@@ -3128,9 +5312,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:systemctl is-enabled rsyslog -> r:^enabled"
@@ -3153,9 +5361,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*ForwardToSyslog=yes'
@@ -3179,9 +5411,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'f:/etc/rsyslog.conf -> r:^\$FileCreateMode 06\d0|^\$FileCreateMode 04\d0|^\$FileCreateMode 02\d0|^\$FileCreateMode 00\d0'
@@ -3207,9 +5463,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: any
     rules:
       - 'f:/etc/rsyslog.conf -> !r:# && r:^\*\.\* @@.+'
@@ -3235,8 +5515,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: none
     rules:
       - 'f:/etc/rsyslog.conf -> !r:^\s*# && r:ModLoad imtcp|InputTCPServerRun|load="imtcp"|type="imtcp"'
@@ -3265,9 +5555,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:rpm -q systemd-journal-remote -> r:systemd-journal-remote-"
@@ -3292,9 +5606,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:systemctl is-enabled systemd-journal-upload.service -> r:^enabled"
@@ -3317,8 +5655,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "c:systemctl is-enabled systemd-journal-remote.socket -> r:^masked"
@@ -3341,9 +5689,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - "c:systemctl is-enabled systemd-journald.service -> r:^static"
@@ -3366,9 +5738,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*Compress\s*=\s*yes'
@@ -3391,9 +5787,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'f:/etc/systemd/journald.conf -> r:^\s*Storage=persistent'
@@ -3416,9 +5836,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: all
     rules:
       - 'not f:/etc/systemd/journald.conf -> r:^\s*ForwardToSyslog'
@@ -3451,8 +5895,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - "c:systemctl is-enabled crond -> r:^enabled"
@@ -3475,9 +5931,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat /etc/crontab -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
@@ -3500,9 +5980,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat /etc/cron.hourly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
@@ -3525,9 +6029,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat /etc/cron.daily -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
@@ -3550,9 +6078,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat /etc/cron.weekly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
@@ -3575,9 +6127,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
@@ -3600,9 +6176,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat /etc/cron.monthly -> r:^Access: \(0700/drwx------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
@@ -3630,9 +6230,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/ssh/sshd_config -> r:^Access: \(0600/-rw-------\)\s*Uid: \(\s*0/\s*root\)\s*Gid: \(\s*0/\s*root\)'
@@ -3658,9 +6282,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*AllowUsers\s+[\w@-]*|^\s*AllowGroups\s+[\w@-]*|^\s*DenyUsers\s+[\w@-]*|^\s*DenyGroups\s+[\w@-]*'
@@ -3687,9 +6335,33 @@ checks:
       pci_dss: ["10.2", "10.3", "5.3", "6.4"]
       tsc: ["CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*LogLevel\s+VERBOSE|^\s*LogLevel\s+INFO'
@@ -3715,8 +6387,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*usepam\s+yes'
@@ -3741,9 +6425,35 @@ checks:
       pci_dss: ["7.1"]
       tsc: ["CC6.1", "CC6.3", "CC6.2", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitRootLogin\s*no'
@@ -3768,8 +6478,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*HostbasedAuthentication\s*\t*no'
@@ -3794,9 +6514,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitEmptyPasswords\s*no'
@@ -3821,8 +6567,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*PermitUserEnvironment\s*no'
@@ -3847,8 +6603,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:\s*ignorerhosts\s*yes'
@@ -3873,8 +6641,18 @@ checks:
       pci_dss: ["1.1", "1.2", "2.2", "6.4"]
       tsc: ["CC6.3", "CC6.6", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*X11Forwarding\s*no'
@@ -3902,8 +6680,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*AllowTcpForwarding\s+no'
@@ -3928,9 +6716,33 @@ checks:
       pci_dss: ["2.1", "4.1", "8.2", "2.2", "4.2", "8.3"]
       tsc: ["C1.1", "C1.2", "CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'not f:/etc/sysconfig/sshd -> r:^\s*CRYPTO_POLICY='
@@ -3953,8 +6765,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> r:^\s*Banner\s*/[\w@-]+'
@@ -3977,9 +6801,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxAuthTries\s*\t*(\d+) compare <= 4'
@@ -4004,8 +6852,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*maxstartups\s+(\d+):\d+:\d+ compare <= 10'
@@ -4036,8 +6894,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*MaxSessions\s+(\d+) compare <= 10'
@@ -4062,8 +6932,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: any
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*LoginGraceTime\s*\t*(\d+) compare <= 60 && n:^\s*LoginGraceTime\s*\t*(\d+) compare > 0'
@@ -4090,8 +6972,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'c:sshd -T -C user=root -> n:^\s*ClientAliveInterval\s*\t*(\d+) compare > 0'
@@ -4118,9 +7012,35 @@ checks:
       pci_dss: ["7.1"]
       tsc: ["CC6.1", "CC6.3", "CC6.2", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - "c:dnf list sudo -> r:sudo"
@@ -4144,9 +7064,35 @@ checks:
       pci_dss: ["7.1"]
       tsc: ["CC6.1", "CC6.3", "CC6.2", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:^\s*Defaults\s+use_pty'
@@ -4171,9 +7117,33 @@ checks:
       pci_dss: ["10.1", "10.2", "10.3", "9.4"]
       tsc: ["CC5.2", "CC7.2", "CC7.1", "CC7.3", "CC7.4", "CC7.5", "CC4.1", "CC4.2"]
     mitre:
-      tactic: ["TA0005", "TA0006", "TA0007"]
-      technique: ["T1562", "T1070", "T1059", "T1040"]
-      subtechnique: ["T1562.002", "T1070.001"]
+      tactic:
+        id:
+          - "TA0005"
+          - "TA0006"
+          - "TA0007"
+        name:
+          - "Stealth"
+          - "Credential Access"
+          - "Discovery"
+      technique:
+        id:
+          - "T1562"
+          - "T1070"
+          - "T1059"
+          - "T1040"
+        name:
+          - "Impair Defenses"
+          - "Indicator Removal"
+          - "Command and Scripting Interpreter"
+          - "Network Sniffing"
+      subtechnique:
+        id:
+          - "T1562.002"
+          - "T1070.001"
+        name:
+          - "Disable Windows Event Logging"
+          - "Clear Windows Event Logs"
     condition: any
     rules:
       - 'f:/etc/sudoers -> r:^Defaults logfile="'
@@ -4198,9 +7168,35 @@ checks:
       pci_dss: ["7.1"]
       tsc: ["CC6.1", "CC6.3", "CC6.2", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: none
     rules:
       - 'f:/etc/sudoers -> !r:^\s*# && r:NOPASSWD'
@@ -4224,9 +7220,35 @@ checks:
       pci_dss: ["7.1"]
       tsc: ["CC6.1", "CC6.3", "CC6.2", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: none
     rules:
       - 'f:/etc/sudoers -> !r:^\s*# && r:!authenticate'
@@ -4252,9 +7274,35 @@ checks:
       pci_dss: ["7.1"]
       tsc: ["CC6.1", "CC6.3", "CC6.2", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - 'not f:/etc/sudoers -> !r:^\s*\t*# && r:timestamp_timeout\s*\t*=\s*\t*-1'
@@ -4280,9 +7328,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'f:/etc/pam.d/su -> r:^auth\s*\t*required\s*\t*pam_wheel\.so\s*\t*use_uid'
@@ -4308,9 +7380,31 @@ checks:
       pci_dss: ["6.3"]
       tsc: ["CC8.1", "CC3.1", "CC3.2", "CC3.3", "CC3.4", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0001", "TA0002"]
-      technique: ["T1190", "T1059", "T1204"]
-      subtechnique: ["T1505.003", "T1195.001", "T1574.001"]
+      tactic:
+        id:
+          - "TA0001"
+          - "TA0002"
+        name:
+          - "Initial Access"
+          - "Execution"
+      technique:
+        id:
+          - "T1190"
+          - "T1059"
+          - "T1204"
+        name:
+          - "Exploit Public-Facing Application"
+          - "Command and Scripting Interpreter"
+          - "User Execution"
+      subtechnique:
+        id:
+          - "T1505.003"
+          - "T1195.001"
+          - "T1574.001"
+        name:
+          - "Web Shell"
+          - "Compromise Software Dependencies and Development Tools"
+          - "DLL"
     condition: all
     rules:
       - 'c:authselect list -> r:^[\w@-]*\s*custom'
@@ -4334,8 +7428,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "f:/etc/pam.d/password-auth -> r:required && r:pam_faillock\\.so"
@@ -4362,9 +7466,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - "f:/etc/pam.d/password-auth -> r:pam_pwquality\\.so && r:try_first_pass && r:retry="
@@ -4391,8 +7521,22 @@ checks:
       pci_dss: ["8.1", "8.2"]
       tsc: ["CC6.2", "CC6.3", "CC6.1", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0004", "TA0005"]
-      technique: ["T1078", "T1098", "T1556"]
+      tactic:
+        id:
+          - "TA0004"
+          - "TA0005"
+        name:
+          - "Privilege Escalation"
+          - "Stealth"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Modify Authentication Process"
     condition: all
     rules:
       - 'f:/etc/security/faillock.conf -> !r:^\s*\t*# && n:deny\s*\t*=\s*\t*(\d+) compare > 0 && n:deny\s*\t*=\s*\t*(\d+) compare <= 5'
@@ -4416,9 +7560,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - 'f:/etc/pam.d/system-auth -> r:^\s*password.+requisite.+pam_pwhistory.so.+ && n:remember=(\d+) compare >= 5'
@@ -4442,9 +7612,33 @@ checks:
       pci_dss: ["3.4", "8.2", "3.1", "3.3", "3.5", "8.3"]
       tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'f:/etc/libuser.conf -> r:^\s*\t*crypt_style\s*\t*=\s*\t*sha512|^\s*crypt_style\s*\t*=\s*\t*yescrypt'
@@ -4476,8 +7670,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MAX_DAYS\s*\t*(\d+) compare <= 365'
@@ -4501,9 +7705,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_MIN_DAYS\s*\t*(\d+) compare >= 1'
@@ -4528,8 +7758,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - 'f:/etc/login.defs -> n:^\s*PASS_WARN_AGE\s*\t*(\d+) compare >= 7'
@@ -4554,9 +7794,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: all
     rules:
       - 'c:useradd -D -> n:^\s*INACTIVE\s*=\s*\t*(\d+) compare <= 30'
@@ -4585,8 +7851,18 @@ checks:
       pci_dss: ["2.2", "11.5", "1.1", "1.2", "1.5", "2.1"]
       tsc: ["CC7.1", "CC8.1", "CC5.1", "CC5.2", "CC5.3"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1036", "T1564"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1036"
+          - "T1564"
+        name:
+          - "Masquerading"
+          - "Hide Artifacts"
     condition: all
     rules:
       - "f:/etc/passwd -> r:^root:x:0:0"
@@ -4612,9 +7888,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - "c:passwd -S root -> r:Password set"
@@ -4643,9 +7943,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/passwd -> r:0/root 0/root && r:644|640|604|600'
@@ -4668,9 +7992,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/passwd- -> r:0/root 0/root && r:644|640|604|600'
@@ -4693,9 +8041,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/group -> r:0/root 0/root && r:644|640|604|600'
@@ -4718,9 +8090,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/group- -> r:0/root 0/root && r:644|640|604|600'
@@ -4743,9 +8139,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow -> r:\s0 0/root 0/root'
@@ -4768,9 +8188,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/shadow- -> r:\s0 0/root 0/root'
@@ -4793,9 +8237,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow -> r:\s0 0/root 0/root'
@@ -4818,9 +8286,33 @@ checks:
       pci_dss: ["7.1", "1.3"]
       tsc: ["CC5.2", "CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'c:stat -Lc "%n %a %u/%U %g/%G" /etc/gshadow- -> r:\s0 0/root 0/root'
@@ -4853,9 +8345,33 @@ checks:
       pci_dss: ["3.4", "8.2", "3.1", "3.3", "3.5", "8.3"]
       tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
     mitre:
-      tactic: ["TA0009", "TA0010"]
-      technique: ["T1005", "T1025", "T1041", "T1567", "T1573"]
-      subtechnique: ["T1048.003", "T1552.001"]
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
     condition: all
     rules:
       - 'not f:/etc/passwd -> !r:^[\w@-]+:x:'
@@ -4878,9 +8394,35 @@ checks:
       pci_dss: ["2.2", "8.3", "8.1", "8.2"]
       tsc: ["CC6.1", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "CC7.1", "CC7.2", "CC7.3", "CC7.4", "CC7.5"]
     mitre:
-      tactic: ["TA0006", "TA0003"]
-      technique: ["T1078", "T1098", "T1110", "T1136", "T1556"]
-      subtechnique: ["T1556.001", "T1550.001", "T1550.002"]
+      tactic:
+        id:
+          - "TA0006"
+          - "TA0003"
+        name:
+          - "Credential Access"
+          - "Persistence"
+      technique:
+        id:
+          - "T1078"
+          - "T1098"
+          - "T1110"
+          - "T1136"
+          - "T1556"
+        name:
+          - "Valid Accounts"
+          - "Account Manipulation"
+          - "Brute Force"
+          - "Create Account"
+          - "Modify Authentication Process"
+      subtechnique:
+        id:
+          - "T1556.001"
+          - "T1550.001"
+          - "T1550.002"
+        name:
+          - "Domain Controller Authentication"
+          - "Application Access Token"
+          - "Pass the Hash"
     condition: none
     rules:
       - 'f:/etc/shadow -> !r:^# && r:^[\w@-]+::'
@@ -4910,8 +8452,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: none
     rules:
       - 'f:/etc/passwd -> !r:^\s*root && n:^[\w@-]+:\S*:(\d+):\S*:\S*:\S*:\S* compare == 0'

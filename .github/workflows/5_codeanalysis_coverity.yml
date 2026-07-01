@@ -15,6 +15,14 @@ on:
         required: false
         default: 0
         type: number
+      target:
+        description: "Compilation target (manager or agent)"
+        required: true
+        type: choice
+        default: 'manager'
+        options:
+          - manager
+          - agent
       docker_image_tag:
         description: |
           Tag name of the Docker image to be uploaded.
@@ -32,7 +40,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     permissions:
       contents: read
       packages: read
@@ -43,6 +51,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+
+      - name: Ensure jq (CodeBuild)
+        # TODO(codebuild-temp): Remove once the CodeBuild server image ships jq.
+        # GitHub-hosted ubuntu-24.04 bundled jq; the variables step below parses VERSION.json with it.
+        run: command -v jq >/dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y jq; }
 
       - name: Set up project and build variables
         id: vars
@@ -80,6 +93,19 @@ jobs:
       - name: Download dependencies
         run: make -C src deps -j${{ env.JOBS }}
 
+      - name: Start Docker daemon (CodeBuild)
+        # TODO(codebuild-temp): Remove once CodeBuild exposes a running Docker daemon.
+        # The Coverity build runs inside the coverity-scan container (docker run); CodeBuild has
+        # no systemd so dockerd never starts on its own. VFS avoids overlay-on-overlay in-container.
+        run: |
+          if ! docker info >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -107,7 +133,7 @@ jobs:
           retention-days: 1
 
   upload:
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     needs: build
     steps:
       - name: Checkout code

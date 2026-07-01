@@ -35,6 +35,13 @@ runs:
         fi
         git clone -b "${QA_BRANCH}" --single-branch https://github.com/wazuh/qa-integration-framework.git
         if [[ "$INSTALL" == "true" ]]; then
-          sudo pip install qa-integration-framework/
+          if ! sudo python3 -m pip --version >/dev/null 2>&1; then
+            if [ "$RUNNER_OS" = "macOS" ]; then
+              sudo python3 -m ensurepip --upgrade
+            else
+              sudo apt-get update && sudo apt-get install -y python3-pip
+            fi
+          fi
+          sudo python3 -m pip install --break-system-packages qa-integration-framework/
           sudo rm -rf qa-integration-framework/
         fi

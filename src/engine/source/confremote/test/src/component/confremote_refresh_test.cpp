@@ -6,6 +6,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <base/logging.hpp>
 #include <confremote/confremotemanager.hpp>
 #include <rawevtindexer/raweventindexer.hpp>
 #include <store/mockStore.hpp>
@@ -25,7 +26,12 @@ constexpr int waitSeconds = 5;
 
 } // namespace
 
-TEST(ConfRemoteRefreshComponentTest, SynchronizePropagatesChangedValue)
+class ConfRemoteRefreshComponentTest : public ::testing::Test
+{
+    void SetUp() override { logging::testInit(); }
+};
+
+TEST_F(ConfRemoteRefreshComponentTest, SynchronizePropagatesChangedValue)
 {
     auto store = std::make_shared<StrictMock<store::mocks::MockStore>>();
     EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(false));
@@ -62,7 +68,7 @@ TEST(ConfRemoteRefreshComponentTest, SynchronizePropagatesChangedValue)
     EXPECT_TRUE(received[1]);
 }
 
-TEST(ConfRemoteRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecreation)
+TEST_F(ConfRemoteRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecreation)
 {
     // First manager: synchronize applies a value, which is persisted via upsertDoc
     std::optional<json::Json> capturedDoc;
@@ -82,7 +88,7 @@ TEST(ConfRemoteRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecre
 
     {
         confremote::ConfRemoteManager manager(connector, store1, attempts, waitSeconds);
-        manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) { }, json::Json("false"));
+        manager.addTrigger(REMOTE_INDEX_RAW_EVENTS, [](const json::Json&) {}, json::Json("false"));
         manager.synchronize();
     }
 
@@ -102,14 +108,15 @@ TEST(ConfRemoteRefreshComponentTest, PersistedValueIsReturnedByAddTriggerOnRecre
     EXPECT_EQ(result, json::Json("true"));
 }
 
-TEST(ConfRemoteRefreshComponentTest, FreshInstallKeepsRawEventIndexerDisabled)
+TEST_F(ConfRemoteRefreshComponentTest, FreshInstallKeepsRawEventIndexerDisabled)
 {
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     auto store = std::make_shared<NiceMock<store::mocks::MockStore>>();
     auto rawIndexer = std::make_shared<raweventindexer::RawEventIndexer>(connector);
 
     EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(false));
-    EXPECT_CALL(*connector, getEngineRemoteConfig()).WillRepeatedly(::testing::Throw(std::runtime_error("network down")));
+    EXPECT_CALL(*connector, getEngineRemoteConfig())
+        .WillRepeatedly(::testing::Throw(std::runtime_error("network down")));
 
     confremote::ConfRemoteManager manager(connector, store, attempts, waitSeconds);
     const auto initialValue = manager.addTrigger(
@@ -123,7 +130,7 @@ TEST(ConfRemoteRefreshComponentTest, FreshInstallKeepsRawEventIndexerDisabled)
     EXPECT_FALSE(rawIndexer->isEnabled());
 }
 
-TEST(ConfRemoteRefreshComponentTest, RestartWithCachedSettingsWhenRemoteUnavailableUsesLastValidValue)
+TEST_F(ConfRemoteRefreshComponentTest, RestartWithCachedSettingsWhenRemoteUnavailableUsesLastValidValue)
 {
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     auto store = std::make_shared<StrictMock<store::mocks::MockStore>>();
@@ -132,7 +139,8 @@ TEST(ConfRemoteRefreshComponentTest, RestartWithCachedSettingsWhenRemoteUnavaila
     EXPECT_CALL(*store, existsDoc(_)).WillOnce(Return(true));
     EXPECT_CALL(*store, readDoc(_))
         .WillOnce(Return(store::mocks::storeReadDocResp(json::Json(R"({"index_raw_events":true})"))));
-    EXPECT_CALL(*connector, getEngineRemoteConfig()).WillRepeatedly(::testing::Throw(std::runtime_error("network down")));
+    EXPECT_CALL(*connector, getEngineRemoteConfig())
+        .WillRepeatedly(::testing::Throw(std::runtime_error("network down")));
 
     confremote::ConfRemoteManager manager(connector, store, attempts, waitSeconds);
     const auto initialValue = manager.addTrigger(
@@ -146,7 +154,7 @@ TEST(ConfRemoteRefreshComponentTest, RestartWithCachedSettingsWhenRemoteUnavaila
     EXPECT_TRUE(rawIndexer->isEnabled());
 }
 
-TEST(ConfRemoteRefreshComponentTest, SynchronizeTogglesRawEventIndexer)
+TEST_F(ConfRemoteRefreshComponentTest, SynchronizeTogglesRawEventIndexer)
 {
     auto connector = std::make_shared<StrictMock<wiconnector::mocks::MockWIndexerConnector>>();
     auto store = std::make_shared<NiceMock<store::mocks::MockStore>>();
