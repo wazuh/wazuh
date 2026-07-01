@@ -30,6 +30,7 @@
 STATIC volatile int i = 0;
 STATIC volatile int j = 0;
 static volatile int state = NORMAL;
+static volatile int buffer_stop_flag = 0;
 
 int warn_level;
 int normal_level;
@@ -185,11 +186,11 @@ void *dispatch_buffer(__attribute__((unused)) void * arg) {
         gettime(&ts0);
 
         w_mutex_lock(&mutex_lock);
-        while(empty(i, j) && agt->buffer) {
+        while(empty(i, j) && agt->buffer && !buffer_stop_flag) {
             w_cond_wait(&cond_no_empty, &mutex_lock);
         }
 
-        if (!agt->buffer) {
+        if (!agt->buffer || buffer_stop_flag) {
             mdebug1("Dispatch buffer thread received stop signal. Exiting.");
             w_mutex_unlock(&mutex_lock);
             break;
@@ -304,6 +305,14 @@ int w_agentd_get_buffer_lenght() {
     }
 
     return retval;
+}
+
+void buffer_stop(void) {
+    w_mutex_lock(&mutex_lock);
+    buffer_stop_flag = 1;
+    w_cond_signal(&cond_no_empty);
+    w_mutex_unlock(&mutex_lock);
+    mdebug1("Dispatch buffer stop signaled.");
 }
 
 void w_agentd_buffer_free(unsigned int current_capacity) {
