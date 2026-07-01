@@ -53,6 +53,7 @@ All notable changes to this project will be documented in this file.
 - Fixed `wazuh-db` error assigning groups by avoiding the keyentries counter as index. ([#34082](https://github.com/wazuh/wazuh/issues/34082))
 - Fixed token validation race condition after revoke. ([#35043](https://github.com/wazuh/wazuh/issues/35043))
 - Handled the stop signal during vulnerability feed download. ([#35638](https://github.com/wazuh/wazuh/issues/35638))
+- Fixed module state (e.g. SCA) disappearing from the indexer after a data-clean and re-sync, where re-indexed documents were rejected as version conflicts and silently dropped. ([#37334](https://github.com/wazuh/wazuh/issues/37334))
 
 ### Agent
 

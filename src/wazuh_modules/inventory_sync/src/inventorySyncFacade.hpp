@@ -1109,6 +1109,21 @@ public:
                             }
                         }
 
+                        // #37334: an index whose docs were just deleted in this session (a DataClean above,
+                        // or the Mode_ModuleFull delete-by-query) must be re-indexed so the re-sync WINS over
+                        // the delete. Those deletes use internal versioning and bump the doc/tombstone
+                        // _version, while a normal re-index is gated by external_gte carrying the agent's
+                        // per-doc version — which the agent resets when it rebuilds its module DB after a
+                        // data-clean (e.g. SCA re-creates sca_check at version 1). provided < retained then
+                        // makes every re-synced doc 409 ("version conflict") and get silently dropped, leaving
+                        // the index empty. For a just-cleared index the re-index is authoritative, so we skip
+                        // the external_gte guard below and overwrite unconditionally.
+                        std::set<std::string> clearedIndices = res.context->dataCleanIndices;
+                        if (res.context->mode == Wazuh::SyncSchema::Mode_ModuleFull)
+                        {
+                            clearedIndices.insert(res.context->indices.begin(), res.context->indices.end());
+                        }
+
                         const auto prefix = std::format("{}_", res.context->sessionId);
 
                         // Track if we have any bulk data to send to indexer
@@ -1256,7 +1271,12 @@ public:
                                     dataString = document.dump();
 
                                     const auto version = data->version();
-                                    if (version && version > 0)
+                                    // #37334: skip the external_gte guard when this index was just cleared
+                                    // (DataClean / Mode_ModuleFull). The delete bumped the tombstone above the
+                                    // agent's reset version, so a guarded re-index would 409 and be dropped;
+                                    // the re-index is authoritative here, so overwrite unconditionally.
+                                    const bool indexWasCleared = clearedIndices.count(std::string(rawIndex)) != 0;
+                                    if (version && version > 0 && !indexWasCleared)
                                     {
                                         m_indexerConnector->bulkIndex(
                                             elementId, rawIndex, dataString, std::to_string(version));
