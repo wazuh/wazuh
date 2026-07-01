@@ -1695,7 +1695,7 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
 
             if (!syncSuccess)
             {
-                m_logFunction(LOG_WARNING, "Failed to synchronize " + table);
+                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed to synchronize " + table);
                 return CoordinationResult::Failed;
             }
 
@@ -2130,7 +2130,7 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         }
         else
         {
-            m_logFunction(LOG_WARNING, "Failed integrity check for " + table);
+            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed integrity check for " + table);
         }
 
         return success;
