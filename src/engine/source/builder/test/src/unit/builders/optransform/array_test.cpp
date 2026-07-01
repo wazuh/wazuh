@@ -304,6 +304,16 @@ INSTANTIATE_TEST_SUITE_P(
                            customTargetExpected()(mocks);
                            return makeEvent(R"({"ref": "a", "targetField": ["b", "a"]})");
                        })),
+        TransformT(R"({"ref": "a", "targetField": []})",
+                   optransform::getArrayAppendBuilder(),
+                   "targetField",
+                   {makeRef("ref")},
+                   SUCCESS(
+                       [](const auto& mocks)
+                       {
+                           customTargetExpected()(mocks);
+                           return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
+                       })),
         TransformT(R"({"ref": "a"})",
                    optransform::getArrayAppendBuilder(),
                    "targetField",

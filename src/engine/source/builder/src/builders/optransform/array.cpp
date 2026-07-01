@@ -26,7 +26,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
             throw std::runtime_error(base::getError(result).message);
         }
 
-        json::Json::Type targetFieldtype;
+        json::Json::Type targetFieldtype {json::Json::Type::Unknown};
         auto isInSchema {buildCtx->validator().hasField(targetField.dotPath())};
         if (isInSchema)
         {
@@ -58,31 +58,24 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                 {
                     // For string Values, capture string directly to avoid permanent json::Json allocation
                     appendOps.emplace_back(
-                        [targetField = targetField.jsonPath(),
-                         i,
-                         targetFieldtype,
-                         unique,
-                         isInSchema,
-                         strValue = std::string(asValue->getStringDirect())](std::vector<json::Json>& targetArray,
-                                                   json::Json::Type& valueType,
-                                                   const base::Event& event) -> base::OptError
+                        [targetFieldtype, unique, isInSchema, strValue = std::string(asValue->getStringDirect())](
+                            std::vector<json::Json>& targetArray,
+                            json::Json::Type& valueType,
+                            const base::Event&) -> base::OptError
                         {
                             if (json::Json::Type::Unknown == valueType)
                             {
-                                if (!isInSchema)
+                                if (isInSchema)
                                 {
-                                    if (!event->getArray(targetField).has_value())
-                                    {
-                                        valueType = json::Json::Type::String;
-                                    }
-                                    else
-                                    {
-                                        valueType = event->getArray(targetField).value()[0].type();
-                                    }
+                                    valueType = targetFieldtype;
+                                }
+                                else if (!targetArray.empty())
+                                {
+                                    valueType = targetArray.front().type();
                                 }
                                 else
                                 {
-                                    valueType = targetFieldtype;
+                                    valueType = json::Json::Type::String;
                                 }
                             }
 
@@ -110,55 +103,46 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                 }
                 else
                 {
-                appendOps.emplace_back(
-                    [targetField = targetField.jsonPath(),
-                     i,
-                     targetFieldtype,
-                     unique,
-                     isInSchema,
-                     value = asValue->sharedValue()](std::vector<json::Json>& targetArray,
-                                               json::Json::Type& valueType,
-                                               const base::Event& event) -> base::OptError
-                    {
-                        if (json::Json::Type::Unknown == valueType)
+                    appendOps.emplace_back(
+                        [targetFieldtype, unique, isInSchema, value = asValue->sharedValue()](
+                            std::vector<json::Json>& targetArray,
+                            json::Json::Type& valueType,
+                            const base::Event&) -> base::OptError
                         {
-                            if (!isInSchema)
+                            if (json::Json::Type::Unknown == valueType)
                             {
-                                // If the target field is empty, take as type the type of the first element to be added,
-                                // otherwise take the type of the first element of the target field.
-                                if (!event->getArray(targetField).has_value())
+                                if (isInSchema)
                                 {
-                                    valueType = value->type();
+                                    valueType = targetFieldtype;
+                                }
+                                else if (!targetArray.empty())
+                                {
+                                    valueType = targetArray.front().type();
                                 }
                                 else
                                 {
-                                    valueType = event->getArray(targetField).value()[0].type();
+                                    valueType = value->type();
                                 }
                             }
-                            else
+
+                            if (value->type() != valueType)
                             {
-                                valueType = targetFieldtype;
+                                return base::Error {fmt::format("Expected '{}' value but got value of type '{}'",
+                                                                json::Json::typeToStr(valueType),
+                                                                json::Json::typeToStr(value->type()))};
                             }
-                        }
 
-                        if (value->type() != valueType)
-                        {
-                            return base::Error {fmt::format("Expected '{}' value but got value of type '{}'",
-                                                            json::Json::typeToStr(valueType),
-                                                            json::Json::typeToStr(value->type()))};
-                        }
-
-                        if (unique)
-                        {
-                            if (std::find(targetArray.begin(), targetArray.end(), *value) != targetArray.end())
+                            if (unique)
                             {
-                                return base::noError();
+                                if (std::find(targetArray.begin(), targetArray.end(), *value) != targetArray.end())
+                                {
+                                    return base::noError();
+                                }
                             }
-                        }
 
-                        targetArray.emplace_back(*value);
-                        return base::noError();
-                    });
+                            targetArray.emplace_back(*value);
+                            return base::noError();
+                        });
                 }
             }
             else
@@ -167,9 +151,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                     fmt::format("'{}' not found", std::static_pointer_cast<const Reference>(opArgs[i])->dotPath());
 
                 appendOps.emplace_back(
-                    [targetField = targetField.jsonPath(),
-                     i,
-                     targetFieldtype,
+                    [targetFieldtype,
                      isInSchema,
                      refNotFound,
                      unique,
@@ -191,22 +173,17 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
 
                         if (json::Json::Type::Unknown == valueType)
                         {
-                            if (!isInSchema)
+                            if (isInSchema)
                             {
-                                // If the target field is empty, take as type the type of the first element to be added,
-                                // otherwise take the type of the first element of the target field.
-                                if (!event->getArray(targetField).has_value())
-                                {
-                                    valueType = value.value().type();
-                                }
-                                else
-                                {
-                                    valueType = event->getArray(targetField).value()[0].type();
-                                }
+                                valueType = targetFieldtype;
+                            }
+                            else if (!targetArray.empty())
+                            {
+                                valueType = targetArray.front().type();
                             }
                             else
                             {
-                                valueType = targetFieldtype;
+                                valueType = value->type();
                             }
                         }
 
@@ -225,7 +202,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                             }
                         }
 
-                        targetArray.emplace_back(value.value());
+                        targetArray.emplace_back(std::move(value.value()));
                         return base::noError();
                     });
             }
@@ -256,12 +233,7 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                 RETURN_FAILURE(isTestMode, event, failureNotArray);
             }
 
-            auto resp = event->getArray(targetField);
-            std::vector<json::Json> targetArray = resp.value_or(std::vector<json::Json>());
-            if (resp)
-            {
-                targetArray = std::vector<json::Json>(resp.value());
-            }
+            auto targetArray = event->getArray(targetField).value_or(std::vector<json::Json> {});
 
             auto valueType = json::Json::Type::Unknown;
             auto initialSize = targetArray.size();
