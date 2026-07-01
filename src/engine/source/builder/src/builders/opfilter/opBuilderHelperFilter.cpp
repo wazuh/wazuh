@@ -1796,8 +1796,8 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
             parameter = opArgs[0],
             expectedKeys](base::ConstEvent event) -> FilterResult
     {
-        const auto objectTarget = event->getObject(targetField);
-        if (!objectTarget.has_value())
+        const auto objectFields = event->getFields(targetField);
+        if (!objectFields.has_value())
         {
             RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
@@ -1823,12 +1823,12 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
             }
         }
 
-        if (localKeys.size() < objectTarget.value().size())
+        if (localKeys.size() < objectFields->size())
         {
             RETURN_FAILURE(isTestMode, false, failureTrace4);
         }
 
-        for (const auto& [key, value] : objectTarget.value())
+        for (const auto& key : objectFields.value())
         {
             if (localKeys.erase(key) == 0)
             {
