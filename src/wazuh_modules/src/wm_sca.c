@@ -783,16 +783,21 @@ static int wm_sca_send_stateless(const char* message) {
     mdebug1("Sending SCA event: %s", message);
 
     if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0) {
-        merror("Error sending message to queue");
+        if (wm_sca_is_shutting_down()) {
+            return -1;
+        }
+
+        mdebug1("Failed to send message to queue, attempting reconnection.");
 
         if ((g_sca_queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_sca_is_shutting_down)) < 0) {
-            merror("Cannot restart SCA message queue");
             return -1;
         }
 
         // Try to send it again
         if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0) {
-            merror("Error sending message to queue after restart");
+            if (!wm_sca_is_shutting_down()) {
+                merror("Error sending message to queue after restart");
+            }
             return -1;
         }
     }
