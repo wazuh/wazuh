@@ -424,6 +424,8 @@ remoted.control_msg_queue_size
 remoted.router_forwarding_disabled
 remoted.batch_events_capacity
 remoted.batch_events_per_agent_capacity
+remoted.queue_max_bytes
+remoted.batch_events_max_bytes
 remoted.enrich_cache_expire_time
 remoted.debug
 wazuh_db.worker_pool_size

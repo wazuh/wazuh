@@ -597,8 +597,10 @@ int main(int argc, char* argv[])
         {
             const auto qSize = confManager.get<size_t>(conf::key::EVENT_QUEUE_SIZE);
             const auto qEps = confManager.get<size_t>(conf::key::EVENT_QUEUE_EPS);
+            const auto qMaxBytes = confManager.get<size_t>(conf::key::EVENT_QUEUE_MAX_BYTES);
 
             const auto eventQueue = std::make_shared<fastqueue::CQueue<router::IngestEvent>>(qSize, qEps);
+            eventQueue->setByteLimit(qMaxBytes, [](const router::IngestEvent& e) { return e.second.size(); });
             const auto testQueue = std::make_shared<fastqueue::StdQueue<router::test::EventTest>>(qSize);
 
             router::Orchestrator::Options config {.m_numThreads = confManager.get<int>(conf::key::ORCHESTRATOR_THREADS),
@@ -615,9 +617,12 @@ int main(int argc, char* argv[])
 
             exitHandler.add([orchestrator]() { orchestrator->requestShutdown(); });
             const auto epsDescription = qEps > 0 ? std::to_string(qEps) : std::string("unlimited");
-            LOG_INFO("Orchestrator initialized and started with event queue size: {}, events per second: {}.",
-                     qSize,
-                     epsDescription);
+            const auto bytesDescription = qMaxBytes > 0 ? std::to_string(qMaxBytes) : std::string("unlimited");
+            LOG_INFO(
+                "Orchestrator initialized and started with event queue size: {}, events per second: {}, max bytes: {}.",
+                qSize,
+                epsDescription,
+                bytesDescription);
         }
 
         // CMsync
@@ -649,12 +654,14 @@ int main(int argc, char* argv[])
             auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
             if (iocSyncInterval > 0)
             {
-                scheduler->scheduleTask(
-                    "ioc-sync-task",
-                    scheduler::TaskConfig {.interval = iocSyncInterval,
-                                           .runImmediately = true,
-                                           .CPUPriority = 0,
-                                           .taskFunction = [iocSyncService]() { iocSyncService->synchronize(); }});
+                scheduler->scheduleTask("ioc-sync-task",
+                                        scheduler::TaskConfig {.interval = iocSyncInterval,
+                                                               .runImmediately = true,
+                                                               .CPUPriority = 0,
+                                                               .taskFunction = [iocSyncService]()
+                                                               {
+                                                                   iocSyncService->synchronize();
+                                                               }});
                 LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
                           "interval and {} for batch size",
                           iocSyncInterval,
@@ -688,7 +695,9 @@ int main(int argc, char* argv[])
                                            .runImmediately = true,
                                            .CPUPriority = 0,
                                            .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
-                                           { geoManager->remoteUpsert(manifestUrl, cityPath, asnPath); }});
+                                           {
+                                               geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
+                                           }});
                 LOG_DEBUG("Geo sync scheduled with interval: {} seconds", geoSyncInterval);
             }
             else
@@ -720,12 +729,14 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
-            scheduler->scheduleTask(
-                "remote-conf-sync",
-                scheduler::TaskConfig {.interval = remoteConfSyncInterval,
-                                       .runImmediately = true,
-                                       .CPUPriority = 0,
-                                       .taskFunction = [remoteConf]() { remoteConf->synchronize(); }});
+            scheduler->scheduleTask("remote-conf-sync",
+                                    scheduler::TaskConfig {.interval = remoteConfSyncInterval,
+                                                           .runImmediately = true,
+                                                           .CPUPriority = 0,
+                                                           .taskFunction = [remoteConf]()
+                                                           {
+                                                               remoteConf->synchronize();
+                                                           }});
             LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds", remoteConfSyncInterval);
         }
 
@@ -823,7 +834,9 @@ int main(int argc, char* argv[])
                                                      .runImmediately = false,
                                                      .CPUPriority = 0,
                                                      .taskFunction = [metricsWriter, metricsManager]()
-                                                     { metricsManager->writeAllMetrics(metricsWriter); }};
+                                                     {
+                                                         metricsManager->writeAllMetrics(metricsWriter);
+                                                     }};
 
                 scheduler->scheduleTask("MetricsLogger", std::move(metricsConfig));
                 LOG_INFO("Metrics stream logging enabled (interval: {} seconds, on-demand channel creation).",
