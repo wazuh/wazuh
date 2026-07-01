@@ -69,12 +69,12 @@ void asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
                                 const char* data,
                                 uint64_t version);
 
-// @brief Triggers synchronization of a module.
+/// @brief Triggers synchronization of a module.
 ///
 /// @param handle Pointer to the AgentSyncProtocol handle.
 /// @param mode Synchronization mode (e.g., full, delta).
-/// @return true if the sync was successfully processed; false otherwise.
-bool asp_sync_module(AgentSyncProtocolHandle* handle,
+/// @return SyncModuleResult_t with success flag and an optional failure reason string.
+SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
                      Mode_t mode);
 
 /// @brief Checks if a module index requires full synchronization.

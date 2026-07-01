@@ -2229,7 +2229,7 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 }
 
 // LCOV_EXCL_START
-bool Syscollector::syncModule(Mode mode)
+SyncModuleResult Syscollector::syncModule(Mode mode)
 {
     if (m_paused || m_stopping.load())
     {
@@ -2238,7 +2238,7 @@ bool Syscollector::syncModule(Mode mode)
             m_logFunction(LOG_DEBUG, "Syscollector module is paused or stopping, skipping synchronization");
         }
 
-        return false;
+        return {false, {}};
     }
 
     m_logFunction(LOG_INFO, "Starting inventory synchronization.");
@@ -2246,14 +2246,15 @@ bool Syscollector::syncModule(Mode mode)
     // RAII guard ensures m_syncing is set to false even if function exits early
     ScanGuard syncGuard(m_syncing, m_pauseCv);
 
-    bool success = true;
+    bool overallSuccess = true;
+    std::string failureReason;
 
     // Sync regular (non-VD) data
     if (m_spSyncProtocol)
     {
-        success = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
+        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
 
-        if (success)
+        if (result.success)
         {
             int64_t firstSyncCompleted = 0;
 
@@ -2262,13 +2263,20 @@ bool Syscollector::syncModule(Mode mode)
                 updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
             }
         }
+        else
+        {
+            overallSuccess = false;
+            failureReason = result.failureReason;
+            m_logFunction(LOG_WARNING, "Syscollector synchronization failed" +
+                          (result.failureReason.empty() ? "." : ": " + result.failureReason));
+        }
     }
 
     // Check if stopping before proceeding with VD sync
     if (m_stopping.load())
     {
         m_logFunction(LOG_DEBUG, "Stop received during synchronization, skipping VD sync");
-        return false;
+        return {false, {}};
     }
 
     // Sync VD data with appropriate option based on first scan status
@@ -2289,23 +2297,30 @@ bool Syscollector::syncModule(Mode mode)
             vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
         }
 
-        bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
+        SyncModuleResult vdResult = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
 
-        persistVDFirstSyncIfNeeded(vdSuccess, firstSyncDone);
+        persistVDFirstSyncIfNeeded(vdResult.success, firstSyncDone);
 
-        success = vdSuccess && success;
+        if (!vdResult.success)
+        {
+            overallSuccess = false;
+
+            if (failureReason.empty())
+            {
+                failureReason = vdResult.failureReason;
+            }
+
+            m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed" +
+                          (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason));
+        }
     }
 
-    if (success)
+    if (overallSuccess)
     {
         m_logFunction(LOG_INFO, "Syscollector synchronization process finished successfully.");
     }
-    else
-    {
-        m_logFunction(LOG_INFO, "Syscollector synchronization process failed.");
-    }
 
-    return success;
+    return {overallSuccess, failureReason};
 }
 // LCOV_EXCL_STOP
 
@@ -2811,8 +2826,8 @@ int Syscollector::executeFlushSync()
     }
 
     // Trigger immediate synchronization to flush pending messages.
-    bool result = true;
-    bool vdResult = true;
+    SyncModuleResult result = {true, ""};
+    SyncModuleResult vdResult = {true, ""};
 
     if (m_spSyncProtocol)
     {
@@ -2835,10 +2850,10 @@ int Syscollector::executeFlushSync()
 
         vdResult = m_spSyncProtocolVD->synchronizeModule(Mode::DELTA, vdOption);
 
-        persistVDFirstSyncIfNeeded(vdResult, firstSyncDone);
+        persistVDFirstSyncIfNeeded(vdResult.success, firstSyncDone);
     }
 
-    const bool overallSuccess = result && vdResult;
+    const bool overallSuccess = result.success && vdResult.success;
 
     if (overallSuccess)
     {
@@ -2863,14 +2878,22 @@ int Syscollector::executeFlushSync()
         {
             std::string failedQueues;
 
-            if (!result && !vdResult)
+            if (!result.success && !vdResult.success)
                 failedQueues = "both syscollector and VD queues";
-            else if (!result)
+            else if (!result.success)
                 failedQueues = "syscollector queue";
             else
                 failedQueues = "VD queue";
 
-            m_logFunction(LOG_WARNING, "Syscollector flush failed: " + failedQueues);
+            std::string reason;
+
+            if (!result.success && !result.failureReason.empty())
+                reason = result.failureReason;
+
+            if (!vdResult.success && !vdResult.failureReason.empty())
+                reason += (reason.empty() ? "" : "; VD: ") + vdResult.failureReason;
+
+            m_logFunction(LOG_WARNING, "Syscollector flush failed: " + failedQueues + (reason.empty() ? "" : ": " + reason));
         }
     }
 
@@ -4564,9 +4587,9 @@ void Syscollector::runRecoveryProcess()
 
                 m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items in memory");
                 m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
-                bool success = syncModule(Mode::FULL);
+                bool recoverySucceeded = syncModule(Mode::FULL).success;
 
-                if (success)
+                if (recoverySucceeded)
                 {
                     m_logFunction(LOG_DEBUG, "Recovery completed successfully");
                 }

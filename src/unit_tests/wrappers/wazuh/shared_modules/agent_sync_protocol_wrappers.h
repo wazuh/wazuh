@@ -34,8 +34,8 @@ void __wrap_asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
                                        const char* index,
                                        const char* data);
 
-bool __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
-                            int mode);
+SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
+                                          int mode);
 
 bool __wrap_asp_requires_full_sync(AgentSyncProtocolHandle* handle,
                                    const char* index,

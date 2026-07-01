@@ -2,6 +2,7 @@
 #include "agent_sync_protocol.hpp"
 #include "agent_sync_protocol_types.hpp"
 #include "agent_sync_protocol_c_wrapper.hpp"
+#include <cstring>
 #include <memory>
 #include <string>
 
@@ -106,23 +107,34 @@ extern "C" {
         }
     }
 
-    bool asp_sync_module(AgentSyncProtocolHandle* handle,
-                         Mode_t mode)
+    SyncModuleResult_t asp_sync_module(AgentSyncProtocolHandle* handle,
+                                       Mode_t mode)
     {
         try
         {
-            if (!handle) return false;
+            if (!handle) return {false, {}};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
-            return wrapper->impl->synchronizeModule(static_cast<Mode>(mode));
+
+            SyncModuleResult cppResult = wrapper->impl->synchronizeModule(static_cast<Mode>(mode));
+
+            SyncModuleResult_t cResult;
+
+            cResult.success = cppResult.success;
+
+            strncpy(cResult.failure_reason, cppResult.failureReason.c_str(), SYNC_FAILURE_REASON_MAX_LEN - 1);
+
+            cResult.failure_reason[SYNC_FAILURE_REASON_MAX_LEN - 1] = '\0';
+
+            return cResult;
         }
         catch (const std::exception& ex)
         {
-            return false;
+            return {false, {}};
         }
         catch (...)
         {
-            return false;
+            return {false, {}};
         }
     }
 
@@ -213,7 +225,7 @@ extern "C" {
 
             return wrapper->impl->synchronizeMetadataOrGroups(static_cast<Mode>(mode),
                                                               indices_vec,
-                                                              global_version);
+                                                              global_version).success;
         }
         catch (const std::exception& ex)
         {

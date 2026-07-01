@@ -5,6 +5,7 @@
 #include <idbsync.hpp>
 #include <ifilesystem_wrapper.hpp>
 #include <sca_utils.hpp>
+#include "agent_sync_protocol_types.hpp"
 #include "asyncFlushController.hpp"
 #include "iagent_sync_protocol.hpp"
 
@@ -102,7 +103,7 @@ class SecurityConfigurationAssessment
 
         /// @brief Synchronize the module
         /// @param mode Synchronization mode
-        /// @return true if synchronization was successful, false otherwise
+        /// @return true on success, false on failure (a WARNING with the reason is logged internally).
         bool syncModule(Mode mode);
 
         /// @brief Persist a difference
@@ -222,11 +223,11 @@ class SecurityConfigurationAssessment
         /// @brief Synchronize the current DB snapshot using FULL mode.
         /// @param increaseVersions Whether to bump versions before building the snapshot.
         /// @param syncReason Reason used in logs.
-        /// @return true on success.
-        bool synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
+        /// @return SyncModuleResult with success flag and an optional failure reason string.
+        SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
 
         /// @brief Perform full recovery: load all checks and resync
-        /// @return true on success
+        /// @return true on success, false on failure.
         bool performRecovery();
 
         /// @brief Check with manager if full sync required via checksum

@@ -42,12 +42,14 @@ void __wrap_asp_persist_diff(AgentSyncProtocolHandle* handle,
     check_expected(version);
 }
 
-bool __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
+SyncModuleResult_t __wrap_asp_sync_module(AgentSyncProtocolHandle* handle,
                             int mode) {
     check_expected_ptr(handle);
     check_expected(mode);
     __wrap_asp_sync_module_hook();
-    return mock_type(bool);
+    SyncModuleResult_t result = {0};
+    result.success = mock_type(bool);
+    return result;
 }
 
 void __wrap_asp_persist_diff_in_memory(AgentSyncProtocolHandle* handle,
