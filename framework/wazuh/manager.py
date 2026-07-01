@@ -2,6 +2,7 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
+import logging
 from os import remove
 from os.path import exists
 
@@ -10,13 +11,15 @@ from wazuh.core import common, configuration
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.cluster.utils import manager_restart, manager_reload
 from wazuh.core.configuration import get_ossec_conf, write_ossec_conf
-from wazuh.core.engine_http import EngineHTTPClient
+from wazuh.core.engine_http import EngineHTTPClient, ModulesdHTTPClient
 from wazuh.core.exception import WazuhError, WazuhException, WazuhInternalError
 from wazuh.core.manager import status, get_api_conf, get_wazuh_logs, \
     get_logs_summary, validate_ossec_conf, WAZUH_LOG_FIELDS
 from wazuh.core.results import AffectedItemsWazuhResult
 from wazuh.core.utils import process_array, safe_move, validate_wazuh_xml, full_copy
 from wazuh.rbac.decorators import expose_resources, mask_sensitive_config
+
+logger = logging.getLogger('wazuh')
 
 node_id = get_node().get('node')
 
@@ -50,24 +53,45 @@ def _analysisd_status(running: bool) -> dict:
 
 
 def _modulesd_status(running: bool) -> dict:
-    """Build the status entry for modulesd.
+    """Build the status entry for modulesd from the `/vulnerability-detector/status` endpoint.
 
-    NOTE: mocked for now. The real criteria for `ready` (expected: a valid vulnerability-detector feed
-    loaded) must be agreed with the modulesd/VD team. Tracked as an open item in the issue.
-    The vulnerability-detector `status` vocabulary is: ready | updating | failed.
+    Queries the modulesd Unix socket. The node is ready when the vulnerability-detector feed is
+    fully loaded (available=True, status='ready'). A disabled VD is not a readiness blocker.
     """
     if not running:
         return {'ready': False}
 
-    # MOCK — replace with the real modulesd ready criteria once defined by the VD team.
+    infrastructure_modules = {
+        'inventory-sync': {'available': True},
+        'content-manager': {'available': True},
+        'task-manager': {'available': True},
+    }
+
+    client = None
+    try:
+        client = ModulesdHTTPClient()
+        vd = client.get_status()
+    except WazuhException as exc:
+        logger.warning('Could not retrieve modulesd VD status: %s', exc)
+        return {
+            'ready': False,
+            'modules': {
+                'vulnerability-detector': {'available': False, 'status': 'failed'},
+                **infrastructure_modules,
+            },
+        }
+    finally:
+        if client is not None:
+            client.close()
+
+    enabled = vd.get('enabled', True)
+    ready = (not enabled) or (bool(vd.get('available', False)) and vd.get('status') == 'ready')
+
     return {
-        'ready': True,
-        'vulnerability-detector': {
-            'available': True,
-            'status': 'ready',  # ready | updating | failed
-            'enabled': True,
-            'offset': 0,
-            'last_successful_update': 0,
+        'ready': ready,
+        'modules': {
+            'vulnerability-detector': vd,
+            **infrastructure_modules,
         },
     }
 
@@ -77,7 +101,7 @@ def get_status() -> AffectedItemsWazuhResult:
     """Report the node status: whether it is ready to process events, per daemon.
 
     Each daemon exposes `running` (PID check by the framework) and `ready`. analysisd embeds the
-    Engine `/status` resources (spaces/IOC/geo); modulesd embeds vulnerability-detector (mocked).
+    Engine `/status` resources (spaces/IOC/geo); modulesd embeds vulnerability-detector status.
     Daemons without a richer status contract are ready when running. The node-level `ready` is true
     only when every daemon is ready.
 

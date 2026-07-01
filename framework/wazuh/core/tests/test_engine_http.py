@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import httpx
 
-from wazuh.core.engine_http import EngineHTTPClient
+from wazuh.core.engine_http import EngineHTTPClient, ModulesdHTTPClient
 from wazuh.core.exception import WazuhError, WazuhInternalError
 
 
@@ -190,3 +190,98 @@ def test_engine_http_client_init_error():
             with pytest.raises(WazuhInternalError) as exc_info:
                 EngineHTTPClient()
             assert exc_info.value.code == 2018
+
+
+# ── ModulesdHTTPClient ─────────────────────────────────────────────────────────
+
+VD_STATUS_RESPONSE = {
+    'available': True,
+    'status': 'ready',
+    'enabled': True,
+    'offset': 42,
+    'last_successful_update': 1719878400,
+}
+
+
+def _make_modulesd_client() -> ModulesdHTTPClient:
+    with patch('wazuh.core.common.MODULESD_SOCKET', '/var/wazuh-manager/queue/sockets/modulesd'):
+        with patch('httpx.HTTPTransport'), patch('httpx.Client'):
+            client = ModulesdHTTPClient()
+
+    client._client = MagicMock()
+    return client
+
+
+def test_modulesd_get_status_ok():
+    client = _make_modulesd_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.return_value = VD_STATUS_RESPONSE
+    client._client.get.return_value = mock_response
+
+    result = client.get_status()
+
+    client._client.get.assert_called_once_with(
+        url='http://localhost/vulnerability-detector/status',
+        headers={'Content-Type': 'application/json'},
+    )
+    assert result == VD_STATUS_RESPONSE
+
+
+def test_modulesd_get_status_http_error():
+    client = _make_modulesd_client()
+    mock_response = MagicMock()
+    mock_response.is_error = True
+    mock_response.text = 'internal error'
+    client._client.get.return_value = mock_response
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.get_status()
+    assert exc_info.value.code == 2024
+
+
+def test_modulesd_get_status_invalid_json():
+    client = _make_modulesd_client()
+    mock_response = MagicMock()
+    mock_response.is_error = False
+    mock_response.json.side_effect = ValueError("not valid json")
+    client._client.get.return_value = mock_response
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_status()
+    assert exc_info.value.code == 2027
+
+
+def test_modulesd_get_status_timeout():
+    client = _make_modulesd_client()
+    client._client.get.side_effect = httpx.TimeoutException("timed out", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_status()
+    assert exc_info.value.code == 2025
+
+
+def test_modulesd_get_status_connect_error():
+    client = _make_modulesd_client()
+    client._client.get.side_effect = httpx.ConnectError("refused", request=MagicMock())
+
+    with pytest.raises(WazuhInternalError) as exc_info:
+        client.get_status()
+    assert exc_info.value.code == 2026
+
+
+def test_modulesd_get_status_request_error():
+    client = _make_modulesd_client()
+    client._client.get.side_effect = httpx.RequestError("network error", request=MagicMock())
+
+    with pytest.raises(WazuhError) as exc_info:
+        client.get_status()
+    assert exc_info.value.code == 2013
+
+
+def test_modulesd_http_client_init_error():
+    with patch('wazuh.core.common.MODULESD_SOCKET', '/var/wazuh-manager/queue/sockets/modulesd'):
+        with patch('httpx.HTTPTransport', side_effect=OSError("no socket")):
+            with pytest.raises(WazuhInternalError) as exc_info:
+                ModulesdHTTPClient()
+            assert exc_info.value.code == 2023
