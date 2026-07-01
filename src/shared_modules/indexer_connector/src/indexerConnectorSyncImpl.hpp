@@ -616,6 +616,9 @@ public:
         , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
     {
         m_logFn = LogFn {callerName}.compose("indexer-connector");
+        // Install caller context so sub-objects (RocksDB queues, dispatchers) pick up the right base tag
+        // via makeLibLogFn(). Restores the previous TL value when the constructor exits.
+        const Log::ScopedModuleLogFn guard {callerName.empty() ? LogFn {"indexer-connector"} : LogFn {callerName}};
 
         if (logFunction)
         {
