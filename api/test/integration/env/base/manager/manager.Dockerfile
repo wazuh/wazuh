@@ -17,6 +17,7 @@ RUN wget http://archive.ubuntu.com/ubuntu/pool/main/r/rtmpdump/librtmp1_2.4+2015
     rm -rf /var/lib/apt/lists/* && ldconfig
 
 # INSTALL MANAGER
+# Cache invalidated: WazuhLogs tag schema updated to allow parentheses in log tags (alphanumeric_symbols).
 ARG WAZUH_BRANCH
 
 ADD base/manager/supervisord.conf /etc/supervisor/conf.d/

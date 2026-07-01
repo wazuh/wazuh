@@ -616,6 +616,9 @@ public:
         , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
     {
         m_logFn = LogFn {callerName}.compose("indexer-connector");
+        // Install caller context so sub-objects (RocksDB queues, dispatchers) pick up the right base tag
+        // via makeLibLogFn(). Restores the previous TL value when the constructor exits.
+        const Log::ScopedModuleLogFn guard {callerName.empty() ? LogFn {"indexer-connector"} : LogFn {callerName}};
 
         if (logFunction)
         {
@@ -669,13 +672,13 @@ public:
         static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
         if (username.empty() && password.empty())
         {
-            username = "wazuh-server";
-            password = "wazuh-server";
+            username = "admin";
+            password = "admin";
             LOG_WARN(m_logFn, "No username and password found in the keystore, using default values.");
         }
         if (username.empty())
         {
-            username = "wazuh-server";
+            username = "admin";
             LOG_WARN(m_logFn, "No username found in the keystore, using default value.");
         }
         m_secureCommunication = SecureCommunication::builder();

@@ -354,6 +354,38 @@ namespace Log
      * Example: Log::setModuleLogFn(LogFn{WM_INVENTORY_SYNC_LOGTAG});
      */
     inline void setModuleLogFn(LogFn fn) { currentModuleLogFn() = std::move(fn); }
+
+    /**
+     * @brief RAII guard that temporarily installs a module LogFn on the calling thread.
+     *
+     * Saves the current thread-local LogFn on construction, installs the provided one,
+     * and restores the saved value on destruction. Use before constructing objects that
+     * call makeLibLogFn() so they inherit the correct caller context rather than the
+     * default "logger-helper" fallback.
+     *
+     * The guard must not outlive the thread that created it — do not store it on the heap
+     * or pass it to another thread.
+     *
+     * Example:
+     *   {
+     *       const Log::ScopedModuleLogFn guard {LogFn {callerName}};
+     *       m_queue = std::make_unique<RocksDBQueue>(...);  // picks up callerName
+     *   }  // previous context restored here
+     */
+    class ScopedModuleLogFn
+    {
+        LogFn m_saved;
+
+    public:
+        explicit ScopedModuleLogFn(LogFn fn)
+            : m_saved(currentModuleLogFn())
+        {
+            setModuleLogFn(std::move(fn));
+        }
+        ~ScopedModuleLogFn() { setModuleLogFn(std::move(m_saved)); }
+        ScopedModuleLogFn(const ScopedModuleLogFn&) = delete;
+        ScopedModuleLogFn& operator=(const ScopedModuleLogFn&) = delete;
+    };
 } // namespace Log
 
 /**
