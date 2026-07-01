@@ -9,6 +9,19 @@ All notable changes to this project will be documented in this file.
 
 - Removed deprecated wazuh-dbd daemon and database_output configuration. ([#37035](https://github.com/wazuh/wazuh/pull/37035))
 
+#### Fixed
+
+- Improved cluster payload buffer allocation strategy. ([#37280](https://github.com/wazuh/wazuh/pull/37280))
+- Improved cluster archive decompression limits. ([#37119](https://github.com/wazuh/wazuh/pull/37119))
+- Improved cluster worker file path validation. ([#36998](https://github.com/wazuh/wazuh/pull/36998))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed TypeError when sorting agents by version with empty version strings. ([#37323](https://github.com/wazuh/wazuh/pull/37323))
+- Improved sensitive data masking in cluster configuration endpoint. ([#37039](https://github.com/wazuh/wazuh/pull/37039))
+
 ## [v4.14.6]
 
 ### Manager
