@@ -99,6 +99,7 @@ on:
 jobs:
   Build-manager-packages:
     permissions:
+      id-token: write
       contents: read
       packages: write
     env:
@@ -260,6 +261,8 @@ jobs:
       - name: Check installed files
         uses: ./.github/actions/check_files
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           expected_files: manager_base.csv
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
@@ -432,23 +435,27 @@ jobs:
           container: ${{ env.UPGRADE_CONTAINER }}
           package_path: /packages/${{ env.PACKAGE_NAME }}
 
-      - name: Upload package to GitHub
+      - name: Upload package to S3
         if: always()
         timeout-minutes: 10
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: ${{ env.PACKAGE_NAME }}
           path: /tmp/${{ env.PACKAGE_NAME }}
-          if-no-files-found: error
 
-      - name: Upload debug symbols to GitHub
+      - name: Upload debug symbols to S3
         if: always()
         timeout-minutes: 10
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: ${{ env.PACKAGE_SYMBOLS_NAME }}
           path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
-          if-no-files-found: error
 
       - name: Set up AWS CLI
         if: ${{ env.SHOULD_UPLOAD == 'true' }}

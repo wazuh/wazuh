@@ -183,6 +183,9 @@ jobs:
           retention-days: 7
 
   test-deb:
+    permissions:
+      id-token: write
+      contents: read
     needs: build-deb
     runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
@@ -291,6 +294,8 @@ jobs:
       - name: Check installed files
         uses: ./.github/actions/check_files
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           expected_files: ${{ env.CSV_FILENAME }}
           installation_directory: /var/ossec
           wazuh_uid: ${{ env.WAZUH_UID }}
@@ -524,6 +529,9 @@ jobs:
           retention-days: 7
 
   test-rpm:
+    permissions:
+      id-token: write
+      contents: read
     needs: build-rpm
     runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
@@ -640,6 +648,8 @@ jobs:
       - name: Check installed files
         uses: ./.github/actions/check_files
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           expected_files: ${{ env.CSV_FILENAME }}
           installation_directory: /var/ossec
           wazuh_uid: ${{ env.WAZUH_UID }}

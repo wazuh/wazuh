@@ -34,6 +34,10 @@ on:
 env:
   REGISTRY: ghcr.io
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   prepare:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -80,6 +84,7 @@ jobs:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     needs: prepare
     permissions:
+      id-token: write
       contents: read
       packages: read
     steps:
@@ -131,8 +136,11 @@ jobs:
         run: tar czf wazuh.tgz cov-int
 
       - name: Upload Coverity artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: wazuh.tgz
           path: wazuh.tgz
 
@@ -146,8 +154,11 @@ jobs:
           ref: ${{ github.ref_name }}
 
       - name: Download Coverity artifact
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: wazuh.tgz
 
       - name: Upload to Coverity Scan
