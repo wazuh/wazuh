@@ -866,13 +866,19 @@ installIndexerTemplates()
     local DEST_DIR="${INSTALLDIR}/etc/indexer-plugins"
     local STREAMS="metrics-agents.json metrics-comms.json metrics-normalization.json"
 
-    if [ -d "${SRC_DIR}" ]; then
-        ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} "${DEST_DIR}"
-        for f in ${STREAMS}; do
-            [ -f "${SRC_DIR}/${f}" ] || continue
-            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} "${SRC_DIR}/${f}" "${DEST_DIR}/"
-        done
+    if [ ! -d "${SRC_DIR}" ]; then
+        echo "WARNING: ${SRC_DIR} not found. Metrics schemas will be missing."
+        return 0
     fi
+
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} "${DEST_DIR}"
+    for f in ${STREAMS}; do
+        if [ -f "${SRC_DIR}/${f}" ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} "${SRC_DIR}/${f}" "${DEST_DIR}/"
+        else
+            echo "WARNING: ${SRC_DIR}/${f} not found."
+        fi
+    done
 }
 
 generateSchemaFiles()
