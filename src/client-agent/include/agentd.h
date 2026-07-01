@@ -70,10 +70,11 @@ void buffer_init();
 /**
  * @brief Signals the dispatch_buffer thread to stop and exit.
  *
- * Sets agt->buffer to 0 and wakes the thread so it can observe the stop
- * condition.  The caller is responsible for waiting on the thread handle
- * before allowing the process to exit (e.g. with WaitForSingleObject on
- * Windows) to prevent sending events after HC_SHUTDOWN.
+ * Sets an internal stop flag and wakes the thread so it can observe the stop
+ * condition without modifying agt->buffer (which would alter EventForward's
+ * send path as a side effect).  The caller is responsible for waiting on the
+ * thread handle before allowing the process to exit (e.g. with
+ * WaitForSingleObject on Windows) to prevent sending events after HC_SHUTDOWN.
  */
 void buffer_stop(void);
 
