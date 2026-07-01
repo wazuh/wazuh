@@ -2769,7 +2769,7 @@ components:
             - warning
         tag:
           type: string
-          format: alphanumeric
+          format: alphanumeric_symbols
           description: "Wazuh component that logged the event"
         timestamp:
           type: string
@@ -3771,7 +3771,7 @@ components:
       description: "Wazuh component that logged the event"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     log_level:
       in: query
       name: level
