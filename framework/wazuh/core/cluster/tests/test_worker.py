@@ -549,7 +549,7 @@ async def test_worker_handler_error_receiving_integrity(error_receiving_file_moc
 @patch("wazuh.core.cluster.worker.analysis.send_reload_ruleset_msg", new_callable=AsyncMock, return_value={"error": 0})
 async def test_worker_handler_sync_integrity_ok_from_master_ruleset_reload(send_reload_mock, log_reload_mock, event_loop):
     """Check that ruleset reload is awaited and properly handled when sync integrity finishes on the worker."""
-    
+
     worker_handler = get_worker_handler(event_loop)
     worker_handler.integrity_check_status = {"date_start": 0}
 
@@ -1212,8 +1212,10 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                                              call(core_common.WAZUH_PATH, 'queue/TYPE/name'),
                                              call(core_common.WAZUH_PATH, 'cluster_item_key'),
                                              call(core_common.WAZUH_PATH, 'filename1'),
+                                             call(core_common.WAZUH_PATH, 'cluster_item_key'),
                                              call('/zip/path', 'filename1'),
-                                             call(core_common.WAZUH_PATH, 'filename3')])
+                                             call(core_common.WAZUH_PATH, 'filename3'),
+                                             call(core_common.WAZUH_PATH, 'cluster_item_key')])
             wazuh_uid_mock.assert_called_with()
             wazuh_gid_mock.assert_called_with()
             mkdir_with_mode_mock.assert_any_call("queue/testing")
@@ -1310,6 +1312,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
                                                            "File filename3 doesn't exist."]}
             assert result_logs['generic_errors'] == []
             path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
+                                             call(core_common.WAZUH_PATH, "cluster_item_key"),
                                              call(core_common.WAZUH_PATH, "")])
             wazuh_uid_mock.assert_not_called()
             wazuh_gid_mock.assert_not_called()
@@ -1336,6 +1339,7 @@ async def test_worker_handler_update_master_files_in_worker_ok(wazuh_gid_mock, w
     assert result_logs['generic_errors'] == ["Found errors: 0 overwriting, 0 creating and 1 removing"]
 
     path_join_mock.assert_has_calls([call(core_common.WAZUH_PATH, "filename3"),
+                                     call(core_common.WAZUH_PATH, "cluster_item_key"),
                                      call(core_common.WAZUH_PATH, "")])
     wazuh_uid_mock.assert_not_called()
     wazuh_gid_mock.assert_not_called()
