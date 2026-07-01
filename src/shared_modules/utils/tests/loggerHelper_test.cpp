@@ -13,6 +13,7 @@
 #include <chrono>
 #include <regex>
 #include <sstream>
+#include <stdexcept>
 
 namespace Log
 {
@@ -202,6 +203,51 @@ TEST_F(LogFnTest, MakeLibLogFnReplacesExistingLib)
 {
     Log::setModuleLogFn(LogFn {"proc(oldlib)"});
     EXPECT_EQ(makeLibLogFn("newlib").m_tag, "proc(newlib)");
+}
+
+TEST_F(LogFnTest, ScopedModuleLogFnRestoresPreviousContext)
+{
+    Log::setModuleLogFn(LogFn {"parent-module"});
+
+    {
+        const Log::ScopedModuleLogFn guard {LogFn {"child-module"}};
+        EXPECT_EQ(makeLibLogFn("rocksdb").m_tag, "child-module(rocksdb)");
+    }
+
+    EXPECT_EQ(Log::currentModuleLogFn().m_tag, "parent-module");
+}
+
+TEST_F(LogFnTest, ScopedModuleLogFnRestoresNestedContexts)
+{
+    Log::setModuleLogFn(LogFn {"root-module"});
+
+    {
+        const Log::ScopedModuleLogFn outerGuard {LogFn {"outer-module"}};
+        EXPECT_EQ(Log::currentModuleLogFn().m_tag, "outer-module");
+
+        {
+            const Log::ScopedModuleLogFn innerGuard {LogFn {"inner-module"}};
+            EXPECT_EQ(Log::currentModuleLogFn().m_tag, "inner-module");
+        }
+
+        EXPECT_EQ(Log::currentModuleLogFn().m_tag, "outer-module");
+    }
+
+    EXPECT_EQ(Log::currentModuleLogFn().m_tag, "root-module");
+}
+
+TEST_F(LogFnTest, ScopedModuleLogFnRestoresContextAfterException)
+{
+    Log::setModuleLogFn(LogFn {"original-module"});
+
+    EXPECT_THROW(
+        {
+            const Log::ScopedModuleLogFn guard {LogFn {"temporary-module"}};
+            throw std::runtime_error {"test exception"};
+        },
+        std::runtime_error);
+
+    EXPECT_EQ(Log::currentModuleLogFn().m_tag, "original-module");
 }
 
 TEST_F(LogFnTest, ThreadLocalStartsWithDefault)
