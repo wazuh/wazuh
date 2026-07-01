@@ -21,6 +21,12 @@
 #include <thread>
 #endif
 
+/**
+ * @brief Get the number of processors available to the current process.
+ *
+ * @return unsigned int number of processors available to the current process,
+ * or 1 if the number cannot be determined.
+ */
 inline unsigned int cpp_get_nproc()
 {
 #ifdef __linux__
