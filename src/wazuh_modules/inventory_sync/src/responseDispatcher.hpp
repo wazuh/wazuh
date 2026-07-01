@@ -44,39 +44,42 @@ struct ResponseMessage
 using ResponseQueue = Utils::AsyncValueDispatcher<ResponseMessage, std::function<void(ResponseMessage&&)>>;
 
 constexpr auto ARQUEUE_PATH {"queue/sockets/ar"};
+constexpr auto WM_INVENTORY_SYNC_LOGTAG {"wazuh-manager-modulesd:inventory-sync"};
 
 template<typename TQueue>
 class ResponseDispatcherImpl
 {
 private:
     std::unique_ptr<TQueue> m_responseDispatcher;
+    LogFn m_logFn;
 
 public:
     explicit ResponseDispatcherImpl()
+        : m_logFn(Log::currentModuleLogFn())
     {
         auto responseSocketClient =
             std::make_shared<SocketClient<Socket<OSPrimitives, NoHeaderProtocol>, EpollWrapper>>(ARQUEUE_PATH);
         responseSocketClient->connect(
-            [](const char*, uint32_t, const char*, uint32_t)
+            [logFn = m_logFn](const char*, uint32_t, const char*, uint32_t)
             {
-                logDebug2(LOGGER_DEFAULT_TAG, "OnRead to %s", ARQUEUE_PATH);
+                LOG_DEBUG2(logFn, "OnRead to %s", ARQUEUE_PATH);
                 // Not used
             },
-            []()
+            [logFn = m_logFn]()
             {
-                logDebug2(LOGGER_DEFAULT_TAG, "Connected to %s", ARQUEUE_PATH);
+                LOG_DEBUG2(logFn, "Connected to %s", ARQUEUE_PATH);
                 // Not used
             },
             SOCK_DGRAM);
 
         // Response queue callback - uses ARQUEUE for all agents
         m_responseDispatcher = std::make_unique<ResponseQueue>(
-            [responseSocketClient](const ResponseMessage& data)
+            [responseSocketClient, logFn = m_logFn](const ResponseMessage& data)
             {
-                logDebug2(LOGGER_DEFAULT_TAG,
-                          "ResponseDispatcher: Sending response to agent '%s', module '%s'",
-                          data.agentId.c_str(),
-                          data.moduleName.c_str());
+                LOG_DEBUG2(logFn,
+                           "ResponseDispatcher: Sending response to agent '%s', module '%s'",
+                           data.agentId.c_str(),
+                           data.moduleName.c_str());
 
                 // Send via ARQUEUE for all agents
                 thread_local std::vector<uint8_t> messageVector;
@@ -106,6 +109,7 @@ public:
 
     explicit ResponseDispatcherImpl(TQueue* responseDispatcher)
         : m_responseDispatcher(responseDispatcher)
+        , m_logFn(Log::currentModuleLogFn())
     {
     }
 

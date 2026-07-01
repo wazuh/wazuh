@@ -12,6 +12,7 @@
 #ifndef PIPELINE_NODES_IMP_H
 #define PIPELINE_NODES_IMP_H
 #include <functional>
+#include <string>
 #include "threadDispatcher.h"
 #include "pipelinePattern.h"
 

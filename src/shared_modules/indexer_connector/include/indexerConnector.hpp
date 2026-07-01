@@ -30,7 +30,7 @@
 /**
  * @brief Logging context: pairs the caller module name with the log callback.
  *
- * The caller name is used to build the log tag as "<callerName> (indexer-connector)".
+ * The caller name is used to build the log tag as "<callerName>(indexer-connector)".
  */
 using LoggingContext =
     std::pair<std::string,
@@ -111,7 +111,7 @@ public:
      * @param config Indexer configuration, including database_path and servers.
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
-     *                "<callerName> (indexer-connector)" (e.g. "vulnerability-scanner (indexer-connector)").
+     *                "<callerName>(indexer-connector)" (e.g. "vulnerability-scanner(indexer-connector)").
      *                If the caller name is empty, the tag falls back to "indexer-connector".
      */
     explicit IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging = {});
@@ -328,7 +328,7 @@ public:
      *                Must be unique per instance to guarantee queue isolation.
      * @param logging Logging context pairing the caller module name and the log callback.
      *                The caller name is used to build the log tag as
-     *                "<callerName> (indexer-connector)" (e.g. "wazuh-manager-analysisd (indexer-connector)").
+     *                "<callerName>(indexer-connector)" (e.g. "wazuh-manager-analysisd(indexer-connector)").
      *                If the caller name is empty, the tag falls back to "indexer-connector".
      * @param basePath Base directory for the RocksDB queue. Defaults to "queue/indexer/".
      */

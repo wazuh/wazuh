@@ -326,8 +326,16 @@ constexpr inline const char* default_tag()
  * @see isStandaloneModeEnable(), getDefaultLogger(), log_bridge()
  */
 inline void
-backend_log(logging::Level lvl, const char* file, int line, const char* funcName, const char* text, size_t len)
+backend_log(logging::Level lvl,
+            const char* file,
+            int line,
+            const char* funcName,
+            const char* text,
+            size_t len,
+            const char* tag = nullptr)
 {
+    const char* effectiveTag = (tag && tag[0] != '\0') ? tag : default_tag();
+
     if (base::process::isStandaloneModeEnable())
     {
         const auto spd = SEVERITY_LEVEL.at(lvl);
@@ -338,22 +346,24 @@ backend_log(logging::Level lvl, const char* file, int line, const char* funcName
     switch (lvl)
     {
         case logging::Level::Trace:
-            Log::Logger::debugVerbose(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            Log::Logger::debugVerbose(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
         case logging::Level::Debug:
-            Log::Logger::debug(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            Log::Logger::debug(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
         case logging::Level::Info:
-            Log::Logger::info(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            Log::Logger::info(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
         case logging::Level::Warn:
-            Log::Logger::warning(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            Log::Logger::warning(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
         case logging::Level::Err:
         case logging::Level::Critical:
-            Log::Logger::error(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            Log::Logger::error(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
             break;
-        default: Log::Logger::info(default_tag(), {file, line, funcName}, "%.*s", static_cast<int>(len), text); break;
+        default:
+            Log::Logger::info(effectiveTag, {file, line, funcName}, "%.*s", static_cast<int>(len), text);
+            break;
     }
 }
 

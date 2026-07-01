@@ -21,6 +21,7 @@ void ContentModuleFacade::start(
         logFunction)
 {
     Log::assignLogFunction(logFunction);
+    Log::setModuleLogFn(LogFn {WM_CONTENTUPDATER});
 }
 
 void ContentModuleFacade::stop()

@@ -184,17 +184,21 @@ extern "C"
 {
 #endif
 
-    int router_initialize(log_callback_t callbackLog)
+    int router_initialize(log_callback_t callbackLog, const char* processTag)
     {
         int retVal = 0;
         try
         {
+            // Set the module context so all shared-library objects created on this
+            // thread (Publisher, FilterMsgDispatcher, …) pick up the right base tag.
+            Log::setModuleLogFn(LogFn {processTag ? processTag : ""});
+            const LogFn routerLogFn = makeLibLogFn("router");
             RouterModule::initialize(
-                [callbackLog](const modules_log_level_t level, const std::string& msg)
+                [callbackLog, routerLogFn](const modules_log_level_t level, const std::string& msg)
                 {
                     if (callbackLog)
                     {
-                        callbackLog(level, msg.c_str(), ":router");
+                        callbackLog(level, msg.c_str(), routerLogFn.c_str());
                     }
                 });
             logMessage(modules_log_level_t::LOG_DEBUG, "Router initialized successfully.");

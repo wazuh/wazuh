@@ -84,7 +84,7 @@ extern "C"
      *
      * @param callbackLog Log callback function.
      */
-    EXPORTED int router_initialize(log_callback_t callbackLog);
+    EXPORTED int router_initialize(log_callback_t callbackLog, const char* processTag);
 
     /**
      * @brief Start router mechanism.
@@ -208,7 +208,7 @@ extern "C"
 }
 #endif
 
-typedef int (*router_initialize_func)(log_callback_t callbackLog);
+typedef int (*router_initialize_func)(log_callback_t callbackLog, const char* processTag);
 
 typedef int (*router_start_func)();
 
