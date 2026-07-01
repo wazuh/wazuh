@@ -31,7 +31,17 @@ class OSHardwareMac final : public IOSHardware
             hardware["serial_number"] = m_wrapper->boardSerial();
             hardware["cpu_name"] = m_wrapper->cpuName();
             hardware["cpu_cores"] = m_wrapper->cpuCores();
-            hardware["cpu_speed"] = m_wrapper->cpuMhz();
+
+            try
+            {
+                const auto cpuSpeed = m_wrapper->cpuMhz();
+                hardware["cpu_speed"] = (cpuSpeed > 0) ? cpuSpeed : nlohmann::json(nullptr);
+            }
+            catch (const std::exception&)
+            {
+                hardware["cpu_speed"] = nullptr;
+            }
+
             hardware["memory_total"] = m_wrapper->ramTotal();
             hardware["memory_free"] = m_wrapper->ramFree();
             hardware["memory_used"] = m_wrapper->ramUsage();
