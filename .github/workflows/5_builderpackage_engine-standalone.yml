@@ -48,6 +48,10 @@ jobs:
   build:
     name: Build Manager (${{ matrix.arch }})
     runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
+    permissions:
+      id-token: write
+      contents: read
+      packages: read
     timeout-minutes: 60
     outputs:
       version: ${{ steps.set_version.outputs.version }}
@@ -117,15 +121,21 @@ jobs:
           bash generate_package.sh $FLAGS
 
       - name: Upload standalone package
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: wazuh-engine-${{ env.TAG }}-linux-${{ env.NORMALIZED_ARCH }}
           path: ${{ env.ENGINE_DIR }}/standalone/output/*.tar.gz
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   check_standalone_engine:
     name: Test standalone engine (${{ matrix.arch }})
 
     runs-on: ${{ matrix.arch == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
+    permissions:
+      id-token: write
+      contents: read
     needs: build
     timeout-minutes: 60
     strategy:
@@ -151,10 +161,13 @@ jobs:
         esac
 
     - name: Download compressed tar.gz file
-      uses: actions/download-artifact@v4
+      uses: ./.github/actions/download_s3_artifact
       with:
         name: wazuh-engine-${{ needs.build.outputs.version }}-linux-${{ env.NORMALIZED_ARCH }}
         path: /tmp/standalone-test
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
     - name: Extract standalone package
       run: |
@@ -245,11 +258,13 @@ jobs:
 
     - name: Upload engine logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: ./.github/actions/upload_s3_artifact
       with:
         name: engine-logs-${{ env.NORMALIZED_ARCH }}-${{ github.run_id }}
         path: |
           /tmp/standalone-test/wazuh-engine-standalone/engine_stdout.log
           /tmp/standalone-test/wazuh-engine-standalone/engine_stderr.log
           /tmp/standalone-test/wazuh-engine-standalone/logs/
-        if-no-files-found: ignore
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}

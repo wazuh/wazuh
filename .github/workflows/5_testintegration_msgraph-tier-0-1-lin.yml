@@ -30,6 +30,9 @@ jobs:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      id-token: write
+      contents: read
     timeout-minutes: 30
     steps:
       - name: Checkout Repo
@@ -115,8 +118,10 @@ jobs:
       # Upload the tests result html as an artifact
       - name: Upload failed test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: msgraph-tier-0-1-lin-test-results-${{ github.run_id }}
           path: ./tests/integration/results.html
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

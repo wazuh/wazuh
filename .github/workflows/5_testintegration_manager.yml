@@ -146,7 +146,7 @@ jobs:
 
       - name: Download manager package from S3
         if: inputs.build_run_id != ''
-        uses: ./.github/actions/download_manager_package
+        uses: ./.github/actions/download_package
         with:
           build_run_id: ${{ inputs.build_run_id }}
           aws_region: ${{ secrets.CI_AWS_REGION }}

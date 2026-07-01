@@ -21,6 +21,9 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build Server
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3
@@ -34,13 +37,16 @@ jobs:
           make -C src TARGET=manager -j$(nproc)
 
       - name: Upload engine binary
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: wazuh-engine
           path: src/build/engine/wazuh-engine
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload wazuh shared libraries
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: wazuh-shared-libraries
           path: |
@@ -48,20 +54,29 @@ jobs:
             src/build/lib/libwazuhshared.so
             src/build/lib/libindexer_connector.so
             src/build/lib/libcontent_manager.so
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload rocksdb shared libraries
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: rocksdb-shared-library
           path: |
             src/external/rocksdb/build/librocksdb.so
             src/external/rocksdb/build/librocksdb.so.8
             src/external/rocksdb/build/librocksdb.so.8.3.2
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   helper_tests:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Helper Functions Test
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
     needs: build
     timeout-minutes: 60
     env:
@@ -72,22 +87,31 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Download engine binary
-      uses: actions/download-artifact@v4
+      uses: ./.github/actions/download_s3_artifact
       with:
         name: wazuh-engine
         path: src/build/engine/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
     - name: Download rocksdb shared libraries
-      uses: actions/download-artifact@v4
+      uses: ./.github/actions/download_s3_artifact
       with:
         name: rocksdb-shared-library
         path: src/external/rocksdb/build/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
     - name: Download wazuh shared libraries
-      uses: actions/download-artifact@v4
+      uses: ./.github/actions/download_s3_artifact
       with:
         name: wazuh-shared-libraries
         path: src/build/lib/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
     - name: Set up Python
       uses: actions/setup-python@v5
@@ -128,6 +152,9 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: API Endpoints Test
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
     needs: build
     timeout-minutes: 60
     env:
@@ -138,22 +165,31 @@ jobs:
       uses: actions/checkout@v3
 
     - name: Download engine binary
-      uses: actions/download-artifact@v4
+      uses: ./.github/actions/download_s3_artifact
       with:
         name: wazuh-engine
         path: src/build/engine/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
     - name: Download rocksdb shared libraries
-      uses: actions/download-artifact@v4
+      uses: ./.github/actions/download_s3_artifact
       with:
         name: rocksdb-shared-library
         path: src/external/rocksdb/build/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
     - name: Download wazuh shared libraries
-      uses: actions/download-artifact@v4
+      uses: ./.github/actions/download_s3_artifact
       with:
         name: wazuh-shared-libraries
         path: src/build/lib/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
     - name: Set up Python
       uses: actions/setup-python@v5

@@ -68,7 +68,7 @@ jobs:
 
       - name: Download manager package from S3
         if: inputs.build_run_id != ''
-        uses: ./.github/actions/download_manager_package
+        uses: ./.github/actions/download_package
         with:
           build_run_id: ${{ inputs.build_run_id }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
@@ -201,11 +201,12 @@ jobs:
 
       - name: Upload inventory_sync test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: inventory-sync-test-results-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             src/wazuh_modules/inventory_sync/qa/generated/
             src/wazuh_modules/inventory_sync/qa/wazuh_agents.json
-          retention-days: 7
-          if-no-files-found: warn
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

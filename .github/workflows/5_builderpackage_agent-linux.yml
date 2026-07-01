@@ -64,6 +64,9 @@ concurrency:
 jobs:
   # ===================== DEB JOBS =====================
   build-deb:
+    permissions:
+      id-token: write
+      contents: read
     if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'deb'
     runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
@@ -158,29 +161,35 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}
           path: /tmp/${{ steps.build.outputs.package-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload debug symbols as artifact
         if: steps.build.outputs.package-symbols-name != ''
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-symbols-name }}
           path: /tmp/${{ steps.build.outputs.package-symbols-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload checksums as artifacts
         if: inputs.checksum == true
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}-checksums
           path: |
             /tmp/${{ steps.build.outputs.package-name }}.sha512
             /tmp/${{ steps.build.outputs.package-symbols-name }}.sha512
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   test-deb:
     permissions:
@@ -208,11 +217,15 @@ jobs:
           echo "SYSTEM=deb" >> $GITHUB_ENV
 
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_package
         with:
-          pattern: "wazuh-agent*${{ matrix.arch }}*.deb"
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: 'wazuh-agent.*${{ matrix.arch }}.*\.deb'
           path: /tmp
-          merge-multiple: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set PACKAGE_NAME from downloaded files
         run: |
@@ -339,6 +352,9 @@ jobs:
           package_path: /tmp/upgrade_test
 
   upload-deb-to-s3:
+    permissions:
+      id-token: write
+      contents: read
     needs: [build-deb, test-deb]
     if: success()
     runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -351,11 +367,15 @@ jobs:
 
     steps:
       - name: Download all artifacts for this architecture
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_package
         with:
-          pattern: "*${{ matrix.arch }}*"
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: '.*${{ matrix.arch }}.*'
           path: /tmp
-          merge-multiple: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -403,6 +423,9 @@ jobs:
 
   # ===================== RPM JOBS =====================
   build-rpm:
+    permissions:
+      id-token: write
+      contents: read
     if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'rpm'
     runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
@@ -504,29 +527,35 @@ jobs:
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}
           path: /tmp/${{ steps.build.outputs.package-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload debug symbols as artifact
         if: steps.build.outputs.package-symbols-name != ''
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-symbols-name }}
           path: /tmp/${{ steps.build.outputs.package-symbols-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload checksums as artifacts
         if: inputs.checksum == true
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}-checksums
           path: |
             /tmp/${{ steps.build.outputs.package-name }}.sha512
             /tmp/${{ steps.build.outputs.package-symbols-name }}.sha512
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   test-rpm:
     permissions:
@@ -561,11 +590,15 @@ jobs:
           echo "rpm_arch=$RPM_ARCH" >> $GITHUB_OUTPUT
 
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_package
         with:
-          pattern: "*${{ steps.map-arch.outputs.rpm_arch }}*.rpm"
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: '.*${{ steps.map-arch.outputs.rpm_arch }}.*\.rpm'
           path: /tmp
-          merge-multiple: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set PACKAGE_NAME from downloaded files
         run: |
@@ -693,6 +726,9 @@ jobs:
           package_path: /tmp/upgrade_test
 
   upload-rpm-to-s3:
+    permissions:
+      id-token: write
+      contents: read
     needs: [build-rpm, test-rpm]
     if: success()
     runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -714,11 +750,15 @@ jobs:
           echo "rpm_arch=$RPM_ARCH" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts for this architecture
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_package
         with:
-          pattern: "*${{ steps.map-arch.outputs.rpm_arch }}*"
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: '.*${{ steps.map-arch.outputs.rpm_arch }}.*'
           path: /tmp
-          merge-multiple: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4

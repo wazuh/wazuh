@@ -85,6 +85,9 @@ on:
 
 jobs:
   run-test:
+    permissions:
+      id-token: write
+      contents: read
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ inputs.base_branch || github.base_ref }}
@@ -122,14 +125,15 @@ jobs:
       # ================= DOWNLOAD =================
       - name: Download MSI package artifact
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && steps.cache-msi.outputs.cache-hit != 'true' }}
-        uses: dawidd6/action-download-artifact@v6
+        uses: ./.github/actions/download_package
         with:
-          workflow: ${{ env.BUILD_WORKFLOW }}
-          run_id: ${{ inputs.build_run_id }}
-          name_is_regexp: true
-          name: ${{ env.AGENT_PACKAGE_REGEXP }}
+          build_run_id: ${{ inputs.build_run_id }}
+          producer_workflow: 5_builderpackage_agent-windows
+          name_regexp: ${{ env.AGENT_PACKAGE_REGEXP }}
           path: C:\wazuh-package\
-          if_no_artifact_found: fail
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
       # ================= INSTALL =================
       - name: Install wazuh agent
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') }}
@@ -190,8 +194,10 @@ jobs:
       # ================= RESULTS =================
       - name: Upload failed test results
         if: ${{ !(inputs.skip_tests == true || inputs.skip_tests == 'true') && failure() }}
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ inputs.module_name }}-win-${{ inputs.shard_name }}-test-results-${{ github.run_id }}
           path: C:\wazuh\tests\integration\results.html
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

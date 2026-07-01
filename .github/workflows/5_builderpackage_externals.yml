@@ -61,6 +61,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -144,12 +145,13 @@ jobs:
 
       - name: Upload per-leg tarball
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: externals-${{ matrix.leg }}-${{ matrix.target }}
           path: packages/output_externals/externals-*.tar.gz
-          if-no-files-found: error
-          retention-days: 14
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   consolidate:
     # Merge every per-leg tarball into a single libraries/ tree shaped
@@ -166,13 +168,22 @@ jobs:
     # never needs a workflow change.
     needs: build-externals
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
     timeout-minutes: 30
     steps:
       - name: Download all per-leg tarballs
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_package
         with:
-          pattern: externals-*
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_externals
+          name_regexp: 'externals-.*'
           path: per-leg
+          extract_into_name_subdir: 'true'
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Merge into single libraries/ tree
         run: |
@@ -183,7 +194,10 @@ jobs:
           # of the same dep can be compared across legs before one is chosen.
           for art_dir in per-leg/*/; do
             art_name="$(basename "${art_dir}")"   # e.g. externals-rpm-amd64-agent
-            leg_tar="$(echo "${art_dir}"externals-*.tar.gz)"
+            # download_package (extract_into_name_subdir) preserves the artifact's
+            # inner path, so the tarball sits under packages/output_externals/ within
+            # the per-artifact dir rather than at its root; find it wherever it landed.
+            leg_tar="$(find "${art_dir}" -name 'externals-*.tar.gz' | head -n1)"
             mkdir -p "staging/${art_name}"
             echo "unpacking ${leg_tar}"
             tar -xzf "${leg_tar}" -C "staging/${art_name}"
@@ -266,12 +280,13 @@ jobs:
           ls -lh externals-all.tar.gz
 
       - name: Upload consolidated tarball
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: externals-all
           path: externals-all.tar.gz
-          if-no-files-found: error
-          retention-days: 14
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   smoke-build:
     # Sanity check: build the agent and the manager from source against the
@@ -286,6 +301,7 @@ jobs:
     permissions:
       contents: read
       packages: read
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -329,10 +345,13 @@ jobs:
             "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "${CONTAINER_NAME}" "${TAG}"
 
       - name: Download consolidated dependency tree
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: externals-all
           path: consolidated-deps
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Build ${{ matrix.target }} against consolidated deps
         timeout-minutes: 75
@@ -406,9 +425,10 @@ jobs:
 
       - name: Upload smoke build log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: smoke-build-${{ matrix.target }}-${{ matrix.architecture }}
           path: smoke-logs/
-          if-no-files-found: error
-          retention-days: 14
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

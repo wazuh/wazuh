@@ -109,6 +109,10 @@ runs:
               mkdir -p "${stage}/$(dirname "$m")"
               cp "$m" "${stage}/${m}"
               found=1
+            elif [ -d "$m" ]; then
+              mkdir -p "${stage}/${m}"
+              cp -R "$m"/. "${stage}/${m}/"
+              found=1
             fi
           done
           if [ "$found" -eq 0 ]; then
