@@ -1,0 +1,44 @@
+name: 4.X - eBPF Field Validation
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "src/syscheckd/src/ebpf/**"
+      - ".github/workflows/4_testcomponent_ebpf-validation.yml"
+      - ".github/actions/ebpf_validation/**"
+      - "src/Makefile"
+
+jobs:
+  build-package:
+    name: Build wazuh-manager package
+    uses: ./.github/workflows/4_builderpackage_manager.yml
+    with:
+      architecture: amd64
+      system: deb
+      upload_package: false
+    secrets: inherit
+
+  ebpf-validation-amd64:
+    name: eBPF Validation (amd64)
+    runs-on: ubuntu-24.04
+    needs: build-package
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v6
+
+      - name: Download wazuh-manager package
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wazuh-manager_*_amd64.deb
+          path: /tmp/packages
+
+      - name: Install wazuh-manager package
+        run: |
+          PKG=$(find /tmp/packages -name 'wazuh-manager_*.deb' ! -name '*dbg*' -type f | head -1)
+          if [ -z "$PKG" ]; then echo "No package found"; exit 1; fi
+          echo "Installing: $PKG"
+          sudo dpkg -i "$PKG" || sudo apt-get install -f -y
+
+      - name: Run eBPF Validation
+        uses: ./.github/actions/ebpf_validation

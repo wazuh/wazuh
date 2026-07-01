@@ -1,0 +1,67 @@
+name: "eBPF Field Validation"
+description: "Validates eBPF hook events across filesystems using installed wazuh-manager package"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libbpf-dev btrfs-progs xfsprogs kmod
+      shell: bash
+
+    - name: Compile validation runner
+      run: |
+        g++ -O2 -Wall -std=c++17 \
+          src/syscheckd/src/ebpf/tests/ebpf_validation/ebpf_validation_test.cpp \
+          -lbpf -lelf -lz -lpthread -lstdc++fs \
+          -o ebpf_validation_runner
+      shell: bash
+
+    - name: Run eBPF validation across filesystems
+      run: |
+        BPF_OBJ=/var/ossec/lib/modern.bpf.o
+        if [ ! -f "$BPF_OBJ" ]; then
+          echo "[ERROR] BPF object not found at $BPF_OBJ"
+          exit 1
+        fi
+        FAILED=""
+
+        for FS in ext4 xfs btrfs tmpfs; do
+          IMG="/tmp/ebpf_test_${FS}.img"
+          MNT="/mnt/ebpf_test_${FS}"
+
+          echo "=========================================="
+          echo " Testing filesystem: ${FS}"
+          echo "=========================================="
+
+          if [ "${FS}" != "tmpfs" ] && ! grep -q "${FS}" /proc/filesystems; then
+            sudo modprobe "${FS}" 2>/dev/null || true
+            if ! grep -q "${FS}" /proc/filesystems; then
+              echo "[WARNING] Kernel does not support ${FS}. Skipping."
+              continue
+            fi
+          fi
+
+          sudo rm -rf "${MNT}" && sudo mkdir -p "${MNT}"
+
+          if [ "${FS}" = "tmpfs" ]; then
+            sudo mount -t tmpfs tmpfs "${MNT}"
+          else
+            dd if=/dev/zero of="${IMG}" bs=1M count=100 conv=sparse 2>/dev/null
+            sudo mkfs.${FS} -f -q "${IMG}" 2>/dev/null || sudo mkfs.${FS} -F -q "${IMG}"
+            sudo mount -o loop "${IMG}" "${MNT}"
+          fi
+
+          sudo ./ebpf_validation_runner --test-dir "${MNT}" || FAILED="${FAILED} ${FS}"
+
+          sudo umount -l "${MNT}" 2>/dev/null || true
+          sudo rm -rf "${MNT}" "${IMG}"
+        done
+
+        if [ -n "${FAILED}" ]; then
+          echo "[FAIL] Failed filesystems:${FAILED}"
+          exit 1
+        fi
+        echo "[PASS] All filesystem tests passed"
+      shell: bash
