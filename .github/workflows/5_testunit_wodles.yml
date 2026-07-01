@@ -36,8 +36,8 @@ jobs:
         python-version: ['3.10']
     env:
       PYTHONPATH: ${{ github.workspace }}/api:${{ github.workspace }}/framework
-      TEST_REPORT_PATH: ${{ runner.temp }}/test_report.txt
-      COVERAGE_REPORT_PATH: ${{ runner.temp }}/coverage_report
+      TEST_REPORT_PATH: ${{ github.workspace }}/test_report.txt
+      COVERAGE_REPORT_PATH: ${{ github.workspace }}/coverage_report
     steps:
       - uses: actions/checkout@v4
 
