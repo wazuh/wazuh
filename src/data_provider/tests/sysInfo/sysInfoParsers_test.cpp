@@ -172,7 +172,7 @@ TEST_F(SysInfoParsersTest, Centos)
     std::stringstream info{CENTOS_RELEASE_FILE};
     const auto spParser{FactorySysOsParser::create("centos")};
     EXPECT_TRUE(spParser->parseFile(info, output));
-    EXPECT_EQ("8.2.2004", output["os_version"]);
+    EXPECT_EQ("8.2.2004 (Core)", output["os_version"]);
     EXPECT_EQ("Centos Linux", output["os_name"]);
     EXPECT_EQ("centos", output["os_platform"]);
     EXPECT_EQ("Core", output["os_codename"]);
@@ -251,7 +251,260 @@ TEST_F(SysInfoParsersTest, CentosBased)
     EXPECT_EQ("8", output["os_minor"]);
     EXPECT_EQ("Rocky Linux", output["os_name"]);
     EXPECT_EQ("rocky", output["os_platform"]);
-    EXPECT_EQ("8.8", output["os_version"]);
+    EXPECT_EQ("8.8 (Green Obsidian)", output["os_version"]);
+}
+
+TEST_F(SysInfoParsersTest, Centos7)
+{
+    constexpr auto CENTOS_RELEASE_FILE
+    {
+        "CentOS Linux release 7.9.2009 (Core)"
+    };
+    nlohmann::json output;
+    std::stringstream info{CENTOS_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("centos")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("7.9.2009 (Core)", output["os_version"]);
+    EXPECT_EQ("Centos Linux", output["os_name"]);
+    EXPECT_EQ("centos", output["os_platform"]);
+    EXPECT_EQ("Core", output["os_codename"]);
+    EXPECT_EQ("7", output["os_major"]);
+    EXPECT_EQ("9", output["os_minor"]);
+    EXPECT_EQ("2009", output["os_patch"]);
+}
+
+TEST_F(SysInfoParsersTest, CentosStream8)
+{
+    constexpr auto CENTOS_STREAM_RELEASE_FILE
+    {
+        "NAME=\"CentOS Stream\"\n"
+        "VERSION=\"8\"\n"
+        "ID=\"centos\"\n"
+        "ID_LIKE=\"rhel fedora\"\n"
+        "VERSION_ID=\"8\"\n"
+        "PLATFORM_ID=\"platform:el8\"\n"
+        "PRETTY_NAME=\"CentOS Stream 8\"\n"
+        "ANSI_COLOR=\"0;31\"\n"
+        "CPE_NAME=\"cpe:/o:centos:centos:8\"\n"
+        "HOME_URL=\"https://centos.org/\"\n"
+        "BUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\n"
+        "REDHAT_SUPPORT_PRODUCT=\"Red Hat Enterprise Linux 8\"\n"
+        "REDHAT_SUPPORT_PRODUCT_VERSION=\"CentOS Stream\"\n"
+    };
+    nlohmann::json output;
+    std::stringstream info{CENTOS_STREAM_RELEASE_FILE};
+    const auto spParser1{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser1->parseFile(info, output));
+    info.clear();
+    info.seekg(0, std::ios::beg);
+    info << CENTOS_STREAM_RELEASE_FILE;
+    const auto spParser2{FactorySysOsParser::create("centos")};
+    EXPECT_FALSE(spParser2->parseFile(info, output));
+    EXPECT_EQ("8", output["os_major"]);
+    EXPECT_EQ("CentOS Stream", output["os_name"]);
+    EXPECT_EQ("centos", output["os_platform"]);
+    EXPECT_EQ("8", output["os_version"]);
+}
+
+TEST_F(SysInfoParsersTest, CentosStream10)
+{
+    constexpr auto CENTOS_STREAM_RELEASE_FILE
+    {
+        "NAME=\"CentOS Stream\"\n"
+        "VERSION=\"10 (Coughlan)\"\n"
+        "ID=\"centos\"\n"
+        "ID_LIKE=\"rhel fedora\"\n"
+        "VERSION_ID=\"10\"\n"
+        "PLATFORM_ID=\"platform:el10\"\n"
+        "PRETTY_NAME=\"CentOS Stream 10 (Coughlan)\"\n"
+        "ANSI_COLOR=\"0;31\"\n"
+        "CPE_NAME=\"cpe:/o:centos:centos:10\"\n"
+        "HOME_URL=\"https://centos.org/\"\n"
+        "BUG_REPORT_URL=\"https://bugzilla.redhat.com/\"\n"
+        "REDHAT_SUPPORT_PRODUCT=\"Red Hat Enterprise Linux 10\"\n"
+        "REDHAT_SUPPORT_PRODUCT_VERSION=\"CentOS Stream\"\n"
+    };
+    nlohmann::json output;
+    std::stringstream info{CENTOS_STREAM_RELEASE_FILE};
+    const auto spParser1{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser1->parseFile(info, output));
+    info.clear();
+    info.seekg(0, std::ios::beg);
+    info << CENTOS_STREAM_RELEASE_FILE;
+    const auto spParser2{FactorySysOsParser::create("centos")};
+    EXPECT_FALSE(spParser2->parseFile(info, output));
+    EXPECT_EQ("10", output["os_major"]);
+    EXPECT_EQ("CentOS Stream", output["os_name"]);
+    EXPECT_EQ("centos", output["os_platform"]);
+    EXPECT_EQ("10 (Coughlan)", output["os_version"]);
+    EXPECT_EQ("Coughlan", output["os_codename"]);
+}
+
+TEST_F(SysInfoParsersTest, RockyLinux9)
+{
+    constexpr auto ROCKY_LINUX_RELEASE_FILE
+    {
+        "NAME=\"Rocky Linux\"\n"
+        "VERSION=\"9.3 (Blue Onyx)\"\n"
+        "ID=\"rocky\"\n"
+        "ID_LIKE=\"rhel centos fedora\"\n"
+        "VERSION_ID=\"9.3\"\n"
+        "PLATFORM_ID=\"platform:el9\"\n"
+        "PRETTY_NAME=\"Rocky Linux 9.3 (Blue Onyx)\"\n"
+        "ANSI_COLOR=\"0;32\"\n"
+        "LOGO=\"fedora-logo-icon\"\n"
+        "CPE_NAME=\"cpe:/o:rocky:rocky:9:GA\"\n"
+        "HOME_URL=\"https://rockylinux.org/\"\n"
+        "BUG_REPORT_URL=\"https://bugs.rockylinux.org/\"\n"
+        "SUPPORT_END=\"2032-05-31\"\n"
+        "ROCKY_SUPPORT_PRODUCT=\"Rocky-Linux-9\"\n"
+        "ROCKY_SUPPORT_PRODUCT_VERSION=\"9.3\"\n"
+        "REDHAT_SUPPORT_PRODUCT=\"Rocky Linux\"\n"
+        "REDHAT_SUPPORT_PRODUCT_VERSION=\"9.3\"\n"
+    };
+    nlohmann::json output;
+    std::stringstream info{ROCKY_LINUX_RELEASE_FILE};
+    const auto spParser1{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser1->parseFile(info, output));
+    info.clear();
+    info.seekg(0, std::ios::beg);
+    info << ROCKY_LINUX_RELEASE_FILE;
+    const auto spParser2{FactorySysOsParser::create("centos")};
+    EXPECT_TRUE(spParser2->parseFile(info, output));
+    EXPECT_EQ("Blue Onyx", output["os_codename"]);
+    EXPECT_EQ("9", output["os_major"]);
+    EXPECT_EQ("3", output["os_minor"]);
+    EXPECT_EQ("Rocky Linux", output["os_name"]);
+    EXPECT_EQ("rocky", output["os_platform"]);
+    EXPECT_EQ("9.3 (Blue Onyx)", output["os_version"]);
+}
+
+TEST_F(SysInfoParsersTest, AlmaLinux8)
+{
+    constexpr auto ALMALINUX_RELEASE_FILE
+    {
+        "NAME=\"AlmaLinux\"\n"
+        "VERSION=\"8.9 (Midnight Oncilla)\"\n"
+        "ID=\"almalinux\"\n"
+        "ID_LIKE=\"rhel centos fedora\"\n"
+        "VERSION_ID=\"8.9\"\n"
+        "PLATFORM_ID=\"platform:el8\"\n"
+        "PRETTY_NAME=\"AlmaLinux 8.9 (Midnight Oncilla)\"\n"
+        "ANSI_COLOR=\"0;34\"\n"
+        "LOGO=\"fedora-logo-icon\"\n"
+        "CPE_NAME=\"cpe:/o:almalinux:almalinux:8::baseos\"\n"
+        "HOME_URL=\"https://almalinux.org/\"\n"
+        "BUG_REPORT_URL=\"https://bugs.almalinux.org/\"\n"
+        "ALMALINUX_MANTISBT_PROJECT=\"AlmaLinux-8\"\n"
+        "ALMALINUX_MANTISBT_PROJECT_VERSION=\"8.9\"\n"
+        "REDHAT_SUPPORT_PRODUCT=\"AlmaLinux\"\n"
+        "REDHAT_SUPPORT_PRODUCT_VERSION=\"8.9\"\n"
+    };
+    nlohmann::json output;
+    std::stringstream info{ALMALINUX_RELEASE_FILE};
+    const auto spParser1{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser1->parseFile(info, output));
+    info.clear();
+    info.seekg(0, std::ios::beg);
+    info << ALMALINUX_RELEASE_FILE;
+    const auto spParser2{FactorySysOsParser::create("centos")};
+    EXPECT_TRUE(spParser2->parseFile(info, output));
+    EXPECT_EQ("Midnight Oncilla", output["os_codename"]);
+    EXPECT_EQ("8", output["os_major"]);
+    EXPECT_EQ("9", output["os_minor"]);
+    EXPECT_EQ("AlmaLinux", output["os_name"]);
+    EXPECT_EQ("almalinux", output["os_platform"]);
+    EXPECT_EQ("8.9 (Midnight Oncilla)", output["os_version"]);
+}
+
+TEST_F(SysInfoParsersTest, AlmaLinux9)
+{
+    constexpr auto ALMALINUX_RELEASE_FILE
+    {
+        "NAME=\"AlmaLinux\"\n"
+        "VERSION=\"9.3 (Shamrock Pampas Cat)\"\n"
+        "ID=\"almalinux\"\n"
+        "ID_LIKE=\"rhel centos fedora\"\n"
+        "VERSION_ID=\"9.3\"\n"
+        "PLATFORM_ID=\"platform:el9\"\n"
+        "PRETTY_NAME=\"AlmaLinux 9.3 (Shamrock Pampas Cat)\"\n"
+        "ANSI_COLOR=\"0;34\"\n"
+        "LOGO=\"fedora-logo-icon\"\n"
+        "CPE_NAME=\"cpe:/o:almalinux:almalinux:9\"\n"
+        "HOME_URL=\"https://almalinux.org/\"\n"
+        "BUG_REPORT_URL=\"https://bugs.almalinux.org/\"\n"
+        "ALMALINUX_MANTISBT_PROJECT=\"AlmaLinux-9\"\n"
+        "ALMALINUX_MANTISBT_PROJECT_VERSION=\"9.3\"\n"
+        "REDHAT_SUPPORT_PRODUCT=\"AlmaLinux\"\n"
+        "REDHAT_SUPPORT_PRODUCT_VERSION=\"9.3\"\n"
+    };
+    nlohmann::json output;
+    std::stringstream info{ALMALINUX_RELEASE_FILE};
+    const auto spParser1{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser1->parseFile(info, output));
+    info.clear();
+    info.seekg(0, std::ios::beg);
+    info << ALMALINUX_RELEASE_FILE;
+    const auto spParser2{FactorySysOsParser::create("centos")};
+    EXPECT_TRUE(spParser2->parseFile(info, output));
+    EXPECT_EQ("Shamrock Pampas Cat", output["os_codename"]);
+    EXPECT_EQ("9", output["os_major"]);
+    EXPECT_EQ("3", output["os_minor"]);
+    EXPECT_EQ("AlmaLinux", output["os_name"]);
+    EXPECT_EQ("almalinux", output["os_platform"]);
+    EXPECT_EQ("9.3 (Shamrock Pampas Cat)", output["os_version"]);
+}
+
+TEST_F(SysInfoParsersTest, OracleLinux8)
+{
+    constexpr auto ORACLE_RELEASE_FILE
+    {
+        "NAME=\"Oracle Linux Server\"\n"
+        "VERSION=\"8.9\"\n"
+        "ID=\"ol\"\n"
+        "ID_LIKE=\"fedora\"\n"
+        "VERSION_ID=\"8.9\"\n"
+        "PLATFORM_ID=\"platform:el8\"\n"
+        "PRETTY_NAME=\"Oracle Linux Server 8.9\"\n"
+        "ANSI_COLOR=\"0;31\"\n"
+        "HOME_URL=\"https://linux.oracle.com/\"\n"
+        "BUG_REPORT_URL=\"https://bugzilla.oracle.com/\"\n"
+    };
+    nlohmann::json output;
+    std::stringstream info{ORACLE_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("8.9", output["os_version"]);
+    EXPECT_EQ("Oracle Linux Server", output["os_name"]);
+    EXPECT_EQ("ol", output["os_platform"]);
+    EXPECT_EQ("8", output["os_major"]);
+    EXPECT_EQ("9", output["os_minor"]);
+}
+
+TEST_F(SysInfoParsersTest, OracleLinux9)
+{
+    constexpr auto ORACLE_RELEASE_FILE
+    {
+        "NAME=\"Oracle Linux Server\"\n"
+        "VERSION=\"9.3\"\n"
+        "ID=\"ol\"\n"
+        "ID_LIKE=\"fedora\"\n"
+        "VERSION_ID=\"9.3\"\n"
+        "PLATFORM_ID=\"platform:el9\"\n"
+        "PRETTY_NAME=\"Oracle Linux Server 9.3\"\n"
+        "ANSI_COLOR=\"0;31\"\n"
+        "HOME_URL=\"https://linux.oracle.com/\"\n"
+        "BUG_REPORT_URL=\"https://bugzilla.oracle.com/\"\n"
+    };
+    nlohmann::json output;
+    std::stringstream info{ORACLE_RELEASE_FILE};
+    const auto spParser{FactorySysOsParser::create("unix")};
+    EXPECT_TRUE(spParser->parseFile(info, output));
+    EXPECT_EQ("9.3", output["os_version"]);
+    EXPECT_EQ("Oracle Linux Server", output["os_name"]);
+    EXPECT_EQ("ol", output["os_platform"]);
+    EXPECT_EQ("9", output["os_major"]);
+    EXPECT_EQ("3", output["os_minor"]);
 }
 
 TEST_F(SysInfoParsersTest, BSDFreeBSD)
