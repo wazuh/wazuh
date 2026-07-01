@@ -187,6 +187,10 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             minfo("Rootcheck option 'check_winaudit' is no longer supported. Use the SCA module instead.");
         } else if (strcmp(node[i]->element, "check_winmalware") == 0) {
             minfo("Rootcheck option 'check_winmalware' is no longer supported. Use the SCA module instead.");
+        } else if (strcmp(node[i]->element, "rootkit_files") == 0) {
+            minfo("Rootcheck option 'rootkit_files' is no longer supported.");
+        } else if (strcmp(node[i]->element, "rootkit_trojans") == 0) {
+            minfo("Rootcheck option 'rootkit_trojans' is no longer supported.");
         } else {
             mwarn(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
