@@ -1382,6 +1382,22 @@ TEST(PolicyTest, FromJsonMissingRootDecoderThrows)
     EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
 }
 
+TEST(PolicyTest, FromJsonRootDecoderNullUUIDIsEmpty)
+{
+    auto j = makeValidPolicyJson();
+    j.setNull("/root_decoder");
+
+    auto p = cm::store::dataType::Policy::fromJson(j);
+    EXPECT_TRUE(p.getRootDecoderUUID().empty());
+}
+
+ TEST(PolicyTest, FromJsonRootDecoderWrongTypeThrows)
+ {
+     auto j = makeValidPolicyJson();
+     j.setInt(42, "/root_decoder");
+     EXPECT_THROW(cm::store::dataType::Policy::fromJson(j), std::runtime_error);
+ }
+
 TEST(PolicyTest, FromJsonMissingIntegrationsThrows)
 {
     auto j = makeValidPolicyJson();

@@ -169,13 +169,15 @@ public:
             return enabledOpt.value();
         }();
 
-        // Get root decoder
+        // Get root decoder (treat null as an empty string)
         auto rootDecoder = [&]()
         {
             std::string rootDecoder;
-            if (policyJson.getString(rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT) != json::RetGet::Success)
+            if (policyJson.getString(rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT) != json::RetGet::Success
+                && !policyJson.isNull(jsonpolicy::PATH_KEY_ROOT_PARENT))
             {
-                throw std::runtime_error("Policy JSON must have a 'root_decoder' field");
+
+                throw std::runtime_error("Policy JSON must have a 'root_decoder' string field or null");
             }
             return rootDecoder;
         }();
