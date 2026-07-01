@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v5.0.1]
 
+### Ruleset
+
+#### Fixed
+
+- Fixed false negatives in the CIS Apple macOS 15 Sequoia SCA policy (checks 35046, 35058, 35060). ([#37209](https://github.com/wazuh/wazuh/pull/37209))
+
 ## [v5.0.0]
 
 ### Manager
