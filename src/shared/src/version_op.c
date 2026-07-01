@@ -7,6 +7,11 @@
  * Foundation.
  */
 
+// Required for CPU_COUNT/sched_getaffinity on Linux (GNU extension)
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+
 #include "shared.h"
 #include "version_op.h"
 
