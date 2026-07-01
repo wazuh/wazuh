@@ -40,6 +40,8 @@ struct file_event {
     __u32 ppid;
     __u32 uid;
     __u32 gid;
+    __u32 euid;
+    __u32 login_uid;
     __u64 inode;
     __u64 dev;
     char comm[TASK_COMM_LEN];
@@ -96,6 +98,18 @@ struct {
 
 // Kernel version check
 extern int LINUX_KERNEL_VERSION __kconfig;
+
+/* Minimal CO-RE shadow of struct task_struct, used only to read loginuid.
+ * Some vmlinux.h snapshots are generated from kernels built without
+ * CONFIG_AUDIT, in which case the real task_struct has no loginuid field
+ * and a direct current_task->loginuid access fails to compile. Declaring
+ * it here lets the CO-RE relocation engine resolve the field against the
+ * running kernel's BTF at load time instead of the build-time header,
+ * combined with bpf_core_field_exists() to skip gracefully if the running
+ * kernel also lacks CONFIG_AUDIT. */
+struct task_struct___local {
+    kuid_t loginuid;
+};
 
 /*
 * Concatenates a directory path and a filename into a full path.
@@ -303,6 +317,20 @@ statfunc void submit_event(const char *filename,
     evt->uid = uid_gid >> 32;
     evt->gid = uid_gid;
 
+    /* Effective UID */
+    evt->euid = BPF_CORE_READ(current_task, cred, euid.val);
+
+    /* Login UID (audit UID / auid)
+     * Uses a CO-RE shadow struct because task_struct.loginuid only exists when
+     * CONFIG_AUDIT is enabled at kernel build time. bpf_core_field_exists()
+     * resolves this at load time and skips gracefully if unavailable. */
+    struct task_struct___local *task_local = (struct task_struct___local *)current_task;
+    kuid_t loginuid = {0};
+    if (bpf_core_field_exists(task_local->loginuid)) {
+        loginuid = BPF_CORE_READ(task_local, loginuid);
+    }
+    evt->login_uid = loginuid.val;
+
     /* Command name of the current task */
     bpf_probe_read_kernel_str(evt->comm, TASK_COMM_LEN, (const char *)BPF_CORE_READ(current_task, comm));
 
@@ -314,9 +342,9 @@ statfunc void submit_event(const char *filename,
     evt->dev   = dev;
 
     /* Clear buffers safely */
-    bpf_probe_read_kernel_str(evt->cwd, MAX_PATH_LEN, "");
-    bpf_probe_read_kernel_str(evt->parent_cwd, MAX_PATH_LEN, "");
-    bpf_probe_read_kernel_str(evt->parent_name, TASK_COMM_LEN, "");
+    evt->cwd[0]         = '\0';
+    evt->parent_cwd[0]  = '\0';
+    evt->parent_name[0] = '\0';
 
     /* Get process cwd */
     get_task_cwd(evt->cwd, MAX_PATH_LEN, current_task);
