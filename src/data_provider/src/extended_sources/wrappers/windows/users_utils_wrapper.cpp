@@ -363,6 +363,7 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
                then we use the uid of the user. */
             new_user.gid = getGidFromUsername(user_info_lvl4->usri4_name).value_or(new_user.uid);
             new_user.description = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl4->usri4_comment);
+            new_user.full_name = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl4->usri4_full_name);
             new_user.directory = getUserHomeDir(sid_string);
             new_user.type = "local";
             new_user.sid = std::move(sid_string);
@@ -463,6 +464,7 @@ void UsersHelper::loadUsers(std::set<std::string>& processed_sids)
             if (infoRet == NERR_Success && user_info_lvl2 != nullptr)
             {
                 new_user.description = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl2->usri2_comment);
+                new_user.full_name = Utils::EncodingWindowsHelper::wstringToStringUTF8(user_info_lvl2->usri2_full_name);
             }
 
             roamingUsers.push_back(std::move(new_user));
