@@ -71,8 +71,9 @@ private:
         const std::size_t prev = m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
         if (prev < sz)
         {
-            // Underflow: another thread already clamped; restore to 0.
-            m_currentBytes.store(0, std::memory_order_relaxed);
+            // Underflow: compensate without clobbering concurrent increments.
+            // store(0) would destroy any fetch_add that landed between our fetch_sub and here.
+            m_currentBytes.fetch_add(sz - prev, std::memory_order_relaxed);
         }
     }
 
@@ -175,7 +176,7 @@ public:
                     return false; // Single element exceeds the entire byte budget.
                 }
                 const std::size_t prev = m_currentBytes.fetch_add(sz, std::memory_order_relaxed);
-                if (prev + sz > m_maxBytes)
+                if (prev >= m_maxBytes || sz > m_maxBytes - prev)
                 {
                     m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
                     return false; // Byte quota exceeded.
@@ -210,7 +211,7 @@ public:
                     return false;
                 }
                 const std::size_t prev = m_currentBytes.fetch_add(sz, std::memory_order_relaxed);
-                if (prev + sz > m_maxBytes)
+                if (prev >= m_maxBytes || sz > m_maxBytes - prev)
                 {
                     m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
                     return false;

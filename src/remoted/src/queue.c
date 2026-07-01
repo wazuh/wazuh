@@ -71,7 +71,7 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage
             { time_t _t = time(NULL); if (_t - last_discard_warn >= 5) { mwarn("Input queue discarded %zu event(s) in the last 5 seconds.", pending_discards); pending_discards = 0; last_discard_warn = _t; } }
             return -1;
         }
-        if (rem_input_bytes_used + size > rem_input_max_bytes) {
+        if (rem_input_bytes_used >= rem_input_max_bytes || size > rem_input_max_bytes - rem_input_bytes_used) {
             // Byte quota full.
             w_mutex_unlock(&mutex);
             rem_msgfree(message);

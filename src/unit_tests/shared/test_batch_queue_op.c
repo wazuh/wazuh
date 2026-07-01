@@ -159,7 +159,7 @@ static void test_enqueue_two_agents_round_robin_and_drain(void **state) {
  * Per-agent capacity:
  * - set cap to 1 for agent/C
  * - first enqueue succeeds and signals
- * - second enqueue is rejected with -ENOSPC and the payload is disposed
+ * - second enqueue is rejected with -ENOSPC; caller retains ownership and frees it
  * - draining consumes the single allowed item
  */
 static void test_per_agent_cap_and_dispose(void **state) {
@@ -172,10 +172,12 @@ static void test_per_agent_cap_and_dispose(void **state) {
     expect_value(__wrap_pthread_cond_signal, cond, &q->any_available);
     assert_int_equal(0, batch_queue_enqueue_ex(q, "agent/C", make_payload(10)));
 
-    /* this one is rejected due to per-agent cap → no signal */
-    int rc = batch_queue_enqueue_ex(q, "agent/C", make_payload(11));
+    /* this one is rejected due to per-agent cap → no signal, caller owns it */
+    payload_t *rejected = make_payload(11);
+    int rc = batch_queue_enqueue_ex(q, "agent/C", rejected);
     assert_int_equal(-ENOSPC, rc);
-    assert_int_equal(1, g_disposed);
+    assert_int_equal(0, g_disposed); /* queue must NOT call dispose on rejection */
+    free(rejected);                  /* caller retains ownership → free manually */
 
     const char *agent = NULL;
     size_t n = batch_queue_drain_next_ex(q, NULL, consumer_append, NULL, &agent);
@@ -201,9 +203,11 @@ static void test_global_cap_rejects_extra(void **state) {
     expect_value(__wrap_pthread_cond_signal, cond, &q->any_available);
     assert_int_equal(0, batch_queue_enqueue_ex(q, "agent/B", make_payload(2)));
 
-    /* exceeds global cap → no signal, returns -ENOSPC */
-    int rc = batch_queue_enqueue_ex(q, "agent/C", make_payload(3));
+    /* exceeds global cap → no signal, returns -ENOSPC; caller retains ownership */
+    payload_t *rejected = make_payload(3);
+    int rc = batch_queue_enqueue_ex(q, "agent/C", rejected);
     assert_int_equal(-ENOSPC, rc);
+    free(rejected);
 
     batch_queue_free(q);
 }
@@ -307,7 +311,7 @@ static void consumer_sized(void *data, void *user) {
  * Byte limit reached:
  * - queue created with max_bytes = 100
  * - first two items (40 + 60 bytes) fit exactly
- * - third item is rejected with -ENOSPC and disposed
+ * - third item is rejected with -ENOSPC; caller retains ownership and frees it
  * - batch_queue_bytes() reflects the accumulated usage
  */
 static void test_byte_limit_global_rejects_extra(void **state) {
@@ -329,11 +333,13 @@ static void test_byte_limit_global_rejects_extra(void **state) {
     assert_int_equal(0, batch_queue_enqueue_ex(q, "agent/B", make_sized(2, 60)));
     assert_int_equal(100, (int)batch_queue_bytes(q));
 
-    /* Third item exceeds byte quota → disposed, no signal */
-    int rc = batch_queue_enqueue_ex(q, "agent/C", make_sized(3, 1));
+    /* Third item exceeds byte quota → rejected, no signal; caller retains ownership */
+    sized_payload_t *rejected = make_sized(3, 1);
+    int rc = batch_queue_enqueue_ex(q, "agent/C", rejected);
     assert_int_equal(-ENOSPC, rc);
-    assert_int_equal(1, g_disposed);
+    assert_int_equal(0, g_disposed); /* queue must NOT call dispose on rejection */
     assert_int_equal(100, (int)batch_queue_bytes(q)); /* unchanged */
+    free(rejected);
 
     batch_queue_free(q);
 }
@@ -354,11 +360,13 @@ static void test_byte_limit_oversized_item_rejected(void **state) {
 
     g_disposed = 0;
 
-    /* Item of 51 bytes is larger than the limit (50) → rejected immediately */
-    int rc = batch_queue_enqueue_ex(q, "agent/A", make_sized(1, 51));
+    /* Item of 51 bytes is larger than the limit (50) → rejected; caller retains ownership */
+    sized_payload_t *rejected = make_sized(1, 51);
+    int rc = batch_queue_enqueue_ex(q, "agent/A", rejected);
     assert_int_equal(-ENOSPC, rc);
-    assert_int_equal(1, g_disposed);
+    assert_int_equal(0, g_disposed); /* queue must NOT call dispose on rejection */
     assert_int_equal(0, (int)batch_queue_bytes(q));
+    free(rejected);
 
     batch_queue_free(q);
 }
@@ -388,10 +396,12 @@ static void test_byte_limit_recovers_after_drain(void **state) {
     assert_int_equal(0, batch_queue_enqueue_ex(q, "agent/B", make_sized(2, 40)));
     assert_int_equal(100, (int)batch_queue_bytes(q));
 
-    /* Byte quota full — 41-byte item cannot fit */
-    int rc = batch_queue_enqueue_ex(q, "agent/C", make_sized(3, 41));
+    /* Byte quota full — 41-byte item cannot fit; caller retains ownership */
+    sized_payload_t *rejected = make_sized(3, 41);
+    int rc = batch_queue_enqueue_ex(q, "agent/C", rejected);
     assert_int_equal(-ENOSPC, rc);
-    assert_int_equal(1, g_disposed);
+    assert_int_equal(0, g_disposed); /* queue must NOT call dispose on rejection */
+    free(rejected);
 
     /* Drain agent/A (60 bytes) */
     const char *agent = NULL;
@@ -454,11 +464,13 @@ static void test_byte_limit_and_item_count_limit_coexist(void **state) {
     expect_value(__wrap_pthread_cond_signal, cond, &q->any_available);
     assert_int_equal(0, batch_queue_enqueue_ex(q, "agent/B", make_sized(2, 10)));
 
-    /* Item count (2) is reached; byte quota (20/100) is NOT exhausted */
-    int rc = batch_queue_enqueue_ex(q, "agent/C", make_sized(3, 5));
+    /* Item count (2) is reached; byte quota (20/100) is NOT exhausted; caller retains ownership */
+    sized_payload_t *rejected = make_sized(3, 5);
+    int rc = batch_queue_enqueue_ex(q, "agent/C", rejected);
     assert_int_equal(-ENOSPC, rc);
-    assert_int_equal(1, g_disposed);
+    assert_int_equal(0, g_disposed); /* queue must NOT call dispose on rejection */
     assert_int_equal(20, (int)batch_queue_bytes(q)); /* unchanged */
+    free(rejected);
 
     batch_queue_free(q);
 }
