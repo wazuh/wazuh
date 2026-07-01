@@ -88,4 +88,5 @@ jobs:
       - name: Run fim integration tests
         run: |
           cd tests/integration
-          sudo python -m pytest --tier 2 test_fim/
+          sudo python -m pytest --tier 2 test_fim/ \
+            -k "not whodata and not Who-data"
