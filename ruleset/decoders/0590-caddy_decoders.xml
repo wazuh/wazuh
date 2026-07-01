@@ -1,0 +1,15 @@
+<!--
+  -  Caddy web server decoders
+  -  Created by NucleiAv
+  -  Copyright (C) 2015, Wazuh Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<decoder name="caddy">
+  <prematch>"logger":"http\.log\.access</prematch>
+</decoder>
+
+<decoder name="caddy-access">
+  <parent>caddy</parent>
+  <plugin_decoder>JSON_Decoder</plugin_decoder>
+</decoder>
