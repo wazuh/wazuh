@@ -11,6 +11,7 @@
 
 #include "IURLRequest.hpp"
 #include "external/nlohmann/json.hpp"
+#include "httpErrorLogger.hpp"
 #include "indexerConnector.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
@@ -224,6 +225,7 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
 
             // Any other error status is a real failure
             std::string errorMsg = "Unknown error";
+            std::string errorType;
             if (result.contains("error"))
             {
                 const auto& error = result["error"];
@@ -231,14 +233,48 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
                 {
                     errorMsg = error.get<std::string>();
                 }
-                else if (error.is_object() && error.contains("reason"))
+                else if (error.is_object())
                 {
-                    errorMsg = error["reason"].get<std::string>();
+                    if (error.contains("reason") && error["reason"].is_string())
+                    {
+                        errorMsg = error["reason"].get<std::string>();
+                    }
+                    if (error.contains("type") && error["type"].is_string())
+                    {
+                        errorType = error["type"].get<std::string>();
+                    }
                 }
             }
 
-            logError(
-                tag, "Indexing failure for %s operation (status %d): %s", operation.c_str(), status, errorMsg.c_str());
+            // A persistent index block (e.g. a write-blocked index returning
+            // "FORBIDDEN/8/index write (api)") is reported for every item on every flush, which
+            // floods ossec.log (issue #37156). Route these through the de-duplicating logger so the
+            // repeats are throttled and the line carries the failing index plus a remediation hint,
+            // instead of logging every item raw. Other failures keep the existing per-item log.
+            if (!IndexerConnector::HttpErrorLogger::blockRemediation(errorType + ' ' + errorMsg).empty())
+            {
+                std::string index;
+                if (result.contains("_index") && result["_index"].is_string())
+                {
+                    index = result["_index"].get<std::string>();
+                }
+                const std::string detailBody =
+                    result.contains("error") ? nlohmann::json {{"error", result["error"]}}.dump() : std::string {};
+                IndexerConnector::HttpErrorLogger::instance().log(tag ? tag : "",
+                                                                  "Bulk item rejected",
+                                                                  index,
+                                                                  errorType.empty() ? errorMsg : errorType,
+                                                                  status,
+                                                                  detailBody);
+            }
+            else
+            {
+                logError(tag,
+                         "Indexing failure for %s operation (status %d): %s",
+                         operation.c_str(),
+                         status,
+                         errorMsg.c_str());
+            }
             realFailureCount++;
         }
 
@@ -349,6 +385,9 @@ class IndexerConnectorSyncImpl final
                 {});
         }
 
+        // Endpoint of the in-flight bulk request, so the error handler can report which request failed.
+        std::string url;
+
         const auto onSuccess = [this, &needToRetry](const std::string& response)
         {
             logDebug2(m_logTag.c_str(), "Response: %s", response.c_str());
@@ -367,11 +406,11 @@ class IndexerConnectorSyncImpl final
             needToRetry = false;
         };
 
-        const auto onError = [this, &needToRetry](const std::string& error,
-                                                  const long statusCode,
-                                                  const std::string& responseBody) -> void
+        const auto onError = [this, &needToRetry, &url](const std::string& error,
+                                                        const long statusCode,
+                                                        const std::string& responseBody) -> void
         {
-            logError(m_logTag.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
+            logDebug2(m_logTag.c_str(), "Bulk request failed: %s, status code: %ld.", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
                 logDebug2(m_logTag.c_str(), "Received 413 error (Payload Too Large). Splitting bulk data.");
@@ -405,7 +444,8 @@ class IndexerConnectorSyncImpl final
             }
             else
             {
-                logError(m_logTag.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
+                IndexerConnector::HttpErrorLogger::instance().log(
+                    m_logTag, "Bulk request failed", url, error, statusCode, responseBody);
                 m_bulkData.clear();
                 m_boundaries.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
@@ -424,7 +464,7 @@ class IndexerConnectorSyncImpl final
                     return;
                 }
 
-                std::string url;
+                url.clear();
                 url += m_selector->getNext();
                 url += "/_bulk";
                 logDebug2(m_logTag.c_str(), "Sending bulk data to: %s", url.c_str());
@@ -526,10 +566,10 @@ class IndexerConnectorSyncImpl final
                 throw IndexerConnectorException("Bulk chunk operation had indexing failures");
             }
         };
-        const auto onError = [this, &needToRetry, boundaries](
+        const auto onError = [this, &needToRetry, boundaries, &url](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
-            logError(m_logTag.c_str(), "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
+            logDebug2(m_logTag.c_str(), "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
                 if (boundaries.size() > 1)
@@ -565,6 +605,8 @@ class IndexerConnectorSyncImpl final
             }
             else
             {
+                IndexerConnector::HttpErrorLogger::instance().log(
+                    m_logTag, "Bulk chunk request failed", url, error, statusCode, responseBody);
                 throw IndexerConnectorException(error);
             }
         };
