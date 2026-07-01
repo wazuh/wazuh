@@ -34,7 +34,7 @@ namespace Utils
          */
         explicit FilterMsgDispatcher(const std::function<void(RawValue)>& callback,
                                      const std::function<bool(RawValue)>& filterCallback = nullptr,
-                                     const unsigned int threadPoolSize = std::thread::hardware_concurrency(),
+                                     const unsigned int threadPoolSize = cpp_get_nproc(),
                                      const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
             // clang-format off
             : ThreadType {std::bind(&DispatcherType::dispatch, this, std::placeholders::_1),

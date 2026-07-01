@@ -8,6 +8,7 @@
 #include <base/json.hpp>
 #include <base/logging.hpp>
 #include <fastmetrics/registry.hpp>
+#include <proc.hpp>
 
 #include <router/orchestrator.hpp>
 
@@ -351,11 +352,7 @@ Orchestrator::Orchestrator(const Options& opt)
     std::size_t numThreads = opt.m_numThreads;
     if (numThreads == 0)
     {
-        numThreads = std::thread::hardware_concurrency();
-        if (numThreads == 0)
-        {
-            numThreads = 1; // Fallback if hardware_concurrency cannot be determined
-        }
+        numThreads = cpp_get_nproc();
         LOG_DEBUG("[Orchestrator] No thread count provided. Using {} worker threads based on system hardware.",
                   numThreads);
     }
