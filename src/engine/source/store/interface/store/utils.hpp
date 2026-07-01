@@ -3,6 +3,7 @@
 
 #include <memory>
 #include <optional>
+#include <string_view>
 #include <variant>
 
 #include <base/error.hpp>
@@ -43,6 +44,15 @@ jsonGenerator(const json::Json& contentJson, const std::string& original, const 
 
     return wrappedContent;
 }
+
+/**
+ * @brief Creates or updates a component start status document.
+ *
+ * @param store Store used to persist the status.
+ * @param timestamp Current start timestamp.
+ * @return true when the document is created for the first time, false otherwise or on persistence failure.
+ */
+bool updateStartStatus(const std::shared_ptr<IStore>& store, std::string_view timestamp);
 
 } // namespace utils
 } // namespace store

@@ -2,7 +2,9 @@
 
 #include <base/logging.hpp>
 #include <store/mockDriver.hpp>
+#include <store/mockStore.hpp>
 #include <store/store.hpp>
+#include <store/utils.hpp>
 
 using namespace store;
 using namespace store::mocks;
@@ -161,4 +163,122 @@ TEST_F(StoreTest, existsDoc_true)
 {
     EXPECT_CALL(*driver, existsDoc(base::Name("x"))).WillOnce(testing::Return(true));
     ASSERT_TRUE(store->existsDoc("x"));
+}
+
+class StoreUtilsTest : public ::testing::Test
+{
+protected:
+    const base::Name statusDoc {"engine/status/0"};
+    std::shared_ptr<MockStore> mockStore;
+
+    void SetUp() override
+    {
+        logging::testInit();
+        mockStore = std::make_shared<MockStore>();
+    }
+};
+
+TEST_F(StoreUtilsTest, updateStartStatusCreatesDocumentOnFirstStart)
+{
+    const std::string timestamp {"2026-07-02T05:24:45.886Z"};
+
+    EXPECT_CALL(*mockStore, existsDoc(statusDoc)).WillOnce(testing::Return(false));
+    EXPECT_CALL(*mockStore, upsertDoc(statusDoc, testing::_))
+        .WillOnce(testing::Invoke(
+            [&timestamp](const base::Name&, const store::Doc& status)
+            {
+                std::string firstStart;
+                std::string lastStart;
+                EXPECT_EQ(status.getString(firstStart, "/first_start"), json::RetGet::Success);
+                EXPECT_EQ(status.getString(lastStart, "/last_start"), json::RetGet::Success);
+                EXPECT_EQ(firstStart, timestamp);
+                EXPECT_EQ(lastStart, timestamp);
+                return storeOk();
+            }));
+
+    EXPECT_TRUE(store::utils::updateStartStatus(mockStore, timestamp));
+}
+
+TEST_F(StoreUtilsTest, updateStartStatusPreservesFirstStart)
+{
+    const std::string firstTimestamp {"2026-07-02T05:24:45.886Z"};
+    const std::string currentTimestamp {"2026-07-02T05:36:17.128Z"};
+    const store::Doc persisted {
+        R"({"first_start":"2026-07-02T05:24:45.886Z","last_start":"2026-07-02T05:24:45.886Z"})"};
+
+    EXPECT_CALL(*mockStore, existsDoc(statusDoc)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*mockStore, readDoc(statusDoc)).WillOnce(testing::Return(storeReadDocResp(persisted)));
+    EXPECT_CALL(*mockStore, upsertDoc(statusDoc, testing::_))
+        .WillOnce(testing::Invoke(
+            [&firstTimestamp, &currentTimestamp](const base::Name&, const store::Doc& status)
+            {
+                std::string firstStart;
+                std::string lastStart;
+                EXPECT_EQ(status.getString(firstStart, "/first_start"), json::RetGet::Success);
+                EXPECT_EQ(status.getString(lastStart, "/last_start"), json::RetGet::Success);
+                EXPECT_EQ(firstStart, firstTimestamp);
+                EXPECT_EQ(lastStart, currentTimestamp);
+                return storeOk();
+            }));
+
+    EXPECT_FALSE(store::utils::updateStartStatus(mockStore, currentTimestamp));
+}
+
+TEST_F(StoreUtilsTest, updateStartStatusRecreatesUnreadableDocumentResetsTimestamps)
+{
+    const std::string timestamp {"2026-07-02T05:36:17.128Z"};
+
+    EXPECT_CALL(*mockStore, existsDoc(statusDoc)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*mockStore, readDoc(statusDoc)).WillOnce(testing::Return(storeReadError<store::Doc>()));
+    EXPECT_CALL(*mockStore, upsertDoc(statusDoc, testing::_))
+        .WillOnce(testing::Invoke(
+            [&timestamp](const base::Name&, const store::Doc& status)
+            {
+                std::string firstStart;
+                std::string lastStart;
+                EXPECT_EQ(status.getString(firstStart, "/first_start"), json::RetGet::Success);
+                EXPECT_EQ(status.getString(lastStart, "/last_start"), json::RetGet::Success);
+                EXPECT_EQ(firstStart, timestamp);
+                EXPECT_EQ(lastStart, timestamp);
+                return storeOk();
+            }));
+
+    EXPECT_FALSE(store::utils::updateStartStatus(mockStore, timestamp));
+}
+
+TEST_F(StoreUtilsTest, updateStartStatusRecreatesInvalidDocument)
+{
+    const std::string timestamp {"2026-07-02T05:36:17.128Z"};
+    const store::Doc persisted {R"([])"};
+
+    EXPECT_CALL(*mockStore, existsDoc(statusDoc)).WillOnce(testing::Return(true));
+    EXPECT_CALL(*mockStore, readDoc(statusDoc)).WillOnce(testing::Return(storeReadDocResp(persisted)));
+    EXPECT_CALL(*mockStore, upsertDoc(statusDoc, testing::_))
+        .WillOnce(testing::Invoke(
+            [&timestamp](const base::Name&, const store::Doc& status)
+            {
+                std::string firstStart;
+                EXPECT_EQ(status.getString(firstStart, "/first_start"), json::RetGet::Success);
+                EXPECT_EQ(firstStart, timestamp);
+                return storeOk();
+            }));
+
+    EXPECT_FALSE(store::utils::updateStartStatus(mockStore, timestamp));
+}
+
+TEST_F(StoreUtilsTest, updateStartStatusReturnsFalseOnPersistenceFailure)
+{
+    const std::string timestamp {"2026-07-02T05:24:45.886Z"};
+
+    EXPECT_CALL(*mockStore, existsDoc(statusDoc)).WillOnce(testing::Return(false));
+    EXPECT_CALL(*mockStore, upsertDoc(statusDoc, testing::_)).WillOnce(testing::Return(storeError()));
+
+    EXPECT_FALSE(store::utils::updateStartStatus(mockStore, timestamp));
+}
+
+TEST_F(StoreUtilsTest, updateStartStatusReturnsFalseOnNullStore)
+{
+    const std::string timestamp {"2026-07-02T05:24:45.886Z"};
+
+    EXPECT_FALSE(store::utils::updateStartStatus(nullptr, timestamp));
 }
