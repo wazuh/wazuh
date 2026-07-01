@@ -68,7 +68,16 @@ int wm_agent_upgrade_task_module_callback(cJSON *data_array, const cJSON* task_m
                 cJSON_AddItemToArray(data_array, error_json);
             }
         }
-        mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_MANANAGER_ERROR);
+        // The startup cancellation of pending upgrades is a best-effort cleanup. If the task manager
+        // is not reachable yet (e.g. a worker starting before the cluster socket is ready), the failure
+        // is transient and recoverable, so it should not be reported as an error.
+        cJSON *command = cJSON_GetObjectItem(task_module_request, task_manager_json_keys[WM_TASK_COMMAND]);
+        if (command && (command->type == cJSON_String) &&
+            !strcmp(command->valuestring, task_manager_commands_list[WM_TASK_UPGRADE_CANCEL_TASKS])) {
+            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_MANANAGER_ERROR);
+        } else {
+            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_MANANAGER_ERROR);
+        }
     } else {
         while (cJSON_GetArraySize(temp_array) > 0) {
             cJSON *item = cJSON_DetachItemFromArray(temp_array, 0);
