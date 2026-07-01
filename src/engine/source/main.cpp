@@ -256,6 +256,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
     std::shared_ptr<ioc::sync::IocSync> iocSyncService;
+    bool firstStart {false};
 
     try
     {
@@ -305,6 +306,50 @@ int main(int argc, char* argv[])
             auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
             store = std::make_shared<store::Store>(fileDriver);
             LOG_INFO("Store initialized");
+
+            const base::Name statusDoc {"engine/status/0"};
+            firstStart = !store->existsDoc(statusDoc);
+
+            json::Json status;
+            bool persistStatus = true;
+
+            if (firstStart)
+            {
+                status.setObject();
+                status.setString(engineUptimeISO, "/first_start");
+            }
+            else
+            {
+                auto response = store->readDoc(statusDoc);
+                if (base::isError(response))
+                {
+                    LOG_WARNING("[Engine] Failed to read status document: {}", base::getError(response).message);
+                    persistStatus = false;
+                }
+                else
+                {
+                    status = std::move(base::getResponse(response));
+                    std::string firstStartTimestamp;
+                    if (!status.isObject()
+                        || status.getString(firstStartTimestamp, "/first_start") != json::RetGet::Success
+                        || firstStartTimestamp.empty())
+                    {
+                        LOG_WARNING("[Engine] Invalid status document '{}'; keeping fail-safe startup state",
+                                    statusDoc.fullName());
+                        persistStatus = false;
+                    }
+                }
+            }
+
+            if (persistStatus)
+            {
+                status.setString(engineUptimeISO, "/last_start");
+                if (const auto error = store->upsertDoc(statusDoc, status); base::isError(error))
+                {
+                    LOG_WARNING("[Engine] Failed to persist status document: {}", error->message);
+                    firstStart = false;
+                }
+            }
         }
 
         // Content Manager
@@ -880,7 +925,7 @@ int main(int argc, char* argv[])
             auto lastWarned = std::make_shared<std::optional<bool>>();
 
             // Logs only on state transitions (no routes <-> at least one enabled route).
-            const auto reportRouteStatus = [hasEnabledRoutes, lastWarned]()
+            const auto reportRouteStatus = [hasEnabledRoutes, lastWarned, firstStart]()
             {
                 const bool shouldWarn = !hasEnabledRoutes();
                 if (*lastWarned == shouldWarn)
@@ -890,8 +935,16 @@ int main(int argc, char* argv[])
                 *lastWarned = shouldWarn;
                 if (shouldWarn)
                 {
-                    LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded "
-                                "until content synchronization completes");
+                    if (firstStart)
+                    {
+                        LOG_INFO("[CMSync] No active routes available. Incoming events will be discarded "
+                                 "until content synchronization completes");
+                    }
+                    else
+                    {
+                        LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded "
+                                    "until content synchronization completes");
+                    }
                 }
                 else
                 {
