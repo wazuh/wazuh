@@ -12,6 +12,7 @@
 #include "IURLRequest.hpp"
 #include "asyncValueDispatcher.hpp"
 #include "external/nlohmann/json.hpp"
+#include "httpErrorLogger.hpp"
 #include "indexerConnector.hpp"
 #include "keyStore.hpp"
 #include "loggerHelper.h"
@@ -407,6 +408,10 @@ public:
                     dataQueue.pop();
                 }
 
+                // Endpoint built up-front so the error handler can report which request failed.
+                std::string url {m_selector->getNext()};
+                url += "/_bulk";
+
                 const auto onSuccess = [this, &bulkData, &boundaries](std::string&& response)
                 {
                     if (m_dispatcher->bulkSize() != ElementsPerBulk && m_successCount == MaxSuccessCount)
@@ -425,11 +430,11 @@ public:
                     // Dispatch to error logger.
                 };
 
-                const auto onError = [this, &bulkData, bulkSize](const std::string& error,
-                                                                 const long statusCode,
-                                                                 const std::string& responseBody)
+                const auto onError = [this, &bulkData, bulkSize, &url](const std::string& error,
+                                                                       const long statusCode,
+                                                                       const std::string& responseBody)
                 {
-                    logError(
+                    logDebug2(
                         m_logTag.c_str(), "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
@@ -489,13 +494,11 @@ public:
                     }
                     else
                     {
-                        logError(m_logTag.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
+                        IndexerConnector::HttpErrorLogger::instance().log(
+                            m_logTag, "Bulk request failed", url, error, statusCode, responseBody);
                     }
                 };
 
-                std::string url;
-                url = m_selector->getNext();
-                url += "/_bulk";
                 logDebug2(m_logTag.c_str(), "Bulk data: %s", bulkData.c_str());
 
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
