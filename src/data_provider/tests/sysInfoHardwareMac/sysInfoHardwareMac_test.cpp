@@ -13,6 +13,7 @@
 #include "hardware/factoryHardwareFamilyCreator.h"
 #include "hardware/hardwareWrapperInterface.h"
 #include "json.hpp"
+#include <system_error>
 
 void SysInfoHardwareMacTest::SetUp() {};
 
@@ -54,4 +55,36 @@ TEST_F(SysInfoHardwareMacTest, Test_BuildHardwareData_Succeed)
     EXPECT_EQ((uint64_t)16777216, hardware.at("memory_total").get_ref<nlohmann::json::number_unsigned_t&>());
     EXPECT_EQ((uint64_t)8388608, hardware.at("memory_free").get_ref<nlohmann::json::number_unsigned_t&>());
     EXPECT_EQ((uint64_t)8388608, hardware.at("memory_used").get_ref<nlohmann::json::number_unsigned_t&>());
+}
+
+TEST_F(SysInfoHardwareMacTest, Test_BuildHardwareData_CpuSpeedZero_ReturnsNull)
+{
+    auto mock { std::make_shared<OSHardwareWrapperMacMock>() };
+    nlohmann::json hardware {};
+    EXPECT_CALL(*mock, boardSerial()).WillOnce(Return("H2WH91N3Q6NY"));
+    EXPECT_CALL(*mock, cpuName()).WillOnce(Return("Apple M1"));
+    EXPECT_CALL(*mock, cpuCores()).WillOnce(Return(8));
+    EXPECT_CALL(*mock, cpuMhz()).WillOnce(Return(0.0));
+    EXPECT_CALL(*mock, ramTotal()).WillOnce(Return(16777216));
+    EXPECT_CALL(*mock, ramFree()).WillOnce(Return(8388608));
+    EXPECT_CALL(*mock, ramUsage()).WillOnce(Return(8388608));
+    EXPECT_NO_THROW(FactoryHardwareFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildHardwareData(hardware));
+
+    EXPECT_TRUE(hardware.at("cpu_speed").is_null());
+}
+
+TEST_F(SysInfoHardwareMacTest, Test_BuildHardwareData_CpuSpeedThrows_ReturnsNull)
+{
+    auto mock { std::make_shared<OSHardwareWrapperMacMock>() };
+    nlohmann::json hardware {};
+    EXPECT_CALL(*mock, boardSerial()).WillOnce(Return("H2WH91N3Q6NY"));
+    EXPECT_CALL(*mock, cpuName()).WillOnce(Return("Apple M1"));
+    EXPECT_CALL(*mock, cpuCores()).WillOnce(Return(8));
+    EXPECT_CALL(*mock, cpuMhz()).WillOnce(testing::Throw(std::system_error(0, std::system_category())));
+    EXPECT_CALL(*mock, ramTotal()).WillOnce(Return(16777216));
+    EXPECT_CALL(*mock, ramFree()).WillOnce(Return(8388608));
+    EXPECT_CALL(*mock, ramUsage()).WillOnce(Return(8388608));
+    EXPECT_NO_THROW(FactoryHardwareFamilyCreator<OSPlatformType::BSDBASED>::create(mock)->buildHardwareData(hardware));
+
+    EXPECT_TRUE(hardware.at("cpu_speed").is_null());
 }
