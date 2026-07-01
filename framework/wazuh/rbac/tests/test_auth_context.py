@@ -4,7 +4,8 @@
 
 import json
 import os
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
+from wazuh.rbac.auth_context import AuthContextDepthExceeded, RBAChecker, MAX_FIND_ITEM_DEPTH
 
 import pytest
 from sqlalchemy import create_engine
@@ -104,3 +105,40 @@ def test_auth_roles(db_setup):
                     else:
                         assert len(test.get_user_roles()) == 0
         roles = values()[1]
+
+
+def _make_checker(auth_context=None):
+    """Return an RBAChecker with no DB interaction."""
+    with patch('wazuh.rbac.auth_context.orm.RolesManager') as mock_rm, \
+         patch('wazuh.rbac.auth_context.orm.RulesManager'):
+        mock_rm.return_value.__enter__.return_value.get_roles.return_value = []
+        return RBAChecker(auth_context=auth_context or {})
+
+
+def test_find_item_depth_limit_raises():
+    """find_item must raise AuthContextDepthExceeded when nesting exceeds MAX_FIND_ITEM_DEPTH."""
+    checker = _make_checker()
+    # Build a dict nested one level deeper than the allowed maximum
+    deep = {"leaf": "value"}
+    for _ in range(MAX_FIND_ITEM_DEPTH + 1):
+        deep = {"level": deep}
+
+    with pytest.raises(AuthContextDepthExceeded):
+        checker.find_item({"leaf": "value"}, auth_context=deep, mode='FIND')
+
+
+def test_get_user_roles_denies_when_depth_exceeded():
+    """get_user_roles must not grant a role when find_item hits the depth limit.
+
+    A NOT+FIND rule would incorrectly grant access if the truncated search returned
+    False (no match found), because NOT(False) evaluates to True. Raising
+    AuthContextDepthExceeded instead causes get_user_roles to skip the role entirely.
+    """
+    deep = {"leaf": "value"}
+    for _ in range(MAX_FIND_ITEM_DEPTH + 1):
+        deep = {"level": deep}
+    checker = _make_checker(auth_context=deep)
+    checker.user_id = 2
+    checker.roles_list = [{"id": 1, "rules": [{"id": 1, "rule": {"NOT": [{"FIND": {"leaf": "value"}}]}}]}]
+
+    assert checker.get_user_roles() == []

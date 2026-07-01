@@ -87,3 +87,11 @@ class ExpectFailedException(ProblemException):
     def __init__(self, *, status=417, title=None, detail=None):
         ext = {"code": 417}
         super().__init__(status=status, title=title, detail=detail, ext=ext)
+
+
+class PayloadTooLargeException(ProblemException):
+    """Exception for request bodies that exceed the maximum allowed size (status code 413)."""
+
+    def __init__(self, *, title=None, detail=None):
+        ext = {"code": 413}
+        super().__init__(status=413, title=title, detail=detail, ext=ext)

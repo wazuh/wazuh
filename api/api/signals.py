@@ -23,7 +23,7 @@ from api.constants import (
     UPDATE_INFORMATION_KEY,
     SECURITY_PATH
 )
-from api.authentication import generate_keypair, _private_key_path, _public_key_path
+from api.authentication import _private_key_path, _public_key_path, clear_keypair
 
 ONE_DAY_SLEEP = 60*60*24
 
@@ -64,7 +64,7 @@ async def load_installation_uid() -> None:
         logger.info("Getting installation UID...")
     else:
         logger.info("Populating installation UID...")
-    
+
     cti_context[INSTALLATION_UID_KEY] = get_installation_uid()
 
 
@@ -89,7 +89,7 @@ async def clean_auth_keys_cache():
         inotify.add_watch(SECURITY_PATH, Mask.MODIFY | Mask.CREATE )
         async for event in inotify:
             if event.path and event.path.as_posix() in FILES:
-                generate_keypair.cache_clear()
+                clear_keypair()
 
 
 @contextlib.asynccontextmanager

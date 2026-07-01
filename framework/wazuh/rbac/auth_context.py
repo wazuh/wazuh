@@ -3,12 +3,27 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
-import re
+import regex
+import logging
 from collections import defaultdict
 from typing import Union
-
 from wazuh.rbac import orm
 
+# Sets the find_item recursive max depth
+MAX_FIND_ITEM_DEPTH = 8
+
+# Sets time limit for user-reachable regex
+REGEX_TIME_LIMIT = 0.1
+
+class AuthContextDepthExceeded(Exception):
+    """Raised when find_item exceeds MAX_FIND_ITEM_DEPTH levels of recursion.
+
+    This is a business-logic depth limit, distinct from CPython's built-in
+    RecursionError (stack overflow).  Callers that want to suppress both must
+    catch each type explicitly.
+    """
+
+logger = logging.getLogger('wazuh')
 
 class RBAChecker:
     """
@@ -136,10 +151,13 @@ class RBAChecker:
         counter = 0
         for index, value in enumerate(auth_context):
             for v in role_chunk:
-                regex = self.check_regex(v)
-                if regex:
-                    if regex.match(value):
-                        counter += 1
+                pattern = self.check_regex(v)
+                if pattern:
+                    try:
+                        if pattern.match(value, timeout=REGEX_TIME_LIMIT):
+                            counter += 1
+                    except regex.TimeoutError:
+                        continue
                 else:
                     if value == v:
                         counter += 1
@@ -204,7 +222,7 @@ class RBAChecker:
 
         return None
 
-    def check_regex(self, expression: str) -> Union[re.Pattern, bool]:
+    def check_regex(self, expression: str) -> Union[regex.Pattern, bool]:
         """Check if a certain string is a regular expression.
 
         Parameters
@@ -214,19 +232,20 @@ class RBAChecker:
 
         Returns
         -------
-        re.Pattern or bool
+        regex.Pattern or bool
             Compiled regex if a valid regex is provided else return False.
         """
         if isinstance(expression, str):
             if not expression.startswith(self._regex_prefix):
                 return False
             try:
-                regex = ''.join(expression[self._initial_index_for_regex:-2])
-                regex = re.compile(regex)
-                return regex
+                pattern = ''.join(expression[self._initial_index_for_regex:-2])
+                pattern = regex.compile(pattern)
+                return pattern
             except:
                 return False
         return False
+
 
     def match_item(self, role_chunk: Union[list, dict], auth_context: Union[list, dict] = None,
                    mode: str = 'MATCH') -> Union[int, bool]:
@@ -252,23 +271,29 @@ class RBAChecker:
         # We're not in the deep end yet.
         if isinstance(role_chunk, dict) and isinstance(auth_context, dict):
             for key_rule, value_rule in role_chunk.items():
-                regex = self.check_regex(key_rule)
-                if regex:
+                pattern = self.check_regex(key_rule)
+                if pattern:
                     for key_auth in auth_context.keys():
-                        if regex.match(key_auth):
-                            validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_auth], mode)
+                        try:
+                            if pattern.match(key_auth, timeout=REGEX_TIME_LIMIT):
+                                validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_auth], mode)
+                        except regex.TimeoutError:
+                            continue
                 if key_rule in auth_context.keys():
                     validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_rule], mode)
         # It's a possible end
         else:
             role_chunk, auth_context = self.preprocess_to_list(role_chunk, auth_context)
-            regex = self.check_regex(role_chunk)
-            if regex:
+            pattern = self.check_regex(role_chunk)
+            if pattern:
                 if not isinstance(auth_context, list):
                     auth_context = [auth_context]
                 for context in auth_context:
-                    if regex.match(context):
-                        return 1
+                    try:
+                        if pattern.match(context, timeout=REGEX_TIME_LIMIT):
+                            return 1
+                    except regex.TimeoutError:
+                        continue
             if role_chunk == auth_context:
                 return 1
             if isinstance(role_chunk, str):
@@ -282,7 +307,7 @@ class RBAChecker:
         return False
 
     def find_item(self, role_chunk: Union[list, dict], auth_context: dict = None, mode: str = 'FIND',
-                  role_id: int = None) -> bool:
+                  role_id: int = None, depth: int = 0) -> bool:
         """This function will use the match function and will launch it recursively on all the authorization context
         tree, on all the levels.
 
@@ -296,6 +321,8 @@ class RBAChecker:
             FIND -> MATCH | FIND$ -> MATCH$.
         role_id : int
             ID of the current role.
+        depth : int
+            Current depth level reached in recursive calls.
 
         Returns
         -------
@@ -303,6 +330,11 @@ class RBAChecker:
             True if the item was found, false otherwise.
         """
         auth_context = self.authorization_context if auth_context is None else auth_context
+
+        if depth >= MAX_FIND_ITEM_DEPTH:
+            logger.warning("auth_context depth limit reached for role_id=%s", role_id)
+            raise AuthContextDepthExceeded
+
         mode = self.set_mode(mode, role_id)
 
         validator_counter = self.match_item(role_chunk, auth_context, mode)
@@ -313,12 +345,12 @@ class RBAChecker:
             if self.match_item(role_chunk, value, mode):
                 return True
             elif isinstance(value, dict):
-                if self.find_item(role_chunk, value, mode=mode):
+                if self.find_item(role_chunk, value, mode=mode, role_id=role_id, depth=depth + 1):
                     return True
             elif isinstance(value, list):
                 for v in value:
                     if isinstance(v, dict):
-                        if self.find_item(role_chunk, v, mode=mode):
+                        if self.find_item(role_chunk, v, mode=mode, role_id=role_id, depth=depth + 1):
                             return True
 
         return False
@@ -355,7 +387,7 @@ class RBAChecker:
                     if self.match_item(role_chunk=rule[rule_key], mode=rule_key):
                         return 1
                 elif rule_key == self._functions[2] or rule_key == self._functions[3]:  # FIND, FIND$
-                    if self.find_item(role_chunk=rule[rule_key], mode=rule_key, role_id=role_id):
+                    if self.find_item(role_chunk=rule[rule_key], mode=rule_key, role_id=role_id, depth=0):
                         return 1
 
         return False
@@ -372,10 +404,18 @@ class RBAChecker:
         for role in self.roles_list:
             for rule in role['rules']:
                 # wazuh-wui has id 2
-                if (rule['id'] > orm.MAX_ID_RESERVED or self.user_id == 2) and self.check_rule(rule['rule']):
-                    list_roles.append(role['id'])
+                try:
+                    if (rule['id'] > orm.MAX_ID_RESERVED or self.user_id == 2) and self.check_rule(rule['rule']):
+                        list_roles.append(role['id'])
+                        break
+                except AuthContextDepthExceeded:
+                    # Auth context was nested beyond MAX_FIND_ITEM_DEPTH; skip this role.
+                    logger.warning("auth_context depth limit reached for role_id=%s", role['id'])
                     break
-
+                except RecursionError:
+                    # CPython call-stack overflow; skip this role.
+                    logger.warning("RecursionError evaluating role_id=%s", role['id'])
+                    break
         return list_roles
 
     def run_auth_context(self) -> defaultdict:

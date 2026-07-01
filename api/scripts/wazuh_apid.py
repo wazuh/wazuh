@@ -182,6 +182,7 @@ def start(params: dict):
         app.add_middleware(CheckRateLimitsMiddleware, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(CheckExpectHeaderMiddleware)
     app.add_middleware(CheckBlockedIP, MiddlewarePosition.BEFORE_SECURITY)
+    app.add_middleware(CheckAuthContextSizeMiddleware, MiddlewarePosition.BEFORE_SECURITY)
     app.add_middleware(WazuhAccessLoggerMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     app.add_middleware(SecureHeadersMiddleware, MiddlewarePosition.BEFORE_EXCEPTION)
     if api_conf['max_upload_size']:
@@ -337,6 +338,7 @@ if __name__ == '__main__':
     from api.configuration import api_conf, generate_private_key, generate_self_signed_certificate, security_conf
     from api.constants import API_LOG_PATH
     from api.middlewares import (
+        CheckAuthContextSizeMiddleware,
         CheckBlockedIP,
         CheckRateLimitsMiddleware,
         SecureHeadersMiddleware,
