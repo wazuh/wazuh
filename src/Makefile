@@ -865,6 +865,7 @@ clean-internals:
 	rm -f wazuh_modules/syscollector/include/*_generated.h
 	rm -f wazuh_modules/vulnerability_scanner/include/*_generated.h
 	rm -f wazuh_modules/vulnerability_scanner/include/*_schema.h
+	rm -rf wazuh_modules/vulnerability_scanner/include/*_generated.h
 # Selinux
 	rm -f selinux/wazuh.mod
 	rm -f selinux/wazuh.pp
