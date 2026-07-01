@@ -366,6 +366,9 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download all artifacts for this architecture
         uses: ./.github/actions/download_package
         with:
@@ -740,6 +743,9 @@ jobs:
       fail-fast: false
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Map architecture for artifact download
         id: map-arch
         run: |

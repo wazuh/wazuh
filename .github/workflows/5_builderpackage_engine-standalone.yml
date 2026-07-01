@@ -160,6 +160,9 @@ jobs:
             ;;
         esac
 
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
     - name: Download compressed tar.gz file
       uses: ./.github/actions/download_s3_artifact
       with:

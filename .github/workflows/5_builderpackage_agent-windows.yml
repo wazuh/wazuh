@@ -440,6 +440,9 @@ jobs:
     name: Upload MSI to S3
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download package artifacts
         uses: ./.github/actions/download_s3_artifact
         with:

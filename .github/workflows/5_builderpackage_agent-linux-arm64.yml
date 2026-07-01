@@ -316,6 +316,9 @@ jobs:
     name: Upload DEB to S3
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download package artifacts
         uses: ./.github/actions/download_s3_artifact
         with:
@@ -657,6 +660,9 @@ jobs:
     name: Upload RPM to S3
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download package artifacts
         uses: ./.github/actions/download_s3_artifact
         with:
