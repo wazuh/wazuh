@@ -15,8 +15,8 @@
 #ifdef __linux__
 #include <sched.h>
 #elif defined(__APPLE__) || defined(__FreeBSD__)
-#include <sys/types.h>
 #include <sys/sysctl.h>
+#include <sys/types.h>
 #else
 #include <thread>
 #endif
