@@ -1,0 +1,114 @@
+name: 5 - Code Analysis - CodeChecker
+
+on:
+  workflow_dispatch:
+    inputs:
+      scan_ref:
+        description: 'Base ref (tag or SHA) — the "before" snapshot'
+        required: true
+        type: string
+      target_ref:
+        description: 'Target ref (tag or SHA) — the "after" snapshot to diff against base'
+        required: true
+        type: string
+      scan_target:
+        description: 'Wazuh build target (manager resolves to server on 4.x, manager on 5.x)'
+        required: true
+        type: choice
+        default: manager
+        options:
+          - manager
+          - agent
+      enable_ctu:
+        description: 'Enable cross-translation-unit (CTU) analysis (~2-3x slower but finds interprocedural bugs)'
+        required: false
+        type: boolean
+        default: true
+      run_infer:
+        description: 'Run Infer/RacerD static race detection (~20 min extra)'
+        required: false
+        type: boolean
+        default: false
+      run_tsan:
+        description: 'Run ThreadSanitizer via unit tests + wazuh-db system test (requires kernel tuning)'
+        required: false
+        type: boolean
+        default: false
+      run_flawfinder:
+        description: 'Run Flawfinder security scan (CWE-362 TOCTOU, CWE-119 — lightweight, ~2 min)'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: wazuh/codechecker
+
+jobs:
+  prepare:
+    name: Prepare scan parameters
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    outputs:
+      scan_name: ${{ steps.params.outputs.scan_name }}
+      target_name: ${{ steps.params.outputs.target_name }}
+      version: ${{ steps.params.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Derive run names and version
+        id: params
+        run: |
+          VERSION=$(jq -r '.version + "-" + .stage' VERSION.json)
+          SCAN_NAME="wazuh-${{ inputs.scan_ref }}-${{ inputs.scan_target }}"
+          TARGET_NAME="wazuh-${{ inputs.target_ref }}-${{ inputs.scan_target }}"
+          echo "scan_name=${SCAN_NAME}"     >> "$GITHUB_OUTPUT"
+          echo "target_name=${TARGET_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}"         >> "$GITHUB_OUTPUT"
+
+  scan:
+    name: Run CodeChecker scan (${{ inputs.scan_target }})
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    needs: prepare
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Lower vm.mmap_rnd_bits for ThreadSanitizer (kernel 6.x)
+        if: ${{ inputs.run_tsan == true }}
+        run: sudo sysctl -w vm.mmap_rnd_bits=28
+
+      - name: Run CodeChecker scan
+        uses: ./.github/actions/codechecker/scan
+        with:
+          scan_ref: ${{ inputs.scan_ref }}
+          target_ref: ${{ inputs.target_ref }}
+          scan_target: ${{ inputs.scan_target }}
+          scan_name: ${{ needs.prepare.outputs.scan_name }}
+          target_name: ${{ needs.prepare.outputs.target_name }}
+          enable_ctu: ${{ inputs.enable_ctu }}
+          run_infer: ${{ inputs.run_infer }}
+          run_tsan: ${{ inputs.run_tsan }}
+          run_flawfinder: ${{ inputs.run_flawfinder }}
+          results_dir: ${{ runner.temp }}/codechecker-results
+
+      - name: Restore vm.mmap_rnd_bits
+        if: ${{ inputs.run_tsan == true && always() }}
+        run: sudo sysctl -w vm.mmap_rnd_bits=32 || true
+
+      - name: Upload report artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: codechecker-report-${{ inputs.target_ref }}-${{ inputs.scan_target }}
+          path: ${{ runner.temp }}/codechecker-results/
+          retention-days: 30
