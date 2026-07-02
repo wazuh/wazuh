@@ -1178,7 +1178,10 @@ void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModul
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING, "Failed to resume module " + module + ": " + response.response);
+            if (!m_stopped && !response.isModuleUnavailable)
+            {
+                m_logFunction(LOG_WARNING, "Failed to resume module " + module + ": " + response.response);
+            }
         }
     }
 }
