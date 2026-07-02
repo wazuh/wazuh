@@ -542,6 +542,10 @@ rm -fr %{buildroot}
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs
 %dir %attr(750, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default
 %attr(640, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/outputs/default/*.yml
+%dir %attr(750, root, wazuh-manager) %{_localstatedir}/etc/indexer-plugins
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/indexer-plugins/metrics-agents.json
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/indexer-plugins/metrics-comms.json
+%attr(640, root, wazuh-manager) %{_localstatedir}/etc/indexer-plugins/metrics-normalization.json
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework
 %dir %attr(750, root, wazuh-manager) %{_localstatedir}/framework/python
 %{_localstatedir}/framework/python/*
