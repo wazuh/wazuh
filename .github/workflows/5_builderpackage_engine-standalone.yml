@@ -117,8 +117,11 @@ jobs:
           bash generate_package.sh $FLAGS
 
       - name: Upload standalone package
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: wazuh-engine-${{ env.TAG }}-linux-${{ env.NORMALIZED_ARCH }}
           path: ${{ env.ENGINE_DIR }}/standalone/output/*.tar.gz
 
@@ -245,8 +248,11 @@ jobs:
 
     - name: Upload engine logs
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: ./.github/actions/upload_s3_artifact
       with:
+        aws_region: ${{ secrets.CI_AWS_REGION }}
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
         name: engine-logs-${{ env.NORMALIZED_ARCH }}-${{ github.run_id }}
         path: |
           /tmp/standalone-test/wazuh-engine-standalone/engine_stdout.log
