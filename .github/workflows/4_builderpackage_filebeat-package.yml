@@ -171,15 +171,15 @@ jobs:
           if [ "$INPUT_IS_STAGE" = "false" ]; then
             git_hash=$(git rev-parse --short "$GITHUB_SHA")
             if [ "$INPUT_SYSTEM" = "rpm" ]; then
-              renamed_file="filebeat-$FILEBEAT_VERSION-$INPUT_REVISION.$INPUT_ARCHITECTURE_${git_hash}.$INPUT_SYSTEM"
+              renamed_file="filebeat-$FILEBEAT_VERSION-$INPUT_REVISION.${INPUT_ARCHITECTURE}_${git_hash}.$INPUT_SYSTEM"
             else
-              renamed_file="filebeat_$FILEBEAT_VERSION-$INPUT_REVISION_$INPUT_ARCHITECTURE_${git_hash}.$INPUT_SYSTEM"
+              renamed_file="filebeat_$FILEBEAT_VERSION-${INPUT_REVISION}_${INPUT_ARCHITECTURE}_${git_hash}.$INPUT_SYSTEM"
             fi
           else
             if [ "$INPUT_SYSTEM" = "rpm" ]; then
               renamed_file="filebeat-$FILEBEAT_VERSION-$INPUT_REVISION.$INPUT_ARCHITECTURE.$INPUT_SYSTEM"
             else
-              renamed_file="filebeat_$FILEBEAT_VERSION-$INPUT_REVISION_$INPUT_ARCHITECTURE.$INPUT_SYSTEM"
+              renamed_file="filebeat_$FILEBEAT_VERSION-${INPUT_REVISION}_${INPUT_ARCHITECTURE}.$INPUT_SYSTEM"
             fi
           fi
 
@@ -202,15 +202,15 @@ jobs:
           if [ "$INPUT_IS_STAGE" = "false" ]; then
             git_hash=$(git rev-parse --short "$GITHUB_SHA")
             if [ "$INPUT_SYSTEM" = "rpm" ]; then
-              renamed_file="filebeat-$FILEBEAT_VERSION-$INPUT_REVISION.$INPUT_ARCHITECTURE_${git_hash}.$INPUT_SYSTEM.sha512"
+              renamed_file="filebeat-$FILEBEAT_VERSION-$INPUT_REVISION.${INPUT_ARCHITECTURE}_${git_hash}.$INPUT_SYSTEM.sha512"
             else
-              renamed_file="filebeat_$FILEBEAT_VERSION-$INPUT_REVISION_$INPUT_ARCHITECTURE_${git_hash}.$INPUT_SYSTEM.sha512"
+              renamed_file="filebeat_$FILEBEAT_VERSION-${INPUT_REVISION}_${INPUT_ARCHITECTURE}_${git_hash}.$INPUT_SYSTEM.sha512"
             fi
           else
             if [ "$INPUT_SYSTEM" = "rpm" ]; then
               renamed_file="filebeat-$FILEBEAT_VERSION-$INPUT_REVISION.$INPUT_ARCHITECTURE.$INPUT_SYSTEM.sha512"
             else
-              renamed_file="filebeat_$FILEBEAT_VERSION-$INPUT_REVISION_$INPUT_ARCHITECTURE.$INPUT_SYSTEM.sha512"
+              renamed_file="filebeat_$FILEBEAT_VERSION-${INPUT_REVISION}_${INPUT_ARCHITECTURE}.$INPUT_SYSTEM.sha512"
             fi
           fi
 
