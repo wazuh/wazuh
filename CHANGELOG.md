@@ -103,6 +103,7 @@ All notable changes to this project will be documented in this file.
 - Adjusted DockerListener messages as log entries to fix event categorization. ([#36126](https://github.com/wazuh/wazuh/issues/36126))
 - Dropped orphan paths before promoting on agent startup to fix FIM. ([#36134](https://github.com/wazuh/wazuh/issues/36134))
 - Deferred agent-info module coordination while SCA or System Inventory first synchronization is in progress, extending the FIM guard so a concurrent group or metadata change does not run coordination mid-first-sync. ([#36358](https://github.com/wazuh/wazuh/issues/36358))
+- Closed the SCA and FIM synchronization databases cleanly on graceful shutdown, so stopping the agent no longer leaves stale SQLite `-wal`/`-shm` files behind. ([#37334](https://github.com/wazuh/wazuh/issues/37334))
 
 ## Prior versions
 

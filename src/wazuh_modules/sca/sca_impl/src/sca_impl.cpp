@@ -364,6 +364,15 @@ void SecurityConfigurationAssessment::releaseResources()
     // Must be called only after the sync worker thread has been joined, because
     // synchronizeDatabaseSnapshot() uses m_dBSync without holding any mutex.
     m_dBSync.reset();
+
+    // Destroy the flush controller and the sync protocol so their SQLite connection to
+    // sca_sync.db is closed (sqlite3_close_v2 on last close checkpoints the WAL and removes
+    // the -wal/-shm files). Stop() only signals the workers; without this the connection is
+    // leaked and a graceful stop leaves stale WAL files behind (issue #37334). Safe here:
+    // the sync worker thread and the SCA run loop have already exited (see wm_sca_start
+    // teardown), mirroring Syscollector::releaseResources().
+    m_asyncFlushController.reset();
+    m_spSyncProtocol.reset();
 }
 
 void SecurityConfigurationAssessment::Stop()
