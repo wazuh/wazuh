@@ -22,6 +22,12 @@ All notable changes to this project will be documented in this file.
 - Fixed TypeError when sorting agents by version with empty version strings. ([#37323](https://github.com/wazuh/wazuh/pull/37323))
 - Improved sensitive data masking in cluster configuration endpoint. ([#37039](https://github.com/wazuh/wazuh/pull/37039))
 
+### Ruleset
+
+#### Fixed
+
+- Fixed rule 90535 false positive by scoping it to the Vipre provider. ([#37363](https://github.com/wazuh/wazuh/pull/37363))
+
 ## [v4.14.6]
 
 ### Manager
