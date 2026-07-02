@@ -20,6 +20,8 @@
 #include <iostream>
 #include <string>
 
+#include <proc.hpp>
+
 static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION = nullptr;
 
 void logMessage(const modules_log_level_t level, const std::string& msg)
@@ -29,6 +31,11 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
         GS_LOG_FUNCTION(level, msg);
     }
 }
+
+// Clamp httplib worker threads to the [4, 16] range.
+#ifndef CPPHTTPLIB_THREAD_POOL_COUNT
+#define CPPHTTPLIB_THREAD_POOL_COUNT ((std::min)(16u, (std::max)(4u, cpp_get_nproc() > 1u ? cpp_get_nproc() - 1u : 1u)))
+#endif
 
 #include "external/cpp-httplib/httplib.h"
 #include "router.h"
