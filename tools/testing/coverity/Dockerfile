@@ -13,7 +13,7 @@ ARG COVERITY_HOME="/opt/cov-analysis"
 ENV PATH="$COVERITY_HOME/bin:$PATH"
 
 RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y curl make cmake gcc g++ file && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y curl make cmake gcc g++ file git && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder $COVERITY_HOME $COVERITY_HOME
