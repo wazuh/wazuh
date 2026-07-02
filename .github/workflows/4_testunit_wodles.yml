@@ -46,10 +46,12 @@ jobs:
       - name: Run Wodles tests
         run: |
           set -o pipefail
-          python -m pytest wodles -vv --ignore=tests --cov=wodles | tee ${TEST_REPORT_PATH}
+          python -m pytest wodles -vv --ignore=tests --cov=wodles | tee "${TEST_REPORT_PATH}"
       
       - name: Generate test report
         if: inputs.generate_report
+        env:
+          INPUT_QA_BRANCH: ${{ inputs.qa_branch }}
         run: |
-          git clone -b ${{ inputs.qa_branch }} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          python qa-integration-framework/src/wazuh_testing/scripts/pytest_results_parser.py -f ${TEST_REPORT_PATH}
+          git clone -b "${INPUT_QA_BRANCH}" --single-branch https://github.com/wazuh/qa-integration-framework.git
+          python qa-integration-framework/src/wazuh_testing/scripts/pytest_results_parser.py -f "${TEST_REPORT_PATH}"

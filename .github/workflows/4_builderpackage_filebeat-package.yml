@@ -133,74 +133,88 @@ jobs:
           sed -i '/func TestDocker(t \*testing\.T) {/,/^}$/d' dev-tools/packaging/package_test.go
 
       - name: Modify FPM call (add revision/version)
+        env:
+          INPUT_REVISION: ${{ inputs.revision }}
         run: |
           # https://fpm.readthedocs.io/en/v1.14.0/cli-reference.html
           LINE=716
           FILE="dev-tools/mage/pkgtypes.go"
-          ITERATION_VALUE="${{ inputs.revision }}"
+          ITERATION_VALUE="$INPUT_REVISION"
           sed -i "${LINE} i \ \t\t\"--iteration\", \"${ITERATION_VALUE}\"," "$FILE"
 
       - name: Package Filebeat
         working-directory: filebeat
+        env:
+          INPUT_ARCHITECTURE: ${{ inputs.architecture }}
         run: |
           sudo apt install -y golang-go
           go install github.com/magefile/mage@latest
           export PATH=$HOME/go/bin:$PATH
           echo 'export PATH=$HOME/go/bin:$PATH' >> ~/.profile
-          if [[ "${{ inputs.architecture }}" == "x86_64" ||  "${{ inputs.architecture }}" == "amd64" ]]; then
+          if [[ "$INPUT_ARCHITECTURE" == "x86_64" ||  "$INPUT_ARCHITECTURE" == "amd64" ]]; then
             arch="amd64"
-          elif [[ "${{ inputs.architecture }}" == "aarch64" || "${{ inputs.architecture }}" == "arm64" ]]; then
+          elif [[ "$INPUT_ARCHITECTURE" == "aarch64" || "$INPUT_ARCHITECTURE" == "arm64" ]]; then
             arch="arm64"
           fi
           PLATFORMS=linux/${arch} mage package
 
       - name: Upload Filebeat package to S3
         working-directory: filebeat/build/distributions
+        env:
+          INPUT_ARCHITECTURE: ${{ inputs.architecture }}
+          INPUT_SYSTEM: ${{ inputs.system }}
+          INPUT_REVISION: ${{ inputs.revision }}
+          INPUT_IS_STAGE: ${{ inputs.is_stage }}
         run: |
-          original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${{ inputs.architecture }}.${{ inputs.system }}"
+          original_file="filebeat-oss-$FILEBEAT_VERSION-$INPUT_ARCHITECTURE.$INPUT_SYSTEM"
 
-          if [ "${{ inputs.is_stage }}" = "false" ]; then
+          if [ "$INPUT_IS_STAGE" = "false" ]; then
             git_hash=$(git rev-parse --short "$GITHUB_SHA")
-            if [ "${{ inputs.system }}" = "rpm" ]; then
-              renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}.${{ inputs.architecture }}_${git_hash}.${{ inputs.system }}"
+            if [ "$INPUT_SYSTEM" = "rpm" ]; then
+              renamed_file="filebeat-$FILEBEAT_VERSION-$INPUT_REVISION.$INPUT_ARCHITECTURE_${git_hash}.$INPUT_SYSTEM"
             else
-              renamed_file="filebeat_${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}_${{ inputs.architecture }}_${git_hash}.${{ inputs.system }}"
+              renamed_file="filebeat_$FILEBEAT_VERSION-$INPUT_REVISION_$INPUT_ARCHITECTURE_${git_hash}.$INPUT_SYSTEM"
             fi
           else
-            if [ "${{ inputs.system }}" = "rpm" ]; then
-              renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}.${{ inputs.architecture }}.${{ inputs.system }}"
+            if [ "$INPUT_SYSTEM" = "rpm" ]; then
+              renamed_file="filebeat-$FILEBEAT_VERSION-$INPUT_REVISION.$INPUT_ARCHITECTURE.$INPUT_SYSTEM"
             else
-              renamed_file="filebeat_${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}_${{ inputs.architecture }}.${{ inputs.system }}"
+              renamed_file="filebeat_$FILEBEAT_VERSION-$INPUT_REVISION_$INPUT_ARCHITECTURE.$INPUT_SYSTEM"
             fi
           fi
 
           mv "$original_file" "$renamed_file"
-          aws s3 cp "$renamed_file" "${{ env.S3_BUCKET_PATH }}"
-          s3uri="${{ env.S3_BUCKET_PATH }}$renamed_file"
+          aws s3 cp "$renamed_file" "$S3_BUCKET_PATH"
+          s3uri="$S3_BUCKET_PATH$renamed_file"
           echo "S3 URI: ${s3uri}"
 
       - name: Upload Filebeat module SHA512 to S3
         if: ${{ inputs.checksum }}
         working-directory: filebeat/build/distributions
+        env:
+          INPUT_ARCHITECTURE: ${{ inputs.architecture }}
+          INPUT_SYSTEM: ${{ inputs.system }}
+          INPUT_REVISION: ${{ inputs.revision }}
+          INPUT_IS_STAGE: ${{ inputs.is_stage }}
         run: |
-          original_file="filebeat-oss-${{ env.FILEBEAT_VERSION }}-${{ inputs.architecture }}.${{ inputs.system }}.sha512"
+          original_file="filebeat-oss-$FILEBEAT_VERSION-$INPUT_ARCHITECTURE.$INPUT_SYSTEM.sha512"
 
-          if [ "${{ inputs.is_stage }}" = "false" ]; then
+          if [ "$INPUT_IS_STAGE" = "false" ]; then
             git_hash=$(git rev-parse --short "$GITHUB_SHA")
-            if [ "${{ inputs.system }}" = "rpm" ]; then
-              renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}.${{ inputs.architecture }}_${git_hash}.${{ inputs.system }}.sha512"
+            if [ "$INPUT_SYSTEM" = "rpm" ]; then
+              renamed_file="filebeat-$FILEBEAT_VERSION-$INPUT_REVISION.$INPUT_ARCHITECTURE_${git_hash}.$INPUT_SYSTEM.sha512"
             else
-              renamed_file="filebeat_${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}_${{ inputs.architecture }}_${git_hash}.${{ inputs.system }}.sha512"
+              renamed_file="filebeat_$FILEBEAT_VERSION-$INPUT_REVISION_$INPUT_ARCHITECTURE_${git_hash}.$INPUT_SYSTEM.sha512"
             fi
           else
-            if [ "${{ inputs.system }}" = "rpm" ]; then
-              renamed_file="filebeat-${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}.${{ inputs.architecture }}.${{ inputs.system }}.sha512"
+            if [ "$INPUT_SYSTEM" = "rpm" ]; then
+              renamed_file="filebeat-$FILEBEAT_VERSION-$INPUT_REVISION.$INPUT_ARCHITECTURE.$INPUT_SYSTEM.sha512"
             else
-              renamed_file="filebeat_${{ env.FILEBEAT_VERSION }}-${{ inputs.revision }}_${{ inputs.architecture }}.${{ inputs.system }}.sha512"
+              renamed_file="filebeat_$FILEBEAT_VERSION-$INPUT_REVISION_$INPUT_ARCHITECTURE.$INPUT_SYSTEM.sha512"
             fi
           fi
 
           mv "$original_file" "$renamed_file"
-          aws s3 cp "$renamed_file" "${{ env.S3_BUCKET_PATH }}"
-          s3uri="${{ env.S3_BUCKET_PATH }}$renamed_file"
+          aws s3 cp "$renamed_file" "$S3_BUCKET_PATH"
+          s3uri="$S3_BUCKET_PATH$renamed_file"
           echo "S3 sha512 URI: ${s3uri}"

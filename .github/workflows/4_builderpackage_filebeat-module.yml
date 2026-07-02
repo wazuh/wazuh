@@ -50,8 +50,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Set package name
+        env:
+          INPUT_REVISION: ${{ inputs.revision }}
         run: |
-          echo "FILEBEAT_TAR_NAME=wazuh-filebeat-${{ inputs.revision }}.tar.gz" >> $GITHUB_ENV
+          echo "FILEBEAT_TAR_NAME=wazuh-filebeat-${INPUT_REVISION}.tar.gz" >> $GITHUB_ENV
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v1

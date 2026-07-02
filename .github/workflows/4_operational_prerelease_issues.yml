@@ -164,48 +164,61 @@ jobs:
     if: always()
     steps:
       - name: Summary
+        env:
+          RELEASE: ${{ needs.read-version.outputs.release }}
+          STAGE: ${{ needs.read-version.outputs.stage }}
+          GH_REPOSITORY: ${{ github.repository }}
+          INPUT_MAIN_ISSUE: ${{ inputs.main_issue }}
+          INPUT_PREV_UT: ${{ inputs.prev_ut }}
+          INPUT_PREV_COV: ${{ inputs.prev_cov }}
+          INPUT_PREV_IT: ${{ inputs.prev_it }}
+          INPUT_PREV_WPK: ${{ inputs.prev_wpk }}
+          UT_RESULT: ${{ needs.create-unit-tests-issue.result }}
+          UT_ISSUE_URL: ${{ needs.create-unit-tests-issue.outputs.issue_url }}
+          COV_RESULT: ${{ needs.create-coverity-issue.result }}
+          COV_ISSUE_URL: ${{ needs.create-coverity-issue.outputs.issue_url }}
+          IT_RESULT: ${{ needs.create-integration-tests-issue.result }}
+          IT_ISSUE_URL: ${{ needs.create-integration-tests-issue.outputs.issue_url }}
+          WPK_RESULT: ${{ needs.create-wpk-tests-issue.result }}
+          WPK_ISSUE_URL: ${{ needs.create-wpk-tests-issue.outputs.issue_url }}
         run: |
-          echo "## Release Suite Issues Creation Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Release:** ${{ needs.read-version.outputs.release }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Stage:** ${{ needs.read-version.outputs.stage }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Main Issue:** https://github.com/${{ github.repository }}/issues/${{ inputs.main_issue }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Release Suite Issues Creation Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Release:** $RELEASE" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Stage:** $STAGE" >> "$GITHUB_STEP_SUMMARY"
+          echo "**Main Issue:** https://github.com/$GH_REPOSITORY/issues/$INPUT_MAIN_ISSUE" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          echo "### Issues Created" >> $GITHUB_STEP_SUMMARY
+          echo "### Issues Created" >> "$GITHUB_STEP_SUMMARY"
 
-          if [[ "${{ inputs.prev_ut }}" != "" ]]; then
-            if [[ "${{ needs.create-unit-tests-issue.result }}" == "success" ]]; then
-              UT_URL="${{ needs.create-unit-tests-issue.outputs.issue_url }}"
-              echo "- ✅ Unit Tests Issue: ${UT_URL}" >> $GITHUB_STEP_SUMMARY
+          if [[ "$INPUT_PREV_UT" != "" ]]; then
+            if [[ "$UT_RESULT" == "success" ]]; then
+              echo "- ✅ Unit Tests Issue: $UT_ISSUE_URL" >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "- ❌ Unit Tests Issue (Failed)" >> $GITHUB_STEP_SUMMARY
+              echo "- ❌ Unit Tests Issue (Failed)" >> "$GITHUB_STEP_SUMMARY"
             fi
           fi
 
-          if [[ "${{ inputs.prev_cov }}" != "" ]]; then
-            if [[ "${{ needs.create-coverity-issue.result }}" == "success" ]]; then
-              COV_URL="${{ needs.create-coverity-issue.outputs.issue_url }}"
-              echo "- ✅ Coverity Issue: ${COV_URL}" >> $GITHUB_STEP_SUMMARY
+          if [[ "$INPUT_PREV_COV" != "" ]]; then
+            if [[ "$COV_RESULT" == "success" ]]; then
+              echo "- ✅ Coverity Issue: $COV_ISSUE_URL" >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "- ❌ Coverity Issue (Failed)" >> $GITHUB_STEP_SUMMARY
+              echo "- ❌ Coverity Issue (Failed)" >> "$GITHUB_STEP_SUMMARY"
             fi
           fi
 
-          if [[ "${{ inputs.prev_it }}" != "" ]]; then
-            if [[ "${{ needs.create-integration-tests-issue.result }}" == "success" ]]; then
-              IT_URL="${{ needs.create-integration-tests-issue.outputs.issue_url }}"
-              echo "- ✅ Integration Tests Issue: ${IT_URL}" >> $GITHUB_STEP_SUMMARY
+          if [[ "$INPUT_PREV_IT" != "" ]]; then
+            if [[ "$IT_RESULT" == "success" ]]; then
+              echo "- ✅ Integration Tests Issue: $IT_ISSUE_URL" >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "- ❌ Integration Tests Issue (Failed)" >> $GITHUB_STEP_SUMMARY
+              echo "- ❌ Integration Tests Issue (Failed)" >> "$GITHUB_STEP_SUMMARY"
             fi
           fi
 
-          if [[ "${{ inputs.prev_wpk }}" != "" ]]; then
-            if [[ "${{ needs.create-wpk-tests-issue.result }}" == "success" ]]; then
-              WPK_URL="${{ needs.create-wpk-tests-issue.outputs.issue_url }}"
-              echo "- ✅ WPK Tests Issue: ${WPK_URL}" >> $GITHUB_STEP_SUMMARY
+          if [[ "$INPUT_PREV_WPK" != "" ]]; then
+            if [[ "$WPK_RESULT" == "success" ]]; then
+              echo "- ✅ WPK Tests Issue: $WPK_ISSUE_URL" >> "$GITHUB_STEP_SUMMARY"
             else
-              echo "- ❌ WPK Tests Issue (Failed)" >> $GITHUB_STEP_SUMMARY
+              echo "- ❌ WPK Tests Issue (Failed)" >> "$GITHUB_STEP_SUMMARY"
             fi
           fi
