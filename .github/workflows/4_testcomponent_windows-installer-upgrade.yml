@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "src/**"
+      - ".github/actions/upload_s3_artifact/**"
+      - ".github/actions/download_s3_artifact/**"
       - ".github/workflows/4_testcomponent_windows-installer-upgrade.yml"
 
 permissions:
