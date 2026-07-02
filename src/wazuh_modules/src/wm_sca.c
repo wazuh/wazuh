@@ -961,6 +961,15 @@ static size_t wm_sca_query_handler(void *data, char *query, char **output) {
         return 0;
     }
 
+    // Mirrors #36762 (FIM): when synchronization is disabled the sync worker never runs, so the SCA
+    // first-sync marker is never set. Report it as completed so agent-info coordination is not blocked
+    // deferring on a first sync that will never happen. The startup priming path calls sca_query_ptr
+    // directly and is unaffected by this handler-level short-circuit.
+    if (!sca_enable_synchronization && strstr(query, "get_first_sync_completed")) {
+        os_strdup("{\"error\":0,\"data\":{\"action\":\"get_first_sync_completed\",\"module\":\"sca\",\"first_sync_completed\":1}}", *output);
+        return strlen(*output);
+    }
+
     // Call the C++ query function if available
     if (sca_query_ptr) {
         return sca_query_ptr(query, output);

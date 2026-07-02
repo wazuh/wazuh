@@ -1713,6 +1713,131 @@ TEST_F(AgentInfoCoordinationTest, DeferCoordinationWhenFimFirstSyncNotCompleted)
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Successfully coordinated")));
 }
 
+// Extends the #36358/#36762 FIM guard to SCA: FIM first sync is done, SCA reports
+// first_sync_completed=0 via get_first_sync_completed -> coordination defers on SCA.
+TEST_F(AgentInfoCoordinationTest, DeferCoordinationWhenScaFirstSyncNotCompleted)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    auto queryModuleFunc = [](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        // FIM first sync already completed, so coordination advances to SCA.
+        if (command == "is_pause_completed" && module_name == "fim")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+            responseJson["data"]["first_sync_completed"] = true;
+        }
+
+        // SCA first sync still in progress.
+        else if (command == "get_first_sync_completed" && module_name == "sca")
+        {
+            responseJson["data"]["first_sync_completed"] = 0;
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Deferring coordination until sca first sync completes"));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Successfully coordinated")));
+}
+
+// Same guard for syscollector: FIM and SCA are done, syscollector reports
+// first_sync_completed=0 -> coordination defers on syscollector.
+TEST_F(AgentInfoCoordinationTest, DeferCoordinationWhenSyscollectorFirstSyncNotCompleted)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    auto queryModuleFunc = [](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed" && module_name == "fim")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+            responseJson["data"]["first_sync_completed"] = true;
+        }
+
+        // SCA first sync completed, syscollector still in progress.
+        else if (command == "get_first_sync_completed" && module_name == "sca")
+        {
+            responseJson["data"]["first_sync_completed"] = 1;
+        }
+        else if (command == "get_first_sync_completed" && module_name == "syscollector")
+        {
+            responseJson["data"]["first_sync_completed"] = 0;
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Deferring coordination until syscollector first sync completes"));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Successfully coordinated")));
+}
+
 // FIM is probed first, so a deferral pauses and resumes only FIM and never touches
 // SCA/Syscollector. FIM accepted the pause request but is not yet in pausedModules
 // at the deferral point, so it must still be resumed (guards R2).

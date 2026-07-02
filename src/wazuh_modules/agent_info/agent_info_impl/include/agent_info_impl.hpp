@@ -227,6 +227,14 @@ class AgentInfoImpl
         ///         caller should defer coordination), or Failed (timeout/error/shutdown)
         PauseProbeResult pollFimPauseCompletion(const std::string& moduleName);
 
+        /// @brief Query a coordination module for whether its first synchronization has completed.
+        /// @param moduleName Module name (e.g. sca, syscollector).
+        /// @return false when the module reports first_sync_completed=0 or has not recorded a
+        ///         completed first sync yet (metadata unset = still in progress); true otherwise
+        ///         (already synced, or sync disabled — the module reports completed — or the module
+        ///         did not answer at all), so coordination is never wedged on a module that will not sync.
+        bool isModuleFirstSyncCompleted(const std::string& moduleName);
+
         /// @brief Poll all requested module flushes until completion.
         /// @param pendingModules Set of modules with an accepted flush request.
         /// @return true if all flushes completed successfully, false otherwise.
