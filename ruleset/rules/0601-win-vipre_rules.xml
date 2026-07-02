@@ -269,6 +269,7 @@
 
 <rule id="90535" level="4">
     <if_sid>60600</if_sid>
+    <field name="win.system.providerName">^SBAMSvc$</field>
     <field name="win.system.eventID">^4139$</field>
     <description>An item has been quarantined</description>
     <options>no_full_log</options>
