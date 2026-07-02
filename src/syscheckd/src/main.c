@@ -44,6 +44,8 @@ __attribute__((noreturn)) static void help_syscheckd()
 
 extern bool is_fim_shutdown;
 extern volatile int fim_sync_module_running;
+extern pthread_t fim_sync_thread;
+extern bool fim_sync_thread_initialized;
 
 /* Shut down syscheckd properly */
 static void fim_shutdown(int sig)
@@ -57,6 +59,25 @@ static void fim_shutdown(int sig)
     if (syscheck.sync_handle)
     {
         asp_stop(syscheck.sync_handle);
+    }
+
+    /* Wait for the inventory synchronization thread to exit, then destroy the sync
+     * protocol handle so its SQLite connection to fim_sync.db is closed cleanly
+     * (checkpointing and removing the -wal/-shm files) instead of being leaked
+     * (issue #37334). The loop reacts to fim_sync_module_running within a second and
+     * asp_stop() aborts any in-flight synchronization, so the join is short. It cannot
+     * self-deadlock: fim_run_integrity blocks the signals this handler is registered
+     * for, so the handler never runs on that thread. */
+    if (fim_sync_thread_initialized)
+    {
+        fim_sync_thread_initialized = false;
+        pthread_join(fim_sync_thread, NULL);
+    }
+
+    if (syscheck.sync_handle)
+    {
+        asp_destroy(syscheck.sync_handle);
+        syscheck.sync_handle = NULL;
     }
 
     fim_db_teardown();

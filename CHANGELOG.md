@@ -101,6 +101,7 @@ All notable changes to this project will be documented in this file.
 - Honored the shutdown signal in `agent-upgrade` `StartMQ` to avoid timeout warning on agent stop. ([#36092](https://github.com/wazuh/wazuh/issues/36092))
 - Adjusted DockerListener messages as log entries to fix event categorization. ([#36126](https://github.com/wazuh/wazuh/issues/36126))
 - Dropped orphan paths before promoting on agent startup to fix FIM. ([#36134](https://github.com/wazuh/wazuh/issues/36134))
+- Closed the SCA and FIM synchronization databases cleanly on graceful shutdown, so stopping the agent no longer leaves stale SQLite `-wal`/`-shm` files behind. ([#37334](https://github.com/wazuh/wazuh/issues/37334))
 
 ## Prior versions
 

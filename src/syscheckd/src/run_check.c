@@ -59,6 +59,15 @@ void audit_set_db_consistency(void);
 // Global flag to stop sync module
 volatile int fim_sync_module_running = 0;
 
+#ifndef WIN32
+// Handle to the FIM inventory synchronization thread. Kept joinable (issue #37334) so
+// fim_shutdown() can wait for it to exit before destroying the sync protocol handle,
+// letting its SQLite connection to fim_sync.db close cleanly (checkpoint + removal of
+// the -wal/-shm files) instead of leaking it on a graceful stop.
+pthread_t fim_sync_thread;
+bool fim_sync_thread_initialized = false;
+#endif
+
 // Flush on-demand synchronization variables (thread-safe with atomic operations)
 atomic_int_t fim_flush_in_progress = ATOMIC_INT_INITIALIZER(0);  // 0 = idle, 1 = flush active
 atomic_int_t fim_flush_result = ATOMIC_INT_INITIALIZER(0);       // 0 = success, -1 = error
@@ -655,8 +664,14 @@ void start_daemon()
 
     if (syscheck.enable_synchronization) {
         fim_sync_module_running = 1;
-        // Launch inventory synchronization thread
-        w_create_thread(fim_run_integrity, NULL);
+        // Launch the inventory synchronization thread as joinable so fim_shutdown() can
+        // wait for it before destroying the sync protocol handle (issue #37334).
+        if (CreateThreadJoinable(&fim_sync_thread, fim_run_integrity, NULL) != 0) {
+            merror(THREAD_ERROR);
+            fim_sync_module_running = 0;
+        } else {
+            fim_sync_thread_initialized = true;
+        }
     } else {
         mdebug1("FIM inventory synchronization is disabled");
     }
@@ -906,6 +921,18 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
 void * fim_run_integrity(__attribute__((unused)) void * args) {
+#endif
+#ifndef WIN32
+    // Block the termination signals handled by fim_shutdown() in this thread, so the
+    // handler can never run on the very thread it joins (self-join deadlock). The signals
+    // keep being delivered to the other threads (issue #37334).
+    sigset_t fim_sync_sigmask;
+    sigemptyset(&fim_sync_sigmask);
+    sigaddset(&fim_sync_sigmask, SIGTERM);
+    sigaddset(&fim_sync_sigmask, SIGINT);
+    sigaddset(&fim_sync_sigmask, SIGQUIT);
+    sigaddset(&fim_sync_sigmask, SIGALRM);
+    pthread_sigmask(SIG_BLOCK, &fim_sync_sigmask, NULL);
 #endif
     bool first_sync_completed = fim_db_get_last_sync_time(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY) > 0;
     bool skip_initial_wait = !first_sync_completed;
