@@ -79,11 +79,16 @@ namespace Utils
          * @param enableWal Whether to enable WAL or not.
          * @param repairIfCorrupt Whether to repair the database if it is found corrupt while opening.
          *                        WARNING: this process might not recover all data.
+         * @param useSharedBuffers Whether to use the process-wide shared read cache / write buffer
+         *                        manager instead of a private one.
+         * @param readCacheSize Size in bytes of the private block cache (ignored when
+         *                      useSharedBuffers is true).
          */
         explicit TRocksDBWrapper(std::string dbPath,
                                  const bool enableWal = true,
                                  const bool repairIfCorrupt = true,
-                                 const bool useSharedBuffers = false)
+                                 const bool useSharedBuffers = false,
+                                 const size_t readCacheSize = 16 * 1024 * 1024)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
             , m_logFn(makeLibLogFn("rocksdb"))
@@ -97,7 +102,7 @@ namespace Utils
             }
             else
             {
-                m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
+                m_readCache = rocksdb::NewLRUCache(readCacheSize);
                 m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
             }
 

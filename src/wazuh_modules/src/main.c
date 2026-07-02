@@ -26,6 +26,9 @@ static void wm_signals_configure();     // Configure signal handling.
 
 static int flag_foreground = 0;         // Running in foreground.
 
+const char *malloc_conf =
+    "narenas:4,dirty_decay_ms:5000,muzzy_decay_ms:5000,background_thread:true";
+
 static pthread_mutex_t sig_lock = PTHREAD_MUTEX_INITIALIZER;
 
 // Main function

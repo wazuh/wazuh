@@ -53,7 +53,7 @@
  *   "index":               ".wazuh-threatintel-vulnerabilities", // Indexer CVE index name
  *   "consumerStatusIndex": ".wazuh-cti-consumers",    // Consumer status index (optional)
  *   "consumerStatusId":    "cti:catalog:consumer:vulnerabilities", // Consumer status document id (optional)
- *   "pageSize":            250,                       // Documents per page (optional, default 250)
+ *   "pageSize":            100,                       // Documents per page (optional, default 100)
  *   "numSlices":           2,                         // Parallel PIT slices (optional, default 2)
  *   <standard IndexerConnector SSL/auth config>
  * }
@@ -92,39 +92,46 @@ private:
      */
     static const nlohmann::json& getSourceFilter()
     {
-        static const nlohmann::json filter = {{"excludes",
-                                               nlohmann::json::array({"document.containers.cna.descriptions",
-                                                                      "document.containers.cna.references",
-                                                                      "document.containers.cna.solutions",
-                                                                      "document.containers.cna.rejectedReasons",
-                                                                      "document.containers.cna.credits",
-                                                                      "document.containers.cna.timeline",
-                                                                      "document.containers.cna.impacts",
-                                                                      "document.containers.cna.workarounds",
-                                                                      "document.containers.cna.exploits",
-                                                                      "document.containers.cna.configurations",
-                                                                      "document.containers.cna.source",
-                                                                      "document.containers.cna.tags",
-                                                                      "document.containers.cna.taxonomyMappings",
-                                                                      "document.containers.cna.datePublic",
-                                                                      "document.containers.cna.title",
-                                                                      "document.containers.cna.dateAssigned",
-                                                                      "document.containers.cna.replacedBy",
-                                                                      "document.containers.adp.descriptions",
-                                                                      "document.containers.adp.references",
-                                                                      "document.containers.adp.solutions",
-                                                                      "document.containers.adp.rejectedReasons",
-                                                                      "document.containers.adp.credits",
-                                                                      "document.containers.adp.timeline",
-                                                                      "document.containers.adp.impacts",
-                                                                      "document.containers.adp.workarounds",
-                                                                      "document.containers.adp.exploits",
-                                                                      "document.containers.adp.configurations",
-                                                                      "document.containers.adp.source",
-                                                                      "document.containers.adp.tags",
-                                                                      "document.containers.adp.taxonomyMappings",
-                                                                      "document.containers.adp.datePublic",
-                                                                      "document.containers.adp.title"})}};
+        static const nlohmann::json filter = {
+            {"excludes",
+             nlohmann::json::array({"document.containers.cna.descriptions",
+                                    "document.containers.cna.references",
+                                    "document.containers.cna.solutions",
+                                    "document.containers.cna.rejectedReasons",
+                                    "document.containers.cna.credits",
+                                    "document.containers.cna.timeline",
+                                    "document.containers.cna.impacts",
+                                    "document.containers.cna.workarounds",
+                                    "document.containers.cna.exploits",
+                                    "document.containers.cna.configurations",
+                                    "document.containers.cna.source",
+                                    "document.containers.cna.tags",
+                                    "document.containers.cna.taxonomyMappings",
+                                    "document.containers.cna.datePublic",
+                                    "document.containers.cna.title",
+                                    "document.containers.cna.dateAssigned",
+                                    "document.containers.cna.replacedBy",
+                                    "document.containers.cna.providerMetadata.orgId",
+                                    "document.containers.cna.providerMetadata.datePublished",
+                                    "document.containers.cna.providerMetadata.dateUpdated",
+                                    "document.containers.adp.providerMetadata.orgId",
+                                    "document.containers.adp.providerMetadata.datePublished",
+                                    "document.containers.adp.providerMetadata.dateUpdated",
+                                    "document.containers.adp.descriptions",
+                                    "document.containers.adp.references",
+                                    "document.containers.adp.solutions",
+                                    "document.containers.adp.rejectedReasons",
+                                    "document.containers.adp.credits",
+                                    "document.containers.adp.timeline",
+                                    "document.containers.adp.impacts",
+                                    "document.containers.adp.workarounds",
+                                    "document.containers.adp.exploits",
+                                    "document.containers.adp.configurations",
+                                    "document.containers.adp.source",
+                                    "document.containers.adp.tags",
+                                    "document.containers.adp.taxonomyMappings",
+                                    "document.containers.adp.datePublic",
+                                    "document.containers.adp.title"})}};
         return filter;
     }
 
@@ -355,6 +362,75 @@ private:
         }
     }
 
+    bool waitUntilGlobalMapsIndexed(UpdaterContext& context) const
+    {
+        static constexpr auto POLL_INTERVAL {std::chrono::seconds {30}};
+        static const nlohmann::json GLOBAL_MAP_IDS =
+            nlohmann::json::array({"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"});
+
+        const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
+        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+
+        const auto pollSeconds =
+            static_cast<size_t>(std::chrono::duration_cast<std::chrono::seconds>(POLL_INTERVAL).count());
+        size_t queryFailures = 0;
+
+        while (true)
+        {
+            if (context.spUpdaterBaseContext->spStopCondition->check())
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested while waiting for global-map documents.");
+                return false;
+            }
+
+            try
+            {
+                const auto query = nlohmann::json {{"ids", {{"values", GLOBAL_MAP_IDS}}}};
+                const auto searchQuery =
+                    nlohmann::json {{"size", GLOBAL_MAP_IDS.size()}, {"query", query}, {"_source", false}};
+
+                const auto searchResult = syncConnector.executeSearchQuery(indexName, searchQuery);
+                const auto hitCount =
+                    searchResult.value("hits", nlohmann::json::object()).value("hits", nlohmann::json::array()).size();
+                queryFailures = 0;
+
+                if (hitCount >= GLOBAL_MAP_IDS.size())
+                {
+                    logInfo(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Global-map documents present in '%s'. Starting initial load.",
+                            indexName.c_str());
+                    return true;
+                }
+
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Global-map documents not yet indexed in '%s' (%zu/%zu found). Waiting "
+                        "%zus before retrying.",
+                        indexName.c_str(),
+                        hitCount,
+                        GLOBAL_MAP_IDS.size(),
+                        pollSeconds);
+            }
+            catch (const std::exception& e)
+            {
+                ++queryFailures;
+                logDebug2(WM_CONTENTUPDATER,
+                          "IndexerDownloader: Failed to probe global-map documents in '%s' (%s). Waiting %zus "
+                          "before retrying (attempt %zu).",
+                          indexName.c_str(),
+                          e.what(),
+                          pollSeconds,
+                          queryFailures);
+            }
+
+            if (context.spUpdaterBaseContext->spStopCondition->waitFor(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(POLL_INTERVAL)))
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested while waiting for global-map documents.");
+                return false;
+            }
+        }
+    }
+
     /**
      * @brief Persists the cursor to RocksDB after each page so that a restart can resume
      *        from the last successfully processed page instead of from the beginning.
@@ -469,7 +545,10 @@ private:
             // "FEED-GLOBAL", "TID-xxx"). EventDecoder identifies the resource type
             // by key prefix (startsWith "CVE-", "TID-", "FEED-GLOBAL", etc.).
             resource["resource"] = hit.value("_id", std::string {});
-            resource["payload"] = source.value("document", nlohmann::json::object());
+
+            static const nlohmann::json EMPTY_DOCUMENT = nlohmann::json::object();
+            const auto& document = source.contains("document") ? source.at("document") : EMPTY_DOCUMENT;
+            resource["payload"] = document.dump();
 
             if (docType == "CVE")
             {
@@ -517,7 +596,7 @@ private:
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 250u);
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 100u);
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -615,7 +694,7 @@ private:
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 250u);
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 100u);
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -969,6 +1048,11 @@ public:
 
             const bool forceInitialLoad = lastCursor.empty();
             if (!waitUntilConsumerReady(*context))
+            {
+                break;
+            }
+
+            if (forceInitialLoad && !waitUntilGlobalMapsIndexed(*context))
             {
                 break;
             }
