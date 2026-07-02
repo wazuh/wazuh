@@ -79,6 +79,9 @@ jobs:
     if: inputs.module_name != 'none'
     timeout-minutes: ${{ inputs.timeout_minutes || 120 }}
     name: Run integration tests
+    permissions:
+      id-token: write
+      contents: read
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
@@ -97,17 +100,15 @@ jobs:
           architecture: x64
 
       - name: Download package artifact
-        uses: dawidd6/action-download-artifact@v6
+        uses: ./.github/actions/download_package
         with:
-          workflow: ${{ env.BUILD_WORKFLOW }}
-          run_id: ${{ inputs.build_run_id }}
-          workflow_conclusion: success
-          name_is_regexp: true
-          name: ${{ env.AGENT_PKG_REGEXP }}
+          build_run_id: ${{ inputs.build_run_id }}
+          producer_workflow: 5_builderpackage_agent-macos
+          name_regexp: ${{ env.AGENT_PKG_REGEXP }}
           path: ${{ env.PACKAGES_PATH }}
-          if_no_artifact_found: fail
-          check_artifacts: true
-          search_artifacts: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Install and configure wazuh agent
         run: |
@@ -189,8 +190,10 @@ jobs:
 
       - name: Upload failed test results
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ inputs.module_name }}-macos-${{ inputs.shard_name }}-test-results-${{ github.run_id }}
           path: ./tests/integration/results.html
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

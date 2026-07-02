@@ -24,6 +24,9 @@ concurrency:
 
 jobs:
   Unit-Tests:
+    permissions:
+      id-token: write
+      contents: read
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     strategy:
           fail-fast: false
@@ -90,3 +93,6 @@ jobs:
         uses: ./.github/actions/legacy_unit_tests_run
         with:
           target: ${{ matrix.target }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

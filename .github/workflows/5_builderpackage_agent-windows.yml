@@ -68,6 +68,9 @@ jobs:
           field-defaults: '{"pytest_extra_args":"","pytest_ignore_args":"","start_service":false,"skip_tests":false}'
 
   build-windows-i686:
+    permissions:
+      id-token: write
+      contents: read
     needs: detect-changes
     runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
@@ -113,15 +116,20 @@ jobs:
           make -C src TARGET=winagent -j$(nproc)
 
       - name: Upload compiled binaries as artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: windows-binaries
           path: |
             src/
             VERSION.json
-          retention-days: 1
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   package-windows-i686:
+    permissions:
+      id-token: write
+      contents: read
     needs: build-windows-i686
     runs-on:
       - codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -137,10 +145,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download compiled binaries
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: windows-binaries
           path: compiled-binaries
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Copy binaries to workspace
         shell: bash
@@ -278,19 +289,23 @@ jobs:
           echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $env:GITHUB_OUTPUT
 
       - name: Upload package as artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}
           path: src/win32/${{ steps.build.outputs.package-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload debug symbols as artifact
         if: steps.build.outputs.package-symbols-name != ''
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-symbols-name }}
           path: src/win32/${{ steps.build.outputs.package-symbols-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Generate checksums
         if: inputs.checksum == true
@@ -303,21 +318,28 @@ jobs:
 
       - name: Upload package checksum as artifact
         if: inputs.checksum == true
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}.sha512
           path: src/win32/${{ steps.build.outputs.package-name }}.sha512
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload debug symbols checksum as artifact
         if: inputs.checksum == true && steps.build.outputs.package-symbols-name != ''
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-symbols-name }}.sha512
           path: src/win32/${{ steps.build.outputs.package-symbols-name }}.sha512
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   test-windows-i686:
+    permissions:
+      id-token: write
+      contents: read
     needs: package-windows-i686
     runs-on: codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 30
@@ -328,10 +350,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download package artifact
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.package-windows-i686.outputs.package-name }}
           path: src/win32
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set environment variables
         shell: bash
@@ -405,6 +430,9 @@ jobs:
           expected_upgrade_version: ${{ env.VERSION }}
 
   upload-windows-i686-to-s3:
+    permissions:
+      id-token: write
+      contents: read
     needs: [package-windows-i686, test-windows-i686]
     if: success()
     runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
@@ -412,32 +440,47 @@ jobs:
     name: Upload MSI to S3
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.package-windows-i686.outputs.package-name }}
           path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Download debug symbols artifacts
         if: needs.package-windows-i686.outputs.package-symbols-name != ''
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.package-windows-i686.outputs.package-symbols-name }}
           path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Download package checksum
         if: inputs.checksum == true
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.package-windows-i686.outputs.package-name }}.sha512
           path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Download debug symbols checksum
         if: inputs.checksum == true && needs.package-windows-i686.outputs.package-symbols-name != ''
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.package-windows-i686.outputs.package-symbols-name }}.sha512
           path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4

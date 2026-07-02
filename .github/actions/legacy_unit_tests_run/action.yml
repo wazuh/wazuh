@@ -4,6 +4,18 @@ inputs:
    target:
      required: true
      description: "Target specifies whether the build is for Linux or Windows"
+   bucket:
+     required: false
+     default: ""
+     description: "Target S3 bucket URI for the coverage artifact (pass the CI_INTERNAL_S3_BUCKET secret)."
+   aws_role:
+     required: false
+     default: ""
+     description: "OIDC IAM role to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+   aws_region:
+     required: false
+     default: "us-east-1"
+     description: "AWS region (pass the CI_AWS_REGION secret)."
 runs:
   using: "composite"
   steps:
@@ -28,7 +40,7 @@ runs:
         format_display_test_coverage ${{ inputs.target }}
     - name: Upload coverage artifacts
       if: always()
-      uses: actions/upload-artifact@v5
+      uses: ./.github/actions/upload_s3_artifact
       with:
         name: legacy-unit-tests-coverage-${{ inputs.target }}
         path: |
@@ -36,5 +48,6 @@ runs:
           src/unit_tests/build/test_results.txt
           src/unit_tests/build/coverage.info*
           src/unit_tests/build/coverage-report/
-        if-no-files-found: warn
-        retention-days: 7
+        bucket: ${{ inputs.bucket }}
+        aws_role: ${{ inputs.aws_role }}
+        aws_region: ${{ inputs.aws_region }}

@@ -37,6 +37,9 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build ${{ matrix.system }} / ${{ matrix.arch }}
     runs-on: ${{ (matrix.arch == 'arm64' || matrix.arch == 'aarch64') && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || format('codebuild-github-actions-codebuild-runner-server-amd-{0}-{1}', github.run_id, github.run_attempt) }}
+    permissions:
+      id-token: write
+      contents: read
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -172,21 +175,23 @@ jobs:
           fi
 
       - name: Upload installer (flat, single file)
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.stage.outputs.artifact_inner_name }}
           path: ${{ steps.prep.outputs.upload_path }}
-          if-no-files-found: error
-          overwrite: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload checksum (.sha512) as separate artifact
         if: ${{ env.GEN_CHECKSUM == 'true' && steps.stage.outputs.has_checksum == 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.stage.outputs.checksum_inner_name }}
           path: ${{ steps.prep.outputs.checksum_upload_path }}
-          if-no-files-found: error
-          overwrite: true
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Install package for testing
         shell: bash

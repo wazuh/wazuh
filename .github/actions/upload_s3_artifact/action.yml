@@ -97,17 +97,22 @@ runs:
         if [ -d "$p" ]; then
           ( cd "$p" && mkzip . )
         elif [ -f "$p" ]; then
-          mkzip "$p"
+          ( cd "$(dirname "$p")" && mkzip "$(basename "$p")" )
         else
-          # Wildcard: stage the matching files into a tree (preserving relative
-          # paths) and archive that, so 7-Zip does not flatten them to basenames
-          # (which collides when several dirs contain the same filename).
+          # Wildcard / multi-path: stage each matched file by basename and each
+          # matched directory by its own name, then archive the stage. This
+          # mirrors actions/upload-artifact (which stores paths relative to their
+          # common ancestor), so a consumer extracts them straight into its target
+          # directory instead of a rebuilt src/build/... subtree.
           stage="$(mktemp -d)"
           found=0
           for m in $p; do
             if [ -f "$m" ]; then
-              mkdir -p "${stage}/$(dirname "$m")"
-              cp "$m" "${stage}/${m}"
+              cp "$m" "${stage}/$(basename "$m")"
+              found=1
+            elif [ -d "$m" ]; then
+              mkdir -p "${stage}/$(basename "$m")"
+              cp -R "$m"/. "${stage}/$(basename "$m")/"
               found=1
             fi
           done
@@ -141,7 +146,9 @@ runs:
           else { Compress-Archive -Path (Join-Path $p '*') -DestinationPath $zip -Force }
         }
         elseif (Test-Path -PathType Leaf -LiteralPath $p) {
-          if ($have7z) { 7z a -tzip -y $zip $p | Out-Null }
+          # Archive by basename (cd into the file's dir) so the consumer extracts
+          # it straight into the destination instead of a rebuilt src/win32/... path.
+          if ($have7z) { Push-Location (Split-Path -Parent $p); 7z a -tzip -y $zip (Split-Path -Leaf $p) | Out-Null; Pop-Location }
           else { Compress-Archive -Path $p -DestinationPath $zip -Force }
         }
         else {
