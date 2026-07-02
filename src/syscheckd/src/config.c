@@ -141,8 +141,8 @@ cJSON *getSyscheckConfig(void) {
     cJSON_AddStringToObject(syscfg, "skip_sys", syscheck.skip_fs.sys ? "yes" : "no");
     cJSON_AddStringToObject(syscfg, "skip_proc", syscheck.skip_fs.proc ? "yes" : "no");
     if (syscheck.scan_on_start) cJSON_AddStringToObject(syscfg,"scan_on_start","yes"); else cJSON_AddStringToObject(syscfg,"scan_on_start","no");
-    if (syscheck.scan_day) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day);
-    if (syscheck.scan_time) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time);
+    if (syscheck.scan_day_str) cJSON_AddStringToObject(syscfg,"scan_day",syscheck.scan_day_str);
+    if (syscheck.scan_time_str) cJSON_AddStringToObject(syscfg,"scan_time",syscheck.scan_time_str);
     cJSON_AddNumberToObject(syscfg, "max_files_per_second", syscheck.max_files_per_second);
 
     cJSON * file_limit = cJSON_CreateObject();
