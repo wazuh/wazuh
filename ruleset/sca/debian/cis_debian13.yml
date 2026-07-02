@@ -781,7 +781,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L "%n %a %u %U %g %G" /boot/grub/grub.cfg -> r:0 root 0 root && r:600'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /boot/grub/grub.cfg -> r:0 root 0 root && r:600'
 
   # 1.5.1 Ensure address space layout randomization is enabled. (Automated) - Not Implemented
   # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
@@ -853,7 +853,7 @@ checks:
     condition: any
     rules:
       - "not f:/etc/motd"
-      - 'c:stat -L "%n %a %u %U %g %G" /etc/motd -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/motd -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.5 Ensure access to /etc/issue is configured. (Automated)
   - id: 33052
@@ -877,7 +877,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L "%n %a %u %U %g %G" /etc/issue -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.6 Ensure access to /etc/issue.net is configured. (Automated)
   - id: 33053
@@ -901,7 +901,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -L "%n %a %u %U %g %G" /etc/issue.net -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue.net -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.7.1 Ensure GDM is removed. (Automated)
   - id: 33054
@@ -3506,6 +3506,7 @@ checks:
     rationale: "The SHA-512 and yescrypt algorithms provide a stronger hash than other algorithms used by Linux for password hash generation. A stronger hash provides additional protection to the system by increasing the level of effort needed for an attacker to successfully determine local group passwords."
     remediation: "Edit /etc/login.defs and set the ENCRYPT_METHOD to SHA512 or YESCRYPT: ENCRYPT_METHOD <HASHING_ALGORITHM> Example: ENCRYPT_METHOD YESCRYPT Note: - This only effects local groups' passwords created after updating the file to use - - sha512 or yescrypt. If it is determined that the password algorithm being used is not sha512 or yescrypt, once it is changed, it is recommended that all group passwords be updated to use the stronger hashing algorithm. It is recommended that the chosen hashing algorithm is consistent across /etc/login.defs and the PAM configuration."
     compliance:
+<<<<<<< Updated upstream
       - cis: ["5.4.1.4"]
       - cis_csc_v8: ["3.11"]
       - cis_csc_v7: ["16.4"]
@@ -3520,8 +3521,50 @@ checks:
       - pci_dss_v4.0: ["3.1.1", "3.3.2", "3.3.3", "3.5.1", "3.5.1.2", "3.5.1.3", "8.3.2"]
       - soc_2: ["CC6.1"]
     condition: all
+=======
+      cmmc: ["AC.L2-3.1.19", "IA.L2-3.5.10", "MP.L2-3.8.1", "SC.L2-3.13.11", "SC.L2-3.13.16"]
+      fedramp: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13", "SC-28"]
+      gdpr: ["IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4", "IV_25.1", "IV_25.2", "IV_25.3", "IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5"]
+      hipaa: ["164.310(d)(1)", "164.312(a)(1)", "164.312(e)(1)", "164.530(c)"]
+      iso_27001: ["A.8.2.3", "A.8.3.1", "A.8.3.2", "A.10.1.1", "A.13.2.1", "A.18.1.4"]
+      nis2: ["21.2.g", "21.2.j", "21.2.i"]
+      nist_800_171: ["3.1.19", "3.5.10", "3.8.1", "3.13.11", "3.13.16"]
+      nist_800_53: ["MP-4", "MP-5", "MP-6", "SC-8", "SC-13"]
+      pci_dss: ["3.4", "8.2", "3.1", "3.3", "3.5", "8.3"]
+      tsc: ["CC6.1", "C1.1", "C1.2", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8", "P1.1", "P2.1", "P3.1", "P4.1", "P5.1", "P6.1", "P7.1", "P8.1"]
+    mitre:
+      tactic:
+        id:
+          - "TA0009"
+          - "TA0010"
+        name:
+          - "Collection"
+          - "Exfiltration"
+      technique:
+        id:
+          - "T1005"
+          - "T1025"
+          - "T1041"
+          - "T1567"
+          - "T1573"
+        name:
+          - "Data from Local System"
+          - "Data from Removable Media"
+          - "Exfiltration Over C2 Channel"
+          - "Exfiltration Over Web Service"
+          - "Encrypted Channel"
+      subtechnique:
+        id:
+          - "T1048.003"
+          - "T1552.001"
+        name:
+          - "Exfiltration Over Unencrypted Non-C2 Protocol"
+          - "Credentials In Files"
+    condition: any
+>>>>>>> Stashed changes
     rules:
-      - 'f:/etc/login.defs -> r:ENCRYPT_METHOD\s*\t*SHA512 | r:ENCRYPT_METHOD\s*\t*YESCRYPT'
+      - 'f:/etc/login.defs -> r:ENCRYPT_METHOD\s*\t*SHA512'
+      - 'f:/etc/login.defs -> r:ENCRYPT_METHOD\s*\t*YESCRYPT'
 
   # 5.4.1.5 Ensure inactive password lock is configured. (Automated)
   - id: 33212
@@ -3610,7 +3653,7 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "f:/etc/group -> r:^root:x:0:0"
+      - "f:/etc/group -> r:^root:x:0:"
 
   # 5.4.2.4 Ensure root account access is controlled. (Automated)
   - id: 33217
@@ -3635,7 +3678,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - "c:passwd -S root -> r:Password is status: P | r:Password is status: L"
+      - 'c:passwd -S root -> r:root\s*\t*L'
+      - 'c:passwd -S root -> r:root\s*\t*P'
 
   # 5.4.2.5 Ensure root path integrity. (Automated) - Not Implemented
   # 5.4.2.6 Ensure root user umask is configured. (Automated) - Not Implemented
@@ -4251,6 +4295,7 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
+<<<<<<< Updated upstream
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/netplan && r:-p wa && r:-k system-locale|key=system-locale'
@@ -4258,6 +4303,13 @@ checks:
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-w && r:/etc/netplan && r:-p wa && r:-k system-locale|key=system-locale'
       - 'c:auditctl -l -> r:\.+.rules$ -> r:^-w && r:/etc/netplan && r:-p wa && r:-k system-locale|key=system-locale'
       - 'c:auditctl -l -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale"s && r:-p wa && r:-k system-locale|key=system-locale'
+=======
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-w && r:/etc/netplan && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'c:auditctl -l -> r:^-w && r:/etc/networks && r:-p wa && r:-k system-locale|key=system-locale'
+      - 'c:auditctl -l -> r:^-w && r:/etc/netplan && r:-p wa && r:-k system-locale|key=system-locale'
+>>>>>>> Stashed changes
 
   # 6.2.3.6 Ensure use of privileged commands are collected. (Automated) - Not Implemented
 
@@ -4590,9 +4642,15 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
+<<<<<<< Updated upstream
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/bin/usermod && r:-F perm=x && r:-F auid>=1000 && -F auid!=unset && r:-k usermod'
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always  && r:-S all && r:-F path=/usr/bin/usermod && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=usermod"
+=======
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=1000 && -F auid!=unset && r:-k usermod'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always  && r:-S all && r:-F path=/usr/sbin/usermod && r:-F perm=x && r:-F auid>=1000 && r:-F auid!=-1 && r:-F key=usermod"
+>>>>>>> Stashed changes
 
   # 6.2.3.19 Ensure kernel module loading unloading and modification is collected. (Automated)
   - id: 33271
@@ -4616,11 +4674,19 @@ checks:
     condition: all
     rules:
       - "d:/etc/audit/rules.d"
+<<<<<<< Updated upstream
       - 'd:/etc/audit/rules.d -> r:\.+.rules$'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:finit_module && r:query_module && r:create_module && r:-k kernel_modules|-F key=kernel_modules'
       - 'd:/etc/audit/rules.d -> r:\.+.rules$ -> r:^-a && r:always,exit|exit,always && r:path=/usr/bin/kmod && r:-k kernel_modules|-F key=kernel_modules'
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:finit_module && r:query_module && r:create_module && r:-k kernel_modules|-F key=kernel_modules"
       - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:path=/usr/bin/kmod && r:-k kernel_modules|-F key=kernel_modules"
+=======
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:finit_module && r:-k kernel_modules|-F key=kernel_modules'
+      - 'd:/etc/audit/rules.d -> r:.+\.rules$ -> r:^-a && r:path=/usr/bin/kmod && r:-k kernel_modules|-F key=kernel_modules'
+      - "c:auditctl -l -> r:^-a && r:always,exit|exit,always && r:-F arch=b64|-F arch=b32 && r:-S && r:init_module && r:delete_module && r:finit_module && r:-k kernel_modules|-F key=kernel_modules"
+      - "c:auditctl -l -> r:^-a && r:path=/usr/bin/kmod && r:-k kernel_modules|-F key=kernel_modules"
+>>>>>>> Stashed changes
 
   # 6.2.3.20 Ensure the audit configuration is immutable. (Automated)
   - id: 33272
@@ -4999,7 +5065,11 @@ checks:
       - soc_2: ["CC6.1"]
     condition: all
     rules:
+<<<<<<< Updated upstream
       - 'not f:/etc/passwd -> r:^\w+:x:'
+=======
+      - 'not f:/etc/passwd -> !r:^[\w@-]+:x:'
+>>>>>>> Stashed changes
 
   # 7.2.2 Ensure /etc/shadow password fields are not empty. (Automated)
   - id: 33301
