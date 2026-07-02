@@ -21,7 +21,6 @@ stages:
               wazuh-analysisd: !anystr
               wazuh-authd: !anystr
               wazuh-csyslogd: !anystr
-              wazuh-dbd: !anystr
               wazuh-execd: !anystr
               wazuh-integratord: !anystr
               wazuh-logcollector: !anystr

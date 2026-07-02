@@ -24,10 +24,21 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
+      - name: Enable IPv6 loopback for IPv6 enrollment tests
+        # TODO(codebuild-temp): Remove once CodeBuild runner images have IPv6 loopback enabled.
+        # Enrollment tests include cases for IPv6 manager addresses that attempt to bind a
+        # mock server on ::1. Without IPv6 on the loopback they fail with EADDRNOTAVAIL.
+        run: |
+          sudo sysctl -w net.ipv6.conf.all.disable_ipv6=0 2>/dev/null || true
+          sudo sysctl -w net.ipv6.conf.lo.disable_ipv6=0 2>/dev/null || true
+          sudo ip -6 addr add ::1/128 dev lo 2>/dev/null || true
+      - name: Install system build dependencies
+        # TODO: Remove when added to CodeBuild base images
+        run: sudo apt-get update && sudo apt-get install -y python3-pip
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
@@ -85,7 +96,7 @@ jobs:
               QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install --ignore-installed qa-integration-framework/
+          sudo pip install --ignore-installed --break-system-packages qa-integration-framework/
           sudo rm -rf qa-integration-framework/
       # Run enrollment integration tests.
       - name: Run enrollment integration tests

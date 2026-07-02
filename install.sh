@@ -111,8 +111,6 @@ Install()
             CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
         fi
 
-        # Add DATABASE=pgsql or DATABASE=mysql to add support for database
-        # alert entry
         ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then

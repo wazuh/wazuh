@@ -30,7 +30,7 @@ on:
 
 jobs:
   Upload-package-building-images:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 20
     name: Package - Retag Docker images
 

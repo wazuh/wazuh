@@ -6,9 +6,13 @@ on:
       - "src/**"
       - ".github/workflows/4_testcomponent_windows-installer-upgrade.yml"
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Install mingw
         run: sudo apt install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 nsis -y
@@ -28,8 +32,11 @@ jobs:
       - name: Compress folder
         run: 7z a win-agent-base.zip ./*
       - name: Upload base branch folder
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: win-agent-base.zip
           path: win-agent-base.zip
 
@@ -37,7 +44,7 @@ jobs:
     strategy:
           matrix:
               wazuh_version: [4.5.2-1]
-    runs-on: windows-2025
+    runs-on: codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}
     needs: build
     steps:
       - name: Checkout Repo
@@ -47,9 +54,24 @@ jobs:
         with:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
-      - name: Add WiX toolkit to PATH
-        shell: bash
-        run: echo "${WIX}bin" >> $GITHUB_PATH
+      - name: Set up WiX Toolset (MSI build)
+        uses: ./.github/actions/setup_wix
+      - name: Set up 7-Zip (MSI/zip extraction)
+        # TODO(codebuild-temp): Remove once the CodeBuild Windows image ships 7-Zip.
+        # The upgrade test unzips the base archive and extracts the MSI (`7z e`); an MSI is an
+        # OLE/CAB container that tar/Expand-Archive cannot open, so full 7-Zip is required.
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (Get-Command 7z.exe -ErrorAction SilentlyContinue) {
+            Write-Host "7-Zip already available: $((Get-Command 7z.exe).Source)"
+          } else {
+            $installer = Join-Path $env:TEMP '7z-x64.exe'
+            Invoke-WebRequest -Uri 'https://www.7-zip.org/a/7z2408-x64.exe' -OutFile $installer
+            Start-Process -FilePath $installer -ArgumentList '/S' -Wait
+            Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files\7-Zip'
+            Write-Host "7-Zip installed to C:\Program Files\7-Zip"
+          }
       - name: Install dependencies
         run: |
           pip install -r src/win32/qa/requirements.txt
@@ -58,8 +80,11 @@ jobs:
           mkdir C:\win-agent-released
           python -m wget https://packages.wazuh.com/4.x/windows/wazuh-agent-${{ matrix.wazuh_version }}.msi -o C:\win-agent-released
       - name: Download base folder
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: win-agent-base.zip
           path: C:\win-agent-base
       - name: Unzip base folder
@@ -83,13 +108,19 @@ jobs:
           python -m pytest -vv ./test_win_upgrade.py
       - name: Upload release installation log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: release_log
           path: C:\win-agent-released\win-agent-released.log
       - name: Upload base installation log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: base_log
           path: C:\win-agent-base\win-agent-base.log

@@ -13,9 +13,14 @@ on:
       - "src/shared_modules/indexer_connector/**"
       - "src/wazuh_modules/http-request/**"
 
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
 jobs:
   indexer_connector-qa:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -39,6 +44,15 @@ jobs:
         run: |
           pip install -r src/shared_modules/indexer_connector/qa/requirements.txt
 
+      - name: Log in to Docker Hub
+        # TODO(codebuild-temp): Remove if CodeBuild runners ship opensearchproject/opensearch
+        # or if the unauthenticated Docker Hub pull rate limit is no longer hit in CI.
+        # The indexer connector tests pull opensearchproject/opensearch:latest from Docker Hub.
+        # Without authentication the shared-IP rate limit (100 pulls/6 h) is quickly exhausted.
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
       # Create folder for test logs
       - name: Create folder for test logs
         run: |
@@ -54,7 +68,10 @@ jobs:
       # Upload log files of the tests
       - name: Upload log files
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: QA log files
           path: ${{ github.workspace }}/qa_logs

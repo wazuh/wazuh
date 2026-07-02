@@ -25,11 +25,14 @@ jobs:
       AWS_ACCESS_KEY_ID: ${{ secrets.IT_AWS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.IT_AWS_SECRET_ACCESS_KEY }}
       AWS_DEFAULT_REGION: 'us-east-1'
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3
 
+      - name: Install system build dependencies
+        # TODO: Remove when added to CodeBuild base images
+        run: sudo apt-get update && sudo apt-get install -y python3-pip
       - name: Detect modified files
         id: filter
         uses: dorny/paths-filter@v3
@@ -87,7 +90,7 @@ jobs:
               QA_BRANCH="main"
           fi
           git clone -b ${QA_BRANCH} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          sudo pip install --ignore-installed qa-integration-framework/
+          sudo pip install --ignore-installed --break-system-packages qa-integration-framework/
           sudo rm -rf qa-integration-framework/
 
       - name: Set AWS credentials file

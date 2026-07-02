@@ -35,18 +35,22 @@ env:
   TOOLS_DIR: ${{github.workspace}}/src/wazuh_modules/vulnerability_scanner/build/testtool/
   TOOLS_FILE_NAME: legacy_vdscanner_testtools
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     name: VD Scanner Tools Delivery
 
     # Runs only if the PR status is different to Draft
     if: ${{ !github.event.pull_request.draft }}
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 60
 
     steps:
       - name: Install dependencies
-        run: sudo apt-get install lzip xz-utils
+        run: sudo apt-get install -y lzip xz-utils
 
       - name: Check out repository
         uses: actions/checkout@v4
@@ -126,10 +130,10 @@ jobs:
       # Upload vdscanner tools
       - name: Upload vdscanner tools
         if: ${{ success() && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') }}
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: ${{env.TOOLS_FILE_NAME}}
           path: ${{env.TOOLS_FILE_NAME}}.tar.xz
-          if-no-files-found: error
-          compression-level: 0
-          overwrite: true

@@ -1,0 +1,113 @@
+name: "Download artifact from S3"
+description: >
+  Drop-in replacement for actions/download-artifact that retrieves an artifact from
+  the internal CI S3 bucket (passed via the CI_INTERNAL_S3_BUCKET secret) instead of GitHub artifact storage
+  (see https://github.com/wazuh/wazuh-automation/issues/3502).
+  Downloads and extracts the archive previously uploaded by upload_s3_artifact from:
+    <bucket>/<repository>/<workflow>/<name>/artifacts_<run_id>.zip
+  AWS credentials are configured by the action itself via OIDC, so the calling
+  job only needs `permissions: id-token: write`. Pass the region via the
+  `aws_region` input (set it to the CI_AWS_REGION secret at the call site).
+  Requires `7z` and the AWS CLI on the runner.
+
+inputs:
+  name:
+    description: "Artifact name. Must match the name used by the producer upload_s3_artifact step."
+    required: true
+  path:
+    description: "Destination directory for the extracted files. Defaults to the current directory."
+    required: false
+    default: ""
+  bucket:
+    description: "Source S3 bucket URI."
+    required: false
+    default: ""
+  aws_role:
+    description: "IAM role (OIDC) to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+    required: false
+    default: ""
+  aws_region:
+    description: "Fallback AWS region, used only when the AWS_REGION environment variable is not set."
+    required: false
+    default: "us-east-1"
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Resolve S3 key for ${{ inputs.name }}"
+      id: key
+      shell: bash
+      env:
+        ARTIFACT_NAME: ${{ inputs.name }}
+        BUCKET: ${{ inputs.bucket }}
+        REPO_NAME: ${{ github.event.repository.name }}
+        WORKFLOW_REF: ${{ github.workflow_ref }}
+        RUN_ID: ${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        # Derive the workflow file basename, e.g. 4_testcomponent_sysinfo-windows
+        ref_no_at="${WORKFLOW_REF%@*}"
+        wf_file="${ref_no_at##*/}"
+        wf="${wf_file%.*}"
+        # Make the artifact name safe for use as a single S3 key segment
+        safe_name="$(printf '%s' "$ARTIFACT_NAME" | tr ' /\\:' '____')"
+        echo "s3_uri=${BUCKET}/${REPO_NAME}/${wf}/${safe_name}/artifacts_${RUN_ID}.zip" >> "$GITHUB_OUTPUT"
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v6
+      with:
+        role-to-assume: ${{ inputs.aws_role }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - name: "Download ${{ inputs.name }} from S3 (Unix)"
+      if: runner.os != 'Windows'
+      shell: bash
+      env:
+        ARTIFACT_NAME: ${{ inputs.name }}
+        DEST_PATH: ${{ inputs.path }}
+        S3_URI: ${{ steps.key.outputs.s3_uri }}
+      run: |
+        set -euo pipefail
+        tmp="$(mktemp -d)"
+        zip_file="${tmp}/artifacts.zip"
+        aws s3 cp "$S3_URI" "$zip_file" --only-show-errors
+        dest="${DEST_PATH:-.}"
+        mkdir -p "$dest"
+        # Extract: prefer 7z, then unzip, then a Python fallback for runner images
+        # that ship neither (e.g. the arm64 CodeBuild agent image).
+        if command -v 7z >/dev/null 2>&1; then
+          7z x -y "$zip_file" -o"$dest" >/dev/null
+        elif command -v unzip >/dev/null 2>&1; then
+          unzip -o -q "$zip_file" -d "$dest"
+        else
+          python3 - "$zip_file" "$dest" <<'PY'
+        import sys, zipfile
+        with zipfile.ZipFile(sys.argv[1]) as z:
+            z.extractall(sys.argv[2])
+        PY
+        fi
+        echo "Downloaded artifact '${ARTIFACT_NAME}' from ${S3_URI} into ${dest}"
+
+    - name: "Download ${{ inputs.name }} from S3 (Windows)"
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        ARTIFACT_NAME: ${{ inputs.name }}
+        DEST_PATH: ${{ inputs.path }}
+        S3_URI: ${{ steps.key.outputs.s3_uri }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $tmp = Join-Path $env:RUNNER_TEMP ([System.Guid]::NewGuid().ToString())
+        New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+        $zip = Join-Path $tmp "artifacts.zip"
+        aws s3 cp $env:S3_URI $zip --only-show-errors
+        $dest = if ([string]::IsNullOrEmpty($env:DEST_PATH)) { "." } else { $env:DEST_PATH }
+        New-Item -ItemType Directory -Force -Path $dest | Out-Null
+        # Prefer 7z; fall back to PowerShell's native Expand-Archive for runner
+        # images that lack 7z (e.g. the CodeBuild Windows image).
+        if (Get-Command 7z -ErrorAction SilentlyContinue) {
+          7z x -y $zip "-o$dest" | Out-Null
+        } else {
+          Expand-Archive -Path $zip -DestinationPath $dest -Force
+        }
+        Write-Host "Downloaded artifact '$env:ARTIFACT_NAME' from $env:S3_URI into $dest"

@@ -60,7 +60,6 @@ src/wazuh-agentlessd
 src/wazuh-analysisd
 src/wazuh-authd
 src/wazuh-csyslogd
-src/wazuh-dbd
 src/wazuh-execd
 src/wazuh-logcollector
 src/wazuh-logtest-legacy

@@ -10,7 +10,7 @@ on:
 
 jobs:
   wazuh-template-elasticsearch:
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python 3.11

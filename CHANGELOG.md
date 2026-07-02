@@ -3,6 +3,25 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.7]
 
+### Manager
+
+#### Removed
+
+- Removed deprecated wazuh-dbd daemon and database_output configuration. ([#37035](https://github.com/wazuh/wazuh/pull/37035))
+
+#### Fixed
+
+- Improved cluster payload buffer allocation strategy. ([#37280](https://github.com/wazuh/wazuh/pull/37280))
+- Improved cluster archive decompression limits. ([#37119](https://github.com/wazuh/wazuh/pull/37119))
+- Improved cluster worker file path validation. ([#36998](https://github.com/wazuh/wazuh/pull/36998))
+
+### RESTful API
+
+#### Fixed
+
+- Fixed TypeError when sorting agents by version with empty version strings. ([#37323](https://github.com/wazuh/wazuh/pull/37323))
+- Improved sensitive data masking in cluster configuration endpoint. ([#37039](https://github.com/wazuh/wazuh/pull/37039))
+
 ## [v4.14.6]
 
 ### Manager
@@ -56,6 +75,10 @@ All notable changes to this project will be documented in this file.
 
 - Updated `cryptography`, `urllib3` and `python-multipart` Python dependencies. ([#35982](https://github.com/wazuh/wazuh/pull/35982))
 - Updated eBPF libraries: `libbpf` to 1.7.0 and `bpftool` to 7.7.0. ([#36467](https://github.com/wazuh/wazuh/pull/36467))
+
+#### Fixed
+
+- Fixed `wazuh-manager` startup failure on RHEL 10 by dropping the `libcrypt` dependency from embedded Python. ([#36782](https://github.com/wazuh/wazuh/pull/36782))
 
 
 ## [v4.14.5]

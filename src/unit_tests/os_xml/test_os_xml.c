@@ -16,7 +16,7 @@
 
 #include "../../headers/shared.h"
 #include "../../os_xml/os_xml.h"
-#include "../os_xml/os_xml_internal.h"
+#include "../../os_xml/os_xml_internal.h"
 #include "../wrappers/common.h"
 #include "../../headers/defs.h"
 
@@ -1074,6 +1074,25 @@ void OS_ReadXMLString_simple_invalid_xml(void **state) {
     }
 }
 
+void test_too_many_attributes(void **state) {
+    test_struct_t *data = (test_struct_t *)*state;
+
+    // Build XML with more attributes than XML_MAX_ATTR_DEPTH
+    char xml_string[16384];
+    strcpy(xml_string, "<root ");
+    for (int i = 0; i <= XML_MAX_ATTR_DEPTH + 1; i++) {
+        char attr[32];
+        snprintf(attr, sizeof(attr), "a%d=\"v\" ", i);
+        strcat(xml_string, attr);
+    }
+    strcat(xml_string, "/>");
+
+    create_xml_file(xml_string, data->xml_file_name, 256);
+
+    assert_int_not_equal(OS_ReadXML(data->xml_file_name, &data->xml), 0);
+    assert_string_equal(data->xml.err, "XMLERR: Too many attributes.");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
 
@@ -1256,6 +1275,9 @@ int main(void) {
 
         // OS_ReadXMLString tests
         cmocka_unit_test(OS_ReadXMLString_simple_invalid_xml),
+
+        // Too many attributes test
+        cmocka_unit_test_setup_teardown(test_too_many_attributes, test_setup, test_teardown),
 
     };
 
