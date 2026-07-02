@@ -1447,6 +1447,56 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
     return false;
 }
 
+bool AgentInfoImpl::isModuleFirstSyncCompleted(const std::string& moduleName)
+{
+    // Ask the module whether its one-shot first synchronization has completed. SCA and syscollector
+    // answer get_first_sync_completed with a first_sync_completed field (1/0); while the first sync
+    // is still in progress the metadata is unset and the field is absent. When synchronization is
+    // disabled the module reports completed (see wm_sca.c / wm_syscollector.c), so we never defer
+    // forever on a sync that will not run.
+    const std::string message = createJsonCommand("get_first_sync_completed");
+    const ModuleResponse response = queryModuleWithRetry(moduleName, message);
+
+    try
+    {
+        const nlohmann::json parsed = nlohmann::json::parse(response.response);
+
+        if (parsed.contains("data") && parsed["data"].contains("first_sync_completed"))
+        {
+            const auto& value = parsed["data"]["first_sync_completed"];
+
+            if (value.is_number())
+            {
+                return value.get<int>() != 0;
+            }
+
+            if (value.is_boolean())
+            {
+                return value.get<bool>();
+            }
+        }
+
+        // No first_sync_completed field. SCA/syscollector answer get_first_sync_completed with an
+        // error while their first-sync marker is not set yet (metadata unset) — that is exactly the
+        // "first sync still in progress" state, so defer. A successful response without the field
+        // means the module has nothing to defer on, so treat it as completed and do not wedge
+        // coordination.
+        if (parsed.contains("error") && parsed["error"].is_number() && parsed["error"].get<int>() != 0)
+        {
+            return false;
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        // No / unparseable response (module unreachable): do not wedge coordination, treat as done.
+        m_logFunction(LOG_DEBUG,
+                      "Could not read first_sync_completed from " + moduleName + ": " + std::string(e.what()));
+        return true;
+    }
+}
+
 AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModules)
 {
     for (const auto& module : COORDINATION_MODULES)
@@ -1492,7 +1542,30 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
             }
             else
             {
-                // Other modules: pause is synchronous, already completed
+                // SCA/syscollector pause synchronously, but like FIM they deliver their initial
+                // state via a one-shot first sync. Defer coordination until that completes so we do
+                // not pause/flush and advance the group/metadata version mid-first-sync (extends the
+                // FIM guard from #36762 to these modules).
+                if (!isModuleFirstSyncCompleted(module))
+                {
+                    if (!m_deferralLogged)
+                    {
+                        m_logFunction(LOG_INFO,
+                                      "Deferring coordination until " + module +
+                                      " first sync completes, will retry next cycle");
+                        m_deferralLogged = true;
+                    }
+                    else
+                    {
+                        m_logFunction(LOG_DEBUG, "Still deferring coordination until " + module + " first sync completes");
+                    }
+
+                    pausedModules.insert(module);
+                    resumePausedModules(pausedModules);
+                    return PauseCoordinationResult::Deferred;
+                }
+
+                m_deferralLogged = false;
                 m_logFunction(LOG_DEBUG, "Successfully paused " + module);
             }
 

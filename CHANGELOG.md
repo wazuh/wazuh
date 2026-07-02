@@ -100,6 +100,7 @@ All notable changes to this project will be documented in this file.
 - Honored the shutdown signal in `agent-upgrade` `StartMQ` to avoid timeout warning on agent stop. ([#36092](https://github.com/wazuh/wazuh/issues/36092))
 - Adjusted DockerListener messages as log entries to fix event categorization. ([#36126](https://github.com/wazuh/wazuh/issues/36126))
 - Dropped orphan paths before promoting on agent startup to fix FIM. ([#36134](https://github.com/wazuh/wazuh/issues/36134))
+- Deferred agent-info module coordination while SCA or System Inventory first synchronization is in progress, extending the FIM guard so a concurrent group or metadata change does not run coordination mid-first-sync. ([#36358](https://github.com/wazuh/wazuh/issues/36358))
 
 ## Prior versions
 
