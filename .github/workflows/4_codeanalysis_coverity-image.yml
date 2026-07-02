@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'tools/testing/coverity/**'
+      - "tools/testing/coverity/**"
 
 env:
   REGISTRY: ghcr.io

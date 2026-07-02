@@ -5,9 +5,9 @@ on:
   pull_request:
     paths:
       - ".github/workflows/4_codeanalysis_python.yml"
-      - 'framework/**/*.py'
-      - 'api/**/*.py'
-      - 'wodles/**/*.py'
+      - "framework/**/*.py"
+      - "api/**/*.py"
+      - "wodles/**/*.py"
 env:
   PYTHON_DIRS: "api wodles framework"
 
@@ -23,7 +23,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: 'framework/.python-version'
+          python-version-file: "framework/.python-version"
 
       - name: Install bandit
         run: |

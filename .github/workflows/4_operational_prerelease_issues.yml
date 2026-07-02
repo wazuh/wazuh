@@ -8,29 +8,29 @@ on:
   workflow_dispatch:
     inputs:
       main_issue:
-        description: 'Main issue number'
+        description: "Main issue number"
         required: true
         type: string
       prev_ut:
-        description: 'Previous Unit Tests issue number (or blank)'
+        description: "Previous Unit Tests issue number (or blank)"
         required: false
         type: string
-        default: ''
+        default: ""
       prev_cov:
-        description: 'Previous Coverity issue number (or blank)'
+        description: "Previous Coverity issue number (or blank)"
         required: false
         type: string
-        default: ''
+        default: ""
       prev_it:
-        description: 'Previous Integration Tests issue number (or blank)'
+        description: "Previous Integration Tests issue number (or blank)"
         required: false
         type: string
-        default: ''
+        default: ""
       prev_wpk:
-        description: 'Previous WPK Tests issue number (or blank)'
+        description: "Previous WPK Tests issue number (or blank)"
         required: false
         type: string
-        default: ''
+        default: ""
 
 jobs:
   read-version:
@@ -159,7 +159,14 @@ jobs:
 
   summary:
     name: "Workflow Result"
-    needs: [read-version, create-unit-tests-issue, create-coverity-issue, create-integration-tests-issue, create-wpk-tests-issue]
+    needs:
+      [
+        read-version,
+        create-unit-tests-issue,
+        create-coverity-issue,
+        create-integration-tests-issue,
+        create-wpk-tests-issue,
+      ]
     runs-on: ubuntu-latest
     if: always()
     steps:

@@ -4,10 +4,10 @@ name: 4.X - Package - Upload Docker package building images
 on:
   push:
     branches:
-      - '[0-9]+.[0-9]+.[0-9]+'
-      - 'main'
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "main"
     paths:
-      - 'packages/**'
+      - "packages/**"
 
 jobs:
   Upload-package-building-images:
@@ -17,9 +17,9 @@ jobs:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
         with:
-          cancel_others: 'true'
+          cancel_others: "true"
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
+          skip_after_successful_duplicate: "false"
 
       - name: Checkout wazuh/wazuh repository
         uses: actions/checkout@v4

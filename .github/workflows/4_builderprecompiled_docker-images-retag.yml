@@ -20,13 +20,13 @@ on:
           Docker image name. Used to retag only
           the provided image.
         required: false
-        default: ''
+        default: ""
   push:
     branches:
-      - '[0-9]+.[0-9]+.[0-9]+'
-      - 'main'
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "main"
     paths:
-      - 'VERSION.json'
+      - "VERSION.json"
 
 jobs:
   Upload-package-building-images:
@@ -38,14 +38,14 @@ jobs:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
         with:
-          cancel_others: 'true'
+          cancel_others: "true"
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          skip_after_successful_duplicate: 'false'
+          skip_after_successful_duplicate: "false"
 
       - name: Checkout repository previous commit
         uses: actions/checkout@v4
         with:
-            fetch-depth: 2
+          fetch-depth: 2
       - run: git checkout HEAD^
 
       - name: Get old version from VERSION.json

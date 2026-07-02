@@ -91,5 +91,4 @@ jobs:
           INPUT_GITHUB_ACTOR: ${{ github.actor }}
           INPUT_SYSTEM: ${{ inputs.system }}
           INPUT_ARCHITECTURE: ${{ inputs.architecture }}
-        run:
-          bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh "$INPUT_GITHUB_TOKEN" "$INPUT_GITHUB_ACTOR" "pkg_${INPUT_SYSTEM}_manager_builder_${INPUT_ARCHITECTURE}" "$DOCKERFILE_PATH" "$TAG"
+        run: bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh "$INPUT_GITHUB_TOKEN" "$INPUT_GITHUB_ACTOR" "pkg_${INPUT_SYSTEM}_manager_builder_${INPUT_ARCHITECTURE}" "$DOCKERFILE_PATH" "$TAG"

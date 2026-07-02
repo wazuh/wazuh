@@ -5,26 +5,26 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Target version (e.g. 1.2.3)'
-        default: ''
+        description: "Target version (e.g. 1.2.3)"
+        default: ""
         required: false
         type: string
       stage:
-        description: 'Version stage (e.g. alpha0)'
-        default: ''
+        description: "Version stage (e.g. alpha0)"
+        default: ""
         required: false
         type: string
       date:
-        description: 'Release date in format YYYY-MM-DD (e.g., 2025-04-14)'
-        default: ''
+        description: "Release date in format YYYY-MM-DD (e.g., 2025-04-14)"
+        default: ""
         required: false
         type: string
       issue-link:
-        description: 'Issue link in format https://github.com/wazuh/<REPO>/issues/<ISSUE-NUMBER>'
+        description: "Issue link in format https://github.com/wazuh/<REPO>/issues/<ISSUE-NUMBER>"
         required: true
         type: string
       id:
-        description: 'Optional identifier for the run'
+        description: "Optional identifier for the run"
         required: false
         type: string
 
@@ -158,4 +158,3 @@ jobs:
           echo "PR: $PULL_REQUEST_URL"
           echo "Bumper scripts logs:"
           cat "${BUMP_LOG_PATH}"/repository_bumper*log
-
