@@ -53,10 +53,17 @@
  *   "index":               ".wazuh-threatintel-vulnerabilities", // Indexer CVE index name
  *   "consumerStatusIndex": ".wazuh-cti-consumers",    // Consumer status index (optional)
  *   "consumerStatusId":    "cti:catalog:consumer:vulnerabilities", // Consumer status document id (optional)
- *   "pageSize":            250,                       // Documents per page (optional, default 250)
+ *   "pageSize":            100,                       // Documents per page (optional, default 100)
  *   "numSlices":           2,                         // Parallel PIT slices (optional, default 2)
  *   <standard IndexerConnector SSL/auth config>
  * }
+ *
+ * pageSize / numSlices trade-off: larger pageSize (and more slices) means fewer HTTP
+ * round-trips and a faster full download, but each in-flight page is a fully materialized
+ * nlohmann::json (page hits x copies of the payload, x numSlices concurrent pages) held in
+ * memory until its callback returns — so it also raises peak RSS during the load. Lower
+ * pageSize trades some download latency for a smaller memory footprint. Tune per deployment
+ * constraints (e.g. lower it on memory-constrained managers/agents).
  */
 class IndexerDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
@@ -124,6 +131,7 @@ private:
                                     "document.containers.cna.replacedBy",
                                     // document.containers.cna.providerMetadata — only shortName used
                                     "document.containers.cna.providerMetadata.orgId",
+                                    "document.containers.cna.providerMetadata.datePublished",
                                     "document.containers.cna.providerMetadata.dateUpdated",
                                     // document.containers.cna.affected — unused sub-fields
                                     "document.containers.cna.affected.collectionURL",
@@ -244,6 +252,7 @@ private:
                                     "document.containers.adp.title",
                                     // document.containers.adp.providerMetadata — only x_subShortName used
                                     "document.containers.adp.providerMetadata.orgId",
+                                    "document.containers.adp.providerMetadata.datePublished",
                                     "document.containers.adp.providerMetadata.dateUpdated",
                                     // document.containers.adp.affected — unused sub-fields
                                     "document.containers.adp.affected.collectionURL",
@@ -574,6 +583,90 @@ private:
     }
 
     /**
+     * @brief Blocks until the three global-map documents required by the local feed
+     *        database (vendor map, OS CPE rules, CNA mapping — see
+     *        DatabaseFeedManager::reloadGlobalMaps) are present in the Indexer.
+     *
+     * The consumer-status document going "ready" (see waitUntilConsumerReady) only means
+     * the CTI consumer applied *some* documents — it is not a guarantee that these three
+     * singletons landed yet. Without this check, initialLoad can run to completion (the
+     * full multi-minute download) only to have reloadGlobalMaps() reject the result
+     * afterwards and force a wasted re-download on the next cycle.
+     *
+     * IDs must stay in sync with the ones DatabaseFeedManager::reloadGlobalMaps looks up
+     * locally after the download completes.
+     */
+    bool waitUntilGlobalMapsIndexed(UpdaterContext& context) const
+    {
+        static constexpr auto POLL_INTERVAL {std::chrono::seconds {30}};
+        static const nlohmann::json GLOBAL_MAP_IDS =
+            nlohmann::json::array({"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"});
+
+        const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
+        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+
+        const auto pollSeconds =
+            static_cast<size_t>(std::chrono::duration_cast<std::chrono::seconds>(POLL_INTERVAL).count());
+        size_t queryFailures = 0;
+
+        while (true)
+        {
+            if (context.spUpdaterBaseContext->spStopCondition->check())
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested while waiting for global-map documents.");
+                return false;
+            }
+
+            try
+            {
+                const auto query = nlohmann::json {{"ids", {{"values", GLOBAL_MAP_IDS}}}};
+                const auto searchQuery =
+                    nlohmann::json {{"size", GLOBAL_MAP_IDS.size()}, {"query", query}, {"_source", false}};
+
+                const auto searchResult = syncConnector.executeSearchQuery(indexName, searchQuery);
+                const auto hitCount = searchResult.value("hits", nlohmann::json::object())
+                                          .value("hits", nlohmann::json::array())
+                                          .size();
+                queryFailures = 0;
+
+                if (hitCount >= GLOBAL_MAP_IDS.size())
+                {
+                    logInfo(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Global-map documents present in '%s'. Starting initial load.",
+                            indexName.c_str());
+                    return true;
+                }
+
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Global-map documents not yet indexed in '%s' (%zu/%zu found). Waiting "
+                        "%zus before retrying.",
+                        indexName.c_str(),
+                        hitCount,
+                        GLOBAL_MAP_IDS.size(),
+                        pollSeconds);
+            }
+            catch (const std::exception& e)
+            {
+                ++queryFailures;
+                logDebug2(WM_CONTENTUPDATER,
+                          "IndexerDownloader: Failed to probe global-map documents in '%s' (%s). Waiting %zus "
+                          "before retrying (attempt %zu).",
+                          indexName.c_str(),
+                          e.what(),
+                          pollSeconds,
+                          queryFailures);
+            }
+
+            if (context.spUpdaterBaseContext->spStopCondition->waitFor(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(POLL_INTERVAL)))
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested while waiting for global-map documents.");
+                return false;
+            }
+        }
+    }
+
+    /**
      * @brief Persists the cursor to RocksDB after each page so that a restart can resume
      *        from the last successfully processed page instead of from the beginning.
      *
@@ -687,7 +780,15 @@ private:
             // "FEED-GLOBAL", "TID-xxx"). EventDecoder identifies the resource type
             // by key prefix (startsWith "CVE-", "TID-", "FEED-GLOBAL", etc.).
             resource["resource"] = hit.value("_id", std::string {});
-            resource["payload"] = source.value("document", nlohmann::json::object());
+
+            // Dump directly from a reference into `source` instead of
+            // source.value("document", ...): .value() with an nlohmann::json ValueType
+            // deep-copies the whole "document" subtree (several KB for a CVE5 payload)
+            // just to immediately serialize and discard that copy — doubling the
+            // per-document transient memory for no benefit.
+            static const nlohmann::json EMPTY_DOCUMENT = nlohmann::json::object();
+            const auto& document = source.contains("document") ? source.at("document") : EMPTY_DOCUMENT;
+            resource["payload"] = document.dump();
 
             if (docType == "CVE")
             {
@@ -735,7 +836,7 @@ private:
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 250u);
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 100u);
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -833,7 +934,7 @@ private:
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 250u);
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 100u);
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -1187,6 +1288,11 @@ public:
 
             const bool forceInitialLoad = lastCursor.empty();
             if (!waitUntilConsumerReady(*context))
+            {
+                break;
+            }
+
+            if (forceInitialLoad && !waitUntilGlobalMapsIndexed(*context))
             {
                 break;
             }

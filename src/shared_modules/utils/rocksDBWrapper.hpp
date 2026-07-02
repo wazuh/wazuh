@@ -79,11 +79,18 @@ namespace Utils
          * @param enableWal Whether to enable WAL or not.
          * @param repairIfCorrupt Whether to repair the database if it is found corrupt while opening.
          *                        WARNING: this process might not recover all data.
+         * @param useSharedBuffers Whether to use the process-wide shared read cache / write buffer
+         *                        manager instead of a private one.
+         * @param readCacheSize Size in bytes of the private block cache (ignored when
+         *                      useSharedBuffers is true). Callers with a large, read-heavy dataset
+         *                      (e.g. many SST files serving hot-path lookups) should size this well
+         *                      above the default to avoid constantly evicting and re-reading from disk.
          */
         explicit TRocksDBWrapper(std::string dbPath,
                                  const bool enableWal = true,
                                  const bool repairIfCorrupt = true,
-                                 const bool useSharedBuffers = false)
+                                 const bool useSharedBuffers = false,
+                                 const size_t readCacheSize = 16 * 1024 * 1024)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
             , m_logFn(makeLibLogFn("rocksdb"))
@@ -97,7 +104,16 @@ namespace Utils
             }
             else
             {
-                m_readCache = rocksdb::NewLRUCache(16 * 1024 * 1024);
+                m_readCache = rocksdb::NewLRUCache(readCacheSize);
+                // REVERTED allow_stall=true (see resumen.md, intento 8): enabling it made the
+                // VDP bulk load stall almost indefinitely (30+ min, didn't finish) instead of
+                // "briefly". Root cause: with write_buffer_size=32MB and default L0 compaction
+                // triggers, background flush/compaction can't keep up with the bulk-load write
+                // rate, so once the writer starts blocking on the 128MB budget it stays blocked
+                // — the stall doesn't resolve quickly, it becomes the new bottleneck. Fixing this
+                // properly requires addressing flush/compaction throughput (background job count,
+                // L0 triggers) together, not just flipping this flag in isolation — needs
+                // dedicated tuning and measurement before trying again.
                 m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
             }
 
