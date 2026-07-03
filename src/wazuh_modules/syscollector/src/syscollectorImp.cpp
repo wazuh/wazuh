@@ -1026,7 +1026,25 @@ nlohmann::json Syscollector::ecsNetworkInterfaceData(const nlohmann::json& origi
     setJsonField(ret, originalData, "/host/network/egress/errors", "host_network_egress_errors", createFields);
     setJsonField(ret, originalData, "/host/network/egress/packets", "host_network_egress_packages", createFields);
     setJsonField(ret, originalData, "/interface/alias", "interface_alias", createFields);
-    setJsonField(ret, originalData, "/interface/mtu", "interface_mtu", createFields);
+
+    // Discard invalid MTU values: 4294967295 (UINT32_MAX) is reported by Windows and 0 by UNIX
+    // when the MTU is not available
+    if (createFields || originalData.contains("interface_mtu"))
+    {
+        const nlohmann::json::json_pointer pointer("/interface/mtu");
+
+        if (originalData.contains("interface_mtu") && originalData["interface_mtu"].is_number() &&
+                originalData["interface_mtu"].get<int64_t>() != UINT32_MAX &&
+                originalData["interface_mtu"].get<int64_t>() != 0)
+        {
+            ret[pointer] = originalData["interface_mtu"];
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/interface/name", "interface_name", createFields);
     setJsonField(ret, originalData, "/interface/state", "interface_state", createFields);
     setJsonField(ret, originalData, "/interface/type", "interface_type", createFields);
