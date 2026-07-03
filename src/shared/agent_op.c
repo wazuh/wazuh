@@ -628,11 +628,11 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
                 if (response_length = OS_RecvSecureClusterTCP(sock, response, OS_MAXSTR), response_length <= 0) {
                     switch (response_length) {
                     case -2:
-                        mwarn("Cluster error detected");
+                        mdebug1("Cluster error detected");
                         send_error = TRUE;
                         break;
                     case -1:
-                        mwarn("OS_RecvSecureClusterTCP(): %s", strerror(errno));
+                        mdebug1("OS_RecvSecureClusterTCP(): %s", strerror(errno));
                         send_error = TRUE;
                         break;
                     case 0:
@@ -646,14 +646,14 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
                 }
             }
             else {
-                mwarn("OS_SendSecureTCPCluster(): %s", strerror(errno));
+                mdebug1("OS_SendSecureTCPCluster(): %s", strerror(errno));
                 send_error = TRUE;
                 result = -2;
             }
             close(sock);
         }
         else {
-            mwarn("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+            mdebug1("Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
             result = -2;
             send_error = TRUE;
         }
@@ -661,7 +661,7 @@ int w_send_clustered_message(const char* command, const char* payload, char* res
         if (!send_error) {
             break;
         } else if (send_attempts == CLUSTER_SEND_MESSAGE_ATTEMPTS - 1) {
-            merror("Could not send message through the cluster after '%d' attempts.", CLUSTER_SEND_MESSAGE_ATTEMPTS);
+            mwarn("Could not send message through the cluster after '%d' attempts.", CLUSTER_SEND_MESSAGE_ATTEMPTS);
         } else {
             sleep(1);
         }
