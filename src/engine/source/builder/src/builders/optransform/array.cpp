@@ -57,8 +57,10 @@ TransformBuilder getArrayAppendBuilder(bool unique, bool atleastOne)
                 if (asValue->isStringValue())
                 {
                     // For string Values, capture string directly to avoid permanent json::Json allocation
+                    std::string_view sv;
+                    asValue->getString(sv);
                     appendOps.emplace_back(
-                        [targetFieldtype, unique, isInSchema, strValue = std::string(asValue->getStringDirect())](
+                        [targetFieldtype, unique, isInSchema, strValue = std::string(sv)](
                             std::vector<json::Json>& targetArray,
                             json::Json::Type& valueType,
                             const base::Event&) -> base::OptError

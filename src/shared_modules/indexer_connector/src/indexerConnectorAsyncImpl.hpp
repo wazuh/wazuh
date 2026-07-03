@@ -412,7 +412,6 @@ public:
                 const auto onError =
                     [this, &bulkData](const std::string& error, const long statusCode, const std::string& responseBody)
                 {
-                    LOG_ERROR(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
                         constexpr size_t MINIMAL_BULK_BYTES {4096};

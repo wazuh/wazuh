@@ -403,20 +403,13 @@ FilterOp getStringCmpFunction(const std::string& targetField,
     if (rightParameter->isValue())
     {
         auto asValue = std::static_pointer_cast<const Value>(rightParameter);
-        if (asValue->isStringValue())
+        std::string_view sv;
+        if (asValue->getString(sv) != json::RetGet::Success)
         {
-            preExtractedValueStr = std::string(asValue->getStringDirect());
+            throw std::runtime_error(
+                fmt::format(R"({} function: Expected a string but got {}.)", name, rightParameter->str()));
         }
-        else
-        {
-            std::string_view sv;
-            if (asValue->value().getString(sv) != json::RetGet::Success)
-            {
-                throw std::runtime_error(
-                    fmt::format(R"({} function: Expected a string but got {}.)", name, rightParameter->str()));
-            }
-            preExtractedValueStr = std::string(sv);
-        }
+        preExtractedValueStr = std::string(sv);
     }
     else
     {
@@ -1642,7 +1635,7 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
         else
         {
             std::string_view valueString;
-            if (std::static_pointer_cast<Value>(parameter)->value().getString(valueString) != json::RetGet::Success)
+            if (std::static_pointer_cast<Value>(parameter)->getString(valueString) != json::RetGet::Success)
             {
                 RETURN_FAILURE(isTestMode, false, failureTrace3);
             }

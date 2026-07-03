@@ -200,17 +200,10 @@ MapOp opBuilderHelperStringTransformation(const std::vector<OpArg>& opArgs,
     if (rightParameter->isValue())
     {
         auto asValue = std::static_pointer_cast<const Value>(rightParameter);
-        if (asValue->isStringValue())
+        std::string_view sv;
+        if (asValue->getString(sv) == json::RetGet::Success)
         {
-            preExtractedValueStr = std::string(asValue->getStringDirect());
-        }
-        else
-        {
-            std::string_view sv;
-            if (asValue->value().getString(sv) == json::RetGet::Success)
-            {
-                preExtractedValueStr = std::string(sv);
-            }
+            preExtractedValueStr = std::string(sv);
         }
     }
 

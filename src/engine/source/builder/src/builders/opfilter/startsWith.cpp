@@ -11,8 +11,9 @@ using namespace builder::builders;
 FilterOp
 startsWithValue(const Reference& targetField, const Value& value, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Value must be a string
-    if (!value.value().isString())
+    // Value must be a string. Capture it referencing the Value's internal storage (zero-copy).
+    std::string_view sv;
+    if (value.getString(sv) != json::RetGet::Success)
     {
         throw std::runtime_error(fmt::format("Expected 'string' value but got '{}'", value.value().typeName()));
     }
@@ -24,18 +25,8 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
     const auto targetNotString =
         fmt::format("{} -> Target field '{}' is not a string", buildCtx->context().opName, targetField.dotPath());
 
-    // Capture string directly (avoids json::Json steady-state overhead)
-    std::string valueStr;
-    if (value.isStringValue())
-    {
-        valueStr = std::string(value.getStringDirect());
-    }
-    else
-    {
-        std::string tmp;
-        value.value().getString(tmp);
-        valueStr = std::move(tmp);
-    }
+    // Copy into an owned string to capture in the per-event operation.
+    std::string valueStr(sv);
 
     return [targetField = targetField.jsonPath(),
             valueStr = std::move(valueStr),

@@ -19,7 +19,9 @@ FilterOp filterValue(const Reference& targetField, const Value& value, const std
     // For string-only Values, capture the string directly (avoids json::Json steady-state overhead)
     if (value.isStringValue())
     {
-        auto strValue = std::string(value.getStringDirect());
+        std::string_view sv;
+        value.getString(sv);
+        auto strValue = std::string(sv);
         return
             [targetField = targetField.jsonPath(), targetNotFound, valueMissmatch, successTrace, isTestMode, strValue](
                 base::ConstEvent event) -> FilterResult

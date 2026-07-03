@@ -85,9 +85,6 @@ private:
     /// Storage: either a shared json::Json or a plain string.
     std::variant<std::shared_ptr<const json::Json>, std::string> m_value;
 
-    /// Lazily-created json::Json for string variant (used by value()/sharedValue()).
-    mutable std::shared_ptr<const json::Json> m_cachedJson;
-
 public:
     Value()
         : m_value(std::make_shared<const json::Json>())
@@ -133,8 +130,27 @@ public:
     /** @brief Check if this Value stores a string directly (without json::Json). */
     bool isStringValue() const { return std::holds_alternative<std::string>(m_value); }
 
-    /** @brief Get the string directly (zero-cost). Only valid if isStringValue() is true. */
-    std::string_view getStringDirect() const { return std::get<std::string>(m_value); }
+    /**
+     * @brief Get the string value referencing internal storage (zero-copy), mirroring
+     * json::Json::getString.
+     *
+     * On success @p out references this Value's own storage and stays valid while the
+     * Value is alive and unmodified (safe to capture the resulting string into a
+     * per-event operation after copying it).
+     *
+     * @param out Output string_view, only assigned on success.
+     * @return json::RetGet::Success if the Value holds a string, otherwise
+     *         json::RetGet::WrongType / NotFound (delegated to json::Json::getString).
+     */
+    json::RetGet getString(std::string_view& out) const
+    {
+        if (std::holds_alternative<std::string>(m_value))
+        {
+            out = std::get<std::string>(m_value);
+            return json::RetGet::Success;
+        }
+        return std::get<std::shared_ptr<const json::Json>>(m_value)->getString(out);
+    }
 
     /** @brief Get the JSON type without triggering lazy json::Json creation for string Values. */
     json::Json::Type type() const
@@ -146,38 +162,32 @@ public:
         return std::get<std::shared_ptr<const json::Json>>(m_value)->type();
     }
 
-    /** @brief Get the stored JSON value. Creates one lazily for string-only Values. */
-    const json::Json& value() const
+    /** @brief Get the stored JSON value. Materializes a json::Json for string-only Values.
+     *
+     * Returned by value; string-only Values keep their lightweight std::string storage.
+     * Only used at build time, so the per-call materialization is not on the hot path.
+     */
+    json::Json value() const
     {
         if (std::holds_alternative<std::shared_ptr<const json::Json>>(m_value))
         {
             return *std::get<std::shared_ptr<const json::Json>>(m_value);
         }
-        // Lazy creation for string variant
-        if (!m_cachedJson)
-        {
-            json::Json j;
-            j.setString(std::get<std::string>(m_value));
-            m_cachedJson = std::make_shared<const json::Json>(std::move(j));
-        }
-        return *m_cachedJson;
+        json::Json j;
+        j.setString(std::get<std::string>(m_value));
+        return j;
     }
 
-    /** @brief Get the shared pointer to the stored JSON value (zero-copy sharing). */
+    /** @brief Get a shared json::Json for the value (zero-copy for the json variant). */
     std::shared_ptr<const json::Json> sharedValue() const
     {
         if (std::holds_alternative<std::shared_ptr<const json::Json>>(m_value))
         {
             return std::get<std::shared_ptr<const json::Json>>(m_value);
         }
-        // Lazy creation for string variant
-        if (!m_cachedJson)
-        {
-            json::Json j;
-            j.setString(std::get<std::string>(m_value));
-            m_cachedJson = std::make_shared<const json::Json>(std::move(j));
-        }
-        return m_cachedJson;
+        auto j = std::make_shared<json::Json>();
+        j->setString(std::get<std::string>(m_value));
+        return j;
     }
 
     /** @copydoc Argument::isValue */
@@ -185,11 +195,13 @@ public:
     /** @copydoc Argument::str */
     std::string str() const override
     {
-        if (std::holds_alternative<std::string>(m_value))
+        if (std::holds_alternative<std::shared_ptr<const json::Json>>(m_value))
         {
-            return "\"" + std::get<std::string>(m_value) + "\"";
+            return std::get<std::shared_ptr<const json::Json>>(m_value)->str();
         }
-        return std::get<std::shared_ptr<const json::Json>>(m_value)->str();
+        json::Json j;
+        j.setString(std::get<std::string>(m_value));
+        return j.str();
     }
 };
 
