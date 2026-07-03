@@ -160,8 +160,15 @@ jobs:
             ;;
         esac
 
+    # Explicit repository/ref (same as the build job): this workflow is also
+    # invoked cross-repo (e.g. from wazuh-indexer), where a bare checkout would
+    # clone the caller's repo and the local download_s3_artifact action would
+    # not be on disk.
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        repository: wazuh/wazuh
+        ref: ${{ env.WAZUH_BRANCH }}
 
     - name: Download compressed tar.gz file
       uses: ./.github/actions/download_s3_artifact
