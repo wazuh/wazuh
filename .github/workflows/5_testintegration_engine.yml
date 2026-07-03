@@ -63,9 +63,17 @@ jobs:
         with:
           name: rocksdb-shared-library
           path: |
-            src/external/rocksdb/build/librocksdb.so
             src/external/rocksdb/build/librocksdb.so.8
-            src/external/rocksdb/build/librocksdb.so.8.3.2
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload jemalloc shared libraries
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: jemalloc-shared-library
+          path: |
+            src/external/jemalloc/lib/libjemalloc.so.2
           bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
           aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           aws_region: ${{ secrets.CI_AWS_REGION }}
@@ -91,6 +99,15 @@ jobs:
       with:
         name: wazuh-engine
         path: src/build/engine/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
+
+    - name: Download jemalloc shared libraries
+      uses: ./.github/actions/download_s3_artifact
+      with:
+        name: jemalloc-shared-library
+        path: src/external/jemalloc/lib/
         bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
         aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
         aws_region: ${{ secrets.CI_AWS_REGION }}
@@ -178,6 +195,15 @@ jobs:
       with:
         name: rocksdb-shared-library
         path: src/external/rocksdb/build/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
+
+    - name: Download jemalloc shared libraries
+      uses: ./.github/actions/download_s3_artifact
+      with:
+        name: jemalloc-shared-library
+        path: src/external/jemalloc/lib/
         bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
         aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
         aws_region: ${{ secrets.CI_AWS_REGION }}
