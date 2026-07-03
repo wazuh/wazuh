@@ -88,7 +88,7 @@ jobs:
     needs: build
     timeout-minutes: 60
     env:
-      LD_LIBRARY_PATH: ${{github.workspace}}/src:${{github.workspace}}/src/build/lib:${{github.workspace}}/src/external/rocksdb/build
+      LD_LIBRARY_PATH: ${{github.workspace}}/src:${{github.workspace}}/src/build/lib:${{github.workspace}}/src/external/rocksdb/build:${{github.workspace}}/src/external/jemalloc/lib
 
     steps:
     - name: Checkout Repo
@@ -175,7 +175,7 @@ jobs:
     needs: build
     timeout-minutes: 60
     env:
-      LD_LIBRARY_PATH: ${{github.workspace}}/src:${{github.workspace}}/src/build/lib:${{github.workspace}}/src/external/rocksdb/build
+      LD_LIBRARY_PATH: ${{github.workspace}}/src:${{github.workspace}}/src/build/lib:${{github.workspace}}/src/external/rocksdb/build:${{github.workspace}}/src/external/jemalloc/lib
 
     steps:
     - name: Checkout Repo
