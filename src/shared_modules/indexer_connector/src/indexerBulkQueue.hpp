@@ -205,23 +205,28 @@ private:
             }
             catch (const std::exception& ex)
             {
-                if (m_running)
+                bool shouldRetry = false;
                 {
-                    logWarn(LOGGER_DEFAULT_TAG, "IndexerBulkQueue dispatch error: %s", ex.what());
-
-                    // Put the failed batch back at the front of the buffer, preserving order, so it
-                    // gets retried on the next iteration - possibly split into smaller batches if the
-                    // processor just reduced the bulk threshold (e.g. after a 413 Payload Too Large).
+                    std::lock_guard<std::mutex> lock(m_mutex);
+                    if (m_running)
                     {
-                        std::lock_guard<std::mutex> lock(m_mutex);
+                        shouldRetry = true;
+                        // Put the failed batch back at the front of the buffer, preserving order, so it
+                        // gets retried on the next iteration - possibly split into smaller batches if the
+                        // processor just reduced the bulk threshold (e.g. after a 413 Payload Too Large).
                         for (auto it = batch.rbegin(); it != batch.rend(); ++it)
                         {
                             m_totalBytes += it->size();
                             m_buffer.push_front(std::move(*it));
                         }
                     }
+                }
 
-                    std::this_thread::sleep_for(std::chrono::seconds(m_retryDelay));
+                if (shouldRetry)
+                {
+                    logWarn(LOGGER_DEFAULT_TAG, "IndexerBulkQueue dispatch error: %s", ex.what());
+                    std::unique_lock<std::mutex> lock(m_mutex);
+                    m_cv.wait_for(lock, std::chrono::seconds(m_retryDelay), [this]() { return !m_running; });
                 }
             }
         }
