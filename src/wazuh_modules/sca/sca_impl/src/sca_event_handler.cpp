@@ -231,6 +231,8 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
         // LCOV_EXCL_STOP
     }
 
+    checkData.erase("version");
+
     auto updateResultQuery = SyncRowQuery::builder().table("sca_check").data(checkData).returnOldData().build();
 
     // List to accumulate checks that fail validation for deferred deletion
