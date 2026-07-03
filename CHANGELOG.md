@@ -17,6 +17,7 @@ All notable changes to this project will be documented in this file.
 - Added Engine content management. ([#2445](https://github.com/wazuh/internal-devel-requests/issues/2445))
 - Added Engine content management tier 2. ([#3166](https://github.com/wazuh/internal-devel-requests/issues/3166))
 - Added manager watermarks. ([#35579](https://github.com/wazuh/wazuh/issues/35579))
+- Added byte-based capacity limits to wazuh-manager-remoted. ([#37052](https://github.com/wazuh/wazuh/issues/37052))
 
 #### Changed
 

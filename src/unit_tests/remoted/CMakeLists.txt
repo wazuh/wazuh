@@ -103,6 +103,9 @@ list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUn
                            -Wl,--wrap,assign_group_to_agent \
                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
+list(APPEND remoted_names "test_queue")
+list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn")
+
 list(LENGTH remoted_names count)
 math(EXPR count "${count} - 1")
 foreach(counter RANGE ${count})

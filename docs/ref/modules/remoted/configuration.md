@@ -48,6 +48,10 @@ remoted.sender_pool=8
 # Queues (important for stateless metadata)
 remoted.control_msg_queue_size=16384
 remoted.batch_events_capacity=131072
+
+# Queue byte limits (0 = unlimited)
+remoted.queue_max_bytes=67108864
+remoted.batch_events_max_bytes=33554432
 ```
 
 ## Stateless Metadata Configuration
@@ -82,6 +86,36 @@ remoted.batch_events_capacity=131072  # Default: 131072
 - Small (<1K agents): control=4096, batch=32768
 - Medium (1K-10K agents): control=16384, batch=131072 (defaults)
 - Large (>10K agents): control=32768, batch=262144
+
+### Queue Byte Limits
+
+Caps total memory used by each queue regardless of event count. Useful when agents send large events that would otherwise cause unbounded memory growth even at normal event rates.
+
+```conf
+# Maximum bytes held in the input queue (messages received from agents)
+# Default: 67108864 (64 MiB). Set to 0 to disable.
+remoted.queue_max_bytes=67108864
+
+# Maximum bytes held in the events queue (events forwarded to the engine)
+# Default: 33554432 (32 MiB). Set to 0 to disable.
+remoted.batch_events_max_bytes=33554432
+```
+
+| Option | Default | Min | Description |
+|--------|---------|-----|-------------|
+| `remoted.queue_max_bytes` | `67108864` | `1024` | Byte cap for the input message queue |
+| `remoted.batch_events_max_bytes` | `33554432` | `1024` | Byte cap for the outbound events queue toward the engine |
+
+**Behavior when the limit is reached**:
+- Events that individually exceed the limit are dropped immediately.
+- Events that would push the total over the limit are dropped until space is freed.
+- Dropped events increment the same discard counter as a full queue (`discarded_count` in the state file).
+- A warning is logged at most once every 5 seconds to avoid log flooding.
+
+**Guidelines**:
+- The byte limit and the event-count limit (`batch_events_capacity`) are independent. An event is dropped if either limit is reached.
+- Values between 1 and 1023 bytes are rejected at startup as they are almost certainly a configuration error.
+- Set to `0` to revert to count-only limiting.
 
 ### Hash Table Tuning
 
