@@ -866,7 +866,7 @@ nlohmann::json Syscollector::ecsHardwareData(const nlohmann::json& originalData,
         {
             const auto& value = originalData["cpu_speed"];
 
-            if (value.is_number())
+            if (value.is_number() && value.get<double>() != 0.0)
             {
                 ret[pointer] = value.get<int64_t>();
             }
