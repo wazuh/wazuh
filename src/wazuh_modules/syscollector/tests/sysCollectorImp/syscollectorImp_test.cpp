@@ -4859,6 +4859,100 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 
+TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // cpu_speed as 0.0 represents an unavailable value (e.g. macOS ARM) and must be
+    // reported as null instead of a misleading 0.
+    const std::string hardwareJson = R"({"serial_number":"Apple Inc.", "cpu_speed":0.0,"cpu_cores":8,"cpu_name":"Apple M1","memory_free":1000000,"memory_total":2000000,"memory_used":1000000})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-hardware")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+
+                // cpu_speed 0.0 must be reported as null, not as a literal 0
+                EXPECT_TRUE(jsonData["host"]["cpu"]["speed"].is_null());
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
 // Schema validation test using mock to force rejection
 TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
 {
