@@ -44,11 +44,8 @@ public:
      * @param flushIntervalSec  Max seconds to wait before flushing a partial batch.
      * @param retryDelaySec     Seconds to sleep after a failed processor call.
      */
-    IndexerBulkQueue(Processor processor,
-                     size_t maxBytes,
-                     size_t bulkMaxBytes,
-                     size_t flushIntervalSec,
-                     size_t retryDelaySec)
+    IndexerBulkQueue(
+        Processor processor, size_t maxBytes, size_t bulkMaxBytes, size_t flushIntervalSec, size_t retryDelaySec)
         : m_processor(std::move(processor))
         , m_maxBytes(maxBytes)
         , m_bulkMaxBytes(bulkMaxBytes)
@@ -159,8 +156,9 @@ private:
 
             {
                 std::unique_lock<std::mutex> lock(m_mutex);
-                m_cv.wait_for(lock, std::chrono::seconds(m_flushInterval), [this]()
-                              { return !m_running || m_totalBytes >= m_bulkMaxBytes.load(); });
+                m_cv.wait_for(lock,
+                              std::chrono::seconds(m_flushInterval),
+                              [this]() { return !m_running || m_totalBytes >= m_bulkMaxBytes.load(); });
 
                 if (!m_running && m_buffer.empty())
                     break;

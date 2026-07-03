@@ -20,12 +20,9 @@ FilterOp filterValue(const Reference& targetField, const Value& value, const std
     if (value.isStringValue())
     {
         auto strValue = std::string(value.getStringDirect());
-        return [targetField = targetField.jsonPath(),
-                targetNotFound,
-                valueMissmatch,
-                successTrace,
-                isTestMode,
-                strValue](base::ConstEvent event) -> FilterResult
+        return
+            [targetField = targetField.jsonPath(), targetNotFound, valueMissmatch, successTrace, isTestMode, strValue](
+                base::ConstEvent event) -> FilterResult
         {
             if (!event->exists(targetField))
             {
@@ -42,12 +39,8 @@ FilterOp filterValue(const Reference& targetField, const Value& value, const std
     }
 
     auto jValue = value.sharedValue();
-    return [targetField = targetField.jsonPath(),
-            targetNotFound,
-            valueMissmatch,
-            successTrace,
-            isTestMode,
-            jValue](base::ConstEvent event) -> FilterResult
+    return [targetField = targetField.jsonPath(), targetNotFound, valueMissmatch, successTrace, isTestMode, jValue](
+               base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {

@@ -43,8 +43,14 @@ void reset()
     g_peakLiveBytes.store(0, std::memory_order_relaxed);
 }
 
-void enable() { g_trackingEnabled.store(true, std::memory_order_release); }
-void disable() { g_trackingEnabled.store(false, std::memory_order_release); }
+void enable()
+{
+    g_trackingEnabled.store(true, std::memory_order_release);
+}
+void disable()
+{
+    g_trackingEnabled.store(false, std::memory_order_release);
+}
 
 void updatePeak()
 {
@@ -180,8 +186,8 @@ static void printReport(const std::string& scenario,
     std::cout << "    Total bytes alloc:  " << std::fixed << std::setprecision(2)
               << static_cast<double>(deltaBytes) / (1024.0 * 1024.0) << " MB\n";
     std::cout << "    Avg bytes/event:    " << std::fixed << std::setprecision(1) << avgBytesPerEvent << " bytes\n";
-    std::cout << "    Overhead/event:     " << std::fixed << std::setprecision(1) << overheadPerEvent
-              << " bytes (vs " << eventSizeBytes << " payload)\n";
+    std::cout << "    Overhead/event:     " << std::fixed << std::setprecision(1) << overheadPerEvent << " bytes (vs "
+              << eventSizeBytes << " payload)\n";
     std::cout << "    Allocs/event:       " << std::fixed << std::setprecision(2) << allocsPerEvent << "\n";
     std::cout << "    Live bytes at end:  " << after.currentLiveBytes << " bytes\n";
 }
@@ -297,7 +303,9 @@ static void measureQueueConstruction()
 
     auto before = memtrack::Snapshot::capture();
 
-    { CQueue<std::string> queue(MIN_QUEUE_CAPACITY); }
+    {
+        CQueue<std::string> queue(MIN_QUEUE_CAPACITY);
+    }
 
     auto after = memtrack::Snapshot::capture();
     memtrack::disable();

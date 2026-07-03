@@ -195,8 +195,8 @@ int runPushEvents(const int argc, const char* argv[])
                     throw std::runtime_error("Could not open configuration file: " + cfgPath);
                 const auto cfg = nlohmann::json::parse(cfgFile);
 
-                connectors.push_back(std::make_unique<IndexerConnectorAsync>(
-                    cfg, LoggingContext {"testtool", loggingFunction}));
+                connectors.push_back(
+                    std::make_unique<IndexerConnectorAsync>(cfg, LoggingContext {"testtool", loggingFunction}));
 
                 const std::string idxName = (cfg.contains("index") && cfg["index"].is_string())
                                                 ? cfg["index"].get<std::string>()
@@ -267,8 +267,8 @@ int runPushEvents(const int argc, const char* argv[])
         if (useAsync)
         {
             std::cout << "Using Indexer Connector ASYNC implementation.\n";
-            asyncConnector = std::make_unique<IndexerConnectorAsync>(
-                configuration, LoggingContext {"testtool", loggingFunction});
+            asyncConnector =
+                std::make_unique<IndexerConnectorAsync>(configuration, LoggingContext {"testtool", loggingFunction});
         }
         else
         {

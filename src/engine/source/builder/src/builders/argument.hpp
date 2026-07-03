@@ -90,35 +90,45 @@ private:
 
 public:
     Value()
-        : m_value(std::make_shared<const json::Json>()) {}
+        : m_value(std::make_shared<const json::Json>())
+    {
+    }
 
     /**
      * @brief Construct a Value from a JSON value (copy).
      * @param value JSON value to store.
      */
     explicit Value(const json::Json& value)
-        : m_value(std::make_shared<const json::Json>(value)) {}
+        : m_value(std::make_shared<const json::Json>(value))
+    {
+    }
 
     /**
      * @brief Construct a Value from a JSON value (move).
      * @param value JSON value to store.
      */
     explicit Value(json::Json&& value)
-        : m_value(std::make_shared<const json::Json>(std::move(value))) {}
+        : m_value(std::make_shared<const json::Json>(std::move(value)))
+    {
+    }
 
     /**
      * @brief Construct a Value from a string (no json::Json overhead).
      * @param str String value to store.
      */
     explicit Value(std::string&& str)
-        : m_value(std::move(str)) {}
+        : m_value(std::move(str))
+    {
+    }
 
     /**
      * @brief Construct a Value from a string (copy).
      * @param str String value to store.
      */
     explicit Value(const std::string& str)
-        : m_value(str) {}
+        : m_value(str)
+    {
+    }
 
     /** @brief Check if this Value stores a string directly (without json::Json). */
     bool isStringValue() const { return std::holds_alternative<std::string>(m_value); }

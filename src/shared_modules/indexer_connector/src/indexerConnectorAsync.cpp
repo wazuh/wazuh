@@ -24,11 +24,7 @@ private:
 
 public:
     Impl(const nlohmann::json& config, LoggingContext logging)
-        : m_impl(config,
-                 std::move(logging.second),
-                 nullptr,
-                 nullptr,
-                 std::move(logging.first))
+        : m_impl(config, std::move(logging.second), nullptr, nullptr, std::move(logging.first))
     {
     }
 
@@ -98,8 +94,7 @@ public:
     }
 };
 
-IndexerConnectorAsync::IndexerConnectorAsync(const nlohmann::json& config,
-                                             LoggingContext logging)
+IndexerConnectorAsync::IndexerConnectorAsync(const nlohmann::json& config, LoggingContext logging)
     : m_impl(std::make_unique<Impl>(config, std::move(logging)))
 {
 }

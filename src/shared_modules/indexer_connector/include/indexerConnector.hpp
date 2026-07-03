@@ -328,8 +328,7 @@ public:
      *                "<callerName>(indexer-connector)" (e.g. "wazuh-manager-analysisd(indexer-connector)").
      *                If the caller name is empty, the tag falls back to "indexer-connector".
      */
-    explicit IndexerConnectorAsync(const nlohmann::json& config,
-                                   LoggingContext logging = {});
+    explicit IndexerConnectorAsync(const nlohmann::json& config, LoggingContext logging = {});
 
     ~IndexerConnectorAsync();
 

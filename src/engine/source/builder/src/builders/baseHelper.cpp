@@ -123,13 +123,14 @@ runType(const OpBuilder& builder, const Reference& targetField, const schemf::Va
 TransformBuilder filterToTransform(FilterBuilder builder)
 {
     return [builder = std::move(builder)](const Reference& targetField,
-                     const std::vector<OpArg>& opArgs,
-                     const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
+                                          const std::vector<OpArg>& opArgs,
+                                          const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
     {
         auto filterOp = builder(targetField, opArgs, buildCtx);
 
         // Wrapper TransformOp
-        return [filterOp = std::move(filterOp), isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
+        return
+            [filterOp = std::move(filterOp), isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
         {
             auto filterRes = filterOp(event);
             if (filterRes.failure())
@@ -144,9 +145,10 @@ TransformBuilder filterToTransform(FilterBuilder builder)
 
 TransformBuilder mapToTransform(MapBuilder builder, Reference targetField)
 {
-    return [builder = std::move(builder), targetField = std::move(targetField)](const Reference&,
-                                  const std::vector<OpArg>& opArgs,
-                                  const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
+    return [builder = std::move(builder),
+            targetField = std::move(targetField)](const Reference&,
+                                                  const std::vector<OpArg>& opArgs,
+                                                  const std::shared_ptr<const IBuildCtx>& buildCtx) -> TransformOp
     {
         // Check allowed fields for map operation first
         auto assetType = base::Name(buildCtx->context().assetName).parts()[0];
@@ -161,7 +163,8 @@ TransformBuilder mapToTransform(MapBuilder builder, Reference targetField)
         auto mapOp = builder(opArgs, buildCtx);
 
         // Wrapper TransformOp
-        return [mapOp = std::move(mapOp), targetField, isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
+        return [mapOp = std::move(mapOp), targetField, isTestMode = buildCtx->isTestMode()](
+                   base::Event event) -> TransformResult
         {
             auto mapRes = mapOp(event);
             if (mapRes.failure())

@@ -99,7 +99,7 @@ using ThreadLoggerQueue = Utils::AsyncValueDispatcher<IndexerResponse, std::func
 
 template<typename TSelector,
          typename THttpRequest,
-         size_t BulkMaxBytes = (size_t{0x1} << 22),
+         size_t BulkMaxBytes = (size_t {0x1} << 22),
          size_t FlushInterval = 20,
          size_t RetryDelay = 1,
          size_t MaxSuccessCount = 5>
@@ -208,8 +208,8 @@ public:
 
         // Read max queue size (in bytes) from config, default to unlimited if not specified
         m_maxQueueBytes = config.contains("max_queue_bytes") && config.at("max_queue_bytes").is_number_unsigned()
-                             ? config.at("max_queue_bytes").get<size_t>()
-                             : 0; // 0 means unlimited
+                              ? config.at("max_queue_bytes").get<size_t>()
+                              : 0; // 0 means unlimited
 
         // Read flush interval from config; the template parameter acts as a fallback default.
         // Accept both signed and unsigned JSON integers (nlohmann stores bare literals as signed).
@@ -409,12 +409,10 @@ public:
                     // Dispatch to error logger.
                 };
 
-                const auto onError = [this, &bulkData](const std::string& error,
-                                                      const long statusCode,
-                                                      const std::string& responseBody)
+                const auto onError =
+                    [this, &bulkData](const std::string& error, const long statusCode, const std::string& responseBody)
                 {
-                    LOG_ERROR(
-                        m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
+                    LOG_ERROR(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
                         constexpr size_t MINIMAL_BULK_BYTES {4096};
@@ -428,11 +426,11 @@ public:
                             {
                                 m_error413Logged = true;
                                 LOG_ERROR(m_logFn,
-                                         "Bulk threshold too small to halve further (%zu bytes). "
-                                         "Review 'http.max_content_length' in wazuh-indexer settings. "
-                                         "Current payload size: %zu bytes.",
-                                         currentBulkMax,
-                                         bulkData.size());
+                                          "Bulk threshold too small to halve further (%zu bytes). "
+                                          "Review 'http.max_content_length' in wazuh-indexer settings. "
+                                          "Current payload size: %zu bytes.",
+                                          currentBulkMax,
+                                          bulkData.size());
                             }
 
                             throw IndexerConnectorException(
@@ -441,14 +439,10 @@ public:
                         }
                         else
                         {
-                            LOG_DEBUG2(m_logFn,
-                                       "Reducing bulk max bytes from %zu to %zu.",
-                                       currentBulkMax,
-                                       halved);
+                            LOG_DEBUG2(m_logFn, "Reducing bulk max bytes from %zu to %zu.", currentBulkMax, halved);
                             this->m_queue->bulkMaxBytes(halved);
                             m_successCount = 0;
-                            throw IndexerConnectorException(
-                                "Bulk payload too large, reducing threshold.");
+                            throw IndexerConnectorException("Bulk payload too large, reducing threshold.");
                         }
                     }
                     else if (statusCode == HTTP_VERSION_CONFLICT)
@@ -682,10 +676,8 @@ public:
                 creationTime = jsonResponse["creation_time"].get<uint64_t>();
                 success = true;
 
-                LOG_DEBUG2(m_logFn,
-                          "PIT created successfully. PIT ID: %s, Creation time: %lu",
-                          pitId.c_str(),
-                          creationTime);
+                LOG_DEBUG2(
+                    m_logFn, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
             }
             catch (const std::exception& e)
             {

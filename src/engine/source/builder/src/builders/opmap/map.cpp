@@ -23,8 +23,7 @@ MapOp mapValue(const Value& value, const std::shared_ptr<const IBuildCtx>& build
     }
 
     auto jValue = value.sharedValue();
-    return
-        [successTrace, isTestMode, jValue](base::ConstEvent event) -> MapResult
+    return [successTrace, isTestMode, jValue](base::ConstEvent event) -> MapResult
     {
         RETURN_SUCCESS(isTestMode, json::Json(*jValue), successTrace);
     };
