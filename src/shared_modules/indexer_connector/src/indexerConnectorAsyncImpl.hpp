@@ -422,20 +422,22 @@ public:
 
                         if (halved < MINIMAL_BULK_BYTES)
                         {
+                            // The batch cannot be shrunk any further without going below a sane minimum,
+                            // so it can never fit. Log loudly (once) and drop it instead of throwing:
+                            // throwing here would make the queue requeue and retry this same batch
+                            // forever, since it will never become small enough to succeed.
                             if (!m_error413Logged)
                             {
                                 m_error413Logged = true;
                                 LOG_ERROR(m_logFn,
                                           "Bulk threshold too small to halve further (%zu bytes). "
                                           "Review 'http.max_content_length' in wazuh-indexer settings. "
-                                          "Current payload size: %zu bytes.",
+                                          "Current payload size: %zu bytes. Discarding this batch.",
                                           currentBulkMax,
                                           bulkData.size());
                             }
-
-                            throw IndexerConnectorException(
-                                "Bulk threshold too small, review 'http.max_content_length' in "
-                                "wazuh-indexer settings.");
+                            // Do not throw, avoid infinite retry loop. Drop this batch and continue with the next.
+                            return;
                         }
                         else
                         {

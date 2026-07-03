@@ -160,8 +160,26 @@ private:
                               std::chrono::seconds(m_flushInterval),
                               [this]() { return !m_running || m_totalBytes >= m_bulkMaxBytes.load(); });
 
-                if (!m_running && m_buffer.empty())
+                if (!m_running)
+                {
+                    // Stopping: don't try to flush what's left over the network, that could block
+                    // shutdown indefinitely (e.g. if the indexer is unreachable). Discard it instead.
+                    if (!m_buffer.empty())
+                    {
+                        for (const auto& item : m_buffer)
+                        {
+                            logDebug2(LOGGER_DEFAULT_TAG, "Discarding queued event on shutdown: %s", item.c_str());
+                        }
+                        logDebug1(LOGGER_DEFAULT_TAG,
+                                  "IndexerBulkQueue stopping: discarding %zu queued event(s) (%llu bytes) "
+                                  "that were not yet sent.",
+                                  m_buffer.size(),
+                                  static_cast<unsigned long long>(m_totalBytes));
+                        m_buffer.clear();
+                        m_totalBytes = 0;
+                    }
                     break;
+                }
 
                 if (m_buffer.empty())
                     continue;
@@ -190,6 +208,19 @@ private:
                 if (m_running)
                 {
                     logWarn(LOGGER_DEFAULT_TAG, "IndexerBulkQueue dispatch error: %s", ex.what());
+
+                    // Put the failed batch back at the front of the buffer, preserving order, so it
+                    // gets retried on the next iteration - possibly split into smaller batches if the
+                    // processor just reduced the bulk threshold (e.g. after a 413 Payload Too Large).
+                    {
+                        std::lock_guard<std::mutex> lock(m_mutex);
+                        for (auto it = batch.rbegin(); it != batch.rend(); ++it)
+                        {
+                            m_totalBytes += it->size();
+                            m_buffer.push_front(std::move(*it));
+                        }
+                    }
+
                     std::this_thread::sleep_for(std::chrono::seconds(m_retryDelay));
                 }
             }

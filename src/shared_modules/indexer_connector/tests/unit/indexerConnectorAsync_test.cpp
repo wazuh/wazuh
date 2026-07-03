@@ -455,13 +455,16 @@ TEST_F(IndexerConnectorAsyncTest, HandleError413PayloadTooLarge)
                 }
             }));
 
+    // BulkMaxBytes counts bytes, not documents: size it so both docs (~10086 bytes) combine
+    // into one POST, and the halved threshold (>= 4096) still splits them for the retry.
+    config["bulk_max_bytes"] = 9000;
     IndexerConnectorAsyncImplSmallBulkPair connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     // Add large data to force bulk processing
     for (int i = 0; i < 2; ++i)
     {
         std::string id = "id" + std::to_string(i);
-        std::string dataValue(200, 'a');
+        std::string dataValue(5000, 'a');
         connector.bulkIndex(id, "index1", dataValue);
     }
 
@@ -537,13 +540,16 @@ TEST_F(IndexerConnectorAsyncTest, HandleError413PayloadTooLargeDouble)
                 }
             }));
 
+    // BulkMaxBytes counts bytes, not documents: size it so both docs (~10086 bytes) combine
+    // into one POST, and two 413-halvings still stay retry-worthy (>= 4096) before splitting.
+    config["bulk_max_bytes"] = 18400;
     IndexerConnectorAsyncImplSmallBulkPair connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     // Add large data to force bulk processing
     for (int i = 0; i < 2; ++i)
     {
         std::string id = "id" + std::to_string(i);
-        std::string dataValue(200, 'a');
+        std::string dataValue(5000, 'a');
         connector.bulkIndex(id, "index1", dataValue);
     }
 
@@ -1444,6 +1450,9 @@ TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCreateOperation)
                 processingCompletedPromise.set_value();
             }));
 
+    // BulkMaxBytes counts bytes, not documents: size it so the 5 pushed documents below
+    // (~344 bytes total) flush together in a single POST instead of one-by-one.
+    config["bulk_max_bytes"] = 300;
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     // Send only 1 document to match the 1 item in response
@@ -1511,6 +1520,9 @@ TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCausedBy)
                 processingCompletedPromise.set_value();
             }));
 
+    // BulkMaxBytes counts bytes, not documents: size it so the 5 pushed documents below
+    // (~342 bytes total) flush together in a single POST instead of one-by-one.
+    config["bulk_max_bytes"] = 300;
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     // Send only 1 document to match the 1 item in response
@@ -1577,6 +1589,9 @@ TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCausedByTypeOnly)
                 processingCompletedPromise.set_value();
             }));
 
+    // BulkMaxBytes counts bytes, not documents: size it so the 5 pushed documents below
+    // (~342 bytes total) flush together in a single POST instead of one-by-one.
+    config["bulk_max_bytes"] = 300;
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     // Send 1 document to match the 1 item in response
@@ -1643,6 +1658,9 @@ TEST_F(IndexerConnectorAsyncTest, ErrorProcessingWithCausedByReasonOnly)
                 processingCompletedPromise.set_value();
             }));
 
+    // BulkMaxBytes counts bytes, not documents: size it so the 5 pushed documents below
+    // (~342 bytes total) flush together in a single POST instead of one-by-one.
+    config["bulk_max_bytes"] = 300;
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     // Send 1 document to match the 1 item in response
@@ -1687,6 +1705,9 @@ TEST_F(IndexerConnectorAsyncTest, BulkIndexWithVersionHandling)
                 processingCompletedPromise.set_value();
             }));
 
+    // BulkMaxBytes counts bytes, not documents: size it so the 5 pushed documents below
+    // (~358 bytes total) flush together in a single POST instead of one-by-one.
+    config["bulk_max_bytes"] = 320;
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     // Test with version
@@ -1747,6 +1768,9 @@ TEST_F(IndexerConnectorAsyncTest, BulkIndexEscapesSpecialCharactersInId)
                 processingCompletedPromise.set_value();
             }));
 
+    // BulkMaxBytes counts bytes, not documents: size it so the 5 pushed documents below
+    // (~386 bytes total, incl. escaping) flush together in a single POST instead of one-by-one.
+    config["bulk_max_bytes"] = 350;
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     // Test various special characters that need escaping
@@ -1836,6 +1860,10 @@ TEST_F(IndexerConnectorAsyncTest, VersionConflictHandling)
                 errorProcessedPromise.set_value();
             }));
 
+    // BulkMaxBytes counts bytes, not documents: size it so all 11 pushed documents below
+    // (~747 bytes total) flush together in a single POST, matching the "initial request" the
+    // mock expects, and so the whole batch is retried together as the "retry" after the 409.
+    config["bulk_max_bytes"] = 720;
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     // Send a document with version that will cause conflict
@@ -2349,6 +2377,9 @@ TEST_F(IndexerConnectorAsyncTest, BulkIndexDataStreamSuccess)
                 processingPromise.set_value();
             }));
 
+    // BulkMaxBytes counts bytes, not documents: size it so the 5 pushed documents below
+    // (~465 bytes total) flush together in a single POST instead of one-by-one.
+    config["bulk_max_bytes"] = 420;
     IndexerConnectorAsyncImplSmallBulk connector(
         config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-ds-queue");
 
