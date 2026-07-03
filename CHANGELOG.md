@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.7]
 
+### Ruleset
+
+#### Fixed
+
+- Fixed multiple Debian, Ubuntu and Windows SCA checks generating incorrect results. ([#37385](https://github.com/wazuh/wazuh/pull/37385))
+
 ### Manager
 
 #### Removed
