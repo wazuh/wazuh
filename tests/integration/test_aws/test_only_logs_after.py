@@ -766,13 +766,12 @@ def test_bucket_multiple_calls(
 
     bucket_type = metadata['bucket_type']
     bucket_name = metadata['bucket_name']
-    data_bucket_name = metadata.get('original_bucket_name', bucket_name)
     expected_results = metadata['expected_results']
     path = metadata.get('path')
     region = US_EAST_1_REGION
-    # Use the original YAML bucket name for generate_file / get_last_file_key so the
-    # framework can resolve custom types (kms/macie/trusted) via bucket_name.split('-')[1].
     data_bucket_name = metadata.get('original_bucket_name', bucket_name)
+    only_logs_after = metadata.get('only_logs_after', '2022-NOV-20')
+    later_only_logs_after = metadata.get('later_only_logs_after', '2022-NOV-22')
 
     base_parameters = [
         '--bucket', bucket_name,
@@ -813,7 +812,7 @@ def test_bucket_multiple_calls(
 
     # Call the module with only_logs_after set in the past and check that the expected number of logs were processed
     analyze_command_output(
-        command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
+        command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, only_logs_after),
         callback=event_monitor.callback_detect_event_processed,
         expected_results=expected_results,
         error_message=ERROR_MESSAGE['incorrect_event_number']
@@ -824,7 +823,7 @@ def test_bucket_multiple_calls(
         # For VPC the number of messages depend on the number of flow log IDs obtained by the module which may vary.
         expected_skipped_logs_step_3 = metadata.get('expected_skipped_logs_step_3', 1)
         analyze_command_output(
-            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, only_logs_after),
             callback=event_monitor.make_aws_callback(pattern),
             expected_results=expected_skipped_logs_step_3,
             error_message=ERROR_MESSAGE['incorrect_event_number'],
@@ -834,7 +833,7 @@ def test_bucket_multiple_calls(
         # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
         # were processed, there were no duplicates
         analyze_command_output(
-            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-22'),
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, later_only_logs_after),
             callback=event_monitor.make_aws_callback(pattern),
             expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1,
             error_message=ERROR_MESSAGE['incorrect_event_number'],
@@ -844,7 +843,7 @@ def test_bucket_multiple_calls(
         # Call the module with the same parameters in and check there were no duplicates
         expected_skipped_logs_step_3 = metadata.get('expected_skipped_logs_step_3', 1)
         analyze_command_output(
-            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-20'),
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, only_logs_after),
             callback=event_monitor.make_aws_callback(pattern),
             expected_results=expected_skipped_logs_step_3,
             error_message=ERROR_MESSAGE['incorrect_event_number']
@@ -853,7 +852,7 @@ def test_bucket_multiple_calls(
         # Call the module with only_logs_after set with an early date than the one set previously and check that no logs
         # were processed, there were no duplicates
         analyze_command_output(
-            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, '2022-NOV-22'),
+            command_output=call_aws_module(*base_parameters, ONLY_LOGS_AFTER_PARAM, later_only_logs_after),
             callback=event_monitor.make_aws_callback(pattern),
             expected_results=expected_skipped_logs_step_3 - 1 if expected_skipped_logs_step_3 > 1 else 1,
             error_message=ERROR_MESSAGE['incorrect_event_number']
@@ -861,7 +860,15 @@ def test_bucket_multiple_calls(
 
     # Upload a log file for the day of the test execution and call the module without only_logs_after and check that
     # only the uploaded logs were processed and the last marker is specified in the DB.
-    last_marker_key = get_last_file_key(bucket_type, bucket_name, datetime.utcnow(), region, s3_client)
+    # Pre-resolve the effective type from the YAML bucket name so get_last_file_key doesn't try to infer the type
+    # from the shared bucket name via split('-')[1] (which produces 'agent' and causes KeyError).
+    # bucket_name (shared bucket) is still passed for the actual S3 Bucket object access inside get_last_file_key.
+    effective_bucket_type = bucket_type
+    if bucket_type == 'custom':
+        effective_bucket_type = data_bucket_name.split('-')[1]
+    elif bucket_type == 'guardduty' and 'native' in data_bucket_name:
+        effective_bucket_type = 'native-guardduty'
+    last_marker_key = get_last_file_key(effective_bucket_type, bucket_name, datetime.utcnow(), region, s3_client)
     if bucket_type == VPC_FLOW_TYPE:
         data, key = generate_file(bucket_type=bucket_type,
                                   bucket_name=data_bucket_name,

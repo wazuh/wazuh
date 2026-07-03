@@ -57,6 +57,30 @@ def _safe_delete_key(key, bucket_name, s3_client):
         logger.warning("TEARDOWN: failed to delete key %s from bucket %s: %s", key, bucket_name, exc)
 
 
+def _assert_prefix_clean(bucket_name, key, s3_client):
+    """Raise RuntimeError at setup time if any unexpected object already occupies the date-level prefix of key.
+
+    A single list_objects_v2 scoped to the exact prefix catches future seed collisions immediately,
+    rather than letting them produce a confusing count mismatch downstream.
+    """
+    prefix = key.rsplit('/', 1)[0] + '/'
+    unexpected = [
+        obj.key for obj in s3_client.Bucket(bucket_name).objects.filter(Prefix=prefix)
+        if obj.key not in _PERMANENT_SEED_KEYS
+        and not any(fid in obj.key for fid in _PERMANENT_SEED_FLOW_LOG_IDS)
+        and not obj.key.endswith('/')  # skip S3 folder-marker objects (empty keys ending with /)
+    ]
+    if unexpected:
+        colliding = "\n".join(f"  {k}" for k in unexpected)
+        raise RuntimeError(
+            f"SETUP COLLISION: unexpected object(s) already exist at prefix '{prefix}' "
+            f"in bucket '{bucket_name}' before uploading '{key}'.\n"
+            f"Colliding key(s):\n{colliding}\n"
+            "Action: add the key to _PERMANENT_SEED_KEYS in conftest.py, or change "
+            "'only_logs_after' in the relevant YAML to a date past these objects."
+        )
+
+
 @pytest.fixture
 def mark_cases_as_skipped(metadata):
     if metadata['name'] in ['alb_remove_from_bucket', 'clb_remove_from_bucket', 'nlb_remove_from_bucket']:
@@ -364,6 +388,9 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
                                               suffix=suffix,
                                               date=file_creation_date)
                     files_to_upload.append((data, key))
+
+            for _, key in files_to_upload:
+                _assert_prefix_clean(bucket_name, key, s3_client)
 
             for data, key in files_to_upload:
                 # Upload file to bucket

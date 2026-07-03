@@ -7,7 +7,8 @@
     resource_type: bucket
     bucket_type: cloudtrail
     bucket_name: wazuh-cloudtrail-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
+    later_only_logs_after: 2022-NOV-24
     expected_results: 1
     account_id: '819751203818'
 
@@ -21,7 +22,8 @@
     vpc_name: wazuh-vpc-integration-tests
     bucket_type: vpcflow
     bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
+    later_only_logs_after: 2022-NOV-24
     expected_results: 1
 
 - name: config_only_logs_after_multiple_calls
