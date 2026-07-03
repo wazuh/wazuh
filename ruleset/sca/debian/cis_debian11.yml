@@ -4961,7 +4961,7 @@ checks:
       - mitre_mitigations: ["M1027"]
     condition: all
     rules:
-      - 'not f:/etc/passwd -> r:^\w+:x:'
+      - 'not f:/etc/passwd -> !r:^\w+:x:'
 
   # 6.2.2 Ensure /etc/shadow password fields are not empty (Automated)
   - id: 29696
