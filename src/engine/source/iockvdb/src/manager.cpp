@@ -11,6 +11,7 @@
 #include <base/json.hpp>
 #include <base/logging.hpp>
 #include <base/name.hpp>
+#include <base/utils/generator.hpp>
 #include <store/istore.hpp>
 
 #include <iockvdb/dbHandle.hpp>
@@ -150,15 +151,10 @@ KVDBManager::KVDBManager(std::filesystem::path rootDir, std::shared_ptr<store::I
 
 std::filesystem::path KVDBManager::makeNextInstancePath(std::string_view name)
 {
-    // Use 4-char hex hash derived from current timestamp for uniqueness
-    auto now = std::chrono::system_clock::now();
-    auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-
-    // Generate 4-char hex hash from timestamp
-    uint16_t hash = static_cast<uint16_t>(nanos ^ (nanos >> 16) ^ (nanos >> 32) ^ (nanos >> 48));
-    char buf[5];
-    std::snprintf(buf, sizeof(buf), "%04x", hash);
-    return m_root / std::string(name) / buf;
+    // Random hex suffix for uniqueness. A timestamp-derived hash was used previously, but
+    // folding a nanosecond timestamp down to 16 bits collides under rapid add()/hotSwap()
+    // cycles on the same name, since consecutive calls can land on the same low-order bits.
+    return m_root / std::string(name) / base::utils::generators::randomHexString(8);
 }
 
 void KVDBManager::add(std::string_view name)
