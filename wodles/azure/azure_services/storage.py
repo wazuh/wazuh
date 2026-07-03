@@ -8,7 +8,6 @@
 import logging
 import sys
 from datetime import datetime
-from hashlib import md5
 from json import JSONDecodeError, dumps, loads
 from os.path import abspath, dirname
 
@@ -79,17 +78,20 @@ def start_storage(args):
 
     # Get the blobs
     for container in containers:
-        md5_hash = md5(name.encode()).hexdigest()
+        # Include the container name in the primary key so each container keeps its own bookmark.
+        # Using only the account name would make every container in the same storage account share
+        # a single bookmark row, causing low-volume containers to be skipped as "already processed"
+        md5_hash = orm.create_pk(account=name, container=container)
         offset = args.storage_time_offset
         try:
             item = orm.get_row(orm.Storage, md5=md5_hash)
             if item is None:
                 item = create_new_row(
-                    table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset
+                    table=orm.Storage, query=container, md5_hash=md5_hash, offset=offset
                 )
         except orm.AzureORMError as e:
             logging.error(
-                f'Error trying to obtain row object from "{orm.Storage.__tablename__}" using md5="{md5}": {e}'
+                f'Error trying to obtain row object from "{orm.Storage.__tablename__}" using md5="{md5_hash}": {e}'
             )
             sys.exit(1)
 

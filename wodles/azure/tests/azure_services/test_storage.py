@@ -8,7 +8,6 @@
 import json
 import sys
 from datetime import datetime
-from hashlib import md5
 from os.path import abspath, dirname, join, realpath
 from typing import Optional
 from unittest.mock import MagicMock, PropertyMock, call, patch
@@ -96,14 +95,64 @@ def test_start_storage(
 
     mock_auth.assert_called_with(auth_path=auth_path, fields=('account_name', 'account_key'))
 
-    md5_hash = md5(name.encode()).hexdigest()
+    md5_hash = orm.create_pk(account=name, container=container_name)
     mock_blob.assert_called_with(
         account_url=f'https://{name}.blob.core.windows.net/',
         credential={'account_name': name, 'account_key': key}
     )
     mock_get_row.assert_called_with(orm.Storage, md5=md5_hash)
-    mock_create.assert_called_with(table=orm.Storage, query=name, md5_hash=md5_hash, offset=offset)
+    mock_create.assert_called_with(table=orm.Storage, query=container_name, md5_hash=md5_hash, offset=offset)
     mock_get_blobs.assert_called_once()
+
+
+@patch('azure_services.storage.get_blobs')
+@patch('azure_services.storage.create_new_row')
+@patch('azure_services.storage.orm.get_row', return_value=None)
+@patch('azure_services.storage.BlobServiceClient')
+@patch('azure_services.storage.read_auth_file')
+def test_start_storage_multiple_containers_have_distinct_bookmarks(
+    mock_auth,
+    mock_blob,
+    mock_get_row,
+    mock_create,
+    mock_get_blobs,
+):
+    """Test each container in the same storage account gets its own bookmark row."""
+    name = 'name'
+    key = 'key'
+    offset = '1d'
+    container_names = ['container1', 'container2']
+    args = MagicMock(
+        storage_auth_path='auth_path',
+        account_name=name,
+        account_key=key,
+        container='*',
+        storage_time_offset=offset,
+    )
+    mock_create.return_value = MagicMock(min_processed_date=PRESENT_DATE, max_processed_date=PRESENT_DATE)
+    mock_auth.return_value = (name, key)
+    m = MagicMock()
+    mocked_containers = []
+    for container_name in container_names:
+        container = MagicMock()
+        container.name = container_name
+        mocked_containers.append(container)
+    m.list_containers.return_value = mocked_containers
+    mock_blob.return_value = m
+    start_storage(args)
+
+    expected_hashes = [
+        orm.create_pk(account=name, container=container_name) for container_name in container_names
+    ]
+    assert len(set(expected_hashes)) == len(container_names)
+    mock_get_row.assert_has_calls([call(orm.Storage, md5=md5_hash) for md5_hash in expected_hashes])
+    mock_create.assert_has_calls(
+        [
+            call(table=orm.Storage, query=container_name, md5_hash=md5_hash, offset=offset)
+            for container_name, md5_hash in zip(container_names, expected_hashes)
+        ]
+    )
+    assert mock_get_blobs.call_count == len(container_names)
 
 
 @pytest.mark.parametrize(
