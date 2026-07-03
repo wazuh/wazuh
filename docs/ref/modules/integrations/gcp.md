@@ -23,7 +23,7 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh agen
 ### Pub/Sub configuration
 
 ```xml
-  <wodle name="gcp-pubsub">
+  <gcp-pubsub>
     <enabled>yes</enabled>
     <project_id>my-gcp-project</project_id>
     <subscription_name>wazuh-subscription</subscription_name>
@@ -32,7 +32,7 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh agen
     <num_threads>1</num_threads>
     <pull_on_start>yes</pull_on_start>
     <interval>1h</interval>
-  </wodle>
+  </gcp-pubsub>
 ```
 
 #### Pub/Sub options
@@ -51,7 +51,7 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh agen
 ### Cloud Storage bucket configuration
 
 ```xml
-  <wodle name="gcp-bucket">
+  <gcp-bucket>
     <enabled>yes</enabled>
     <run_on_start>yes</run_on_start>
     <interval>1h</interval>
@@ -62,7 +62,7 @@ The GCP module is configured inside the `<ossec_config>` block of the Wazuh agen
       <only_logs_after>2024-01-01</only_logs_after>
       <remove_from_bucket>no</remove_from_bucket>
     </bucket>
-  </wodle>
+  </gcp-bucket>
 ```
 
 #### Bucket options
