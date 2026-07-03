@@ -2326,7 +2326,7 @@ The following metric names are defined by the module.
 
 ##### `indexer.queue.size`
 
-Current number of elements in the indexer queue.
+Current number of bytes buffered in the indexer queue.
 
 **Used for:** monitoring queue growth and backpressure.
 

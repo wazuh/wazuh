@@ -484,17 +484,7 @@ int main(int argc, char* argv[])
                 };
                 FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 
-                // Log pending events from previous sessions
-                const auto pendingEvents = indexerConnector->getQueueSize();
-                if (pendingEvents > 0)
-                {
-                    LOG_INFO("Indexer Connector initialized with {} pending events from previous session",
-                             pendingEvents);
-                }
-                else
-                {
-                    LOG_INFO("Indexer Connector initialized");
-                }
+                LOG_INFO("Indexer Connector initialized");
             }
             catch (const std::exception& e)
             {

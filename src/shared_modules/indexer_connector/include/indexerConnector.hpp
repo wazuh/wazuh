@@ -377,7 +377,7 @@ public:
     /**
      * @brief Get the current size of the indexing queue.
      *
-     * @return The number of pending indexing operations in the queue.
+     * @return The number of bytes pending in the queue.
      */
     uint64_t getQueueSize() const;
 

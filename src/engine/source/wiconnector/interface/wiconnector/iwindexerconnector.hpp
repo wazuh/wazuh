@@ -186,10 +186,9 @@ public:
     /**
      * @brief Gets the current size of the indexer queue.
      *
-     * Returns the number of events pending to be sent to the indexer.
-     * This includes events that were persisted from previous sessions.
+     * Returns the number of bytes pending to be sent to the indexer.
      *
-     * @return The number of events in the queue
+     * @return The number of bytes in the queue
      */
     virtual uint64_t getQueueSize() = 0;
 
