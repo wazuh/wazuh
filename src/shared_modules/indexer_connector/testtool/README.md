@@ -41,6 +41,7 @@ Every subcommand requires a **config JSON** passed with `-c`. Fields:
 | `name` | Optional | Connector instance name (informational) |
 | `index` | Optional | Default index name for `push-events` |
 | `max_queue_bytes` | Optional | Async mode — max pending bytes before dropping (0 = unlimited) |
+| `bulk_max_bytes` | Optional | Async mode — target byte threshold for each bulk request |
 | `flush_interval_seconds` | Optional | Async mode — flush interval in seconds |
 
 ### Example: dev e2e environment (HTTPS + TLS)
@@ -84,7 +85,10 @@ constructing any connector, so no manual keystore management is needed.
 
 ## Subcommand: `push-events`
 
-Push documents to an index. Supports sync (bulk HTTP) and async (RocksDB-queued) modes.
+Push documents to an index. Supports sync (bulk HTTP) and async (in-memory queued) modes.
+
+> **Important:** The async queue is not persistent. Pending events do not survive process
+> crashes or restarts and are discarded when the connector shuts down.
 
 ### Options
 
@@ -99,7 +103,6 @@ Push documents to an index. Supports sync (bulk HTTP) and async (RocksDB-queued)
 | `-l LOG_FILE` | Write logs to file |
 | `-L COUNT` | Run N flush cycles after indexing (sync only) |
 | `-D SECONDS` | Delay between flush cycles (sync only) |
-| `-I CONFIG2` | Add a second async instance (repeatable) |
 
 ### Examples
 

@@ -174,22 +174,23 @@ int runPushEvents(const int argc, const char* argv[])
         // Seed credentials from config JSON into the keystore before constructing any connector
         seedCredentials(configuration);
 
-        // Multi-instance async mode: enabled when -I is given together with -m async.
-        // Each instance gets its own isolated RocksDB queue: queue/indexer/tool-1, tool-2, ...
+        // Deprecated multi-instance async mode: retained temporarily for CLI compatibility.
         const auto& extraConfigs = args.getExtraConfigPaths();
         if (useAsync && !extraConfigs.empty())
         {
-            std::vector<std::pair<std::string, std::string>> instanceDefs; // (configPath, queueId)
-            instanceDefs.push_back({args.getConfigurationFilePath(), "tool-1"});
-            for (size_t i = 0; i < extraConfigs.size(); ++i)
-                instanceDefs.push_back({extraConfigs[i], "tool-" + std::to_string(i + 2)});
+            std::cerr << "Warning: -I multi-instance mode is deprecated and will be removed. "
+                         "Run one indexer_connector_tool process per configuration instead.\n";
 
-            std::cout << "Creating " << instanceDefs.size() << " IndexerConnectorAsync instances...\n";
+            std::vector<std::string> configPaths {args.getConfigurationFilePath()};
+            configPaths.insert(configPaths.end(), extraConfigs.begin(), extraConfigs.end());
+
+            std::cout << "Creating " << configPaths.size() << " IndexerConnectorAsync instances...\n";
 
             std::vector<std::unique_ptr<IndexerConnectorAsync>> connectors;
             std::vector<std::string> indexNames;
-            for (const auto& [cfgPath, queueId] : instanceDefs)
+            for (size_t i = 0; i < configPaths.size(); ++i)
             {
+                const auto& cfgPath = configPaths[i];
                 std::ifstream cfgFile(cfgPath);
                 if (!cfgFile.is_open())
                     throw std::runtime_error("Could not open configuration file: " + cfgPath);
@@ -203,8 +204,8 @@ int runPushEvents(const int argc, const char* argv[])
                                                 : "wazuh-test";
                 indexNames.push_back(idxName);
 
-                std::cout << "  [" << queueId << "] config=" << cfgPath << ", index=" << idxName
-                          << ", queue=queue/indexer/" << queueId << "\n";
+                std::cout << "  [instance-" << i + 1 << "] config=" << cfgPath << ", index=" << idxName
+                          << ", queue=in-memory\n";
             }
 
             if (!args.getEventsFilePath().empty())
@@ -241,7 +242,7 @@ int runPushEvents(const int argc, const char* argv[])
                     {
                         std::cerr << "Timeout waiting for async queues. Remaining:";
                         for (size_t ci = 0; ci < connectors.size(); ++ci)
-                            std::cerr << " " << instanceDefs[ci].second << "=" << connectors[ci]->getQueueSize();
+                            std::cerr << " instance-" << ci + 1 << "=" << connectors[ci]->getQueueSize();
                         std::cerr << "\n";
                         break;
                     }
