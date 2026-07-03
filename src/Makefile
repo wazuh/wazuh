@@ -537,7 +537,8 @@ INDEXER_TEMPLATES_SERVER_STATES := \
 
 INDEXER_TEMPLATES_SERVER_STREAMS := \
 	metrics-agents.json \
-	metrics-comms.json
+	metrics-comms.json \
+	metrics-normalization.json
 
 # WCS flat files
 WCS_FLAT_DIR := external/wcs-flat-files
