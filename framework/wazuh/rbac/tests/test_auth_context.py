@@ -4,6 +4,7 @@
 
 import json
 import os
+import regex
 from unittest.mock import patch, MagicMock
 
 import pytest
@@ -147,3 +148,29 @@ def test_get_user_roles_denies_when_depth_exceeded():
     checker.roles_list = [{"id": 1, "rules": [{"id": 1, "rule": {"NOT": [{"FIND": {"leaf": "value"}}]}}]}]
 
     assert checker.get_user_roles() == []
+
+
+def test_process_lists_handles_regex_timeout():
+    """process_lists must not propagate a regex timeout; it should skip and continue."""
+    checker = _make_checker()
+    fake_pattern = MagicMock()
+    fake_pattern.match.side_effect = TimeoutError('regex timed out')
+    with patch.object(checker, 'check_regex', return_value=fake_pattern):
+        result = checker.process_lists(["ignored"], ["anything"], 'MATCH')
+    assert result == 0
+
+
+def test_match_item_survives_catastrophic_backtracking():
+    """match_item must not hang or raise when a role regex causes catastrophic backtracking.
+
+    (a|a)+$ against a string of 'a's with no terminating match is a classic ReDoS pattern;
+    without the timeout it would hang for minutes. check_regex is patched to bypass the
+    'r\\'...\\'' marker parsing so this test exercises the timeout handling directly, not the
+    marker string slicing.
+    """
+    checker = _make_checker()
+    evil_pattern = regex.compile(r'(a|a)+$')
+    evil_input = "a" * 30 + "!"  # never matches; triggers exponential backtracking
+    with patch.object(checker, 'check_regex', return_value=evil_pattern):
+        result = checker.match_item("irrelevant", [evil_input], 'MATCH')
+    assert result in (0, False)

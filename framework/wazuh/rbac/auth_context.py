@@ -156,7 +156,7 @@ class RBAChecker:
                     try:
                         if pattern.match(value, timeout=REGEX_TIME_LIMIT):
                             counter += 1
-                    except regex.TimeoutError:
+                    except TimeoutError:
                         continue
                 else:
                     if value == v:
@@ -277,7 +277,7 @@ class RBAChecker:
                         try:
                             if pattern.match(key_auth, timeout=REGEX_TIME_LIMIT):
                                 validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_auth], mode)
-                        except regex.TimeoutError:
+                        except TimeoutError:
                             continue
                 if key_rule in auth_context.keys():
                     validator_counter += self.match_item(role_chunk[key_rule], auth_context[key_rule], mode)
@@ -292,7 +292,7 @@ class RBAChecker:
                     try:
                         if pattern.match(context, timeout=REGEX_TIME_LIMIT):
                             return 1
-                    except regex.TimeoutError:
+                    except TimeoutError:
                         continue
             if role_chunk == auth_context:
                 return 1
