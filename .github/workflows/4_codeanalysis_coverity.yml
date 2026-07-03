@@ -65,6 +65,7 @@ jobs:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     needs: prepare
     permissions:
+      id-token: write
       contents: read
       packages: read
     steps:
@@ -110,6 +111,9 @@ jobs:
   upload:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     needs: [prepare, build]
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
