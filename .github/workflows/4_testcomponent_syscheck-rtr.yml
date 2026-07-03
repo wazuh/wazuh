@@ -19,10 +19,10 @@ permissions:
 jobs:
   rtr:
     strategy:
-          fail-fast: false
-          matrix:
-              module: [syscheckd]
-              target: [agent, winagent]
+      fail-fast: false
+      matrix:
+        module: [syscheckd]
+        target: [agent, winagent]
     # We don't use ubuntu-latest because the install_build_deps action adds a fixed repository for Wine
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     steps:

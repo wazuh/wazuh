@@ -47,22 +47,28 @@ jobs:
           ref: ${{ inputs.source_reference }}
 
       - name: Set TAG
+        env:
+          INPUT_DOCKER_IMAGE_TAG: ${{ inputs.docker_image_tag }}
+          INPUT_SOURCE_REFERENCE: ${{ inputs.source_reference }}
         run: |
           VERSION="$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
-          if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then
+          if [ "$INPUT_DOCKER_IMAGE_TAG" == "auto" ]; then
             echo "TAG=$VERSION" >> $GITHUB_ENV;
-          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then
-            echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ inputs.source_reference }})" >> $GITHUB_ENV;
+          elif [ "$INPUT_DOCKER_IMAGE_TAG" == "developer" ]; then
+            echo "TAG=$(sed 's|[/\\]|--|g' <<< "$INPUT_SOURCE_REFERENCE")" >> $GITHUB_ENV;
           else
-            echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV;
+            echo "TAG=$INPUT_DOCKER_IMAGE_TAG" >> $GITHUB_ENV;
           fi
 
       - name: Copy build.sh and utils to Dockerfile path
+        env:
+          INPUT_SYSTEM: ${{ inputs.system }}
+          INPUT_ARCHITECTURE: ${{ inputs.architecture }}
         run: |
-          dockerfile_path="packages/${{ inputs.system }}s/${{ inputs.architecture }}/manager"
+          dockerfile_path="packages/${INPUT_SYSTEM}s/${INPUT_ARCHITECTURE}/manager"
           echo "DOCKERFILE_PATH=$dockerfile_path" >> $GITHUB_ENV
-          cp packages/build.sh $dockerfile_path
-          cp packages/${{ inputs.system }}s/utils/* $dockerfile_path
+          cp packages/build.sh "$dockerfile_path"
+          cp packages/"${INPUT_SYSTEM}"s/utils/* "$dockerfile_path"
 
       - name: CodeBuild workarounds
         # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
@@ -80,5 +86,9 @@ jobs:
           git config core.repositoryformatversion 0
 
       - name: Build and push image pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ env.TAG }} to Github Container Registry
-        run:
-          bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}
+        env:
+          INPUT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_GITHUB_ACTOR: ${{ github.actor }}
+          INPUT_SYSTEM: ${{ inputs.system }}
+          INPUT_ARCHITECTURE: ${{ inputs.architecture }}
+        run: bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh "$INPUT_GITHUB_TOKEN" "$INPUT_GITHUB_ACTOR" "pkg_${INPUT_SYSTEM}_manager_builder_${INPUT_ARCHITECTURE}" "$DOCKERFILE_PATH" "$TAG"

@@ -6,7 +6,7 @@ on:
         description: 'Comma-separated targets. Example: "rpm-x86_64,deb-amd64".'
         type: string
         required: true
-        default: 'rpm-x86_64,rpm-aarch64,deb-amd64,deb-arm64'
+        default: "rpm-x86_64,rpm-aarch64,deb-amd64,deb-arm64"
       revision:
         description: |
           Set the value to "1" for packages in release format.
@@ -16,11 +16,11 @@ on:
         type: string
         required: false
       is_stage:
-          description: |
-            Build package with release format.
-            By default: false
-          type: boolean
-          required: false
+        description: |
+          Build package with release format.
+          By default: false
+        type: boolean
+        required: false
       debug:
         description: |
           Build the binaries as debug (without optimizations).
@@ -45,9 +45,11 @@ jobs:
       - name: Generate dynamic matrix
         id: set-matrix
         uses: actions/github-script@v7
+        env:
+          INPUT_TARGETS: ${{ inputs.targets || 'rpm-x86_64,rpm-aarch64,deb-amd64,deb-arm64' }}
         with:
           script: |
-            const targets = '${{ inputs.targets || 'rpm-x86_64,rpm-aarch64,deb-amd64,deb-arm64' }}'.split(',');
+            const targets = process.env.INPUT_TARGETS.split(',');
             const matrix = targets.map(target => {
               const [system, architecture] = target.split('-');
               return { system, architecture };
@@ -59,13 +61,13 @@ jobs:
     name: Build Wazuh Manager
     needs: select-targets
     strategy:
-        matrix: ${{ fromJSON(needs.select-targets.outputs.matrix) }}
-        fail-fast: false
+      matrix: ${{ fromJSON(needs.select-targets.outputs.matrix) }}
+      fail-fast: false
     uses: ./.github/workflows/4_builderpackage_manager.yml
     with:
-      docker_image_tag: auto  
-      architecture:  ${{ matrix.architecture }}
-      system:  ${{ matrix.system }}
+      docker_image_tag: auto
+      architecture: ${{ matrix.architecture }}
+      system: ${{ matrix.system }}
       revision: ${{ inputs.revision || '0' }}
       is_stage: "${{ inputs.is_stage || false }}"
       debug: "${{ inputs.debug || false }}"

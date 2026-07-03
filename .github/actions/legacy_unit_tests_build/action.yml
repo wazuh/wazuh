@@ -13,6 +13,8 @@ runs:
         chmod +x .github/actions/legacy_unit_tests.sh
     - name: Build Wazuh Unit Tests
       shell: bash
+      env:
+        INPUT_TARGET: ${{ inputs.target }}
       run: |
         source .github/actions/legacy_unit_tests.sh
-        build_wazuh_unit_tests ${{ inputs.target }}
+        build_wazuh_unit_tests "$INPUT_TARGET"
