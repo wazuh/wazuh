@@ -134,9 +134,9 @@ public:
      * @brief Get the string value referencing internal storage (zero-copy), mirroring
      * json::Json::getString.
      *
-     * On success @p out references this Value's own storage and stays valid while the
-     * Value is alive and unmodified (safe to capture the resulting string into a
-     * per-event operation after copying it).
+     * On success @p out references this Value's own storage and stays valid only while the
+     * Value is alive and unmodified. Copy the view into an owned std::string before storing
+     * it in a long-lived object or capturing it in a per-event operation.
      *
      * @param out Output string_view, only assigned on success.
      * @return json::RetGet::Success if the Value holds a string, otherwise
@@ -166,8 +166,10 @@ public:
      *
      * Returned by value; string-only Values keep their lightweight std::string storage.
      * Only used at build time, so the per-call materialization is not on the hot path.
+     * Do not bind the result to a const reference; keep it by value if it must outlive
+     * the full expression.
      */
-    json::Json value() const
+    [[nodiscard]] json::Json value() const
     {
         if (std::holds_alternative<std::shared_ptr<const json::Json>>(m_value))
         {
@@ -179,7 +181,7 @@ public:
     }
 
     /** @brief Get a shared json::Json for the value (zero-copy for the json variant). */
-    std::shared_ptr<const json::Json> sharedValue() const
+    [[nodiscard]] std::shared_ptr<const json::Json> sharedValue() const
     {
         if (std::holds_alternative<std::shared_ptr<const json::Json>>(m_value))
         {
