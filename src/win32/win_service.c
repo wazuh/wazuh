@@ -297,7 +297,16 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                  * also skipped when the buffer is disabled. */
                 if (g_dispatch_buffer_thread) {
                     buffer_stop();
-                    WaitForSingleObject(g_dispatch_buffer_thread, 2000);
+
+                    if (WaitForSingleObject(g_dispatch_buffer_thread, 2000) == WAIT_TIMEOUT) {
+                        /* Thread is blocked in send_msg (e.g. stalled socket with no
+                         * SO_SNDTIMEO). TerminateThread is a hard kill, but we are in
+                         * the shutdown path and must guarantee the thread is dead before
+                         * HC_SHUTDOWN is sent by the atexit handler. */
+                        mdebug1("dispatch_buffer thread did not stop within timeout; terminating forcefully.");
+                        TerminateThread(g_dispatch_buffer_thread, 0);
+                    }
+                    
                     CloseHandle(g_dispatch_buffer_thread);
                     g_dispatch_buffer_thread = NULL;
                 }
