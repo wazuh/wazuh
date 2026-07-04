@@ -25,6 +25,7 @@ add_library(store::fileDriver ALIAS store_fileDriver)
 ## Store
 add_library(store STATIC
     ${SRC_DIR}/store.cpp
+    ${SRC_DIR}/utils.cpp
 )
 target_include_directories(store
     PUBLIC

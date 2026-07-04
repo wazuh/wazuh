@@ -49,6 +49,7 @@
 #include <schemf/schema.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <store/store.hpp>
+#include <store/utils.hpp>
 #include <streamlog/logger.hpp>
 #include <wiconnector/windexerconnector.hpp>
 
@@ -256,6 +257,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
     std::shared_ptr<ioc::sync::IocSync> iocSyncService;
+    bool firstStart {false};
 
     try
     {
@@ -305,6 +307,7 @@ int main(int argc, char* argv[])
             auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
             store = std::make_shared<store::Store>(fileDriver);
             LOG_INFO("Store initialized");
+            firstStart = store::utils::updateStartStatus(store, engineUptimeISO);
         }
 
         // Content Manager
@@ -893,7 +896,7 @@ int main(int argc, char* argv[])
             auto lastWarned = std::make_shared<std::optional<bool>>();
 
             // Logs only on state transitions (no routes <-> at least one enabled route).
-            const auto reportRouteStatus = [hasEnabledRoutes, lastWarned]()
+            const auto reportRouteStatus = [hasEnabledRoutes, lastWarned, firstStart]()
             {
                 const bool shouldWarn = !hasEnabledRoutes();
                 if (*lastWarned == shouldWarn)
@@ -903,8 +906,16 @@ int main(int argc, char* argv[])
                 *lastWarned = shouldWarn;
                 if (shouldWarn)
                 {
-                    LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded "
-                                "until content synchronization completes");
+                    if (firstStart)
+                    {
+                        LOG_INFO("[CMSync] No active routes available. Incoming events will be discarded "
+                                 "until content synchronization completes");
+                    }
+                    else
+                    {
+                        LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded "
+                                    "until content synchronization completes");
+                    }
                 }
                 else
                 {
