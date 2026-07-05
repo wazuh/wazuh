@@ -21,6 +21,7 @@
 
 
 void w_authd_parse_agents(XML_NODE node, authd_config_t * config);
+int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 
 
 /* setup/teardown */
@@ -118,6 +119,23 @@ static void test_w_authd_parse_agents_invalid_element(void **state) {
     os_free(node);
 }
 
+// Test Read_Authd defaults
+
+static void test_authd_use_password_default(void **state) {
+    authd_config_t local_config = {0};
+
+    /* With no <auth> children, only the defaults are applied */
+    assert_int_equal(Read_Authd(NULL, NULL, &local_config, NULL), 0);
+
+    /* Binary default is disabled when <use_password> is omitted; the shipped
+     * configuration enables it via the template (issue #36705). */
+    assert_int_equal(local_config.flags.use_password, 0);
+
+    os_free(local_config.ciphers);
+    os_free(local_config.manager_cert);
+    os_free(local_config.manager_key);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -126,6 +144,7 @@ int main(void)
         cmocka_unit_test(test_w_authd_parse_agents_yes),
         cmocka_unit_test(test_w_authd_parse_agents_invalid_value),
         cmocka_unit_test(test_w_authd_parse_agents_invalid_element),
+        cmocka_unit_test(test_authd_use_password_default),
 
     };
 

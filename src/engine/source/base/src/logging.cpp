@@ -269,7 +269,7 @@ createStandaloneLogFunction()
 
         char buffer[4096]; // Max size of formatted message TODO move a constant
         vsnprintf(buffer, sizeof(buffer), msg, args);
-        backend_log(level, file, line, func, buffer, strlen(buffer));
+        backend_log(level, file, line, func, buffer, strlen(buffer), tag);
     };
 }
 

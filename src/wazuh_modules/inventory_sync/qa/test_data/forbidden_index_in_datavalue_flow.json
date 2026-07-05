@@ -9,7 +9,8 @@
         "size": 1,
         "agentid": "001",
         "agentname": "forbidden-index-agent",
-        "agentversion": "5.0.0"
+        "agentversion": "5.0.0",
+        "cluster_name": "wazuh"
       },
       "description": "Start a ModuleFull session declaring 1 DataValue",
       "delay": 0.5,
@@ -22,7 +23,9 @@
         "operation": 0,
         "id": "doc-forbidden",
         "index": "forbidden-index",
-        "data": {"x": 42}
+        "data": {
+          "x": 42
+        }
       },
       "description": "DataValue with a non wazuh-states-* index - must be skipped by the bulk loop",
       "delay": 0.3,

@@ -44,7 +44,7 @@ info:
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/5.0.0/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0-beta3/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -2672,25 +2672,148 @@ components:
                                   type: integer
                                   format: int32
 
+    NodeDaemonStatus:
+      type: object
+      description: "Per-daemon readiness status reported by a cluster node."
+      properties:
+        ready:
+          type: boolean
+          description: "Whether the daemon is ready to handle requests."
+        running:
+          type: boolean
+          description: "Whether the daemon process is currently running."
+
+    AnalysisdStatus:
+      allOf:
+        - $ref: '#/components/schemas/NodeDaemonStatus'
+        - type: object
+          description: "Extended status for wazuh-manager-analysisd including engine resource states."
+          properties:
+            spaces:
+              type: object
+              description: "Status of content spaces (e.g. standard, custom)."
+              additionalProperties:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  enabled:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [ready, updating, failed]
+                  hash:
+                    type: string
+                  last_successful_update:
+                    type: integer
+                    format: int64
+            ioc:
+              type: object
+              description: "Status of IOC resource types."
+              additionalProperties:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [ready, updating, failed]
+                  hash:
+                    type: string
+                  last_successful_update:
+                    type: integer
+                    format: int64
+            geo:
+              type: object
+              description: "Status of GeoIP databases."
+              additionalProperties:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [ready, updating, failed]
+                  hash:
+                    type: string
+                  last_successful_update:
+                    type: integer
+                    format: int64
+
+    VulnerabilityDetectorStatus:
+      type: object
+      description: "Status of the vulnerability-detector module as reported by the modulesd socket."
+      properties:
+        available:
+          type: boolean
+          description: "Whether the CVE feed has been loaded at least once and is usable for scanning."
+        status:
+          type: string
+          enum: [updating, ready, failed]
+          description: "Current feed lifecycle state."
+        enabled:
+          type: boolean
+          description: "Whether vulnerability detection is enabled in the configuration."
+        offset:
+          type: integer
+          format: int64
+          description: "Feed cursor (content manager offset) of the last completed download cycle."
+        last_successful_update:
+          type: integer
+          format: int64
+          description: "Unix timestamp of the last successful feed completion, or 0 if none."
+
+    ModulesdStatus:
+      allOf:
+        - $ref: '#/components/schemas/NodeDaemonStatus'
+        - type: object
+          description: "Extended status for wazuh-manager-modulesd including sub-module states."
+          properties:
+            modules:
+              type: object
+              description: "Status of manager-exclusive modulesd sub-modules."
+              properties:
+                vulnerability-detector:
+                  $ref: '#/components/schemas/VulnerabilityDetectorStatus'
+                inventory-sync:
+                  type: object
+                  properties:
+                    available:
+                      type: boolean
+                content-manager:
+                  type: object
+                  properties:
+                    available:
+                      type: boolean
+                task-manager:
+                  type: object
+                  properties:
+                    available:
+                      type: boolean
+
     WazuhDaemonsStatus:
       type: object
+      description: "Readiness and running status of all Wazuh manager daemons on a cluster node."
       properties:
+        ready:
+          type: boolean
+          description: "True only when every daemon on the node is ready."
         wazuh-manager-analysisd:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/AnalysisdStatus'
         wazuh-manager-authd:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-monitord:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-remoted:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-apid:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-clusterd:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-db:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-modulesd:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/ModulesdStatus'
 
     WazuhInfo:
       type: object
@@ -2769,7 +2892,7 @@ components:
             - warning
         tag:
           type: string
-          format: alphanumeric
+          format: alphanumeric_symbols
           description: "Wazuh component that logged the event"
         timestamp:
           type: string
@@ -3771,7 +3894,7 @@ components:
       description: "Wazuh component that logged the event"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     log_level:
       in: query
       name: level
@@ -4007,7 +4130,7 @@ paths:
                 api_version: "v4.5.0"
                 revision: 'alpha0'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/5.0.0/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-beta3/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -6921,8 +7044,8 @@ paths:
     get:
       tags:
         - Cluster
-      summary: "Get node status"
-      description: "Return the status of all Wazuh daemons in node node_id"
+      summary: "Get node readiness"
+      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node-level ready is true only when every daemon is ready."
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -6932,7 +7055,7 @@ paths:
         - $ref: '#/components/parameters/node_id'
       responses:
         '200':
-          description: "Node wazuh daemons statuses"
+          description: "Node readiness"
           content:
             application/json:
               schema:
@@ -6941,22 +7064,58 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/WazuhDaemonsStatus'
+                        type: object
+                        properties:
+                          affected_items:
+                            type: array
+                            items:
+                              type: object
+                              additionalProperties: true
+                          total_affected_items:
+                            type: integer
+                          total_failed_items:
+                            type: integer
+                          failed_items:
+                            type: array
+                            items:
+                              type: object
               example:
                 data:
                   affected_items:
-                    - wazuh-manager-analysisd: running
-                      wazuh-manager-authd: stopped
-                      wazuh-manager-monitord: running
-                      wazuh-manager-remoted: running
-                      wazuh-manager-apid: running
-                      wazuh-manager-clusterd: running
-                      wazuh-manager-db: running
-                      wazuh-manager-modulesd: running
+                    - ready: false
+                      wazuh-manager-analysisd:
+                        ready: false
+                        running: true
+                        spaces:
+                          standard: { available: true, enabled: true, status: ready, hash: "abc", last_successful_update: 1750068600 }
+                          custom: { available: false, enabled: false, status: ready, hash: "", last_successful_update: 0 }
+                        ioc:
+                          connection: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          url_domain: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          url_full: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          hash_md5: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          hash_sha1: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          hash_sha256: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                        geo:
+                          city: { available: true, status: ready, hash: "h", last_successful_update: 1750066800 }
+                          asn: { available: false, status: running, hash: "", last_successful_update: 0 }
+                      wazuh-manager-modulesd:
+                        ready: true
+                        running: true
+                        modules:
+                          vulnerability-detector: { available: true, status: ready, enabled: true, offset: 0, last_successful_update: 1782822942 }
+                          inventory-sync: { available: true }
+                          content-manager: { available: true }
+                          task-manager: { available: true }
+                      wazuh-manager-remoted: { ready: true, running: true }
+                      wazuh-manager-db: { ready: true, running: true }
+                      wazuh-manager-authd: { ready: false, running: false }
+                      wazuh-manager-clusterd: { ready: true, running: true }
+                      wazuh-manager-apid: { ready: true, running: true }
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "Processes status was successfully read in specified node"
+                message: "Node readiness was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'

@@ -4,9 +4,9 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - "src/engine/**"
-      - ".github/actions/reinstall_cmake/**"
-      - ".github/workflows/5_testintegration_engine.yml"
+      - 'src/engine/**'
+      - '.github/actions/reinstall_cmake/**'
+      - '.github/workflows/5_testintegration_engine.yml'
   workflow_dispatch:
 
 concurrency:
@@ -21,9 +21,12 @@ jobs:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Build Server
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v3
 
       - name: Install CMake
         uses: ./.github/actions/reinstall_cmake
@@ -34,13 +37,16 @@ jobs:
           make -C src TARGET=manager -j$(nproc)
 
       - name: Upload engine binary
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: wazuh-engine
           path: src/build/engine/wazuh-engine
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload wazuh shared libraries
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: wazuh-shared-libraries
           path: |
@@ -48,132 +54,162 @@ jobs:
             src/build/lib/libwazuhshared.so
             src/build/lib/libindexer_connector.so
             src/build/lib/libcontent_manager.so
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload rocksdb shared libraries
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: rocksdb-shared-library
           path: |
             src/external/rocksdb/build/librocksdb.so
             src/external/rocksdb/build/librocksdb.so.8
             src/external/rocksdb/build/librocksdb.so.8.3.2
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   helper_tests:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: Helper Functions Test
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
     needs: build
     timeout-minutes: 60
     env:
       LD_LIBRARY_PATH: ${{github.workspace}}/src:${{github.workspace}}/src/build/lib:${{github.workspace}}/src/external/rocksdb/build
 
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v6
+    - name: Checkout Repo
+      uses: actions/checkout@v3
 
-      - name: Download engine binary
-        uses: actions/download-artifact@v4
-        with:
-          name: wazuh-engine
-          path: src/build/engine/
+    - name: Download engine binary
+      uses: ./.github/actions/download_s3_artifact
+      with:
+        name: wazuh-engine
+        path: src/build/engine/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Download rocksdb shared libraries
-        uses: actions/download-artifact@v4
-        with:
-          name: rocksdb-shared-library
-          path: src/external/rocksdb/build/
+    - name: Download rocksdb shared libraries
+      uses: ./.github/actions/download_s3_artifact
+      with:
+        name: rocksdb-shared-library
+        path: src/external/rocksdb/build/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Download wazuh shared libraries
-        uses: actions/download-artifact@v4
-        with:
-          name: wazuh-shared-libraries
-          path: src/build/lib/
+    - name: Download wazuh shared libraries
+      uses: ./.github/actions/download_s3_artifact
+      with:
+        name: wazuh-shared-libraries
+        path: src/build/lib/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.12
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
 
-      - name: Install dependencies
-        run: |
-          ls -la src/build/engine
-          ls -la src/external/rocksdb/build
-          sudo apt-get update && sudo apt-get install -y libcap2-bin
-          pip install ${{env.ENGINE_DIR}}/tools/api-communication/
-          pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
-          pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
-          pip install ${{env.ENGINE_DIR}}/test/helper_tests/engine-helper-test/
+    - name: Install dependencies
+      run: |
+        ls -la src/build/engine
+        ls -la src/external/rocksdb/build
+        sudo apt-get update && sudo apt-get install -y libcap2-bin
+        pip install ${{env.ENGINE_DIR}}/tools/api-communication/
+        pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
+        pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
+        pip install ${{env.ENGINE_DIR}}/test/helper_tests/engine-helper-test/
 
-      - name: Setup environment
-        run: |
-          chmod +x src/build/engine/wazuh-engine
-          python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
+    - name: Setup environment
+      run: |
+        chmod +x src/build/engine/wazuh-engine
+        python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
-      - name: Initial state
-        run: engine-helper-test -e /tmp/actions init --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/config.env
+    - name: Initial state
+      run: engine-helper-test -e /tmp/actions init --mmdb ${{env.ENGINE_DIR}}/test/helper_tests/mmdb/ --conf ${{env.ENGINE_DIR}}/test/helper_tests/configuration_files/config.env
 
-      - name: Validate helper descriptions
-        run: engine-helper-test -e /tmp/actions validate --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/
+    - name: Validate helper descriptions
+      run: engine-helper-test -e /tmp/actions validate --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/
 
-      - name: Generate tests
-        run: engine-helper-test -e /tmp/actions generate-tests --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_tests/
+    - name: Generate tests
+      run: engine-helper-test -e /tmp/actions generate-tests --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_tests/
 
-      - name: Run tests
-        run: engine-helper-test -e /tmp/actions run --input-dir /tmp/helper_tests/
+    - name: Run tests
+      run: engine-helper-test -e /tmp/actions run --input-dir /tmp/helper_tests/
 
-      - name: Validate documentation generation
-        run: engine-helper-test -e /tmp/actions generate-doc --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_docs/
+    - name: Validate documentation generation
+      run: engine-helper-test -e /tmp/actions generate-doc --input-dir ${{env.ENGINE_DIR}}/test/helper_tests/helpers_description/ -o /tmp/helper_docs/
 
   api_tests:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     name: API Endpoints Test
     runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
     needs: build
     timeout-minutes: 60
     env:
       LD_LIBRARY_PATH: ${{github.workspace}}/src:${{github.workspace}}/src/build/lib:${{github.workspace}}/src/external/rocksdb/build
 
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v6
+    - name: Checkout Repo
+      uses: actions/checkout@v3
 
-      - name: Download engine binary
-        uses: actions/download-artifact@v4
-        with:
-          name: wazuh-engine
-          path: src/build/engine/
+    - name: Download engine binary
+      uses: ./.github/actions/download_s3_artifact
+      with:
+        name: wazuh-engine
+        path: src/build/engine/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Download rocksdb shared libraries
-        uses: actions/download-artifact@v4
-        with:
-          name: rocksdb-shared-library
-          path: src/external/rocksdb/build/
+    - name: Download rocksdb shared libraries
+      uses: ./.github/actions/download_s3_artifact
+      with:
+        name: rocksdb-shared-library
+        path: src/external/rocksdb/build/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Download wazuh shared libraries
-        uses: actions/download-artifact@v4
-        with:
-          name: wazuh-shared-libraries
-          path: src/build/lib/
+    - name: Download wazuh shared libraries
+      uses: ./.github/actions/download_s3_artifact
+      with:
+        name: wazuh-shared-libraries
+        path: src/build/lib/
+        bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+        aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+        aws_region: ${{ secrets.CI_AWS_REGION }}
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.12
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: 3.12
 
-      - name: Install dependencies
-        run: |
-          pip install ${{env.ENGINE_DIR}}/tools/api-communication/
-          pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
-          pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
-          pip install ${{env.ENGINE_DIR}}/test/integration_tests/engine-it
+    - name: Install dependencies
+      run: |
+        pip install ${{env.ENGINE_DIR}}/tools/api-communication/
+        pip install ${{env.ENGINE_DIR}}/tools/engine-suite/
+        pip install ${{env.ENGINE_DIR}}/test/engine-test-utils/
+        pip install ${{env.ENGINE_DIR}}/test/integration_tests/engine-it
 
-      - name: Setup environment
-        run: |
-          chmod +x src/build/engine/wazuh-engine
-          python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
+    - name: Setup environment
+      run: |
+        chmod +x src/build/engine/wazuh-engine
+        python3 ${{env.ENGINE_DIR}}/test/setupEnvironment.py -e /tmp/actions
 
-      - name: Initial state
-        run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/  init
+    - name: Initial state
+      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/  init
 
-      - name: Integration Test
-        run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ run
+    - name: Integration Test
+      run: engine-it -e /tmp/actions -t ${{env.ENGINE_DIR}}/test/integration_tests/ run

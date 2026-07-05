@@ -116,11 +116,12 @@ class IndexerConnectorAsyncImpl final
     std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
     const std::string m_queueId;
     const std::string m_dbPath;
-    const std::string m_logTag;
+    LogFn m_logFn;
     bool m_error413Logged {false};
     size_t m_successCount {0};
     size_t m_maxQueueSize {0};
     size_t m_flushInterval {FlushInterval};
+    size_t m_elementsPerBulk {ElementsPerBulk};
     std::unique_ptr<ThreadDispatchQueue> m_dispatcher;
 
 public:
@@ -138,8 +139,13 @@ public:
         : m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
         , m_queueId(std::move(queueId))
         , m_dbPath((std::filesystem::path(std::move(basePath)) / m_queueId).string())
-        , m_logTag(callerName.empty() ? "indexer-connector" : callerName + " (indexer-connector)")
+        , m_logFn {}
     {
+        m_logFn = LogFn {callerName}.compose("indexer-connector");
+        // Install caller context so sub-objects (RocksDB queues, dispatchers) pick up the right base tag
+        // via makeLibLogFn(). Restores the previous TL value when the constructor exits.
+        const Log::ScopedModuleLogFn guard {callerName.empty() ? LogFn {"indexer-connector"} : LogFn {callerName}};
+
         if (m_queueId.empty())
         {
             throw IndexerConnectorException("queueId cannot be empty: each IndexerConnectorAsync instance "
@@ -206,14 +212,14 @@ public:
         static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
         if (username.empty() && password.empty())
         {
-            username = "wazuh-server";
-            password = "wazuh-server";
-            logWarn(m_logTag.c_str(), "No username and password found in the keystore, using default values.");
+            username = "admin";
+            password = "admin";
+            LOG_WARN(m_logFn, "No username and password found in the keystore, using default values.");
         }
         if (username.empty())
         {
-            username = "wazuh-server";
-            logWarn(m_logTag.c_str(), "No username found in the keystore, using default value.");
+            username = "admin";
+            LOG_WARN(m_logFn, "No username found in the keystore, using default value.");
         }
         m_secureCommunication = SecureCommunication::builder();
         m_secureCommunication.basicAuth(username + ":" + password)
@@ -236,6 +242,10 @@ public:
                 ? config.at("flush_interval_seconds").get<size_t>()
                 : FlushInterval;
 
+        m_elementsPerBulk = config.contains("elements_per_bulk") && config.at("elements_per_bulk").is_number_integer()
+                                ? config.at("elements_per_bulk").get<size_t>()
+                                : ElementsPerBulk;
+
         m_loggerProcessor = std::make_unique<ThreadLoggerQueue>(
             [this](const IndexerResponse& data)
             {
@@ -246,7 +256,7 @@ public:
                 if (auto parseResult = parser.parse(data.m_response).get(parsedResponse);
                     parseResult != simdjson::SUCCESS)
                 {
-                    logDebug2(m_logTag.c_str(), "Failed to parse the indexer response %s", data.m_response.c_str());
+                    LOG_DEBUG2(m_logFn, "Failed to parse the indexer response %s", data.m_response.c_str());
                     return;
                 }
 
@@ -268,10 +278,10 @@ public:
                 const size_t itemsSize = itemsArray.size();
                 if (data.m_boundaries.size() != itemsSize)
                 {
-                    logWarn(m_logTag.c_str(),
-                            "Mismatch between the number of events (%zu) and response items (%zu)",
-                            data.m_boundaries.size(),
-                            itemsSize);
+                    LOG_WARN(m_logFn,
+                             "Mismatch between the number of events (%zu) and response items (%zu)",
+                             data.m_boundaries.size(),
+                             itemsSize);
                     return;
                 }
 
@@ -353,30 +363,30 @@ public:
                     // Build error message with caused_by info if available
                     if (!causedByReason.empty() && !causedByType.empty())
                     {
-                        logWarn(m_logTag.c_str(),
-                                "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
-                                "Associated event: %.*s",
-                                static_cast<int>(errorType.size()),
-                                errorType.data(),
-                                static_cast<int>(errorReason.size()),
-                                errorReason.data(),
-                                static_cast<int>(causedByType.size()),
-                                causedByType.data(),
-                                static_cast<int>(causedByReason.size()),
-                                causedByReason.data(),
-                                static_cast<int>(payload.size()),
-                                payload.data());
+                        LOG_WARN(m_logFn,
+                                 "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
+                                 "Associated event: %.*s",
+                                 static_cast<int>(errorType.size()),
+                                 errorType.data(),
+                                 static_cast<int>(errorReason.size()),
+                                 errorReason.data(),
+                                 static_cast<int>(causedByType.size()),
+                                 causedByType.data(),
+                                 static_cast<int>(causedByReason.size()),
+                                 causedByReason.data(),
+                                 static_cast<int>(payload.size()),
+                                 payload.data());
                     }
                     else
                     {
-                        logWarn(m_logTag.c_str(),
-                                "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
-                                static_cast<int>(errorType.size()),
-                                errorType.data(),
-                                static_cast<int>(errorReason.size()),
-                                errorReason.data(),
-                                static_cast<int>(payload.size()),
-                                payload.data());
+                        LOG_WARN(m_logFn,
+                                 "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                 static_cast<int>(errorType.size()),
+                                 errorType.data(),
+                                 static_cast<int>(errorReason.size()),
+                                 errorReason.data(),
+                                 static_cast<int>(payload.size()),
+                                 payload.data());
                     }
 
                     ++itemIndex;
@@ -388,7 +398,7 @@ public:
             {
                 if (m_stopping.load())
                 {
-                    logDebug2(m_logTag.c_str(), "IndexerConnector is stopping, event processing will be skipped.");
+                    LOG_DEBUG2(m_logFn, "IndexerConnector is stopping, event processing will be skipped.");
                     throw IndexerConnectorException("IndexerConnector is stopping, event processing will be skipped.");
                 }
 
@@ -409,10 +419,10 @@ public:
 
                 const auto onSuccess = [this, &bulkData, &boundaries](std::string&& response)
                 {
-                    if (m_dispatcher->bulkSize() != ElementsPerBulk && m_successCount == MaxSuccessCount)
+                    if (m_dispatcher->bulkSize() != m_elementsPerBulk && m_successCount == MaxSuccessCount)
                     {
-                        logDebug2(m_logTag.c_str(), "Resetting bulk size to %zu.", ElementsPerBulk);
-                        m_dispatcher->bulkSize(ElementsPerBulk);
+                        LOG_DEBUG2(m_logFn, "Resetting bulk size to %zu.", m_elementsPerBulk);
+                        m_dispatcher->bulkSize(m_elementsPerBulk);
                         m_error413Logged = false;
                     }
 
@@ -429,18 +439,17 @@ public:
                                                                  const long statusCode,
                                                                  const std::string& responseBody)
                 {
-                    logError(
-                        m_logTag.c_str(), "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
+                    LOG_ERROR(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
-                        logDebug2(m_logTag.c_str(), "Received 413 error (Payload Too Large). Splitting bulk data.");
+                        LOG_DEBUG2(m_logFn, "Received 413 error (Payload Too Large). Splitting bulk data.");
                         if (const size_t currentOperations = bulkData.size(); currentOperations <= 1)
                         {
-                            logError(m_logTag.c_str(),
-                                     "Unable to send data even with single operation. "
-                                     "Consider increasing http.max_content_length in OpenSearch settings. "
-                                     "Current data size: %zu bytes.",
-                                     bulkData.size());
+                            LOG_ERROR(m_logFn,
+                                      "Unable to send data even with single operation. "
+                                      "Consider increasing http.max_content_length in OpenSearch settings. "
+                                      "Current data size: %zu bytes.",
+                                      bulkData.size());
                         }
                         else
                         {
@@ -452,11 +461,11 @@ public:
                                 if (m_error413Logged == false)
                                 {
                                     m_error413Logged = true;
-                                    logError(m_logTag.c_str(),
-                                             "The amount of elements to process is too small, review the "
-                                             "'http.max_content_length' value in "
-                                             "the wazuh-indexer settings. Current data size: %llu.",
-                                             bulkData.size());
+                                    LOG_ERROR(m_logFn,
+                                              "The amount of elements to process is too small, review the "
+                                              "'http.max_content_length' value in "
+                                              "the wazuh-indexer settings. Current data size: %llu.",
+                                              bulkData.size());
                                 }
 
                                 throw IndexerConnectorException(
@@ -466,9 +475,8 @@ public:
                             }
                             else
                             {
-                                logDebug2(m_logTag.c_str(),
-                                          "Reducing the elements to be sent to the indexer: %llu.",
-                                          bulkSize / 2);
+                                LOG_DEBUG2(
+                                    m_logFn, "Reducing the elements to be sent to the indexer: %llu.", bulkSize / 2);
                                 this->m_dispatcher->bulkSize(bulkSize / 2);
                                 m_successCount = 0;
                                 throw IndexerConnectorException(
@@ -479,24 +487,24 @@ public:
                     }
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
-                        logDebug2(m_logTag.c_str(), "Document version conflict, retrying in 1 second.");
+                        LOG_DEBUG2(m_logFn, "Document version conflict, retrying in 1 second.");
                         throw IndexerConnectorException(error);
                     }
                     else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                     {
-                        logDebug2(m_logTag.c_str(), "Too many requests, retrying in 1 second.");
+                        LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
                         throw IndexerConnectorException(error);
                     }
                     else
                     {
-                        logError(m_logTag.c_str(), "%s, status code: %ld.", error.c_str(), statusCode);
+                        LOG_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
                     }
                 };
 
                 std::string url;
                 url = m_selector->getNext();
                 url += "/_bulk";
-                logDebug2(m_logTag.c_str(), "Bulk data: %s", bulkData.c_str());
+                LOG_DEBUG2(m_logFn, "Bulk data: %s", bulkData.c_str());
 
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                        .data = bulkData,
@@ -505,7 +513,7 @@ public:
                                     {});
             },
             m_dbPath,
-            ElementsPerBulk,
+            m_elementsPerBulk,
             m_maxQueueSize,
             RetryDelay,
             m_flushInterval);
@@ -525,21 +533,18 @@ public:
         // Validate input parameters
         if (index.empty())
         {
-            logError(m_logTag.c_str(),
-                     "Index name cannot be empty for document: %.*s",
-                     static_cast<int>(id.size()),
-                     id.data());
+            LOG_ERROR(m_logFn, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
             throw IndexerConnectorException("Index name cannot be empty");
         }
 
         if (data.empty())
         {
-            logWarn(m_logTag.c_str(),
-                    "Empty data provided for document %.*s in index %.*s",
-                    static_cast<int>(id.size()),
-                    id.data(),
-                    static_cast<int>(index.size()),
-                    index.data());
+            LOG_WARN(m_logFn,
+                     "Empty data provided for document %.*s in index %.*s",
+                     static_cast<int>(id.size()),
+                     id.data(),
+                     static_cast<int>(index.size()),
+                     index.data());
         }
 
         std::string bulkData;
@@ -557,19 +562,19 @@ public:
             }
             else
             {
-                logError(m_logTag.c_str(), "Id must be provided if version value is provided");
+                LOG_ERROR(m_logFn, "Id must be provided if version value is provided");
                 throw IndexerConnectorException("Id must be provided if version value is provided");
             }
 
             bulkData.append(R"(","version":")");
             bulkData.append(version);
             bulkData.append(R"(","version_type":"external_gte)");
-            logDebug2(m_logTag.c_str(),
-                      "Using external version %.*s for document %.*s",
-                      static_cast<int>(version.size()),
-                      version.data(),
-                      static_cast<int>(id.size()),
-                      id.data());
+            LOG_DEBUG2(m_logFn,
+                       "Using external version %.*s for document %.*s",
+                       static_cast<int>(version.size()),
+                       version.data(),
+                       static_cast<int>(id.size()),
+                       id.data());
         }
         else
         {
@@ -578,10 +583,10 @@ public:
                 bulkData.append(R"(","_id":")");
                 appendEscapedId(bulkData, id);
             }
-            logDebug2(m_logTag.c_str(),
-                      "No version specified for document %.*s, using default versioning",
-                      static_cast<int>(id.size()),
-                      id.data());
+            LOG_DEBUG2(m_logFn,
+                       "No version specified for document %.*s, using default versioning",
+                       static_cast<int>(id.size()),
+                       id.data());
         }
         bulkData.append(R"("}})");
         bulkData.append("\n");
@@ -712,15 +717,13 @@ public:
                 creationTime = jsonResponse["creation_time"].get<uint64_t>();
                 success = true;
 
-                logDebug2(m_logTag.c_str(),
-                          "PIT created successfully. PIT ID: %s, Creation time: %lu",
-                          pitId.c_str(),
-                          creationTime);
+                LOG_DEBUG2(
+                    m_logFn, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
             }
             catch (const std::exception& e)
             {
                 errorMessage = std::string("Failed to parse PIT response: ") + e.what();
-                logDebug1(m_logTag.c_str(), "%s", errorMessage.c_str());
+                LOG_DEBUG1(m_logFn, "%s", errorMessage.c_str());
             }
         };
 
@@ -729,7 +732,7 @@ public:
         {
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode) +
                            ", Response: " + responseBody;
-            logDebug1(m_logTag.c_str(), "%s", errorMessage.c_str());
+            LOG_DEBUG1(m_logFn, "%s", errorMessage.c_str());
         };
 
         // Execute the POST request synchronously
@@ -767,7 +770,7 @@ public:
 
             const auto onSuccess = [this](const std::string& response)
             {
-                logDebug2(m_logTag.c_str(), "PIT successfully deleted. Response: %s", response.c_str());
+                LOG_DEBUG2(m_logFn, "PIT successfully deleted. Response: %s", response.c_str());
             };
 
             const auto onError =

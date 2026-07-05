@@ -1,17 +1,26 @@
 name: 5.X - Engine Standalone (on push)
 
+# This workflow runs on pull requests that modify engine-related files.
+# It delegates all build logic to the reusable Engine Standalone workflow.
 on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - ".github/workflows/5_builderpackage_engine-standalone.yml"
-      - ".github/workflows/5_builderpackage_engine-standalone_onpush.yml"
-      - "src/engine/**"
-      - "packages/**"
+      - '.github/workflows/5_builderpackage_engine-standalone.yml'
+      - '.github/workflows/5_builderpackage_engine-standalone_onpush.yml'
+      - 'src/engine/**'
+      - 'packages/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+# Granted here so the reusable engine-standalone workflow (S3 upload/download
+# over OIDC, plus a ghcr pull with GITHUB_TOKEN) can request these permissions.
+permissions:
+  id-token: write
+  contents: read
+  packages: read
 
 jobs:
   call-build-workflow:
@@ -20,4 +29,4 @@ jobs:
     secrets: inherit
     with:
       wazuh-branch: ${{ github.head_ref }}
-      build-type: "release"
+      build-type: 'release'

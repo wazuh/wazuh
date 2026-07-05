@@ -21,7 +21,8 @@ int __wrap_router_provider_send(ROUTER_PROVIDER_HANDLE handle, const char* messa
 int __wrap_router_provider_send_sync(ROUTER_PROVIDER_HANDLE handle,
                                      const char* message,
                                      unsigned int message_size,
-                                     const char* authenticated_agent_id);
+                                     const char* authenticated_agent_id,
+                                     const char* manager_cluster_name);
 
 ROUTER_PROVIDER_HANDLE __wrap_router_provider_create(const char* name);
 

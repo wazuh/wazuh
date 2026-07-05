@@ -14,8 +14,9 @@ list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
 list(APPEND os_auth_names "test_auth_add")
 list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsValidIP")
 list(APPEND os_auth_names "test_auth")
-list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} \
-                           -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time -Wl,--wrap,wfopen")
+list(APPEND os_auth_flags "${DEBUG_OP_WRAPPERS} ${STDIO_OP_WRAPPERS} \
+                           -Wl,--wrap,os_random -Wl,--wrap,GetRandomNoise -Wl,--wrap,getuname -Wl,--wrap,time -Wl,--wrap,wfopen \
+                           -Wl,--wrap,fprintf -Wl,--wrap,popen -Wl,--wrap,pclose")
 list(APPEND os_auth_names "test_generate_cert")
 list (APPEND os_auth_flags "-Wl,--wrap,PEM_write_PrivateKey -Wl,--wrap,PEM_write_X509 -Wl,--wrap,RSA_generate_key_ex \
                             -Wl,--wrap,X509_sign -Wl,--wrap,_merror -Wl,--wrap,wfopen \

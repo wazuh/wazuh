@@ -31,15 +31,16 @@ The library provides two classes depending on the use case:
 
 ### Sync flush behavior
 
-- Buffer up to 10 MB of events before flushing.
-- Flush automatically after 20 seconds of inactivity.
+- Buffer up to 10 MB of serialized events before flushing (configurable: `wazuh_modules.indexer_bulk_size_bytes` for Vulnerability Scanner, `wazuh_modules.inventory_sync_indexer_bulk_size_bytes` for Inventory Sync).
+- Flush automatically after 20 seconds of inactivity (configurable: `wazuh_modules.indexer_flush_interval` for Vulnerability Scanner, `wazuh_modules.inventory_sync_indexer_flush_interval` for Inventory Sync).
 - If the indexer returns HTTP 413 (payload too large), the batch is split and retried.
 - Version conflicts at the document level are handled per-document.
 
 ### Async flush behavior
 
 - Events are queued to RocksDB immediately and flushed by a background thread.
-- Up to 25,000 documents per flush batch.
+- Up to 25,000 documents per flush batch (configurable via `analysisd.indexer_bulk_size`).
+- Flush automatically after 20 seconds of inactivity (configurable via `analysisd.indexer_flush_interval`).
 - If `max_queue_size` is set, events that exceed the limit are dropped and counted.
 - The queue survives manager restarts.
 

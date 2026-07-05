@@ -9,22 +9,14 @@ on:
           Use only '-', '_', '.' and alphanumeric characters.
           Default is '5.x'.
         required: false
-        default: "5.x"
+        default: '5.x'
   push:
-    branches:
-      - main
-      - "5.[0-9]+.[0-9]+"
     paths:
-      - "tools/testing/coverity/**"
+      - 'tools/testing/coverity/**'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: wazuh/coverity-scan
-  PROJECT: wazuh/wazuh
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
 
 jobs:
   build-and-push-image:
@@ -34,14 +26,11 @@ jobs:
       contents: read
       packages: write
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
+    env:
+      PROJECT: wazuh/wazuh
 
-      - name: Set image tag
-        run: |
-          TAG="${{ inputs.docker_image_tag || '5.x' }}"
-          echo "IMAGE_TAG=$TAG" >> $GITHUB_ENV
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Ensure wget (CodeBuild)
         # TODO(codebuild-temp): Remove once the CodeBuild server image ships wget.
@@ -83,4 +72,4 @@ jobs:
         with:
           context: tools/testing/coverity
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.event.inputs.docker_image_tag || '5.x' }}

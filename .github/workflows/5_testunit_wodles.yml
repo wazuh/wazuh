@@ -4,22 +4,22 @@ on:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
     paths:
-      - ".github/workflows/5_testunit_wodles.yml"
-      - "wodles/**"
-      - "src/Makefile"
-      - "framework/requirements-wodles.txt"
-      - "framework/requirements-wodles-dev.txt"
+      - '.github/workflows/5_testunit_wodles.yml'
+      - 'wodles/**'
+      - 'src/Makefile'
+      - 'framework/requirements-wodles.txt'
+      - 'framework/requirements-wodles-dev.txt'
   workflow_dispatch:
     inputs:
       generate_report:
-        description: "Generate test report"
+        description: 'Generate test report'
         required: false
         type: boolean
         default: false
       qa_branch:
-        description: "QA repository branch"
+        description: 'QA repository branch'
         required: false
-        default: "main"
+        default: 'main'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -29,24 +29,27 @@ jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    permissions:
+      id-token: write
+      contents: read
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10"]
+        python-version: ['3.10']
     env:
       PYTHONPATH: ${{ github.workspace }}/api:${{ github.workspace }}/framework
-      TEST_REPORT_PATH: ${{ runner.temp }}/test_report.txt
-      COVERAGE_REPORT_PATH: ${{ runner.temp }}/coverage_report
+      TEST_REPORT_PATH: ${{ github.workspace }}/test_report.txt
+      COVERAGE_REPORT_PATH: ${{ github.workspace }}/coverage_report
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip"
-          cache-dependency-path: "framework/requirements-wodles-dev.txt"
+          cache: 'pip'
+          cache-dependency-path: 'framework/requirements-wodles-dev.txt'
 
       - name: Install dependencies
         run: |
@@ -111,12 +114,13 @@ jobs:
 
       - name: Upload coverage report
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: wodles-unit-tests-coverage
           path: ${{ env.COVERAGE_REPORT_PATH }}
-          if-no-files-found: warn
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Generate test report
         if: inputs.generate_report

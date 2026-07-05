@@ -9,7 +9,8 @@
         "size": 3,
         "agentid": "001",
         "agentname": "test-agent",
-        "agentversion": "4.8.0"
+        "agentversion": "4.8.0",
+        "cluster_name": "wazuh"
       },
       "description": "Start synchronization session for DataClean with 3 indices",
       "delay": 0.5,

@@ -41,7 +41,7 @@ import time
 import pytest
 from pathlib import Path
 
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
+from wazuh_testing.constants.paths.configurations import DEFAULT_AUTHD_PASS_PATH
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
 from wazuh_testing.utils.configuration import load_configuration_template, get_test_cases_data
@@ -78,19 +78,15 @@ daemons_handler_configuration = {'all_daemons': True}
 
 def read_random_pass():
     """
-    Search for the random password creation in Wazuh logs
+    Read the auto-generated enrollment password from authd.pass.
+    authd writes the password to the file on first start; it is never printed to logs.
+    Returns None when the file does not exist (e.g. use_password=no).
     """
-    passw = None
     try:
-        with open(WAZUH_LOG_PATH, 'r') as log_file:
-            lines = log_file.readlines()
-            for line in lines:
-                if "Random password" in line:
-                    passw = line.split()[-1]
-            log_file.close()
-    except IOError as exception:
-        raise
-    return passw
+        with open(DEFAULT_AUTHD_PASS_PATH, 'r') as f:
+            return f.readline().rstrip('\r\n')
+    except FileNotFoundError:
+        return None
 
 
 # Test

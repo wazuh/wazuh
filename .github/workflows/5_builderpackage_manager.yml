@@ -96,18 +96,10 @@ on:
         type: string
         required: false
 
-# Scope the group per system/architecture so the matrix invocations from the
-# build-multiples caller don't share a group (github.workflow resolves to the
-# CALLER's name in a reusable workflow). Without the suffix the parallel matrix
-# jobs — and the parent run — share one group with cancel-in-progress and cancel
-# each other, so no manager package is built.
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}-${{ inputs.system }}-${{ inputs.architecture }}
-  cancel-in-progress: true
-
 jobs:
   Build-manager-packages:
     permissions:
+      id-token: write
       contents: read
       packages: write
     env:
@@ -122,22 +114,46 @@ jobs:
     name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Cancel previous runs
+        uses: fkirc/skip-duplicate-actions@master
+        with:
+          cancel_others: "true"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_after_successful_duplicate: "false"
+
+      - uses: actions/checkout@v4
 
       - name: Set ARCH and PACKAGE_ARCH
         run: |
-          if [ "${{ inputs.architecture }}" = "x86_64" ] || [ "${{ inputs.architecture }}" = "amd64" ]; then
-            pkg_arch="amd64"
-            [ "${{ inputs.system }}" = "rpm" ] && arch="x86_64" || arch="amd64"
-          else
-            pkg_arch="arm64"
-            [ "${{ inputs.system }}" = "rpm" ] && arch="aarch64" || arch="arm64"
-          fi
+          case "${{ inputs.system }}" in
+            rpm)
+              case "${{ inputs.architecture }}" in
+                x86_64|amd64)
+                  arch="x86_64"
+                  pkg_arch="amd64"
+                  ;;
+                aarch64|arm64)
+                  arch="aarch64"
+                  pkg_arch="arm64"
+                  ;;
+              esac
+              ;;
+            deb)
+              case "${{ inputs.architecture }}" in
+                x86_64|amd64)
+                  arch="amd64"
+                  pkg_arch="amd64"
+                  ;;
+                aarch64|arm64)
+                  arch="arm64"
+                  pkg_arch="arm64"
+                  ;;
+              esac
+              ;;
+          esac
 
-          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
-          ARCH=$arch
-          PACKAGE_ARCH=$pkg_arch
-          EOF
+          echo "ARCH=$arch" >> $GITHUB_ENV
+          echo "PACKAGE_ARCH=$pkg_arch" >> $GITHUB_ENV
 
       - name: Set tag and container name
         run: |
@@ -197,6 +213,7 @@ jobs:
           if [ "${{ inputs.is_stage }}" == "true" ]; then FLAGS+="--is_stage "; fi
           if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
           if [ "${{ inputs.debug}}" == "true" ]; then FLAGS+="--debug "; fi
+          # Every call to this workflow will be internally managed as amd64, which is synonymous with x86_64
           echo "generate_package.sh -a ${{ env.PACKAGE_ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS"
           bash generate_package.sh -a ${{ env.PACKAGE_ARCH }} --tag ${{ env.TAG }} --system ${{ inputs.system }} $FLAGS
 
@@ -205,6 +222,7 @@ jobs:
           else
             SYMBOLS_TAG="debuginfo"
           fi
+          # Find all files starting with 'wazuh-manager' and ending with '.rpm or .deb'
           for file in $(find /tmp -maxdepth 1 -type f -name 'wazuh-manager*.${{ inputs.system }}' -exec basename {} 2>/dev/null \;); do
             if [[ "$file" == *"$SYMBOLS_TAG"* ]]; then
               PACKAGE_SYMBOLS_NAME="$file"
@@ -243,6 +261,8 @@ jobs:
       - name: Check installed files
         uses: ./.github/actions/check_files
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           expected_files: manager_base.csv
           wazuh_uid: ${{ env.WAZUH_UID }}
           wazuh_gid: ${{ env.WAZUH_GID }}
@@ -415,23 +435,27 @@ jobs:
           container: ${{ env.UPGRADE_CONTAINER }}
           package_path: /packages/${{ env.PACKAGE_NAME }}
 
-      - name: Upload package to GitHub
+      - name: Upload package to S3
         if: always()
         timeout-minutes: 10
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: ${{ env.PACKAGE_NAME }}
           path: /tmp/${{ env.PACKAGE_NAME }}
-          if-no-files-found: error
 
-      - name: Upload debug symbols to GitHub
+      - name: Upload debug symbols to S3
         if: always()
         timeout-minutes: 10
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: ${{ env.PACKAGE_SYMBOLS_NAME }}
           path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
-          if-no-files-found: error
 
       - name: Set up AWS CLI
         if: ${{ env.SHOULD_UPLOAD == 'true' }}

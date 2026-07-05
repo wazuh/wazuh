@@ -25,7 +25,7 @@ class ContentModuleFacade final : public Singleton<ContentModuleFacade>
 {
 private:
     std::unordered_map<std::string, std::unique_ptr<ContentProvider>> m_providers;
-    std::shared_mutex m_mutex;
+    mutable std::shared_mutex m_mutex;
 
 public:
     /**
@@ -59,7 +59,8 @@ public:
      */
     void addProvider(const std::string& name,
                      const nlohmann::json& parameters,
-                     const FileProcessingCallback fileProcessingCallback);
+                     const FileProcessingCallback fileProcessingCallback,
+                     ContentUpdateCallbacks updateCallbacks = {});
 
     /**
      * @brief Starts action scheduler.
@@ -83,6 +84,14 @@ public:
      * @param interval New scheduler interval.
      */
     void changeSchedulerInterval(const std::string& name, size_t interval);
+
+    /**
+     * @brief Returns the cursor persisted by a provider.
+     *
+     * @param name Provider name.
+     * @return Current content offset, or 0 when the provider does not exist or has no cursor.
+     */
+    uint64_t getCurrentOffset(const std::string& name) const;
 };
 
 #endif //_CONTENT_MODULE_IMPLEMENTATION_HPP

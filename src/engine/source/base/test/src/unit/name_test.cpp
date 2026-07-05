@@ -30,6 +30,25 @@ TEST_F(NameTest, InitializationParts)
     ASSERT_EQ(name.parts()[2], "version");
 }
 
+TEST_F(NameTest, ValidPartCharacters)
+{
+    EXPECT_TRUE(base::Name::isValidPart("Resource-name_01"));
+}
+
+TEST_F(NameTest, InvalidPartCharacters)
+{
+    EXPECT_FALSE(base::Name::isValidPart(""));
+    EXPECT_FALSE(base::Name::isValidPart("resource name"));
+    EXPECT_FALSE(base::Name::isValidPart("resource/name"));
+    EXPECT_FALSE(base::Name::isValidPart("resource@name"));
+}
+
+TEST_F(NameTest, InitializationInvalidPart)
+{
+    EXPECT_THROW(base::Name({"type", "invalid name", "version"}), std::runtime_error);
+    EXPECT_THROW(base::Name("type/invalid name/version"), std::runtime_error);
+}
+
 TEST_F(NameTest, InitializationPartsMax)
 {
     ASSERT_THROW(base::Name({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}), std::runtime_error);

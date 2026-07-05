@@ -29,28 +29,28 @@ on:
           Use only '-', '_', '.' and alphanumeric characters.
           Default is '5.x'.
         required: false
-        default: "5.x"
+        default: '5.x'
 
 env:
   REGISTRY: ghcr.io
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  build:
+  prepare:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
-    permissions:
-      contents: read
-      packages: read
     outputs:
       project: ${{ steps.vars.outputs.PROJECT }}
+      jobs: ${{ steps.vars.outputs.JOBS }}
       version: ${{ steps.vars.outputs.VERSION }}
       description: ${{ steps.vars.outputs.DESCRIPTION }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Ensure jq (CodeBuild)
         # TODO(codebuild-temp): Remove once the CodeBuild server image ships jq.
@@ -59,39 +59,42 @@ jobs:
 
       - name: Set up project and build variables
         id: vars
+        env:
+          INPUT_PROJECT: ${{ github.event.inputs.project }}
+          INPUT_THREADS: ${{ github.event.inputs.threads }}
         run: |
-          if [[ "${{ inputs.project }}" == "wazuh" ]]; then
-            PROJECT="wazuh/wazuh"
+          if [[ "$INPUT_PROJECT" == "wazuh" ]]; then
+            echo "PROJECT=wazuh/wazuh" >> $GITHUB_OUTPUT
           else
-            PROJECT="wazuh/ossec-wazuh"
+            echo "PROJECT=wazuh/ossec-wazuh" >> $GITHUB_OUTPUT
           fi
 
-          if [[ ${{ inputs.threads }} -le 0 ]]; then
-            JOBS=$(nproc)
+          if [[ $INPUT_THREADS -le 0 ]]; then
+            echo "JOBS=$(nproc)" >> $GITHUB_OUTPUT
           else
-            JOBS=${{ inputs.threads }}
+            echo "JOBS=$INPUT_THREADS" >> $GITHUB_OUTPUT
           fi
 
           VERSION=$(jq -r '.version + "-" + .stage' VERSION.json)
           DESCRIPTION="Version $VERSION - Git ref ${{ github.ref_name }}"
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_OUTPUT
 
-          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_ENV
-          JOBS=$JOBS
-          EOF
-
-          cat << EOF | sed -e 's/^[[:space:]]*//' -e 's/\r$//' >> $GITHUB_OUTPUT
-          PROJECT=$PROJECT
-          VERSION=$VERSION
-          DESCRIPTION=$DESCRIPTION
-          EOF
-
-      - name: Print variables
-        run: |
-          echo "Description: ${{ steps.vars.outputs.DESCRIPTION }}"
-          echo "Docker Image Tag: ${{ inputs.docker_image_tag }}"
+  build:
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    needs: prepare
+    permissions:
+      id-token: write
+      contents: read
+      packages: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Download dependencies
-        run: make -C src deps -j${{ env.JOBS }}
+        run: make -C src deps TARGET=${{ github.event.inputs.target }} -j${{ needs.prepare.outputs.jobs }}
 
       - name: Start Docker daemon (CodeBuild)
         # TODO(codebuild-temp): Remove once CodeBuild exposes a running Docker daemon.
@@ -113,11 +116,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Print variables
+        env:
+          DOCKER_IMAGE_TAG: ${{ github.event.inputs.docker_image_tag }}
+        run: |
+          echo Description: ${{ needs.prepare.outputs.description }}
+          echo Docker Image Tag: $DOCKER_IMAGE_TAG
+
       - name: Build Coverity artifact
         uses: ./.github/actions/coverity/build
         with:
-          command: make -C src TARGET=manager COVERITY=YES -j${{ env.JOBS }}
-          docker_image_tag: ${{ inputs.docker_image_tag }}
+          command: make -C src TARGET=${{ github.event.inputs.target }} COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
+          docker_image_tag: ${{ github.event.inputs.docker_image_tag }}
 
       - name: List files
         run: ls -l cov-int/emit/*/emit-db*
@@ -126,29 +136,36 @@ jobs:
         run: tar czf wazuh.tgz cov-int
 
       - name: Upload Coverity artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: wazuh.tgz
           path: wazuh.tgz
-          retention-days: 1
 
   upload:
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
-    needs: build
+    needs: [prepare, build]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
 
       - name: Download Coverity artifact
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: wazuh.tgz
 
       - name: Upload to Coverity Scan
         uses: ./.github/actions/coverity/upload
         with:
-          project: ${{ needs.build.outputs.project }}
+          project: ${{ needs.prepare.outputs.project }}
           email: ${{ secrets.COVERITY_SCAN_NOTIFICATION_EMAIL }}
-          token: ${{ inputs.project == 'wazuh' && secrets.COVERITY_SCAN_WAZUH_TOKEN || secrets.COVERITY_SCAN_OSSEC_TOKEN }}
-          version: ${{ needs.build.outputs.version }}
-          description: "${{ needs.build.outputs.description }}"
+          token: ${{ github.event.inputs.project == 'wazuh' && secrets.COVERITY_SCAN_WAZUH_TOKEN || secrets.COVERITY_SCAN_OSSEC_TOKEN }}
+          version: ${{ needs.prepare.outputs.version }}
+          description: "${{ needs.prepare.outputs.description }}"

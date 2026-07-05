@@ -800,6 +800,8 @@ private:
 
         while (true)
         {
+            notifyUpdateStarted(context);
+
             if (attempt == 0)
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting initial full load (slices=%zu)", numSlices);
@@ -860,6 +862,8 @@ private:
                 return totalProcessed;
             }
 
+            notifyUpdateFailed(context);
+
             if (!exceptionOccurred)
             {
                 if (escalate)
@@ -899,6 +903,7 @@ private:
      */
     size_t incrementalUpdate(UpdaterContext& context, const std::string& lastCursor) const
     {
+        notifyUpdateStarted(context);
         logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Starting incremental update from offset %s", lastCursor.c_str());
 
         const nlohmann::json query = {{"range", {{"offset", {{"gt", std::stoull(lastCursor)}}}}}};
@@ -990,6 +995,7 @@ public:
                 break;
             }
 
+            notifyUpdateFailed(*context);
             invalidateCursor(*context);
             ++completionFailures;
             if (completionFailures >= INDEXER_WARN_AFTER_ATTEMPTS)
@@ -1019,6 +1025,17 @@ public:
         }
 
         return AbstractHandler<std::shared_ptr<UpdaterContext>>::handleRequest(std::move(context));
+    }
+
+private:
+    static void notifyUpdateStarted(const UpdaterContext& context)
+    {
+        invokeContentUpdateCallback(context.spUpdaterBaseContext->updateCallbacks.onStart, "start");
+    }
+
+    static void notifyUpdateFailed(const UpdaterContext& context)
+    {
+        invokeContentUpdateCallback(context.spUpdaterBaseContext->updateCallbacks.onFailure, "failure");
     }
 };
 

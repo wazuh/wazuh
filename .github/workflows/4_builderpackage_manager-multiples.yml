@@ -3,6 +3,11 @@ name: 4.X - Package - Build multiple Wazuh Manager Packages
 on:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
 jobs:
   deprecated:
     runs-on: ubuntu-24.04

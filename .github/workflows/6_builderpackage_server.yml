@@ -94,6 +94,11 @@ env:
   S3_PRECOMPILED_STORE: s3://xdrsiem-packages-dev-internal/development/wazuh/6.x/main/engine-store/store.tar.gz
   LOCAL_PRECOMPILED_STORE_PATH: src/engine/engine_precompiled_store.tar.gz # Also used in the build script
 
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
 jobs:
   Build-server-packages:
     runs-on: ${{ (inputs.architecture == 'arm64' || inputs.architecture == 'aarch64') && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-24.04' }}
@@ -208,18 +213,22 @@ jobs:
           fi
 
       - name: Upload package to GitHub
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: ${{ env.PACKAGE_NAME }}
           path: /tmp/${{ env.PACKAGE_NAME }}
-          if-no-files-found: error
 
       - name: Upload debug symbols to GitHub
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: ${{ env.PACKAGE_SYMBOLS_NAME }}
           path: /tmp/${{ env.PACKAGE_SYMBOLS_NAME }}
-          if-no-files-found: error
 
       - name: Upload package to S3
         working-directory: packages

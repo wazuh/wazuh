@@ -9,7 +9,8 @@
         "size": 2,
         "agentid": "001",
         "agentname": "out-of-range-agent",
-        "agentversion": "5.0.0"
+        "agentversion": "5.0.0",
+        "cluster_name": "wazuh"
       },
       "description": "Start a ModuleDelta session declaring exactly 2 DataValues (valid seqs are 0 and 1)",
       "delay": 0.5,
@@ -23,7 +24,9 @@
         "operation": 0,
         "id": "doc-valid-0",
         "index": "wazuh-states-inventory-system",
-        "data": {"description": "first valid datavalue"}
+        "data": {
+          "description": "first valid datavalue"
+        }
       },
       "description": "Legitimate DataValue with seq=0 (in range)",
       "delay": 0.3,
@@ -36,7 +39,9 @@
         "operation": 0,
         "id": "doc-out-of-range",
         "index": "wazuh-states-inventory-system",
-        "data": {"description": "should be rejected"}
+        "data": {
+          "description": "should be rejected"
+        }
       },
       "description": "DataValue with seq=5 (declaredSize is 2) - GapSet::observe throws and the message is dropped; the GapSet must NOT be flipped to allObserved",
       "delay": 0.3,
@@ -56,7 +61,9 @@
         "operation": 0,
         "id": "doc-valid-1",
         "index": "wazuh-states-inventory-system",
-        "data": {"description": "second valid datavalue retransmitted"}
+        "data": {
+          "description": "second valid datavalue retransmitted"
+        }
       },
       "description": "Retransmit the still-missing seq=1",
       "delay": 0.3,

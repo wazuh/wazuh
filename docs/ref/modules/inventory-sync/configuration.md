@@ -12,6 +12,8 @@ The runtime configuration passed to Inventory Sync contains:
 - **`maxSessions`**: the session cap derived from internal options.
 - **`queueSize`**: the input worker queue cap derived from internal options.
 - **`dataValueQuota`**: the global `DataValue` quota derived from internal options.
+- **`indexerBulkSize`**: the indexer bulk-size threshold (bytes) derived from internal options. Forwarded to the Indexer Connector as `max_bulk_size`.
+- **`indexerFlushInterval`**: the indexer periodic flush interval (seconds) derived from internal options. Forwarded to the Indexer Connector as `flush_interval_seconds`.
 
 The module refuses to start if `clusterName` is missing.
 
@@ -37,7 +39,9 @@ Example configuration payload passed to the module:
   "clusterNodeName": "node01",
   "maxSessions": 1000,
   "queueSize": 10000,
-  "dataValueQuota": 500000
+  "dataValueQuota": 500000,
+  "indexerBulkSize": 10485760,
+  "indexerFlushInterval": 20
 }
 ```
 
@@ -78,6 +82,30 @@ Current manager-side behavior:
 - Default on manager builds: `500000`.
 - If the requested `size` exceeds the remaining quota, the Start message is rejected with `Status_Offline` (the agent will retry later, mirroring the `max_sessions` rejection shape).
 - Quota-rejection events are always logged (no rate limiting).
+
+### Indexer bulk-size threshold
+
+Inventory Sync reads the indexer bulk-size threshold from the internal option `wazuh_modules.inventory_sync_indexer_bulk_size_bytes`.
+
+The value is forwarded to the Indexer Connector as the `max_bulk_size` field of its JSON configuration and bounds the NDJSON payload size accumulated in the bulk buffer before a synchronous flush to `wazuh-indexer` is triggered. It applies independently of any other connector instance (the vulnerability scanner module has its own equivalent option, `wazuh_modules.indexer_bulk_size_bytes`).
+
+Current manager-side behavior:
+
+- Allowed range: `4096` to `104857600` (4 KB to 100 MB).
+- Default on manager builds: `10485760` (10 MB).
+- The lower bound is set well above the worst-case per-item JSON overhead (`{"index":{"_index":"...","_id":"..."}}` plus a 32 B version slot ≈ 65 B baseline, before index name and `_id`). Smaller values would not crash the connector — the size check in `bulkIndex` / `bulkDelete` is gated by a `!m_bulkData.empty()` precondition — but they degrade the connector into "one HTTP request per document", which is rarely desirable.
+
+### Indexer flush interval
+
+Inventory Sync reads the indexer periodic flush interval from the internal option `wazuh_modules.inventory_sync_indexer_flush_interval`.
+
+The value is forwarded to the Indexer Connector as the `flush_interval_seconds` field of its JSON configuration and drives the background timer that flushes the bulk buffer when the size threshold has not been reached. It applies independently of any other connector instance (the vulnerability scanner module has its own equivalent option, `wazuh_modules.indexer_flush_interval`).
+
+Current manager-side behavior:
+
+- Allowed range: `1` to `3600` (1 second to 1 hour).
+- Default on manager builds: `20` seconds.
+- When the timer fires on an empty buffer, no HTTP request is issued.
 
 ## Operational constants
 

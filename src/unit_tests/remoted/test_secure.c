@@ -2963,6 +2963,7 @@ void test_HandleSecureMessage_inventory_sync_preserves_trailing_null(void** stat
     expect_value(__wrap_router_provider_send_sync, message_size,
                  g_expected_flatbuf_len);
     expect_string(__wrap_router_provider_send_sync, authenticated_agent_id, "001");
+    expect_any(__wrap_router_provider_send_sync, manager_cluster_name);
     will_return(__wrap_router_provider_send_sync, 0);
     expect_string(__wrap_rem_inc_recv_states, agent_id, "001");
 
