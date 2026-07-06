@@ -531,7 +531,6 @@ int init_bpfobj() {
         }
 
         bpf_helpers->bpf_object_close(obj);
-        obj = nullptr;
 
         if (g_bpf_lsm_active && prefer_dpath) {
             logFn(LOG_INFO, FIM_EBPF_LSM_DPATH_FALLBACK);
