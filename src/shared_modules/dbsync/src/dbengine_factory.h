@@ -27,11 +27,12 @@ namespace DbSync
                                                      const std::string&              path,
                                                      const std::string&              sqlStatement,
                                                      const DbManagement              dbManagement,
-                                                     const std::vector<std::string>& upgradeStatements)
+                                                     const std::vector<std::string>& upgradeStatements,
+                                                     const std::string&              journalMode = "truncate")
             {
                 if (SQLITE3 == dbType)
                 {
-                    return std::make_unique<SQLiteDBEngine>(std::make_shared<SQLiteFactory>(), path, sqlStatement, dbManagement, upgradeStatements);
+                    return std::make_unique<SQLiteDBEngine>(std::make_shared<SQLiteFactory>(), path, sqlStatement, dbManagement, upgradeStatements, journalMode);
                 }
 
                 throw dbsync_error

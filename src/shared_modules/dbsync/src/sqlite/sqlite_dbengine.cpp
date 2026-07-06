@@ -25,10 +25,11 @@ SQLiteDBEngine::SQLiteDBEngine(const std::shared_ptr<ISQLiteFactory>& sqliteFact
                                const std::string&                     path,
                                const std::string&                     tableStmtCreation,
                                const DbManagement                     dbManagement,
-                               const std::vector<std::string>&        upgradeStatements)
+                               const std::vector<std::string>&        upgradeStatements,
+                               const std::string&                     journalMode)
     : m_sqliteFactory(sqliteFactory)
 {
-    initialize(path, tableStmtCreation, dbManagement, upgradeStatements);
+    initialize(path, tableStmtCreation, dbManagement, upgradeStatements, journalMode);
 }
 
 SQLiteDBEngine::~SQLiteDBEngine()
@@ -585,7 +586,8 @@ void SQLiteDBEngine::addTableRelationship(const nlohmann::json& data)
 void SQLiteDBEngine::initialize(const std::string&              path,
                                 const std::string&              tableStmtCreation,
                                 const DbManagement              dbManagement,
-                                const std::vector<std::string>& upgradeStatements)
+                                const std::vector<std::string>& upgradeStatements,
+                                const std::string&              journalMode)
 {
     if (path.empty())
     {
@@ -606,7 +608,7 @@ void SQLiteDBEngine::initialize(const std::string&              path,
         m_sqliteConnection = m_sqliteFactory->createConnection(path);
         const auto createDBQueryList {Utils::split(tableStmtCreation, ';')};
         m_sqliteConnection->execute("PRAGMA temp_store = memory;");
-        m_sqliteConnection->execute("PRAGMA journal_mode = truncate;");
+        m_sqliteConnection->execute("PRAGMA journal_mode = " + journalMode + ";");
         m_sqliteConnection->execute("PRAGMA synchronous = OFF;");
         m_sqliteConnection->execute("PRAGMA user_version = " + std::to_string(currentDbsyncVersion) + ";");
 
@@ -628,6 +630,7 @@ void SQLiteDBEngine::initialize(const std::string&              path,
     if (DbManagement::PERSISTENT == dbManagement)
     {
         m_sqliteConnection = m_sqliteFactory->createConnection(path);
+        m_sqliteConnection->execute("PRAGMA journal_mode = " + journalMode + ";");
         dbVersion = getDbVersion();
 
         if (0 == dbVersion)

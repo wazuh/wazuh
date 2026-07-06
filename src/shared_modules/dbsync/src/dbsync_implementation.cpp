@@ -27,9 +27,10 @@ DBSYNC_HANDLE DBSyncImplementation::initialize(const HostType                  h
                                                const std::string&              path,
                                                const std::string&              sqlStatement,
                                                const DbManagement              dbManagement,
-                                               const std::vector<std::string>& upgradeStatements)
+                                               const std::vector<std::string>& upgradeStatements,
+                                               const std::string&              journalMode)
 {
-    auto db{ FactoryDbEngine::create(dbType, path, sqlStatement, dbManagement, upgradeStatements) };
+    auto db{ FactoryDbEngine::create(dbType, path, sqlStatement, dbManagement, upgradeStatements, journalMode) };
     const auto spDbEngineContext
     {
         std::make_shared<DbEngineContext>(db, hostType, dbType)

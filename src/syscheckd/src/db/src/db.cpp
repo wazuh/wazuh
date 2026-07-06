@@ -35,7 +35,9 @@ void DB::init(const int storage,
                                                  DbEngineType::SQLITE3,
                                                  path,
                                                  FIMDBCreator<OS_TYPE>::CreateStatement(),
-                                                 DbManagement::PERSISTENT)};
+                                                 DbManagement::PERSISTENT,
+                                                 std::vector<std::string>{},
+                                                 "wal")};
 
     FIMDB::instance().init(std::move(callbackLogWrapper), std::move(dbsyncHandler), fileLimit, valueLimit);
 }
