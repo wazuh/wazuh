@@ -1234,13 +1234,23 @@ void fim_file_scan() {
             mdebug1("No directory paths configured but database has %d files. Initiating DataClean for files.",
                     files_count);
 
+            bool sync_handle_available = false;
+            bool dataCleanSent = false;
+
+            w_rwlock_rdlock(&fim_sync_handle_rwlock);
             if (syscheck.sync_handle) {
+                sync_handle_available = true;
+
                 // Prepare indices vector for data clean notification
                 const char* indices[1] = {FIM_FILES_SYNC_INDEX};
                 size_t indices_count = 1;
 
                 // Send DataClean notification for files index
-                bool dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+                dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+            }
+            w_rwlock_unlock(&fim_sync_handle_rwlock);
+
+            if (sync_handle_available) {
                 if (dataCleanSent) {
                     minfo("DataClean notification sent successfully for files index (all directory paths removed from configuration).");
                 } else {

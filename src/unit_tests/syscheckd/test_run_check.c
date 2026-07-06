@@ -1453,6 +1453,28 @@ void test_handle_all_paths_removed_no_sync_handle(void **state) {
 
 /* ---------------------------------- End DataClean Tests ---------------------------------- */
 
+void test_persist_syscheck_msg_destroyed_sync_handle(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle *original_handle = syscheck.sync_handle;
+    unsigned int original_enable_synchronization = syscheck.enable_synchronization;
+
+    // The shutdown teardown destroyed the handle: the event must be dropped without
+    // touching the sync protocol (asp_persist_diff is not called).
+    syscheck.enable_synchronization = 1;
+    syscheck.sync_handle = NULL;
+
+    cJSON *msg = cJSON_CreateObject();
+    cJSON_AddStringToObject(msg, "test", "data");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6339): Persisting FIM event: {\"test\":\"data\"}");
+
+    persist_syscheck_msg("test-id", OPERATION_CREATE, "wazuh-states-fim-files", msg, 1);
+
+    cJSON_Delete(msg);
+    syscheck.sync_handle = original_handle;
+    syscheck.enable_synchronization = original_enable_synchronization;
+}
+
 int main(void) {
 #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
@@ -1483,6 +1505,7 @@ int main(void) {
         cmocka_unit_test(test_fim_has_data_in_database_with_file_entries),
         cmocka_unit_test(test_handle_all_paths_removed_no_data_in_db),
         cmocka_unit_test(test_handle_all_paths_removed_no_sync_handle),
+        cmocka_unit_test(test_persist_syscheck_msg_destroyed_sync_handle),
 #ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_run_realtime_first_error),
         cmocka_unit_test(test_fim_run_realtime_first_timeout),

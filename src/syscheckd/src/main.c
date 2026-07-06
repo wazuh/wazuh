@@ -47,41 +47,88 @@ extern volatile int fim_sync_module_running;
 extern pthread_t fim_sync_thread;
 extern bool fim_sync_thread_initialized;
 
-/* Shut down syscheckd properly */
-static void fim_shutdown(int sig)
-{
-    /* Close sync thread and release dbsync */
-    minfo(SK_SHUTDOWN);
-    is_fim_shutdown = true;
-    fim_sync_module_running = 0;
+/* Self-pipe written by fim_shutdown() to wake fim_shutdown_waiter() */
+static int fim_shutdown_pipe[2] = {-1, -1};
+/* Signal that triggered the shutdown, consumed by fim_shutdown_waiter() */
+static volatile sig_atomic_t fim_shutdown_sig = SIGTERM;
 
-    /* Stop sync protocol */
+/* Shut down syscheckd properly. This thread performs the teardown that fim_shutdown()
+ * cannot do in signal context. Joining the synchronization thread from the handler
+ * could deadlock: if the signal lands on a thread that holds syscheck.directories_lock
+ * or syscheck.fim_scan_mutex (e.g. the main thread inside fim_scan()), that thread
+ * parks in the handler without releasing them, while fim_run_integrity blocks on those
+ * very locks and never re-checks fim_sync_module_running, so the join never returns.
+ * Destroying the sync protocol handle from the handler is not safe either: it is still
+ * used by threads that are never joined (event persistence, syscom), and a second
+ * termination signal (signal() leaves the other signals unblocked while the handler
+ * runs) could re-enter the handler, skip the join and free the handle under the live
+ * synchronization thread. */
+static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
+{
+    char buf;
+
+    /* Wait for fim_shutdown() to report a termination signal */
+    while (!fim_shutdown_process_on())
+    {
+        if (read(fim_shutdown_pipe[0], &buf, 1) < 0 && errno != EINTR)
+        {
+            sleep(1); // Defensive: reading the shutdown pipe cannot fail in practice
+        }
+    }
+
+    minfo(SK_SHUTDOWN);
+
+    /* Abort any in-flight synchronization so the join below is short */
     if (syscheck.sync_handle)
     {
         asp_stop(syscheck.sync_handle);
     }
 
-    /* Wait for the inventory synchronization thread to exit, then destroy the sync
-     * protocol handle so its SQLite connection to fim_sync.db is closed cleanly
-     * (checkpointing and removing the -wal/-shm files) instead of being leaked
-     * (issue #37334). The loop reacts to fim_sync_module_running within a second and
-     * asp_stop() aborts any in-flight synchronization, so the join is short. It cannot
-     * self-deadlock: fim_run_integrity blocks the signals this handler is registered
-     * for, so the handler never runs on that thread. */
+    /* Wait for the inventory synchronization thread to exit: its loop reacts to
+     * fim_sync_module_running (cleared by fim_shutdown()) within a second. */
     if (fim_sync_thread_initialized)
     {
         fim_sync_thread_initialized = false;
         pthread_join(fim_sync_thread, NULL);
     }
 
+    /* Destroy the sync protocol handle so its SQLite connection to fim_sync.db is
+     * closed cleanly (checkpointing and removing the -wal/-shm files) instead of
+     * being leaked (issue #37334). The write lock excludes the handle users that
+     * are not joined above (event persistence, syscom's fim_sync responses, the
+     * DataClean paths and the scheduled-scan asp_reset), which take it for reading
+     * around each call. */
+    w_rwlock_wrlock(&fim_sync_handle_rwlock);
     if (syscheck.sync_handle)
     {
         asp_destroy(syscheck.sync_handle);
         syscheck.sync_handle = NULL;
     }
+    w_rwlock_unlock(&fim_sync_handle_rwlock);
 
     fim_db_teardown();
-    HandleSIG(sig);
+    HandleSIG((int)fim_shutdown_sig);
+
+    return NULL;
+}
+
+/* Termination signal handler: only async-signal-safe work happens here; the actual
+ * teardown runs in fim_shutdown_waiter() (see above) */
+static void fim_shutdown(int sig)
+{
+    int saved_errno = errno;
+
+    fim_shutdown_sig = sig;
+    is_fim_shutdown = true;
+    fim_sync_module_running = 0;
+
+    if (fim_shutdown_pipe[1] >= 0)
+    {
+        /* Wake the shutdown waiter; write() is async-signal-safe */
+        while (write(fim_shutdown_pipe[1], "", 1) < 0 && errno == EINTR) {}
+    }
+
+    errno = saved_errno;
 }
 
 /* Syscheck unix main */
@@ -200,6 +247,18 @@ int main(int argc, char **argv)
         nowDaemon();
         goDaemon();
     }
+
+    /* Spawn the shutdown waiter before registering the termination signal handler
+     * that wakes it through the pipe (issue #37334) */
+    if (pipe(fim_shutdown_pipe) < 0) {
+        merror_exit("Could not create the shutdown pipe: %s (%d)", strerror(errno), errno);
+    }
+
+    /* Keep the pipe out of child processes (e.g. prefilter_cmd) */
+    fcntl(fim_shutdown_pipe[0], F_SETFD, FD_CLOEXEC);
+    fcntl(fim_shutdown_pipe[1], F_SETFD, FD_CLOEXEC);
+
+    w_create_thread(fim_shutdown_waiter, NULL);
 
     /* Start signal handling */
     StartSIG2(ARGV0, fim_shutdown);

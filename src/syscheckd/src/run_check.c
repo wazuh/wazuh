@@ -61,12 +61,20 @@ volatile int fim_sync_module_running = 0;
 
 #ifndef WIN32
 // Handle to the FIM inventory synchronization thread. Kept joinable (issue #37334) so
-// fim_shutdown() can wait for it to exit before destroying the sync protocol handle,
-// letting its SQLite connection to fim_sync.db close cleanly (checkpoint + removal of
-// the -wal/-shm files) instead of leaking it on a graceful stop.
+// the shutdown waiter (fim_shutdown_waiter(), main.c) can wait for it to exit before
+// destroying the sync protocol handle, letting its SQLite connection to fim_sync.db
+// close cleanly (checkpoint + removal of the -wal/-shm files) instead of leaking it
+// on a graceful stop.
 pthread_t fim_sync_thread;
 bool fim_sync_thread_initialized = false;
 #endif
+
+// Serializes syscheck.sync_handle use against the shutdown teardown (issue #37334): the
+// users that are not joined before asp_destroy() (event persistence, syscom's fim_sync
+// responses, the DataClean paths and the scheduled-scan asp_reset) take it for reading
+// around each asp_* call, and the shutdown waiter destroys the handle under the write
+// lock. Statically initialized so it is valid no matter how early those threads run.
+pthread_rwlock_t fim_sync_handle_rwlock = PTHREAD_RWLOCK_INITIALIZER;
 
 // Flush on-demand synchronization variables (thread-safe with atomic operations)
 atomic_int_t fim_flush_in_progress = ATOMIC_INT_INITIALIZER(0);  // 0 = idle, 1 = flush active
@@ -226,7 +234,11 @@ STATIC bool send_data_clean_with_retry(const char* indices[], size_t indices_cou
     bool dataCleanSent = false;
 
     while (!dataCleanSent && !fim_shutdown_process_on()) {
-        dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+        w_rwlock_rdlock(&fim_sync_handle_rwlock);
+        if (syscheck.sync_handle) {
+            dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+        }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
         if (!dataCleanSent) {
             mdebug1("DataClean notification failed, retrying after sync interval (%u seconds)...", syscheck.sync_interval);
             for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
@@ -234,7 +246,11 @@ STATIC bool send_data_clean_with_retry(const char* indices[], size_t indices_cou
             }
         } else {
             mdebug1("DataClean notification sent successfully.");
-            asp_delete_database(syscheck.sync_handle);
+            w_rwlock_rdlock(&fim_sync_handle_rwlock);
+            if (syscheck.sync_handle) {
+                asp_delete_database(syscheck.sync_handle);
+            }
+            w_rwlock_unlock(&fim_sync_handle_rwlock);
             fim_db_close_and_delete_database();
             mdebug1("FIM databases deleted successfully.");
         }
@@ -308,7 +324,11 @@ STATIC void handle_fim_disabled(void) {
         send_data_clean_with_retry(indices, indices_count);
     } else {
         minfo("Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
-        asp_delete_database(syscheck.sync_handle);
+        w_rwlock_rdlock(&fim_sync_handle_rwlock);
+        if (syscheck.sync_handle) {
+            asp_delete_database(syscheck.sync_handle);
+        }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
         fim_db_close_and_delete_database();
         mdebug1("FIM databases deleted successfully.");
     }
@@ -364,7 +384,11 @@ void persist_syscheck_msg(const char *id, Operation_t operation, const char *ind
 
         // Validation is now done before DBSync insertion in the callbacks
         // This function just persists the already-validated data
-        asp_persist_diff(syscheck.sync_handle, id, operation, index, msg, version);
+        w_rwlock_rdlock(&fim_sync_handle_rwlock);
+        if (syscheck.sync_handle) {
+            asp_persist_diff(syscheck.sync_handle, id, operation, index, msg, version);
+        }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
 
         os_free(msg);
     } else {
@@ -664,8 +688,8 @@ void start_daemon()
 
     if (syscheck.enable_synchronization) {
         fim_sync_module_running = 1;
-        // Launch the inventory synchronization thread as joinable so fim_shutdown() can
-        // wait for it before destroying the sync protocol handle (issue #37334).
+        // Launch the inventory synchronization thread as joinable so the shutdown waiter
+        // can wait for it before destroying the sync protocol handle (issue #37334).
         if (CreateThreadJoinable(&fim_sync_thread, fim_run_integrity, NULL) != 0) {
             merror(THREAD_ERROR);
             fim_sync_module_running = 0;
@@ -789,8 +813,12 @@ void start_daemon()
         }
 
         // Reset sync protocol stop flag if scheduled scan is triggered
-        if (run_now && syscheck.sync_handle) {
-            asp_reset(syscheck.sync_handle);
+        if (run_now) {
+            w_rwlock_rdlock(&fim_sync_handle_rwlock);
+            if (syscheck.sync_handle) {
+                asp_reset(syscheck.sync_handle);
+            }
+            w_rwlock_unlock(&fim_sync_handle_rwlock);
         }
 
         // If time elapsed is higher than the syscheck time, run syscheck time
@@ -921,18 +949,6 @@ void * fim_run_realtime(__attribute__((unused)) void * args) {
 DWORD WINAPI fim_run_integrity(__attribute__((unused)) void * args) {
 #else
 void * fim_run_integrity(__attribute__((unused)) void * args) {
-#endif
-#ifndef WIN32
-    // Block the termination signals handled by fim_shutdown() in this thread, so the
-    // handler can never run on the very thread it joins (self-join deadlock). The signals
-    // keep being delivered to the other threads (issue #37334).
-    sigset_t fim_sync_sigmask;
-    sigemptyset(&fim_sync_sigmask);
-    sigaddset(&fim_sync_sigmask, SIGTERM);
-    sigaddset(&fim_sync_sigmask, SIGINT);
-    sigaddset(&fim_sync_sigmask, SIGQUIT);
-    sigaddset(&fim_sync_sigmask, SIGALRM);
-    pthread_sigmask(SIG_BLOCK, &fim_sync_sigmask, NULL);
 #endif
     bool first_sync_completed = fim_db_get_last_sync_time(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY) > 0;
     bool skip_initial_wait = !first_sync_completed;
