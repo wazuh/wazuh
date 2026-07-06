@@ -74,7 +74,9 @@ void PersistentQueue::flushLoop()
 {
     while (true)
     {
-        std::size_t flushIdx;
+        std::size_t flushIdx = 0;
+        bool shouldFlush = false;
+
         {
             std::unique_lock<std::mutex> lock(m_mutex);
             m_cv.wait_for(lock, FLUSH_INTERVAL, [this]
@@ -82,19 +84,23 @@ void PersistentQueue::flushLoop()
                 return m_buffers[m_currentIdx].size() >= FLUSH_BATCH_SIZE || m_stop.load();
             });
 
-            flushIdx = m_currentIdx;
-            m_currentIdx ^= 1;
+            if (!m_buffers[m_currentIdx].empty())
+            {
+                flushIdx = m_currentIdx;
+                shouldFlush = true;
+                m_currentIdx ^= 1;
+            }
+
+            if (m_stop.load() && !shouldFlush)
+            {
+                break;
+            }
         }
 
-        if (!m_buffers[flushIdx].empty())
+        if (shouldFlush)
         {
             flushBuffer(m_buffers[flushIdx]);
             m_buffers[flushIdx].clear();
-        }
-
-        if (m_stop.load())
-        {
-            break;
         }
     }
 }
