@@ -95,6 +95,10 @@ on:
       id:
         type: string
         required: false
+    outputs:
+      package_name:
+        description: "Filename of the built wazuh-manager package"
+        value: ${{ jobs.Build-manager-packages.outputs.package_name }}
 
 permissions:
   id-token: write
@@ -103,6 +107,8 @@ permissions:
 
 jobs:
   Build-manager-packages:
+    outputs:
+      package_name: ${{ steps.build_package.outputs.package_name }}
     env:
       SHOULD_UPLOAD: ${{ inputs.upload_package }}
       SHOULD_UPLOAD_CHECKSUM: ${{ inputs.checksum && inputs.upload_package }}
@@ -206,6 +212,7 @@ jobs:
           cat VERSION.json
 
       - name: Build ${{ inputs.system }} wazuh-manager on ${{ inputs.architecture }}
+        id: build_package
         working-directory: packages
         env:
           INPUT_REVISION: ${{ inputs.revision }}
@@ -242,6 +249,7 @@ jobs:
           echo "FLAGS=$FLAGS" >> $GITHUB_ENV
           echo "PACKAGE_NAME=${PACKAGE_NAME}" | tee -a $GITHUB_ENV
           echo "PACKAGE_SYMBOLS_NAME=${PACKAGE_SYMBOLS_NAME}" | tee -a $GITHUB_ENV
+          echo "package_name=${PACKAGE_NAME}" >> $GITHUB_OUTPUT
 
       - name: Test install built manager
         run: |
