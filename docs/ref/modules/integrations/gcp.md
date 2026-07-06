@@ -111,3 +111,16 @@ grep "gcp" /var/ossec/logs/ossec.log
 ```
 
 GCP events appear in the Wazuh alerts with the `gcp` data field populated.
+
+---
+
+## Deprecated Options
+
+### logging
+
+**DEPRECATED:** The `<logging>` tag in both `<gcp-pubsub>` and `<gcp-bucket>` blocks is parsed but ignored.
+
+- **Status:** Deprecated
+- **Behavior:** Parser accepts the tag and prints a warning: "Tag 'logging' from the 'gcp-pubsub' (or 'gcp-bucket') module is deprecated. Ignoring."
+- **Replacement:** Use the global Wazuh logging configuration instead
+- **Note:** This tag has no effect and will be removed in a future version

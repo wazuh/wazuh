@@ -92,6 +92,8 @@
   - [Logcollector](ref/modules/logcollector/README.md)
     - [Log collectors](ref/modules/logcollector/collectors.md)
     - [Configuration](ref/modules/logcollector/configuration.md)
+  - [Logging](ref/modules/logging/README.md)
+    - [Configuration](ref/modules/logging/configuration.md)
   - [Rootcheck](ref/modules/rootcheck/README.md)
     - [Architecture](ref/modules/rootcheck/architecture.md)
     - [Configuration](ref/modules/rootcheck/configuration.md)

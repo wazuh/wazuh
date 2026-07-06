@@ -20,6 +20,8 @@ For module overview and architecture, see [SCA Module](index.html).
 
 ## Configuration Options
 
+**Deprecated option:** `<skip_nfs>` (parsed but no longer has any effect; NFS scanning behavior is no longer configurable)
+
 ### enabled
 
 Enable or disable the SCA module.

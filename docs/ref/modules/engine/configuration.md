@@ -47,7 +47,7 @@ Control event queue sizing and processing rate limiting:
 
 Configure bulk indexing and flush behavior:
 
-- **`analysisd.indexer_bulk_size`** - Bulk request size threshold (bytes)
+- **`analysisd.indexer_bulk_size_events`** - Maximum documents per bulk request (event count, not bytes)
 - **`analysisd.indexer_flush_interval`** - Periodic flush interval (seconds)
 
 #### Synchronization Intervals
@@ -80,7 +80,7 @@ analysisd.event_queue_size=16384
 analysisd.event_queue_eps=200
 
 # Indexer connector
-analysisd.indexer_bulk_size=10485760
+analysisd.indexer_bulk_size_events=50000
 analysisd.indexer_flush_interval=10
 
 # Synchronization
@@ -102,7 +102,7 @@ analysisd.event_queue_size=32768
 analysisd.event_queue_eps=1000
 
 # Larger bulk size for better indexer performance
-analysisd.indexer_bulk_size=20971520
+analysisd.indexer_bulk_size_events=100000
 analysisd.indexer_flush_interval=5
 
 # More frequent synchronization
@@ -120,7 +120,7 @@ analysisd.event_queue_size=8192
 analysisd.event_queue_eps=100
 
 # Smaller bulk size
-analysisd.indexer_bulk_size=5242880
+analysisd.indexer_bulk_size_events=10000
 analysisd.indexer_flush_interval=20
 
 # Less frequent synchronization
@@ -138,7 +138,7 @@ analysisd.event_queue_size=16384
 analysisd.event_queue_eps=500
 
 # Fast indexing for quick feedback
-analysisd.indexer_bulk_size=1048576
+analysisd.indexer_bulk_size_events=5000
 analysisd.indexer_flush_interval=1
 
 # Frequent sync for testing
@@ -324,7 +324,7 @@ ps aux | grep analysisd
 **Solution:**
 1. Reduce bulk size for faster flushing:
    ```ini
-   analysisd.indexer_bulk_size=5242880
+   analysisd.indexer_bulk_size_events=10000
    ```
 2. Reduce flush interval:
    ```ini

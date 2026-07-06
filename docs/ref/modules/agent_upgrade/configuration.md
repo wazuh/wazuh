@@ -142,6 +142,24 @@ Verify WPK package digital signature before installation.
 - **Allowed values:** `yes`, `no`
 - **Note:** Disabling verification is not recommended as it allows unsigned packages
 
+**Sub-option:**
+
+#### ca_store
+
+Custom path(s) to CA certificate file(s) for WPK signature verification.
+
+- **Default value:** Built-in CA certificates
+- **Allowed values:** Valid file path (tag can be repeated for multiple certificates)
+- **Note:** Only effective when `ca_verification` is `yes`; allows using custom CA for WPK signing
+
+**Format for multiple certificates:**
+```xml
+<ca_verification>
+  <ca_store>/etc/ssl/certs/ca1.pem</ca_store>
+  <ca_store>/etc/ssl/certs/ca2.pem</ca_store>
+</ca_verification>
+```
+
 ### notification_wait_start
 
 Initial wait time (in seconds) before the agent notifies the manager of upgrade results.

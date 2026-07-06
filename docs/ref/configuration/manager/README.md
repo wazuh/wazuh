@@ -22,7 +22,7 @@ Configuration reference for Wazuh manager components.
 | [Engine](../../modules/engine/configuration.md) | - | - | `analysisd.*` |
 | [Indexer Connector](../../modules/indexer_connector/configuration.md) | `<indexer>` | - | - |
 | [Inventory Sync](../../modules/inventory-sync/configuration.md) | - | - | `wazuh_modules.inventory_sync_*`, `wazuh_modules.max_sessions` |
-| Logging (multiple modules) | `<logging>` | - | - |
+| [Logging](../../modules/logging/configuration.md) | `<logging>` | - | - |
 | [Monitord](../../modules/monitord/configuration.md) | `<global>` | - | `monitord.*` |
 | [Remoted](../../modules/remoted/configuration.md) | `<remote>` | - | `remoted.*` |
 | [Task Manager](../../modules/task_manager/configuration.md) | `<task-manager>` | - | - |

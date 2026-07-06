@@ -30,6 +30,8 @@ The main API configuration file defines:
 - HTTPS/TLS configuration
 - CORS settings
 - Upload limits and timeouts
+- Authentication pool sizing
+- Request timeout intervals
 - Logging configuration
 
 **Configuration directory structure:**
@@ -38,6 +40,26 @@ The main API configuration file defines:
 |------|-------------|
 | `api/configuration/api.yaml` | Main API configuration |
 | `api/configuration/security/` | Security configuration directory |
+
+### authentication_pool_size
+
+Size of the authentication thread pool for handling concurrent login requests.
+
+- **Default value:** `2`
+- **Allowed values:** Integer from `1` to `50`
+- **Note:** Increase for high-concurrency environments with many simultaneous login attempts
+
+### intervals
+
+API timing and timeout configuration.
+
+#### request_timeout
+
+Maximum time in seconds for API request processing.
+
+- **Default value:** `10`
+- **Allowed values:** Non-negative number (seconds, decimals allowed)
+- **Note:** Requests exceeding this timeout are terminated
 
 ### Security Configuration
 
@@ -76,31 +98,27 @@ Standard API settings for most deployments:
 ```yaml
 host: 0.0.0.0
 port: 55000
-use_only_authd: false
 drop_privileges: true
-experimental_features: false
 max_upload_size: 10485760  # 10 MB
+authentication_pool_size: 2
+intervals:
+  request_timeout: 10
 cors:
   enabled: false
   source_route: "*"
   expose_headers: "*"
   allow_headers: "*"
   allow_credentials: false
-cache:
-  enabled: true
-  time: 0.750
 access:
   max_login_attempts: 5
   block_time: 300
   max_request_per_minute: 300
 upload_configuration:
-  remote_commands:
-    localfile:
+  agents:
+    allow_higher_versions:
       allow: true
-      exceptions: []
-    wodle_command:
-      allow: true
-      exceptions: []
+  indexer:
+    allow: true
 logs:
   level: info
 ```
@@ -112,32 +130,30 @@ Enhanced security settings for production environments:
 ```yaml
 host: 0.0.0.0
 port: 55000
-use_only_authd: false
 drop_privileges: true
-experimental_features: false
 max_upload_size: 10485760
+authentication_pool_size: 2
+intervals:
+  request_timeout: 10
 cors:
   enabled: false
-cache:
-  enabled: true
-  time: 0.750
 access:
   max_login_attempts: 3
   block_time: 900  # 15 minutes
   max_request_per_minute: 100
 upload_configuration:
-  remote_commands:
-    localfile:
-      allow: false
-      exceptions: []
-    wodle_command:
-      allow: false
-      exceptions: []
+  agents:
+    allow_higher_versions:
+      allow: true
+  indexer:
+    allow: true
 logs:
   level: warning
-ssl:
+https:
+  enabled: true
   key: /var/wazuh-manager/etc/certs/api-key.pem
   cert: /var/wazuh-manager/etc/certs/api-cert.pem
+  use_ca: true
   ca: /var/wazuh-manager/etc/certs/root-ca.pem
 ```
 
@@ -149,16 +165,16 @@ Relaxed settings for development and testing:
 host: 0.0.0.0
 port: 55000
 drop_privileges: false
-experimental_features: true
 max_upload_size: 52428800  # 50 MB
+authentication_pool_size: 4  # Higher for dev testing
+intervals:
+  request_timeout: 30  # Longer for debugging
 cors:
   enabled: true
   source_route: "*"
   expose_headers: "*"
   allow_headers: "*"
   allow_credentials: true
-cache:
-  enabled: false
 access:
   max_login_attempts: 10
   block_time: 60

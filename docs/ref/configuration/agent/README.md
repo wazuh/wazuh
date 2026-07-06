@@ -20,7 +20,7 @@ Configuration reference for Wazuh agent components.
 | [Client](../../modules/client/configuration.md) | `<client>`, `<client_buffer>`, `<anti_tampering>` | `agent.*`, `windows.*` (Windows only) |
 | [Command](../../modules/command/configuration.md) | `<wodle name="command">` | `wazuh_command.*` |
 | [Logcollector](../../modules/logcollector/configuration.md) | `<localfile>`, `<socket>` | `logcollector.*` |
-| Logging (multiple modules) | `<logging>` | - |
+| [Logging](../../modules/logging/configuration.md) | `<logging>` | - |
 | [Rootcheck](../../modules/rootcheck/configuration.md) | `<rootcheck>` | `rootcheck.*` |
 | [SCA](../../modules/sca/configuration.md) | `<sca>` | `sca.*` |
 | [Syscollector](../../modules/syscollector/configuration.md) | `<wodle name="syscollector">` | - |

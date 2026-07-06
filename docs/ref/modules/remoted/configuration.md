@@ -52,6 +52,38 @@ Accept connections from agents running a Wazuh version higher than the manager.
 - **Allowed values:** `yes`, `no`
 - **Note:** Enable when upgrading agents before the manager
 
+### ipv6
+
+Enable IPv6 support for agent connections.
+
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** Allows agents to connect using IPv6 addresses
+
+### local_ip
+
+Bind remoted to a specific local IP address.
+
+- **Default value:** All interfaces (`0.0.0.0` for IPv4, `::` for IPv6)
+- **Allowed values:** Valid IPv4 or IPv6 address
+- **Note:** Restricts remoted to listen only on specified interface
+
+### rids_closing_time
+
+Time in seconds to keep agent session IDs (RIDs) cached after agent disconnects.
+
+- **Default value:** `300` (5 minutes)
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Prevents rapid reconnection issues; agent must wait this period before reusing same ID
+
+### connection_overtake_time
+
+Time in seconds before allowing a new connection to overtake an existing agent connection with the same ID.
+
+- **Default value:** `60`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Protects against connection hijacking while allowing legitimate agent restarts
+
 ---
 
 ## Internal Options
@@ -82,7 +114,7 @@ Network receive buffer size in bytes.
 
 Timeout in seconds before retrying a failed send operation.
 
-- **Default value:** `5`
+- **Default value:** `1`
 - **Allowed values:** Positive integer
 - **Note:** Lower values increase retry frequency; higher values reduce network overhead
 
@@ -146,7 +178,7 @@ Agent metadata cache expiration time in seconds.
 
 Interval in seconds for reloading agent key files.
 
-- **Default value:** `60`
+- **Default value:** `10`
 - **Allowed values:** Positive integer
 - **Note:** Lower values detect new agents faster but increase I/O overhead
 
@@ -154,9 +186,9 @@ Interval in seconds for reloading agent key files.
 
 Maximum number of open file descriptors for the remoted process.
 
-- **Default value:** System default
+- **Default value:** `458752`
 - **Allowed values:** Positive integer
-- **Note:** Increase for large agent counts (e.g., `131072` for >10K agents)
+- **Note:** Increase for large agent counts (e.g., `131072` for >10K agents); default supports ~200K concurrent connections
 
 ### remoted.state_interval
 
@@ -165,6 +197,182 @@ Interval in seconds for writing statistics to the state file.
 - **Default value:** `5`
 - **Allowed values:** `0` (disabled) or positive integer
 - **Note:** Set to `0` to disable statistics; lower values provide more frequent updates
+
+### remoted.send_chunk
+
+Maximum bytes to send in a single write operation to an agent.
+
+- **Default value:** `4096` (4 KB)
+- **Allowed values:** Positive integer (bytes)
+- **Note:** Larger values may improve throughput but increase network buffer requirements
+
+### remoted.buffer_relax
+
+Send buffer flushing mode selector.
+
+- **Default value:** `1`
+- **Allowed values:** `0` (strict: flush immediately), `1` (relaxed: allow buffering with timeout), `2` (lazy: maximum batching)
+- **Note:** Controls buffering behavior; `1` balances latency and throughput
+
+### remoted.send_buffer_size
+
+Size of send buffer per agent connection in bytes.
+
+- **Default value:** `131072` (128 KB)
+- **Allowed values:** Positive integer (bytes)
+- **Note:** Larger buffers handle burst traffic better
+
+### remoted.recv_timeout
+
+Timeout in seconds for receiving data from agents.
+
+- **Default value:** `1`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Agent marked as unresponsive if no data received within timeout
+
+### remoted.tcp_keepidle
+
+Time in seconds before sending TCP keepalive probes on idle connections.
+
+- **Default value:** `30`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Helps detect dead connections; platform-specific support required
+
+### remoted.tcp_keepintvl
+
+Interval in seconds between TCP keepalive probes.
+
+- **Default value:** `10`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Works with `tcp_keepidle` and `tcp_keepcnt`
+
+### remoted.tcp_keepcnt
+
+Number of unacknowledged TCP keepalive probes before considering connection dead.
+
+- **Default value:** `3`
+- **Allowed values:** Positive integer
+- **Note:** Total dead detection time = `tcp_keepidle + (tcp_keepintvl × tcp_keepcnt)`
+
+### remoted.merge_shared
+
+Enable merging shared configuration files for agents.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Combines group-specific configurations; disable for troubleshooting
+
+### remoted.pass_empty_keyfile
+
+Allow remoted to start even if client.keys file is empty.
+
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Useful for fresh installations; disable in production for security
+
+### remoted.router_forwarding_disabled
+
+Disable forwarding messages to the router component.
+
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** Set to `yes` to disable router integration (standalone manager mode)
+
+### remoted.request_pool
+
+Size of the request pool for handling agent communications.
+
+- **Default value:** `1024`
+- **Allowed values:** Positive integer
+- **Note:** Increase for high-concurrency scenarios
+
+### remoted.request_timeout
+
+Timeout in seconds for agent request operations.
+
+- **Default value:** `10`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Maximum time to wait for agent response
+
+### remoted.response_timeout
+
+Timeout in seconds for manager response operations to agents.
+
+- **Default value:** `60`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Maximum time for manager to respond to agent requests
+
+### remoted.request_rto_sec
+
+Retransmission timeout (seconds part) for agent requests.
+
+- **Default value:** `1`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Combined with `request_rto_msec` for total RTO
+
+### remoted.request_rto_msec
+
+Retransmission timeout (milliseconds part) for agent requests.
+
+- **Default value:** `0`
+- **Allowed values:** `0-999` (milliseconds)
+- **Note:** Fine-tune retransmission timing for lossy networks
+
+### remoted.max_attempts
+
+Maximum retry attempts for failed agent communications.
+
+- **Default value:** `4`
+- **Allowed values:** Positive integer
+- **Note:** After this many failures, operation is abandoned
+
+### remoted.shared_reload
+
+Interval in seconds for reloading shared configuration files.
+
+- **Default value:** `10`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** How often remoted checks for changes in `shared/` directory
+
+### remoted.disk_storage
+
+Enable disk-based storage for agent event queue persistence.
+
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** Persists queued events across remoted restarts; impacts I/O performance
+
+### remoted.verify_msg_id
+
+Verify message ID sequence from agents to detect tampering or replay attacks.
+
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** Enable for additional security; may cause issues with clock skew or agent restarts
+
+### remoted.batch_events_per_agent_capacity
+
+Maximum events to batch per agent before forwarding to engine.
+
+- **Default value:** `131072`
+- **Allowed values:** Positive integer
+- **Note:** Higher values improve throughput but increase latency
+
+### remoted.recv_counter_flush
+
+Message count threshold for flushing receive counters to statistics.
+
+- **Default value:** `128`
+- **Allowed values:** Positive integer (message count)
+- **Note:** Counters are flushed after this many messages received; internal monitoring metric
+
+### remoted.comp_average_printout
+
+Event count threshold for logging compression statistics.
+
+- **Default value:** `19999`
+- **Allowed values:** Integer from `10` to `999999` (event count)
+- **Note:** Compression stats logged after this many events processed
 
 ---
 

@@ -42,11 +42,11 @@ Manager port number.
 
 #### protocol
 
-Communication protocol.
+**DEPRECATED:** This option is parsed but ignored. Communication protocol is hard-coded to TCP.
 
-- **Default value:** `tcp`
-- **Allowed values:** `tcp`, `udp`
-- **Recommendation:** Use `tcp` for reliable delivery
+- **Status:** Deprecated (kept for backward compatibility)
+- **Behavior:** Always uses TCP regardless of configured value
+- **Note:** The parser accepts this tag but logs "Ignoring the 'protocol' option. Switching to TCP."
 
 #### max_retries
 
@@ -55,6 +55,30 @@ Maximum connection retry attempts before failing over to next server.
 - **Default value:** `5`
 - **Allowed values:** Positive integer
 - **Note:** Only applicable when multiple servers are configured
+
+#### retry_interval
+
+Time in seconds to wait between connection retry attempts.
+
+- **Default value:** `10`
+- **Allowed values:** Positive integer (seconds)
+- **Note:** Applies when retrying connection to the same server
+
+#### interface_index
+
+Network interface index to bind for manager connection.
+
+- **Default value:** Auto-select
+- **Allowed values:** Positive integer (interface index number)
+- **Note:** Platform-specific; forces agent to use specific network interface
+
+### ip_update_interval
+
+Interval in seconds for updating agent's IP address with the manager.
+
+- **Default value:** `0` (disabled)
+- **Allowed values:** `0` (disabled) or positive integer (seconds)
+- **Note:** When `0`, IP updates are disabled; set to positive value (e.g., `3600`) to enable periodic IP update messages
 
 ### config-profile
 
@@ -92,11 +116,11 @@ Automatically restart agent when receiving configuration updates from manager.
 
 ### crypto_method
 
-Encryption method for communication with manager.
+**DEPRECATED:** This option is parsed but ignored. Encryption method is hard-coded to AES.
 
-- **Default value:** `aes`
-- **Allowed values:** `aes`, `blowfish`
-- **Recommendation:** Use `aes` (modern, secure)
+- **Status:** Deprecated (kept for backward compatibility)
+- **Behavior:** Always uses AES regardless of configured value
+- **Note:** The parser accepts this tag but logs "Ignoring the 'crypto_method' option. Switching to AES."
 
 ### enrollment
 
@@ -147,6 +171,77 @@ Path to file containing enrollment authorization password.
 - **Allowed values:** Valid file path
 - **Note:** Password must match manager's authd password
 
+#### agent_address
+
+Agent's IP address to use for enrollment (overrides auto-detected address).
+
+- **Default value:** Auto-detected
+- **Allowed values:** Valid IPv4 or IPv6 address
+- **Note:** Useful when agent has multiple network interfaces
+
+#### ssl_cipher
+
+SSL/TLS cipher suite for enrollment connection.
+
+- **Default value:** System default
+- **Allowed values:** Valid OpenSSL cipher string
+- **Example:** `HIGH:!aNULL:!MD5`
+
+#### server_ca_path
+
+Path to CA certificate file for verifying manager certificate during enrollment.
+
+- **Default value:** None
+- **Allowed values:** Valid file path
+- **Note:** Required for SSL verification during enrollment
+
+#### agent_certificate_path
+
+Path to agent's client certificate for mutual TLS authentication during enrollment.
+
+- **Default value:** None
+- **Allowed values:** Valid file path
+
+#### agent_key_path
+
+Path to agent's private key for mutual TLS authentication during enrollment.
+
+- **Default value:** None
+- **Allowed values:** Valid file path
+- **Note:** Must correspond to `agent_certificate_path`
+
+#### auto_method
+
+Automatic enrollment method selection.
+
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** When enabled, agent automatically selects best enrollment method
+
+#### delay_after_enrollment
+
+Delay in seconds after successful enrollment before starting normal agent operations.
+
+- **Default value:** `20`
+- **Allowed values:** Positive integer (seconds) from `1` upward
+- **Note:** Allows time for manager to process new agent before receiving events; `0` is invalid and rejected by parser
+
+#### use_source_ip
+
+Use agent's source IP address for enrollment instead of configured address.
+
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** Useful for NAT scenarios
+
+#### interface_index
+
+Network interface index to bind for enrollment connection.
+
+- **Default value:** Auto-select
+- **Allowed values:** Positive integer (interface index number)
+- **Note:** Platform-specific; use `ip link` or `ifconfig` to find interface indices
+
 ---
 
 ## Client Buffer Configuration (`<client_buffer>`)
@@ -180,14 +275,6 @@ Maximum events per second to send when reconnecting (rate limiting).
 - **Minimum:** `1`
 - **Note:** Prevents overwhelming manager during reconnection
 
-### buffer_type
-
-Buffer storage type.
-
-- **Default value:** `disk`
-- **Allowed values:** `disk`, `memory`
-- **Note:** Disk buffering persists across agent restarts
-
 ---
 
 ## Anti-Tampering Configuration (`<anti_tampering>`)
@@ -196,12 +283,7 @@ Protects against unauthorized agent modifications and uninstallation.
 
 **Platform:** Linux/Unix only (not available on Windows or macOS)
 
-### disabled
-
-Enable or disable anti-tampering protection.
-
-- **Default value:** `no`
-- **Allowed values:** `yes`, `no`
+**Note:** To disable anti-tampering, remove or comment out the entire `<anti_tampering>` block. There is no disable option within the block.
 
 ### package_uninstallation
 
@@ -375,14 +457,13 @@ Automatic agent registration:
 
 ### Client Buffer Configuration
 
-High-volume environment with disk buffering:
+High-volume environment:
 
 ```xml
 <client_buffer>
   <disabled>no</disabled>
   <queue_size>50000</queue_size>
   <events_per_second>1000</events_per_second>
-  <buffer_type>disk</buffer_type>
 </client_buffer>
 ```
 
@@ -392,7 +473,6 @@ Maximum protection (Linux only):
 
 ```xml
 <anti_tampering>
-  <disabled>no</disabled>
   <package_uninstallation>yes</package_uninstallation>
 </anti_tampering>
 ```
@@ -433,11 +513,9 @@ Full example with all sections:
     <disabled>no</disabled>
     <queue_size>10000</queue_size>
     <events_per_second>600</events_per_second>
-    <buffer_type>disk</buffer_type>
   </client_buffer>
 
   <anti_tampering>
-    <disabled>no</disabled>
     <package_uninstallation>yes</package_uninstallation>
   </anti_tampering>
 
@@ -446,6 +524,19 @@ Full example with all sections:
   </logging>
 </ossec_config>
 ```
+
+---
+
+## Deprecated Options
+
+### disable-active-response
+
+**DEPRECATED:** The `<disable-active-response>` tag within `<client>` is parsed but has no effect.
+
+- **Status:** Deprecated silent no-op
+- **Behavior:** Parser accepts the tag but does not use the value
+- **Note:** Active response behavior is controlled by the active-response module configuration, not by this client-side setting
+- **Recommendation:** Remove from configuration; use `<active-response><disabled>` in the active-response module instead
 
 ---
 

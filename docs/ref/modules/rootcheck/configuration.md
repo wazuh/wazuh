@@ -18,6 +18,11 @@ For module overview and architecture, see [Rootcheck Module](index.html).
 
 ## Configuration Options
 
+**Deprecated options:** The following tags are parsed for backward compatibility but print migration messages. Functionality has been replaced by SCA and FIM:
+- `<windows_malware>`, `<windows_apps>` - Use SCA policies instead
+- `<check_files>`, `<check_trojans>` - Use FIM instead
+- `<check_unixaudit>`, `<check_winapps>`, `<check_winaudit>`, `<check_winmalware>` - Use SCA policies instead
+
 ### disabled
 
 Enable or disable the rootcheck module.
