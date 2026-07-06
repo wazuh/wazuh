@@ -398,14 +398,18 @@ FilterOp getStringCmpFunction(const std::string& targetField,
     }
 
     const auto name = buildCtx->context().opName;
+    // Pre-extract value string to avoid lazy json::Json creation per-event
+    std::optional<std::string> preExtractedValueStr;
     if (rightParameter->isValue())
     {
-        std::string value;
-        if (std::static_pointer_cast<Value>(rightParameter)->value().getString(value) != json::RetGet::Success)
+        auto asValue = std::static_pointer_cast<const Value>(rightParameter);
+        std::string_view sv;
+        if (asValue->getString(sv) != json::RetGet::Success)
         {
             throw std::runtime_error(
                 fmt::format(R"({} function: Expected a string but got {}.)", name, rightParameter->str()));
         }
+        preExtractedValueStr = std::string(sv);
     }
     else
     {
@@ -453,14 +457,9 @@ FilterOp getStringCmpFunction(const std::string& targetField,
         }
 
         std::string_view rValue {};
-        if (rightParameter->isValue())
+        if (preExtractedValueStr.has_value())
         {
-            if (std::static_pointer_cast<Value>(rightParameter)->value().getString(rValue) != json::RetGet::Success)
-            {
-                RETURN_FAILURE(isTestMode,
-                               false,
-                               fmt::format("{} function: Expected a string but got {}.", name, rightParameter->str()));
-            }
+            rValue = *preExtractedValueStr;
         }
         else
         {
@@ -1636,7 +1635,7 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
         else
         {
             std::string_view valueString;
-            if (std::static_pointer_cast<Value>(parameter)->value().getString(valueString) != json::RetGet::Success)
+            if (std::static_pointer_cast<Value>(parameter)->getString(valueString) != json::RetGet::Success)
             {
                 RETURN_FAILURE(isTestMode, false, failureTrace3);
             }
@@ -1790,8 +1789,8 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
             parameter = opArgs[0],
             expectedKeys](base::ConstEvent event) -> FilterResult
     {
-        const auto objectTarget = event->getObject(targetField);
-        if (!objectTarget.has_value())
+        const auto objectFields = event->getFields(targetField);
+        if (!objectFields.has_value())
         {
             RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
@@ -1817,12 +1816,12 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
             }
         }
 
-        if (localKeys.size() < objectTarget.value().size())
+        if (localKeys.size() < objectFields->size())
         {
             RETURN_FAILURE(isTestMode, false, failureTrace4);
         }
 
-        for (const auto& [key, value] : objectTarget.value())
+        for (const auto& key : objectFields.value())
         {
             if (localKeys.erase(key) == 0)
             {

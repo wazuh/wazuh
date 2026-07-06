@@ -111,12 +111,12 @@ TransformOp specificHLPBuilder(const Reference& targetField,
     {
         auto value = std::static_pointer_cast<Value>(param);
 
-        std::string optStr;
-        if (value->value().getString(optStr) != json::RetGet::Success)
+        std::string_view sv;
+        if (value->getString(sv) != json::RetGet::Success)
         {
             throw std::runtime_error(fmt::format("Got non 'string' parameter {}", value->value().str()));
         }
-        hlpOptionsList.emplace_back(std::move(optStr));
+        hlpOptionsList.emplace_back(sv);
     }
 
     hlp::parser::Parser parser;
