@@ -15,7 +15,7 @@ WAZUH_CONF="${WAZUH_CONF:-wazuh-manager.conf}"
 
 # Installation info
 VERSION="v5.0.0"
-REVISION="beta3"
+REVISION="beta4"
 TYPE="manager"
 
 ###  Do not modify below here ###
