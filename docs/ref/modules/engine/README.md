@@ -2390,6 +2390,22 @@ Average events per second during the last 30 minutes.
 
 ---
 
+##### `router.queue.bytes.used`
+
+Current number of bytes occupied in the router input queue.
+
+**Used for:** monitoring memory pressure from pending events.
+
+---
+
+##### `router.queue.bytes.usage.percent`
+
+Current router input queue byte utilization as a percentage of the configured `analysisd.event_queue_max_bytes` limit. Returns `0` when no byte limit is set.
+
+**Used for:** early detection of byte-quota saturation.
+
+---
+
 ##### `router.events.processed`
 
 Total number of events successfully processed by the router.
@@ -2701,6 +2717,7 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 |:--------|:------------|:-------:|
 | `analysisd.event_queue_size` | Maximum number of events waiting in the router input queue. Events can be dropped when this queue is full. | `131072` |
 | `analysisd.event_queue_eps` | Maximum event ingestion rate. `0` means unlimited. | `0` |
+| `analysisd.event_queue_max_bytes` | Maximum total byte size of events waiting in the router input queue. Events are dropped when this quota is full. `0` means unlimited. | `32 MB` |
 
 ### Indexer connector
 
