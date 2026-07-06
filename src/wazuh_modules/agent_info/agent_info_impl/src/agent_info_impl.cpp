@@ -1178,7 +1178,10 @@ void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModul
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING, "Failed to resume module " + module + ": " + response.response);
+            if (!m_stopped && !response.isModuleUnavailable)
+            {
+                m_logFunction(LOG_WARNING, "Failed to resume module " + module + ": " + response.response);
+            }
         }
     }
 }
@@ -1578,9 +1581,13 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING,
-                          "Failed to get version from " + module + " (error " + std::to_string(response.errorCode) +
-                          "), aborting coordination");
+            if (!m_stopped && !response.isModuleUnavailable)
+            {
+                m_logFunction(LOG_WARNING,
+                              "Failed to get version from " + module + " (error " + std::to_string(response.errorCode) +
+                              "), aborting coordination");
+            }
+
             return -1;
         }
 
@@ -1639,9 +1646,13 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING,
-                          "Failed to set version on " + module + " (error " + std::to_string(response.errorCode) +
-                          "), aborting coordination");
+            if (!m_stopped && !response.isModuleUnavailable)
+            {
+                m_logFunction(LOG_WARNING,
+                              "Failed to set version on " + module + " (error " + std::to_string(response.errorCode) +
+                              "), aborting coordination");
+            }
+
             return -1;
         }
 
