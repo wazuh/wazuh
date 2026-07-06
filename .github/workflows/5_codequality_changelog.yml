@@ -24,5 +24,5 @@ jobs:
         uses: dangoslen/changelog-enforcer@v3
         id: verify-changelog
         with:
-          skipLabels: "autocut,skip-changelog"
+          skipLabels: "no-changelog"
           changeLogPath: "CHANGELOG.md"
