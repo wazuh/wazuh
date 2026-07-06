@@ -1,5 +1,7 @@
 #include "parse.hpp"
 
+#include <type_traits>
+
 #include <base/json.hpp>
 
 #include "../utils.hpp"
@@ -7,6 +9,11 @@
 
 namespace builder::builders
 {
+static_assert(
+    std::is_same_v<rapidjson::Document::AllocatorType, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>,
+    "The parse stage requires RapidJSON's MemoryPoolAllocator<CrtAllocator>: HLP mappers retain string_views into "
+    "the event while mutating it, so replacing the allocator may invalidate those views.");
+
 // TODO: QoL error messages
 StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t debugLvl)
 {

@@ -1,6 +1,7 @@
 #include "builders/optransform/hlp.hpp"
 
 #include <optional>
+#include <type_traits>
 
 #include <fmt/format.h>
 
@@ -12,6 +13,11 @@ using builder::syntax::field::REF_ANCHOR;
 namespace
 {
 using namespace builder::builders;
+
+static_assert(
+    std::is_same_v<rapidjson::Document::AllocatorType, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>,
+    "HLP transforms require RapidJSON's MemoryPoolAllocator<CrtAllocator>: parser mappers retain string_views into "
+    "the event while mutating it, so replacing the allocator may invalidate those views.");
 
 enum class HLPParserType
 {
@@ -155,7 +161,9 @@ TransformOp specificHLPBuilder(const Reference& targetField,
                base::Event event) -> TransformResult
     {
         // Check if source is a reference
-        std::string sourceValue;
+        // HLP mappers retain views into the source while mutating the event. MemoryPoolAllocator
+        // keeps the original string storage alive for the duration of parser::run().
+        std::string_view sourceValue;
         if (auto ret = event->getString(sourceValue, source); ret != json::RetGet::Success)
         {
             RETURN_FAILURE(isTestMode, event, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
