@@ -117,10 +117,12 @@ void PersistentQueue::flushPendingBuffer()
     std::size_t flushIdx;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
+
         if (m_buffers[m_currentIdx].empty())
         {
             return;
         }
+
         flushIdx = m_currentIdx;
         m_currentIdx ^= 1;
     }
