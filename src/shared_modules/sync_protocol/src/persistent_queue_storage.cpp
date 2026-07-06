@@ -26,7 +26,7 @@ PersistentQueueStorage::PersistentQueueStorage(const std::string& dbPath, Logger
     try
     {
         createTableIfNotExists();
-        m_connection.execute("PRAGMA synchronous = NORMAL;");
+        m_connection.execute("PRAGMA synchronous = OFF;");
         m_connection.execute("PRAGMA journal_mode = WAL;");
     }
     // LCOV_EXCL_START

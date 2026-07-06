@@ -439,3 +439,47 @@ TEST(PersistentQueueTest, clearAllDataContext_ExceptionHandling)
     // Should throw the exception
     EXPECT_THROW(queue.clearAllDataContext(), std::runtime_error);
 }
+
+// ========================================
+// Tests for graceful shutdown / destructor
+// ========================================
+
+TEST(PersistentQueueTest, DestructorFlushesBufferedEventsOnGracefulShutdown)
+{
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+
+    std::vector<PersistedData> flushedBatch;
+    EXPECT_CALL(*mockStorage, submitBatch(_))
+    .Times(1)
+    .WillOnce(SaveArg<0>(&flushedBatch));
+
+    {
+        PersistentQueue queue(":memory:", logger, mockStorage);
+        queue.submit("id1", "idx", R"({"k":1})", Operation::CREATE, 1);
+        queue.submit("id2", "idx", R"({"k":2})", Operation::MODIFY, 2);
+        queue.submit("id3", "idx", R"({"k":3})", Operation::DELETE_, 3);
+        // Destructor: sets m_stop=true, notifies flush thread, joins.
+        // Flush thread wakes up, sees m_stop, swaps buffer, calls submitBatch.
+    }
+
+    // join() in destructor guarantees submitBatch has returned before we assert.
+    ASSERT_EQ(flushedBatch.size(), 3u);
+    EXPECT_EQ(flushedBatch[0].id, "id1");
+    EXPECT_EQ(flushedBatch[1].id, "id2");
+    EXPECT_EQ(flushedBatch[2].id, "id3");
+}
+
+TEST(PersistentQueueTest, DestructorWithEmptyBufferDoesNotCallSubmitBatch)
+{
+    // Verify that no spurious write happens when the buffer is empty at shutdown.
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+
+    EXPECT_CALL(*mockStorage, submitBatch(_)).Times(0);
+
+    {
+        PersistentQueue queue(":memory:", logger, mockStorage);
+        // No events submitted — destructor must not call submitBatch.
+    }
+}
