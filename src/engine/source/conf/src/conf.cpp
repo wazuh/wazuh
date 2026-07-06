@@ -124,16 +124,9 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<size_t>(key::STREAMLOG_DUMPER_MAX_SIZE, "WAZUH_STREAMLOG_DUMPER_MAX_SIZE", 0);
     addUnit<size_t>(key::STREAMLOG_DUMPER_BUFFER_SIZE, "WAZUH_STREAMLOG_DUMPER_BUFFER_SIZE", 0x1 << 20);
 
-    addUnit<std::string>(key::STREAMLOG_METRICS_PATTERN, "WAZUH_STREAMLOG_METRICS_PATTERN", "${YYYY}-${MM}-${DD}");
-    addUnit<size_t>(key::STREAMLOG_METRICS_MAX_SIZE, "WAZUH_STREAMLOG_METRICS_MAX_SIZE", 10 * 1024 * 1024);
-    addUnit<size_t>(key::STREAMLOG_METRICS_BUFFER_SIZE, "WAZUH_STREAMLOG_METRICS_BUFFER_SIZE", 0x1 << 20);
     addUnit<size_t>(key::STREAMLOG_MAX_FILES, "WAZUH_STREAMLOG_MAX_FILES", 90);
     addUnit<size_t>(
         key::STREAMLOG_MAX_ACCUMULATED_SIZE, "WAZUH_STREAMLOG_MAX_ACCUMULATED_SIZE", 20ULL * 1024 * 1024 * 1024);
-
-    // Metrics module
-    addUnit<bool>(key::METRICS_LOG_ENABLED, "WAZUH_METRICS_LOG_ENABLED", false);
-    addUnit<size_t>(key::METRICS_LOG_INTERVAL, "WAZUH_METRICS_LOG_INTERVAL", 1);
 
     // Dumper module
     addUnit<bool>(key::DUMPER_ENABLED, "WAZUH_DUMPER_ENABLED", false);

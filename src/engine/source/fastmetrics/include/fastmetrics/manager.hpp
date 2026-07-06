@@ -168,11 +168,6 @@ public:
         registerPullMetricImpl<double>(name, std::move(getter), description, unit);
     }
 
-    /**
-     * @copydoc IManager::writeAllMetrics()
-     */
-    void writeAllMetrics(std::shared_ptr<streamlog::WriterEvent> metricsWriter) const override;
-
     /** @copydoc IManager::get() */
     std::shared_ptr<IMetric> get(const std::string& name) const override;
 
