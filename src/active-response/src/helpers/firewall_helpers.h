@@ -148,7 +148,8 @@ const char* firewall_result_to_string(firewall_result_t result);
  * @param action ENABLE_COMMAND or DISABLE_COMMAND
  * @param ip_version 4 for IPv4, 6 for IPv6
  * @param argv0 Program name for logging
- * @return OS_SUCCESS (always, to avoid retry loops in execd)
+ * @return OS_SUCCESS if any method blocked/unblocked the IP; OS_INVALID if every method
+ *         was unavailable or failed
  */
 int execute_firewall_chain(
     const firewall_method_t *methods,

@@ -487,7 +487,22 @@ void ExecdRun(char *exec_msg, int *childcount)
         fprintf(wfd->file_in, "%s\n", cmd_parameters);
         fflush(wfd->file_in);
 
-        wpclose(wfd);
+        {
+            int ar_wstatus = wpclose(wfd);
+#ifndef WIN32
+            if (WIFEXITED(ar_wstatus)) {
+                if (WEXITSTATUS(ar_wstatus) != 0) {
+                    mwarn("Active response command '%s' reported failure (exit code %d).", name, WEXITSTATUS(ar_wstatus));
+                }
+            } else {
+                mwarn("Active response command '%s' terminated abnormally.", name);
+            }
+#else
+            if (ar_wstatus != 0) {
+                mwarn("Active response command '%s' reported failure (exit code %d).", name, ar_wstatus);
+            }
+#endif
+        }
         os_free(cmd_copy);
 #ifndef WIN32
         (*childcount)++;
