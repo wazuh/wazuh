@@ -25,13 +25,15 @@ Upon receiving such a report, we will determine whether the vulnerability:
 ## Vulnerability Disclosure Policy
 Upon receiving a report of a potential vulnerability, our team will initiate an investigation. If the reported issue is confirmed as a vulnerability, we will take the following steps:
 
-1. Acknowledgment: We will acknowledge the receipt of your vulnerability report and begin our investigation.
-2. Validation: We will validate the issue and work on reproducing it in our environment.
-3. Remediation: We will work on a fix and thoroughly test it
-4. Release & Disclosure: After 90 days from the discovery of the vulnerability, or as soon as a fix is ready and thoroughly tested (whichever comes first), we will release a security update for the affected project. We will also publicly disclose the vulnerability by publishing a CVE (Common Vulnerabilities and Exposures) and acknowledging the discovering party.
-5. Exceptions: In order to preserve the security of the Wazuh community at large, we might extend the disclosure period to allow users to patch their deployments.
+1. **Acknowledgment**: We will acknowledge the receipt of your vulnerability report and begin our investigation.
+2. **Validation**: We will validate the issue and work on reproducing it in our environment.
+3. **Remediation**: We will develop a fix, have it reviewed, and merge it once thoroughly tested.
+4. **Release**: We will publish a security release for the affected project that includes the fix.
+5. **Rollout**: We will confirm that the fix has been applied to environments managed by Wazuh before proceeding with disclosure.
+6. **Disclosure**: Once the fix has been released and confirmed in managed environments, we will publicly disclose the vulnerability by publishing a CVE (Common Vulnerabilities and Exposures), where applicable, and acknowledging the discovering party.
+7. **Exceptions**: In order to preserve the security of the Wazuh community at large, we might extend the disclosure period to allow users to patch their deployments.
 
-This 90-day period allows for end-users to update their systems and minimizes the risk of widespread exploitation of the vulnerability.
+Steps 1 through 6 will be completed within 90 days from the report of the vulnerability. This period allows for end-users to update their systems and minimizes the risk of widespread exploitation of the vulnerability.
 
 ## Automatic Scanning
 We leverage GitHub Actions to perform automated scans of our supply chain. These scans assist us in identifying vulnerabilities and outdated dependencies in a proactive and timely manner.
