@@ -505,5 +505,5 @@ Potential improvements for future versions:
 ## See Also
 
 - [Control Module README](README.md) - Module overview
-- wazuh-manager-modulesd / wazuh-modulesd - Host daemon (no dedicated page yet; see the [Modules index](../README.md))
+- wazuh-manager-modulesd / wazuh-modulesd - Host daemon (no dedicated page yet; see the [Modules index](../index.html))
 - [Manager Installation](../../getting-started/installation.md) - Manager setup and systemctl

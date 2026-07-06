@@ -2706,9 +2706,9 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 
 | Setting | Description | Default |
 |:--------|:------------|:-------:|
-| `analysisd.indexer_queue_max_bytes` | Maximum number of bytes of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `64MB` |
-| `analysisd.indexer_bulk_max_bytes` | Maximum byte size of the bulk payload accumulated before a `_bulk` request is dispatched to `wazuh-indexer`. When the buffered data reaches this threshold, a batch is flushed. Allowed range: `64KB` to `100MB`. | `16MB` |
-| `analysisd.indexer_flush_interval` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the byte threshold has not been reached. Allowed range: `1` to `3600`. | `20` |
+| `analysisd.indexer_queue_max_events` | Maximum number of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `131072` |
+| `analysisd.indexer_bulk_size_events` | Maximum number of **documents** (event count) accumulated in the asynchronous indexer bulk buffer before a `_bulk` request is dispatched to `wazuh-indexer`. Counts documents, not bytes. Allowed range: `1` to `1000000`. | `25000` |
+| `analysisd.indexer_flush_interval` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the document-count threshold has not been reached. Allowed range: `1` to `3600`. | `20` |
 
 ### Synchronization settings
 
@@ -2724,7 +2724,7 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 | `analysisd.ioc_sync_interval` | Seconds between IoC database synchronization cycles. `0` disables IoC sync. | `360` |
 | `analysisd.ioc_indexer_connector_max_retries` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` |
 | `analysisd.ioc_indexer_connector_retry_interval` | Seconds between retry attempts for IoC synchronization. | `5` |
-| `analysisd.ioc_indexer_connector_ioc_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
+| `analysisd.ioc_indexer_connector_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
 | `analysisd.geo_sync_interval` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` |
 
 ## F.A.Q

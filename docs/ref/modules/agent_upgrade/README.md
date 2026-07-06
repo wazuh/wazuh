@@ -4,7 +4,7 @@ The agent upgrade module orchestrates remote agent upgrades from the manager. It
 
 Source: `src/wazuh_modules/src/agent_upgrade/`
 
-For configuration options see [Agent Upgrade Configuration](../../configuration/agent-upgrade.md).
+For configuration options see [Agent Upgrade Configuration](configuration.md).
 
 ## What is a WPK file
 

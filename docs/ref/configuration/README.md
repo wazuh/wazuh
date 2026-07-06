@@ -1,20 +1,50 @@
-# Configuration
+# Configuration Reference
 
-This section is the per-section/per-option reference for `wazuh-manager.conf` (`/var/wazuh-manager/etc/wazuh-manager.conf`, root tag `<wazuh_config>`). Each page documents one top-level section with all recognized options, their defaults, and allowed values verified against the parser source.
+This section documents all Wazuh configuration files and settings.
 
-## Contents
+## Configuration Files
 
-| Section | Description |
-|---------|-------------|
-| [global](global.md) | Agent disconnection timing |
-| [logging](logging.md) | Internal log format |
-| [remote](remote.md) | Agent listener (port, protocol, queue) |
-| [auth](auth.md) | Enrollment service (authd) |
-| [indexer](indexer.md) | Wazuh Indexer connection |
-| [vulnerability-detection](vulnerability-detection.md) | CVE scanner |
-| [socket](socket.md) | Named output sockets for Logcollector |
-| [agent-upgrade / task-manager](agent-upgrade.md) | Remote agent upgrade and task lifecycle |
-| [wazuh_db](wazuh-db.md) | Database backup |
-| [cluster](cluster.md) | Manager cluster configuration and deployment requirements |
-| [wodle-command](wodle-command.md) | `<wodle name="command">` — scheduled OS command execution |
-| [wodle-docker](wodle-docker.md) | `<wodle name="docker-listener">` — Docker event monitoring |
+### Manager Configuration Files
+
+**Location:** `/var/wazuh-manager/etc/`
+
+| File | Description |
+|------|-------------|
+| `wazuh-manager.conf` | Main XML configuration file for the manager |
+| `wazuh-manager-internal-options.conf` | Internal tuning parameters for manager components |
+| `api.yaml` | REST API configuration (located in `api/configuration/`) |
+| `agent.conf` | Centralized agent configuration distributed to agents (in `shared/<group>/`) |
+
+See [Manager Configuration](manager/index.html) for detailed module references.
+
+### Agent Configuration Files
+
+**Location:** `/var/ossec/etc/` (Linux/Unix) or `C:\Program Files (x86)\ossec-agent\` (Windows)
+
+| File | Description |
+|------|-------------|
+| `ossec.conf` | Main XML configuration file for the agent |
+| `internal_options.conf` | Internal tuning parameters for agent components |
+| `local_internal_options.conf` | User overrides for internal options (takes precedence) |
+
+See [Agent Configuration](agent/index.html) for detailed module references.
+
+### Centralized Configuration
+
+The manager can distribute configuration to agents using group-based `agent.conf` files.
+
+See [Agent Management - Centralized Configuration](../modules/agent-management/centralized-configuration.md) for detailed documentation.
+
+---
+
+## Quick Navigation
+
+- [Manager Configuration](manager/index.html) - Configuration for manager components
+- [Agent Configuration](agent/index.html) - Configuration for agent components
+- [Centralized Configuration](../modules/agent-management/centralized-configuration.md) - Group-based agent configuration distribution
+
+---
+
+## Configuration by Module
+
+For comprehensive module documentation including architecture, events, and database schemas, see [Modules Reference](../modules/index.html).

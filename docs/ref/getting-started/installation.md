@@ -334,7 +334,7 @@ Sets the password required for agent enrollment. This password must match the on
 sudo cat /var/wazuh-manager/etc/authd.pass
 ```
 
-Passing it through this variable is the recommended approach: the installer writes `etc/authd.pass` on the agent and sets its ownership and permissions automatically. See [`use_password`](../configuration/auth.md#use_password) for details and for adding the password to an already-installed agent.
+Passing it through this variable is the recommended approach: the installer writes `etc/authd.pass` on the agent and sets its ownership and permissions automatically. See [`use_password`](../modules/authd/configuration.md#use_password) for details and for adding the password to an already-installed agent.
 
 **`WAZUH_REGISTRATION_CA`**\
 Specifies the path to the CA certificate used to verify the manager's identity during enrollment.

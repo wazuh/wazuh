@@ -4,7 +4,7 @@
 
 The **Wazuh Engine** is the decoding, enrichment and routing events of the Wazuh manager (it ships as the `wazuh-manager-analysisd` daemon). It receives raw events from `wazuh-manager-remoted`, normalizes them to the Wazuh Common Schema using user-defined decoders, enriches them (GeoIP, IOC, key-value lookups), evaluates them against one or more security policies, and forwards the resulting documents to `wazuh-indexer`.
 
-The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peer for events is `remoted` and `vd`, and its only outbound peer for event/content flows is `wazuh-indexer`. The only external Internet connectivity it requires is downloading GeoIP/ASN databases from official Wazuh servers for geolocation updates. Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./README.md). For the API surface, see [api-reference.md](./api-reference.md).
+The engine never communicates with agents or with Wazuh CTI directly. Its only inbound peer for events is `remoted` and `vd`, and its only outbound peer for event/content flows is `wazuh-indexer`. The only external Internet connectivity it requires is downloading GeoIP/ASN databases from official Wazuh servers for geolocation updates. Content (decoders, integrations, policies, IOC databases) is also pulled from `wazuh-indexer` rather than from a CTI feed. For the runtime concepts referenced throughout this document — events, decoders, security policies, spaces, helper functions, assets — see the [quick-start](./index.html). For the API surface, see [api-reference.md](./api-reference.md).
 
 
 > [!NOTE]
@@ -208,5 +208,5 @@ IOC databases follow a parallel, independent pipeline: their own synchronizer pu
 
 ## Notes
 
-- This document covers the structure of the engine and the contracts between its modules. For runtime semantics — stages, helpers, asset structure, examples — read the [quick-start](./README.md). For the API surface, read [api-reference.md](./api-reference.md).
+- This document covers the structure of the engine and the contracts between its modules. For runtime semantics — stages, helpers, asset structure, examples — read the [quick-start](./index.html). For the API surface, read [api-reference.md](./api-reference.md).
 - The diagrams are intentionally simplified. Cross-cutting facilities such as logging, metrics and configuration loading are not drawn but are described in the corresponding module subsection above.

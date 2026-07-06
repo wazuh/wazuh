@@ -255,14 +255,14 @@ block in quick from <wazuh_fwtable>
 
 ## Agent Restart and Reload
 
-Agent restart and reload operations are **not** implemented as Active Response executables. These control operations are handled by the [Control Module (wm_control)](../control/README.md).
+Agent restart and reload operations are **not** implemented as Active Response executables. These control operations are handled by the [Control Module (wm_control)](../control/index.html).
 
 **Control Operations**:
 - Agent restart via `PUT /agents/{agent_id}/restart` API endpoint
 - Agent reload via `PUT /agents/{agent_id}/reload` API endpoint
 - Handled through dedicated control channel, not Active Response
 
-**See**: [Control Module Documentation](../control/README.md) for details on agent control operations.
+**See**: [Control Module Documentation](../control/index.html) for details on agent control operations.
 
 ---
 
@@ -783,4 +783,4 @@ tail -f /var/ossec/logs/active-responses.log
 
 - [Active Response README](README.md) - Module overview and features
 - [Architecture](architecture.md) - Technical implementation details
-- [Control Module](../control/README.md) - Agent restart/reload (separated in v5.0)
+- [Control Module](../control/index.html) - Agent restart/reload (separated in v5.0)

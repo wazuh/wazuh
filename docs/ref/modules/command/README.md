@@ -1,6 +1,6 @@
 # Command Module
 
-For the full per-option reference (all options, defaults and allowed values verified against the parser) see [Wodle: Command Configuration](../../configuration/wodle-command.md).
+For the full per-option reference (all options, defaults and allowed values verified against the parser) see [Wodle: Command Configuration](configuration.md).
 
 ## Introduction
 
