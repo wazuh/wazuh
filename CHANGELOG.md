@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.8]
 
+### Ruleset
+
+#### Fixed
+
+- Fixed Fortigate Decoder and malicious ioc rule. ([#37434](https://github.com/wazuh/wazuh/pull/37434))
+
 ## [v4.14.7]
 
 ### Ruleset
