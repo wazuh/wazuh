@@ -654,6 +654,7 @@ public:
 
         LOG_DEBUG2(m_logFn, "Cluster name to be used in indexer: %s", m_clusterName.c_str());
 
+        logDebug1(LOGGER_DEFAULT_TAG, "InventorySync worker threads: %u", cpp_get_nproc());
         m_workersQueue = std::make_unique<WorkersQueue>(
             [this](const std::vector<char>& dataRaw)
             {
@@ -686,7 +687,7 @@ public:
                     LOG_ERROR(m_logFn, "InventorySyncFacade::start: %s", e.what());
                 }
             },
-            std::thread::hardware_concurrency(),
+            cpp_get_nproc(),
             m_workersQueueSize);
 
         m_inventorySubscription =

@@ -20,6 +20,7 @@
 #include "commonDefs.h"
 #include "functionTraits.hpp"
 #include "loggerHelper.h"
+#include "proc.hpp"
 #include "threadSafeQueue.h"
 
 namespace Utils
@@ -56,7 +57,7 @@ namespace Utils
          *                     unbounded queue.
          */
         explicit AsyncValueDispatcher(Functor functor,
-                                      const unsigned int numberOfThreads = std::thread::hardware_concurrency(),
+                                      const unsigned int numberOfThreads = cpp_get_nproc(),
                                       const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
             : m_functor {functor}
             , m_numberOfThreads {numberOfThreads ? numberOfThreads : 1}
