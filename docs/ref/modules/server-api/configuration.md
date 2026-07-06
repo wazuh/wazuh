@@ -405,4 +405,4 @@ cors:
 - [Server API Module](index.html) - Module overview and architecture
 - [API Reference](api-reference.html) - Complete API endpoint documentation
 - [RBAC Configuration](../rbac/configuration.html) - Role-based access control
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

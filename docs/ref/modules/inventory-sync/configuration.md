@@ -585,4 +585,4 @@ ls -lh /var/wazuh-manager/var/lib/wazuh-db/inventory_sync/
 - [Router Configuration](../router/configuration.md) - Message bus configuration
 - [Indexer Connector Configuration](../indexer-connector/configuration.md) - Indexer integration
 - [Vulnerability Scanner Configuration](../vulnerability-scanner/configuration.md) - Vulnerability scanning integration
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

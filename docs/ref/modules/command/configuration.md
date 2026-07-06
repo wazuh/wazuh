@@ -652,6 +652,6 @@ tail -f /var/ossec/logs/ossec.log | grep "wazuh-modulesd:command"
 
 - [Command Module](index.html) - Module overview and use cases
 - [Log Collector Configuration](../logcollector/configuration.md) - Alternative: use `<localfile>` with `log_format=command` for simple command output
-- [Centralized Configuration](../../configuration/centralized/agent.conf.md) - Deploy command wodles via centralized configuration
-- [Agent Configuration Reference](../../configuration/agent/index.html) - All agent configuration options
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
+- [Centralized Configuration](../agent-management/centralized-configuration.md) - Deploy command wodles via centralized configuration
+- [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

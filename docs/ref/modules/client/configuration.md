@@ -543,6 +543,6 @@ Full example with all sections:
 ## See Also
 
 - [Client Module](index.html) - Module overview and architecture
-- [Remote Configuration](../../configuration/manager/remote.md) - Manager-side agent listener configuration
-- [Centralized Configuration](../../configuration/centralized/agent.conf.md) - Group-based configuration
+- [Remoted Configuration](../remoted/configuration.md) - Manager-side agent listener configuration
+- [Centralized Configuration](../agent-management/centralized-configuration.md) - Group-based configuration
 - [Agent Enrollment](../agent-management/enrollment.md) - Agent registration process

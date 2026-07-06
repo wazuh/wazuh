@@ -195,4 +195,4 @@ tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep "task-manager"
 - [Task Manager Module](index.html) - Module overview and architecture
 - [Agent Upgrade Configuration](../agent_upgrade/configuration.md) - Uses Task Manager for agent upgrades
 - [Wazuh DB Configuration](../wazuh_db/configuration.md) - Task storage backend
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

@@ -318,4 +318,4 @@ The connector uses round-robin load balancing across configured hosts. For optim
 
 - [Indexer Connector Module](index.html) - Module overview and architecture
 - [Vulnerability Scanner Configuration](../vulnerability-scanner/configuration.md) - Uses Indexer connection for feeds
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

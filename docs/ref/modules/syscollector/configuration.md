@@ -559,4 +559,4 @@ grep -i "sync.*error" /var/ossec/logs/ossec.log
 - [Syscollector Architecture](architecture.md) - Technical architecture and design
 - [Syscollector Events](events.md) - Event format and structure
 - [Syscollector Database Schema](database-schema.md) - Database tables and fields
-- [Agent Configuration Reference](../../configuration/agent/index.html) - All agent configuration options
+- [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options

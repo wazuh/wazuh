@@ -237,4 +237,4 @@ tail -f /var/wazuh-manager/logs/wazuh-manager.log | grep "wazuh-db"
 - [Database Sync Module](index.html) - Module overview
 - [Wazuh DB Configuration](../wazuh_db/configuration.md) - Database backup and tuning
 - [Agent Management](../agent-management/index.html) - Agent lifecycle management
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

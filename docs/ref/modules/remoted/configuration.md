@@ -70,10 +70,11 @@ Bind remoted to a specific local IP address.
 
 ### rids_closing_time
 
-Time in seconds to keep agent session IDs (RIDs) cached after agent disconnects.
+Time to keep agent session IDs (RIDs) cached after agent disconnects.
 
 - **Default value:** `300` (5 minutes)
-- **Allowed values:** Positive integer (seconds)
+- **Allowed values:** Time value with optional suffix: `s` (seconds), `m` (minutes), `h` (hours), `d` (days). Bare number defaults to seconds.
+- **Example:** `300`, `5m`, `300s` are all equivalent
 - **Note:** Prevents rapid reconnection issues; agent must wait this period before reusing same ID
 
 ### connection_overtake_time
@@ -81,8 +82,8 @@ Time in seconds to keep agent session IDs (RIDs) cached after agent disconnects.
 Time in seconds before allowing a new connection to overtake an existing agent connection with the same ID.
 
 - **Default value:** `60`
-- **Allowed values:** Positive integer (seconds)
-- **Note:** Protects against connection hijacking while allowing legitimate agent restarts
+- **Allowed values:** Integer from `0` to `3600` (seconds)
+- **Note:** Set to `0` to disable overtake protection (allows immediate reconnection); higher values provide more protection against connection hijacking while requiring longer wait for legitimate agent restarts
 
 ---
 

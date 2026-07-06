@@ -278,5 +278,5 @@ kill -HUP $(cat /var/wazuh-manager/var/run/wazuh-monitord-*.pid)
 ## See Also
 
 - [Monitord Module](index.html) - Module overview and architecture
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
-- [Agent Configuration Reference](../../configuration/agent/index.html) - All agent configuration options including keep-alive settings
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options
+- [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options including keep-alive settings

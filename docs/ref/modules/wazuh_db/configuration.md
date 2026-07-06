@@ -304,6 +304,6 @@ Expected output: `ok`
 ## See Also
 
 - [Wazuh DB Module](index.html) - Module overview, architecture, and database schemas
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options
 - [Vulnerability Scanner Configuration](../vulnerability-scanner/configuration.md) - Uses wazuh-db for vulnerability data
 - [Task Manager Configuration](../task_manager/configuration.md) - Uses wazuh-db for task storage

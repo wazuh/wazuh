@@ -343,5 +343,5 @@ If the configuration is invalid, the module will log a warning and use default v
 ## See Also
 
 - [Agent Info Module](index.html) - Module overview and architecture
-- [Agent Configuration Reference](../../configuration/agent/index.html) - All agent configuration options
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
+- [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

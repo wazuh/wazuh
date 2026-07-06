@@ -789,4 +789,4 @@ logcollector.sock_fail_time=60
 - [Logcollector Module](index.html) - Module overview and architecture
 - [Log Collectors](collectors.md) - Detailed collector documentation
 - [Client Configuration](../client/configuration.md) - Agent connectivity settings
-- [Agent Configuration Reference](../../configuration/agent/index.html) - All agent configuration options
+- [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options

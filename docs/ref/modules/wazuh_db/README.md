@@ -4,7 +4,7 @@
 
 Source: `src/wazuh_db/`
 
-For backup configuration see [Wazuh-DB Configuration](../../configuration/wazuh-db.md).
+For backup configuration see [Wazuh-DB Configuration](configuration.md).
 
 ## Architecture
 

@@ -30,7 +30,7 @@ The Engine is configured exclusively through internal options. There is no dedic
 
 All engine settings are configured through internal options prefixed with `analysisd.*` in `/var/wazuh-manager/etc/wazuh-manager-internal-options.conf`.
 
-**Complete internal options documentation:** See [Internal options reference](README.md#internal-options-reference) in the Engine Module documentation.
+**Complete internal options documentation:** See [Internal options reference](index.html#internal-options-reference) in the Engine Module documentation.
 
 ### Key Configuration Areas
 
@@ -64,7 +64,7 @@ Configure database update frequencies:
 - **`analysisd.ioc_sync_interval`** - Indicator of Compromise database sync interval
 - **`analysisd.geo_sync_interval`** - GeoIP database update interval
 
-For complete details, default values, allowed ranges, and additional internal options, see the [Internal options reference](README.md#internal-options-reference) section in the Engine Module documentation.
+For complete details, default values, allowed ranges, and additional internal options, see the [Internal options reference](index.html#internal-options-reference) section in the Engine Module documentation.
 
 ---
 
@@ -368,4 +368,4 @@ ps aux | grep analysisd
 - [Helper Functions Reference](ref-helper-functions.md) - Available helper functions
 - [Parsers Reference](ref-parser.md) - Parser documentation
 - [Outputs Reference](ref-output.md) - Output configuration
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options

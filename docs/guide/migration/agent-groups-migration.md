@@ -112,7 +112,7 @@ With the group folders in place and each agent's group configured, start each ag
 > sudo chmod 640 /var/ossec/etc/authd.pass
 > ```
 >
-> Without this file the enrollment request will be rejected. See [`use_password`](../../ref/configuration/auth.md#use_password) for details.
+> Without this file the enrollment request will be rejected. See [`use_password`](../../ref/modules/authd/configuration.md#use_password) for details.
 
 Clear its key first, then start it:
 

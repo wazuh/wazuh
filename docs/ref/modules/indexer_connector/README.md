@@ -4,7 +4,7 @@ The Indexer Connector is a shared library (`libindexer_connector`) that handles 
 
 Source: `src/shared_modules/indexer_connector/`
 
-For configuration options see [Indexer Configuration](../../configuration/indexer.md).
+For configuration options see [Indexer Configuration](configuration.md).
 
 ## Overview
 

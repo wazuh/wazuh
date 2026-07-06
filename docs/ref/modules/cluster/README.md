@@ -1,6 +1,6 @@
 # Wazuh server cluster
 
-For the full per-option reference (all options, defaults and allowed values verified against the parser) see [Cluster Configuration](../../configuration/cluster.md).
+For the full per-option reference (all options, defaults and allowed values verified against the parser) see [Cluster Configuration](configuration.md).
 
 ## Introduction
 

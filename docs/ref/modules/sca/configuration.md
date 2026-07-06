@@ -352,4 +352,4 @@ Check `/var/ossec/logs/ossec.log` for SCA configuration validation messages.
 - [Custom Policies](custom-policies.md) - Creating custom SCA policies
 - [Database Schema](database-schema.md) - SCA database structure
 - [API Reference](api-reference.md) - SCA API endpoints
-- [Agent Configuration Reference](../../configuration/agent/index.html) - All agent configuration options
+- [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options

@@ -365,5 +365,5 @@ Increase task timeout in Task Manager configuration:
 
 - [Agent Upgrade Module](index.html) - Module overview and architecture
 - [Task Manager Configuration](../task_manager/configuration.md) - Task lifecycle management
-- [Manager Configuration Reference](../../configuration/manager/index.html) - All manager configuration options
-- [Agent Configuration Reference](../../configuration/agent/index.html) - All agent configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - All manager configuration options
+- [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options

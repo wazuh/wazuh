@@ -65,7 +65,7 @@ Active response scripts and triggers are defined on the manager. The manager ana
 For manager-side active response configuration, see:
 - [Active Response Executables](executables.md) - Available response scripts
 - [Active Response Architecture](architecture.md) - How active response works
-- [Manager Configuration Reference](../../configuration/manager/index.html) - Manager configuration
+- [Manager Configuration Reference](../../configuration/manager/README.md) - Manager configuration
 
 ---
 
@@ -381,5 +381,5 @@ timeout 30 /path/to/actual-command
 - [Active Response Module](index.html) - Module overview and architecture
 - [Active Response Architecture](architecture.md) - How active response works
 - [Active Response Executables](executables.md) - Available response scripts
-- [Manager Configuration Reference](../../configuration/manager/index.html) - Manager active response configuration
-- [Agent Configuration Reference](../../configuration/agent/index.html) - All agent configuration options
+- [Manager Configuration Reference](../../configuration/manager/README.md) - Manager active response configuration
+- [Agent Configuration Reference](../../configuration/agent/README.md) - All agent configuration options
