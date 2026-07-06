@@ -191,6 +191,10 @@ int Read_Rootcheck(XML_NODE node, void *configp, __attribute__((unused)) void *m
             minfo("Rootcheck option 'rootkit_files' is no longer supported.");
         } else if (strcmp(node[i]->element, "rootkit_trojans") == 0) {
             minfo("Rootcheck option 'rootkit_trojans' is no longer supported.");
+        } else if (strcmp(node[i]->element, "system_audit") == 0) {
+            minfo("Rootcheck option 'system_audit' is no longer supported.");
+        } else if (strcmp(node[i]->element, "windows_audit") == 0) {
+            minfo("Rootcheck option 'windows_audit' is no longer supported.");
         } else {
             mwarn(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
