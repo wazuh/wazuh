@@ -1,0 +1,97 @@
+name: "eBPF Field Validation"
+description: "Validates eBPF hook events across filesystems using installed wazuh-manager package"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install dependencies
+      run: |
+        sudo apt-get -qq update
+        sudo apt-get -qq install -y libbpf-dev btrfs-progs xfsprogs kmod
+      shell: bash
+
+    - name: Compile validation runner
+      run: |
+        g++ -O2 -Wall -std=c++17 \
+          src/syscheckd/src/ebpf/tests/ebpf_validation/ebpf_validation_test.cpp \
+          -lbpf -lelf -lz \
+          -o ebpf_validation_runner
+      shell: bash
+
+    - name: Run eBPF validation across filesystems
+      run: |
+        BPF_OBJ=/var/ossec/lib/modern.bpf.o
+        if ! sudo test -f "$BPF_OBJ"; then
+          echo "[ERROR] BPF object not found at $BPF_OBJ"
+          exit 1
+        fi
+        FAILED=""
+        SUMMARY="| Filesystem | Result | Passed | Failed | Warnings |\n|---|---|---|---|---|\n"
+
+        for FS in ext4 xfs btrfs tmpfs; do
+          IMG="/tmp/ebpf_test_${FS}.img"
+          MNT="/mnt/ebpf_test_${FS}"
+
+          echo "=========================================="
+          echo " Testing filesystem: ${FS}"
+          echo "=========================================="
+
+          if [ "${FS}" != "tmpfs" ] && ! grep -q "${FS}" /proc/filesystems; then
+            sudo modprobe "${FS}" 2>/dev/null || true
+            if ! grep -q "${FS}" /proc/filesystems; then
+              echo "[WARNING] Kernel does not support ${FS}. Skipping."
+              SUMMARY="${SUMMARY}| ${FS} | ⚠️ SKIPPED (unsupported) | - | - | - |\n"
+              continue
+            fi
+          fi
+
+          sudo rm -rf "${MNT}" && sudo mkdir -p "${MNT}"
+
+          if [ "${FS}" = "tmpfs" ]; then
+            if ! sudo mount -t tmpfs tmpfs "${MNT}"; then
+              SUMMARY="${SUMMARY}| ${FS} | ⚠️ SKIPPED (setup failed) | - | - | - |\n"
+              continue
+            fi
+          else
+            # xfs requires a filesystem of at least 300MB since xfsprogs 5.19
+            dd if=/dev/zero of="${IMG}" bs=1M count=512 conv=sparse 2>/dev/null
+            FORCE_FLAG="-f"
+            [ "${FS}" = "ext4" ] && FORCE_FLAG="-F"
+            if ! sudo mkfs.${FS} ${FORCE_FLAG} -q "${IMG}" || ! sudo mount -o loop "${IMG}" "${MNT}"; then
+              echo "[WARNING] Could not set up ${FS}. Skipping."
+              SUMMARY="${SUMMARY}| ${FS} | ⚠️ SKIPPED (setup failed) | - | - | - |\n"
+              sudo rm -rf "${MNT}" "${IMG}"
+              continue
+            fi
+          fi
+
+          RC=0
+          OUT=$(sudo ./ebpf_validation_runner --test-dir "${MNT}" 2>&1) || RC=$?
+          echo "${OUT}"
+
+          # Per-filesystem counters from the runner's "Total:" line
+          read -r P F W <<< "$(echo "${OUT}" | sed -n 's/^Total: \([0-9]*\) passed, \([0-9]*\) failed, \([0-9]*\) warnings.*/\1 \2 \3/p')" || true
+
+          if [ "${RC}" -eq 0 ]; then
+            SUMMARY="${SUMMARY}| ${FS} | ✅ PASS | ${P:-0} | ${F:-0} | ${W:-0} |\n"
+          else
+            SUMMARY="${SUMMARY}| ${FS} | ❌ FAIL | ${P:-0} | ${F:-0} | ${W:-0} |\n"
+            FAILED="${FAILED} ${FS}"
+          fi
+
+          sudo umount -l "${MNT}" 2>/dev/null || true
+          sudo rm -rf "${MNT}" "${IMG}"
+        done
+
+        {
+          echo "### eBPF Field Validation"
+          echo ""
+          printf '%b' "${SUMMARY}"
+        } >> "${GITHUB_STEP_SUMMARY}"
+
+        if [ -n "${FAILED}" ]; then
+          echo "[FAIL] Failed filesystems:${FAILED}"
+          exit 1
+        fi
+        echo "[PASS] All filesystem tests passed"
+      shell: bash
