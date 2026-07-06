@@ -14,10 +14,14 @@
 #include "agent_sync_protocol_types.hpp"
 
 #include <string>
+#include <array>
 #include <map>
 #include <vector>
 #include <optional>
 #include <mutex>
+#include <condition_variable>
+#include <thread>
+#include <chrono>
 #include <memory>
 #include <atomic>
 
@@ -82,12 +86,46 @@ class PersistentQueue : public IPersistentQueue
         void deleteDatabase() override;
 
     private:
-        /// @brief Mutex to protect concurrent access to internal maps.
+        /// @brief Maximum number of buffered events before triggering an immediate flush.
+        static constexpr std::size_t FLUSH_BATCH_SIZE = 100;
+
+        /// @brief Maximum time to wait before flushing a non-full buffer.
+        static constexpr std::chrono::milliseconds FLUSH_INTERVAL{500};
+
+        /// @brief Mutex protecting m_buffer.
         std::mutex m_mutex;
+
+        /// @brief Mutex serializing all m_storage access across threads.
+        std::mutex m_storageMutex;
+
+        /// @brief Condition variable signalling the flush thread.
+        std::condition_variable m_cv;
+
+        /// @brief Double buffer (ping-pong): producers write to m_buffers[m_currentIdx],
+        ///        the flush thread swaps the index and drains the old slot.
+        std::array<std::vector<PersistedData>, 2> m_buffers;
+
+        /// @brief Index (0 or 1) of the buffer currently accepting new events.
+        std::size_t m_currentIdx{0};
+
+        /// @brief Background thread that drains m_buffer into storage.
+        std::thread m_flushThread;
+
+        /// @brief Set to true to request flush thread shutdown.
+        std::atomic<bool> m_stop{false};
 
         /// @brief Storage backend to persist and restore messages.
         std::shared_ptr<IPersistentQueueStorage> m_storage;
 
         /// @brief Logger function
         LoggerFunc m_logger;
+
+        /// @brief Main loop executed by m_flushThread.
+        void flushLoop();
+
+        /// @brief Writes a batch to storage in a single transaction.
+        void flushBuffer(const std::vector<PersistedData>& batch);
+
+        /// @brief Steals any items currently in m_buffer and flushes them to storage.
+        void flushPendingBuffer();
 };

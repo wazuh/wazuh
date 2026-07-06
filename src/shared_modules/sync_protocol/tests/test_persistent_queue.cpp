@@ -21,6 +21,7 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
 {
     public:
         MOCK_METHOD(void, submitOrCoalesce, (const PersistedData& data), (override));
+        MOCK_METHOD(void, submitBatch, (const std::vector<PersistedData>& batch), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchAndMarkForSync, (), (override));
         MOCK_METHOD(std::vector<PersistedData>, fetchPending, (bool onlyDataValues), (override));
         MOCK_METHOD(void, removeAllSynced, (), (override));
