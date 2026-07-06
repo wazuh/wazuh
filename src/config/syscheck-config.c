@@ -79,6 +79,8 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     syscheck->nodiff_regex                    = NULL;
     syscheck->scan_day                        = NULL;
     syscheck->scan_time                       = NULL;
+    syscheck->scan_day_str                    = NULL;
+    syscheck->scan_time_str                   = NULL;
     syscheck->file_limit_enabled              = true;
     syscheck->file_entry_limit                = 100000;
     syscheck->directories                     = OSList_Create();
@@ -1763,6 +1765,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+            os_strdup(node[i]->content, syscheck->scan_time_str);
         }
 
         /* Get scan day */
@@ -1773,6 +1776,7 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
                 mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
             }
+            os_strdup(node[i]->content, syscheck->scan_day_str);
         }
 
         /* Get file limit */
@@ -2369,8 +2373,14 @@ void Free_Syscheck(syscheck_config * config) {
         if (config->scan_day) {
             free(config->scan_day);
         }
+        if (config->scan_day_str) {
+            free(config->scan_day_str);
+        }
         if (config->scan_time) {
             free(config->scan_time);
+        }
+        if (config->scan_time_str) {
+            free(config->scan_time_str);
         }
         if (config->ignore) {
             for (i=0; config->ignore[i] != NULL; i++) {
