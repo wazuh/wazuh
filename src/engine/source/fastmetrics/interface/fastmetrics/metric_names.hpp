@@ -19,6 +19,8 @@ constexpr auto INDEXER_EVENTS_DROPPED = "indexer.events.dropped";
 // Router queue metrics
 constexpr auto ROUTER_QUEUE_SIZE = "router.queue.size";
 constexpr auto ROUTER_QUEUE_USAGE_PERCENT = "router.queue.usage.percent";
+constexpr auto ROUTER_QUEUE_BYTES_USED = "router.queue.bytes.used";
+constexpr auto ROUTER_QUEUE_BYTES_USAGE_PERCENT = "router.queue.bytes.usage.percent";
 
 // Router event metrics
 constexpr auto ROUTER_EPS_1M = "router.eps.1m";

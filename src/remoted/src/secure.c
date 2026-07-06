@@ -35,7 +35,7 @@ static _Atomic size_t s_pending_events_drop = 0;
 /**
  * @brief Increment the pending-drop counter and emit a rate-limited warning.
  *
- * At most one warning per 5-second window is printed. The CAS on
+ * At most one warning per 90-second window is printed. The CAS on
  * s_last_events_drop_warn ensures exactly one thread wins the print slot when
  * multiple handler threads discard events simultaneously.
  */
@@ -44,11 +44,11 @@ static void maybe_log_events_queue_drop(void) {
 
     time_t now  = time(NULL);
     time_t last = atomic_load_explicit(&s_last_events_drop_warn, memory_order_relaxed);
-    if (now - last >= 5 &&
+    if (now - last >= 90 &&
         atomic_compare_exchange_strong_explicit(&s_last_events_drop_warn, &last, now,
                                                 memory_order_relaxed, memory_order_relaxed)) {
         size_t count = atomic_exchange_explicit(&s_pending_events_drop, 0, memory_order_relaxed);
-        mwarn("Events queue discarded %zu event(s) in the last 5 seconds.", count);
+        mwarn("Events queue discarded %zu event(s) in the last 90 seconds.", count);
     }
 }
 

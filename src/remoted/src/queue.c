@@ -68,7 +68,7 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage
             mdebug2("Discarding oversized event from host (%lu bytes > %zu byte limit).", size, rem_input_max_bytes);
             rem_inc_recv_discarded();
             pending_discards++;
-            { time_t _t = time(NULL); if (_t - last_discard_warn >= 5) { mwarn("Input queue discarded %zu event(s) in the last 5 seconds.", pending_discards); pending_discards = 0; last_discard_warn = _t; } }
+            { time_t _t = time(NULL); if (_t - last_discard_warn >= 90) { mwarn("Input queue discarded %zu event(s) in the last 90 seconds.", pending_discards); pending_discards = 0; last_discard_warn = _t; } }
             return -1;
         }
         if (rem_input_bytes_used >= rem_input_max_bytes || size > rem_input_max_bytes - rem_input_bytes_used) {
@@ -78,7 +78,7 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage
             mdebug2("Discarding event from host: byte quota reached (%zu/%zu bytes).", rem_input_bytes_used, rem_input_max_bytes);
             rem_inc_recv_discarded();
             pending_discards++;
-            { time_t _t = time(NULL); if (_t - last_discard_warn >= 5) { mwarn("Input queue discarded %zu event(s) in the last 5 seconds.", pending_discards); pending_discards = 0; last_discard_warn = _t; } }
+            { time_t _t = time(NULL); if (_t - last_discard_warn >= 90) { mwarn("Input queue discarded %zu event(s) in the last 90 seconds.", pending_discards); pending_discards = 0; last_discard_warn = _t; } }
             return -1;
         }
     }
@@ -95,7 +95,7 @@ int rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage
         mdebug2("Discarding event from host.");
         rem_inc_recv_discarded();
         pending_discards++;
-        { time_t _t = time(NULL); if (_t - last_discard_warn >= 5) { mwarn("Input queue discarded %zu event(s) in the last 5 seconds.", pending_discards); pending_discards = 0; last_discard_warn = _t; } }
+        { time_t _t = time(NULL); if (_t - last_discard_warn >= 90) { mwarn("Input queue discarded %zu event(s) in the last 90 seconds.", pending_discards); pending_discards = 0; last_discard_warn = _t; } }
 
     }
 
