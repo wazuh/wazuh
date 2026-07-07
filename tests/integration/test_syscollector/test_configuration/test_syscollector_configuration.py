@@ -548,8 +548,11 @@ def test_syscollector_collectors_disabled(test_configuration, test_metadata, set
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_DISABLED_COLLECTORS_DETECTED), timeout=30)
     assert log_monitor.callback_result, "Disabled collectors with data should be detected"
 
-    # Check DataClean notification is started
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_DATACLEAN_NOTIFICATION_STARTED), timeout=60)
+    # Check DataClean notification is started. The notification is emitted when the module
+    # start reaches handleNotifyDataClean(), which on the disconnected test agent can take
+    # well over a minute (the agent retries enrollment/agentd queries with the manager
+    # unreachable), so give it the same margin as the other slow-path monitors in this file.
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_DATACLEAN_NOTIFICATION_STARTED), timeout=180)
     assert log_monitor.callback_result, "DataClean notification should be started for disabled collectors with data"
 
     if all_collectors_disabled:
