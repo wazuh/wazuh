@@ -151,6 +151,12 @@ void rem_msgfree(message_t* message);
 // Set the maximum total bytes for the input message queue (0 = unlimited)
 void rem_set_input_queue_max_bytes(size_t max_bytes);
 
+// Get current bytes used in the input queue
+size_t rem_get_input_bytes_used();
+
+// Get configured byte limit for the input queue (0 = unlimited)
+size_t rem_get_input_max_bytes();
+
 // Read config
 cJSON* getRemoteConfig(void);
 cJSON* getRemoteInternalConfig(void);

@@ -665,10 +665,10 @@ def generate_charts(
         if any("router_queue_size" in df.columns for df in analysisd_dfs.values()):
             plot_stacked_timeseries(
                 analysisd_dfs,
-                "router_queue_size", "router_queue_usage_percent",
-                "Router Queue Size", "Router Queue Usage %",
-                "Messages", "%",
-                "Analysisd — Router Queue",
+                "router_queue_size", "router_queue_size_usage_percent",
+                "Router Queue Size (bytes)", "Router Queue Size Usage %",
+                "Bytes", "%",
+                "Analysisd — Router Queue (bytes)",
                 os.path.join(out_dir, f"analysisd_router_queue.{fmt}"),
             )
 
@@ -676,10 +676,10 @@ def generate_charts(
         if any("indexer_queue_size" in df.columns for df in analysisd_dfs.values()):
             plot_stacked_timeseries(
                 analysisd_dfs,
-                "indexer_queue_size", "indexer_queue_usage_percent",
-                "Indexer Queue Size", "Indexer Queue Usage %",
-                "Messages", "%",
-                "Analysisd — Indexer Queue",
+                "indexer_queue_size", "indexer_queue_size_usage_percent",
+                "Indexer Queue Size (bytes)", "Indexer Queue Size Usage %",
+                "Bytes", "%",
+                "Analysisd — Indexer Queue (bytes)",
                 os.path.join(out_dir, f"analysisd_indexer_queue.{fmt}"),
             )
 

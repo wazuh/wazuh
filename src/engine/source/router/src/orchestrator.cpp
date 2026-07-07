@@ -309,7 +309,7 @@ Orchestrator::Orchestrator(const Options& opt)
 
     std::weak_ptr<decltype(m_eventQueue)::element_type> wEventQueue = m_eventQueue;
     FASTMETRICS_PULL(size_t,
-                     fastmetrics::names::ROUTER_QUEUE_SIZE,
+                     fastmetrics::names::ROUTER_QUEUE_EVENTS,
                      [wEventQueue]()
                      {
                          auto eventQueue = wEventQueue.lock();
@@ -317,7 +317,7 @@ Orchestrator::Orchestrator(const Options& opt)
                      });
 
     FASTMETRICS_PULL(double,
-                     fastmetrics::names::ROUTER_QUEUE_USAGE_PERCENT,
+                     fastmetrics::names::ROUTER_QUEUE_EVENTS_USAGE_PERCENT,
                      [wEventQueue]()
                      {
                          auto eventQueue = wEventQueue.lock();
@@ -330,7 +330,7 @@ Orchestrator::Orchestrator(const Options& opt)
                      });
 
     FASTMETRICS_PULL(size_t,
-                     fastmetrics::names::ROUTER_QUEUE_BYTES_USED,
+                     fastmetrics::names::ROUTER_QUEUE_SIZE,
                      [wEventQueue]()
                      {
                          auto eventQueue = wEventQueue.lock();
@@ -338,7 +338,7 @@ Orchestrator::Orchestrator(const Options& opt)
                      });
 
     FASTMETRICS_PULL(double,
-                     fastmetrics::names::ROUTER_QUEUE_BYTES_USAGE_PERCENT,
+                     fastmetrics::names::ROUTER_QUEUE_SIZE_USAGE_PERCENT,
                      [wEventQueue]()
                      {
                          auto eventQueue = wEventQueue.lock();

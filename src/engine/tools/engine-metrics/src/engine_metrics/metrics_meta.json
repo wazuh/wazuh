@@ -8,19 +8,19 @@
     "category": "events",
     "unit": "count"
   },
-  "router.queue.size": {
+  "router.queue.size.events": {
     "category": "events",
     "unit": "items"
   },
-  "router.queue.usage.percent": {
+  "router.queue.size.events_usage_percent": {
     "category": "events",
     "unit": "percent"
   },
-  "router.queue.bytes.used": {
+  "router.queue.size.bytes": {
     "category": "bytes",
     "unit": "bytes"
   },
-  "router.queue.bytes.usage.percent": {
+  "router.queue.size.bytes_usage_percent": {
     "category": "bytes",
     "unit": "percent"
   },
@@ -44,12 +44,12 @@
     "category": "events",
     "unit": "eps"
   },
-  "indexer.queue.size": {
-    "category": "events",
-    "unit": "items"
+  "indexer.queue.size.bytes": {
+    "category": "bytes",
+    "unit": "bytes"
   },
-  "indexer.queue.usage.percent": {
-    "category": "events",
+  "indexer.queue.size.bytes_usage_percent": {
+    "category": "bytes",
     "unit": "percent"
   },
   "indexer.events.dropped": {

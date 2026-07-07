@@ -122,6 +122,22 @@ size_t rem_get_tsize() {
     return size;
 }
 
+// Get current bytes used in the input queue
+size_t rem_get_input_bytes_used() {
+    w_mutex_lock(&mutex);
+    size_t used = rem_input_bytes_used;
+    w_mutex_unlock(&mutex);
+    return used;
+}
+
+// Get configured byte limit for the input queue (0 = unlimited)
+size_t rem_get_input_max_bytes() {
+    w_mutex_lock(&mutex);
+    size_t max = rem_input_max_bytes;
+    w_mutex_unlock(&mutex);
+    return max;
+}
+
 // Pop message from queue
 message_t * rem_msgpop() {
     message_t * message;

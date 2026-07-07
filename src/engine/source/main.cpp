@@ -485,7 +485,7 @@ int main(int argc, char* argv[])
                     auto currentSize = connector ? connector->getQueueSize() : 0;
                     return maxQueueBytes > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueBytes) : 0.0;
                 };
-                FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
+                FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_SIZE_USAGE_PERCENT, indexerQueueUsageGetter);
 
                 LOG_INFO("Indexer Connector initialized");
             }

@@ -2324,17 +2324,17 @@ The following metric names are defined by the module.
 
 #### Indexer metrics
 
-##### `indexer.queue.size`
+##### `indexer.queue.size.bytes`
 
-Current number of bytes buffered in the indexer queue.
+Current number of bytes buffered in the indexer output queue.
 
 **Used for:** monitoring queue growth and backpressure.
 
 ---
 
-##### `indexer.queue.usage.percent`
+##### `indexer.queue.size.bytes_usage_percent`
 
-Current indexer queue utilization as a percentage of its capacity.
+Current indexer output queue byte utilization as a percentage of the configured `analysisd.indexer_queue_max_bytes` limit.
 
 **Used for:** identifying queue saturation risk.
 
@@ -2350,17 +2350,17 @@ Total number of events dropped in the indexer path.
 
 #### Router metrics
 
-##### `router.queue.size`
+##### `router.queue.size.events`
 
-Current number of elements waiting in the router queue.
+Current number of events waiting in the router input queue.
 
 **Used for:** monitoring queue pressure.
 
 ---
 
-##### `router.queue.usage.percent`
+##### `router.queue.size.events_usage_percent`
 
-Current router queue utilization as a percentage.
+Current router input queue utilization as a percentage of its event-count capacity.
 
 **Used for:** early detection of congestion.
 
@@ -2390,7 +2390,7 @@ Average events per second during the last 30 minutes.
 
 ---
 
-##### `router.queue.bytes.used`
+##### `router.queue.size.bytes`
 
 Current number of bytes occupied in the router input queue.
 
@@ -2398,7 +2398,7 @@ Current number of bytes occupied in the router input queue.
 
 ---
 
-##### `router.queue.bytes.usage.percent`
+##### `router.queue.size.bytes_usage_percent`
 
 Current router input queue byte utilization as a percentage of the configured `analysisd.event_queue_max_bytes` limit. Returns `0` when no byte limit is set.
 
