@@ -977,6 +977,7 @@ public:
         }
 
         nlohmann::json resultJson;
+        bool needToRetry = false;
 
         const auto onSuccess = [this, &resultJson](const std::string& response)
         {
@@ -984,26 +985,48 @@ public:
             resultJson = nlohmann::json::parse(response);
         };
 
-        const auto onError = [this](const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string&)
         {
-            LOG_ERROR(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
-            throw IndexerConnectorException("Search query failed: " + error);
+            if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                needToRetry = true;
+                LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+            }
+            else
+            {
+                LOG_ERROR(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
+                throw IndexerConnectorException("Search query failed: " + error);
+            }
         };
 
-        auto serverUrl = m_selector->getNext();
-        std::string url;
-        url += serverUrl;
-        url += "/";
-        url += index;
-        url += "/_search";
+        do
+        {
+            if (m_stopping.load())
+            {
+                throw IndexerConnectorException("Search query aborted: stopping requested");
+            }
 
-        LOG_DEBUG2(m_logFn, "Executing search query on: %s", url.c_str());
+            needToRetry = false;
+            auto serverUrl = m_selector->getNext();
+            std::string url;
+            url += serverUrl;
+            url += "/";
+            url += index;
+            url += "/_search";
 
-        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
-                                               .data = searchQuery.dump(),
-                                               .secureCommunication = m_secureCommunication},
-                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                            {});
+            LOG_DEBUG2(m_logFn, "Executing search query on: %s", url.c_str());
+
+            m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                                   .data = searchQuery.dump(),
+                                                   .secureCommunication = m_secureCommunication},
+                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                {});
+
+            if (needToRetry && RetryDelay > 0)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+            }
+        } while (needToRetry);
 
         return resultJson;
     }
@@ -1236,12 +1259,9 @@ public:
             requestBody["search_after"] = searchAfter.value();
         }
 
-        std::string url;
-        url += m_selector->getNext();
-        url += "/_search";
-
         nlohmann::json hitsResult;
         bool success = false;
+        bool needToRetry = false;
         std::string errorMessage;
 
         const auto onSuccess = [&hitsResult, &success](const std::string& response)
@@ -1264,17 +1284,43 @@ public:
             }
         };
 
-        const auto onError = [](const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string&)
         {
-            throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) + ": " +
-                                            error);
+            if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                needToRetry = true;
+                LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+            }
+            else
+            {
+                throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) +
+                                                ": " + error);
+            }
         };
 
-        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
-                                               .data = requestBody.dump(),
-                                               .secureCommunication = m_secureCommunication},
-                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-                            {});
+        do
+        {
+            if (m_stopping.load())
+            {
+                throw IndexerConnectorException("Search request aborted: stopping requested");
+            }
+
+            needToRetry = false;
+            std::string url;
+            url += m_selector->getNext();
+            url += "/_search";
+
+            m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                                   .data = requestBody.dump(),
+                                                   .secureCommunication = m_secureCommunication},
+                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                {});
+
+            if (needToRetry && RetryDelay > 0)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+            }
+        } while (needToRetry);
 
         if (!success)
         {

@@ -28,6 +28,7 @@
 #include <rocksdb/write_batch.h>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -81,10 +82,7 @@ namespace Utils
          *                        WARNING: this process might not recover all data.
          * @param useSharedBuffers Whether to use the process-wide shared read cache / write buffer
          *                        manager instead of a private one.
-         * @param readCacheSize Size in bytes of the private block cache (ignored when
-         *                      useSharedBuffers is true). Callers with a large, read-heavy dataset
-         *                      (e.g. many SST files serving hot-path lookups) should size this well
-         *                      above the default to avoid constantly evicting and re-reading from disk.
+         * @param readCacheSize Size in bytes of the private block cache.
          */
         explicit TRocksDBWrapper(std::string dbPath,
                                  const bool enableWal = true,
@@ -105,15 +103,6 @@ namespace Utils
             else
             {
                 m_readCache = rocksdb::NewLRUCache(readCacheSize);
-                // REVERTED allow_stall=true (see resumen.md, intento 8): enabling it made the
-                // VDP bulk load stall almost indefinitely (30+ min, didn't finish) instead of
-                // "briefly". Root cause: with write_buffer_size=32MB and default L0 compaction
-                // triggers, background flush/compaction can't keep up with the bulk-load write
-                // rate, so once the writer starts blocking on the 128MB budget it stays blocked
-                // — the stall doesn't resolve quickly, it becomes the new bottleneck. Fixing this
-                // properly requires addressing flush/compaction throughput (background job count,
-                // L0 triggers) together, not just flipping this flag in isolation — needs
-                // dedicated tuning and measurement before trying again.
                 m_writeManager = std::make_shared<rocksdb::WriteBufferManager>(128 * 1024 * 1024);
             }
 
@@ -220,6 +209,7 @@ namespace Utils
             {
                 m_columnsInstances.emplace_back(m_db, handle);
             }
+            rebuildColumnsIndex();
         }
 
         /**
@@ -543,6 +533,7 @@ namespace Utils
                 throw std::runtime_error {"Couldn't create column family: " + std::string {status.getState()}};
             }
             m_columnsInstances.emplace_back(m_db, pColumnFamily);
+            m_columnsIndex.emplace(columnName, m_columnsInstances.size() - 1);
         }
 
         /**
@@ -559,10 +550,7 @@ namespace Utils
                 throw std::invalid_argument {"Column name is empty"};
             }
 
-            return std::find_if(m_columnsInstances.begin(),
-                                m_columnsInstances.end(),
-                                [&columnName](const ColumnFamilyRAII& handle)
-                                { return columnName == handle->GetName(); }) != m_columnsInstances.end();
+            return m_columnsIndex.find(columnName) != m_columnsIndex.end();
         }
 
         /**
@@ -620,6 +608,9 @@ namespace Utils
                 }
             }
 
+            // The erases above shifted vector positions; refresh before createColumn re-appends.
+            rebuildColumnsIndex();
+
             for (const auto& columnName : columnsNames)
             {
                 createColumn(columnName);
@@ -647,6 +638,8 @@ namespace Utils
                 {
                     it->drop();
                     m_columnsInstances.erase(it);
+
+                    rebuildColumnsIndex();
 
                     createColumn(columnName);
                 }
@@ -773,6 +766,7 @@ namespace Utils
     private:
         std::shared_ptr<T> m_db;                                     ///< RocksDB instance.
         std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
+        std::unordered_map<std::string, size_t> m_columnsIndex;      ///< Column name → position in m_columnsInstances.
         const bool m_enableWal;                                      ///< Whether to enable WAL or not.
         const std::string m_path;                                    ///< Location of the DB.
         std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
@@ -812,22 +806,33 @@ namespace Utils
          */
         ColumnFamilyRAII& getColumnFamilyBasedOnName(const std::string& columnName)
         {
-            auto columnNameFind {columnName};
-            if (columnName.empty())
-            {
-                columnNameFind = rocksdb::kDefaultColumnFamilyName;
-            }
+            const auto& columnNameFind = columnName.empty() ? rocksdb::kDefaultColumnFamilyName : columnName;
 
-            if (const auto it {std::find_if(m_columnsInstances.begin(),
-                                            m_columnsInstances.end(),
-                                            [&columnNameFind](const ColumnFamilyRAII& handle)
-                                            { return columnNameFind == handle.handle()->GetName(); })};
-                it != m_columnsInstances.end())
+            if (const auto it {m_columnsIndex.find(columnNameFind)}; it != m_columnsIndex.end())
             {
-                return *it;
+                return m_columnsInstances[it->second];
             }
 
             throw std::runtime_error {"Couldn't find column family: '" + columnName + "'"};
+        }
+
+        /**
+         * @brief Rebuilds the name → position index over m_columnsInstances.
+         *
+         * Must be called after any operation that shifts vector positions (erase); appends
+         * maintain the index incrementally instead. Keeping this index makes columnExists()
+         * and getColumnFamilyBasedOnName() O(1) — they run per document during the feed
+         * load, and a linear scan over hundreds of per-CNA column families made them the
+         * dominant per-document cost.
+         */
+        void rebuildColumnsIndex()
+        {
+            m_columnsIndex.clear();
+            m_columnsIndex.reserve(m_columnsInstances.size());
+            for (size_t i = 0; i < m_columnsInstances.size(); ++i)
+            {
+                m_columnsIndex.emplace(m_columnsInstances[i].handle()->GetName(), i);
+            }
         }
 
         auto createTransaction(const rocksdb::WriteOptions& writeOptions)

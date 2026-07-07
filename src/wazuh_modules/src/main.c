@@ -26,12 +26,6 @@ static void wm_signals_configure();     // Configure signal handling.
 
 static int flag_foreground = 0;         // Running in foreground.
 
-/* jemalloc reads this weak symbol before any allocation occurs (before main).
- * narenas:4     — bound arena count on multi-core hosts.
- * dirty_decay_ms:5000  — return dirty pages to the OS after 5 s idle.
- * muzzy_decay_ms:5000  — same for muzzy (partially-released) pages.
- * background_thread:true — use a dedicated thread for async decay so the
- *                          allocator does not retain the VDP feed's peak VMS. */
 const char *malloc_conf =
     "narenas:4,dirty_decay_ms:5000,muzzy_decay_ms:5000,background_thread:true";
 

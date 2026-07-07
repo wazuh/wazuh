@@ -58,12 +58,6 @@
  *   <standard IndexerConnector SSL/auth config>
  * }
  *
- * pageSize / numSlices trade-off: larger pageSize (and more slices) means fewer HTTP
- * round-trips and a faster full download, but each in-flight page is a fully materialized
- * nlohmann::json (page hits x copies of the payload, x numSlices concurrent pages) held in
- * memory until its callback returns — so it also raises peak RSS during the load. Lower
- * pageSize trades some download latency for a smaller memory footprint. Tune per deployment
- * constraints (e.g. lower it on memory-constrained managers/agents).
  */
 class IndexerDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
@@ -582,20 +576,6 @@ private:
         }
     }
 
-    /**
-     * @brief Blocks until the three global-map documents required by the local feed
-     *        database (vendor map, OS CPE rules, CNA mapping — see
-     *        DatabaseFeedManager::reloadGlobalMaps) are present in the Indexer.
-     *
-     * The consumer-status document going "ready" (see waitUntilConsumerReady) only means
-     * the CTI consumer applied *some* documents — it is not a guarantee that these three
-     * singletons landed yet. Without this check, initialLoad can run to completion (the
-     * full multi-minute download) only to have reloadGlobalMaps() reject the result
-     * afterwards and force a wasted re-download on the next cycle.
-     *
-     * IDs must stay in sync with the ones DatabaseFeedManager::reloadGlobalMaps looks up
-     * locally after the download completes.
-     */
     bool waitUntilGlobalMapsIndexed(UpdaterContext& context) const
     {
         static constexpr auto POLL_INTERVAL {std::chrono::seconds {30}};
@@ -624,9 +604,8 @@ private:
                     nlohmann::json {{"size", GLOBAL_MAP_IDS.size()}, {"query", query}, {"_source", false}};
 
                 const auto searchResult = syncConnector.executeSearchQuery(indexName, searchQuery);
-                const auto hitCount = searchResult.value("hits", nlohmann::json::object())
-                                          .value("hits", nlohmann::json::array())
-                                          .size();
+                const auto hitCount =
+                    searchResult.value("hits", nlohmann::json::object()).value("hits", nlohmann::json::array()).size();
                 queryFailures = 0;
 
                 if (hitCount >= GLOBAL_MAP_IDS.size())
@@ -720,6 +699,29 @@ private:
     }
 
     /**
+     * @brief Reads the configured page size, falling back to the default when missing or zero.
+     *
+     * A page size of 0 would make every search return an empty page: the load would see
+     * "0 documents" and retry on the not-ready loop forever. Guarded here because this is a
+     * shared component — not every caller sanitizes its config the way the VD facade does.
+     */
+    size_t getConfiguredPageSize() const
+    {
+        constexpr size_t DEFAULT_PAGE_SIZE {100};
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 0u);
+        if (pageSize == 0)
+        {
+            if (m_config.at("indexer").contains("pageSize"))
+            {
+                logWarn(
+                    WM_CONTENTUPDATER, "IndexerDownloader: invalid pageSize 0 — using default %zu.", DEFAULT_PAGE_SIZE);
+            }
+            return DEFAULT_PAGE_SIZE;
+        }
+        return pageSize;
+    }
+
+    /**
      * @brief Returns the last cursor persisted in RocksDB, or empty string on first run.
      */
     std::string getStoredCursor(const UpdaterContext& context) const
@@ -754,8 +756,10 @@ private:
      * @param context  Updater context (contains the callback).
      * @param hits     Array of Indexer hit objects from a search response.
      * @param cursor   String representation of the highest offset seen in this page.
+     * @return true if this call caused (or coincided with) a durable flush of the feed
+     *         database, i.e. it is now safe to persist a cursor up to and including this page.
      */
-    void processPage(UpdaterContext& context, const nlohmann::json& hits, const std::string& cursor) const
+    bool processPage(UpdaterContext& context, const nlohmann::json& hits, const std::string& cursor) const
     {
         nlohmann::json message;
         message["type"] = "indexer";
@@ -764,7 +768,7 @@ private:
 
         for (const auto& hit : hits)
         {
-            const auto& source = hit.value("_source", hit);
+            const auto& source = hit.contains("_source") ? hit.at("_source") : hit;
             const auto docType = source.value("type", std::string {});
 
             // TCPE and TVENDORS are Indexer-only types not consumed by VD scan — skip silently.
@@ -781,11 +785,6 @@ private:
             // by key prefix (startsWith "CVE-", "TID-", "FEED-GLOBAL", etc.).
             resource["resource"] = hit.value("_id", std::string {});
 
-            // Dump directly from a reference into `source` instead of
-            // source.value("document", ...): .value() with an nlohmann::json ValueType
-            // deep-copies the whole "document" subtree (several KB for a CVE5 payload)
-            // just to immediately serialize and discard that copy — doubling the
-            // per-document transient memory for no benefit.
             static const nlohmann::json EMPTY_DOCUMENT = nlohmann::json::object();
             const auto& document = source.contains("document") ? source.at("document") : EMPTY_DOCUMENT;
             resource["payload"] = document.dump();
@@ -814,6 +813,8 @@ private:
         {
             throw std::runtime_error("IndexerDownloader: fileProcessingCallback returned failure");
         }
+
+        return std::get<1>(result) == "flushed";
     }
 
     /**
@@ -836,7 +837,7 @@ private:
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 100u);
+        const size_t pageSize = getConfiguredPageSize();
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -868,14 +869,17 @@ private:
             });
 
         std::string currentCursor = startCursor;
+        std::string lastFlushedCursor = startCursor;
         std::optional<nlohmann::json> searchAfter = std::nullopt;
         size_t totalProcessed = 0;
+        bool stopRequested = false;
 
         while (true)
         {
             if (context.spUpdaterBaseContext->spStopCondition->check())
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during PIT fetch — aborting.");
+                stopRequested = true;
                 break;
             }
 
@@ -893,9 +897,14 @@ private:
                 currentCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
             }
 
-            processPage(context, hitArray, currentCursor);
+            const bool flushed = processPage(context, hitArray, currentCursor);
             totalProcessed += hitArray.size();
-            persistCursor(context, currentCursor);
+
+            if (flushed)
+            {
+                lastFlushedCursor = currentCursor;
+                persistCursor(context, lastFlushedCursor);
+            }
 
             if (hitArray.size() < pageSize)
             {
@@ -905,7 +914,7 @@ private:
             searchAfter = lastHit.at("sort");
         }
 
-        context.data["cursor"] = currentCursor;
+        context.data["cursor"] = stopRequested ? lastFlushedCursor : currentCursor;
         return totalProcessed;
     }
 
@@ -916,7 +925,9 @@ private:
      * (hash-modulo on _id). Each slice paginates independently with search_after.
      * The callback is serialized via m_callbackMutex.
      *
-     * Cursor is only persisted after all slices complete (crash = full restart).
+     * Cursor is only persisted after all slices complete naturally (crash or graceful stop
+     * mid-download = full restart on the next cycle, since a partial per-slice offset is
+     * not a safe resume point — see the `interrupted` handling below).
      *
      * @param context    Updater context.
      * @param query      Elasticsearch query object.
@@ -934,7 +945,7 @@ private:
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 100u);
+        const size_t pageSize = getConfiguredPageSize();
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -971,6 +982,7 @@ private:
         std::vector<std::thread> threads;
         std::vector<std::string> errors;
         std::mutex errorsMutex;
+        std::atomic<bool> interrupted {false};
 
         logInfo(WM_CONTENTUPDATER,
                 "IndexerDownloader: Starting sliced PIT download with %zu slices, pageSize=%zu",
@@ -995,6 +1007,7 @@ private:
                     if (context.spUpdaterBaseContext->spStopCondition->check())
                     {
                         logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested — slice %zu aborting.", sliceId);
+                        interrupted.store(true);
                         break;
                     }
 
@@ -1093,6 +1106,15 @@ private:
         {
             throw std::runtime_error("IndexerDownloader: " + std::to_string(errors.size()) +
                                      " slice(s) failed: " + errors.front());
+        }
+
+        if (interrupted.load())
+        {
+            logInfo(WM_CONTENTUPDATER,
+                    "IndexerDownloader: Initial load interrupted by stop request — cursor not persisted, %zu "
+                    "documents processed this cycle will be re-fetched on the next initial load.",
+                    totalProcessed.load());
+            return totalProcessed.load();
         }
 
         // Persist cursor only after all slices complete
