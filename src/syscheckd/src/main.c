@@ -85,10 +85,20 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
     }
 
     /* Wait for the inventory synchronization thread to exit: its loop reacts to
-     * fim_sync_module_running (cleared by fim_shutdown()) within a second. */
-    if (fim_sync_thread_initialized)
+     * fim_sync_module_running (cleared by fim_shutdown()) within a second, and asp_stop()
+     * above aborts an in-flight synchronization. The initialized flag is read under the
+     * same write lock start_daemon() publishes it under, so the startup window cannot be
+     * missed: either the thread is already visible here and gets joined before the handle
+     * is destroyed, or start_daemon() observes the shutdown (is_fim_shutdown is
+     * republished under the lock so the rwlock orders it) and never creates the thread. */
+    w_rwlock_wrlock(&fim_sync_handle_rwlock);
+    is_fim_shutdown = true;
+    bool join_sync_thread = fim_sync_thread_initialized;
+    fim_sync_thread_initialized = false;
+    w_rwlock_unlock(&fim_sync_handle_rwlock);
+
+    if (join_sync_thread)
     {
-        fim_sync_thread_initialized = false;
         pthread_join(fim_sync_thread, NULL);
     }
 

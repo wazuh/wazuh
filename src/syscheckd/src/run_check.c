@@ -687,15 +687,25 @@ void start_daemon()
     w_create_thread(symlink_checker_thread, NULL);
 
     if (syscheck.enable_synchronization) {
-        fim_sync_module_running = 1;
         // Launch the inventory synchronization thread as joinable so the shutdown waiter
-        // can wait for it before destroying the sync protocol handle (issue #37334).
-        if (CreateThreadJoinable(&fim_sync_thread, fim_run_integrity, NULL) != 0) {
-            merror(THREAD_ERROR);
-            fim_sync_module_running = 0;
+        // can wait for it before destroying the sync protocol handle (issue #37334). The
+        // creation and fim_sync_thread_initialized are published under the handle write
+        // lock, which the waiter also takes to decide the join: either the thread is
+        // visible there and joined before the handle is destroyed, or the waiter ran
+        // first and the shutdown check below keeps the thread from being created at all.
+        w_rwlock_wrlock(&fim_sync_handle_rwlock);
+        if (fim_shutdown_process_on()) {
+            mdebug1("Shutdown in progress: not launching the FIM inventory synchronization thread.");
         } else {
-            fim_sync_thread_initialized = true;
+            fim_sync_module_running = 1;
+            if (CreateThreadJoinable(&fim_sync_thread, fim_run_integrity, NULL) != 0) {
+                merror(THREAD_ERROR);
+                fim_sync_module_running = 0;
+            } else {
+                fim_sync_thread_initialized = true;
+            }
         }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
     } else {
         mdebug1("FIM inventory synchronization is disabled");
     }
