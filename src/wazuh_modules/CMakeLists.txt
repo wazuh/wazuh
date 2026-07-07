@@ -56,6 +56,7 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/syscollector/include
   ${SRC_FOLDER}/wazuh_modules/vulnerability_scanner/include
   ${SRC_FOLDER}/wazuh_modules/inventory_sync/include
+  ${SRC_FOLDER}/wazuh_modules/container_instances/include
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager
@@ -98,6 +99,10 @@ else()
   add_subdirectory(agent_info)
   add_subdirectory(sca)
   add_subdirectory(syscollector)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # Linux-agent only (depends on cgroup v2 and Unix sockets)
+    add_subdirectory(container_instances)
+  endif()
 endif()
 
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
@@ -166,6 +171,9 @@ else()
            agent_sync_protocol
            dbsync
            schema_validator)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(wazuh_modulesd_lib PUBLIC container_instances)
+  endif()
 endif()
 
 if(UNIX)

@@ -80,6 +80,9 @@ typedef enum crypto_type {
 #include "wm_vulnerability_scanner.h"
 #include "wm_ms_graph.h"
 #include "wm_inventory_sync.h"
+#if defined(__linux__)
+#include "wm_container_instances.h"
+#endif
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.

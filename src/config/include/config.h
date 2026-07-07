@@ -55,6 +55,9 @@ int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
+#if defined(__linux__) && defined(CLIENT)
+int Read_ContainerInstances(const OS_XML *xml, xml_node *node, void *d1);
+#endif
 
 /**
  * @brief Read the configuration for client section with centralized configuration
