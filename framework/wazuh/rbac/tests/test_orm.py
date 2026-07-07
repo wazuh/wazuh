@@ -982,7 +982,7 @@ def test_databasemanager_get_table(fresh_in_memory_db):
     current_columns = set(re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(
         session, fresh_in_memory_db.User))))
     with patch("wazuh.rbac.orm._new_columns", new={"new_column"}):
-        updated_columns = set(re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(session, 
+        updated_columns = set(re.findall(column_regex, str(fresh_in_memory_db.db_manager.get_table(session,
                                                                                                    EnhancedUser))))
 
     assert current_columns == updated_columns
@@ -1084,7 +1084,7 @@ def test_check_database_integrity_exceptions(remove_mock, close_sessions_mock, e
 ])
 def test_migrate_data(db_setup, from_id, to_id, users):
     """Test `migrate_data` function briefly.
-    
+
     NOTE: To correctly test this procedure, use the RBAC database migration integration tests."""
     # This test case updates the default user passwords and omits the rest of the migration
     if to_id == WAZUH_WUI_USER_ID:
