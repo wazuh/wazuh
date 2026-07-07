@@ -20,8 +20,15 @@
 
 #ifndef WIN32
 
+#include <poll.h>
+
 #define Q(x) #x
 #define QUOTE(x) Q(x)
+
+/* Milliseconds fim_shutdown_waiter() waits for the synchronization thread to report its
+ * exit before giving up on the teardown; wazuh-control escalates to SIGKILL after ~30
+ * seconds (MAX_KILL_TRIES in init/wazuh-client.sh), so stay well under that. */
+#define FIM_SYNC_EXIT_TIMEOUT_MS 20000
 
 // LCOV_EXCL_START
 
@@ -46,6 +53,7 @@ extern bool is_fim_shutdown;
 extern volatile int fim_sync_module_running;
 extern pthread_t fim_sync_thread;
 extern bool fim_sync_thread_initialized;
+extern int fim_sync_exit_pipe[2];
 
 /* Self-pipe written by fim_shutdown() to wake fim_shutdown_waiter() */
 static int fim_shutdown_pipe[2] = {-1, -1};
@@ -97,26 +105,50 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
     fim_sync_thread_initialized = false;
     w_rwlock_unlock(&fim_sync_handle_rwlock);
 
+    bool sync_thread_exited = true;
+
     if (join_sync_thread)
     {
-        pthread_join(fim_sync_thread, NULL);
+        /* Everything the synchronization thread can block on after asp_stop() is bounded
+         * (stop-aware waits, predicated sends, 1-second sleeps), so it reports its exit
+         * through fim_sync_exit_pipe well within this timeout. If it does not, skip the
+         * join and the teardown below — destroying the handle under a live thread is the
+         * use-after-free this waiter exists to prevent — and let HandleSIG() exit. */
+        struct pollfd sync_exit_poll = { .fd = fim_sync_exit_pipe[0], .events = POLLIN, .revents = 0 };
+        int poll_ret;
+
+        while ((poll_ret = poll(&sync_exit_poll, 1, FIM_SYNC_EXIT_TIMEOUT_MS)) < 0 && errno == EINTR) {}
+
+        if (poll_ret > 0)
+        {
+            pthread_join(fim_sync_thread, NULL);
+        }
+        else
+        {
+            sync_thread_exited = false;
+            mwarn("The FIM inventory synchronization thread did not exit in time: skipping the synchronization database teardown.");
+        }
     }
 
-    /* Destroy the sync protocol handle so its SQLite connection to fim_sync.db is
-     * closed cleanly (checkpointing and removing the -wal/-shm files) instead of
-     * being leaked (issue #37334). The write lock excludes the handle users that
-     * are not joined above (event persistence, syscom's fim_sync responses, the
-     * DataClean paths and the scheduled-scan asp_reset), which take it for reading
-     * around each call. */
-    w_rwlock_wrlock(&fim_sync_handle_rwlock);
-    if (syscheck.sync_handle)
+    if (sync_thread_exited)
     {
-        asp_destroy(syscheck.sync_handle);
-        syscheck.sync_handle = NULL;
-    }
-    w_rwlock_unlock(&fim_sync_handle_rwlock);
+        /* Destroy the sync protocol handle so its SQLite connection to fim_sync.db is
+         * closed cleanly (checkpointing and removing the -wal/-shm files) instead of
+         * being leaked (issue #37334). The write lock excludes the handle users that
+         * are not joined above (event persistence, syscom's fim_sync responses, the
+         * DataClean paths and the scheduled-scan asp_reset), which take it for reading
+         * around each call. */
+        w_rwlock_wrlock(&fim_sync_handle_rwlock);
+        if (syscheck.sync_handle)
+        {
+            asp_destroy(syscheck.sync_handle);
+            syscheck.sync_handle = NULL;
+        }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
 
-    fim_db_teardown();
+        fim_db_teardown();
+    }
+
     HandleSIG((int)fim_shutdown_sig);
 
     return NULL;
@@ -260,13 +292,15 @@ int main(int argc, char **argv)
 
     /* Spawn the shutdown waiter before registering the termination signal handler
      * that wakes it through the pipe (issue #37334) */
-    if (pipe(fim_shutdown_pipe) < 0) {
-        merror_exit("Could not create the shutdown pipe: %s (%d)", strerror(errno), errno);
+    if (pipe(fim_shutdown_pipe) < 0 || pipe(fim_sync_exit_pipe) < 0) {
+        merror_exit("Could not create the shutdown pipes: %s (%d)", strerror(errno), errno);
     }
 
-    /* Keep the pipe out of child processes (e.g. prefilter_cmd) */
+    /* Keep the pipes out of child processes (e.g. prefilter_cmd) */
     fcntl(fim_shutdown_pipe[0], F_SETFD, FD_CLOEXEC);
     fcntl(fim_shutdown_pipe[1], F_SETFD, FD_CLOEXEC);
+    fcntl(fim_sync_exit_pipe[0], F_SETFD, FD_CLOEXEC);
+    fcntl(fim_sync_exit_pipe[1], F_SETFD, FD_CLOEXEC);
 
     w_create_thread(fim_shutdown_waiter, NULL);
 

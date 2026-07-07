@@ -538,6 +538,12 @@ int SendMSGPredicated(__attribute__((unused)) int queue, const char *message, co
     return SendMSGAction(queue, message, locmsg, loc);
 }
 
+/* SendBinaryMSGPredicated for Windows */
+int SendBinaryMSGPredicated(__attribute__((unused)) int queue, const void *message, size_t message_len, const char *locmsg, char loc, bool (*fn_ptr)()) {
+    os_wait_predicate(fn_ptr);
+    return SendBinaryMSGAction(queue, message, message_len, locmsg, loc);
+}
+
 /* StartMQ for Windows */
 int StartMQWithSpecificOwnerAndPerms(__attribute__((unused)) const char *path
                                      ,__attribute__((unused)) short int type

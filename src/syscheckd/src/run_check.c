@@ -67,6 +67,12 @@ volatile int fim_sync_module_running = 0;
 // on a graceful stop.
 pthread_t fim_sync_thread;
 bool fim_sync_thread_initialized = false;
+
+// Self-pipe fim_run_integrity() writes to on exit so the shutdown waiter can bound its
+// wait for the thread (poll + timeout) instead of blocking forever in pthread_join().
+// Created in main() before the waiter thread; stays {-1, -1} in the unit-test builds so
+// the write below is skipped.
+int fim_sync_exit_pipe[2] = {-1, -1};
 #endif
 
 // Serializes syscheck.sync_handle use against the shutdown teardown (issue #37334): the
@@ -1072,8 +1078,10 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
             }
 
             // Lock FIM's scheduled and realtime scans only for the recovery/integrity
-            // process, which reads and writes the file_entry table.
-            if (sync_result) {
+            // process, which reads and writes the file_entry table. Skipped once shutdown
+            // starts: fim_scan_mutex can be held by an in-flight scan for minutes, and the
+            // shutdown waiter is waiting to join this thread.
+            if (sync_result && fim_sync_module_running) {
                 w_mutex_lock(&syscheck.fim_scan_mutex);
                 w_mutex_lock(&syscheck.fim_realtime_mutex);
                 #ifdef WIN32
@@ -1112,6 +1120,12 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 #ifdef WIN32
     return 0;
 #else
+    // Report the exit to the shutdown waiter so its bounded wait on the exit pipe
+    // returns immediately and it can join this thread without an unbounded stall.
+    if (fim_sync_exit_pipe[1] >= 0) {
+        while (write(fim_sync_exit_pipe[1], "", 1) < 0 && errno == EINTR) {}
+    }
+
     return NULL;
 #endif
 }
