@@ -238,7 +238,7 @@
 
 <decoder name="fortigate-firewall-v5">
   <type>syslog</type>
-  <prematch>date=\S+\.+time=\.+devname=\S+\.+devid=\p*FG\S+\.+logid=</prematch>
+  <prematch>date=\S+\.+time=\.+devname=\S+\.+devid=\p*FG</prematch>
 </decoder>
 
 <decoder name="fortigate-firewall-v5">
