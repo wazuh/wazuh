@@ -38,6 +38,8 @@ from wazuh_testing.constants.aws import US_EAST_1_REGION
 _PERMANENT_SEED_KEYS = frozenset({
     'AWSLogs/819751203818/CloudTrail/us-east-1/2022/11/20/'
     '819751203818_CloudTrail_us-east-1_20221120T0000Z_372406355707169122.json',
+    'AWSLogs/819751203818/elasticloadbalancing/us-east-1/2022/11/20/'
+    '819751203818_elasticloadbalancing_us-east-1_net.qatests_20221120T0000Z_1412953514070675864_29.145.39.119.log',
 })
 # VPC permanent seed is identified by this flow-log-ID substring in its S3 key.
 _PERMANENT_SEED_FLOW_LOG_IDS = frozenset({'fl-0754d951c16f517fa'})
