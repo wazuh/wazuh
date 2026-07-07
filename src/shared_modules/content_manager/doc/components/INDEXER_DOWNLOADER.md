@@ -129,8 +129,8 @@ Example:
         "offset": 0,
         "indexer": {
             "hosts": ["https://localhost:9200"],
-            "username": "admin",
-            "password": "admin",
+            "username": "wazuh-server",
+            "password": "wazuh-server",
             "ssl": {
                 "certificate_authorities": ["/etc/wazuh-indexer/certs/root-ca.pem"],
                 "certificate": "",
