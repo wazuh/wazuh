@@ -36,6 +36,13 @@ All notable changes to this project will be documented in this file.
 - Fixed the LLMNR SCA check expected value on Windows Server 2016 and 2012. ([#37765](https://github.com/wazuh/wazuh/pull/37765))
 - Fixed typo in `/etc/shells` permission check on Debian 10, Ubuntu 20.04 and Ubuntu 22.04 SCA rules. ([#37770](https://github.com/wazuh/wazuh/pull/37770))
 
+### Agent
+
+#### Fixed
+
+- Fixed Microsoft Store packages with multiple sub-applications being reported with an arbitrary sub-application name, e.g. Python 3.13 reported as "pip (Python 3.13)". ([#6761](https://github.com/wazuh/external-devel-requests/issues/6761))
+- Fixed the Python Microsoft Store package reporting the MSIX package revision as version instead of the interpreter version. ([#6761](https://github.com/wazuh/external-devel-requests/issues/6761))
+
 ## [v4.14.7]
 
 ### Manager
