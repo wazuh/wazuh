@@ -1468,6 +1468,13 @@ void test_persist_syscheck_msg_destroyed_sync_handle(void **state) {
 
     expect_string(__wrap__mdebug2, formatted_msg, "(6339): Persisting FIM event: {\"test\":\"data\"}");
 
+    // The fim_sync_handle_rwlock guard is taken around the handle check even when the
+    // handle is NULL. Only the winagent build wraps these locks.
+#ifdef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#endif
+
     persist_syscheck_msg("test-id", OPERATION_CREATE, "wazuh-states-fim-files", msg, 1);
 
     cJSON_Delete(msg);
