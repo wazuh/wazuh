@@ -1,0 +1,96 @@
+# Kubernetes RBAC for the Wazuh Container Instances Security Module (#37382).
+#
+# The Wazuh agent runs as a HOST package (systemd service on the node), not as
+# a pod, so nothing is auto-mounted: the operator provisions these objects in
+# the cluster and exports a token to the node (procedure below).
+#
+# Scope: read-only. Pods need watch (list-then-watch discovery); workload
+# resources are polled for the ownership chain (Deployment/ReplicaSet/
+# StatefulSet/DaemonSet/Job/CronJob). No pods/log, no secrets, no write verbs.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: wazuh
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wazuh-container-instances
+  namespace: wazuh
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: wazuh-container-instances
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["replicasets", "deployments", "statefulsets", "daemonsets"]
+    verbs: ["get", "list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: wazuh-container-instances
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: wazuh-container-instances
+subjects:
+  - kind: ServiceAccount
+    name: wazuh-container-instances
+    namespace: wazuh
+#
+# --- Token provisioning procedure (run by the operator) --------------------
+#
+# 1. Apply this manifest:
+#      kubectl apply -f rbac.yaml
+#
+# 2. Mint a token for the ServiceAccount. Either short-lived (rotate it onto
+#    the node with external tooling; the module re-reads the kubeconfig on
+#    every API call, so rotation needs no agent restart):
+#      kubectl create token wazuh-container-instances -n wazuh --duration=24h
+#    or long-lived via a Secret (K8s >= 1.24 no longer auto-creates these):
+#      kubectl apply -f - <<'EOF'
+#      apiVersion: v1
+#      kind: Secret
+#      metadata:
+#        name: wazuh-container-instances-token
+#        namespace: wazuh
+#        annotations:
+#          kubernetes.io/service-account.name: wazuh-container-instances
+#      type: kubernetes.io/service-account-token
+#      EOF
+#      kubectl get secret wazuh-container-instances-token -n wazuh -o jsonpath='{.data.token}' | base64 -d
+#
+# 3. Assemble a kubeconfig on the node (referenced by
+#    <container_instances><kubernetes><kubeconfig>):
+#      SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+#      CA=$(kubectl config view --minify --raw -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+#      cat > /etc/wazuh-agent/container_instances/kubeconfig <<EOF
+#      apiVersion: v1
+#      kind: Config
+#      current-context: wazuh
+#      contexts:
+#      - name: wazuh
+#        context: {cluster: wazuh, user: wazuh}
+#      clusters:
+#      - name: wazuh
+#        cluster:
+#          server: $SERVER
+#          certificate-authority-data: $CA
+#      users:
+#      - name: wazuh
+#        user:
+#          token: <TOKEN FROM STEP 2>
+#      EOF
+#      chmod 600 /etc/wazuh-agent/container_instances/kubeconfig
+#
+# 4. Set <node_name> in ossec.conf to this node's registered name
+#    (kubectl get nodes). The module only watches pods with
+#    spec.nodeName equal to it.
