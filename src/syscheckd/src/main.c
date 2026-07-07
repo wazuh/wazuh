@@ -101,6 +101,12 @@ static void *fim_shutdown_waiter(__attribute__((unused)) void *arg)
      * republished under the lock so the rwlock orders it) and never creates the thread. */
     w_rwlock_wrlock(&fim_sync_handle_rwlock);
     is_fim_shutdown = true;
+    /* Republished under the lock: the signal can land between start_daemon()'s shutdown
+     * check and its `fim_sync_module_running = 1`, which would overwrite the handler's
+     * clear inside the creation critical section. Re-clearing here (ordered after that
+     * section by the lock) makes the freshly created loop observe the stop within a
+     * second, so the join below still completes. */
+    fim_sync_module_running = 0;
     bool join_sync_thread = fim_sync_thread_initialized;
     fim_sync_thread_initialized = false;
     w_rwlock_unlock(&fim_sync_handle_rwlock);
