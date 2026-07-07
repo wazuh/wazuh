@@ -36,6 +36,7 @@
     resource_type: bucket
     bucket_type: config
     bucket_name: wazuh-config-integration-tests
+    only_logs_after: 2022-NOV-20
 
 - name: alb_remove_from_bucket
   description: ALB remove from bucket configurations
@@ -84,6 +85,7 @@
     resource_type: bucket
     bucket_type: custom
     bucket_name: wazuh-kms-integration-tests
+    only_logs_after: 2022-NOV-20
 
 - name: macie_remove_from_bucket
   description: Macie remove from bucket configurations
@@ -96,6 +98,7 @@
     resource_type: bucket
     bucket_type: custom
     bucket_name: wazuh-macie-integration-tests
+    only_logs_after: 2022-NOV-20
 
 - name: trusted_advisor_remove_from_bucket
   description: Trusted Advisor remove from bucket configurations
@@ -108,6 +111,7 @@
     resource_type: bucket
     bucket_type: custom
     bucket_name: wazuh-trusted-advisor-integration-tests
+    only_logs_after: 2022-NOV-20
 
 - name: guardduty_remove_from_bucket
   description: GuardDuty remove from bucket configurations
@@ -132,6 +136,7 @@
     resource_type: bucket
     bucket_type: guardduty
     bucket_name: wazuh-native-guardduty-integration-tests
+    only_logs_after: 2022-NOV-20
 
 - name: waf_remove_from_bucket
   description: WAF remove from bucket configurations
@@ -144,6 +149,7 @@
     resource_type: bucket
     bucket_type: waf
     bucket_name: wazuh-waf-integration-tests
+    only_logs_after: 2022-NOV-20
 
 - name: server_access_remove_from_bucket
   description: Server Access remove from bucket configurations
@@ -156,6 +162,7 @@
     resource_type: bucket
     bucket_type: server_access
     bucket_name: wazuh-server-access-integration-tests
+    only_logs_after: 2022-NOV-20
 
 - name: cisco_umbrella_remove_from_bucket
   description: CloudTrail remove from bucket configurations
@@ -169,3 +176,4 @@
     bucket_type: cisco_umbrella
     bucket_name: wazuh-umbrella-integration-tests
     path: dnslogs
+    only_logs_after: 2022-NOV-20

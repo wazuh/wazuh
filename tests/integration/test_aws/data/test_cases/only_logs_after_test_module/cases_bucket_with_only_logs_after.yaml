@@ -46,13 +46,13 @@
   configuration_parameters:
     BUCKET_TYPE: alb
     BUCKET_NAME: wazuh-alb-integration-tests
-    ONLY_LOGS_AFTER: 2022-NOV-20
+    ONLY_LOGS_AFTER: 2022-NOV-22
     PATH: ''
   metadata:
     resource_type: bucket
     bucket_type: alb
     bucket_name: wazuh-alb-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     expected_results: 5
 
 - name: clb_with_only_logs_after
@@ -60,13 +60,13 @@
   configuration_parameters:
     BUCKET_TYPE: clb
     BUCKET_NAME: wazuh-clb-integration-tests
-    ONLY_LOGS_AFTER: 2022-NOV-20
+    ONLY_LOGS_AFTER: 2022-NOV-22
     PATH: ''
   metadata:
     resource_type: bucket
     bucket_type: clb
     bucket_name: wazuh-clb-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     expected_results: 5
 
 - name: nlb_with_only_logs_after
@@ -74,13 +74,13 @@
   configuration_parameters:
     BUCKET_TYPE: nlb
     BUCKET_NAME: wazuh-nlb-integration-tests
-    ONLY_LOGS_AFTER: 2022-NOV-20
+    ONLY_LOGS_AFTER: 2022-NOV-22
     PATH: ''
   metadata:
     resource_type: bucket
     bucket_type: nlb
     bucket_name: wazuh-nlb-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     expected_results: 5
 
 - name: kms_with_only_logs_after

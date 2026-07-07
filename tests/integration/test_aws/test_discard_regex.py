@@ -34,7 +34,7 @@ configurator.configure_test(configuration_file='configuration_bucket_discard_reg
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_discard_regex(
-        test_configuration, metadata, create_test_bucket, manage_bucket_files,
+        test_configuration, metadata, mark_cases_as_skipped, create_test_bucket, manage_bucket_files,
         load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring,
 ):
