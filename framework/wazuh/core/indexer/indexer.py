@@ -1,10 +1,14 @@
+import asyncio
+import os
 import random
 import ssl
 from asyncio import sleep
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
+from functools import lru_cache
 from logging import getLogger
 from os.path import isabs, join
-from typing import AsyncIterator, List
+from typing import AsyncIterator, List, Optional
 from urllib.parse import urlparse
 
 from opensearchpy import AsyncOpenSearch
@@ -20,6 +24,136 @@ MAX_RETRIES = 3
 BACKOFF_TIMEOUT = 60
 
 logger = getLogger("wazuh")
+
+
+# ============================================================================
+# Configuration and SSL Context Caching
+# ============================================================================
+
+_config_cache: Optional[dict] = None
+_config_mtime: Optional[float] = None
+_config_lock = asyncio.Lock()
+
+
+async def _get_cached_indexer_config() -> dict:
+    """
+    Get indexer configuration with file modification time check.
+
+    Caches the configuration to avoid repeated XML parsing on every
+    indexer connection attempt. Cache is invalidated when the config
+    file is modified.
+
+    Returns
+    -------
+    dict
+        Indexer configuration section from ossec.conf
+    """
+    global _config_cache, _config_mtime
+
+    async with _config_lock:
+        config_file = common.OSSEC_CONF
+
+        try:
+            current_mtime = os.path.getmtime(config_file)
+
+            # Return cached config if file hasn't changed
+            if _config_cache is not None and _config_mtime == current_mtime:
+                return _config_cache
+
+            # Read and cache configuration
+            _config_cache = get_ossec_conf(section="indexer")
+            _config_mtime = current_mtime
+            logger.debug(f"Cached indexer configuration (mtime: {current_mtime})")
+            return _config_cache
+
+        except OSError as e:
+            # File doesn't exist or can't read - fetch without caching
+            logger.warning(f"Could not cache config file: {e}")
+            return get_ossec_conf(section="indexer")
+
+
+@lru_cache(maxsize=1)
+def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl.SSLContext:
+    """
+    Create and cache SSL context for indexer connections.
+
+    This prevents repeated reads of certificate files and the system CA bundle
+    on every connection attempt. The SSL context is reused across all connection
+    attempts, significantly reducing disk I/O during retry scenarios.
+
+    Parameters
+    ----------
+    client_cert : str
+        Path to client certificate file
+    client_key : str
+        Path to client key file
+    ca_certs : str
+        Path to CA certificate file
+
+    Returns
+    -------
+    ssl.SSLContext
+        Configured SSL context ready for use
+    """
+    context = ssl.create_default_context(
+        purpose=ssl.Purpose.SERVER_AUTH,
+        cafile=ca_certs
+    )
+    context.load_cert_chain(certfile=client_cert, keyfile=client_key)
+    logger.debug("Created cached SSL context for indexer connections")
+    return context
+
+
+# ============================================================================
+# Circuit Breaker Pattern
+# ============================================================================
+
+class _IndexerCircuitBreaker:
+    """
+    Circuit breaker to prevent concurrent retry storms to indexer.
+
+    When the indexer becomes unavailable, multiple tasks may attempt to
+    connect simultaneously, each reading config and certificates repeatedly.
+    This circuit breaker coordinates retry attempts to prevent excessive
+    disk I/O during indexer failures.
+    """
+
+    _open_until: Optional[datetime] = None
+    _lock = asyncio.Lock()
+    BACKOFF_TIME = 60  # seconds before allowing retry after circuit opens
+
+    @classmethod
+    async def check(cls) -> None:
+        """
+        Check if circuit breaker allows connection attempt.
+
+        Raises
+        ------
+        IndexerUnavailableError
+            If circuit breaker is open (indexer recently failed)
+        """
+        async with cls._lock:
+            if cls._open_until and datetime.now() < cls._open_until:
+                wait_seconds = (cls._open_until - datetime.now()).total_seconds()
+                raise IndexerUnavailableError(
+                    2200,
+                    extra_message=f"Circuit breaker open, retry in {wait_seconds:.0f}s"
+                )
+
+    @classmethod
+    async def record_failure(cls) -> None:
+        """Record indexer connection failure and open circuit breaker."""
+        async with cls._lock:
+            cls._open_until = datetime.now() + timedelta(seconds=cls.BACKOFF_TIME)
+            logger.warning(f"Circuit breaker opened until {cls._open_until}")
+
+    @classmethod
+    async def record_success(cls) -> None:
+        """Record successful connection and close circuit breaker."""
+        async with cls._lock:
+            if cls._open_until:
+                logger.info("Circuit breaker closed - indexer connection restored")
+            cls._open_until = None
 
 
 def resolve_wazuh_path(path: str) -> str:
@@ -46,14 +180,10 @@ class Indexer:
         Password for authentication. Defaults to an empty string.
     use_ssl : bool, optional
         Whether to use SSL for the connection. Defaults to True.
-    client_cert_path : str, optional
-        Path to the client SSL certificate. Defaults to an empty string.
-    client_key_path : str, optional
-        Path to the client SSL key. Defaults to an empty string.
     verify_certs : bool, optional
         Whether to verify SSL certificates. Defaults to True.
-    ca_certs_path : str, optional
-        Path to CA certificates. Defaults to an empty string.
+    ssl_context : ssl.SSLContext, optional
+        Pre-configured SSL context with certificates. Required when use_ssl is True.
 
     Attributes
     ----------
@@ -78,10 +208,8 @@ class Indexer:
         user: str = "",
         password: str = "", # nosec B107
         use_ssl: bool = True,
-        client_cert_path: str = "",
-        client_key_path: str = "",
         verify_certs: bool = True,
-        ca_certs_path: str = "",
+        ssl_context: Optional[ssl.SSLContext] = None,
     ) -> None:
         if len(hosts) != len(ports):
             raise WazuhIndexerError(
@@ -93,10 +221,8 @@ class Indexer:
         self.password = password
         self.ports = ports
         self.use_ssl = use_ssl
-        self.client_cert = client_cert_path
-        self.client_key = client_key_path
         self.verify_certs = verify_certs
-        self.ca_certs = ca_certs_path
+        self.ssl_context = ssl_context
 
         self._client = self._get_opensearch_client()
         self.max_version_components = MaxVersionIndex(client=self._client)
@@ -116,7 +242,7 @@ class Indexer:
         WazuhIndexerError
             If credentials ('user' and 'password') are missing.
         WazuhIndexerError
-            If SSL is enabled but certificate paths are missing.
+            If SSL is enabled but SSL context is missing.
         """
         nodes = [{"host": h, "port": p} for h, p in zip(self.hosts, self.ports)]
         parameters = {
@@ -124,7 +250,6 @@ class Indexer:
             "http_compress": True,
             "use_ssl": self.use_ssl,
             "verify_certs": self.verify_certs,
-            "ca_certs": self.ca_certs,
             "timeout": 30,
         }
 
@@ -136,14 +261,13 @@ class Indexer:
             )
 
         if self.use_ssl:
-            if self.client_cert and self.client_key:
-                parameters.update(
-                    {"client_cert": self.client_cert, "client_key": self.client_key}
-                )
+            # Use cached SSL context
+            if self.ssl_context:
+                parameters["ssl_context"] = self.ssl_context
             else:
                 raise WazuhIndexerError(
                     2201,
-                    None, "SSL certificates paths missing",
+                    None, "SSL context required for secure connections",
                 )
 
         return AsyncOpenSearch(**parameters)
@@ -281,10 +405,12 @@ async def create_indexer(retries: int = MAX_RETRIES, backoff: int = BACKOFF_TIME
     for attempt in range(retries + 1):
         try:
             await indexer.connect()
+            await _IndexerCircuitBreaker.record_success()
             return indexer
         except WazuhIndexerError as e:
             if attempt == retries:
                 await indexer.close()
+                await _IndexerCircuitBreaker.record_failure()
                 logger.warning(
                     f"Indexer service is unavailable after multiple connection attempts. Some functionality may be limited. "
                     f"Error: {e}. Verify indexer connectivity and configuration."
@@ -324,8 +450,12 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     CredentialsError
         If credentials are missing or invalid.
     """
+    # Check circuit breaker before attempting connection
+    await _IndexerCircuitBreaker.check()
+
     try:
-        wazuh_config = get_ossec_conf(section="indexer")
+        # Use cached configuration
+        wazuh_config = await _get_cached_indexer_config()
         if not wazuh_config:
             raise IndexerUnavailableError(
                 code=2200, extra_message="Missing indexer configuration in Wazuh config"
@@ -417,7 +547,10 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
     client_key = resolve_wazuh_path(ssl_config["key"][0])
     ca_certs = resolve_wazuh_path(ssl_config["certificate_authorities"][0]["ca"][0])
 
-    # Create indexer client
+    # Create cached SSL context to prevent repeated certificate file reads
+    ssl_context = _create_ssl_context(client_cert, client_key, ca_certs)
+
+    # Create indexer client with cached SSL context
     try:
         client = await create_indexer(
             hosts=list_of_hosts,
@@ -426,9 +559,7 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
             password=indexer_pass,
             use_ssl=True,
             verify_certs=True,
-            client_cert_path=client_cert,
-            client_key_path=client_key,
-            ca_certs_path=ca_certs,
+            ssl_context=ssl_context,
         )
     except IndexerUnavailableError:
         raise
