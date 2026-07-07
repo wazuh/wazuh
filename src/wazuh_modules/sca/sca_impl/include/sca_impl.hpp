@@ -16,6 +16,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -296,6 +297,16 @@ class SecurityConfigurationAssessment
 
         /// @brief Controller for asynchronous flush requests.
         std::unique_ptr<Utils::AsyncFlushController> m_asyncFlushController;
+
+        /// @brief Serializes releaseResources() against the entry points that other threads
+        /// keep driving while the module tears down: wcom's dispatcher (query() and
+        /// parseResponseBuffer()) is detached and never joined, and agent-info's coordination
+        /// queries call query() in-process from its own module thread. Those entry points take
+        /// it shared around each access; releaseResources() resets the members under the
+        /// exclusive lock. The sync worker and the flush worker do not take it: the former is
+        /// joined before releaseResources() runs and the latter is joined by the flush
+        /// controller destruction before m_spSyncProtocol/m_dBSync are reset.
+        mutable std::shared_mutex m_resourcesMutex;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;
