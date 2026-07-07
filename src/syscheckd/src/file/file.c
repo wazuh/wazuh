@@ -1285,15 +1285,22 @@ void fim_file_scan() {
 
     callback_ctx txn_ctx = { .event = &evt_data, .entry = NULL, .config = NULL, .failed_paths = failed_paths, .pending_sync_updates = pending_sync_updates };
 
+    // The whole transaction lifecycle (start .. deleted_rows/close) lives inside
+    // fim_scan_mutex: the raw transaction handle is the one fim_db path not covered by
+    // FIMDB's internal teardown guards, and the shutdown waiter (fim_shutdown_waiter(),
+    // main.c) relies on this mutex to know no scan transaction is in flight before it
+    // tears the database down.
+    w_mutex_lock(&syscheck.fim_scan_mutex);
+
     TXN_HANDLE db_transaction_handle = fim_db_transaction_start(FIMDB_FILE_TXN_TABLE, transaction_callback, &txn_ctx);
     if (db_transaction_handle == NULL) {
         merror(FIM_ERROR_TRANSACTION, FIMDB_FILE_TXN_TABLE);
+        w_mutex_unlock(&syscheck.fim_scan_mutex);
         OSList_Destroy(failed_paths);
         OSList_Destroy(pending_sync_updates);
         return;
     }
 
-    w_mutex_lock(&syscheck.fim_scan_mutex);
     w_rwlock_rdlock(&syscheck.directories_lock);
 
     OSList_foreach(node_it, syscheck.directories) {
@@ -1326,9 +1333,9 @@ void fim_file_scan() {
     }
 
     w_rwlock_unlock(&syscheck.directories_lock);
-    w_mutex_unlock(&syscheck.fim_scan_mutex);
 
     fim_db_transaction_deleted_rows(db_transaction_handle, transaction_callback, &txn_ctx);
+    w_mutex_unlock(&syscheck.fim_scan_mutex);
 
     // Delete files that failed schema validation (outside transaction)
     cleanup_failed_fim_files(failed_paths);
