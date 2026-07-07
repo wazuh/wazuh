@@ -401,7 +401,7 @@ static void expect_fim_startup_log(bool first_sync_completed) {
                       : "Initial FIM scan data is ready. Triggering first synchronization without startup delay.");
 }
 
-static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, uint32_t sync_interval, bool persist_first_sync_marker) {
+static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, uint32_t sync_interval, bool persist_first_sync_marker, bool expect_recovery_pass) {
     expect_string(__wrap__minfo, formatted_msg, "Starting FIM synchronization.");
 
     expect_value(__wrap_asp_sync_module, handle, handle);
@@ -418,15 +418,21 @@ static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, 
         expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
     }
 
+    // The recovery/integrity pass is skipped when the module was stopped during the
+    // synchronization (fim_sync_module_running already cleared), so tests that stop the
+    // loop through the sync wrapper must not expect it.
+    if (expect_recovery_pass) {
 #ifdef TEST_WINAGENT
-    /* On Windows, fim_run_integrity checks 3 tables: file, registry key, and registry value */
-    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
-    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
-    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
-    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+        /* On Windows, fim_run_integrity checks 3 tables: file, registry key, and registry value */
+        expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+        will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+        expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+        will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
 #endif
-    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
-    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+        expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+        will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+    }
+
     expect_string(__wrap__mdebug1,
                   formatted_msg,
                   sync_interval == 1
@@ -1199,7 +1205,8 @@ void test_fim_run_integrity_skips_initial_wait_for_pending_first_sync(void **sta
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
     will_return(__wrap_fim_db_get_last_sync_time, 0);
     expect_fim_startup_log(false);
-    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
+    // The sync wrapper stops the module, so the recovery pass is skipped.
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true, false);
 
     call_real_fim_run_integrity();
 
@@ -1237,7 +1244,8 @@ void test_fim_run_integrity_keeps_initial_wait_after_first_sync(void **state) {
     expect_value(__wrap_sleep, seconds, 1);
 #endif
 
-    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, false);
+    // The sync wrapper stops the module, so the recovery pass is skipped.
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, false, false);
 
     call_real_fim_run_integrity();
 
@@ -1269,7 +1277,9 @@ void test_fim_run_integrity_pause_still_waits_after_skip_is_consumed(void **stat
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
     will_return(__wrap_fim_db_get_last_sync_time, 0);
     expect_fim_startup_log(false);
-    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
+    // The module keeps running after the sync (it stops on the sleep), so the
+    // recovery pass still runs.
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true, true);
 #ifdef TEST_WINAGENT
     expect_value(wrap_Sleep, dwMilliseconds, 1000);
 #else
