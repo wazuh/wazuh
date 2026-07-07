@@ -308,11 +308,15 @@ class AgentInfoImpl
         /// Overridable in unit tests to avoid real sleeps.
         int m_pausePollDelayMs = 1000;
 
-        /// @brief True once the current deferral streak has logged its INFO line, so
-        /// repeated deferrals during the same first sync stay at DEBUG.
-        /// Reset when the deferral episode ends: either FIM reports the first sync is
-        /// complete, or the FIM probe gives up (timeout/IPC failure) without deferring.
-        bool m_deferralLogged = false;
+        /// @brief Modules whose current deferral streak has logged its INFO line, so
+        /// repeated deferrals during the same first sync stay at DEBUG. Tracked per
+        /// module: FIM's probe runs (and ends its episode) every cycle before
+        /// SCA/syscollector are evaluated, so a shared flag would be cleared each cycle
+        /// and re-emit the INFO for the whole duration of their first sync.
+        /// A module is erased when its deferral episode ends: it reports the first sync
+        /// is complete, or (FIM) the probe gives up (timeout/IPC failure) without
+        /// deferring.
+        std::set<std::string> m_deferralLoggedModules;
 
         /// @brief Condition variable for efficient sleep/wake mechanism
         std::condition_variable m_cv;

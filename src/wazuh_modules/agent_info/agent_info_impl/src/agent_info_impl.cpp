@@ -1246,11 +1246,10 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
                 if (moduleName == FIM_NAME && !firstSyncCompleted)
                 {
-                    if (!m_deferralLogged)
+                    if (m_deferralLoggedModules.insert(moduleName).second)
                     {
                         m_logFunction(LOG_INFO,
                                       "Deferring coordination until FIM first sync completes, will retry next cycle");
-                        m_deferralLogged = true;
                     }
                     else
                     {
@@ -1263,11 +1262,11 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
 
                 // FIM first sync is no longer in progress: the deferral episode (if any)
                 // has ended. Clear the throttle here rather than only on full coordination
-                // success, so a failure later in the cycle does not leave it stuck true and
+                // success, so a failure later in the cycle does not leave it stuck and
                 // suppress the operator-visible INFO on a future deferral episode.
                 if (moduleName == FIM_NAME)
                 {
-                    m_deferralLogged = false;
+                    m_deferralLoggedModules.erase(moduleName);
                 }
 
                 std::string status = pollJson["data"]["status"].get<std::string>();
@@ -1321,7 +1320,7 @@ AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std:
     // deferral episode logs its INFO marker again instead of being stuck at DEBUG.
     if (moduleName == FIM_NAME)
     {
-        m_deferralLogged = false;
+        m_deferralLoggedModules.erase(moduleName);
     }
 
     m_logFunction(LOG_WARNING,
@@ -1551,12 +1550,11 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
                 // FIM guard from #36762 to these modules).
                 if (!isModuleFirstSyncCompleted(module))
                 {
-                    if (!m_deferralLogged)
+                    if (m_deferralLoggedModules.insert(module).second)
                     {
                         m_logFunction(LOG_INFO,
                                       "Deferring coordination until " + module +
                                       " first sync completes, will retry next cycle");
-                        m_deferralLogged = true;
                     }
                     else
                     {
@@ -1568,7 +1566,7 @@ AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(s
                     return PauseCoordinationResult::Deferred;
                 }
 
-                m_deferralLogged = false;
+                m_deferralLoggedModules.erase(module);
                 m_logFunction(LOG_DEBUG, "Successfully paused " + module);
             }
 
