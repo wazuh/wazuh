@@ -396,6 +396,7 @@ TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_cal
         FIMDB::instance().logFunction(LOG_ERROR, ex.what());
         return nullptr;
     }
+
     // LCOV_EXCL_STOP
 }
 
