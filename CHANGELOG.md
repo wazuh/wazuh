@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed Fortigate Decoder and malicious ioc rule. ([#37434](https://github.com/wazuh/wazuh/pull/37434))
+- Fixed Fortigate Decoder, malicious ioc rule and RHEL 8,9,10 incorrect rpm check. ([#37434](https://github.com/wazuh/wazuh/pull/37434))
 
 ## [v4.14.7]
 
