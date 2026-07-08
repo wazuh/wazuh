@@ -99,22 +99,26 @@ void PersistentQueue::flushLoop()
 
         if (shouldFlush)
         {
-            flushBuffer(m_buffers[flushIdx]);
-            m_buffers[flushIdx].clear();
+            if (flushBuffer(m_buffers[flushIdx]))
+            {
+                m_buffers[flushIdx].clear();
+            }
         }
     }
 }
 
-void PersistentQueue::flushBuffer(const std::vector<PersistedData>& batch)
+bool PersistentQueue::flushBuffer(const std::vector<PersistedData>& batch)
 {
     try
     {
         std::lock_guard<std::mutex> storageLock(m_storageMutex);
         m_storage->submitBatch(batch);
+        return true;
     }
     catch (const std::exception& ex)
     {
         m_logger(LOG_ERROR, std::string("PersistentQueue: Error flushing batch to storage: ") + ex.what());
+        return false;
     }
 }
 
@@ -133,8 +137,10 @@ void PersistentQueue::flushPendingBuffer()
         m_currentIdx ^= 1;
     }
 
-    flushBuffer(m_buffers[flushIdx]);
-    m_buffers[flushIdx].clear();
+    if (flushBuffer(m_buffers[flushIdx]))
+    {
+        m_buffers[flushIdx].clear();
+    }
 }
 
 std::vector<PersistedData> PersistentQueue::fetchAndMarkForSync()

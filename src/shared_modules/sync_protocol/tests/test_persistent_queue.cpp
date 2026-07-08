@@ -131,6 +131,49 @@ TEST(PersistentQueueTest, SubmitLogsErrorWhenPersistingFails)
     EXPECT_TRUE(capturedLogMessage.find("Simulated persistence error") != std::string::npos);
 }
 
+TEST(PersistentQueueTest, FailedBatchIsRetainedAndRetriedOnNextFlushCycle)
+{
+    // Verifies the fix: a transient submitBatch() failure must not drop the batch.
+    // The failed events stay in their buffer slot and are merged with newly
+    // submitted events on the next flush of that slot.
+    //
+    // Drives every flush explicitly via fetchAndMarkForSync() (which calls the
+    // synchronous flushPendingBuffer()) so the sequence is deterministic and
+    // never depends on the background flush thread's timing.
+    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
+
+    std::vector<PersistedData> retryBatch;
+
+    EXPECT_CALL(*mockStorage, submitBatch(_))
+    .WillOnce(::testing::Throw(std::runtime_error("Simulated transient storage error")))
+    .WillOnce(Return())
+    .WillOnce(SaveArg<0>(&retryBatch));
+
+    EXPECT_CALL(*mockStorage, fetchAndMarkForSync())
+    .WillRepeatedly(Return(std::vector<PersistedData> {}));
+
+    {
+        PersistentQueue queue(":memory:", logger, mockStorage);
+
+        // Buffer A gets "id1" and its flush fails -- the event must stay buffered.
+        queue.submit("id1", "idx", "{}", Operation::CREATE, 1);
+        queue.fetchAndMarkForSync();
+
+        // Buffer B gets "id2" and its flush succeeds, flipping back to buffer A.
+        queue.submit("id2", "idx", "{}", Operation::CREATE, 2);
+        queue.fetchAndMarkForSync();
+
+        // Buffer A now holds the still-unflushed "id1" plus this new "id3".
+        queue.submit("id3", "idx", "{}", Operation::CREATE, 3);
+        queue.fetchAndMarkForSync();
+    }
+
+    ASSERT_EQ(retryBatch.size(), 2u);
+    EXPECT_EQ(retryBatch[0].id, "id1");
+    EXPECT_EQ(retryBatch[1].id, "id3");
+}
+
 TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();

@@ -92,7 +92,7 @@ class PersistentQueue : public IPersistentQueue
         /// @brief Maximum time to wait before flushing a non-full buffer.
         static constexpr std::chrono::milliseconds FLUSH_INTERVAL{500};
 
-        /// @brief Mutex protecting m_buffer.
+        /// @brief Mutex protecting m_buffers.
         std::mutex m_mutex;
 
         /// @brief Mutex serializing all m_storage access across threads.
@@ -108,7 +108,7 @@ class PersistentQueue : public IPersistentQueue
         /// @brief Index (0 or 1) of the buffer currently accepting new events.
         std::size_t m_currentIdx{0};
 
-        /// @brief Background thread that drains m_buffer into storage.
+        /// @brief Background thread that drains m_buffers into storage.
         std::thread m_flushThread;
 
         /// @brief Set to true to request flush thread shutdown.
@@ -124,8 +124,9 @@ class PersistentQueue : public IPersistentQueue
         void flushLoop();
 
         /// @brief Writes a batch to storage in a single transaction.
-        void flushBuffer(const std::vector<PersistedData>& batch);
+        /// @return true if the batch was persisted successfully, false otherwise.
+        bool flushBuffer(const std::vector<PersistedData>& batch);
 
-        /// @brief Steals any items currently in m_buffer and flushes them to storage.
+        /// @brief Steals any items currently in m_buffers and flushes them to storage.
         void flushPendingBuffer();
 };
