@@ -1,6 +1,3 @@
-# Change Log
-All notable changes to this project will be documented in this file.
-
 ## [v5.0.0]
 
 ### Manager
@@ -14,8 +11,6 @@ All notable changes to this project will be documented in this file.
 - Added CVSS v4.0 support to the Vulnerability Scanner. ([#35623](https://github.com/wazuh/wazuh/issues/35623))
 - Added Engine metrics collection, normalization, and indexing pipeline. ([#35771](https://github.com/wazuh/wazuh/issues/35771))
 - Added new CVE 5.0 schema fields to the Vulnerability Detector content model. ([#36000](https://github.com/wazuh/wazuh/issues/36000))
-- Added Engine content management. ([#2445](https://github.com/wazuh/internal-devel-requests/issues/2445))
-- Added Engine content management tier 2. ([#3166](https://github.com/wazuh/internal-devel-requests/issues/3166))
 - Added manager watermarks. ([#35579](https://github.com/wazuh/wazuh/issues/35579))
 - Added byte-based capacity limits to wazuh-manager-remoted. ([#37052](https://github.com/wazuh/wazuh/issues/37052))
 
@@ -36,7 +31,6 @@ All notable changes to this project will be documented in this file.
 - Changed the default Indexer user used by the Manager from `admin` to the restricted `wazuh-server` user, aligning with the Indexer RBAC least-privilege model. ([#36311](https://github.com/wazuh/wazuh/issues/36311))
 - Enabled shared-password agent enrollment by default, persisting the auto-generated `authd.pass` and synchronizing it to worker nodes, with fail-closed password validation. ([#36705](https://github.com/wazuh/wazuh/issues/36705))
 - Adapted API integration tests. ([#32698](https://github.com/wazuh/wazuh/issues/32698))
-- Migrated the remaining CI GitHub Actions artifacts (agent package builders, toolchain, and engine build/test workflows) to the internal S3 bucket, so no workflow uses `actions/upload-artifact`/`download-artifact`. ([#3502](https://github.com/wazuh/wazuh-automation/issues/3502))
 
 #### Removed
 
@@ -106,11 +100,5 @@ All notable changes to this project will be documented in this file.
 ## Prior versions
 
 - [v4.14.5](https://github.com/wazuh/wazuh/blob/v4.14.5/CHANGELOG.md)
-- [v4.14.4](https://github.com/wazuh/wazuh/blob/v4.14.4/CHANGELOG.md)
-- [v4.14.3](https://github.com/wazuh/wazuh/blob/v4.14.3/CHANGELOG.md)
-- [v4.14.2](https://github.com/wazuh/wazuh/blob/v4.14.2/CHANGELOG.md)
-- [v4.14.1](https://github.com/wazuh/wazuh/blob/v4.14.1/CHANGELOG.md)
-- [v4.14.0](https://github.com/wazuh/wazuh/blob/v4.14.0/CHANGELOG.md)
 - [v4.13.1](https://github.com/wazuh/wazuh/blob/v4.13.1/CHANGELOG.md)
-- [v4.13.0](https://github.com/wazuh/wazuh/blob/v4.13.0/CHANGELOG.md)
 
