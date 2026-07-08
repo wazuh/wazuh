@@ -1799,9 +1799,10 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
     auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
     EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for version test processing";
 
-    // Verify version is included in the bulk data for doc1
-    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version":"12345")"));
-    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version_type":"external_gte")"));
+    // Verify version is included in the bulk data for doc1 using update with script
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("update")"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("doc_version":12345)"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"(state.document_version)"));
 
     // Verify doc2 does not have version information
     std::size_t doc2_pos = capturedBulkData.find("doc2");
