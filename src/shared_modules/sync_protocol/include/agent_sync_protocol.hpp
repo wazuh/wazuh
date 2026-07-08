@@ -56,7 +56,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                        uint64_t version) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        bool synchronizeModule(Mode mode, Option option = Option::SYNC) override;
+        SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) override;
 
         /// @copydoc IAgentSyncProtocol::requiresFullSync
         bool requiresFullSync(const std::string& index,
@@ -66,7 +66,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         void clearInMemoryData() override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
-        bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
+        SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
 
         /// @copydoc IAgentSyncProtocol::notifyDataClean
         bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) override;
