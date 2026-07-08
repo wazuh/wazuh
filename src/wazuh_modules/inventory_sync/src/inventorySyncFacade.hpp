@@ -544,7 +544,7 @@ class InventorySyncFacadeImpl final
                         }
                         else
                         {
-                            result["value"] = "wazuh-server";
+                            result["value"] = "wazuh-manager";
                         }
                     }
                     else if (queryOp == "PUT")
