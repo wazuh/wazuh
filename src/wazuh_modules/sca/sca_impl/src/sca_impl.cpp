@@ -359,11 +359,35 @@ void SecurityConfigurationAssessment::quiesce()
 
 void SecurityConfigurationAssessment::releaseResources()
 {
+    // Take the flush controller out under the exclusive lock (so a concurrent wcom
+    // "flush"/"is_flush_completed" query sees either the live controller or none) but
+    // destroy it outside of it: its destructor joins the flush worker, which runs
+    // executeFlushSync() -> m_spSyncProtocol->synchronizeModule() without taking
+    // m_resourcesMutex. The protocol must outlive that join, so it is reset after it.
+    std::unique_ptr<Utils::AsyncFlushController> flushController;
+    {
+        std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
+        flushController = std::move(m_asyncFlushController);
+    }
+    flushController.reset();
+
+    std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
+
     // Explicitly release DBSync before static destruction to avoid use-after-free
     // during shutdown when DBSyncImplementation singleton may be destroyed first.
     // Must be called only after the sync worker thread has been joined, because
     // synchronizeDatabaseSnapshot() uses m_dBSync without holding any mutex.
     m_dBSync.reset();
+
+    // Destroy the sync protocol so its SQLite connection to sca_sync.db is closed
+    // (sqlite3_close_v2 on last close checkpoints the WAL and removes the -wal/-shm
+    // files). Stop() only signals the workers; without this the connection is leaked
+    // and a graceful stop leaves stale WAL files behind (issue #37334). The sync worker
+    // thread and the SCA run loop have already exited (see wm_sca_start teardown),
+    // mirroring Syscollector::releaseResources(); the entry points still reachable from
+    // other threads (wcom queries and sync responses, agent-info's in-process
+    // coordination queries) are excluded by the lock, which they take shared.
+    m_spSyncProtocol.reset();
 }
 
 void SecurityConfigurationAssessment::Stop()
@@ -436,7 +460,12 @@ void SecurityConfigurationAssessment::initSyncProtocol(const std::string& module
 
     try
     {
-        m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        {
+            // Publish under the exclusive lock: wcom queries can arrive while the module
+            // is still starting up, and they read the pointer under the shared lock.
+            std::unique_lock<std::shared_mutex> lock(m_resourcesMutex);
+            m_spSyncProtocol = std::make_shared<AgentSyncProtocol>(moduleName, syncDbPath, mqFuncs, logger_func, syncEndDelay, timeout, retries, maxEps, nullptr);
+        }
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA sync protocol initialized successfully with database: " + syncDbPath);
 
         // Initialize schema validator factory from embedded resources
@@ -543,6 +572,8 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
 
 void SecurityConfigurationAssessment::persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version)
 {
+    std::shared_lock<std::shared_mutex> lock(m_resourcesMutex);
+
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->persistDifference(id, operation, index, data, version);
@@ -551,6 +582,8 @@ void SecurityConfigurationAssessment::persistDifference(const std::string& id, O
 
 bool SecurityConfigurationAssessment::parseResponseBuffer(const uint8_t* data, size_t length)
 {
+    std::shared_lock<std::shared_mutex> lock(m_resourcesMutex);
+
     if (m_spSyncProtocol)
     {
         return m_spSyncProtocol->parseResponseBuffer(data, length);
@@ -582,6 +615,8 @@ void SecurityConfigurationAssessment::setSyncLimit(uint64_t syncLimit)
 
 bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::string>& indices)
 {
+    std::shared_lock<std::shared_mutex> lock(m_resourcesMutex);
+
     if (m_spSyncProtocol)
     {
         return m_spSyncProtocol->notifyDataClean(indices);
@@ -592,6 +627,8 @@ bool SecurityConfigurationAssessment::notifyDataClean(const std::vector<std::str
 
 void SecurityConfigurationAssessment::deleteDatabase()
 {
+    std::shared_lock<std::shared_mutex> lock(m_resourcesMutex);
+
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->deleteDatabase();
@@ -788,6 +825,13 @@ void SecurityConfigurationAssessment::resume()
 
 std::string SecurityConfigurationAssessment::query(const std::string& jsonQuery)
 {
+    // Serialize against releaseResources(): queries arrive from the wcom dispatcher and
+    // from agent-info's in-process coordination polls, which outlive the module teardown.
+    // The blocking commands stay bounded under the shared lock at shutdown because
+    // quiesce() (which precedes releaseResources()) wakes pause() and stops the sync
+    // protocol before the exclusive lock is ever requested.
+    std::shared_lock<std::shared_mutex> resourcesLock(m_resourcesMutex);
+
     // Log the received query
     LoggingHelper::getInstance().log(LOG_DEBUG, "Received query: " + jsonQuery);
 

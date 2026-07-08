@@ -629,7 +629,11 @@ size_t syscom_dispatch(char * command, size_t command_len, char ** output){
             size_t data_len = command_len - header_len;
 
             bool ret = false;
-            ret = asp_parse_response_buffer(syscheck.sync_handle, data, data_len);
+            w_rwlock_rdlock(&fim_sync_handle_rwlock);
+            if (syscheck.sync_handle) {
+                ret = asp_parse_response_buffer(syscheck.sync_handle, data, data_len);
+            }
+            w_rwlock_unlock(&fim_sync_handle_rwlock);
 
             if (!ret) {
                 mdebug1("WMCOM Error syncing module");

@@ -314,9 +314,17 @@ def file_diff(expected_item, current_items, size_check):
             difference_bytes = abs(
                 float(current_items['size_bytes']) - expected_size_bytes)
             if (expected_size_bytes and (difference_bytes / expected_size_bytes) > expected_error):
-                differences['size_bytes'] = current_items['size_bytes']
+                differences['size_bytes'] = {
+                    'expected': expected_item['size_bytes'],
+                    'found': current_items['size_bytes'],
+                    'allowed_error': expected_error,
+                    'deviation': round(difference_bytes / expected_size_bytes, 4)
+                }
         elif expected_item[head_type] != current_items[head_type]:
-            differences[head_type] = current_items[head_type]
+            differences[head_type] = {
+                'expected': expected_item[head_type],
+                'found': current_items[head_type]
+            }
 
     return differences
 
@@ -364,8 +372,17 @@ def printReport(expected_items, not_listed, not_fully_match, current_items, matc
             report_lines.append("### Files Differences\n")
             report_lines.append(
                 f"{qtty_not_fully_matched} files didn't match the expected values:\n")
-            report_lines.extend(
-                f"- '{filename}' : {details}\n" for filename, details in not_fully_match.items())
+            for filename, details in not_fully_match.items():
+                report_lines.append(f"- '{filename}':\n")
+                for field, values in details.items():
+                    if 'allowed_error' in values:
+                        report_lines.append(
+                            f"  - {field}: expected {values['expected']} "
+                            f"(±{float(values['allowed_error']) * 100:g}%), found {values['found']} "
+                            f"(deviation {values['deviation'] * 100:g}%)\n")
+                    else:
+                        report_lines.append(
+                            f"  - {field}: expected '{values['expected']}', found '{values['found']}'\n")
 
         # Expected files not found
         missing_files = [key for key,
@@ -387,12 +404,12 @@ def printReport(expected_items, not_listed, not_fully_match, current_items, matc
     # Combine all lines into a single report string
     final_report = ''.join(report_lines)
 
-    # Output to file or console
+    # Always print to the console so the CI log shows the discrepancies directly,
+    # and also write the file when a report path was requested
+    print(final_report)
     if report_path:
         with open(report_path, 'w') as file:
             file.write(final_report)
-    else:
-        print(final_report)
 
 
 if __name__ == "__main__":

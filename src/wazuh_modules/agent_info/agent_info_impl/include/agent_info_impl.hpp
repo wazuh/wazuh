@@ -227,6 +227,14 @@ class AgentInfoImpl
         ///         caller should defer coordination), or Failed (timeout/error/shutdown)
         PauseProbeResult pollFimPauseCompletion(const std::string& moduleName);
 
+        /// @brief Query a coordination module for whether its first synchronization has completed.
+        /// @param moduleName Module name (e.g. sca, syscollector).
+        /// @return false when the module reports first_sync_completed=0 or has not recorded a
+        ///         completed first sync yet (metadata unset = still in progress); true otherwise
+        ///         (already synced, or sync disabled — the module reports completed — or the module
+        ///         did not answer at all), so coordination is never wedged on a module that will not sync.
+        bool isModuleFirstSyncCompleted(const std::string& moduleName);
+
         /// @brief Poll all requested module flushes until completion.
         /// @param pendingModules Set of modules with an accepted flush request.
         /// @return true if all flushes completed successfully, false otherwise.
@@ -300,11 +308,15 @@ class AgentInfoImpl
         /// Overridable in unit tests to avoid real sleeps.
         int m_pausePollDelayMs = 1000;
 
-        /// @brief True once the current deferral streak has logged its INFO line, so
-        /// repeated deferrals during the same first sync stay at DEBUG.
-        /// Reset when the deferral episode ends: either FIM reports the first sync is
-        /// complete, or the FIM probe gives up (timeout/IPC failure) without deferring.
-        bool m_deferralLogged = false;
+        /// @brief Modules whose current deferral streak has logged its INFO line, so
+        /// repeated deferrals during the same first sync stay at DEBUG. Tracked per
+        /// module: FIM's probe runs (and ends its episode) every cycle before
+        /// SCA/syscollector are evaluated, so a shared flag would be cleared each cycle
+        /// and re-emit the INFO for the whole duration of their first sync.
+        /// A module is erased when its deferral episode ends: it reports the first sync
+        /// is complete, or (FIM) the probe gives up (timeout/IPC failure) without
+        /// deferring.
+        std::set<std::string> m_deferralLoggedModules;
 
         /// @brief Condition variable for efficient sleep/wake mechanism
         std::condition_variable m_cv;

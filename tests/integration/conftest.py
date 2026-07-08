@@ -8,6 +8,7 @@ import os
 import subprocess
 import pytest
 import sys
+import time
 
 from wazuh_testing.constants.platforms import WINDOWS, MACOS
 from py.xml import html
@@ -412,6 +413,17 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         logger.error(f"{str(called_process_error)}")
         if not ignore_errors:
             raise called_process_error
+
+    # On a fresh install the service can report running before the logger has created
+    # ossec.log (first-ever start, e.g. right after the MSI install on the Windows
+    # runners), and monitors built right after this fixture require the file to exist.
+    # Wait for it instead of racing the first log write.
+    for _ in range(30):
+        if os.path.isfile(os.path.join(ROOT_PREFIX, WAZUH_LOG_PATH)):
+            break
+        time.sleep(1)
+    else:
+        logger.warning(f"{WAZUH_LOG_PATH} was not created after starting the daemons")
 
     yield
 
