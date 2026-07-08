@@ -125,7 +125,6 @@ private:
                                     "document.containers.cna.replacedBy",
                                     // document.containers.cna.providerMetadata — only shortName used
                                     "document.containers.cna.providerMetadata.orgId",
-                                    "document.containers.cna.providerMetadata.datePublished",
                                     "document.containers.cna.providerMetadata.dateUpdated",
                                     // document.containers.cna.affected — unused sub-fields
                                     "document.containers.cna.affected.collectionURL",
@@ -246,7 +245,6 @@ private:
                                     "document.containers.adp.title",
                                     // document.containers.adp.providerMetadata — only x_subShortName used
                                     "document.containers.adp.providerMetadata.orgId",
-                                    "document.containers.adp.providerMetadata.datePublished",
                                     "document.containers.adp.providerMetadata.dateUpdated",
                                     // document.containers.adp.affected — unused sub-fields
                                     "document.containers.adp.affected.collectionURL",

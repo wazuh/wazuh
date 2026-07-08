@@ -608,7 +608,6 @@ namespace Utils
                 }
             }
 
-            // The erases above shifted vector positions; refresh before createColumn re-appends.
             rebuildColumnsIndex();
 
             for (const auto& columnName : columnsNames)
@@ -766,7 +765,7 @@ namespace Utils
     private:
         std::shared_ptr<T> m_db;                                     ///< RocksDB instance.
         std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
-        std::unordered_map<std::string, size_t> m_columnsIndex;      ///< Column name → position in m_columnsInstances.
+        std::unordered_map<std::string, size_t> m_columnsIndex;      ///< Column name.
         const bool m_enableWal;                                      ///< Whether to enable WAL or not.
         const std::string m_path;                                    ///< Location of the DB.
         std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
@@ -817,7 +816,7 @@ namespace Utils
         }
 
         /**
-         * @brief Rebuilds the name → position index over m_columnsInstances.
+         * @brief Rebuilds the name
          *
          * Must be called after any operation that shifts vector positions (erase); appends
          * maintain the index incrementally instead. Keeping this index makes columnExists()

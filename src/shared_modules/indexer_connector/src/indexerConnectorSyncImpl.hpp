@@ -309,6 +309,8 @@ template<typename TSelector,
          size_t FlushInterval = 20>
 class IndexerConnectorSyncImpl final
 {
+    static constexpr size_t MAX_RETRY_BACKOFF_SECONDS {30};
+
     LogFn m_logFn;
     SecureCommunication m_secureCommunication;
     std::unique_ptr<TSelector> m_selector;
@@ -329,6 +331,7 @@ class IndexerConnectorSyncImpl final
     void processBulk()
     {
         bool needToRetry = false;
+        size_t retryDelaySeconds = RetryDelay;
         if (m_bulkData.empty() && m_deleteByQuery.empty())
         {
             throw IndexerConnectorException("No data to process");
@@ -406,9 +409,9 @@ class IndexerConnectorSyncImpl final
             needToRetry = false;
         };
 
-        const auto onError = [this, &needToRetry](const std::string& error,
-                                                  const long statusCode,
-                                                  const std::string& responseBody) -> void
+        const auto onError = [this, &needToRetry, &retryDelaySeconds](const std::string& error,
+                                                                      const long statusCode,
+                                                                      const std::string& responseBody) -> void
         {
             LOG_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)
@@ -440,7 +443,7 @@ class IndexerConnectorSyncImpl final
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+                LOG_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
             }
             else
             {
@@ -474,9 +477,10 @@ class IndexerConnectorSyncImpl final
                                                        .secureCommunication = m_secureCommunication},
                                     PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                     {});
-                if (needToRetry && RetryDelay > 0)
+                if (needToRetry && retryDelaySeconds > 0)
                 {
-                    std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+                    std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
+                    retryDelaySeconds = std::min(retryDelaySeconds * 2, MAX_RETRY_BACKOFF_SECONDS);
                 }
             } while (needToRetry);
         }
@@ -553,6 +557,7 @@ class IndexerConnectorSyncImpl final
         url += m_selector->getNext();
         url += "/_bulk";
         bool needToRetry = false;
+        size_t retryDelaySeconds = RetryDelay;
 
         const auto onSuccess = [this](const std::string& response)
         {
@@ -565,7 +570,7 @@ class IndexerConnectorSyncImpl final
                 throw IndexerConnectorException("Bulk chunk operation had indexing failures");
             }
         };
-        const auto onError = [this, &needToRetry, boundaries](
+        const auto onError = [this, &needToRetry, &retryDelaySeconds, boundaries](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
             LOG_ERROR(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
@@ -599,7 +604,7 @@ class IndexerConnectorSyncImpl final
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
-                LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+                LOG_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
                 needToRetry = true;
             }
             else
@@ -621,9 +626,10 @@ class IndexerConnectorSyncImpl final
                                                              .secureCommunication = m_secureCommunication},
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 {});
-            if (needToRetry && RetryDelay > 0)
+            if (needToRetry && retryDelaySeconds > 0)
             {
-                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+                std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
+                retryDelaySeconds = std::min(retryDelaySeconds * 2, MAX_RETRY_BACKOFF_SECONDS);
             }
         } while (needToRetry);
     }
@@ -855,6 +861,7 @@ public:
         }
 
         bool needToRetry = false;
+        size_t retryDelaySeconds = RetryDelay;
 
         const auto onSuccess = [this](const std::string& response)
         {
@@ -914,8 +921,8 @@ public:
             m_shouldNotifyAfterBulk = true;
         };
 
-        const auto onError =
-            [this, &needToRetry](const std::string& url, const long statusCode, const std::string& error)
+        const auto onError = [this, &needToRetry, &retryDelaySeconds](
+                                 const std::string& url, const long statusCode, const std::string& error)
         {
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
@@ -928,7 +935,7 @@ public:
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+                LOG_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
             }
             else
             {
@@ -961,9 +968,10 @@ public:
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 {});
 
-            if (needToRetry && RetryDelay > 0)
+            if (needToRetry && retryDelaySeconds > 0)
             {
-                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+                std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
+                retryDelaySeconds = std::min(retryDelaySeconds * 2, MAX_RETRY_BACKOFF_SECONDS);
             }
         } while (needToRetry);
     }
@@ -978,6 +986,7 @@ public:
 
         nlohmann::json resultJson;
         bool needToRetry = false;
+        size_t retryDelaySeconds = RetryDelay;
 
         const auto onSuccess = [this, &resultJson](const std::string& response)
         {
@@ -985,12 +994,13 @@ public:
             resultJson = nlohmann::json::parse(response);
         };
 
-        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this, &needToRetry, &retryDelaySeconds](
+                                 const std::string& error, const long statusCode, const std::string&)
         {
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+                LOG_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
             }
             else
             {
@@ -1022,9 +1032,10 @@ public:
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 {});
 
-            if (needToRetry && RetryDelay > 0)
+            if (needToRetry && retryDelaySeconds > 0)
             {
-                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+                std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
+                retryDelaySeconds = std::min(retryDelaySeconds * 2, MAX_RETRY_BACKOFF_SECONDS);
             }
         } while (needToRetry);
 
@@ -1262,6 +1273,7 @@ public:
         nlohmann::json hitsResult;
         bool success = false;
         bool needToRetry = false;
+        size_t retryDelaySeconds = RetryDelay;
         std::string errorMessage;
 
         const auto onSuccess = [&hitsResult, &success](const std::string& response)
@@ -1284,12 +1296,13 @@ public:
             }
         };
 
-        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this, &needToRetry, &retryDelaySeconds](
+                                 const std::string& error, const long statusCode, const std::string&)
         {
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+                LOG_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
             }
             else
             {
@@ -1316,9 +1329,10 @@ public:
                                 PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
                                 {});
 
-            if (needToRetry && RetryDelay > 0)
+            if (needToRetry && retryDelaySeconds > 0)
             {
-                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+                std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
+                retryDelaySeconds = std::min(retryDelaySeconds * 2, MAX_RETRY_BACKOFF_SECONDS);
             }
         } while (needToRetry);
 

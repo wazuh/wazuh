@@ -2239,7 +2239,6 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryError)
     EXPECT_THROW(connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery), IndexerConnectorException);
 }
 
-// Test executeSearchQuery error handling - 429 Too Many Requests should retry instead of throwing
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryError429TooManyRequestsWithRetry)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -2248,7 +2247,7 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryError429TooManyRequestsWithRe
     int callCount = 0;
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .Times(2) // Should retry once after 429 error
+        .Times(2)
         .WillOnce(Invoke(
             [&callCount](RequestParamsVariant /*requestParams*/,
                          auto postParams,
@@ -2284,7 +2283,6 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryError429TooManyRequestsWithRe
                 }
             }));
 
-    // RetryDelay=0 keeps the test fast; the retry path itself is what's under test.
     IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
     nlohmann::json searchQuery;
