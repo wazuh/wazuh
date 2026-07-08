@@ -135,7 +135,7 @@ def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
         Dictionary with the stats of the input file.
     """
     daemon_socket_mapping = {'wazuh-manager-remoted': common.REMOTED_SOCKET,
-                             'wazuh-manager-analysisd': common.ANALYSISD_SOCKET,
+                             'wazuh-manager-analysisd': None,
                              'wazuh-manager-db': common.WDB_SOCKET}
     result = AffectedItemsWazuhResult(all_msg='Statistical information for each daemon was successfully read',
                                       some_msg='Could not read statistical information for some daemons',
@@ -143,7 +143,14 @@ def get_daemons_stats(daemons_list: list = None) -> AffectedItemsWazuhResult:
 
     for daemon in daemons_list or daemon_socket_mapping.keys():
         try:
-            result.affected_items.append(get_daemons_stats_socket(daemon_socket_mapping[daemon]))
+            if daemon == 'wazuh-manager-analysisd':
+                client = EngineHTTPClient()
+                try:
+                    result.affected_items.append(client.get_metrics_dump())
+                finally:
+                    client.close()
+            else:
+                result.affected_items.append(get_daemons_stats_socket(daemon_socket_mapping[daemon]))
         except WazuhException as e:
             result.add_failed_item(id_=daemon, error=e)
 
