@@ -2,10 +2,10 @@ import asyncio
 import os
 import random
 import ssl
+import threading
 from asyncio import sleep
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
-from functools import lru_cache
 from logging import getLogger
 from os.path import isabs, join
 from typing import AsyncIterator, List, Optional
@@ -33,6 +33,9 @@ logger = getLogger("wazuh")
 _config_cache: Optional[dict] = None
 _config_mtime: Optional[float] = None
 _config_lock = asyncio.Lock()
+
+# Thread lock for SSL context creation to prevent race conditions
+_ssl_context_lock = threading.Lock()
 
 
 async def _get_cached_indexer_config() -> dict:
@@ -72,7 +75,10 @@ async def _get_cached_indexer_config() -> dict:
             return get_ossec_conf(section="indexer")
 
 
-@lru_cache(maxsize=1)
+_ssl_context_cache: Optional[ssl.SSLContext] = None
+_ssl_context_cache_key: Optional[tuple] = None
+
+
 def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl.SSLContext:
     """
     Create and cache SSL context for indexer connections.
@@ -80,6 +86,9 @@ def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl
     This prevents repeated reads of certificate files and the system CA bundle
     on every connection attempt. The SSL context is reused across all connection
     attempts, significantly reducing disk I/O during retry scenarios.
+
+    Thread-safe: Uses a lock to prevent multiple threads from simultaneously
+    creating SSL contexts during cache misses.
 
     Parameters
     ----------
@@ -95,13 +104,30 @@ def _create_ssl_context(client_cert: str, client_key: str, ca_certs: str) -> ssl
     ssl.SSLContext
         Configured SSL context ready for use
     """
-    context = ssl.create_default_context(
-        purpose=ssl.Purpose.SERVER_AUTH,
-        cafile=ca_certs
-    )
-    context.load_cert_chain(certfile=client_cert, keyfile=client_key)
-    logger.debug("Created cached SSL context for indexer connections")
-    return context
+    global _ssl_context_cache, _ssl_context_cache_key
+
+    cache_key = (client_cert, client_key, ca_certs)
+
+    # Fast path: check cache without lock
+    if _ssl_context_cache is not None and _ssl_context_cache_key == cache_key:
+        return _ssl_context_cache
+
+    # Slow path: acquire lock and create context
+    with _ssl_context_lock:
+        # Double-check after acquiring lock (another thread might have created it)
+        if _ssl_context_cache is not None and _ssl_context_cache_key == cache_key:
+            return _ssl_context_cache
+
+        context = ssl.create_default_context(
+            purpose=ssl.Purpose.SERVER_AUTH,
+            cafile=ca_certs
+        )
+        context.load_cert_chain(certfile=client_cert, keyfile=client_key)
+        logger.debug("Created cached SSL context for indexer connections")
+
+        _ssl_context_cache = context
+        _ssl_context_cache_key = cache_key
+        return context
 
 
 # ============================================================================
@@ -180,10 +206,9 @@ class Indexer:
         Password for authentication. Defaults to an empty string.
     use_ssl : bool, optional
         Whether to use SSL for the connection. Defaults to True.
-    verify_certs : bool, optional
-        Whether to verify SSL certificates. Defaults to True.
     ssl_context : ssl.SSLContext, optional
         Pre-configured SSL context with certificates. Required when use_ssl is True.
+        The SSL context should already have verification settings configured.
 
     Attributes
     ----------
@@ -208,7 +233,6 @@ class Indexer:
         user: str = "",
         password: str = "", # nosec B107
         use_ssl: bool = True,
-        verify_certs: bool = True,
         ssl_context: Optional[ssl.SSLContext] = None,
     ) -> None:
         if len(hosts) != len(ports):
@@ -221,7 +245,6 @@ class Indexer:
         self.password = password
         self.ports = ports
         self.use_ssl = use_ssl
-        self.verify_certs = verify_certs
         self.ssl_context = ssl_context
 
         self._client = self._get_opensearch_client()
@@ -249,7 +272,6 @@ class Indexer:
             "hosts": nodes,
             "http_compress": True,
             "use_ssl": self.use_ssl,
-            "verify_certs": self.verify_certs,
             "timeout": 30,
         }
 
@@ -261,7 +283,7 @@ class Indexer:
             )
 
         if self.use_ssl:
-            # Use cached SSL context
+            # Use cached SSL context (verification settings are already configured in the context)
             if self.ssl_context:
                 parameters["ssl_context"] = self.ssl_context
             else:
@@ -558,7 +580,6 @@ async def get_indexer_client() -> AsyncIterator[Indexer]:
             user=indexer_user,
             password=indexer_pass,
             use_ssl=True,
-            verify_certs=True,
             ssl_context=ssl_context,
         )
     except IndexerUnavailableError:

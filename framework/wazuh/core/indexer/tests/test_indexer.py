@@ -95,7 +95,6 @@ async def test_get_indexer_client_resolves_relative_certificate_paths():
         user="wazuh-manager",
         password="wazuh-manager",
         use_ssl=True,
-        verify_certs=True,
         ssl_context=mock_ssl_context,
     )
     client.close.assert_awaited_once()
@@ -144,13 +143,16 @@ async def test_get_cached_indexer_config_invalidates_on_file_change():
 
 
 def test_create_ssl_context_caching():
-    """Test that SSL context is cached via LRU cache."""
+    """Test that SSL context is cached with double-checked locking."""
+    import wazuh.core.indexer.indexer as indexer_module
+
     cert = "/path/cert.pem"
     key = "/path/key.pem"
     ca = "/path/ca.pem"
 
     # Clear the cache first
-    _create_ssl_context.cache_clear()
+    indexer_module._ssl_context_cache = None
+    indexer_module._ssl_context_cache_key = None
 
     with patch("wazuh.core.indexer.indexer.ssl.create_default_context") as mock_create:
         mock_context = MagicMock(spec=ssl.SSLContext)
@@ -165,7 +167,9 @@ def test_create_ssl_context_caching():
         assert result1 is result2
         assert mock_create.call_count == 1  # Still only called once
 
-        # Different params - should create new context
+        # Clear cache and try different params - should create new context
+        indexer_module._ssl_context_cache = None
+        indexer_module._ssl_context_cache_key = None
         result3 = _create_ssl_context("/other/cert.pem", key, ca)
         assert mock_create.call_count == 2
 
