@@ -188,7 +188,7 @@ func TestEndAckTwoPhase_NoProcessing_UsesShortTimeout(t *testing.T) {
 	conn := connectTo(t, fr.addr, identity)
 
 	c := metrics.New()
-	src := New(step, basePayload())
+	src := New(step, basePayload(), "wazuh")
 
 	t0 := time.Now()
 	err := src.Run(context.Background(), conn, c)
@@ -229,7 +229,7 @@ func TestEndAckTwoPhase_AfterProcessing_UsesLongTimeout(t *testing.T) {
 	conn := connectTo(t, fr.addr, identity)
 
 	c := metrics.New()
-	src := New(step, basePayload())
+	src := New(step, basePayload(), "wazuh")
 
 	t0 := time.Now()
 	err := src.Run(context.Background(), conn, c)
@@ -274,7 +274,7 @@ func TestEndAckTwoPhase_ProcessingThenOk_Completes(t *testing.T) {
 	conn := connectTo(t, fr.addr, identity)
 
 	c := metrics.New()
-	src := New(step, basePayload())
+	src := New(step, basePayload(), "wazuh")
 
 	if err := src.Run(context.Background(), conn, c); err != nil {
 		t.Fatalf("Run failed: %v", err)
@@ -316,7 +316,7 @@ func TestEndAckTwoPhase_ShortTimeoutTriggersRetry(t *testing.T) {
 	conn := connectTo(t, fr.addr, identity)
 
 	c := metrics.New()
-	src := New(step, basePayload())
+	src := New(step, basePayload(), "wazuh")
 
 	t0 := time.Now()
 	if err := src.Run(context.Background(), conn, c); err != nil {

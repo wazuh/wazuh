@@ -58,18 +58,24 @@ type Source struct {
 	lim *pacing.Limiter
 
 	moduleID string // routing tag, e.g. "syscollector_sync"
+
+	// clusterName is embedded in every Start frame. remoted rejects the
+	// session unless it matches the manager's <cluster><name> exactly.
+	clusterName string
 }
 
 // New returns an inventory Source. payload should have been loaded once
 // and may be shared across Run() iterations (caller's choice). All
 // per-session timing knobs (start_ack_timeout, end_ack_timeout,
 // end_ack_processing_timeout, post_data_delay) live on the scenario
-// step — set them there.
-func New(step scenario.Step, payload *PayloadInfo) *Source {
+// step — set them there. clusterName must match the manager's configured
+// cluster name or every Start is rejected by remoted.
+func New(step scenario.Step, payload *PayloadInfo, clusterName string) *Source {
 	return &Source{
-		step:     step,
-		payload:  payload,
-		moduleID: moduleIDFor(payload.Module, payload.Option),
+		step:        step,
+		payload:     payload,
+		moduleID:    moduleIDFor(payload.Module, payload.Option),
+		clusterName: clusterName,
 		// lim is left nil — Run() builds a fresh one per session.
 	}
 }
@@ -104,7 +110,8 @@ func (s *Source) Run(ctx context.Context, conn *agent.Conn, c *metrics.Counters)
 	// assigns a new session_id per ack, so we don't need to vary anything.
 	startBytes := fbbuild.BuildStart(
 		s.payload.Module, fb.Mode(s.payload.Mode), uint64(s.payload.DataSize),
-		fb.Option(s.payload.Option), identity.ID, identity.Name, "5.0.0", indices,
+		fb.Option(s.payload.Option), identity.ID, identity.Name, "5.0.0",
+		s.clusterName, indices,
 	)
 
 	// Effective timeouts: scenario step value if set, else package default.
