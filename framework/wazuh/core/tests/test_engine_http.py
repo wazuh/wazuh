@@ -16,7 +16,7 @@ METRICS_DUMP_RESPONSE = {
     "name": "engine",
     "uptime": 12345,
     "global": [
-        {"name": "router.queue.size.bytes", "type": 0, "enabled": True, "value": 1000},
+        {"name": "router.queue.size", "type": 0, "enabled": True, "value": 1000},
         {"name": "router.eps.1m", "type": 1, "enabled": True, "value": 250.5},
     ],
     "spaces": [],

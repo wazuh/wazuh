@@ -82,13 +82,11 @@ ANALYSISD_HEADER = [
     "query_error",
     "server_events_received",
     "router_queue_size",
-    "router_queue_size_usage_percent",
-    "router_queue_events",
-    "router_queue_events_usage_percent",
+    "router_queue_usage_percent",
     "router_events_processed",
     "router_events_dropped",
     "indexer_queue_size",
-    "indexer_queue_size_usage_percent",
+    "indexer_queue_usage_percent",
     "indexer_events_dropped",
     "router_eps_1m",
     "spaces_standard_events_unclassified",
@@ -780,14 +778,12 @@ def _flatten_analysisd_stats(raw: dict[str, object], timestamp: str, elapsed_s: 
             global_metrics[item["name"]] = item.get("value")
 
     row["server_events_received"]     = _as_int(global_metrics.get("server.events.received"))
-    row["router_queue_size"]                  = _as_int(global_metrics.get("router.queue.size.bytes"))
-    row["router_queue_size_usage_percent"]    = _as_float(global_metrics.get("router.queue.size.bytes_usage_percent"))
-    row["router_queue_events"]                = _as_int(global_metrics.get("router.queue.size.events"))
-    row["router_queue_events_usage_percent"]  = _as_float(global_metrics.get("router.queue.size.events_usage_percent"))
-    row["router_events_processed"]            = _as_int(global_metrics.get("router.events.processed"))
-    row["router_events_dropped"]              = _as_int(global_metrics.get("router.events.dropped"))
-    row["indexer_queue_size"]                 = _as_int(global_metrics.get("indexer.queue.size.bytes"))
-    row["indexer_queue_size_usage_percent"]   = _as_float(global_metrics.get("indexer.queue.size.bytes_usage_percent"))
+    row["router_queue_size"]          = _as_int(global_metrics.get("router.queue.size"))
+    row["router_queue_usage_percent"] = _as_float(global_metrics.get("router.queue.usage.percent"))
+    row["router_events_processed"]    = _as_int(global_metrics.get("router.events.processed"))
+    row["router_events_dropped"]      = _as_int(global_metrics.get("router.events.dropped"))
+    row["indexer_queue_size"]         = _as_int(global_metrics.get("indexer.queue.size"))
+    row["indexer_queue_usage_percent"] = _as_float(global_metrics.get("indexer.queue.usage.percent"))
     row["indexer_events_dropped"]     = _as_int(global_metrics.get("indexer.events.dropped"))
     row["router_eps_1m"]              = _as_float(global_metrics.get("router.eps.1m"))
 
@@ -831,9 +827,9 @@ def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
                     "indexer_q=%d indexer_q_pct=%.1f indexer_dropped=%d unclassified=%d",
                     _as_int(row.get("server_events_received")),
                     _as_int(row.get("router_queue_size")),
-                    _as_float(row.get("router_queue_size_usage_percent")),
+                    _as_float(row.get("router_queue_usage_percent")),
                     _as_int(row.get("indexer_queue_size")),
-                    _as_float(row.get("indexer_queue_size_usage_percent")),
+                    _as_float(row.get("indexer_queue_usage_percent")),
                     _as_int(row.get("indexer_events_dropped")),
                     _as_int(row.get("spaces_standard_events_unclassified")),
                 )

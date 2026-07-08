@@ -2048,7 +2048,7 @@ ENGINE_DUMP = {
     "uptime": "2026-04-14T15:30:53.448Z",
     "timestamp": "2026-04-14T15:32:46.095Z",
     "global": [
-        {"name": "indexer.queue.size.bytes", "type": "pull", "enabled": True, "value": 0},
+        {"name": "indexer.queue.size", "type": "pull", "enabled": True, "value": 0},
         {"name": "router.events.processed", "type": "counter", "enabled": True, "value": 277},
         {"name": "server.bytes.received", "type": "counter", "enabled": True, "value": 89710},
     ],
@@ -2087,7 +2087,7 @@ class TestNormalizeNormalizationDoc:
 
     def test_global_metric_space_name_is_null(self):
         """Global metrics have wazuh.space.name == None (null in JSON)."""
-        metric = {"name": "router.queue.size.bytes", "type": "pull", "enabled": True, "value": 0}
+        metric = {"name": "router.queue.size", "type": "pull", "enabled": True, "value": 0}
         doc = MetricsSnapshotTasks._normalize_normalization_doc(
             metric, None, TIMESTAMP, "wazuh", "node01"
         )
@@ -2103,7 +2103,7 @@ class TestNormalizeNormalizationDoc:
 
     def test_all_expected_fields_present(self):
         """All required fields are present in the output document."""
-        metric = {"name": "router.queue.size.bytes", "type": "pull", "enabled": True, "value": 0}
+        metric = {"name": "router.queue.size", "type": "pull", "enabled": True, "value": 0}
         doc = MetricsSnapshotTasks._normalize_normalization_doc(
             metric, None, TIMESTAMP, "wazuh", "node01"
         )
@@ -2141,7 +2141,7 @@ class TestNormalizeNormalizationDoc:
 
     def test_event_module_and_kind_are_correct(self):
         """event.module and event.kind are always set to the Engine values."""
-        metric = {"name": "indexer.queue.size.bytes", "type": "pull", "enabled": True, "value": 0}
+        metric = {"name": "indexer.queue.size", "type": "pull", "enabled": True, "value": 0}
         doc = MetricsSnapshotTasks._normalize_normalization_doc(
             metric, None, TIMESTAMP, "wazuh", "node01"
         )
@@ -2193,7 +2193,7 @@ class TestCollectNormalizationAllNodes:
             docs = await tasks._collect_normalization_all_nodes(TIMESTAMP)
 
         global_docs = [d for d in docs if d["metric"]["name"] in {
-            "indexer.queue.size.bytes", "router.events.processed", "server.bytes.received"
+            "indexer.queue.size", "router.events.processed", "server.bytes.received"
         }]
         assert len(global_docs) == 3
         for doc in global_docs:

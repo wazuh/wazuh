@@ -172,7 +172,7 @@ METRICS_DUMP_DATA = {
     "status": 0,
     "name": "engine",
     "uptime": 99,
-    "global": [{"name": "router.queue.size.bytes", "type": 0, "enabled": True, "value": 500}],
+    "global": [{"name": "router.queue.size", "type": 0, "enabled": True, "value": 500}],
     "spaces": [],
 }
 

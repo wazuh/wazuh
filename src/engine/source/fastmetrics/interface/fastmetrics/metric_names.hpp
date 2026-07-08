@@ -10,17 +10,17 @@ namespace names
 {
 
 // Indexer queue metrics
-constexpr auto INDEXER_QUEUE_SIZE = "indexer.queue.size.bytes";
-constexpr auto INDEXER_QUEUE_SIZE_USAGE_PERCENT = "indexer.queue.size.bytes_usage_percent";
+constexpr auto INDEXER_QUEUE_SIZE = "indexer.queue.size";
+constexpr auto INDEXER_QUEUE_USAGE_PERCENT = "indexer.queue.usage.percent";
 
 // Indexer event metrics
 constexpr auto INDEXER_EVENTS_DROPPED = "indexer.events.dropped";
 
 // Router queue metrics
-constexpr auto ROUTER_QUEUE_EVENTS = "router.queue.size.events";
-constexpr auto ROUTER_QUEUE_EVENTS_USAGE_PERCENT = "router.queue.size.events_usage_percent";
-constexpr auto ROUTER_QUEUE_SIZE = "router.queue.size.bytes";
-constexpr auto ROUTER_QUEUE_SIZE_USAGE_PERCENT = "router.queue.size.bytes_usage_percent";
+constexpr auto ROUTER_QUEUE_SIZE = "router.queue.size";
+constexpr auto ROUTER_QUEUE_USAGE_PERCENT = "router.queue.usage.percent";
+constexpr auto ROUTER_QUEUE_BYTES_USED = "router.queue.bytes.used";
+constexpr auto ROUTER_QUEUE_BYTES_USAGE_PERCENT = "router.queue.bytes.usage.percent";
 
 // Router event metrics
 constexpr auto ROUTER_EPS_1M = "router.eps.1m";

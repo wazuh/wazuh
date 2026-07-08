@@ -97,7 +97,7 @@ counter->add(1);  // lock-free, hot path
 Pull metrics avoid state duplication by executing a callback on read:
 
 ```cpp
-FASTMETRICS_PULL(uint64_t, "indexer.queue.size.bytes", [wIndexer]() { return wIndexer->byteSize(); });
+FASTMETRICS_PULL(uint64_t, "indexer.queue.size", [wIndexer]() { return wIndexer->byteSize(); });
 FASTMETRICS_PULL(double, "router.eps.1m", [rate]() { return rate->getRate(std::chrono::seconds(60)); });
 ```
 
@@ -119,7 +119,7 @@ A lock-free circular buffer for computing events-per-second (EPS) over configura
 
 ```json
 {"timestamp":1715270400000,"name":"router.events.processed","value":42}
-{"timestamp":1715270400000,"name":"indexer.queue.size.bytes","value":100}
+{"timestamp":1715270400000,"name":"indexer.queue.size","value":100}
 ```
 
 Timestamp is milliseconds since epoch. Value is always `double`.
@@ -130,13 +130,13 @@ Predefined names in `metric_names.hpp`:
 
 | Name | Type | Source |
 |------|------|--------|
-| `indexer.queue.size.bytes` | PULL | main.cpp (indexer connector) |
-| `indexer.queue.size.bytes_usage_percent` | PULL | main.cpp (indexer connector) |
+| `indexer.queue.size` | PULL | main.cpp (indexer connector) |
+| `indexer.queue.usage.percent` | PULL | main.cpp (indexer connector) |
 | `indexer.events.dropped` | PULL | main.cpp (indexer connector) |
-| `router.queue.size.bytes` | PULL | router/orchestrator |
-| `router.queue.size.bytes_usage_percent` | PULL | router/orchestrator |
-| `router.queue.size.events` | PULL | router/orchestrator |
-| `router.queue.size.events_usage_percent` | PULL | router/orchestrator |
+| `router.queue.size` | PULL | router/orchestrator |
+| `router.queue.usage.percent` | PULL | router/orchestrator |
+| `router.queue.bytes.used` | PULL | router/orchestrator |
+| `router.queue.bytes.usage.percent` | PULL | router/orchestrator |
 | `router.events.processed` | COUNTER | router/worker |
 | `router.events.dropped` | COUNTER | router/orchestrator |
 | `router.eps.1m` | PULL | router/orchestrator (SlidingWindowRate) |
@@ -164,7 +164,7 @@ fastmetrics::registerManager();
 
 // 2. Register pull metrics for indexer
 FASTMETRICS_PULL(uint64_t, fastmetrics::names::INDEXER_QUEUE_SIZE, [wIndexer]() { ... });
-FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_SIZE_USAGE_PERCENT, indexerQueueUsageGetter);
+FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 
 // 3. Wrap singleton as shared_ptr for API handlers
 metricsManager = std::shared_ptr<fastmetrics::IManager>(&fastmetrics::manager(), [](auto*) {});
