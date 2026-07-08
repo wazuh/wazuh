@@ -97,8 +97,3 @@
 - Adjusted DockerListener messages as log entries to fix event categorization. ([#36126](https://github.com/wazuh/wazuh/issues/36126))
 - Dropped orphan paths before promoting on agent startup to fix FIM. ([#36134](https://github.com/wazuh/wazuh/issues/36134))
 
-## Prior versions
-
-- [v4.14.5](https://github.com/wazuh/wazuh/blob/v4.14.5/CHANGELOG.md)
-- [v4.13.1](https://github.com/wazuh/wazuh/blob/v4.13.1/CHANGELOG.md)
-

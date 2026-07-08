@@ -527,11 +527,12 @@ update_root_changelog() {
         } | sort -Vr
     )
 
-    # Keep the highest patch per minor series, drop the new release's own series,
-    # and take only the two latest minor series.
+    # Keep the highest patch per minor series, ignore versions older than 5.0.0,
+    # drop the new release's own series, and take only the two latest minor series.
     local prior_tags
-    prior_tags=$(awk -F. -v skip="$new_mm" '
+    prior_tags=$(awk -F. -v skip="$new_mm" -v min_major=5 '
         NF < 3 { next }
+        $1 < min_major { next }
         { mm = $1 "." $2 }
         mm == skip { next }
         !seen[mm]++ { print }' <<< "$candidates" | head -n2)
