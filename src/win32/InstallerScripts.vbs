@@ -346,12 +346,24 @@ public function config()
 End Function
 
 Private Function GetVersion()
-	Set objWMIService = GetObject("winmgmts:\\.\root\cimv2")
-	Set colItems = objWMIService.ExecQuery("Select * from Win32_OperatingSystem",,48)
+	On Error Resume Next
 
-	For Each objItem in colItems
-		GetVersion = Split(objItem.Version,".")(0)
-	Next
+	Set WshShell = CreateObject("WScript.Shell")
+
+	majorVersion = WshShell.RegRead("HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentMajorVersionNumber")
+	If Err.Number = 0 And IsNumeric(majorVersion) Then
+		GetVersion = CStr(majorVersion)
+	Else
+		Err.Clear
+		currentVersion = WshShell.RegRead("HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\CurrentVersion")
+		If Err.Number = 0 And Len(currentVersion) > 0 Then
+			GetVersion = Split(currentVersion, ".")(0)
+		Else
+			GetVersion = "0"
+		End If
+	End If
+
+	On Error GoTo 0
 End Function
 
 Public Function CheckSvcRunning()
