@@ -801,7 +801,10 @@ TEST_F(AgentSyncProtocolTest, SendEndAbortedOnStopDuringSyncEndDelay)
     MQ_Functions mqFuncs =
     {
         .start = [](const char*, short int, short int) { return 0; },
-        .send_binary = [](int, const void*, size_t, const char*, char) { return 0; }
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
     };
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
     protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger,
@@ -6017,6 +6020,7 @@ namespace
             std::lock_guard<std::mutex> lock(END_FAIL_TEST_MTX);
             ++END_FAIL_TEST_MSG_COUNT;
         }
+
         END_FAIL_TEST_CV.notify_all();
         return 0;
     }
