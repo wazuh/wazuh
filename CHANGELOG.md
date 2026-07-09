@@ -3,12 +3,6 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.7]
 
-### Ruleset
-
-#### Fixed
-
-- Fixed multiple Debian, Ubuntu and Windows SCA checks generating incorrect results. ([#37385](https://github.com/wazuh/wazuh/pull/37385))
-
 ### Manager
 
 #### Removed
@@ -20,6 +14,30 @@ All notable changes to this project will be documented in this file.
 - Improved cluster payload buffer allocation strategy. ([#37280](https://github.com/wazuh/wazuh/pull/37280))
 - Improved cluster archive decompression limits. ([#37119](https://github.com/wazuh/wazuh/pull/37119))
 - Improved cluster worker file path validation. ([#36998](https://github.com/wazuh/wazuh/pull/36998))
+- Improved API authentication stability with bounded thread pools, regex timeouts and payload size limits. ([#37034](https://github.com/wazuh/wazuh/pull/37034))
+- Updated `aiohttp`, `cryptography`, `PyJWT`, `python-multipart` and `starlette` Python dependencies. ([#37361](https://github.com/wazuh/wazuh/pull/37361))
+
+### Agent
+
+#### Fixed
+
+- Fixed AWS SQS subscriber wodle resolving the wrong AWS account for cross-account `iam_role_arn` configurations. ([#36791](https://github.com/wazuh/wazuh/pull/36791))
+- Fixed agent keepalive scheduling after a system clock rollback causing false `Disconnected` status. ([#36338](https://github.com/wazuh/wazuh/pull/36338))
+- Fixed eBPF FIM whodata dropping file events on older kernels such as Amazon Linux 2 and 2023. ([#37014](https://github.com/wazuh/wazuh/pull/37014))
+- Fixed eBPF FIM whodata missing file move/rename events into monitored folders. ([#37023](https://github.com/wazuh/wazuh/pull/37023))
+- Added IP address validation to the `ip-customblock` active response to prevent malformed input in file path operations. ([#36730](https://github.com/wazuh/wazuh/pull/36730))
+- Added a null check for inode and device fields in the FIM whodata event handler. ([#37245](https://github.com/wazuh/wazuh/pull/37245))
+
+
+### Ruleset
+
+#### Fixed
+
+- Fixed multiple Debian, Ubuntu and Windows SCA checks generating incorrect results. ([#37385](https://github.com/wazuh/wazuh/pull/37385))
+- Fixed a typo in the SELinux SCA check causing false failures on CentOS 8, 9 and 10 systems configured as `permissive`. ([#36361](https://github.com/wazuh/wazuh/pull/36361))
+- Fixed the AlmaLinux 9 and 10 bootloader permissions SCA check regex and optional file handling. ([#36396](https://github.com/wazuh/wazuh/pull/36396))
+- Fixed the `/etc/gshadow-` permissions SCA check always failing due to an incorrect `all` condition. ([#36795](https://github.com/wazuh/wazuh/pull/36795))
+- Fixed a macOS SCA PolicyBanner check false failure by wrapping the command in `sh -c` for glob expansion. ([#36783](https://github.com/wazuh/wazuh/pull/36783))
 
 ### RESTful API
 
