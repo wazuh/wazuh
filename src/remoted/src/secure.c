@@ -691,8 +691,19 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
 
                     keys.keyentries[agentid]->rcvd = current_ts;
+                    keys.keyentries[agentid]->conflict_ts = 0;
                 } else {
-                    mwarn("Agent key already in use: agent ID '%s' (source IP: %s)", keys.keyentries[agentid]->id, srcip);
+                    // Warn only if the conflict outlives the overtake window: a reconnect self-heals,
+                    // a shared key does not.
+                    if (keys.keyentries[agentid]->conflict_ts == 0) {
+                        keys.keyentries[agentid]->conflict_ts = current_ts;
+                    }
+
+                    if ((logr.connection_overtake_time <= 0) || (current_ts - keys.keyentries[agentid]->conflict_ts) > logr.connection_overtake_time) {
+                        mwarn("Agent key already in use: agent ID '%s' (source IP: %s)", keys.keyentries[agentid]->id, srcip);
+                    } else {
+                        mdebug2("Agent ID '%s' reconnected from '%s' before its previous session was closed.", keys.keyentries[agentid]->id, srcip);
+                    }
 
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                     key_unlock();
@@ -748,8 +759,19 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
 
                     keys.keyentries[agentid]->rcvd = current_ts;
+                    keys.keyentries[agentid]->conflict_ts = 0;
                 } else {
-                    mwarn("Agent key already in use: agent ID '%s' (source IP: %s)", keys.keyentries[agentid]->id, srcip);
+                    // Warn only if the conflict outlives the overtake window: a reconnect self-heals,
+                    // a shared key does not.
+                    if (keys.keyentries[agentid]->conflict_ts == 0) {
+                        keys.keyentries[agentid]->conflict_ts = current_ts;
+                    }
+
+                    if ((logr.connection_overtake_time <= 0) || (current_ts - keys.keyentries[agentid]->conflict_ts) > logr.connection_overtake_time) {
+                        mwarn("Agent key already in use: agent ID '%s' (source IP: %s)", keys.keyentries[agentid]->id, srcip);
+                    } else {
+                        mdebug2("Agent ID '%s' reconnected from '%s' before its previous session was closed.", keys.keyentries[agentid]->id, srcip);
+                    }
 
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                     key_unlock();

@@ -728,6 +728,7 @@ int OS_DeleteSocket(keystore * keys, int sock) {
 
         if (sock == entry->sock) {
             entry->sock = -1;
+            entry->conflict_ts = 0; // Connection closed: clear conflict
         }
 
         w_mutex_unlock(&entry->mutex);
