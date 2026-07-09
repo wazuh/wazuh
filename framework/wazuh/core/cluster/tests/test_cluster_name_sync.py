@@ -53,7 +53,7 @@ def task_with_indexer(manager, logger):
         server=manager,
         logger=logger,
         cluster_items=CLUSTER_ITEMS_WITH_CLUSTER_NAME_SYNC,
-        indexer_client=indexer,
+        get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=indexer), __aexit__=AsyncMock()),
     )
     return task, indexer
 
