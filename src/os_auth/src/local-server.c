@@ -354,6 +354,7 @@ cJSON* local_add(const char *id,
     int ierror;
     char* str_result = NULL;
     char _ip[IPSIZE + 1] = {0};
+    bool warn = false;
 
     mdebug2("add(%s)", name);
     w_mutex_lock(&mutex_keys);
@@ -368,10 +369,14 @@ cJSON* local_add(const char *id,
 
     // Check for duplicate ID
     if (id && (index = OS_IsAllowedID(&keys, id), index >= 0)) {
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
             minfo("Duplicate ID. %s", str_result);
         } else {
-            mwarn("Duplicate ID, rejecting enrollment. %s", str_result);
+            if (warn) {
+                mwarn("Duplicate ID, rejecting enrollment. %s", str_result);
+            } else {
+                minfo("Duplicate ID, rejecting enrollment. %s", str_result);
+            }
             ierror = EDUPID;
             goto fail;
         }
@@ -393,10 +398,14 @@ cJSON* local_add(const char *id,
         w_free_os_ip(aux_ip);
 
         if (index = OS_IsAllowedIP(&keys, _ip), index >= 0) {
-            if (OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+            if (OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
                 minfo("Duplicate IP '%s'. %s", _ip, str_result);
             } else {
-                mwarn("Duplicate IP '%s', rejecting enrollment. %s", _ip, str_result);
+                if (warn) {
+                    mwarn("Duplicate IP '%s', rejecting enrollment. %s", _ip, str_result);
+                } else {
+                    minfo("Duplicate IP '%s', rejecting enrollment. %s", _ip, str_result);
+                }
                 ierror = EDUPIP;
                 goto fail;
             }
@@ -413,10 +422,14 @@ cJSON* local_add(const char *id,
 
     /* Check for duplicate names */
     if (index = OS_IsAllowedName(&keys, name), index >= 0) {
-        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result)) {
+        if(OS_SUCCESS == w_auth_replace_agent(keys.keyentries[index], key_hash, force_options, &str_result, &warn)) {
             minfo("Duplicate name. %s", str_result);
         } else {
-            mwarn("Duplicate name '%s', rejecting enrollment. %s", name, str_result);
+            if (warn) {
+                mwarn("Duplicate name '%s', rejecting enrollment. %s", name, str_result);
+            } else {
+                minfo("Duplicate name '%s', rejecting enrollment. %s", name, str_result);
+            }
             ierror = EDUPNAME;
             goto fail;
         }

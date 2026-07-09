@@ -173,7 +173,7 @@ static void test_w_auth_validate_data(void **state) {
 
     /* Existent IP */
     response[0] = '\0';
-    expect_string(__wrap__mwarn, formatted_msg, "Duplicate IP '"EXISTENT_IP1"', rejecting enrollment. "
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate IP '"EXISTENT_IP1"', rejecting enrollment. "
                                                 "Agent '001' won't be removed because the force option is disabled.");
     err = w_auth_validate_data(response, EXISTENT_IP1, NEW_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
@@ -181,7 +181,7 @@ static void test_w_auth_validate_data(void **state) {
 
     /* Existent Agent Name */
     response[0] = '\0';
-    expect_string(__wrap__mwarn, formatted_msg, "Duplicate name '"EXISTENT_AGENT1"', rejecting enrollment. "
+    expect_string(__wrap__minfo, formatted_msg, "Duplicate name '"EXISTENT_AGENT1"', rejecting enrollment. "
                                                 "Agent '001' won't be removed because the force option is disabled.");
     err = w_auth_validate_data(response, NEW_IP1, EXISTENT_AGENT1, NULL, NULL);
     assert_int_equal(err, OS_INVALID);
@@ -371,7 +371,7 @@ static void test_w_auth_replace_agent_force_disabled(void **state) {
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
     char* str_result = NULL;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     assert_int_equal(err, OS_INVALID);
     assert_string_equal(str_result, "Agent '001' won't be removed because the force option is disabled.");
@@ -389,7 +389,7 @@ static void test_w_auth_replace_agent_agent_info_failed(void **state) {
     expect_value(__wrap_wdb_get_agent_info, id, 1);
     will_return(__wrap_wdb_get_agent_info, NULL);
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.enabled = 0;
     assert_int_equal(err, OS_INVALID);
@@ -400,6 +400,7 @@ static void test_w_auth_replace_agent_agent_info_failed(void **state) {
 
 static void test_w_auth_replace_agent_not_disconnected(void **state) {
     w_err_t err;
+    bool warn = false;
     keyentry key;
     keyentry_init(&key, NEW_AGENT1, AGENT1_ID, NEW_IP1, NULL);
     char *connection_status = "active";
@@ -425,9 +426,10 @@ static void test_w_auth_replace_agent_not_disconnected(void **state) {
     config.force_options.disconnected_time_enabled = true;
     config.force_options.disconnected_time = 100;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, &warn);
 
     assert_int_equal(err, OS_INVALID);
+    assert_true(warn);
     assert_string_equal(str_result, "Agent '001' can't be replaced since it is not disconnected.");
     free_keyentry(&key);
     os_free(str_result);
@@ -460,7 +462,7 @@ static void test_w_auth_replace_agent_not_disconnected_long_enough(void **state)
     config.force_options.disconnected_time_enabled = true;
     config.force_options.disconnected_time = 100;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.disconnected_time_enabled = false;
     config.force_options.disconnected_time = 0;
@@ -499,7 +501,7 @@ static void test_w_auth_replace_agent_not_old_enough(void **state) {
 
     config.force_options.after_registration_time = 100;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.after_registration_time = 0;
 
@@ -536,7 +538,7 @@ static void test_w_auth_replace_agent_existent_key_hash(void **state) {
     config.force_options.after_registration_time = 0;
     config.force_options.key_mismatch = true;
 
-    err = w_auth_replace_agent(&key, key_hash, &config.force_options, &str_result);
+    err = w_auth_replace_agent(&key, key_hash, &config.force_options, &str_result, NULL);
 
     config.force_options.key_mismatch = false;
 
@@ -572,7 +574,7 @@ static void test_w_auth_replace_agent_success(void **state) {
     config.force_options.disconnected_time_enabled = false;
     config.force_options.after_registration_time = 1;
 
-    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result);
+    err = w_auth_replace_agent(&key, NULL, &config.force_options, &str_result, NULL);
 
     config.force_options.after_registration_time = 0;
 
