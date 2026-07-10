@@ -102,41 +102,19 @@ jobs:
           aws-region: us-east-1
           role-duration-seconds: 7200
 
-      - name: Write AWS named profiles for integration tests
+      - name: Write default AWS profile for integration tests
         run: |
           # Write 'default' profile (us-east-1) from the OIDC temporary credentials.
           # AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_SESSION_TOKEN are injected as
           # environment variables by the preceding 'Configure AWS credentials via OIDC' step.
+          # The 'inspector_tests' profile is NOT built here: it is assembled right before the
+          # Inspector tests run (see 'Run Inspector tests'), because role chaining caps the
+          # session at 1h and the full suite runs >1h, so a profile built at job start would
+          # expire before the Inspector tests execute late in the suite.
           sudo aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID" --profile default
           sudo aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY" --profile default
           sudo aws configure set aws_session_token "$AWS_SESSION_TOKEN" --profile default
           sudo aws configure set region us-east-1 --profile default
-
-          # Assume the Inspector role via role chaining to build the 'inspector_tests' profile.
-          # Inspector tests run against the wazuh-dev account and require us-east-2.
-          STS_ERROR_FILE=$(mktemp)
-          STS_OUTPUT=$(aws sts assume-role \
-            --role-arn "${{ secrets.IT_AWS_INSPECTOR_ROLE_ARN }}" \
-            --role-session-name "github-actions-inspector-tests" \
-            --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
-            --output text 2>"$STS_ERROR_FILE") || {
-              echo "::error::Failed to assume Inspector role: $(cat $STS_ERROR_FILE)"
-              rm -f "$STS_ERROR_FILE"
-              exit 1
-            }
-          rm -f "$STS_ERROR_FILE"
-
-          read -r INSPECTOR_KEY INSPECTOR_SECRET INSPECTOR_TOKEN <<< "$STS_OUTPUT"
-
-          if [ -z "$INSPECTOR_KEY" ] || [ -z "$INSPECTOR_SECRET" ] || [ -z "$INSPECTOR_TOKEN" ]; then
-            echo "::error::Inspector role credentials are empty"
-            exit 1
-          fi
-
-          sudo aws configure set aws_access_key_id "$INSPECTOR_KEY" --profile inspector_tests
-          sudo aws configure set aws_secret_access_key "$INSPECTOR_SECRET" --profile inspector_tests
-          sudo aws configure set aws_session_token "$INSPECTOR_TOKEN" --profile inspector_tests
-          sudo aws configure set region us-east-2 --profile inspector_tests
 
       - name: "Install a compatible CMake"
         uses: ./.github/actions/reinstall_cmake
@@ -192,7 +170,9 @@ jobs:
         if: steps.filter.outputs.integration == 'true' || github.event_name == 'workflow_dispatch'
         run: |
           cd tests/integration
-          sudo AWS_VPC_ID="${AWS_VPC_ID}" AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 test_aws/
+          # Inspector is excluded here and run in its own step ('Run Inspector tests') that
+          # re-assumes the chained role right before, so its 1h-capped session stays fresh.
+          sudo AWS_VPC_ID="${AWS_VPC_ID}" AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k "not inspector" test_aws/
 
       - name: Run Custom Buckets tests
         if: steps.filter.outputs.bucket == 'true'
@@ -259,8 +239,41 @@ jobs:
           sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k cloudwatch test_aws/
 
       - name: Run Inspector tests
-        if: steps.filter.outputs.inspector == 'true'
+        # !cancelled() overrides the implicit success() so this step still runs when an
+        # unrelated earlier test step fails (e.g. the preexisting log_groups failure);
+        # otherwise the Inspector tests would be skipped and never reported.
+        if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || steps.filter.outputs.inspector == 'true' || steps.filter.outputs.integration == 'true') }}
         run: |
+          # Re-assume the Inspector role right before running its tests. Role chaining is
+          # capped at 1h by AWS regardless of MaxSessionDuration, and the full suite runs
+          # >1h, so a session assumed at job start would already be expired here. Re-assuming
+          # now yields a fresh 1h session, plenty for the quick Inspector tests.
+          # The base OIDC credentials (role-duration-seconds: 7200) are still valid at this
+          # point, so this chained assume-role succeeds.
+          STS_ERROR_FILE=$(mktemp)
+          STS_OUTPUT=$(aws sts assume-role \
+            --role-arn "${{ secrets.IT_AWS_INSPECTOR_ROLE_ARN }}" \
+            --role-session-name "github-actions-inspector-tests" \
+            --query "Credentials.[AccessKeyId,SecretAccessKey,SessionToken]" \
+            --output text 2>"$STS_ERROR_FILE") || {
+              echo "::error::Failed to assume Inspector role: $(cat $STS_ERROR_FILE)"
+              rm -f "$STS_ERROR_FILE"
+              exit 1
+            }
+          rm -f "$STS_ERROR_FILE"
+
+          read -r INSPECTOR_KEY INSPECTOR_SECRET INSPECTOR_TOKEN <<< "$STS_OUTPUT"
+
+          if [ -z "$INSPECTOR_KEY" ] || [ -z "$INSPECTOR_SECRET" ] || [ -z "$INSPECTOR_TOKEN" ]; then
+            echo "::error::Inspector role credentials are empty"
+            exit 1
+          fi
+
+          sudo aws configure set aws_access_key_id "$INSPECTOR_KEY" --profile inspector_tests
+          sudo aws configure set aws_secret_access_key "$INSPECTOR_SECRET" --profile inspector_tests
+          sudo aws configure set aws_session_token "$INSPECTOR_TOKEN" --profile inspector_tests
+          sudo aws configure set region us-east-2 --profile inspector_tests
+
           cd tests/integration
           sudo AWS_BUCKET_NAME="${AWS_BUCKET_NAME}" python3 -m pytest -vvv --tier 0 --tier 1 -k inspector test_aws/
 
