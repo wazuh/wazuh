@@ -6,15 +6,25 @@
 #include <thread>
 #include <vector>
 
-#include <base/agentMetadataCache.hpp>
+#include <agentcache/agentMetadataCache.hpp>
+#include <fastmetrics/iMetric.hpp>
+#include <fastmetrics/metric_names.hpp>
+#include <fastmetrics/registry.hpp>
 
-using namespace base;
+using namespace agentcache;
 using namespace std::chrono_literals;
 
 using Op = AgentMetadataCache::Operation;
 
 namespace
 {
+// Register the fastmetrics manager once for all tests: the cache resolves its counters from it.
+struct FastMetricsInit
+{
+    FastMetricsInit() { fastmetrics::registerManager(); }
+};
+static FastMetricsInit fastMetricsInit_;
+
 // Valid header for agent "001"
 const std::string HEADER_AGENT_001 =
     R"({"wazuh":{"agent":{"id":"001","name":"agent-one","version":"5.0.0","host":{"hostname":"host1","os":{"name":"Ubuntu","platform":"linux"}}}}})";
@@ -301,6 +311,45 @@ TEST_F(AgentMetadataCacheTest, TwoIndexSync_HeaderRevertNoLeak)
     std::string_view hostname;
     ASSERT_EQ(reverted.first->getString(hostname, "/wazuh/agent/host/hostname"), json::RetGet::Success);
     EXPECT_EQ(hostname, "host1");
+}
+
+// The cache records its own hit/insertion/update counters. Uses baseline deltas because the
+// counters are process-wide singletons shared across every test in this binary.
+TEST_F(AgentMetadataCacheTest, Metrics_RecordsHitsInsertionsUpdates)
+{
+    auto& mgr = fastmetrics::manager();
+    auto hits = mgr.getOrCreateCounter(fastmetrics::names::AGENT_CACHE_HITS);
+    auto insertions = mgr.getOrCreateCounter(fastmetrics::names::AGENT_CACHE_INSERTIONS);
+    auto updates = mgr.getOrCreateCounter(fastmetrics::names::AGENT_CACHE_UPDATES);
+
+    const auto hits0 = hits->get();
+    const auto insertions0 = insertions->get();
+    const auto updates0 = updates->get();
+
+    cache.getOrParse(HEADER_AGENT_001);         // new agent          -> Inserted
+    cache.getOrParse(HEADER_AGENT_001);         // identical header    -> Retrieved (hit)
+    cache.getOrParse(HEADER_AGENT_001_UPDATED); // same agent, new hdr -> Updated
+
+    EXPECT_EQ(insertions->get() - insertions0, 1u);
+    EXPECT_EQ(hits->get() - hits0, 1u);
+    EXPECT_EQ(updates->get() - updates0, 1u);
+}
+
+// evictStale() records the number of evicted entries into the evictions counter.
+TEST_F(AgentMetadataCacheTest, Metrics_RecordsEvictions)
+{
+    auto evictions = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_EVICTIONS);
+    const auto evictions0 = evictions->get();
+
+    AgentMetadataCache shortCache(1s);
+    shortCache.getOrParse(HEADER_AGENT_001);
+    shortCache.getOrParse(HEADER_AGENT_002);
+
+    std::this_thread::sleep_for(1100ms);
+    const auto evicted = shortCache.evictStale();
+
+    EXPECT_EQ(evicted, 2u);
+    EXPECT_EQ(evictions->get() - evictions0, 2u);
 }
 
 TEST_F(AgentMetadataCacheTest, ThreadSafety_ConcurrentGetOrParseWithEviction)

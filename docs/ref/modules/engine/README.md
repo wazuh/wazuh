@@ -2440,6 +2440,50 @@ Total number of events received by the server.
 
 ---
 
+#### Agent cache metrics
+
+These metrics track the agent metadata cache, which deduplicates the per-batch agent header JSON so it is parsed only once per agent instead of once per batch.
+
+##### `agent.cache.entries`
+
+Current number of agent metadata entries held in the cache (one per agent).
+
+**Used for:** observing cache footprint and how many distinct agents are active.
+
+---
+
+##### `agent.cache.hits`
+
+Total number of header lookups served from the cache without re-parsing.
+
+**Used for:** measuring cache effectiveness (hit rate) and parsing avoided.
+
+---
+
+##### `agent.cache.insertions`
+
+Total number of new agent headers parsed and added to the cache.
+
+**Used for:** accounting first-seen agents and cold-cache parsing cost.
+
+---
+
+##### `agent.cache.updates`
+
+Total number of cache entries replaced because the agent's header changed.
+
+**Used for:** detecting agents whose metadata changes frequently.
+
+---
+
+##### `agent.cache.evictions`
+
+Total number of entries removed by the periodic TTL cleanup.
+
+**Used for:** tracking cache turnover and TTL/interval tuning.
+
+---
+
 #### Per-space metrics
 
 These metrics are created dynamically per space.

@@ -26,9 +26,9 @@ struct FastMetricsInit
 static FastMetricsInit fastMetricsInit_;
 
 // Agent metadata cache instance for the parser/handler, mirroring production (5-minute TTL).
-std::shared_ptr<base::AgentMetadataCache> makeAgentMetadataCache()
+std::shared_ptr<agentcache::AgentMetadataCache> makeAgentMetadataCache()
 {
-    return std::make_shared<base::AgentMetadataCache>(std::chrono::seconds {300});
+    return std::make_shared<agentcache::AgentMetadataCache>(std::chrono::seconds {300});
 }
 
 // Build the same error JSON the handler builds, but without hardcoding the parser message.

@@ -1,9 +1,10 @@
-#ifndef _BASE_AGENT_METADATA_CACHE_HPP
-#define _BASE_AGENT_METADATA_CACHE_HPP
+#ifndef _AGENTCACHE_AGENT_METADATA_CACHE_HPP
+#define _AGENTCACHE_AGENT_METADATA_CACHE_HPP
 
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -11,10 +12,14 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <vector>
 
 #include <base/json.hpp>
+#include <fastmetrics/iMetric.hpp>
+#include <fastmetrics/metric_names.hpp>
+#include <fastmetrics/registry.hpp>
 
-namespace base
+namespace agentcache
 {
 
 /**
@@ -34,6 +39,10 @@ namespace base
  * Thread safety: multiple readers can call getOrParse() concurrently under a shared lock;
  * the per-entry last-used timestamp is a relaxed atomic so it can be refreshed without an
  * exclusive lock.  Inserts, replacements and eviction take an exclusive lock.
+ *
+ * Metrics: the cache records its own fastmetrics counters (hits, insertions, updates and
+ * evictions). This requires fastmetrics::registerManager() to have been called beforehand.
+ * The instantaneous entry count is exposed as a pull metric via registerCacheMetrics().
  */
 class AgentMetadataCache
 {
@@ -54,9 +63,16 @@ public:
     /**
      * @brief Construct the cache with a given time-to-live for entries.
      * @param ttl Entries not accessed within this duration are eligible for eviction.
+     *
+     * @note fastmetrics::registerManager() must have been called before construction, as the
+     *       cache resolves its metric counters from the metrics manager.
      */
     explicit AgentMetadataCache(std::chrono::seconds ttl)
         : m_ttl(ttl)
+        , m_hitsCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_HITS))
+        , m_insertionsCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_INSERTIONS))
+        , m_updatesCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_UPDATES))
+        , m_evictionsCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_EVICTIONS))
     {
         if (ttl <= std::chrono::seconds(0) || ttl > std::chrono::seconds(3600 * 24)) // 1 day
         {
@@ -72,7 +88,7 @@ public:
      * If an entry with the same content already exists, the cached shared_ptr is returned
      * (avoiding a new json::Json allocation).  Otherwise the header is parsed, the agent ID
      * extracted and validated, and the entry is stored, replacing any previous header for
-     * the same agent.
+     * the same agent.  The corresponding metric counter (hits/insertions/updates) is recorded.
      *
      * @param headerStr Raw JSON string of the header (e.g., the text after "H " in the NDJson batch).
      * @return GetResult Pair of {shared pointer to the parsed header, Operation describing whether
@@ -91,6 +107,7 @@ public:
             if (it != m_byHash.end() && std::string_view(it->second->headerStr) == headerStr)
             {
                 it->second->lastUsed.store(nowRep(), std::memory_order_relaxed);
+                m_hitsCounter->add(1);
                 return {it->second->header, Operation::Retrieved};
             }
         }
@@ -121,6 +138,7 @@ public:
             if (hashIt != m_byHash.end() && std::string_view(hashIt->second->headerStr) == headerStr)
             {
                 hashIt->second->lastUsed.store(nowRep(), std::memory_order_relaxed);
+                m_hitsCounter->add(1);
                 return {hashIt->second->header, Operation::Retrieved};
             }
 
@@ -141,34 +159,78 @@ public:
 
             m_byAgent[agentId] = entry;
             m_byHash[hash] = entry;
+
+            if (agentExisted)
+            {
+                m_updatesCounter->add(1);
+            }
+            else
+            {
+                m_insertionsCounter->add(1);
+            }
             return {entry->header, agentExisted ? Operation::Updated : Operation::Inserted};
         }
     }
 
     /**
      * @brief Remove entries that have not been accessed within the TTL.
+     *
+     * Two-phase to minimise the time the maps are held under the exclusive lock, since reads
+     * (getOrParse hits) are the hot path:
+     *  - Phase 1 (shared lock): scan and collect the agent IDs of stale entries. Read-only, so
+     *    concurrent getOrParse hits are not blocked; only the slow (insert/replace) path waits.
+     *  - Phase 2 (exclusive lock): erase the collected candidates. Each is re-validated because a
+     *    concurrent getOrParse may have refreshed or replaced the entry between the two phases.
+     *
      * @return Number of entries evicted.
      */
     std::size_t evictStale()
     {
         const auto nowNs = nowRep();
         const auto ttlNs = std::chrono::duration_cast<std::chrono::steady_clock::duration>(m_ttl).count();
-        std::size_t evicted = 0;
 
-        std::unique_lock lock(m_mutex);
-        for (auto it = m_byAgent.begin(); it != m_byAgent.end();)
+        const auto isStale = [nowNs, ttlNs](const CacheEntry& entry)
+        { return (nowNs - entry.lastUsed.load(std::memory_order_relaxed)) > ttlNs; };
+
+        // Phase 1: collect stale candidates under a shared lock (no mutation).
+        std::vector<std::string> staleAgents;
         {
-            const auto& entry = it->second;
-            if ((nowNs - entry->lastUsed.load(std::memory_order_relaxed)) > ttlNs)
+            std::shared_lock lock(m_mutex);
+            for (const auto& [agentId, entry] : m_byAgent)
             {
-                m_byHash.erase(entry->headerHash);
-                it = m_byAgent.erase(it);
+                if (isStale(*entry))
+                {
+                    staleAgents.push_back(agentId);
+                }
+            }
+        }
+
+        if (staleAgents.empty())
+        {
+            return 0;
+        }
+
+        // Phase 2: erase the candidates under an exclusive lock, re-validating each (a concurrent
+        // getOrParse may have refreshed its timestamp or replaced the entry since phase 1).
+        std::size_t evicted = 0;
+        {
+            std::unique_lock lock(m_mutex);
+            for (const auto& agentId : staleAgents)
+            {
+                auto it = m_byAgent.find(agentId);
+                if (it == m_byAgent.end() || !isStale(*it->second))
+                {
+                    continue;
+                }
+                m_byHash.erase(it->second->headerHash);
+                m_byAgent.erase(it);
                 ++evicted;
             }
-            else
-            {
-                ++it;
-            }
+        }
+
+        if (evicted > 0)
+        {
+            m_evictionsCounter->add(evicted);
         }
         return evicted;
     }
@@ -213,8 +275,35 @@ private:
     mutable std::shared_mutex m_mutex; ///< Protects m_byAgent and m_byHash for thread-safe access.
     std::unordered_map<std::string, std::shared_ptr<CacheEntry>> m_byAgent; ///< agentId -> entry (one per agent).
     std::unordered_map<std::size_t, std::shared_ptr<CacheEntry>> m_byHash;  ///< content hash -> entry (O(1) lookup).
+
+    // Metric counters (process-wide singletons resolved from the fastmetrics manager).
+    std::shared_ptr<fastmetrics::ICounter> m_hitsCounter;       ///< agent.cache.hits (Retrieved).
+    std::shared_ptr<fastmetrics::ICounter> m_insertionsCounter; ///< agent.cache.insertions (Inserted).
+    std::shared_ptr<fastmetrics::ICounter> m_updatesCounter;    ///< agent.cache.updates (Updated).
+    std::shared_ptr<fastmetrics::ICounter> m_evictionsCounter;  ///< agent.cache.evictions (evictStale).
 };
 
-} // namespace base
+/**
+ * @brief Register the instantaneous "agent.cache.entries" pull metric for a cache instance.
+ *
+ * Uses a weak_ptr so the metrics manager never keeps the cache alive nor dereferences it
+ * after destruction (mirrors the engine's other pull-metric registrations). Safe to call
+ * once after the cache is constructed; re-registering the same metric name is a no-op.
+ *
+ * @param cache The cache whose size() should be exposed.
+ */
+inline void registerCacheMetrics(const std::shared_ptr<AgentMetadataCache>& cache)
+{
+    std::weak_ptr<AgentMetadataCache> weakCache = cache;
+    FASTMETRICS_PULL(std::size_t,
+                     fastmetrics::names::AGENT_CACHE_ENTRIES,
+                     [weakCache]()
+                     {
+                         auto c = weakCache.lock();
+                         return c ? c->size() : std::size_t {0};
+                     });
+}
 
-#endif // _BASE_AGENT_METADATA_CACHE_HPP
+} // namespace agentcache
+
+#endif // _AGENTCACHE_AGENT_METADATA_CACHE_HPP

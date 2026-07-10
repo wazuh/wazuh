@@ -297,6 +297,7 @@ register_external_library(re2::re2               "${CMAKE_SOURCE_DIR}/external/r
 set_target_properties(re2_re2 PROPERTIES INTERFACE_LINK_LIBRARIES "absl_absl")
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
+add_subdirectory(${ENGINE_SOURCE_DIR}/agentcache)
 add_subdirectory(${ENGINE_SOURCE_DIR}/bk)
 add_subdirectory(${ENGINE_SOURCE_DIR}/api)
 add_subdirectory(${ENGINE_SOURCE_DIR}/defs)
@@ -330,6 +331,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/fastmetrics)
 
 target_link_libraries(wazuh-engine
     base
+    agentcache::agentcache
     conf
     yml
     defs

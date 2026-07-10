@@ -4,14 +4,25 @@
 #include <string>
 #include <vector>
 
-#include <base/agentMetadataCache.hpp>
+#include <agentcache/agentMetadataCache.hpp>
+#include <fastmetrics/registry.hpp>
 
-using namespace base;
+using namespace agentcache;
 using namespace std::chrono_literals;
 
 // =============================================================================
 // Test data
 // =============================================================================
+
+namespace
+{
+// Register the fastmetrics manager before main() runs: the cache resolves its counters from it.
+struct FastMetricsInit
+{
+    FastMetricsInit() { fastmetrics::registerManager(); }
+};
+static FastMetricsInit fastMetricsInit_;
+} // namespace
 
 static std::string makeHeader(int agentNum)
 {

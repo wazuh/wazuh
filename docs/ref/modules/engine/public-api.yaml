@@ -1052,6 +1052,11 @@ paths:
                     - router.queue.size
                     - router.queue.usage.percent
                     - server.events.dropped.input
+                    - agent.cache.entries
+                    - agent.cache.hits
+                    - agent.cache.insertions
+                    - agent.cache.updates
+                    - agent.cache.evictions
                     - space.wazuh.events.discarded
                     - space.wazuh.events.unclassified
                     - space.wazuh.events.discarded.prefilter
@@ -1126,6 +1131,26 @@ paths:
                       type: counter
                       enabled: true
                       value: 3
+                    - name: agent.cache.entries
+                      type: pull
+                      enabled: true
+                      value: 1200
+                    - name: agent.cache.hits
+                      type: counter
+                      enabled: true
+                      value: 480000
+                    - name: agent.cache.insertions
+                      type: counter
+                      enabled: true
+                      value: 1500
+                    - name: agent.cache.updates
+                      type: counter
+                      enabled: true
+                      value: 30
+                    - name: agent.cache.evictions
+                      type: counter
+                      enabled: true
+                      value: 300
                     spaces:
                     - name: wazuh
                       metrics:

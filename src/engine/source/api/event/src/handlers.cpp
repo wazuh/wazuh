@@ -8,7 +8,7 @@ namespace api::event::handlers
 {
 adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
                                 const std::shared_ptr<::dumper::IDumper>& dumper,
-                                std::shared_ptr<base::AgentMetadataCache> agentMetadataCache)
+                                std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache)
 {
     auto lambdaName = logging::getLambdaName(__FUNCTION__, "apiHandler");
     auto weakOrchestrator = std::weak_ptr(orchestrator);

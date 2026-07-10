@@ -68,7 +68,6 @@ add_executable(base_utest
     ${UNIT_SRC_DIR}/expression_test.cpp
     ${UNIT_SRC_DIR}/process_test.cpp
     ${UNIT_SRC_DIR}/utils/singletonLocator_test.cpp
-    ${UNIT_SRC_DIR}/agentMetadataCache_test.cpp
 )
 target_include_directories(base_utest
     PRIVATE
@@ -117,7 +116,6 @@ add_library(base::bench ALIAS base_bench)
 add_executable(base_benchmark
     ${BENCH_SRC_DIR}/eventParser_bench.cpp
     ${BENCH_SRC_DIR}/json_bench.cpp
-    ${BENCH_SRC_DIR}/agentMetadataCache_bench.cpp
 )
 target_include_directories(base_benchmark
     PRIVATE

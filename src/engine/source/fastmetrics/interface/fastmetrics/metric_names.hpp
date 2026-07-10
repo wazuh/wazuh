@@ -29,6 +29,14 @@ constexpr auto ROUTER_EPS_30M = "router.eps.30m";
 constexpr auto ROUTER_EVENTS_PROCESSED = "router.events.processed";
 constexpr auto ROUTER_EVENTS_DROPPED = "router.events.dropped";
 
+// Agent cache metrics
+constexpr auto AGENT_CACHE_ENTRIES = "agent.cache.entries";
+constexpr auto AGENT_CACHE_HITS = "agent.cache.hits";
+constexpr auto AGENT_CACHE_MISSES = "agent.cache.misses";
+constexpr auto AGENT_CACHE_EVICTIONS = "agent.cache.evictions";
+constexpr auto AGENT_CACHE_INSERTIONS = "agent.cache.insertions";
+constexpr auto AGENT_CACHE_UPDATES = "agent.cache.updates";
+
 // Server metrics
 constexpr auto SERVER_BYTES_RECEIVED = "server.bytes.received";
 constexpr auto SERVER_EVENTS_RECEIVED = "server.events.received";

@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <api/handlers.hpp>
+#include <agentcache/agentMetadataCache.hpp>
 #include <api/status/handlers.hpp>
-#include <base/agentMetadataCache.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>
 #include <base/libwazuhshared.hpp>
@@ -258,7 +258,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
     std::shared_ptr<ioc::sync::IocSync> iocSyncService;
-    std::shared_ptr<base::AgentMetadataCache> agentMetadataCache;
+    std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache;
     bool firstStart {false};
 
     try
@@ -808,8 +808,12 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
-            agentMetadataCache = std::make_shared<base::AgentMetadataCache>(
+            agentMetadataCache = std::make_shared<agentcache::AgentMetadataCache>(
                 std::chrono::seconds(confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_TTL)));
+
+            // Register the cache's instantaneous "agent.cache.entries" pull metric.
+            agentcache::registerCacheMetrics(agentMetadataCache);
+
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
             engineRemoteServer->addRoute(httpsrv::Method::POST,
@@ -879,7 +883,8 @@ int main(int argc, char* argv[])
             };
 
             // Async clean agent cache, safely evicting stale entries to avoid memory bloat. This is a best-effort
-            // operation, so it is not critical if the cache is not cleaned on time.
+            // operation, so it is not critical if the cache is not cleaned on time. The number of evicted
+            // entries is recorded by the cache itself (agent.cache.evictions).
             scheduler->scheduleTask("clean-agent-cache",
                                     scheduler::TaskConfig {.interval = confManager.get<std::size_t>(
                                                                conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL),

@@ -8,8 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include <agentcache/agentMetadataCache.hpp>
 #include <api/event/ndJsonParser.hpp>
-#include <base/agentMetadataCache.hpp>
 #include <base/behaviour.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>
@@ -18,9 +18,9 @@ using namespace api::event::protocol;
 using namespace base::test;
 
 // Agent metadata cache instance for the parser, mirroring production (5-minute TTL).
-static std::shared_ptr<base::AgentMetadataCache> makeAgentMetadataCache()
+static std::shared_ptr<agentcache::AgentMetadataCache> makeAgentMetadataCache()
 {
-    return std::make_shared<base::AgentMetadataCache>(std::chrono::seconds {300});
+    return std::make_shared<agentcache::AgentMetadataCache>(std::chrono::seconds {300});
 }
 
 using SuccessExpected = InnerExpected<std::vector<base::Event>, None>;
