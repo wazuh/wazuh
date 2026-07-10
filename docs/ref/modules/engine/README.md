@@ -2719,6 +2719,14 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 | `analysisd.event_queue_eps` | Maximum event ingestion rate. `0` means unlimited. | `0` |
 | `analysisd.event_queue_max_bytes` | Maximum total byte size of events waiting in the router input queue. Events are dropped when this quota is full. `0` means unlimited. | `32 MB` |
 
+## Agent metadata cache
+
+| Setting | Description | Default |
+|:--------|:------------|:-------:|
+| `analysisd.agent_metadata_cache_ttl` | Time-to-live in seconds for cached agent metadata. | `300` |
+| `analysisd.agent_metadata_cache_clean_interval` | Interval in seconds between best-effort evictions of stale agent metadata cache entries. | `60` |
+
+
 ### Indexer connector
 
 | Setting | Description | Default |

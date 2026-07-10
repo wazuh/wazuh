@@ -10,6 +10,7 @@
 
 #include <api/handlers.hpp>
 #include <api/status/handlers.hpp>
+#include <base/agentMetadataCache.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>
 #include <base/libwazuhshared.hpp>
@@ -257,6 +258,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
     std::shared_ptr<ioc::sync::IocSync> iocSyncService;
+    std::shared_ptr<base::AgentMetadataCache> agentMetadataCache;
     bool firstStart {false};
 
     try
@@ -649,14 +651,12 @@ int main(int argc, char* argv[])
             auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
             if (iocSyncInterval > 0)
             {
-                scheduler->scheduleTask("ioc-sync-task",
-                                        scheduler::TaskConfig {.interval = iocSyncInterval,
-                                                               .runImmediately = true,
-                                                               .CPUPriority = 0,
-                                                               .taskFunction = [iocSyncService]()
-                                                               {
-                                                                   iocSyncService->synchronize();
-                                                               }});
+                scheduler->scheduleTask(
+                    "ioc-sync-task",
+                    scheduler::TaskConfig {.interval = iocSyncInterval,
+                                           .runImmediately = true,
+                                           .CPUPriority = 0,
+                                           .taskFunction = [iocSyncService]() { iocSyncService->synchronize(); }});
                 LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
                           "interval and {} for batch size",
                           iocSyncInterval,
@@ -690,9 +690,7 @@ int main(int argc, char* argv[])
                                            .runImmediately = true,
                                            .CPUPriority = 0,
                                            .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
-                                           {
-                                               geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
-                                           }});
+                                           { geoManager->remoteUpsert(manifestUrl, cityPath, asnPath); }});
                 LOG_DEBUG("Geo sync scheduled with interval: {} seconds", geoSyncInterval);
             }
             else
@@ -724,14 +722,12 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
-            scheduler->scheduleTask("remote-conf-sync",
-                                    scheduler::TaskConfig {.interval = remoteConfSyncInterval,
-                                                           .runImmediately = true,
-                                                           .CPUPriority = 0,
-                                                           .taskFunction = [remoteConf]()
-                                                           {
-                                                               remoteConf->synchronize();
-                                                           }});
+            scheduler->scheduleTask(
+                "remote-conf-sync",
+                scheduler::TaskConfig {.interval = remoteConfSyncInterval,
+                                       .runImmediately = true,
+                                       .CPUPriority = 0,
+                                       .taskFunction = [remoteConf]() { remoteConf->synchronize(); }});
             LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds", remoteConfSyncInterval);
         }
 
@@ -812,11 +808,13 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
-
+            agentMetadataCache = std::make_shared<base::AgentMetadataCache>(
+                std::chrono::seconds(confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_TTL)));
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
-            engineRemoteServer->addRoute(
-                httpsrv::Method::POST, "/events/enriched", api::event::handlers::pushEvent(orchestrator, dumper));
+            engineRemoteServer->addRoute(httpsrv::Method::POST,
+                                         "/events/enriched",
+                                         api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
@@ -879,6 +877,21 @@ int main(int argc, char* argv[])
                     LOG_INFO("[CMSync] Event processing is now active");
                 }
             };
+
+            // Async clean agent cache, safely evicting stale entries to avoid memory bloat. This is a best-effort
+            // operation, so it is not critical if the cache is not cleaned on time.
+            scheduler->scheduleTask("clean-agent-cache",
+                                    scheduler::TaskConfig {.interval = confManager.get<std::size_t>(
+                                                               conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL),
+                                                           .runImmediately = false,
+                                                           .CPUPriority = 0,
+                                                           .taskFunction = [agentMetadataCache]()
+                                                           {
+                                                               if (agentMetadataCache)
+                                                               {
+                                                                   agentMetadataCache->evictStale();
+                                                               }
+                                                           }});
 
             // Async Synchronize on startup
             scheduler->scheduleTask(

@@ -15,8 +15,6 @@ using PublicProtocolHandler = std::function<base::Event(uint8_t, std::string&, s
 constexpr char EVENT_QUEUE_ID[] {"/wazuh/protocol/queue"};     ///< JSON pointer for the queue field.
 constexpr char EVENT_LOCATION_ID[] {"/wazuh/protocol/location"}; ///< JSON pointer for the location field.
 constexpr char EVENT_MESSAGE_ID[] {"/event/original"};           ///< JSON pointer for the original message field.
-constexpr char EVENT_AGENT_ID[] {"/agent/id"};                   ///< JSON pointer for the agent id field.
-constexpr char EVENT_AGENT_NAME[] {"/agent/name"};               ///< JSON pointer for the agent name field.
 
 /**
  * @brief Parse an Wazuh legacy message (4.x) and extract the queue, location and message

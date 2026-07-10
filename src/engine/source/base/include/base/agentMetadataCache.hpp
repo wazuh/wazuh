@@ -58,6 +58,10 @@ public:
     explicit AgentMetadataCache(std::chrono::seconds ttl)
         : m_ttl(ttl)
     {
+        if (ttl <= std::chrono::seconds(0) || ttl > std::chrono::seconds(3600 * 24)) // 1 day
+        {
+            throw std::invalid_argument("AgentMetadataCache: TTL must be > 0 and <= 86400 seconds");
+        }
         m_byAgent.reserve(CACHE_INITIAL_CAPACITY);
         m_byHash.reserve(CACHE_INITIAL_CAPACITY);
     }

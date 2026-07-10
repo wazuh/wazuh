@@ -9,6 +9,7 @@
 #include <fmt/format.h>
 
 #include <base/json.hpp>
+#include <base/agentMetadataCache.hpp>
 
 namespace api::event::protocol
 {
@@ -57,8 +58,12 @@ inline std::string unindentContinuation(std::string_view indented)
     return result;
 }
 
-inline void parseNDJson(std::string_view batch, const EventHook& hook)
+inline void parseNDJson(std::string_view batch, const EventHook& hook, const std::shared_ptr<base::AgentMetadataCache>& agentMetadataCache)
 {
+    if (!agentMetadataCache)
+    {
+        throw std::runtime_error {"Agent metadata cache is not initialized"};
+    }
     try
     {
         constexpr std::string_view NEWLINE_TOKEN = "\n";
@@ -79,7 +84,8 @@ inline void parseNDJson(std::string_view batch, const EventHook& hook)
         }
 
         std::string_view headerJson = headerLine.substr(2);
-        auto header = std::make_shared<const json::Json>(headerJson);
+        // TODO: Add stats
+        auto header = agentMetadataCache->getOrParse(headerJson).first;
 
         // ---- Parse events using "\nE " as delimiter ----
         std::size_t pos = firstNewline + NEWLINE_SIZE;

@@ -89,6 +89,11 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<size_t>(key::EVENT_QUEUE_EPS, "WAZUH_EVENT_QUEUE_EPS", 0);
     addUnit<size_t>(key::EVENT_QUEUE_MAX_BYTES, "WAZUH_EVENT_QUEUE_MAX_BYTES", 0x1 << 25); // 0 = unlimited
 
+    // Agent Metadata Cache
+    addUnit<size_t>(key::AGENT_METADATA_CACHE_TTL, "WAZUH_AGENT_METADATA_CACHE_TTL", 300); // 5 minutes
+    addUnit<size_t>(
+        key::AGENT_METADATA_CACHE_CLEAN_INTERVAL, "WAZUH_AGENT_METADATA_CACHE_CLEAN_INTERVAL", 60); // 1 minute
+
     // Orchestrator module
     addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 0);
 
