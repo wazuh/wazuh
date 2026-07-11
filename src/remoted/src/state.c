@@ -156,18 +156,16 @@ STATIC void w_remoted_clean_agents_state(int *sock) {
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
 
-    hash_node = OSHash_Begin_ex(remoted_agents_state, &inode_it);
-
-    if (hash_node == NULL) {
-        return;
-    }
-
     if (active_agents = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, sock, 0, -1), active_agents == NULL) {
         return;
     }
 
     char *agent_id = NULL;
     remoted_agent_state_t * agent_state = NULL;
+
+    w_mutex_lock(&agents_state_mutex);
+
+    hash_node = OSHash_Begin_ex(remoted_agents_state, &inode_it);
 
     while (hash_node) {
         agent_id = hash_node->key;
@@ -187,6 +185,8 @@ STATIC void w_remoted_clean_agents_state(int *sock) {
             os_free(agent_state);
         }
     }
+
+    w_mutex_unlock(&agents_state_mutex);
 
     os_free(active_agents);
     return;

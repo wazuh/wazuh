@@ -341,6 +341,15 @@ void test_rem_get_node_existing_node(void ** state) {
 }
 
 void test_w_remoted_clean_agents_state_empty_table(void ** state) {
+    int *connected_agents = NULL;
+    os_calloc(1, sizeof(int), connected_agents);
+    connected_agents[0] = OS_INVALID;
+
+    expect_string(__wrap_wdb_get_agents_ids_of_current_node, status, AGENT_CS_ACTIVE);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, last_id, 0);
+    expect_value(__wrap_wdb_get_agents_ids_of_current_node, limit, -1);
+    will_return(__wrap_wdb_get_agents_ids_of_current_node, connected_agents);
+
     expect_value(__wrap_OSHash_Begin_ex, self, remoted_agents_state);
     will_return(__wrap_OSHash_Begin_ex, NULL);
 
@@ -403,9 +412,6 @@ void test_w_remoted_clean_agents_state_completed_without_delete(void ** state) {
 
 void test_w_remoted_clean_agents_state_query_fail(void ** state) {
     test_struct_t *test_data  = (test_struct_t *)*state;
-
-    expect_value(__wrap_OSHash_Begin_ex, self, remoted_agents_state);
-    will_return(__wrap_OSHash_Begin_ex, test_data->hash_node);
 
     int *connected_agents = NULL;
 
