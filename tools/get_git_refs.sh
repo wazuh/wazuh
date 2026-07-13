@@ -64,6 +64,18 @@ try_git_command() {
 
     local has_output=0
 
+    # Try to detect branch from GitHub Actions environment if present
+    if [ -n "$GITHUB_REF" ]; then
+        if [[ "$GITHUB_REF" == refs/heads/* ]] || [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "$GITHUB_REF"
+            has_output=1
+        fi
+        if [ -n "$GITHUB_HEAD_REF" ]; then
+            echo "refs/heads/$GITHUB_HEAD_REF"
+            has_output=1
+        fi
+    fi
+
     # Try to get the current branch
     local branch
     branch=$(git -C "$REPO_ROOT" symbolic-ref --short HEAD 2>/dev/null || true)
