@@ -92,8 +92,9 @@ int main(int argc, char **argv) {
 // ============================================================================
 
 // Returns true if ANY firewall profile is effectively enabled (enforcing), read from
-// `netsh advfirewall show allprofiles state` - the merged GPO + local state, unlike the
-// SharedAccess EnableFirewall value that produced the false negative in #37388.
+// `netsh advfirewall show allprofiles state`. This reports the effective state and, in
+// particular, correctly returns ON when the local EnableFirewall value is ABSENT (the
+// Windows default).
 // On any failure to determine the state (or when the "ON" token is not recognized, e.g.
 // on a localized Windows) we return false, so try_netsh conservatively defers to the
 // route fallback rather than adding a rule that might never be enforced.
@@ -155,9 +156,10 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
 
     // A netsh block rule is only enforced while a firewall profile is enabled. On ENABLE,
     // if the firewall is effectively OFF, defer to the route fallback instead of adding a
-    // dormant rule. We read the EFFECTIVE state (merged GPO + local). This is
-    // ENABLE-only: on DISABLE we must always try to remove the rule, which may have been
-    // added while the firewall was enabled.
+    // dormant rule. We read the EFFECTIVE state via netsh (which reports ON even when the
+    // local EnableFirewall value is absent). This is ENABLE-only: on DISABLE we must
+    // always try to remove the rule, which may have been added while the firewall was
+    // enabled.
     if (action == ENABLE_COMMAND && !firewall_is_effectively_on(argv0)) {
         log_firewall_action(argv0, LOG_LEVEL_WARNING, "netsh", "check",
                           "Windows Firewall is effectively disabled - deferring to route fallback");
@@ -165,14 +167,17 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
         return FIREWALL_INVALID_STATE;
     }
 
+    // Single-host prefix for netsh remoteip: /32 for IPv4, /128 for IPv6.
+    const char *host_prefix = (strchr(srcip, ':') != NULL) ? "128" : "32";
+
     // Build netsh command
     wfd_t *wfd = NULL;
 
     if (action == ENABLE_COMMAND) {
-        // netsh advfirewall firewall add rule name="..." interface=any dir=in action=block remoteip=<IP>/32
+        // netsh advfirewall firewall add rule name="..." interface=any dir=in action=block remoteip=<IP>/<prefix>
         char remote_ip_arg[OS_MAXSTR];
         memset(remote_ip_arg, '\0', OS_MAXSTR);
-        snprintf(remote_ip_arg, OS_MAXSTR - 1, "remoteip=%s/32", srcip);
+        snprintf(remote_ip_arg, OS_MAXSTR - 1, "remoteip=%s/%s", srcip, host_prefix);
 
         char *exec_cmd_in[] = {
             netsh_path,
@@ -210,7 +215,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
         // Add outbound rule (from PR #34675 fix for bidirectional blocking)
         char remote_ip_arg_out[OS_MAXSTR];
         memset(remote_ip_arg_out, '\0', OS_MAXSTR);
-        snprintf(remote_ip_arg_out, OS_MAXSTR - 1, "remoteip=%s/32", srcip);
+        snprintf(remote_ip_arg_out, OS_MAXSTR - 1, "remoteip=%s/%s", srcip, host_prefix);
 
         char *exec_cmd_out[] = {
             netsh_path,
@@ -241,7 +246,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
         // DELETE: netsh advfirewall firewall delete rule name="..." remoteip=<IP>/32
         char remote_ip_arg_del[OS_MAXSTR];
         memset(remote_ip_arg_del, '\0', OS_MAXSTR);
-        snprintf(remote_ip_arg_del, OS_MAXSTR - 1, "remoteip=%s/32", srcip);
+        snprintf(remote_ip_arg_del, OS_MAXSTR - 1, "remoteip=%s/%s", srcip, host_prefix);
 
         char *exec_cmd[] = {
             netsh_path,
@@ -288,10 +293,11 @@ firewall_result_t try_route_windows(const char *srcip, int action, int ip_versio
 
     // Reached when netsh is unavailable, or (via try_netsh) when the firewall is
     // effectively OFF. BEST-EFFORT: null-routes the target to loopback so the host drops
-    // packets destined to it, which also breaks the reverse path of inbound TCP sessions.
-    // LIMITATION: this does NOT block a target on a directly-connected subnet - on-link
-    // hosts are reached via ARP and the /32-via-loopback route does not redirect that
-    // egress (verified on WS2022). It is effective for remote/routed attackers only.
+    // packets destined to it, which in principle also breaks the reverse path of inbound
+    // TCP sessions to a routed/remote attacker.
+    // LIMITATION: this does NOT block a target on a directly-connected
+    // subnet - on-link hosts are reached via ARP and the /32-via-loopback route does not
+    // redirect that egress. Effectiveness against routed/remote attackers was not verified.
     // netsh (Windows Firewall) remains the only comprehensive blocking mechanism.
 
     // The IPv4 mask below only applies to IPv4 targets; netsh already covers IPv6.
