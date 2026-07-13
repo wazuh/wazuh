@@ -92,20 +92,25 @@ public:
     }
 
     /**
-     * @brief Construct a Value from a JSON value (copy).
+     * @brief Construct a Value from a JSON value (compact copy).
+     *
+     * Stored as a compact document (json::Json::compact — small allocator, ~4 KB instead
+     * of the default 64 KB chunk), since the shared value may be captured into
+     * policy-lifetime operation closures via sharedValue().
+     *
      * @param value JSON value to store.
      */
     explicit Value(const json::Json& value)
-        : m_value(std::make_shared<const json::Json>(value))
+        : m_value(std::make_shared<const json::Json>(value.compact()))
     {
     }
 
     /**
-     * @brief Construct a Value from a JSON value (move).
+     * @brief Construct a Value from a JSON value (compact copy; the source is discarded).
      * @param value JSON value to store.
      */
     explicit Value(json::Json&& value)
-        : m_value(std::make_shared<const json::Json>(std::move(value)))
+        : m_value(std::make_shared<const json::Json>(value.compact()))
     {
     }
 
@@ -180,16 +185,21 @@ public:
         return j;
     }
 
-    /** @brief Get a shared json::Json for the value (zero-copy for the json variant). */
+    /** @brief Get a shared json::Json for the value (zero-copy for the json variant).
+     *
+     * The string variant is materialized as a compact document, since callers capture the
+     * result into policy-lifetime operation closures (a standard document would pin a
+     * 64 KB chunk per captured value).
+     */
     [[nodiscard]] std::shared_ptr<const json::Json> sharedValue() const
     {
         if (std::holds_alternative<std::shared_ptr<const json::Json>>(m_value))
         {
             return std::get<std::shared_ptr<const json::Json>>(m_value);
         }
-        auto j = std::make_shared<json::Json>();
-        j->setString(std::get<std::string>(m_value));
-        return j;
+        json::Json j;
+        j.setString(std::get<std::string>(m_value));
+        return std::make_shared<const json::Json>(j.compact());
     }
 
     /** @copydoc Argument::isValue */

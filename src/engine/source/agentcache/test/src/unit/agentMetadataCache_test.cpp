@@ -313,6 +313,25 @@ TEST_F(AgentMetadataCacheTest, TwoIndexSync_HeaderRevertNoLeak)
     EXPECT_EQ(hostname, "host1");
 }
 
+// Headers are stored as compact json documents (small allocator): a fraction of the default
+// 64 KB rapidjson chunk, and the compactness survives the shared_ptr storage and cache hits.
+TEST_F(AgentMetadataCacheTest, StoresCompactHeaders)
+{
+    auto inserted = cache.getOrParse(HEADER_AGENT_001);
+    ASSERT_NE(inserted.first, nullptr);
+    EXPECT_LE(inserted.first->getAllocatedMemory(), json::Json::COMPACT_INITIAL_CAPACITY);
+
+    // Content is intact...
+    std::string_view id;
+    ASSERT_EQ(inserted.first->getString(id, "/wazuh/agent/id"), json::RetGet::Success);
+    EXPECT_EQ(id, "001");
+
+    // ...and a cache hit returns the same compact document.
+    auto hit = cache.getOrParse(HEADER_AGENT_001);
+    EXPECT_EQ(hit.first.get(), inserted.first.get());
+    EXPECT_LE(hit.first->getAllocatedMemory(), json::Json::COMPACT_INITIAL_CAPACITY);
+}
+
 // The cache records its own hit/insertion/update counters. Uses baseline deltas because the
 // counters are process-wide singletons shared across every test in this binary.
 TEST_F(AgentMetadataCacheTest, Metrics_RecordsHitsInsertionsUpdates)

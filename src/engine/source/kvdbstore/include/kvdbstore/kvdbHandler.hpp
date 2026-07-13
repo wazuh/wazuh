@@ -20,10 +20,13 @@ using KVMap = std::unordered_map<std::string, json::Json>;
  * Member entries are created via extractObjectMembers() (zero-copy swap), so their
  * string data references the sourceDoc's allocator. sourceDoc MUST be declared before
  * entries to ensure it is destroyed AFTER entries (reverse declaration order).
+ *
+ * sourceDoc is a compact document (json::Json::compact): a single right-sized memory
+ * pool per DB (2 KB granularity) instead of the default 64 KB rapidjson chunks.
  */
 struct KVMapStore
 {
-    json::Json sourceDoc; ///< Keeps allocator alive for swapped entries' string data.
+    json::Json sourceDoc; ///< Keeps the compact pool alive for swapped entries' string data.
     KVMap entries;        ///< Values swapped from sourceDoc (zero-copy).
 };
 

@@ -29,7 +29,9 @@ namespace agentcache
  * header JSON string.  Parsing each one into a json::Json object is expensive because
  * RapidJSON allocates a memory pool (growing in ~64 KB chunks) per Document.  This cache
  * deduplicates headers by agent ID, returning a shared_ptr to an already-parsed header
- * when the content has not changed.
+ * when the content has not changed.  Headers are stored as compact documents
+ * (json::Json::compact — small allocator, ~4 KB instead of 64 KB per header), since they
+ * live for as long as the agent is active.
  *
  * Lookups are O(1): a secondary index maps the header content hash directly to its entry,
  * so the hot path never scans the map.  Hits are verified by comparing the full header
@@ -112,8 +114,9 @@ public:
             }
         }
 
-        // Slow path: parse JSON and extract agent ID (done outside the lock).
-        auto parsed = std::make_shared<const json::Json>(headerStr);
+        // Slow path: parse JSON and extract agent ID (done outside the lock). Parsed directly
+        // into a compact document (small allocator) since the header lives as long as the agent.
+        auto parsed = std::make_shared<const json::Json>(json::Json::compact(headerStr));
 
         std::string_view agentIdSv;
         if (parsed->getString(agentIdSv, AGENT_ID_PATH) != json::RetGet::Success)

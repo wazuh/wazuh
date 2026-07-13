@@ -40,11 +40,14 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const cm::store::ICMSt
         throw std::runtime_error("KVDB payload must be a JSON object (ns='" + nsStr + "', db='" + dbName + "').");
     }
 
-    // Zero-copy extraction: swap member values out of j (no CopyFrom).
-    // j's allocator keeps string data alive for the swapped entries.
+    // Compact the whole DB document first
+    json::Json compactSrc = j.compact();
+
+    // Zero-copy extraction: swap member values out of compactSrc (no CopyFrom).
+    // Its compact allocator keeps string data alive for the swapped entries.
     auto store = std::make_shared<KVMapStore>();
-    store->entries = j.extractObjectMembers();
-    store->sourceDoc = std::move(j); // keeps allocator alive; must outlive entries
+    store->entries = compactSrc.extractObjectMembers();
+    store->sourceDoc = std::move(compactSrc); // keeps the compact pool alive; must outlive entries
 
     std::shared_ptr<const KVMapStore> cstore = std::move(store);
 

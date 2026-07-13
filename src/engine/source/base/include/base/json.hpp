@@ -298,7 +298,7 @@ public:
     // RSS. A compact Json starts with a small initial block and grows in small steps.
     /************************************************************************************/
 
-    static constexpr size_t COMPACT_INITIAL_CAPACITY = 4 * 1024; ///< Minimum initial block of a compact document.
+    static constexpr size_t COMPACT_INITIAL_CAPACITY = 2 * 1024; ///< Minimum initial block of a compact document.
     static constexpr size_t COMPACT_CHUNK_CAPACITY = 1 * 1024;   ///< Growth chunk multiple of a compact document.
 
     /**
