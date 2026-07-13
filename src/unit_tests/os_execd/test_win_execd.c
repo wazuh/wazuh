@@ -202,6 +202,128 @@ static void test_WinExecdRun_ok(void **state) {
     ExecdRun(message);
 }
 
+static void test_WinExecdRun_ar_reports_failure(void **state) {
+    wfd_t * wfd = *state;
+    char *message = "{"
+                        "\"wazuh\":{"
+                            "\"active_response\":{"
+                                "\"name\":\"block-ip\","
+                                "\"executable\":\"block-ip\","
+                                "\"type\":\"stateless\","
+                                "\"location\":\"agent\","
+                                "\"agent_id\":\"001\""
+                            "}"
+                        "},"
+                        "\"event\":{"
+                            "\"original\":\"Test event\","
+                            "\"kind\":\"event\""
+                        "},"
+                        "\"source\":{"
+                            "\"ip\":\"10.0.0.1\""
+                        "},"
+                        "\"user\":{"
+                            "\"name\":\"root\""
+                        "}"
+                    "}";
+
+    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_fclose((FILE *)1, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+                                                                                        "\"wazuh\":{"
+                                                                                            "\"active_response\":{"
+                                                                                                "\"name\":\"block-ip\","
+                                                                                                "\"executable\":\"block-ip\","
+                                                                                                "\"type\":\"stateless\","
+                                                                                                "\"location\":\"agent\","
+                                                                                                "\"agent_id\":\"001\""
+                                                                                            "}"
+                                                                                        "},"
+                                                                                        "\"event\":{"
+                                                                                            "\"original\":\"Test event\","
+                                                                                            "\"kind\":\"event\""
+                                                                                        "},"
+                                                                                        "\"source\":{"
+                                                                                            "\"ip\":\"10.0.0.1\""
+                                                                                        "},"
+                                                                                        "\"user\":{"
+                                                                                            "\"name\":\"root\""
+                                                                                        "},"
+                                                                                        "\"command\":\"enable\""
+                                                                                    "}'");
+
+    will_return(__wrap_wpopenv, wfd);
+
+    expect_value(wrap_fprintf, __stream, wfd->file_in);
+    expect_string(wrap_fprintf, formatted_msg, "{"
+                                                    "\"wazuh\":{"
+                                                        "\"active_response\":{"
+                                                            "\"name\":\"block-ip\","
+                                                            "\"executable\":\"block-ip\","
+                                                            "\"type\":\"stateless\","
+                                                            "\"location\":\"agent\","
+                                                            "\"agent_id\":\"001\""
+                                                        "}"
+                                                    "},"
+                                                    "\"event\":{"
+                                                        "\"original\":\"Test event\","
+                                                        "\"kind\":\"event\""
+                                                    "},"
+                                                    "\"source\":{"
+                                                        "\"ip\":\"10.0.0.1\""
+                                                    "},"
+                                                    "\"user\":{"
+                                                        "\"name\":\"root\""
+                                                    "},"
+                                                    "\"command\":\"enable\""
+                                                "}\n");
+    will_return(wrap_fprintf, 0);
+
+    expect_value(wrap_fgets, __stream, wfd->file_out);
+    will_return(wrap_fgets, "{"
+                                  "\"version\":1,"
+                                  "\"origin\":{"
+                                      "\"name\":\"block-ip\","
+                                      "\"module\":\"active-response\""
+                                  "},"
+                                  "\"command\":\"check_keys\","
+                                  "\"parameters\":{"
+                                      "\"keys\":[\"10.0.0.1\", \"root\"]"
+                                  "}"
+                              "}\n");
+
+    expect_value(wrap_fprintf, __stream, wfd->file_in);
+    expect_string(wrap_fprintf, formatted_msg, "{"
+                                                    "\"wazuh\":{"
+                                                        "\"active_response\":{"
+                                                            "\"name\":\"block-ip\","
+                                                            "\"executable\":\"block-ip\","
+                                                            "\"type\":\"stateless\","
+                                                            "\"location\":\"agent\","
+                                                            "\"agent_id\":\"001\""
+                                                        "}"
+                                                    "},"
+                                                    "\"event\":{"
+                                                        "\"original\":\"Test event\","
+                                                        "\"kind\":\"event\""
+                                                    "},"
+                                                    "\"source\":{"
+                                                        "\"ip\":\"10.0.0.1\""
+                                                    "},"
+                                                    "\"user\":{"
+                                                        "\"name\":\"root\""
+                                                    "},"
+                                                    "\"command\":\"continue\""
+                                                "}\n");
+    will_return(wrap_fprintf, 0);
+
+    /* On Windows, wpclose() returns the exit code directly; any nonzero value is a failure */
+    expect_string(__wrap__mwarn, formatted_msg, "Active response command 'block-ip' reported failure (exit code 3).");
+    will_return(__wrap_wpclose, 3);
+
+    ExecdRun(message);
+}
+
 static void test_WinExecdRun_timeout_not_repeated(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
@@ -688,6 +810,7 @@ static void test_WinExecdRun_json_err(void **state) {
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_WinExecdRun_ok, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_WinExecdRun_ar_reports_failure, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_timeout_not_repeated, test_setup_file_timeout, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_timeout_repeated, test_setup_file_timeout, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_wpopenv_err, test_setup_file, test_teardown_file),
