@@ -85,6 +85,13 @@ class AgentInfoImpl
         /// @param maxEps Maximum events per second
         void setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, uint32_t retries, long maxEps);
 
+        /// @brief Set the predicate used to detect that a shutdown is in progress.
+        /// It complements the module's own stop flag so that failures caused by the global agent
+        /// shutdown (which happens before this module receives its own stop) are logged at DEBUG
+        /// instead of WARNING.
+        /// @param isShuttingDown Predicate returning true while a shutdown is requested
+        void setIsShuttingDownFunction(std::function<bool()> isShuttingDown);
+
         /// @brief Parse sync protocol response buffer
         /// @param data Pointer to the response data buffer
         /// @param length Size of the response data buffer
@@ -299,6 +306,18 @@ class AgentInfoImpl
         /// Atomic so the poll loops can read it without holding m_mutex while
         /// stop() writes it from another thread (avoids a data race).
         std::atomic<bool> m_stopped{false};
+
+        /// @brief Predicate reporting whether a shutdown is in progress (may be null).
+        /// Injected from the module wrapper; reports the *global* agent shutdown, which is
+        /// signaled before this module's own stop() runs.
+        std::function<bool()> m_isShuttingDown;
+
+        /// @brief True when this module is stopping OR a global shutdown is in progress.
+        /// Used to demote expected shutdown-time failures from WARNING to DEBUG.
+        bool isShutdownInProgress() const
+        {
+            return m_stopped || (m_isShuttingDown && m_isShuttingDown());
+        }
 
         /// @brief Delay in milliseconds between flush completion polls (10 seconds in production).
         /// Overridable in unit tests to avoid real sleeps.

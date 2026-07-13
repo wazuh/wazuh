@@ -331,6 +331,11 @@ void AgentInfoImpl::setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, u
                   ", maxEps=" + std::to_string(maxEps));
 }
 
+void AgentInfoImpl::setIsShuttingDownFunction(std::function<bool()> isShuttingDown)
+{
+    m_isShuttingDown = std::move(isShuttingDown);
+}
+
 bool AgentInfoImpl::parseResponseBuffer(const uint8_t* data, size_t length)
 {
     if (m_spSyncProtocol && data)
@@ -752,7 +757,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 
         if (!m_dBSync)
         {
-            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
             return false;
         }
 
@@ -1838,7 +1843,7 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
 
             if (!syncResult.success)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed to synchronize " + table +
+                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Failed to synchronize " + table +
                               (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
                 return CoordinationResult::Failed;
             }
@@ -1937,7 +1942,7 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 
             if (!m_dBSync)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
+                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
                 return;
             }
         }
@@ -1974,7 +1979,7 @@ void AgentInfoImpl::loadSyncFlags()
 
             if (!m_dBSync)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
+                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
                 return;
             }
 
@@ -2154,7 +2159,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
                 return;
             }
         }
@@ -2274,7 +2279,7 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         }
         else
         {
-            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed integrity check for " + table +
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Failed integrity check for " + table +
                           (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
         }
 
