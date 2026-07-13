@@ -453,6 +453,29 @@ int main(int argc, char* argv[])
                 }
                 jsonCnf.setUint64(flushInterval, "/flush_interval_seconds");
 
+                // Error-logger sizing: bounded queue + thread count (only error responses are queued)
+                constexpr size_t INDEXER_LOGGER_QUEUE_SIZE_MAX = 1024;
+                const auto loggerQueueSize = confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE);
+                if (loggerQueueSize == 0 || loggerQueueSize > INDEXER_LOGGER_QUEUE_SIZE_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_logger_queue_size must be between 1 and {} (got {})",
+                                    INDEXER_LOGGER_QUEUE_SIZE_MAX,
+                                    loggerQueueSize));
+                }
+                jsonCnf.setUint64(loggerQueueSize, "/logger_queue_size");
+
+                constexpr size_t INDEXER_LOGGER_THREADS_MAX = 16;
+                const auto loggerThreads = confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS);
+                if (loggerThreads == 0 || loggerThreads > INDEXER_LOGGER_THREADS_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_logger_threads must be between 1 and {} (got {})",
+                                    INDEXER_LOGGER_THREADS_MAX,
+                                    loggerThreads));
+                }
+                jsonCnf.setUint64(loggerThreads, "/logger_threads");
+
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
 
