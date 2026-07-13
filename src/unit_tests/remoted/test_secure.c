@@ -1084,10 +1084,13 @@ void test_HandleSecureMessage_different_sock(void** state)
     key->id = strdup("001");
     key->sock = 4;
     key->keyid = 1;
+    key->rcvd = 200;         // not idle, no overtake
+    key->conflict_ts = 100;  // conflict older than the window -> warn
 
     keys.keyentries[0] = key;
 
     global_counter = 0;
+    current_ts = 200;
 
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -1157,6 +1160,84 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     key->id = strdup("001");
     key->sock = 4;
     key->keyid = 1;
+    key->rcvd = 200;         // not idle, no overtake
+    key->conflict_ts = 100;  // conflict older than the window -> warn
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+    current_ts = 200;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_DeleteSocket
+    expect_value(__wrap_OS_DeleteSocket, sock, message.sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    will_return(__wrap_close, 0);
+
+    // nb_close
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    // rem_setCounter
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+void test_HandleSecureMessage_conflict_first_seen(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "!12!";
+    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    logr.connection_overtake_time = 60;
+    current_ts = 100;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("001");
+    key->sock = 4;
+    key->keyid = 1;
+    key->rcvd = 100;        // not idle, no overtake
+    key->conflict_ts = 0;   // first conflict
 
     keys.keyentries[0] = key;
 
@@ -1169,8 +1250,87 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     expect_function_call(__wrap_key_lock_read);
 
     // OS_IsAllowedDynamicID
-    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
-    will_return(__wrap_OS_IsAllowedIP, 0);
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent ID '001' reconnected from '127.0.0.1' before its previous session was closed.");
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_DeleteSocket
+    expect_value(__wrap_OS_DeleteSocket, sock, message.sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    will_return(__wrap_close, 0);
+
+    // nb_close
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    // rem_setCounter
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    assert_int_equal(key->conflict_ts, 100); // conflict recorded
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+void test_HandleSecureMessage_conflict_persists(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "!12!";
+    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    logr.connection_overtake_time = 60;
+    current_ts = 200;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("001");
+    key->sock = 4;
+    key->keyid = 1;
+    key->rcvd = 200;         // not idle, no overtake
+    key->conflict_ts = 100;  // conflict older than the window -> warn
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 0);
 
     expect_function_call(__wrap_key_unlock);
 
@@ -3343,6 +3503,8 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_OldMessage_NoShutdownMessage),
         cmocka_unit_test(test_HandleSecureMessage_different_sock),
         cmocka_unit_test(test_HandleSecureMessage_different_sock_2),
+        cmocka_unit_test(test_HandleSecureMessage_conflict_first_seen),
+        cmocka_unit_test(test_HandleSecureMessage_conflict_persists),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_2),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled),
