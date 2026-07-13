@@ -661,6 +661,74 @@ static void test_WinExecdRun_get_command_err(void **state) {
     ExecdRun(message);
 }
 
+static void test_WinExecdRun_custom_ar_no_extension_appends_exe(void **state) {
+    wfd_t * wfd = *state;
+    int queue = 1;
+    int now = 123456789;
+    char *message = "{"
+                        "\"wazuh\":{"
+                            "\"active_response\":{"
+                                "\"name\":\"custom-ar\","
+                                "\"executable\":\"custom-ar\","
+                                "\"type\":\"stateless\","
+                                "\"location\":\"agent\","
+                                "\"agent_id\":\"001\""
+                            "}"
+                        "},"
+                        "\"event\":{"
+                            "\"original\":\"Test event\","
+                            "\"kind\":\"event\""
+                        "},"
+                        "\"source\":{"
+                            "\"ip\":\"10.0.0.1\""
+                        "},"
+                        "\"user\":{"
+                            "\"name\":\"root\""
+                        "}"
+                    "}";
+
+    /* A custom AR name with no extension should still get '.exe' appended, just like block-ip */
+    expect_wfopen(AR_BINDIR "/custom-ar.exe", "r", NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'custom-ar' provided.");
+
+    ExecdRun(message);
+}
+
+static void test_WinExecdRun_custom_ar_with_extension_not_duplicated(void **state) {
+    wfd_t * wfd = *state;
+    int queue = 1;
+    int now = 123456789;
+    char *message = "{"
+                        "\"wazuh\":{"
+                            "\"active_response\":{"
+                                "\"name\":\"custom-ar\","
+                                "\"executable\":\"custom-ar.bat\","
+                                "\"type\":\"stateless\","
+                                "\"location\":\"agent\","
+                                "\"agent_id\":\"001\""
+                            "}"
+                        "},"
+                        "\"event\":{"
+                            "\"original\":\"Test event\","
+                            "\"kind\":\"event\""
+                        "},"
+                        "\"source\":{"
+                            "\"ip\":\"10.0.0.1\""
+                        "},"
+                        "\"user\":{"
+                            "\"name\":\"root\""
+                        "}"
+                    "}";
+
+    /* A custom AR name that already has a non-.exe extension must not be suffixed again */
+    expect_wfopen(AR_BINDIR "/custom-ar.bat", "r", NULL);
+
+    expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'custom-ar.bat' provided.");
+
+    ExecdRun(message);
+}
+
 static void test_WinExecdRun_get_name_err(void **state) {
     wfd_t * wfd = *state;
     int queue = 1;
@@ -693,6 +761,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_WinExecdRun_wpopenv_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_fgets_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_get_command_err, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_WinExecdRun_custom_ar_no_extension_appends_exe, test_setup_file, test_teardown_file),
+        cmocka_unit_test_setup_teardown(test_WinExecdRun_custom_ar_with_extension_not_duplicated, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_get_name_err, test_setup_file, test_teardown_file),
         cmocka_unit_test_setup_teardown(test_WinExecdRun_json_err, test_setup_file, test_teardown_file),
     };
