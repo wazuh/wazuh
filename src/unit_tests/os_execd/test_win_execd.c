@@ -61,9 +61,9 @@ static int test_setup_file_timeout(void **state) {
     timeout_data *timeout_entry;
     os_calloc(1, sizeof(timeout_data), timeout_entry);
     os_calloc(2, sizeof(char *), timeout_entry->command);
-    os_strdup(AR_BINDIR "/block-ip", timeout_entry->command[0]);
+    os_strdup(AR_BINDIR "/block-ip.exe", timeout_entry->command[0]);
     timeout_entry->command[1] = NULL;
-    os_strdup("block-ip-10.0.0.1-root", timeout_entry->rkey);
+    os_strdup("block-ip.exe-10.0.0.1-root", timeout_entry->rkey);
     timeout_entry->time_of_addition = 123456789;
     timeout_entry->time_to_block = 10;
     OSList_AddData(timeout_list, timeout_entry);
@@ -106,10 +106,10 @@ static void test_WinExecdRun_ok(void **state) {
                         "}"
                     "}";
 
-    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_wfopen(AR_BINDIR "/block-ip.exe", "r", (FILE *)1);
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip.exe {"
                                                                                         "\"wazuh\":{"
                                                                                             "\"active_response\":{"
                                                                                                 "\"name\":\"block-ip\","
@@ -229,10 +229,10 @@ static void test_WinExecdRun_timeout_not_repeated(void **state) {
                         "}"
                     "}";
 
-    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_wfopen(AR_BINDIR "/block-ip.exe", "r", (FILE *)1);
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip.exe {"
                                                                                         "\"wazuh\":{"
                                                                                             "\"active_response\":{"
                                                                                                 "\"name\":\"block-ip\","
@@ -325,7 +325,7 @@ static void test_WinExecdRun_timeout_not_repeated(void **state) {
 
     will_return(__wrap_wpclose, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Adding command '" AR_BINDIR "/block-ip {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Adding command '" AR_BINDIR "/block-ip.exe {"
                                                                                         "\"wazuh\":{"
                                                                                             "\"active_response\":{"
                                                                                                 "\"name\":\"block-ip\","
@@ -379,10 +379,10 @@ static void test_WinExecdRun_timeout_repeated(void **state) {
                         "}"
                     "}";
 
-    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_wfopen(AR_BINDIR "/block-ip.exe", "r", (FILE *)1);
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip.exe {"
                                                                                         "\"wazuh\":{"
                                                                                             "\"active_response\":{"
                                                                                                 "\"name\":\"block-ip\","
@@ -506,10 +506,10 @@ static void test_WinExecdRun_wpopenv_err(void **state) {
                         "}"
                     "}";
 
-    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_wfopen(AR_BINDIR "/block-ip.exe", "r", (FILE *)1);
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip.exe {"
                                                                                             "\"wazuh\":{"
                                                                                                 "\"active_response\":{"
                                                                                                     "\"name\":\"block-ip\","
@@ -565,10 +565,10 @@ static void test_WinExecdRun_fgets_err(void **state) {
                         "}"
                     "}";
 
-    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_wfopen(AR_BINDIR "/block-ip.exe", "r", (FILE *)1);
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip.exe {"
                                                                                         "\"wazuh\":{"
                                                                                             "\"active_response\":{"
                                                                                                 "\"name\":\"block-ip\","
@@ -621,7 +621,7 @@ static void test_WinExecdRun_fgets_err(void **state) {
     expect_value(wrap_fgets, __stream, wfd->file_out);
     will_return(wrap_fgets, NULL);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Active response won't be added to timeout list. Message not received with alert keys from script '" AR_BINDIR "/block-ip'");
+    expect_string(__wrap__mdebug1, formatted_msg, "Active response won't be added to timeout list. Message not received with alert keys from script '" AR_BINDIR "/block-ip.exe'");
 
     will_return(__wrap_wpclose, 0);
 
@@ -654,7 +654,7 @@ static void test_WinExecdRun_get_command_err(void **state) {
                         "}"
                     "}";
 
-    expect_wfopen(AR_BINDIR "/block-ip", "r", NULL);
+    expect_wfopen(AR_BINDIR "/block-ip.exe", "r", NULL);
 
     expect_string(__wrap__merror, formatted_msg, "(1311): Invalid command name 'block-ip' provided.");
 

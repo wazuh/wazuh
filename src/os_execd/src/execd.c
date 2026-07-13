@@ -260,7 +260,13 @@ void ExecdRun(char *exec_msg, int *childcount)
 
     /* Build full command path */
     static char cmd_path[OS_FLSIZE];
+#ifdef WIN32
+    size_t name_len = strlen(name);
+    const char *exe_suffix = (name_len >= 4 && strcasecmp(name + name_len - 4, ".exe") == 0) ? "" : ".exe";
+    if (snprintf(cmd_path, sizeof(cmd_path), "%s/%s%s", AR_BINDIR, name, exe_suffix) >= (int)sizeof(cmd_path)) {
+#else
     if (snprintf(cmd_path, sizeof(cmd_path), "%s/%s", AR_BINDIR, name) >= (int)sizeof(cmd_path)) {
+#endif
         merror("Active response command path too long for '%s'. Ignoring.", name);
         cJSON_Delete(json_root);
         return;
