@@ -17,7 +17,7 @@
 namespace kvdbstore
 {
 
-using DBMap = std::unordered_map<std::string /*dbName*/, std::weak_ptr<const KVMap>>;
+using DBMap = std::unordered_map<std::string /*dbName*/, std::weak_ptr<const KVMapStore>>;
 using Registry = std::unordered_map<cm::store::NamespaceId, DBMap>;
 
 class KVDBManager final : public IKVDBManager

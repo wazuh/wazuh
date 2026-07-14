@@ -123,7 +123,6 @@ def task(manager, logger):
         server=manager,
         logger=logger,
         cluster_items=copy.deepcopy(CLUSTER_ITEMS),
-        indexer_client=None,
     )
 
 
@@ -157,7 +156,7 @@ async def test_get_max_versions_success(manager, logger):
     Verify that the task correctly parses max document versions from the indexer.
     """
     indexer = AsyncMock()
-    indexer.search.return_value = {
+    indexer.max_version_components.search.return_value = {
         "aggregations": {
             "by_agent": {
                 "buckets": [
@@ -172,13 +171,13 @@ async def test_get_max_versions_success(manager, logger):
         server=manager,
         logger=logger,
         cluster_items=CLUSTER_ITEMS,
-        indexer_client=indexer,
+        get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=indexer), __aexit__=AsyncMock()),
     )
 
     result = await task._get_max_versions_batch_from_indexer(["001", "002"])
 
     assert result == {"001": 10, "002": 20}
-    indexer.search.assert_called_once()
+    indexer.max_version_components.search.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -196,13 +195,13 @@ async def test_get_max_versions_indexer_error(manager, logger):
     Verify that indexer exceptions are handled and return an empty result.
     """
     indexer = AsyncMock()
-    indexer.search.side_effect = Exception("boom")
+    indexer.max_version_components.search.side_effect = Exception("boom")
 
     task = DisconnectedAgentSyncTasks(
         server=manager,
         logger=logger,
         cluster_items=CLUSTER_ITEMS,
-        indexer_client=indexer,
+        get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=indexer), __aexit__=AsyncMock()),
     )
 
     result = await task._get_max_versions_batch_from_indexer(["001"])
@@ -572,14 +571,19 @@ async def test_disconnected_agent_group_sync_invalid_agent(mock_agents, task):
 @patch(
     "wazuh.core.indexer.disconnected_agents.get_agents_info", return_value={"001": {}}
 )
-@patch("wazuh.core.indexer.disconnected_agents.get_indexer_client")
-async def test_disconnected_agent_group_sync_success(mock_indexer, mock_agents, task):
+async def test_disconnected_agent_group_sync_success(mock_agents, manager, logger):
     """
     Verify successful synchronization of an agent's group.
     """
     client = AsyncMock()
     client.max_version_components.update_agent_groups = AsyncMock()
-    mock_indexer.return_value.__aenter__.return_value = client
+
+    task = DisconnectedAgentSyncTasks(
+        server=manager,
+        logger=logger,
+        cluster_items=copy.deepcopy(CLUSTER_ITEMS),
+        get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=client), __aexit__=AsyncMock()),
+    )
 
     result = await task.disconnected_agent_group_sync(
         agent_list=["001"],
@@ -594,15 +598,21 @@ async def test_disconnected_agent_group_sync_success(mock_indexer, mock_agents, 
 @patch(
     "wazuh.core.indexer.disconnected_agents.get_agents_info", return_value={"001": {}}
 )
-@patch("wazuh.core.indexer.disconnected_agents.get_indexer_client")
 async def test_disconnected_agent_group_sync_mixed_results(
-    mock_indexer, mock_agents, task
+    mock_agents, manager, logger
 ):
     """
     Test synchronization with a mix of valid, invalid, and system agents (000).
     """
     client = AsyncMock()
-    mock_indexer.return_value.__aenter__.return_value = client
+    client.max_version_components.update_agent_groups = AsyncMock()
+
+    task = DisconnectedAgentSyncTasks(
+        server=manager,
+        logger=logger,
+        cluster_items=copy.deepcopy(CLUSTER_ITEMS),
+        get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=client), __aexit__=AsyncMock()),
+    )
 
     result = await task.disconnected_agent_group_sync(
         agent_list=["000", "001", "999"], group_list=["default"], external_gte=5
@@ -632,7 +642,7 @@ async def test_get_cluster_name_from_indexer_multiple_clusters(manager, logger):
     Verify aggregation logic when an agent is associated with multiple cluster names.
     """
     indexer = AsyncMock()
-    indexer.search.return_value = {
+    indexer.max_version_components.search.return_value = {
         "aggregations": {
             "by_agent": {
                 "buckets": [
@@ -649,7 +659,7 @@ async def test_get_cluster_name_from_indexer_multiple_clusters(manager, logger):
     task = DisconnectedAgentSyncTasks(
         server=manager,
         logger=logger,
-        indexer_client=indexer,
+        get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=indexer), __aexit__=AsyncMock()),
         cluster_items=copy.deepcopy(CLUSTER_ITEMS),
     )
 
@@ -663,11 +673,11 @@ async def test_get_cluster_name_from_indexer_exception(manager, logger):
     Verify exception handling during cluster name resolution.
     """
     indexer = AsyncMock()
-    indexer.search.side_effect = Exception("Indexer error")
+    indexer.max_version_components.search.side_effect = Exception("Indexer error")
     task = DisconnectedAgentSyncTasks(
         server=manager,
         logger=logger,
-        indexer_client=indexer,
+        get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=indexer), __aexit__=AsyncMock()),
         cluster_items=copy.deepcopy(CLUSTER_ITEMS),
     )
 
@@ -729,13 +739,14 @@ async def test_get_max_versions_indexer_malformed_response(task):
     """
     Verify behavior when the indexer returns a malformed or empty response.
     """
-    task._indexer_client_override = AsyncMock()
+    mock_client = AsyncMock()
+    mock_client.max_version_components.search.return_value = None
+    task._get_indexer_client = lambda: AsyncMock(__aenter__=AsyncMock(return_value=mock_client), __aexit__=AsyncMock())
 
-    task._indexer_client_override.search.return_value = None
     res = await task._get_max_versions_batch_from_indexer(["001"])
     assert res == {}
 
-    task._indexer_client_override.search.return_value = {
+    mock_client.max_version_components.search.return_value = {
         "aggregations": {"by_agent": {"buckets": [{"key": "001"}]}}
     }
     res = await task._get_max_versions_batch_from_indexer(["001"])
@@ -744,7 +755,6 @@ async def test_get_max_versions_indexer_malformed_response(task):
 
 
 @pytest.mark.asyncio
-@patch("wazuh.core.indexer.disconnected_agents.get_indexer_client")
 @patch("wazuh.core.indexer.disconnected_agents.get_ossec_conf")
 @patch.object(DisconnectedAgentSyncTasks, "_get_max_versions_batch_from_indexer")
 @patch.object(DisconnectedAgentSyncTasks, "_get_cluster_name_from_indexer")
@@ -754,7 +764,6 @@ async def test_run_cluster_name_sync_full_flow(
     mock_get_cluster_indexer,
     mock_get_versions,
     mock_conf,
-    mock_indexer_client,
     task,
 ):
     """
@@ -777,7 +786,8 @@ async def test_run_cluster_name_sync_full_flow(
         Exception("Update failed for 001"),
         None,
     ]
-    mock_indexer_client.return_value.__aenter__.return_value = client
+    # Inject mock factory directly into task
+    task._get_indexer_client = lambda: AsyncMock(__aenter__=AsyncMock(return_value=client), __aexit__=AsyncMock())
 
     await task.run_cluster_name_sync()
 
@@ -790,9 +800,8 @@ async def test_run_cluster_name_sync_full_flow(
 @patch(
     "wazuh.core.indexer.disconnected_agents.get_agents_info", return_value={"001": {}}
 )
-@patch("wazuh.core.indexer.disconnected_agents.get_indexer_client")
 async def test_disconnected_agent_group_sync_unexpected_exception(
-    mock_indexer, mock_agents, task
+    mock_agents, manager, logger
 ):
     """
     Verify error handling for unexpected exceptions within the group sync loop.
@@ -801,7 +810,13 @@ async def test_disconnected_agent_group_sync_unexpected_exception(
     client.max_version_components.update_agent_groups.side_effect = Exception(
         "Unexpected"
     )
-    mock_indexer.return_value.__aenter__.return_value = client
+
+    task = DisconnectedAgentSyncTasks(
+        server=manager,
+        logger=logger,
+        cluster_items=copy.deepcopy(CLUSTER_ITEMS),
+        get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=client), __aexit__=AsyncMock()),
+    )
 
     result = await task.disconnected_agent_group_sync(
         agent_list=["001"], group_list=["default"], external_gte=5

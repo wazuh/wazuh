@@ -2,6 +2,14 @@
 
 #include "builders/opfilter/filter.hpp"
 
+namespace
+{
+OpArg makeStringOnlyValue(std::string value)
+{
+    return std::make_shared<Value>(std::move(value));
+}
+} // namespace
+
 namespace filterbuildtest
 {
 INSTANTIATE_TEST_SUITE_P(Builders,
@@ -30,6 +38,19 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT(R"({"target": 1.2})", opfilter::filterBuilder, "target", {makeValue("1.3")}, FAILURE()),
         FilterT(R"({"target": "hola"})", opfilter::filterBuilder, "target", {makeValue(R"("hola")")}, SUCCESS()),
         FilterT(R"({"target": "hola"})", opfilter::filterBuilder, "target", {makeValue(R"("hola2")")}, FAILURE()),
+        FilterT(R"({"target": "hola"})",
+                opfilter::filterBuilder,
+                "target",
+                {makeStringOnlyValue("hola")},
+                SUCCESS()),
+        FilterT(R"({"target": "a\"b\\c"})",
+                opfilter::filterBuilder,
+                "target",
+                {makeStringOnlyValue(R"(a"b\c)")},
+                SUCCESS()),
+        FilterT(R"({"target": 1})", opfilter::filterBuilder, "target", {makeStringOnlyValue("1")}, FAILURE()),
+        FilterT(R"({"target": true})", opfilter::filterBuilder, "target", {makeStringOnlyValue("true")}, FAILURE()),
+        FilterT(R"({"target": null})", opfilter::filterBuilder, "target", {makeStringOnlyValue("null")}, FAILURE()),
         FilterT(R"({"target": true})", opfilter::filterBuilder, "target", {makeValue("true")}, SUCCESS()),
         FilterT(R"({"target": true})", opfilter::filterBuilder, "target", {makeValue("false")}, FAILURE()),
         FilterT(R"({"target": [1, 2, 3]})", opfilter::filterBuilder, "target", {makeValue("[1, 2, 3]")}, SUCCESS()),
@@ -80,6 +101,7 @@ INSTANTIATE_TEST_SUITE_P(
         FilterT(R"({"target": null, "ref": 1})", opfilter::filterBuilder, "target", {makeRef("ref")}, FAILURE()),
         // Missing target field
         FilterT(R"({"other": 1})", opfilter::filterBuilder, "target", {makeValue("1")}, FAILURE()),
+        FilterT(R"({"other": "hola"})", opfilter::filterBuilder, "target", {makeStringOnlyValue("hola")}, FAILURE()),
         FilterT(R"({"ref": 1})", opfilter::filterBuilder, "target", {makeRef("ref")}, FAILURE()),
         // Missing reference field
         FilterT(R"({"target": 1})", opfilter::filterBuilder, "target", {makeRef("ref")}, FAILURE())),

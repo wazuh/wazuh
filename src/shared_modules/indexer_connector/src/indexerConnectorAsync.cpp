@@ -23,14 +23,8 @@ private:
     IndexerConnectorAsyncImpl<TServerSelector<HTTPRequest>, HTTPRequest> m_impl;
 
 public:
-    Impl(const nlohmann::json& config, LoggingContext logging, std::string queueId, std::string basePath)
-        : m_impl(config,
-                 std::move(logging.second),
-                 std::move(queueId),
-                 nullptr,
-                 nullptr,
-                 std::move(basePath),
-                 std::move(logging.first))
+    Impl(const nlohmann::json& config, LoggingContext logging)
+        : m_impl(config, std::move(logging.second), nullptr, nullptr, std::move(logging.first))
     {
     }
 
@@ -100,11 +94,8 @@ public:
     }
 };
 
-IndexerConnectorAsync::IndexerConnectorAsync(const nlohmann::json& config,
-                                             std::string queueId,
-                                             LoggingContext logging,
-                                             std::string basePath)
-    : m_impl(std::make_unique<Impl>(config, std::move(logging), std::move(queueId), std::move(basePath)))
+IndexerConnectorAsync::IndexerConnectorAsync(const nlohmann::json& config, LoggingContext logging)
+    : m_impl(std::make_unique<Impl>(config, std::move(logging)))
 {
 }
 

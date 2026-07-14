@@ -33,23 +33,20 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const cm::store::ICMSt
         }
     }
 
-    const json::Json j = nsReader.getResourceByName<cm::store::dataType::KVDB>(dbName).getData();
-    auto members = j.getObject("");
-    if (!members)
+    json::Json j = nsReader.getResourceByName<cm::store::dataType::KVDB>(dbName).getData();
+    if (!j.isObject())
     {
         const auto nsStr = nsId.toStr();
         throw std::runtime_error("KVDB payload must be a JSON object (ns='" + nsStr + "', db='" + dbName + "').");
     }
 
-    auto wmap = std::make_shared<KVMap>();
-    wmap->reserve(members->size());
+    // Zero-copy extraction: swap member values out of j (no CopyFrom).
+    // j's allocator keeps string data alive for the swapped entries.
+    auto store = std::make_shared<KVMapStore>();
+    store->entries = j.extractObjectMembers();
+    store->sourceDoc = std::move(j); // keeps allocator alive; must outlive entries
 
-    for (auto& [k, v] : *members)
-    {
-        wmap->try_emplace(std::move(k), std::move(v));
-    }
-
-    std::shared_ptr<const KVMap> cmap = std::move(wmap);
+    std::shared_ptr<const KVMapStore> cstore = std::move(store);
 
     {
         // Publish to cache (write lock)
@@ -61,22 +58,22 @@ std::shared_ptr<IKVDBHandler> KVDBManager::getKVDBHandler(const cm::store::ICMSt
             // Another thread won: reuse theirs
             if (auto alive = it->second.lock())
             {
-                cmap = std::move(alive);
+                cstore = std::move(alive);
             }
             else
             {
                 // Refresh expired entry
-                it->second = cmap;
+                it->second = cstore;
             }
         }
         else
         {
             // First insertion
-            dbMap.try_emplace(dbName, cmap);
+            dbMap.try_emplace(dbName, cstore);
         }
     }
 
-    return std::make_shared<KVDBHandler>(std::move(cmap));
+    return std::make_shared<KVDBHandler>(std::move(cstore));
 }
 
 } // namespace kvdbstore

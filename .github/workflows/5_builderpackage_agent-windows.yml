@@ -8,6 +8,7 @@ on:
       - "src/**"
       - "packages/**"
       - "ruleset/**"
+      - "framework/requirements.txt"
       - ".github/actions/check_files/**"
       - ".github/actions/upload_s3_artifact/**"
       - ".github/actions/download_s3_artifact/**"

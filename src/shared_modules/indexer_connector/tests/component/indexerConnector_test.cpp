@@ -468,7 +468,7 @@ TEST_F(IndexerConnectorTest, AsyncIndexDispatchesToBulk)
     config["flush_interval_seconds"] = 1; // Speed up flush for tests (default is 20 s)
 
     {
-        IndexerConnectorAsync connector(config, "component_test");
+        IndexerConnectorAsync connector(config, LoggingContext {"component_test", nullptr});
         connector.index("doc_async", INDEXER_NAME, R"({"async":true})");
 
         ASSERT_NO_THROW(waitUntil([&bulkReceived]() { return bulkReceived.load(); }, MAX_ASYNC_PUBLISH_TIME_MS));
@@ -497,7 +497,7 @@ TEST_F(IndexerConnectorTest, AsyncIndexUnavailableServer)
     config["flush_interval_seconds"] = 1;                 // Speed up flush for tests (default is 20 s)
 
     {
-        IndexerConnectorAsync connector(config, "component_test_unavail");
+        IndexerConnectorAsync connector(config, LoggingContext {"component_test_unavail", nullptr});
         connector.index("doc1", INDEXER_NAME, R"({"x":1})");
         // Give the dispatcher a moment to attempt delivery.
         ASSERT_THROW(waitUntil([&bulkReceived]() { return bulkReceived.load(); }, MAX_ASYNC_PUBLISH_TIME_MS),

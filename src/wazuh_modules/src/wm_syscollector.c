@@ -1068,15 +1068,15 @@ void* wm_sync_module(__attribute__((unused)) void* args)
         if (syscollector_sync_module_ptr)
         {
             // Do not hold scan mutex while waiting for sync ACKs.
-            bool sync_result = syscollector_sync_module_ptr(MODE_DELTA);
+            bool sync_succeeded = syscollector_sync_module_ptr(MODE_DELTA);
 
-            if (sync_result && !first_sync_completed)
+            if (sync_succeeded && !first_sync_completed)
             {
                 first_sync_completed = true;
             }
 
             // Recovery touches shared state; keep this section serialized.
-            if (sync_result && sync_module_running && syscollector_run_recovery_process_ptr)
+            if (sync_succeeded && sync_module_running && syscollector_run_recovery_process_ptr)
             {
                 if (syscollector_lock_scan_mutex_ptr && syscollector_unlock_scan_mutex_ptr)
                 {
@@ -1110,6 +1110,16 @@ static size_t wm_sys_query_handler(void* data, char* query, char** output)
     if (!query || !output)
     {
         return 0;
+    }
+
+    // Mirrors #36762 (FIM): when synchronization is disabled the sync worker never runs, so the
+    // syscollector first-sync marker is never set. Report it as completed so agent-info coordination
+    // is not blocked deferring on a first sync that will never happen. The startup priming path calls
+    // syscollector_query_ptr directly and is unaffected by this handler-level short-circuit.
+    if (!enable_synchronization && strstr(query, "get_first_sync_completed"))
+    {
+        os_strdup("{\"error\":0,\"data\":{\"action\":\"get_first_sync_completed\",\"module\":\"syscollector\",\"first_sync_completed\":1}}", *output);
+        return strlen(*output);
     }
 
     // Call the C++ query function if available

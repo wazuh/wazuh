@@ -4,7 +4,7 @@ The Indexer Connector is a shared library (`libindexer_connector`) that handles 
 
 Source: `src/shared_modules/indexer_connector/`
 
-For configuration options see [Indexer Configuration](../../configuration/indexer.md).
+For configuration options see [Indexer Configuration](configuration.md).
 
 ## Overview
 
@@ -19,7 +19,7 @@ The library provides two classes depending on the use case:
 | Class | Mode | Queue | Use case |
 |-------|------|-------|----------|
 | `IndexerConnectorSync` | Synchronous | In-memory (up to 10 MB) | Low-latency, bounded writes |
-| `IndexerConnectorAsync` | Asynchronous | RocksDB (`queue/indexer/<id>/`) | Write-ahead queue, survives restarts |
+| `IndexerConnectorAsync` | Asynchronous | In-memory (byte-bounded via `max_queue_bytes`) | Non-blocking writes; buffered events are discarded on shutdown |
 
 ## How it works
 
@@ -27,7 +27,7 @@ The library provides two classes depending on the use case:
 2. Credentials (`username`/`password`) are read from the RocksDB keystore (`queue/keystore/`).
 3. A background health-monitor thread polls `/_cat/health` on all configured hosts every 60 seconds and marks nodes available or unavailable.
 4. A server-selector performs round-robin load balancing across available nodes.
-5. Documents are accumulated (sync: in memory; async: in RocksDB) and flushed as OpenSearch Bulk API requests.
+5. Documents are accumulated in memory (both sync and async) and flushed as OpenSearch Bulk API requests.
 
 ### Sync flush behavior
 
@@ -38,11 +38,11 @@ The library provides two classes depending on the use case:
 
 ### Async flush behavior
 
-- Events are queued to RocksDB immediately and flushed by a background thread.
-- Up to 25,000 documents per flush batch (configurable via `analysisd.indexer_bulk_size`).
+- Events are queued in memory immediately and flushed by a background thread.
+- Up to `analysisd.indexer_bulk_max_bytes` bytes per flush batch (default 16 MB; always takes at least one item, even if it exceeds the threshold on its own).
 - Flush automatically after 20 seconds of inactivity (configurable via `analysisd.indexer_flush_interval`).
-- If `max_queue_size` is set, events that exceed the limit are dropped and counted.
-- The queue survives manager restarts.
+- If the queue exceeds `analysisd.indexer_queue_max_bytes` (default 64 MB, maps to `max_queue_bytes` in the connector config), new events are dropped and counted until it drains.
+- The queue is in-memory only: buffered events are discarded (not retried) if the manager stops or restarts.
 
 ## Indices
 
@@ -74,7 +74,7 @@ The library provides two classes depending on the use case:
 |------|---------|
 | `include/indexerConnector.hpp` | Public API: `IndexerConnectorSync`, `IndexerConnectorAsync` |
 | `src/indexerConnectorSyncImpl.hpp` | Sync implementation: in-memory buffer, bulk flush, 413 splitting |
-| `src/indexerConnectorAsyncImpl.hpp` | Async implementation: RocksDB queue, background flusher |
+| `src/indexerConnectorAsyncImpl.hpp` | Async implementation: in-memory bulk queue, background flusher |
 | `src/serverSelector.hpp` | Round-robin load balancer with health tracking |
 | `src/monitoring.hpp` | Background health-monitor thread (60s interval) |
 | `testtool/` | CLI test tool: `push-events`, `export-policy`, `generate-full-policy` |

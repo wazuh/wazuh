@@ -4,12 +4,12 @@
 
 Source: `src/os_auth/`
 
-For configuration options see [Auth Configuration](../../configuration/auth.md).
+For configuration options see [Authd Configuration](configuration.md).
 
 ## How it works
 
 1. Agent connects to port 1515 over TLS.
-2. If `use_password` is enabled (the default for new installations), the agent must send the enrollment password (`OSSEC PASS: <password>`). The password is auto-generated on the manager at first start and must be copied to each agent before enrollment; see [Agent-side setup](../../configuration/auth.md#use_password).
+2. If `use_password` is enabled (the default for new installations), the agent must send the enrollment password (`OSSEC PASS: <password>`). The password is auto-generated on the manager at first start and must be copied to each agent before enrollment; see [use_password configuration](configuration.md#use_password).
 3. If mutual TLS is configured (`ssl_agent_ca`), the agent's certificate is verified.
 4. The agent sends an enrollment request:
    ```

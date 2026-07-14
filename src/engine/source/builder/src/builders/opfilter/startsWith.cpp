@@ -11,8 +11,9 @@ using namespace builder::builders;
 FilterOp
 startsWithValue(const Reference& targetField, const Value& value, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Value must be a string
-    if (!value.value().isString())
+    // Value must be a string. Capture it referencing the Value's internal storage (zero-copy).
+    std::string_view sv;
+    if (value.getString(sv) != json::RetGet::Success)
     {
         throw std::runtime_error(fmt::format("Expected 'string' value but got '{}'", value.value().typeName()));
     }
@@ -23,8 +24,12 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
     const auto failure = fmt::format("{} -> Failure", buildCtx->context().opName);
     const auto targetNotString =
         fmt::format("{} -> Target field '{}' is not a string", buildCtx->context().opName, targetField.dotPath());
+
+    // Copy into an owned string to capture in the per-event operation.
+    std::string valueStr(sv);
+
     return [targetField = targetField.jsonPath(),
-            value = json::Json(value.value()),
+            valueStr = std::move(valueStr),
             isTestMode = buildCtx->isTestMode(),
             targetNotFound,
             failure,
@@ -47,13 +52,8 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
         {
             RETURN_FAILURE(isTestMode, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
         }
-        std::string_view valueString;
-        if (auto ret = value.getString(valueString); ret != json::RetGet::Success)
-        {
-            RETURN_FAILURE(isTestMode, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
-        }
 
-        if (!base::utils::string::startsWith(targetString, valueString))
+        if (!base::utils::string::startsWith(targetString, valueStr))
         {
             RETURN_FAILURE(isTestMode, false, failure);
         }

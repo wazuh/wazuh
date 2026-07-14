@@ -111,6 +111,43 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
 }
 
 /**
+ * @brief Builds an update operation with Painless script for version checking
+ * @param bulkData The string to append the update operation to
+ * @param index Index name
+ * @param id Document ID (will be escaped if needed)
+ * @param version Document version to check against state.document_version
+ * @param data Document data (JSON string)
+ *
+ * The script implements external_gte behavior on state.document_version:
+ * - Updates if state.document_version is null or <= provided version
+ * - No-op if state.document_version > provided version
+ */
+inline void appendScriptedUpdate(
+    std::string& bulkData, std::string_view index, std::string_view id, std::string_view version, std::string_view data)
+{
+    // Build update operation metadata
+    bulkData.append(R"({"update":{"_index":")");
+    bulkData.append(index);
+    bulkData.append(R"(","_id":")");
+    appendEscapedId(bulkData, id);
+    bulkData.append(R"("}})");
+    bulkData.append("\n");
+
+    // Build script that checks state.document_version field
+    bulkData.append(R"({"script":{"source":")");
+    bulkData.append(
+        R"(if (ctx._source?.state?.document_version == null || ctx._source.state.document_version <= params.doc_version) { ctx._source = params.doc } else { ctx.op = 'noop' })");
+    bulkData.append(R"(","lang":"painless","params":{"doc_version":)");
+    bulkData.append(version);
+    bulkData.append(R"(,"doc":)");
+    bulkData.append(data);
+    bulkData.append(R"(}},"upsert":)");
+    bulkData.append(data);
+    bulkData.append(R"(,"scripted_upsert":true})");
+    bulkData.append("\n");
+}
+
+/**
  * @brief Validates bulk API response at document level
  * @param response The bulk API response JSON string
  * @return true if all operations succeeded (or had acceptable version conflicts), false otherwise
@@ -672,13 +709,13 @@ public:
         static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
         if (username.empty() && password.empty())
         {
-            username = "admin";
-            password = "admin";
+            username = "wazuh-manager";
+            password = "wazuh-manager";
             LOG_WARN(m_logFn, "No username and password found in the keystore, using default values.");
         }
         if (username.empty())
         {
-            username = "admin";
+            username = "wazuh-manager";
             LOG_WARN(m_logFn, "No username found in the keystore, using default value.");
         }
         m_secureCommunication = SecureCommunication::builder();
@@ -1317,27 +1354,21 @@ public:
         {
             processBulk();
         }
-        m_bulkData.append(R"({"index":{"_index":")");
-        m_bulkData.append(index);
+
         if (!version.empty())
         {
-            // In case the version is provided, the id must be provided too
-            if (!id.empty())
-            {
-                m_bulkData.append(R"(","_id":")");
-                appendEscapedId(m_bulkData, id);
-            }
-            else
+            // When version is provided, use update operation with Painless script
+            // to check state.document_version instead of OpenSearch's internal _version.
+            if (id.empty())
             {
                 LOG_ERROR(m_logFn, "Id must be provided if version value is provided");
                 throw IndexerConnectorException("Id must be provided if version value is provided");
             }
 
-            m_bulkData.append(R"(","version":")");
-            m_bulkData.append(version);
-            m_bulkData.append(R"(","version_type":"external_gte)");
+            appendScriptedUpdate(m_bulkData, index, id, version, data);
+
             LOG_DEBUG2(m_logFn,
-                       "Using external version %.*s for document %.*s",
+                       "Using document version %.*s for document %.*s (checking state.document_version)",
                        static_cast<int>(version.size()),
                        version.data(),
                        static_cast<int>(id.size()),
@@ -1345,20 +1376,25 @@ public:
         }
         else
         {
+            // No version provided, use standard index operation
+            m_bulkData.append(R"({"index":{"_index":")");
+            m_bulkData.append(index);
             if (!id.empty())
             {
                 m_bulkData.append(R"(","_id":")");
                 appendEscapedId(m_bulkData, id);
             }
+            m_bulkData.append(R"("}})");
+            m_bulkData.append("\n");
+            m_bulkData.append(data);
+            m_bulkData.append("\n");
+
             LOG_DEBUG2(m_logFn,
                        "No version specified for document %.*s, using default versioning",
                        static_cast<int>(id.size()),
                        id.data());
         }
-        m_bulkData.append(R"("}})");
-        m_bulkData.append("\n");
-        m_bulkData.append(data);
-        m_bulkData.append("\n");
+
         m_boundaries.push_back(m_bulkData.size());
     }
 

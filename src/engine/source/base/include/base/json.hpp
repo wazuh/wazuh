@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include <fmt/format.h>
@@ -375,6 +376,19 @@ public:
     bool equals(std::string_view pointerPath, const Json& value) const;
 
     /**
+     * @brief Check if a field's string value equals the given string.
+     * Returns false if the field is not found or is not a string type.
+     *
+     * @param pointerPath The pointer path to the field.
+     * @param str The string to compare against.
+     * @return true The field exists and its string value equals str.
+     * @return false Otherwise.
+     *
+     * @throws std::runtime_error If the pointer path is invalid.
+     */
+    bool equalsString(std::string_view pointerPath, std::string_view str) const;
+
+    /**
      * @brief Check if basePointerPath field's value is equal to referencePointerPath
      * field's value. If basePointerPath or referencePointerPath is not found, returns
      * false.
@@ -545,6 +559,22 @@ public:
      * @throws std::runtime_error If any pointer path is invalid.
      */
     std::optional<std::vector<std::tuple<std::string, Json>>> getObject(std::string_view path = "") const;
+
+    /**
+     * @brief Extract all top-level members of this JSON object by swapping (zero-copy).
+     *
+     * Each member value is moved out of this document via Value::Swap, avoiding
+     * expensive deep copies (CopyFrom / SetStringRaw). After extraction, this
+     * object's members are left in a null/moved-from state.
+     *
+     * IMPORTANT: The returned Json values reference string data stored in this
+     * object's allocator. This object MUST remain alive for as long as any of
+     * the returned Json values are in use.
+     *
+     * @return unordered_map of member name → Json (zero-copy swapped values).
+     * @throws std::runtime_error If this Json is not an object.
+     */
+    std::unordered_map<std::string, Json> extractObjectMembers();
 
     /**
      * @brief Get a list of fields from a json object.

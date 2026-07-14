@@ -377,7 +377,11 @@ static int fim_startmq(const char* key, short type, short attempts) {
 }
 
 static int fim_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
-    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+    // Predicated so a synchronization parked in the manager-disconnected wait (os_wait)
+    // returns on shutdown: asp_stop() wakes every wait inside the sync protocol but
+    // cannot interrupt this one, and the shutdown waiter joins the synchronization
+    // thread with no timeout (issue #37334).
+    return SendBinaryMSGPredicated(queue, message, message_len, locmsg, loc, fim_shutdown_process_on);
 }
 
 /**

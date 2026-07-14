@@ -79,7 +79,7 @@ def sync_task(manager, logger):
             server=manager,
             logger=logger,
             cluster_items=cluster_items,
-            indexer_client=indexer,
+            get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=indexer), __aexit__=AsyncMock()),
         ),
         indexer,
     )

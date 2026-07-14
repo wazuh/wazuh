@@ -5,8 +5,6 @@ from unittest.mock import AsyncMock, patch
 
 from asyncinotify import Mask
 import pytest
-from starlette.applications import Starlette
-from starlette.testclient import TestClient
 
 from api.constants import SECURITY_PATH
 from api.signals import (
@@ -38,7 +36,7 @@ async def test_register_background_tasks(clean_auth_keys_cache_mock):
         create_task_mock.create_task.return_value = AwaitableMock(spec=asyncio.Task)
         create_task_mock.create_task.return_value.cancel = AsyncMock()
 
-        with TestClient(Starlette(lifespan=lifespan_handler)):
+        async with lifespan_handler(None):
             assert create_task_mock.create_task.call_count == 1
 
         assert create_task_mock.create_task.return_value.cancel.call_count == 1

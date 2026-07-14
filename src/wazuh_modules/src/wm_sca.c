@@ -316,7 +316,11 @@ static int wm_sca_startmq(const char* key, short type, short attempts) {
 }
 
 static int wm_sca_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
-    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+    // Predicated so a synchronization parked in the manager-disconnected wait (os_wait)
+    // returns on shutdown: the protocol's stop() cannot interrupt this wait, and a parked
+    // send would stall the sync worker join in wm_sca_start() — and, if it arrived through
+    // a wcom query holding m_resourcesMutex shared, the releaseResources() teardown too.
+    return SendBinaryMSGPredicated(queue, message, message_len, locmsg, loc, wm_sca_is_shutting_down);
 }
 
 static bool wm_sca_parse_query_int(const char* output, const char* field, int* value)
@@ -959,6 +963,15 @@ static size_t wm_sca_query_handler(void *data, char *query, char **output) {
 
     if (!query || !output) {
         return 0;
+    }
+
+    // Mirrors #36762 (FIM): when synchronization is disabled the sync worker never runs, so the SCA
+    // first-sync marker is never set. Report it as completed so agent-info coordination is not blocked
+    // deferring on a first sync that will never happen. The startup priming path calls sca_query_ptr
+    // directly and is unaffected by this handler-level short-circuit.
+    if (!sca_enable_synchronization && strstr(query, "get_first_sync_completed")) {
+        os_strdup("{\"error\":0,\"data\":{\"action\":\"get_first_sync_completed\",\"module\":\"sca\",\"first_sync_completed\":1}}", *output);
+        return strlen(*output);
     }
 
     // Call the C++ query function if available

@@ -96,10 +96,7 @@ inline parsec::Parser<builders::OpArg> getHelperQuotedArgParser()
             return parsec::makeError<builders::OpArg>("Missing end quote", next);
         }
 
-        json::Json value;
-        value.setString(std::move(rawStr));
-
-        return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(std::move(value)), next + 1);
+        return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(std::move(rawStr)), next + 1);
     };
 }
 
@@ -241,10 +238,7 @@ inline parsec::Parser<builders::OpArg> getHelperRawArgParser()
             return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(), next);
         }
 
-        json::Json value;
-        value.setString(std::move(rawStr));
-
-        return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(std::move(value)), next);
+        return parsec::makeSuccess<builders::OpArg>(std::make_shared<builders::Value>(std::move(rawStr)), next);
     };
 }
 

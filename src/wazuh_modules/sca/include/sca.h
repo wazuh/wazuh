@@ -2,6 +2,7 @@
 #define _SCA_H
 
 // Define EXPORTED for any platform
+#include "agent_sync_protocol_c_interface.h"
 #ifdef _WIN32
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)

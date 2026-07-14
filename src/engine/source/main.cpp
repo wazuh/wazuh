@@ -422,21 +422,23 @@ int main(int argc, char* argv[])
                                              ? standAloneConfig()
                                              : base::libwazuhshared::getJsonIndexerCnf();
 
-                // Parse JSON and add max_queue_size from engine configuration
+                // Parse JSON and add max_queue_bytes from engine configuration
                 json::Json jsonCnf(baseJsonCnf);
-                const auto maxQueueSize = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_EVENTS);
-                jsonCnf.setUint64(maxQueueSize, "/max_queue_size");
+                const auto maxQueueBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
+                jsonCnf.setUint64(maxQueueBytes, "/max_queue_bytes");
 
-                constexpr size_t INDEXER_ELEMENTS_PER_BULK_MAX = 1000000;
-                const auto elementsPerBulk = confManager.get<size_t>(conf::key::INDEXER_ELEMENTS_PER_BULK);
-                if (elementsPerBulk == 0 || elementsPerBulk > INDEXER_ELEMENTS_PER_BULK_MAX)
+                constexpr size_t INDEXER_BULK_MAX_BYTES_MIN = size_t {0x1} << 16; // 64 KB
+                constexpr size_t INDEXER_BULK_MAX_BYTES_MAX = size_t {100} << 20; // 100 MB
+                const auto bulkMaxBytes = confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES);
+                if (bulkMaxBytes < INDEXER_BULK_MAX_BYTES_MIN || bulkMaxBytes > INDEXER_BULK_MAX_BYTES_MAX)
                 {
                     throw std::runtime_error(
-                        fmt::format("analysisd.indexer_bulk_size_events must be between 1 and {} (got {})",
-                                    INDEXER_ELEMENTS_PER_BULK_MAX,
-                                    elementsPerBulk));
+                        fmt::format("analysisd.indexer_bulk_max_bytes must be between {} and {} (got {})",
+                                    INDEXER_BULK_MAX_BYTES_MIN,
+                                    INDEXER_BULK_MAX_BYTES_MAX,
+                                    bulkMaxBytes));
                 }
-                jsonCnf.setUint64(elementsPerBulk, "/elements_per_bulk");
+                jsonCnf.setUint64(bulkMaxBytes, "/bulk_max_bytes");
 
                 constexpr size_t INDEXER_FLUSH_INTERVAL_MAX = 3600;
                 const auto flushInterval = confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL);
@@ -477,25 +479,15 @@ int main(int argc, char* argv[])
                                      return connector ? connector->getDroppedEvents() : 0;
                                  });
 
-                auto indexerQueueUsageGetter = [wIndexer, maxQueueSize]()
+                auto indexerQueueUsageGetter = [wIndexer, maxQueueBytes]()
                 {
                     auto connector = wIndexer.lock();
                     auto currentSize = connector ? connector->getQueueSize() : 0;
-                    return maxQueueSize > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueSize) : 0.0;
+                    return maxQueueBytes > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueBytes) : 0.0;
                 };
                 FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 
-                // Log pending events from previous sessions
-                const auto pendingEvents = indexerConnector->getQueueSize();
-                if (pendingEvents > 0)
-                {
-                    LOG_INFO("Indexer Connector initialized with {} pending events from previous session",
-                             pendingEvents);
-                }
-                else
-                {
-                    LOG_INFO("Indexer Connector initialized");
-                }
+                LOG_INFO("Indexer Connector initialized");
             }
             catch (const std::exception& e)
             {
@@ -657,14 +649,12 @@ int main(int argc, char* argv[])
             auto iocSyncInterval = confManager.get<std::size_t>(conf::key::IOC_SYNC_INTERVAL);
             if (iocSyncInterval > 0)
             {
-                scheduler->scheduleTask("ioc-sync-task",
-                                        scheduler::TaskConfig {.interval = iocSyncInterval,
-                                                               .runImmediately = true,
-                                                               .CPUPriority = 0,
-                                                               .taskFunction = [iocSyncService]()
-                                                               {
-                                                                   iocSyncService->synchronize();
-                                                               }});
+                scheduler->scheduleTask(
+                    "ioc-sync-task",
+                    scheduler::TaskConfig {.interval = iocSyncInterval,
+                                           .runImmediately = true,
+                                           .CPUPriority = 0,
+                                           .taskFunction = [iocSyncService]() { iocSyncService->synchronize(); }});
                 LOG_DEBUG("IOC Sync task scheduled with interval: {} seconds, {} max retries, {} seconds for retry "
                           "interval and {} for batch size",
                           iocSyncInterval,
@@ -698,9 +688,7 @@ int main(int argc, char* argv[])
                                            .runImmediately = true,
                                            .CPUPriority = 0,
                                            .taskFunction = [geoManager, manifestUrl, cityPath, asnPath]()
-                                           {
-                                               geoManager->remoteUpsert(manifestUrl, cityPath, asnPath);
-                                           }});
+                                           { geoManager->remoteUpsert(manifestUrl, cityPath, asnPath); }});
                 LOG_DEBUG("Geo sync scheduled with interval: {} seconds", geoSyncInterval);
             }
             else
@@ -732,14 +720,12 @@ int main(int argc, char* argv[])
         if (enableProcessing)
         {
             const auto remoteConfSyncInterval = confManager.get<std::size_t>(conf::key::REMOTE_CONF_SYNC_INTERVAL);
-            scheduler->scheduleTask("remote-conf-sync",
-                                    scheduler::TaskConfig {.interval = remoteConfSyncInterval,
-                                                           .runImmediately = true,
-                                                           .CPUPriority = 0,
-                                                           .taskFunction = [remoteConf]()
-                                                           {
-                                                               remoteConf->synchronize();
-                                                           }});
+            scheduler->scheduleTask(
+                "remote-conf-sync",
+                scheduler::TaskConfig {.interval = remoteConfSyncInterval,
+                                       .runImmediately = true,
+                                       .CPUPriority = 0,
+                                       .taskFunction = [remoteConf]() { remoteConf->synchronize(); }});
             LOG_DEBUG("Remote configuration synchronize scheduled with interval: {} seconds", remoteConfSyncInterval);
         }
 
@@ -837,9 +823,7 @@ int main(int argc, char* argv[])
                                                      .runImmediately = false,
                                                      .CPUPriority = 0,
                                                      .taskFunction = [metricsWriter, metricsManager]()
-                                                     {
-                                                         metricsManager->writeAllMetrics(metricsWriter);
-                                                     }};
+                                                     { metricsManager->writeAllMetrics(metricsWriter); }};
 
                 scheduler->scheduleTask("MetricsLogger", std::move(metricsConfig));
                 LOG_INFO("Metrics stream logging enabled (interval: {} seconds, on-demand channel creation).",

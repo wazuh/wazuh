@@ -53,8 +53,7 @@ Configure the AWS module in the Wazuh agent `ossec.conf` file using the `service
 | `aws_log_groups` | Yes | — | Comma-separated list of CloudWatch log group names to monitor. |
 | `only_logs_after` | No | — | Only retrieve logs generated after this date (`YYYY-MM-DD`). |
 | `remove_log_streams` | No | `no` | Delete log streams after processing. |
-| `discard_field` | No | — | JSON field name to evaluate for discarding events. |
-| `discard_regex` | No | — | Regular expression applied to `discard_field` to filter out matching events. |
+| `discard_regex` | No | — | Regular expression to filter out matching events. For CloudWatch Logs, can be used without `field` attribute (filters entire log message). For other services, requires `field` attribute. Format: `<discard_regex field="fieldName">regex</discard_regex>` or `<discard_regex>regex</discard_regex>` (CloudWatch only) |
 | `sts_endpoint` | No | — | Custom AWS STS endpoint URL. |
 | `service_endpoint` | No | — | Custom CloudWatch Logs endpoint URL. |
 

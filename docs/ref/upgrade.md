@@ -301,6 +301,7 @@ Before upgrading agents:
 2. Plan upgrades in batches to avoid upgrading all agents simultaneously
 3. Test on non-production agents first
 4. Verify manager compatibility with the new agent version
+5. **Password Authentication:** Wazuh 5.0 enables password protection for agent enrollment by default. If you need to re-enroll agents during or after the upgrade, you must use the registration password. If the 5.0 manager was freshly installed, retrieve the new password using `sudo cat /var/wazuh-manager/etc/authd.pass` on the manager and apply it on the agents, or restore the old `authd.pass` file to the new manager.
 
 **Note:** Wazuh agents version 4.x and later support upgrades to version 5.x.
 
@@ -626,6 +627,11 @@ telnet <manager_ip> 1514
 
 # Verify client.keys matches manager
 # Compare key on agent with manager's client.keys entry
+
+# Check for enrollment password verification issues:
+# If you see "ERROR: Invalid password (from manager)" in /var/ossec/logs/ossec.log,
+# verify that the password in the agent's `/var/ossec/etc/authd.pass` matches
+# the manager's `/var/wazuh-manager/etc/authd.pass`.
 
 # Restart agent
 sudo systemctl restart wazuh-agent

@@ -61,8 +61,7 @@ Alternatively, Security Lake data can be accessed via the S3 bucket type:
 | `iam_role_arn` | No | — | ARN of an IAM role to assume. |
 | `iam_role_duration` | No | — | Duration in seconds for the assumed IAM role session. |
 | `external_id` | No | — | External ID for cross-account role assumption. |
-| `discard_field` | No | — | JSON field name to evaluate for discarding events. |
-| `discard_regex` | No | — | Regular expression for filtering out matching events. |
+| `discard_regex` | No | — | Regular expression to filter out matching events. Requires `field` attribute specifying JSON field name. Format: `<discard_regex field="fieldName">regex</discard_regex>` Note: Not supported for Security Lake subscribers. |
 | `sts_endpoint` | No | — | Custom AWS STS endpoint URL. |
 | `service_endpoint` | No | — | Custom AWS endpoint URL. |
 
