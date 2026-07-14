@@ -78,6 +78,7 @@
       "destination.registered_domain",
       "destination.subdomain",
       "destination.top_level_domain",
+      "dns.question.name",
       "dns.question.registered_domain",
       "dns.question.subdomain",
       "dns.question.top_level_domain",

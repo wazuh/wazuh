@@ -216,10 +216,20 @@ int IDExist(const char *id, int discard_removed)
 /* Validate agent name */
 int OS_IsValidName(const char *u_name)
 {
+    /* Name must not be null */
+    if (!u_name) {
+        return (0);
+    }
+
     size_t i, uname_length = strlen(u_name);
 
     /* We must have something in the name */
     if (uname_length < 2 || uname_length > 128) {
+        return (0);
+    }
+
+    /* Reject names starting with "." */
+    if (u_name[0] == '.') {
         return (0);
     }
 

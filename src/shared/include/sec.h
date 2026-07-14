@@ -59,6 +59,7 @@ typedef struct _keyentry {
     int sock;                           ///< File descriptor of client's TCP socket
     _Atomic (int) net_protocol;         ///< Client current protocol
     time_t time_added;
+    time_t conflict_ts;                 ///< Start of a duplicate-connection conflict (0 if none)
     pthread_mutex_t mutex;
     struct sockaddr_storage peer_info;
     FILE *fp;

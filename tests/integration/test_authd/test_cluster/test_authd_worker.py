@@ -80,7 +80,7 @@ def test_ossec_auth_messages(test_configuration, test_metadata, set_wazuh_config
         and every master response is correctly parsed for agent.
 
     wazuh_min_version:
-        4.2.0
+        5.0.0
 
     tier: 0
 

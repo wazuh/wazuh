@@ -5,9 +5,9 @@ from typing import Tuple
 
 import yaml
 try:
-    from yaml import CLoader as Loader, CDumper as Dumper
+    from yaml import CSafeLoader as SafeLoader, CDumper as Dumper
 except ImportError:
-    from yaml import Loader, Dumper
+    from yaml import SafeLoader, Dumper
 
 
 class Format(Enum):
@@ -48,7 +48,7 @@ class ResourceHandler:
     def _read_yml(self, content: str) -> dict:
         read = {}
         try:
-            read = yaml.load(content, Loader=Loader)  # yaml.SafeLoader
+            read = yaml.load(content, Loader=SafeLoader)
         except yaml.YAMLError as e:
             raise e
         return read

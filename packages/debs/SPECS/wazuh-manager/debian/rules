@@ -41,7 +41,7 @@ override_dh_install:
 	rm -rf $(INSTALLATION_DIR)/
 	# Build the binaries
 	make -C src deps TARGET=manager
-	make -j$(JOBS) -C src/ TARGET=manager USE_SELINUX=yes DEBUG=$(DEBUG_ENABLED)
+	make -j$(JOBS) -C src/ TARGET=manager DEBUG=$(DEBUG_ENABLED)
 
 	USER_LANGUAGE="en" \
 	USER_INSTALL_TYPE="manager" \
@@ -57,8 +57,8 @@ override_dh_install:
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/
-	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-debian.init
-	cp src/init/templates/wazuh-debian.init ${TARGET_DIR}/etc/init.d/wazuh-manager
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-manager-debian.init
+	cp src/init/templates/wazuh-manager-debian.init ${TARGET_DIR}/etc/init.d/wazuh-manager
 
 	# Copying systemd file
 	mkdir -p ${TARGET_DIR}/usr/lib/systemd/system/

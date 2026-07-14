@@ -148,10 +148,10 @@ private:
                     }
                     catch (const std::exception& e)
                     {
-                        LOG_ERROR("Unexpected error processing term: {} in '{}' with {}.",
-                                  e.what(),
-                                  name,
-                                  result->payload()->str());
+                        LOG_WARNING("[BK::pipeline] Unexpected error processing term: {} in '{}' with {}",
+                                    e.what(),
+                                    name,
+                                    result->payload()->str());
                         const std::string errorMsg =
                             fmt::format(R"([{}] -> Failure: operation throw exception.)", name);
                         *result = base::result::makeFailure(result->payload(), errorMsg);

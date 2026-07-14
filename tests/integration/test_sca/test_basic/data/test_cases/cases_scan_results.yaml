@@ -3,7 +3,7 @@
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 5
-    POLICY_FILE: cis_centos8_pcre2.yaml
+    POLICY_FILE: ruleset/sca/cis_centos8_pcre2.yaml
   metadata:
     policy_file: cis_centos8_pcre2.yaml
     results: 2

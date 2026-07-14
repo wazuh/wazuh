@@ -8,12 +8,12 @@ metadata:
 
 outputs:
   - first_of:
-    - check: index_unclassified_events($wazuh.integration.decoders)
+    - check: index_unclassified_events($wazuh.integration.category)
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-unclassified"
 
-    - check: NOT array_length_eq($wazuh.integration.decoders, 1)
+    - check: string_not_equal($wazuh.integration.category, "unclassified")
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-${wazuh.integration.category}"

@@ -1,10 +1,12 @@
 #ifndef _BASE_NAME_HPP
 #define _BASE_NAME_HPP
 
+#include <algorithm>
 #include <initializer_list>
 #include <iostream>
 #include <numeric>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <fmt/core.h>
@@ -38,12 +40,12 @@ private:
     std::vector<std::string> m_parts;
 
     /**
-     * @brief Validate the number of parts and ensure none are empty.
+     * @brief Validate the number and contents of the name parts.
      *
      * @param size Number of parts.
-     * @throws std::runtime_error If size is 0, exceeds MAX_PARTS, or any part is empty.
+     * @throws std::runtime_error If size is 0, exceeds MAX_PARTS, or any part is invalid.
      */
-    void assertSize(size_t size) const
+    void assertValid(size_t size) const
     {
         if (0 == size)
         {
@@ -54,12 +56,9 @@ private:
             throw std::runtime_error(fmt::format(
                 "Name size must have {} parts at most at most, but the one inserted has {}", MAX_PARTS, size));
         }
-        for (const auto& part : m_parts)
+        if (!std::all_of(m_parts.begin(), m_parts.end(), isValidPart))
         {
-            if (part.empty())
-            {
-                throw std::runtime_error(fmt::format("Name cannot have empty parts"));
-            }
+            throw std::runtime_error(fmt::format("Invalid resource name: '{}'", toStr()));
         }
     }
 
@@ -82,6 +81,22 @@ public:
     ~Name() = default;
 
     /**
+     * @brief Check whether a name part contains only supported characters.
+     *
+     * @param part Name part to validate.
+     * @return true if the part matches [a-zA-Z0-9_-]+.
+     */
+    static bool isValidPart(std::string_view part)
+    {
+        const auto isAllowedChar = [](const char c)
+        {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
+        };
+
+        return !part.empty() && std::all_of(part.begin(), part.end(), isAllowedChar);
+    }
+
+    /**
      * @brief Construct a new Name object from a vector of parts.
      *
      * @param parts Parts of the name.
@@ -89,8 +104,8 @@ public:
      */
     Name(const std::vector<std::string>& parts)
     {
-        assertSize(parts.size());
         m_parts = parts;
+        assertValid(m_parts.size());
     }
 
     /**
@@ -102,7 +117,7 @@ public:
     Name(std::vector<std::string>&& parts)
     {
         m_parts = std::move(parts);
-        assertSize(m_parts.size());
+        assertValid(m_parts.size());
     }
 
     /**
@@ -114,7 +129,7 @@ public:
     Name(const std::string& fullName)
     {
         m_parts = base::utils::string::split(fullName, SEPARATOR_C);
-        assertSize(m_parts.size());
+        assertValid(m_parts.size());
     }
 
     /**

@@ -61,13 +61,13 @@ public:
     // ICMstoreNS methods
     MOCK_METHOD(std::string,
                 createResource,
-                (const std::string& name, ResourceType type, const std::string& ymlContent),
+                (const std::string& name, ResourceType type, const json::Json& content),
                 (override));
     MOCK_METHOD(void,
                 updateResourceByName,
-                (const std::string& name, ResourceType type, const std::string& ymlContent),
+                (const std::string& name, ResourceType type, const json::Json& content),
                 (override));
-    MOCK_METHOD(void, updateResourceByUUID, (const std::string& uuid, const std::string& ymlContent), (override));
+    MOCK_METHOD(void, updateResourceByUUID, (const std::string& uuid, const json::Json& content), (override));
     MOCK_METHOD(void, deleteResourceByName, (const std::string& name, ResourceType type), (override));
     MOCK_METHOD(void, deleteResourceByUUID, (const std::string& uuid), (override));
     MOCK_METHOD(void, upsertPolicy, (const dataType::Policy& policy), (override));

@@ -111,12 +111,12 @@ TransformOp specificHLPBuilder(const Reference& targetField,
     {
         auto value = std::static_pointer_cast<Value>(param);
 
-        std::string optStr;
-        if (value->value().getString(optStr) != json::RetGet::Success)
+        std::string_view sv;
+        if (value->getString(sv) != json::RetGet::Success)
         {
             throw std::runtime_error(fmt::format("Got non 'string' parameter {}", value->value().str()));
         }
-        hlpOptionsList.emplace_back(std::move(optStr));
+        hlpOptionsList.emplace_back(sv);
     }
 
     hlp::parser::Parser parser;
@@ -151,24 +151,24 @@ TransformOp specificHLPBuilder(const Reference& targetField,
     const auto failureTrace3 = fmt::format("{} -> There is still text to analyze after parsing", traceName);
 
     // Return Op
-    return [=, source = source.jsonPath(), runState = buildCtx->runState(), parser = std::move(parser)](
+    return [=, source = source.jsonPath(), isTestMode = buildCtx->isTestMode(), parser = std::move(parser)](
                base::Event event) -> TransformResult
     {
         // Check if source is a reference
         std::string sourceValue;
         if (auto ret = event->getString(sourceValue, source); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, event, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
+            RETURN_FAILURE(isTestMode, event, ret == json::RetGet::NotFound ? failureTrace1 : failureTrace2);
         }
 
         // Parse source
-        auto error = hlp::parser::run(parser, sourceValue, *event, runState->trace);
+        auto error = hlp::parser::run(parser, sourceValue, *event, isTestMode);
         if (error)
         {
-            RETURN_FAILURE(runState, event, failureTrace + error.value().message);
+            RETURN_FAILURE(isTestMode, event, failureTrace + error.value().message);
         }
 
-        RETURN_SUCCESS(runState, event, successTrace);
+        RETURN_SUCCESS(isTestMode, event, successTrace);
     };
 }
 

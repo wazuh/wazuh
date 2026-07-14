@@ -6,13 +6,12 @@
 #include <cmstore/categories.hpp>
 #include <fastmetrics/registry.hpp>
 
+#include "syntax.hpp"
+
 namespace
 {
-constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name";                   ///< wazuh.space.name
-const json::PointerPath PP_INTEGRATION_CATEGORY {"/wazuh/integration/category"};       ///< wazuh.integration.category
-constexpr std::string_view JPATH_INTEGRATION_DECODERS = "/wazuh/integration/decoders"; ///< wazuh.integration.decoders
+constexpr std::string_view JPATH_ORIGIN_SPACE = "/wazuh/space/name"; ///< wazuh.space.name
 const std::string ENRICHMENT_SPACE_TRACEABLE_NAME = "enrichment/OriginSpace";
-const std::string UNCLASSIFIED_FILTER_TRACEABLE_NAME = "filter/UnclassifiedEvents";
 const std::string DISCARDED_EVENTS_FILTER_TRACEABLE_NAME = "filter/DiscardedEvents";
 const std::string CLEANUP_DECODER_VARIABLES_TRACEABLE_NAME = "cleanup/DecoderTemporaryVariables";
 
@@ -28,76 +27,28 @@ constexpr auto POSITIVE_INDEXED_BY_DISCARDED_FALSE =
 namespace builder::builders::enrichment
 {
 
-std::pair<base::Expression, std::string> getSpaceEnrichment(const cm::store::dataType::Policy& policy, bool trace)
+std::pair<base::Expression, std::string> getSpaceEnrichment(const cm::store::dataType::Policy& policy, bool isTestMode)
 {
     // Setting origin space
 
     auto op = base::Term<base::EngineOp>::create(
         ENRICHMENT_SPACE_TRACEABLE_NAME,
-        [originSpace = policy.getOriginSpace(), trace](base::Event event) -> base::result::Result<base::Event>
+        [originSpace = policy.getOriginSpace(), isTestMode](base::Event event) -> base::result::Result<base::Event>
         {
             event->setString(originSpace, JPATH_ORIGIN_SPACE);
-            if (trace)
+            if (isTestMode)
             {
                 return base::result::makeSuccess<decltype(event)>(event, "[map: $wazuh.space.name] -> Success");
             }
             return base::result::makeSuccess<decltype(event)>(event);
         });
 
-    return std::make_pair(makeTraceableSuccessExpression(op, trace), ENRICHMENT_SPACE_TRACEABLE_NAME);
-}
-
-std::pair<base::Expression, std::string> getUnclassifiedFilter(const cm::store::dataType::Policy& policy, bool trace)
-{
-    // Filter unclassified events based on policy configuration
-    const bool shouldIndex = policy.shouldIndexUnclassifiedEvents();
-
-    auto op = base::Term<base::EngineOp>::create(
-        UNCLASSIFIED_FILTER_TRACEABLE_NAME,
-        [shouldIndex, trace](base::Event event) -> base::result::Result<base::Event>
-        {
-            if (shouldIndex && !trace)
-            {
-                // If indexing unclassified events is enabled and tracing is disabled, allow the event without
-                // modification
-                return base::result::makeSuccess<decltype(event)>(event);
-            }
-
-            // Get the integration category
-            const auto isUnclassified = [&]() -> bool
-            {
-                std::string_view categoryStr;
-                return event->getString(categoryStr, PP_INTEGRATION_CATEGORY) == json::RetGet::Success
-                       && categoryStr == cm::store::categories::UNCLASSIFIED_CATEGORY;
-            }();
-
-            // If category is unclassified and indexing is disabled, drop the event
-            if (isUnclassified && !shouldIndex)
-            {
-                if (trace)
-                {
-                    return base::result::makeFailure<decltype(event)>(
-                        event,
-                        "dropUnclassifiedEvent() -> Event dropped because it is unclassified and policy "
-                        "index_unclassified_events=false");
-                }
-                return base::result::makeFailure<decltype(event)>(event);
-            }
-
-            // Otherwise, allow the event to continue
-            return base::result::makeSuccess<decltype(event)>(
-                event,
-                isUnclassified ? "dropUnclassifiedEvent() -> Event is unclassified but policy "
-                                 "index_unclassified_events=true, allowing event"
-                               : "dropUnclassifiedEvent() -> Event is classified, allowing event");
-        });
-
-    return std::make_pair(makeTraceableSuccessExpression(op, trace), UNCLASSIFIED_FILTER_TRACEABLE_NAME);
+    return std::make_pair(makeTraceableSuccessExpression(op, isTestMode), ENRICHMENT_SPACE_TRACEABLE_NAME);
 }
 
 std::pair<base::Expression, std::string>
 getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
-                         bool trace,
+                         bool isTestMode,
                          const std::shared_ptr<fastmetrics::ICounter>& discardedCounter)
 {
     const bool shouldIndex = policy.shouldIndexDiscardedEvents();
@@ -105,12 +56,13 @@ getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
 
     auto op = base::Term<base::EngineOp>::create(
         DISCARDED_EVENTS_FILTER_TRACEABLE_NAME,
-        [shouldIndex, discardFieldPath, trace, discardedCounter](base::Event event) -> base::result::Result<base::Event>
+        [shouldIndex, discardFieldPath, isTestMode, discardedCounter](
+            base::Event event) -> base::result::Result<base::Event>
         {
             // Policy enables indexing of discarded events
             if (shouldIndex)
             {
-                if (trace)
+                if (isTestMode)
                 {
                     return base::result::makeSuccess<decltype(event)>(event, POSITIVE_INDEXED_BY_DISCARDED_TRUE);
                 }
@@ -122,7 +74,7 @@ getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
             if (discardValue && discardValue.value())
             {
                 discardedCounter->add(1);
-                if (trace)
+                if (isTestMode)
                 {
                     return base::result::makeFailure<decltype(event)>(event,
                                                                       NEGATIVE_INDEXED_BY_DISCARDED_TRUE_FIELD_FALSE);
@@ -130,14 +82,14 @@ getDiscardedEventsFilter(const cm::store::dataType::Policy& policy,
                 return base::result::makeFailure<decltype(event)>(event);
             }
 
-            if (trace)
+            if (isTestMode)
             {
                 return base::result::makeSuccess<decltype(event)>(event, POSITIVE_INDEXED_BY_DISCARDED_FALSE);
             }
             return base::result::makeSuccess<decltype(event)>(event);
         });
 
-    return std::make_pair(makeTraceableSuccessExpression(op, trace), DISCARDED_EVENTS_FILTER_TRACEABLE_NAME);
+    return std::make_pair(makeTraceableSuccessExpression(op, isTestMode), DISCARDED_EVENTS_FILTER_TRACEABLE_NAME);
 }
 
 base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
@@ -147,30 +99,26 @@ base::Expression postOutputUnclassifiedCounter(const std::string& spaceName,
         "postOutputUnclassified",
         [unclassifiedCounter](base::Event event) -> base::result::Result<base::Event>
         {
-            try
+            std::string_view category;
+            const json::PointerPath ppIntegrationCategory {syntax::asset::CATEGORY_PATH};
+            if (event->getString(category, ppIntegrationCategory) == json::RetGet::Success
+                && category == cm::store::categories::UNCLASSIFIED_CATEGORY)
             {
-                if (event->size(JPATH_INTEGRATION_DECODERS) == 1)
-                {
-                    unclassifiedCounter->add(1);
-                }
-            }
-            catch (...)
-            {
-                // Ignore size() errors
+                unclassifiedCounter->add(1);
             }
             return base::result::makeSuccess<decltype(event)>(event);
         });
 }
 
-std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled, bool trace)
+std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled, bool isTestMode)
 {
     auto op = base::Term<base::EngineOp>::create(
         CLEANUP_DECODER_VARIABLES_TRACEABLE_NAME,
-        [enabled, trace](base::Event event) -> base::result::Result<base::Event>
+        [enabled, isTestMode](base::Event event) -> base::result::Result<base::Event>
         {
             if (!enabled)
             {
-                if (trace)
+                if (isTestMode)
                 {
                     return base::result::makeSuccess<decltype(event)>(
                         event, "cleanupDecoderTemporaryVariables() -> Skipped: Cleanup disabled by policy");
@@ -184,7 +132,7 @@ std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled
             }
             catch (const std::exception& e)
             {
-                if (trace)
+                if (isTestMode)
                 {
                     return base::result::makeFailure<decltype(event)>(
                         event,
@@ -195,7 +143,7 @@ std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled
                 return base::result::makeFailure<decltype(event)>(event);
             }
 
-            if (trace)
+            if (isTestMode)
             {
                 return base::result::makeSuccess<decltype(event)>(
                     event, "cleanupDecoderTemporaryVariables() -> Success: Removed root keys prefixed with '_'");
@@ -203,7 +151,7 @@ std::pair<base::Expression, std::string> getCleanupDecoderVariables(bool enabled
             return base::result::makeSuccess<decltype(event)>(event);
         });
 
-    return std::make_pair(makeTraceableSuccessExpression(op, trace), CLEANUP_DECODER_VARIABLES_TRACEABLE_NAME);
+    return std::make_pair(makeTraceableSuccessExpression(op, isTestMode), CLEANUP_DECODER_VARIABLES_TRACEABLE_NAME);
 }
 
 base::Expression makeFilterDiscardCounter(const base::Expression& phaseExpr,

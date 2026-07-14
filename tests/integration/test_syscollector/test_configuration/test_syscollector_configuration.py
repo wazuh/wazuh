@@ -548,8 +548,11 @@ def test_syscollector_collectors_disabled(test_configuration, test_metadata, set
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_DISABLED_COLLECTORS_DETECTED), timeout=30)
     assert log_monitor.callback_result, "Disabled collectors with data should be detected"
 
-    # Check DataClean notification is started
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_DATACLEAN_NOTIFICATION_STARTED), timeout=60)
+    # Check DataClean notification is started. The notification is emitted when the module
+    # start reaches handleNotifyDataClean(), which on the disconnected test agent can take
+    # well over a minute (the agent retries enrollment/agentd queries with the manager
+    # unreachable), so give it the same margin as the other slow-path monitors in this file.
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_DATACLEAN_NOTIFICATION_STARTED), timeout=180)
     assert log_monitor.callback_result, "DataClean notification should be started for disabled collectors with data"
 
     if all_collectors_disabled:
@@ -567,8 +570,12 @@ def test_syscollector_collectors_disabled(test_configuration, test_metadata, set
     log_monitor.start(callback=callbacks.generate_callback(patterns.CB_MODULE_STARTED), timeout=180)
     assert log_monitor.callback_result, "Module should continue running after DataClean"
 
-    # Check general scan has started (enabled collectors should scan)
-    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_STARTED), timeout=10)
+    # Check general scan has started (enabled collectors should scan).
+    # CB_MODULE_STARTED now fires in wm_sys_main *before* Syscollector::start()
+    # runs, so the gap until the first "Starting evaluation." can include the
+    # full handleNotifyDataClean retry budget (m_dataCleanRetries * 60s) when
+    # the test env's remoted_simulator does not ack DataClean.
+    log_monitor.start(callback=callbacks.generate_callback(patterns.CB_SCAN_STARTED), timeout=240)
     assert log_monitor.callback_result, "Scan should start for enabled collectors"
 
     # Map collector names to their scan callbacks

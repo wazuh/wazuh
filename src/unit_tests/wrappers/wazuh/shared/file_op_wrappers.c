@@ -117,6 +117,33 @@ void expect_wfopen(const char * path, const char * mode, FILE *ret) {
     will_return(__wrap_wfopen, ret);
 }
 
+#ifdef WIN32
+// Always-mock wrapper (no __real_w_fopen_r fallback): the only callers in
+// tests are setup_group-wrapped (test_mode=1), and dropping the __real
+// reference avoids dragging an unresolved symbol into every test that pulls
+// in file_op_wrappers.c.obj from libwazuh_test without specifying
+// -Wl,--wrap=w_fopen_r. Same always-mock pattern used by
+// __wrap_is_fim_shutdown / __wrap_fim_db_teardown.
+FILE *__wrap_w_fopen_r(const char * file, const char * mode, BY_HANDLE_FILE_INFORMATION * lpFileInformation) {
+    check_expected(file);
+    check_expected(mode);
+    FILE * ret = mock_type(FILE *);
+    // Tests that exercise OS_SHA1_File_Nbytes pass fp_check=0, so the
+    // populated values of lpFileInformation are not compared. Zero it out
+    // for safety when the mock returns a non-null FILE *.
+    if (ret != NULL && lpFileInformation != NULL) {
+        memset(lpFileInformation, 0, sizeof(*lpFileInformation));
+    }
+    return ret;
+}
+
+void expect_w_fopen_r(const char * file, const char * mode, FILE *ret) {
+    expect_string(__wrap_w_fopen_r, file, file);
+    expect_string(__wrap_w_fopen_r, mode, mode);
+    will_return(__wrap_w_fopen_r, ret);
+}
+#endif
+
 char ** __wrap_wreaddir(const char * name) {
     check_expected(name);
     return mock_type(char**);

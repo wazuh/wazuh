@@ -70,7 +70,7 @@ protected:
         tmpDir = getTempDir();
         defaultConfig = {
             .basePath = tmpDir,
-            .pattern = "wazuh-${name}-${YYYY}-${MM}-${DD}.json",
+            .pattern = "wazuh-${name}-${YYYY}-${MM}-${DD}",
             .maxSize = 0,                                // No size limit for most tests
             .bufferSize = fastqueue::MIN_QUEUE_CAPACITY, // Use minimum buffer size for testing
         };
@@ -122,56 +122,6 @@ TEST_F(LogManagerTest, DefaultConstruction)
     EXPECT_NO_THROW({ auto logManager = createLogManager(); });
 }
 
-TEST_F(LogManagerTest, RegisterLogSuccess)
-{
-    auto logManager = createLogManager();
-
-    EXPECT_NO_THROW(logManager->registerLog("test-channel", defaultConfig, "log"));
-
-    // Verify the channel exists
-    EXPECT_TRUE(logManager->hasChannel("test-channel"));
-    EXPECT_FALSE(logManager->hasChannel("non-existent"));
-}
-
-TEST_F(LogManagerTest, RegisterLogDuplicate)
-{
-    auto logManager = createLogManager();
-
-    // Register first channel
-    EXPECT_NO_THROW(logManager->registerLog("test-channel", defaultConfig, "log"));
-
-    // Attempt to register duplicate should throw
-    EXPECT_THROW(logManager->registerLog("test-channel", defaultConfig, "log"), std::runtime_error);
-}
-
-TEST_F(LogManagerTest, RegisterLogInvalidConfig)
-{
-    auto logManager = createLogManager();
-
-    // Invalid base path
-    auto invalidConfig = defaultConfig;
-    invalidConfig.basePath = "/non/existent/path";
-    EXPECT_THROW(logManager->registerLog("test", invalidConfig, "log"), std::runtime_error);
-
-    // Empty pattern
-    invalidConfig = defaultConfig;
-    invalidConfig.pattern = "";
-    EXPECT_THROW(logManager->registerLog("test", invalidConfig, "log"), std::runtime_error);
-}
-
-TEST_F(LogManagerTest, RegisterLogInvalidChannelName)
-{
-    auto logManager = createLogManager();
-
-    // Empty name
-    EXPECT_THROW(logManager->registerLog("", defaultConfig, "log"), std::runtime_error);
-
-    // Invalid characters
-    EXPECT_THROW(logManager->registerLog("test channel", defaultConfig, "log"), std::runtime_error);
-    EXPECT_THROW(logManager->registerLog("test.channel", defaultConfig, "log"), std::runtime_error);
-    EXPECT_THROW(logManager->registerLog("test/channel", defaultConfig, "log"), std::runtime_error);
-}
-
 TEST_F(LogManagerTest, HasChannelFunctionality)
 {
     auto logManager = createLogManager();
@@ -180,33 +130,18 @@ TEST_F(LogManagerTest, HasChannelFunctionality)
     EXPECT_FALSE(logManager->hasChannel("test-channel"));
     EXPECT_FALSE(logManager->hasChannel("another-channel"));
 
-    // Register some channels
-    logManager->registerLog("test-channel", defaultConfig, "log");
-    logManager->registerLog("another-channel", defaultConfig, "log");
+    // Auto-register channels via ensureAndGetWriter
+    auto w1 = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
+    auto w2 = logManager->ensureAndGetWriter("another-channel", defaultConfig, "log");
 
     // Verify channels exist
     EXPECT_TRUE(logManager->hasChannel("test-channel"));
     EXPECT_TRUE(logManager->hasChannel("another-channel"));
     EXPECT_FALSE(logManager->hasChannel("non-existent"));
-}
 
-TEST_F(LogManagerTest, GetConfigSuccess)
-{
-    auto logManager = createLogManager();
-    logManager->registerLog("test-channel", defaultConfig, "log");
-
-    const auto& config = logManager->getConfig("test-channel");
-    EXPECT_EQ(config.basePath, defaultConfig.basePath);
-    EXPECT_EQ(config.pattern, defaultConfig.pattern);
-    EXPECT_EQ(config.maxSize, defaultConfig.maxSize);
-    EXPECT_EQ(config.bufferSize, defaultConfig.bufferSize);
-}
-
-TEST_F(LogManagerTest, GetConfigNonExistent)
-{
-    auto logManager = createLogManager();
-
-    EXPECT_THROW(logManager->getConfig("non-existent"), std::runtime_error);
+    w1.reset();
+    w2.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 TEST_F(LogManagerTest, EnsureAndGetWriterRegistersChannelOnDemand)
@@ -225,12 +160,17 @@ TEST_F(LogManagerTest, EnsureAndGetWriterRegistersChannelOnDemand)
 TEST_F(LogManagerTest, EnsureAndGetWriterReusesExistingChannel)
 {
     auto logManager = createLogManager();
-    logManager->registerLog("test-channel", defaultConfig, "log");
 
-    auto writer = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
+    auto writer1 = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
+    auto writer2 = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
 
-    EXPECT_NE(writer, nullptr);
-    EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 1);
+    EXPECT_NE(writer1, nullptr);
+    EXPECT_NE(writer2, nullptr);
+    EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 2);
+
+    writer1.reset();
+    writer2.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 TEST_F(LogManagerTest, EnsureAndGetWriterRejectsInvalidChannelNames)
@@ -246,15 +186,25 @@ TEST_F(LogManagerTest, EnsureAndGetWriterRejectsInvalidChannelNames)
     }
 }
 
+TEST_F(LogManagerTest, EnsureAndGetWriterRejectsInvalidConfig)
+{
+    auto logManager = createLogManager();
+
+    // Invalid base path
+    auto invalidConfig = defaultConfig;
+    invalidConfig.basePath = "/non/existent/path";
+    EXPECT_THROW(logManager->ensureAndGetWriter("test", invalidConfig, "log"), std::runtime_error);
+
+    // Empty pattern
+    invalidConfig = defaultConfig;
+    invalidConfig.pattern = "";
+    EXPECT_THROW(logManager->ensureAndGetWriter("test2", invalidConfig, "log"), std::runtime_error);
+}
+
 TEST_F(LogManagerTest, GetActiveWritersCountSuccess)
 {
     auto logManager = createLogManager();
-    logManager->registerLog("test-channel", defaultConfig, "log");
 
-    // Initially no writers
-    EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 0);
-
-    // Create writers and verify count
     auto writer1 = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
     EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 1);
 
@@ -263,11 +213,11 @@ TEST_F(LogManagerTest, GetActiveWritersCountSuccess)
 
     // Destroy writers and verify count decreases
     writer1.reset();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Brief pause for cleanup
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 1);
 
     writer2.reset();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Brief pause for cleanup
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     EXPECT_EQ(logManager->getActiveWritersCount("test-channel"), 0);
 }
 
@@ -277,83 +227,17 @@ TEST_F(LogManagerTest, GetActiveWritersCountNonExistent)
     EXPECT_THROW(logManager->getActiveWritersCount("non-existent"), std::runtime_error);
 }
 
-TEST_F(LogManagerTest, UpdateConfigSuccess)
-{
-    auto logManager = createLogManager();
-    std::string channelName {"test-channel"};
-    logManager->registerLog(channelName, defaultConfig, "log");
-
-    // Create new config
-    auto newConfig = defaultConfig;
-    newConfig.maxSize = fastqueue::MIN_QUEUE_CAPACITY * 2; // Set to a different value
-    newConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY;  // Set to a different value
-
-    // Update config (no active writers)
-    EXPECT_NO_THROW(logManager->updateConfig(channelName, newConfig, "log"));
-
-    logManager->destroyChannel(channelName);
-    EXPECT_FALSE(logManager->hasChannel(channelName));
-
-    // // Verify config was updated (accounting for normalization)
-    // const auto& updatedConfig = logManager->getConfig("test-channel");
-    // EXPECT_EQ(updatedConfig.maxSize, 1048576); // 1MB minimum due to normalization
-    // EXPECT_EQ(updatedConfig.bufferSize, 20);
-}
-
-TEST_F(LogManagerTest, UpdateConfigNonExistent)
-{
-    auto logManager = createLogManager();
-
-    EXPECT_THROW(logManager->updateConfig("non-existent", defaultConfig, "log"), std::runtime_error);
-}
-
-TEST_F(LogManagerTest, UpdateConfigWithActiveWriters)
-{
-    auto logManager = createLogManager();
-    logManager->registerLog("test-channel", defaultConfig, "log");
-
-    // Create an active writer
-    auto writer = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
-
-    // Attempt to update config should throw
-    auto newConfig = defaultConfig;
-    newConfig.maxSize = 1024;
-    EXPECT_THROW(logManager->updateConfig("test-channel", newConfig, "log"), std::runtime_error);
-
-    // After destroying writer, update should work
-    writer.reset();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Brief pause for cleanup
-    EXPECT_NO_THROW(logManager->updateConfig("test-channel", newConfig, "log"));
-}
-
-TEST_F(LogManagerTest, UpdateConfigInvalidConfig)
-{
-    auto logManager = createLogManager();
-    logManager->registerLog("test-channel", defaultConfig, "log");
-
-    // Invalid base path
-    auto invalidConfig = defaultConfig;
-    invalidConfig.basePath = "/non/existent/path";
-    EXPECT_THROW(logManager->updateConfig("test-channel", invalidConfig, "log"), std::runtime_error);
-
-    // Empty pattern
-    invalidConfig = defaultConfig;
-    invalidConfig.pattern = "";
-    EXPECT_THROW(logManager->updateConfig("test-channel", invalidConfig, "log"), std::runtime_error);
-}
-
 TEST_F(LogManagerTest, DestroyChannelSuccess)
 {
     auto logManager = createLogManager();
-    logManager->registerLog("test-channel", defaultConfig, "log");
 
-    // Verify channel exists
+    auto writer = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
     EXPECT_TRUE(logManager->hasChannel("test-channel"));
 
-    // Destroy channel
-    EXPECT_NO_THROW(logManager->destroyChannel("test-channel"));
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    // Verify channel no longer exists
+    EXPECT_NO_THROW(logManager->destroyChannel("test-channel"));
     EXPECT_FALSE(logManager->hasChannel("test-channel"));
 }
 
@@ -367,9 +251,7 @@ TEST_F(LogManagerTest, DestroyChannelNonExistent)
 TEST_F(LogManagerTest, DestroyChannelWithActiveWriters)
 {
     auto logManager = createLogManager();
-    logManager->registerLog("test-channel", defaultConfig, "log");
 
-    // Create an active writer
     auto writer = logManager->ensureAndGetWriter("test-channel", defaultConfig, "log");
 
     // Attempt to destroy should throw
@@ -377,7 +259,7 @@ TEST_F(LogManagerTest, DestroyChannelWithActiveWriters)
 
     // After destroying writer, destruction should work
     writer.reset();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10)); // Brief pause for cleanup
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     EXPECT_NO_THROW(logManager->destroyChannel("test-channel"));
 }
 
@@ -387,21 +269,16 @@ TEST_F(LogManagerTest, MultipleChannels)
 {
     auto logManager = createLogManager();
 
-    // Register multiple channels
-    logManager->registerLog("channel-1", defaultConfig, "log");
-    logManager->registerLog("channel-2", defaultConfig, "log");
-    logManager->registerLog("channel-3", defaultConfig, "log");
+    // Auto-register multiple channels
+    auto writer1 = logManager->ensureAndGetWriter("channel-1", defaultConfig, "log");
+    auto writer2 = logManager->ensureAndGetWriter("channel-2", defaultConfig, "log");
+    auto writer3a = logManager->ensureAndGetWriter("channel-3", defaultConfig, "log");
+    auto writer3b = logManager->ensureAndGetWriter("channel-3", defaultConfig, "log");
 
     // Verify all channels exist
     EXPECT_TRUE(logManager->hasChannel("channel-1"));
     EXPECT_TRUE(logManager->hasChannel("channel-2"));
     EXPECT_TRUE(logManager->hasChannel("channel-3"));
-
-    // Create writers for different channels
-    auto writer1 = logManager->ensureAndGetWriter("channel-1", defaultConfig, "log");
-    auto writer2 = logManager->ensureAndGetWriter("channel-2", defaultConfig, "log");
-    auto writer3a = logManager->ensureAndGetWriter("channel-3", defaultConfig, "log");
-    auto writer3b = logManager->ensureAndGetWriter("channel-3", defaultConfig, "log");
 
     // Verify writer counts
     EXPECT_EQ(logManager->getActiveWritersCount("channel-1"), 1);
@@ -417,49 +294,11 @@ TEST_F(LogManagerTest, MultipleChannels)
     EXPECT_TRUE(logManager->hasChannel("channel-1"));
     EXPECT_FALSE(logManager->hasChannel("channel-2"));
     EXPECT_TRUE(logManager->hasChannel("channel-3"));
-}
 
-TEST_F(LogManagerTest, ConcurrentChannelAccess)
-{
-    auto logManager = createLogManager();
-    logManager->registerLog("concurrent-channel", defaultConfig, "log");
-
-    const int numThreads = 5;
-    const int writersPerThread = 3;
-    std::vector<std::thread> threads;
-    std::vector<std::vector<std::shared_ptr<streamlog::WriterEvent>>> writers(numThreads);
-
-    // Create multiple threads that get writers
-    for (int i = 0; i < numThreads; ++i)
-    {
-        threads.emplace_back(
-            [&, i]()
-            {
-                for (int j = 0; j < writersPerThread; ++j)
-                {
-                    writers[i].push_back(logManager->ensureAndGetWriter("concurrent-channel", defaultConfig, "log"));
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                }
-            });
-    }
-
-    // Wait for all threads
-    for (auto& thread : threads)
-    {
-        thread.join();
-    }
-
-    // Verify total writer count
-    EXPECT_EQ(logManager->getActiveWritersCount("concurrent-channel"), numThreads * writersPerThread);
-
-    // Clean up writers
-    for (auto& threadWriters : writers)
-    {
-        threadWriters.clear();
-    }
-    std::this_thread::sleep_for(std::chrono::milliseconds(50)); // Allow cleanup
-
-    EXPECT_EQ(logManager->getActiveWritersCount("concurrent-channel"), 0);
+    writer1.reset();
+    writer3a.reset();
+    writer3b.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 // ============= FUNCTIONAL TESTS =============
@@ -467,7 +306,6 @@ TEST_F(LogManagerTest, ConcurrentChannelAccess)
 TEST_F(LogManagerTest, WriterFunctionality)
 {
     auto logManager = createLogManager();
-    logManager->registerLog("write-test", defaultConfig, "log");
 
     auto writer = logManager->ensureAndGetWriter("write-test", defaultConfig, "log");
     ASSERT_NE(writer, nullptr);
@@ -488,41 +326,6 @@ TEST_F(LogManagerTest, WriterFunctionality)
     EXPECT_EQ(logManager->getActiveWritersCount("write-test"), 0);
 }
 
-TEST_F(LogManagerTest, ConfigurationPersistence)
-{
-    auto logManager = createLogManager();
-
-    auto customConfig = defaultConfig;
-    customConfig.maxSize = fastqueue::MIN_QUEUE_CAPACITY * 2; // Set to a different value
-    customConfig.bufferSize = fastqueue::MIN_QUEUE_CAPACITY;  // Set to a different value
-    customConfig.pattern = "custom-${name}-${YYYY}.log";      // ${counter} will be added due to maxSize
-
-    logManager->registerLog("persist-test", customConfig, "log");
-
-    // Verify configuration is stored correctly (accounting for normalization)
-    const auto& storedConfig = logManager->getConfig("persist-test");
-    EXPECT_EQ(storedConfig.basePath, customConfig.basePath);
-    EXPECT_EQ(storedConfig.pattern, "custom-${name}-${YYYY}-${counter}.log"); // Counter added
-    EXPECT_EQ(storedConfig.maxSize, 1048576);                                 // 1MB minimum due to normalization
-    EXPECT_EQ(storedConfig.bufferSize, customConfig.bufferSize);
-
-    // Create and destroy writers, config should persist
-    auto writer1 = logManager->ensureAndGetWriter("persist-test", customConfig, "log");
-    writer1.reset();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-    auto writer2 = logManager->ensureAndGetWriter("persist-test", customConfig, "log");
-    writer2.reset();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-
-    // Configuration should still be the same
-    const auto& finalConfig = logManager->getConfig("persist-test");
-    EXPECT_EQ(finalConfig.basePath, customConfig.basePath);
-    EXPECT_EQ(finalConfig.pattern, "custom-${name}-${YYYY}-${counter}.log"); // Counter added
-    EXPECT_EQ(finalConfig.maxSize, 1048576);                                 // 1MB minimum due to normalization
-    EXPECT_EQ(finalConfig.bufferSize, customConfig.bufferSize);
-}
-
 // ============= EDGE CASES AND ERROR HANDLING =============
 
 TEST_F(LogManagerTest, EmptyStringOperations)
@@ -533,11 +336,8 @@ TEST_F(LogManagerTest, EmptyStringOperations)
     EXPECT_FALSE(logManager->hasChannel(""));
 
     // All modification operations with empty string should throw
-    EXPECT_THROW(logManager->registerLog("", defaultConfig, "log"), std::runtime_error);
     EXPECT_THROW(logManager->ensureAndGetWriter("", defaultConfig, "log"), std::runtime_error);
-    EXPECT_THROW(logManager->getConfig(""), std::runtime_error);
     EXPECT_THROW(logManager->getActiveWritersCount(""), std::runtime_error);
-    EXPECT_THROW(logManager->updateConfig("", defaultConfig, "log"), std::runtime_error);
     EXPECT_THROW(logManager->destroyChannel(""), std::runtime_error);
 }
 
@@ -547,16 +347,21 @@ TEST_F(LogManagerTest, LongChannelNames)
 
     // Test valid long name (should work)
     std::string longName = std::string(200, 'A');
-    EXPECT_NO_THROW(logManager->registerLog(longName, defaultConfig, "log"));
+    auto writer = logManager->ensureAndGetWriter(longName, defaultConfig, "log");
+    EXPECT_NE(writer, nullptr);
     EXPECT_TRUE(logManager->hasChannel(longName));
+
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     // Test extremely long name (may fail depending on limits)
     std::string extremelyLongName = std::string(300, 'B');
-    // This might throw due to filesystem limits, but should be handled gracefully
     try
     {
-        logManager->registerLog(extremelyLongName, defaultConfig, "log");
+        auto w = logManager->ensureAndGetWriter(extremelyLongName, defaultConfig, "log");
         EXPECT_TRUE(logManager->hasChannel(extremelyLongName));
+        w.reset();
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     catch (const std::runtime_error&)
     {
@@ -569,7 +374,6 @@ TEST_F(LogManagerTest, DestructorCleanup)
     // Test that LogManager destructor properly cleans up
     {
         auto logManager = createLogManager();
-        logManager->registerLog("cleanup-test", defaultConfig, "log");
 
         auto writer = logManager->ensureAndGetWriter("cleanup-test", defaultConfig, "log");
         EXPECT_EQ(logManager->getActiveWritersCount("cleanup-test"), 1);
@@ -584,17 +388,21 @@ TEST_F(LogManagerTest, DestructorCleanup)
 TEST_F(LogManagerTest, MultipleWriterLifecycles)
 {
     auto logManager = createLogManager();
-    logManager->registerLog("lifecycle-test", defaultConfig, "log");
+
+    // First call auto-registers the channel
+    auto writer = logManager->ensureAndGetWriter("lifecycle-test", defaultConfig, "log");
+    writer.reset();
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
     // Create multiple writers in sequence
     for (int i = 0; i < 10; ++i)
     {
         {
-            auto writer = logManager->ensureAndGetWriter("lifecycle-test", defaultConfig, "log");
+            auto w = logManager->ensureAndGetWriter("lifecycle-test", defaultConfig, "log");
             EXPECT_EQ(logManager->getActiveWritersCount("lifecycle-test"), 1);
 
             // Write some messages
-            (*writer)(std::string("Message " + std::to_string(i)));
+            (*w)(std::string("Message " + std::to_string(i)));
         } // writer goes out of scope
 
         std::this_thread::sleep_for(std::chrono::milliseconds(5));

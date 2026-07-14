@@ -13,6 +13,7 @@
 #include "sendmsg.h"
 #include "os_net.h"
 #include "../os_crypto/md5/md5_op.h"
+#include "metadata_provider.h"
 #include <ctype.h>
 
 #ifdef WAZUH_UNIT_TESTING
@@ -379,7 +380,7 @@ bool connect_server(int server_id, bool verbose)
     }
 
     if (verbose) {
-        mdebug1("Trying to connect to server ([%s]:%d/%s).",
+        minfo("Trying to connect to server ([%s]:%d/%s).",
             agt->server[server_id].rip,
             agt->server[server_id].port,
             "tcp");
@@ -398,6 +399,26 @@ bool connect_server(int server_id, bool verbose)
             #endif
         }
     } else {
+        if (OS_SetKeepalive(agt->sock) < 0) {
+#ifdef WIN32
+            mwarn("OS_SetKeepalive failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
+            mwarn("OS_SetKeepalive failed with error '%s'", strerror(errno));
+#endif
+        } else {
+            int keepidle  = getDefine_Int("agent", "tcp_keepidle",  1, 7200);
+            int keepintvl = getDefine_Int("agent", "tcp_keepintvl", 1, 100);
+            int keepcnt   = getDefine_Int("agent", "tcp_keepcnt",   1, 50);
+            OS_SetKeepalive_Options(agt->sock, keepidle, keepintvl, keepcnt);
+        }
+        int send_timeout = getDefine_Int("agent", "send_timeout", 1, 600);
+        if (OS_SetSendTimeout(agt->sock, send_timeout) < 0) {
+#ifdef WIN32
+            mwarn("OS_SetSendTimeout failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
+            mwarn("OS_SetSendTimeout failed with error '%s'", strerror(errno));
+#endif
+        }
         agt->rip_id = server_id;
         last_connection_time = (int)time(NULL);
         os_free(ip_address);
@@ -579,6 +600,104 @@ int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
     return enroll_result;
 }
 
+/* Populate shared memory with agent metadata so the first keepalive
+ * already contains full agent info. All data is local and available
+ * immediately after the handshake completes. */
+static void populate_early_metadata(void)
+{
+    agent_metadata_t metadata = {0};
+
+#ifdef WIN32
+    os_info *os = get_win_version();
+#else
+    os_info *os = get_unix_version();
+#endif
+
+    /* Agent identity */
+    if (keys.keysize > 0 && keys.keyentries[0]) {
+        strncpy(metadata.agent_id, keys.keyentries[0]->id, sizeof(metadata.agent_id) - 1);
+        strncpy(metadata.agent_name, keys.keyentries[0]->name, sizeof(metadata.agent_name) - 1);
+    }
+    strncpy(metadata.agent_version, __wazuh_version, sizeof(metadata.agent_version) - 1);
+
+    /* OS info */
+    if (os) {
+        if (os->os_name) {
+            strncpy(metadata.os_name, os->os_name, sizeof(metadata.os_name) - 1);
+        }
+        if (os->os_version) {
+            strncpy(metadata.os_version, os->os_version, sizeof(metadata.os_version) - 1);
+        }
+        if (os->os_platform) {
+            strncpy(metadata.os_platform, os->os_platform, sizeof(metadata.os_platform) - 1);
+        }
+        if (os->machine) {
+            strncpy(metadata.architecture, os->machine, sizeof(metadata.architecture) - 1);
+        }
+        if (os->nodename) {
+            strncpy(metadata.hostname, os->nodename, sizeof(metadata.hostname) - 1);
+        }
+        free_osinfo(os);
+    }
+
+    /* OS type (compile-time constant) */
+#ifdef WIN32
+    strncpy(metadata.os_type, "windows", sizeof(metadata.os_type) - 1);
+#elif defined(__MACH__)
+    strncpy(metadata.os_type, "macos", sizeof(metadata.os_type) - 1);
+#else
+    strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+#endif
+
+    /* Cluster info from handshake */
+    strncpy(metadata.cluster_name, agent_cluster_name, sizeof(metadata.cluster_name) - 1);
+    strncpy(metadata.cluster_node, agent_cluster_node, sizeof(metadata.cluster_node) - 1);
+
+    /* Groups from handshake */
+    if (agent_agent_groups[0] != '\0') {
+        /* Count groups (comma-separated) */
+        size_t count = 1;
+        for (const char *p = agent_agent_groups; *p; p++) {
+            if (*p == ',') {
+                count++;
+            }
+        }
+
+        metadata.groups = (char **)calloc(count, sizeof(char *));
+        if (metadata.groups) {
+            char groups_copy[OS_SIZE_65536];
+            strncpy(groups_copy, agent_agent_groups, sizeof(groups_copy) - 1);
+            groups_copy[sizeof(groups_copy) - 1] = '\0';
+
+            size_t i = 0;
+            char *saveptr = NULL;
+            char *token = strtok_r(groups_copy, ",", &saveptr);
+            while (token && i < count) {
+                if (token[0] != '\0') {
+                    metadata.groups[i] = strdup(token);
+                    i++;
+                }
+                token = strtok_r(NULL, ",", &saveptr);
+            }
+            metadata.groups_count = i;
+        }
+    }
+
+    if (metadata_provider_update(&metadata) == 0) {
+        mdebug1("Early metadata populated into shared memory");
+    } else {
+        mdebug1("Failed to populate early metadata");
+    }
+
+    /* Free groups */
+    if (metadata.groups) {
+        for (size_t i = 0; i < metadata.groups_count; i++) {
+            free(metadata.groups[i]);
+        }
+        free(metadata.groups);
+    }
+}
+
 /**
  * @brief Holds handshake logic for an attempt to connect to server
  * @param server_id index of the specified server from agt servers list
@@ -677,6 +796,11 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                                 agent_agent_groups[sizeof(agent_agent_groups) - 1] = '\0';
                                 mdebug1("Agent groups: %s", agent_agent_groups);
 
+                                /* Populate shared memory before opening the startup gate so that
+                                 * any module that starts immediately after has full metadata
+                                 * (OS, hostname, groups, cluster info) available. */
+                                populate_early_metadata();
+
                                 startup_gate_process_handshake(is_startup, merged_sum_buffer);
 
                                 /* Check if limits changed and reload if auto_restart is enabled */
@@ -696,6 +820,7 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                             }
                         } else {
                             mdebug1("No handshake JSON after ACK, using defaults");
+                            populate_early_metadata();
                             startup_gate_process_handshake(is_startup, NULL);
                         }
 
@@ -734,14 +859,20 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
  * */
 STATIC void send_msg_on_startup(void) {
 
-    char msg[OS_MAXSTR + 2] = { '\0' };
     char fmsg[OS_MAXSTR + 1] = { '\0' };
+    char timestamp[32];
 
-    /* Send log message about start up */
-    snprintf(msg, OS_MAXSTR, OS_AG_STARTED,
-            atoi(keys.keyentries[0]->id),
-            keys.keyentries[0]->name);
-    os_snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", msg);
+    get_iso8601_utc_time(timestamp, sizeof(timestamp));
+
+    cJSON *event = cJSON_CreateObject();
+    cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
+    cJSON_AddStringToObject(event, "event.action", "agent-start");
+    cJSON_AddStringToObject(event, "event.start", timestamp);
+    char *json_str = cJSON_PrintUnformatted(event);
+    cJSON_Delete(event);
+
+    os_snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);
+    os_free(json_str);
 
     send_msg(fmsg, -1);
 }

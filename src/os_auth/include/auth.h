@@ -108,6 +108,11 @@ void authd_sigblock();
 w_err_t w_auth_validate_groups(const char *groups, char *response);
 
 /**
+ * @brief Cleanup compiled regex for group validation (for testing)
+ * */
+void w_auth_validate_groups_cleanup(void);
+
+/**
  * @brief Parse a raw buffer from agent request into enrollment data.
  * @param buf Raw buffer to be parsed
  * @param response 2048 length buffer where the error response will be copied
@@ -192,6 +197,14 @@ cJSON* local_add(const char *id,
  * @return const char* The resulting hash or NULL on error.
  */
 char *w_generate_random_pass();
+
+/* Load the shared password (master): read it from @p path or generate+persist one.
+ * Fail-closed on an invalid existing file; never returns NULL. Sets @p generated. */
+char *w_authd_load_password(const char *path, bool *generated);
+
+/* Read the shared password from @p path (cluster worker): never generates, persists,
+ * nor exits. Returns NULL when missing/empty/short/unreadable. */
+char *w_authd_read_password(const char *path);
 
 extern char shost[512];
 extern keystore keys;

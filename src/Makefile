@@ -1,7 +1,5 @@
 # Copyright (C) 2015, Wazuh Inc.
 #
-# Copyright (C) 2015, Wazuh Inc.
-#
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 2 of the License, or
@@ -55,7 +53,6 @@ EXTERNAL_AUDIT=external/audit-userspace/
 EXTERNAL_LIBFFI=external/libffi/
 EXTERNAL_LIBPLIST=external/libplist/
 EXTERNAL_CPYTHON=external/cpython/
-EXTERNAL_MSGPACK=external/msgpack/
 EXTERNAL_BZIP2=external/bzip2/
 EXTERNAL_GOOGLE_TEST=external/googletest/
 EXTERNAL_GOOGLE_BENCHMARK=external/benchmark/
@@ -77,7 +74,6 @@ EXTERNAL_LIBPCRE2=external/libpcre2/
 EXTERNAL_SIMDJSON=external/simdjson/
 EXTERNAL_PROCPS=external/procps/
 EXTERNAL_LIBDB=external/libdb/build_unix/
-EXTERNAL_PACMAN=external/pacman/
 EXTERNAL_LIBARCHIVE=external/libarchive/
 EXTERNAL_JEMALLOC=external/jemalloc/
 EXTERNAL_RPM=external/rpm/
@@ -92,9 +88,6 @@ else
 WAZUH_USER?=wazuh
 WAZUH_GROUP?=wazuh
 endif
-SELINUX_MODULE=selinux/wazuh.mod
-SELINUX_ENFORCEMENT=selinux/wazuh.te
-SELINUX_POLICY=selinux/wazuh.pp
 USE_INOTIFY=no
 USE_BIG_ENDIAN=no
 USE_AUDIT=no
@@ -135,8 +128,13 @@ CMAKE_OPTS+=-DINOTIFY_ENABLED=ON
 endif
 ifneq (,$(filter ${USE_AUDIT},YES yes y Y 1))
 CMAKE_OPTS+=-DENABLE_AUDIT=ON
-else ifeq (${uname_S},Linux)
+else ifeq (${TARGET},agent)
+# Auto-enable audit only on the Linux agent: whodata/FIM (syscheckd) is the
+# sole consumer and it is an agent-only component, so the server neither needs
+# the ENABLE_AUDIT code path in shared/src/audit_op.c nor the libaudit dep.
+ifeq (${uname_S},Linux)
 CMAKE_OPTS+=-DENABLE_AUDIT=ON
+endif
 endif
 endif
 ifneq (,$(filter ${DEBUG},YES yes y Y 1))
@@ -157,10 +155,14 @@ else
 USE_SELINUX=no
 endif
 
+ifeq (${TARGET},manager)
+override USE_SELINUX := no
+endif
+
 ifneq (${TARGET},winagent)
 ifeq (${uname_S},Linux)
 		PRECOMPILED_OS:=linux
-		CC=gcc
+		CC?=gcc
 else
 ifeq (${uname_S},Darwin)
 	PRECOMPILED_OS:=darwin
@@ -335,8 +337,10 @@ agent: ${CPPLIBDEPS}
 	${MAKE} ${BUILD_CMAKE_PROJECTS}
 
 ifneq (,$(filter ${USE_SELINUX},YES yes y Y 1))
-server manager agent: selinux
-endif
+SELINUX_MODULE=selinux/wazuh.mod
+SELINUX_ENFORCEMENT=selinux/wazuh.te
+SELINUX_POLICY=selinux/wazuh.pp
+agent: selinux
 
 selinux: $(SELINUX_POLICY)
 
@@ -345,6 +349,7 @@ $(SELINUX_POLICY): $(SELINUX_MODULE)
 
 $(SELINUX_MODULE): $(SELINUX_ENFORCEMENT)
 	checkmodule -M -m -o $@ $?
+endif
 
 ifeq (${MAKECMDGOALS},winagent)
 $(error Do not use 'winagent' directly, use 'TARGET=winagent')
@@ -396,7 +401,16 @@ ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
 	TZDATA_CURL_FLAGS += --retry-all-errors
 endif
 TZDATA_CURL := curl $(TZDATA_CURL_FLAGS) -o
-DEPS_VERSION = 99-29585
+# Curl flags for indexer templates and WCS flat files with retry logic
+INDEXER_CURL_FLAGS := -fsS --retry 5 --retry-delay 2 --connect-timeout 20 --max-time 300
+ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-connrefused'))
+	INDEXER_CURL_FLAGS += --retry-connrefused
+endif
+ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
+	INDEXER_CURL_FLAGS += --retry-all-errors
+endif
+INDEXER_CURL := curl $(INDEXER_CURL_FLAGS) -o
+DEPS_VERSION = 99-37361
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -448,21 +462,48 @@ ifeq (,$(filter ${EXTERNAL_SRC_ONLY},YES yes y Y 1))
 PRECOMPILED_RES := $(PRECOMPILED_OS)$(PRECOMPILED_ARCH)
 endif
 
-# Agent dependencies
-EXTERNAL_RES := cJSON curl libdb libffi libyaml openssl procps sqlite zlib audit-userspace msgpack bzip2 nlohmann googletest libpcre2 libplist pacman libarchive popt lua rpm rocksdb lzma cpp-httplib benchmark libbpf-bootstrap dbus flatbuffers
-ifneq (${TARGET},agent)
+# Universal dependencies (all platforms, all targets).
+#
+# bzip2, googletest and benchmark are build-time requirements on every target,
+# so they stay unconditional even though not every target links them:
+#   - bzip2: shared.h pulls in shared/include/bzip2_op.h, which includes
+#     <bzlib.h> unconditionally (the bzip2 unit-test wrapper needs the header
+#     too). Only non-Windows targets actually link libbz2 -- external/CMakeLists
+#     builds ext_bzip2 under NOT IS_WINDOWS, and the server additionally builds
+#     rocksdb WITH_BZ2.
+#   - googletest/benchmark: the published per-(os,arch) dependency bundle is
+#     shared by the unit-test CI, whose deps step runs `make deps TARGET=...`
+#     WITHOUT TEST=1 and only enables tests at build time. Gating these behind a
+#     TEST flag drops them from that bundle and breaks every test build (#36247).
+EXTERNAL_RES := cJSON openssl zlib sqlite libyaml curl libpcre2 nlohmann flatbuffers bzip2 googletest benchmark
+
+# Linux unit-test wrapper dependencies (every Linux leg except the winagent
+# cross-compile). unit_tests/wrappers/externals/{audit,procpc} include
+# <libaudit.h> and external/procps/readproc.h and are compiled into the Linux
+# test build for BOTH the agent and the manager, so the headers must be present
+# on every Linux target even though only the agent links libaudit/procps in
+# production (ext_audit/ext_procps are gated IS_LINUX AND IS_AGENT).
 ifneq (${TARGET},winagent)
-	# Manager extra dependency
-	EXTERNAL_RES += $(CPYTHON) jemalloc flatbuffers simdjson spdlog yaml-cpp pugixml libmaxminddb date fmt abseil-cpp re2 protobuf rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata
+ifeq (${uname_S}, Linux)
+	EXTERNAL_RES += audit-userspace procps
 endif
 endif
 
-# Remove libbpf-bootstrap and dbus if the target is winagent OR non-Linux OS
-ifeq (${TARGET}, winagent)
-	EXTERNAL_RES := $(filter-out libbpf-bootstrap dbus, $(EXTERNAL_RES))
-else
-ifneq (${uname_S}, Linux)
-	EXTERNAL_RES := $(filter-out libbpf-bootstrap dbus, $(EXTERNAL_RES))
+ifeq (${TARGET},agent)
+# Linux agent-specific dependencies
+ifeq (${uname_S}, Linux)
+	EXTERNAL_RES += libdb popt lua rpm dbus libbpf-bootstrap
+endif
+# macOS agent-specific dependencies
+ifeq (${uname_S}, Darwin)
+	EXTERNAL_RES += libplist
+endif
+endif
+
+# Manager-only dependencies.
+ifneq (${TARGET},agent)
+ifneq (${TARGET},winagent)
+	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib
 endif
 endif
 
@@ -505,7 +546,8 @@ INDEXER_TEMPLATES_SERVER_STATES := \
 
 INDEXER_TEMPLATES_SERVER_STREAMS := \
 	metrics-agents.json \
-	metrics-comms.json
+	metrics-comms.json \
+	metrics-normalization.json
 
 # WCS flat files
 WCS_FLAT_DIR := external/wcs-flat-files
@@ -528,6 +570,13 @@ INDEXER_TEMPLATES_STREAMS := $(INDEXER_TEMPLATES_SERVER_STREAMS)
 endif
 
 INDEXER_TEMPLATE_FILES := $(INDEXER_TEMPLATES_STATES:%=$(INDEXER_PLUGINS_DIR)/%) $(INDEXER_TEMPLATES_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%)
+
+# Print the resolved value of any Makefile variable for the active TARGET, e.g.
+#   make -s print-EXTERNAL_RES TARGET=agent
+# packages/externals tooling uses this to read the dependency list straight from
+# make (which evaluates the ifeq/TARGET logic) instead of re-parsing this file.
+print-%:
+	@echo '$($*)'
 
 .PHONY: deps
 deps: $(EXTERNAL_TAR) $(SHARED_TAR) $(INDEXER_TEMPLATE_FILES) $(WCS_FLAT_FILES)
@@ -630,8 +679,8 @@ $(INDEXER_TEMPLATES_SERVER_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%): | $(INDEXER_PLUG
 	@success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
-		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
+		echo "$(INDEXER_CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(INDEXER_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
 			success=1; \
 			break; \
 		fi; \
@@ -647,8 +696,8 @@ $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
 	 @success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STATES_PATH)/$(notdir $@)"; \
-		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
+		echo "$(INDEXER_CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(INDEXER_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
 			success=1; \
 			break; \
 		fi; \
@@ -669,8 +718,8 @@ $(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
 	 @success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(WCS_FLAT_STATELESS_PATH)/$(notdir $@)"; \
-		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
+		echo "$(INDEXER_CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(INDEXER_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
 			success=1; \
 			break; \
 		fi; \
@@ -801,11 +850,9 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_POPT)build
 	rm -rf $(EXTERNAL_RPM)builddir
 # Manually-compiled dependencies - remove object files and build artifacts
-	rm -f $(EXTERNAL_PACMAN)lib/libalpm/*.a $(EXTERNAL_PACMAN)lib/libalpm/*.o
 	rm -f $(EXTERNAL_JSON)*.o $(EXTERNAL_JSON)*.a
 	rm -f $(EXTERNAL_SQLITE)*.o $(EXTERNAL_SQLITE)*.a
 	rm -f $(EXTERNAL_PROCPS)*.o $(EXTERNAL_PROCPS)*.a
-	rm -f $(EXTERNAL_MSGPACK)src/*.o $(EXTERNAL_MSGPACK)*.a
 # Clean CMake ExternalProject stamp files
 	rm -rf build/external/*-prefix
 endif
@@ -825,9 +872,12 @@ clean-internals:
 # Flatbuffers
 	rm -rf shared_modules/utils/flatbuffers/build
 	rm -rf shared_modules/utils/flatbuffers/include
+	rm -f wazuh_modules/syscollector/include/*_generated.h
+	rm -f wazuh_modules/vulnerability_scanner/include/*_generated.h
+	rm -f wazuh_modules/vulnerability_scanner/include/*_schema.h
 # Selinux
-	rm -f ${SELINUX_MODULE}
-	rm -f ${SELINUX_POLICY}
+	rm -f selinux/wazuh.mod
+	rm -f selinux/wazuh.pp
 
 clean-framework:
 	${MAKE} -C ../framework clean

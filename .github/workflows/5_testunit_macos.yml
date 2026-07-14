@@ -2,9 +2,26 @@ name: 5.X - macOS - Unit tests
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - "src/**"
       - ".github/workflows/5_testunit_macos.yml"
+      - "!src/engine/**"
+      - "!src/remoted/**"
+      - "!src/util/**"
+      # Windows-only, never built for the macOS agent
+      - "!src/win32/**"
+      - "!src/shared_modules/indexer_connector/**"
+      - "!src/shared_modules/keystore/**"
+      # Only src/ for these server trees: agent modules compile against their include/
+      - "!src/monitord/src/**"
+      - "!src/os_auth/src/**"
+      - "!src/wazuh_db/src/**"
+      - "!src/wazuh_db/schemas/**"
+      - "!src/shared_modules/content_manager/src/**"
+      - "!src/shared_modules/router/src/**"
+      - "!src/wazuh_modules/vulnerability_scanner/src/**"
+      - "!src/wazuh_modules/inventory_sync/src/**"
   workflow_dispatch:
 
 concurrency:
@@ -13,7 +30,9 @@ concurrency:
 
 jobs:
   build-sonoma:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: macos-15
+    timeout-minutes: 45
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v3

@@ -135,7 +135,7 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<geo::IManager>& geoManager)
             throw std::runtime_error(fmt::format("{} -> Failure: Error getting geo city locator: {}", name, resDB.readableStr()));
         }
 
-        auto runstate = buildCtx->runState();
+        const auto isTestMode = buildCtx->isTestMode();
 
         return [=, locator = resDB.value(), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
         {
@@ -143,17 +143,17 @@ MapBuilder getMMDBGeoBuilder(const std::shared_ptr<geo::IManager>& geoManager)
             std::string ipStr;
             if (event->getString(ipStr, srcRef) != json::RetGet::Success)
             {
-                RETURN_FAILURE(runstate, json::Json {}, notFoundTrace);
+                RETURN_FAILURE(isTestMode, json::Json {}, notFoundTrace);
             }
 
             auto geo = mapGeoToECS(ipStr, locator);
 
             if (geo.size() == 0)
             {
-                RETURN_FAILURE(runstate, json::Json {}, emptyDataTrace);
+                RETURN_FAILURE(isTestMode, json::Json {}, emptyDataTrace);
             }
 
-            RETURN_SUCCESS(runstate, geo, successTrace);
+            RETURN_SUCCESS(isTestMode, geo, successTrace);
         };
     };
 };
@@ -188,7 +188,7 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<geo::IManager>& geoManager)
         {
             throw std::runtime_error(fmt::format("{} -> Failure: Error getting geo asn locator: {}", name, resDB.readableStr()));
         }
-        auto runstate = buildCtx->runState();
+        const auto isTestMode = buildCtx->isTestMode();
 
         return [=, locator = resDB.value(), srcRef = ipRef.jsonPath()](base::ConstEvent event) -> MapResult
         {
@@ -196,17 +196,17 @@ MapBuilder getMMDBASNBuilder(const std::shared_ptr<geo::IManager>& geoManager)
             std::string ipStr;
             if (event->getString(ipStr, srcRef) != json::RetGet::Success)
             {
-                RETURN_FAILURE(runstate, json::Json {}, notFoundTrace);
+                RETURN_FAILURE(isTestMode, json::Json {}, notFoundTrace);
             }
 
             auto as = mapAStoECS(ipStr, locator);
 
             if (as.size() == 0)
             {
-                RETURN_FAILURE(runstate, json::Json {}, emptyDataTrace);
+                RETURN_FAILURE(isTestMode, json::Json {}, emptyDataTrace);
             }
 
-            RETURN_SUCCESS(runstate, as, successTrace);
+            RETURN_SUCCESS(isTestMode, as, successTrace);
         };
     };
 };

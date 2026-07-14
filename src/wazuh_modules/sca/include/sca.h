@@ -2,6 +2,7 @@
 #define _SCA_H
 
 // Define EXPORTED for any platform
+#include "agent_sync_protocol_c_interface.h"
 #ifdef _WIN32
 #ifdef WIN_EXPORT
 #define EXPORTED __declspec(dllexport)
@@ -52,6 +53,7 @@ EXPORTED void sca_start(const struct wm_sca_t* sca_config);
 EXPORTED void sca_init();
 
 EXPORTED void sca_stop();
+EXPORTED void sca_release_resources();
 
 EXPORTED void sca_set_wm_exec(wm_exec_callback_t wm_exec_callback);
 
@@ -85,6 +87,7 @@ typedef void (*sca_init_func)();
 typedef void (*sca_start_func)(const struct wm_sca_t* sca_config);
 
 typedef void (*sca_stop_func)();
+typedef void (*sca_release_resources_func)();
 
 typedef void (*sca_set_wm_exec_func)(
     int (*wm_exec_callback)(char* command, char** output, int* exitcode, int secs, const char* add_path));

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <base/json.hpp>
+#include <base/logging.hpp>
 #include <base/utils/hash.hpp>
 #include <filesystem>
 #include <fstream>
@@ -89,6 +90,7 @@ protected:
 
     void SetUp() override
     {
+        logging::testInit();
         mockStore = std::make_shared<store::mocks::MockStore>();
         mockDownloader = std::make_shared<mocks::MockDownloader>();
 

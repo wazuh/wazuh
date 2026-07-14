@@ -187,10 +187,7 @@ int rootcheck_init(int test_config)
 
 #ifdef OSSECHIDS
     /* Start up message */
-#ifdef WIN32
     mtinfo(ARGV0, STARTUP_MSG, getpid());
-#endif /* WIN32 */
-
 #endif /* OSSECHIDS */
 
     /* Initialize rk list */

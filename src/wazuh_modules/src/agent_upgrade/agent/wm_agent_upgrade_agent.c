@@ -27,25 +27,23 @@
 #endif
 
 const char* upgrade_values[] = {
-    [WM_UPGRADE_SUCCESSFUL] = "0",
-    [WM_UPGRADE_FAILED_INTERMEDIATE] = "1",
-    [WM_UPGRADE_FAILED] = "2"
-};
+    [WM_UPGRADE_SUCCESSFUL] = "0", [WM_UPGRADE_FAILED_INTERMEDIATE] = "1", [WM_UPGRADE_FAILED] = "2"};
 
-const char* upgrade_messages[] = {
-    [WM_UPGRADE_SUCCESSFUL] = "Upgrade was successful",
-    [WM_UPGRADE_FAILED_INTERMEDIATE] = "Upgrade failed: intermediate version required",
-    [WM_UPGRADE_FAILED] = "Upgrade failed"
-};
+const char* upgrade_messages[] = {[WM_UPGRADE_SUCCESSFUL] = "Upgrade was successful",
+                                  [WM_UPGRADE_FAILED_INTERMEDIATE] = "Upgrade failed: intermediate version required",
+                                  [WM_UPGRADE_FAILED] = "Upgrade failed"};
 
-static const char *task_statuses_map[] = {
-    [WM_UPGRADE_SUCCESSFUL] = WM_TASK_STATUS_DONE,
-    [WM_UPGRADE_FAILED_INTERMEDIATE] = WM_TASK_STATUS_FAILED,
-    [WM_UPGRADE_FAILED] = WM_TASK_STATUS_FAILED
-};
+static const char* task_statuses_map[] = {[WM_UPGRADE_SUCCESSFUL] = WM_TASK_STATUS_DONE,
+                                          [WM_UPGRADE_FAILED_INTERMEDIATE] = WM_TASK_STATUS_FAILED,
+                                          [WM_UPGRADE_FAILED] = WM_TASK_STATUS_FAILED};
 
 // CA certificates
-char **wcom_ca_store = NULL;
+char** wcom_ca_store = NULL;
+
+STATIC bool wm_agent_upgrade_is_shutting_down(void)
+{
+    return wm_shutdown_requested != 0;
+}
 
 #ifndef WIN32
 
@@ -53,7 +51,7 @@ char **wcom_ca_store = NULL;
  * Listen to the upgrade socket in order to receive commands
  * @return only on errors, socket will be closed
  * */
-STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg);
+STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void* arg);
 
 #endif
 
@@ -73,7 +71,7 @@ STATIC void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) 
  * @retval true information was found on the upgrade_result file
  * @retval either the upgrade_result file does not exist or contains invalid information
  * */
-STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
+STATIC bool wm_upgrade_agent_search_upgrade_result(int* queue_fd);
 
 /**
  * Reads the upgrade_result file if it is present and sends the upgrade result message to the manager.
@@ -89,99 +87,101 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd);
  * @param state upgrade result state
  * @param raw_code raw numeric code read from upgrade_result file
  * */
-STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state, unsigned int raw_code);
+STATIC void wm_upgrade_agent_send_ack_message(int* queue_fd, wm_upgrade_agent_state state, unsigned int raw_code);
 
-void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, const int enabled) {
+void wm_agent_upgrade_start_agent_module(const wm_agent_configs* agent_config, const int enabled)
+{
 
     // Check if module is enabled
-    if (!enabled) {
+    if (!enabled)
+    {
         allow_upgrades = false;
-    } else {
-        mtinfo(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_MODULE_STARTED);
+    }
+    else
+    {
+        mtinfo(WM_AGENT_UPGRADE_LOGTAG, STARTUP_MSG, (int)getpid());
     }
 
-    #ifndef WIN32
-        w_create_thread(wm_agent_upgrade_listen_messages, NULL);
-    #endif
+#ifndef WIN32
+    w_create_thread(wm_agent_upgrade_listen_messages, NULL);
+#endif
 
-    if (enabled) {
+    if (enabled)
+    {
         wm_agent_upgrade_check_status(agent_config);
     }
 }
 
 #ifndef WIN32
 
-STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg) {
+STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void* arg)
+{
     // Initialize socket
     char sockname[PATH_MAX + 1];
 
-	strcpy(sockname, AGENT_UPGRADE_SOCK);
+    strcpy(sockname, AGENT_UPGRADE_SOCK);
 
     int sock = OS_BindUnixDomainWithPerms(sockname, SOCK_STREAM, OS_MAXSTR, getuid(), wm_getGroupID(), 0660);
-    if (sock < 0) {
+    if (sock < 0)
+    {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_BIND_SOCK_ERROR, AGENT_UPGRADE_SOCK, strerror(errno));
         return NULL;
     }
 
-    while(1) {
+    while (!wm_shutdown_requested)
+    {
         // listen - wait connection
         fd_set fdset;
         FD_ZERO(&fdset);
         FD_SET(sock, &fdset);
 
-        switch (select(sock + 1, &fdset, NULL, NULL, NULL)) {
-        case -1:
-            if (errno != EINTR) {
+        switch (wm_select_interruptible(sock, &fdset))
+        {
+            case -1:
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SELECT_ERROR, strerror(errno));
                 close(sock);
                 return NULL;
-            }
-            continue;
-        case 0:
-            continue;
+            case 0: continue;
         }
 
-        //Accept
+        // Accept
         int peer;
-        if (peer = accept(sock, NULL, NULL), peer < 0) {
-            if (errno != EINTR) {
+        if (peer = accept(sock, NULL, NULL), peer < 0)
+        {
+            if (errno != EINTR)
+            {
                 mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ACCEPT_ERROR, strerror(errno));
             }
             continue;
         }
 
         // Get request string
-        char *buffer = NULL;
+        char* buffer = NULL;
 
         os_calloc(OS_MAXSTR, sizeof(char), buffer);
         int length;
-        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length) {
-        case OS_SOCKTERR:
-            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SOCKTERR_ERROR);
-            break;
-        case -1:
-            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno));
-            break;
-        case 0:
-            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_EMPTY_MESSAGE);
-            break;
-        default:
-            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMMING_MESSAGE, buffer);
-            char* message = NULL;
-            size_t length = wm_agent_upgrade_process_command(buffer, &message);
+        switch (length = OS_RecvSecureTCP(peer, buffer, OS_MAXSTR), length)
+        {
+            case OS_SOCKTERR: mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_SOCKTERR_ERROR); break;
+            case -1: mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RECV_ERROR, strerror(errno)); break;
+            case 0: mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_EMPTY_MESSAGE); break;
+            default:
+                mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_INCOMMING_MESSAGE, buffer);
+                char* message = NULL;
+                size_t length = wm_agent_upgrade_process_command(buffer, &message);
 
-            mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESPONSE_MESSAGE, message);
-            OS_SendSecureTCP(peer, length, message);
-            os_free(message);
-            break;
+                mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_RESPONSE_MESSAGE, message);
+                OS_SendSecureTCP(peer, length, message);
+                os_free(message);
+                break;
         }
 
         os_free(buffer);
         close(peer);
 
-    #ifdef WAZUH_UNIT_TESTING
+#ifdef WAZUH_UNIT_TESTING
         break;
-    #endif
+#endif
     }
 
     close(sock);
@@ -191,19 +191,33 @@ STATIC void* wm_agent_upgrade_listen_messages(__attribute__((unused)) void *arg)
 
 #endif
 
-STATIC void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) {
+STATIC void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config)
+{
     /**
      *  StartMQ will wait until agent connection which is when the pkg_install.sh will write
-     *  the upgrade result
-    */
-    int queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
+     *  the upgrade result. The predicate aborts the retry loop on shutdown so the module
+     *  does not block past the cooperative cancellation deadline.
+     */
+    int queue_fd = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_agent_upgrade_is_shutting_down);
+
+    if (wm_shutdown_requested)
+    {
+        return;
+    }
 
     // Wait until pkg_installer script verifies the agent was connected and writes the upgrade_result file
-    sleep(WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
+    wm_sleep_interruptible(WM_AGENT_UPGRADE_RESULT_WAIT_TIME);
+    if (wm_shutdown_requested)
+    {
+        return;
+    }
 
-    if (queue_fd < 0) {
+    if (queue_fd < 0)
+    {
         mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_QUEUE_FD);
-    } else {
+    }
+    else
+    {
         bool result_available = true;
         unsigned int wait_time = agent_config->upgrade_wait_start;
         /**
@@ -211,46 +225,57 @@ STATIC void wm_agent_upgrade_check_status(const wm_agent_configs* agent_config) 
          * If the manager is able to update the upgrade status will notify the agent
          * erasing the result file and exiting this loop
          * */
-        while (result_available) {
+        while (result_available)
+        {
             result_available = wm_upgrade_agent_search_upgrade_result(&queue_fd);
 
-            if(result_available) {
-                sleep(wait_time);
+            if (result_available)
+            {
+                wm_sleep_interruptible((int)wait_time);
+                if (wm_shutdown_requested)
+                {
+                    break;
+                }
 
                 wait_time *= agent_config->upgrade_wait_factor_increase;
-                if (wait_time > agent_config->upgrade_wait_max) {
+                if (wait_time > agent_config->upgrade_wait_max)
+                {
                     wait_time = agent_config->upgrade_wait_max;
                 }
             }
         }
-    #ifndef WIN32
+#ifndef WIN32
         close(queue_fd);
-    #endif
+#endif
     }
 
-    if (!allow_upgrades) {
+    if (!allow_upgrades)
+    {
         allow_upgrades = true;
     }
 }
 
-STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd) {
+STATIC bool wm_upgrade_agent_search_upgrade_result(int* queue_fd)
+{
     char buffer[20];
-    const char * PATH = WM_AGENT_UPGRADE_RESULT_FILE;
+    const char* PATH = WM_AGENT_UPGRADE_RESULT_FILE;
 
-    FILE *result_file = wfopen(PATH, "r");
-    if (result_file) {
-        if (fgets(buffer, 20, result_file) == NULL) {
+    FILE* result_file = wfopen(PATH, "r");
+    if (result_file)
+    {
+        if (fgets(buffer, 20, result_file) == NULL)
+        {
             fclose(result_file);
             return true;
         }
         fclose(result_file);
 
-        char *endptr;
+        char* endptr;
         unsigned long raw_code = strtoul(buffer, &endptr, 10);
-        if (endptr != buffer && (*endptr == '\0' || *endptr == '\n' || *endptr == '\r')) {
-            wm_upgrade_agent_state state = (raw_code < WM_UPGRADE_MAX_STATE)
-                                           ? (wm_upgrade_agent_state)raw_code
-                                           : WM_UPGRADE_FAILED;
+        if (endptr != buffer && (*endptr == '\0' || *endptr == '\n' || *endptr == '\r'))
+        {
+            wm_upgrade_agent_state state =
+                (raw_code < WM_UPGRADE_MAX_STATE) ? (wm_upgrade_agent_state)raw_code : WM_UPGRADE_FAILED;
             wm_upgrade_agent_send_ack_message(queue_fd, state, (unsigned int)raw_code);
             return true;
         }
@@ -258,25 +283,36 @@ STATIC bool wm_upgrade_agent_search_upgrade_result(int *queue_fd) {
     return false;
 }
 
-STATIC void wm_upgrade_agent_send_ack_message(int *queue_fd, wm_upgrade_agent_state state, unsigned int raw_code) {
+STATIC void wm_upgrade_agent_send_ack_message(int* queue_fd, wm_upgrade_agent_state state, unsigned int raw_code)
+{
     int msg_delay = 1000000 / wm_max_eps;
     cJSON* root = cJSON_CreateObject();
     cJSON* parameters = cJSON_CreateObject();
 
-    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS]);
+    cJSON_AddStringToObject(
+        root, task_manager_json_keys[WM_TASK_COMMAND], task_manager_commands_list[WM_TASK_UPGRADE_UPDATE_STATUS]);
     cJSON_AddNumberToObject(parameters, task_manager_json_keys[WM_TASK_ERROR], raw_code);
     cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], upgrade_messages[state]);
-    cJSON_AddStringToObject(parameters,  task_manager_json_keys[WM_TASK_STATUS], task_statuses_map[state]);
+    cJSON_AddStringToObject(parameters, task_manager_json_keys[WM_TASK_STATUS], task_statuses_map[state]);
     cJSON_AddItemToObject(root, task_manager_json_keys[WM_TASK_PARAMETERS], parameters);
 
-    char *msg_string = cJSON_PrintUnformatted(root);
-    if (wm_sendmsg(msg_delay, *queue_fd, msg_string, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], UPGRADE_MQ) < 0) {
+    char* msg_string = cJSON_PrintUnformatted(root);
+    if (wm_sendmsg(msg_delay, *queue_fd, msg_string, task_manager_modules_list[WM_TASK_UPGRADE_MODULE], UPGRADE_MQ) < 0)
+    {
         mterror(WM_AGENT_UPGRADE_LOGTAG, QUEUE_ERROR, DEFAULTQUEUE, strerror(errno));
-        if(*queue_fd >= 0){
+        if (*queue_fd >= 0)
+        {
             close(*queue_fd);
         }
-        *queue_fd = StartMQ(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS);
-        if (*queue_fd < 0) {
+        *queue_fd = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_agent_upgrade_is_shutting_down);
+        if (wm_shutdown_requested)
+        {
+            os_free(msg_string);
+            cJSON_Delete(root);
+            return;
+        }
+        if (*queue_fd < 0)
+        {
             mterror_exit(WM_AGENT_UPGRADE_LOGTAG, QUEUE_FATAL, DEFAULTQUEUE);
         }
     }

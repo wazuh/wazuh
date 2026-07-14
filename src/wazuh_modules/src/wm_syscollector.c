@@ -53,6 +53,12 @@ pthread_mutex_t sys_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool need_shutdown_wait = false;
 static pthread_t sys_main_thread;
 static bool sys_main_thread_initialized = false;
+#ifndef WIN32
+static pthread_t sync_worker_thread;
+#else
+static HANDLE sync_worker_thread = NULL;
+#endif
+static bool sync_worker_thread_initialized = false;
 pthread_mutex_t sys_reconnect_mutex = PTHREAD_MUTEX_INITIALIZER;
 bool shutdown_process_started = false;
 
@@ -74,6 +80,7 @@ void* syscollector_module = NULL;
 syscollector_init_func syscollector_init_ptr = NULL;
 syscollector_start_func syscollector_start_ptr = NULL;
 syscollector_stop_func syscollector_stop_ptr = NULL;
+syscollector_release_resources_func syscollector_release_resources_ptr = NULL;
 
 // Sync protocol function pointers
 syscollector_init_sync_func syscollector_init_sync_ptr = NULL;
@@ -379,22 +386,30 @@ static wm_syscollector_startup_action_t wm_sys_get_startup_action(bool* first_sy
 
     mtdebug1(WM_SYS_LOGTAG, "Inventory initial scan data is not ready yet. First synchronization will wait for scan data.");
 
+    int log_throttle = 0;
+
     while (sync_module_running && !is_shutdown_process_started())
     {
-        int version = 0;
+        int scan_marker = 0;
 
-        if (!wm_sys_query_int("{\"command\":\"get_version\"}", "version", &version))
+        if (!wm_sys_query_int("{\"command\":\"get_first_scan_completed\"}", "first_scan_completed", &scan_marker))
         {
-            mtdebug1(WM_SYS_LOGTAG, "Failed to detect initial Syscollector scan data. Keeping startup synchronization delay.");
+            mtdebug1(WM_SYS_LOGTAG, "Failed to detect initial Syscollector scan completion. Keeping startup synchronization delay.");
             return SYSCOLLECTOR_STARTUP_ACTION_WAIT;
         }
 
-        if (version > 0)
+        if (scan_marker > 0)
         {
-            mtdebug1(WM_SYS_LOGTAG, "Initial Inventory scan data is ready. Triggering first synchronization without startup delay.");
+            mtdebug1(WM_SYS_LOGTAG, "First inventory scan completed. Triggering first synchronization without startup delay.");
             return SYSCOLLECTOR_STARTUP_ACTION_IMMEDIATE;
         }
 
+        if (log_throttle == 0)
+        {
+            mtdebug1(WM_SYS_LOGTAG, "Synchronization deferred: waiting for first inventory scan to complete.");
+        }
+
+        log_throttle = (log_throttle + 1) % 30;
         sleep(1);
     }
 
@@ -568,9 +583,6 @@ void* wm_sys_main(wm_sys_t* sys)
 
     sys->flags.running = true;
 
-    w_cond_init(&sys_stop_condition, NULL);
-    w_mutex_init(&sys_stop_mutex, NULL);
-    w_mutex_init(&sys_reconnect_mutex, NULL);
     w_mutex_lock(&sys_stop_mutex);
     sys_main_thread = pthread_self();
     sys_main_thread_initialized = true;
@@ -579,9 +591,11 @@ void* wm_sys_main(wm_sys_t* sys)
     if (!sys->flags.enabled)
     {
         wm_handle_sys_disabled_and_notify_data_clean(sys);
-        mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting...");
+        mtinfo(WM_SYS_LOGTAG, "Module disabled. Exiting.");
         pthread_exit(NULL);
     }
+
+    mtdebug1(WM_SYS_LOGTAG, "Module enabled.");
 
 #ifndef WIN32
     // Connect to socket
@@ -600,6 +614,7 @@ void* wm_sys_main(wm_sys_t* sys)
         syscollector_init_ptr = so_get_function_sym(syscollector_module, "syscollector_init");
         syscollector_start_ptr = so_get_function_sym(syscollector_module, "syscollector_start");
         syscollector_stop_ptr = so_get_function_sym(syscollector_module, "syscollector_stop");
+        syscollector_release_resources_ptr = so_get_function_sym(syscollector_module, "syscollector_release_resources");
 
         // Get sync protocol function pointers
         syscollector_init_sync_ptr = so_get_function_sym(syscollector_module, "syscollector_init_sync");
@@ -629,7 +644,7 @@ void* wm_sys_main(wm_sys_t* sys)
 
     if (syscollector_init_ptr && syscollector_start_ptr)
     {
-        mtdebug1(WM_SYS_LOGTAG, "Starting Syscollector.");
+        mtdebug1(WM_SYS_LOGTAG, "Starting module.");
         w_mutex_lock(&sys_stop_mutex);
         need_shutdown_wait = true;
         w_mutex_unlock(&sys_stop_mutex);
@@ -698,15 +713,26 @@ void* wm_sys_main(wm_sys_t* sys)
             syscollector_init_sync_ptr(WM_SYS_LOCATION, SYS_SYNC_PROTOCOL_DB_PATH, SYS_SYNC_PROTOCOL_VD_DB_PATH, &mq_funcs, sync_end_delay, sync_response_timeout, SYS_SYNC_RETRIES, sync_max_eps,
                                        integrity_interval);
 #ifndef WIN32
-            // Launch inventory synchronization thread
+            // Launch inventory synchronization thread as joinable so we can wait for it
+            // before releasing resources on shutdown
             sync_module_running = 1;
-            w_create_thread(wm_sync_module, NULL);
-#else
-            sync_module_running = 1;
-
-            if (CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL) == NULL)
+            sync_worker_thread_initialized = (CreateThreadJoinable(&sync_worker_thread, wm_sync_module, NULL) == 0);
+            if (!sync_worker_thread_initialized)
             {
                 mterror(WM_SYS_LOGTAG, THREAD_ERROR);
+                sync_module_running = 0;
+            }
+#else
+            sync_module_running = 1;
+            sync_worker_thread = CreateThread(NULL, 0, wm_sync_module, NULL, 0, NULL);
+            if (sync_worker_thread == NULL)
+            {
+                mterror(WM_SYS_LOGTAG, THREAD_ERROR);
+                sync_module_running = 0;
+            }
+            else
+            {
+                sync_worker_thread_initialized = true;
             }
 
 #endif
@@ -716,6 +742,7 @@ void* wm_sys_main(wm_sys_t* sys)
             mtdebug1(WM_SYS_LOGTAG, "Inventory synchronization is disabled or function not available");
         }
 
+        mtinfo(WM_SYS_LOGTAG, STARTUP_MSG, (int)getpid());
         syscollector_start_ptr();
     }
     else
@@ -734,21 +761,47 @@ void* wm_sys_main(wm_sys_t* sys)
         queue_fd = 0;
     }
 
+    // Ensure the sync worker exits even if syscollector_start_ptr returned early
+    // (e.g., all collectors disabled) without wm_sys_stop() being called first.
+    sync_module_running = 0;
+
+    // Wait for the inventory sync worker thread to finish before signaling that
+    // resources can be released.
+#ifndef WIN32
+    if (sync_worker_thread_initialized)
+    {
+        sync_worker_thread_initialized = false;
+        pthread_join(sync_worker_thread, NULL);
+    }
+#else
+    if (sync_worker_thread_initialized && sync_worker_thread != NULL)
+    {
+        sync_worker_thread_initialized = false;
+        WaitForSingleObject(sync_worker_thread, INFINITE);
+        CloseHandle(sync_worker_thread);
+        sync_worker_thread = NULL;
+    }
+#endif
+
     mtinfo(WM_SYS_LOGTAG, "Module finished.");
     w_mutex_lock(&sys_stop_mutex);
     need_shutdown_wait = false;
     sys_main_thread_initialized = false;
     w_cond_signal(&sys_stop_condition);
     w_mutex_unlock(&sys_stop_mutex);
+
+    // Safe to release resources now that the sync worker has exited.
+    if (syscollector_release_resources_ptr)
+    {
+        syscollector_release_resources_ptr();
+        syscollector_release_resources_ptr = NULL;
+    }
+
     return 0;
 }
 
 void wm_sys_destroy(wm_sys_t* data)
 {
-    w_cond_destroy(&sys_stop_condition);
-    w_mutex_destroy(&sys_stop_mutex);
-    w_mutex_destroy(&sys_reconnect_mutex);
-
     free(data);
 }
 
@@ -781,9 +834,20 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
         mtdebug1(WM_SYS_LOGTAG, "Stop called from syscollector worker thread. Skipping synchronous shutdown wait.");
     }
 
-    while (need_shutdown_wait && !called_from_sys_main_thread)
+    if (need_shutdown_wait && !called_from_sys_main_thread)
     {
-        w_cond_wait(&sys_stop_condition, &sys_stop_mutex);
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += 10;
+
+        while (need_shutdown_wait)
+        {
+            if (pthread_cond_timedwait(&sys_stop_condition, &sys_stop_mutex, &ts) == ETIMEDOUT)
+            {
+                mtwarn(WM_SYS_LOGTAG, "Timeout waiting for Syscollector to complete shutdown.");
+                break;
+            }
+        }
     }
 
     w_mutex_unlock(&sys_stop_mutex);
@@ -940,11 +1004,13 @@ void* wm_sync_module(__attribute__((unused)) void* args)
 #endif
     bool first_sync_completed = false;
     bool wait_before_sync = true;
+    bool first_sync_blocked_on_scan = false;
 
     switch (wm_sys_get_startup_action(&first_sync_completed))
     {
         case SYSCOLLECTOR_STARTUP_ACTION_IMMEDIATE:
             wait_before_sync = false;
+            first_sync_blocked_on_scan = true;
             break;
         case SYSCOLLECTOR_STARTUP_ACTION_STOP:
 #ifdef WIN32
@@ -974,7 +1040,25 @@ void* wm_sync_module(__attribute__((unused)) void* args)
             break;
         }
 
-        // Skip synchronization if scan is in progress to avoid syncing incomplete data
+        // On the first cycle after a fresh first scan, wait until scanning has
+        // actually finished rather than bypassing the scan-state guard.
+        if (first_sync_blocked_on_scan && syscollector_is_scanning_ptr)
+        {
+            while (sync_module_running && syscollector_is_scanning_ptr())
+            {
+                mtdebug1(WM_SYS_LOGTAG, "Waiting for scan to finish before forced post-first-scan synchronization.");
+                sleep(1);
+            }
+
+            first_sync_blocked_on_scan = false;
+        }
+
+        if (!sync_module_running)
+        {
+            break;
+        }
+
+        // Skip synchronization if scan is in progress to avoid syncing incomplete data.
         if (syscollector_is_scanning_ptr && syscollector_is_scanning_ptr())
         {
             mtdebug1(WM_SYS_LOGTAG, "Scan in progress, skipping sync cycle");
@@ -984,15 +1068,15 @@ void* wm_sync_module(__attribute__((unused)) void* args)
         if (syscollector_sync_module_ptr)
         {
             // Do not hold scan mutex while waiting for sync ACKs.
-            bool sync_result = syscollector_sync_module_ptr(MODE_DELTA);
+            bool sync_succeeded = syscollector_sync_module_ptr(MODE_DELTA);
 
-            if (sync_result && !first_sync_completed)
+            if (sync_succeeded && !first_sync_completed)
             {
                 first_sync_completed = true;
             }
 
             // Recovery touches shared state; keep this section serialized.
-            if (sync_result && sync_module_running && syscollector_run_recovery_process_ptr)
+            if (sync_succeeded && sync_module_running && syscollector_run_recovery_process_ptr)
             {
                 if (syscollector_lock_scan_mutex_ptr && syscollector_unlock_scan_mutex_ptr)
                 {
@@ -1026,6 +1110,16 @@ static size_t wm_sys_query_handler(void* data, char* query, char** output)
     if (!query || !output)
     {
         return 0;
+    }
+
+    // Mirrors #36762 (FIM): when synchronization is disabled the sync worker never runs, so the
+    // syscollector first-sync marker is never set. Report it as completed so agent-info coordination
+    // is not blocked deferring on a first sync that will never happen. The startup priming path calls
+    // syscollector_query_ptr directly and is unaffected by this handler-level short-circuit.
+    if (!enable_synchronization && strstr(query, "get_first_sync_completed"))
+    {
+        os_strdup("{\"error\":0,\"data\":{\"action\":\"get_first_sync_completed\",\"module\":\"syscollector\",\"first_sync_completed\":1}}", *output);
+        return strlen(*output);
     }
 
     // Call the C++ query function if available

@@ -71,6 +71,7 @@ int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused
     config->port = 1515;
     config->flags.use_source_ip = 0;
     config->flags.clear_removed = 0;
+    /* Off when <use_password> is omitted (upgrades); the installer template ships it on. */
     config->flags.use_password = 0;
     config->ciphers = strdup("HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH");
     config->flags.verify_host = 0;

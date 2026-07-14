@@ -179,20 +179,30 @@ TEST_F(IndexerConnectorSyncTest, DeleteByQueryAddsToMap)
 // HTTP error handling tests using GMock
 TEST_F(IndexerConnectorSyncTest, HandleError413PayloadTooLarge)
 {
-    EXPECT_CALL(mockServerSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
+    // The mock always responds with 413.  The expected flow is:
+    //  1. flush() posts the full batch (2 docs) → 413
+    //     → splitAndProcessBulk() splits into two single-doc chunks
+    //  2. processBulkChunk(first chunk, 1 boundary) → 413
+    //     → cannot split further (only 1 op) → throws IndexerConnectorException
+    // The second chunk is never reached because the first throws.
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
-        .Times(AtLeast(0)) // May or may not be called depending on size validation
+        .Times(AtLeast(2)) // initial batch + at least one split chunk
         .WillRepeatedly(Invoke(
             [this](auto requestParams, auto postParams, ConfigurationParameters)
             {
                 this->callCount++;
 
-                // Extract data from variant
                 std::string data;
                 if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
                 {
                     data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+                {
+                    data = std::string(std::get<TRequestParameters<std::string_view>>(requestParams).data);
                 }
                 else
                 {
@@ -211,12 +221,18 @@ TEST_F(IndexerConnectorSyncTest, HandleError413PayloadTooLarge)
                 }
             }));
 
-    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest);
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    // Add data to force sending
-    std::string id = "id1";
-    std::string dataValue(2048, 'a');
-    EXPECT_ANY_THROW({ connector.bulkIndex(id, "index1", dataValue); });
+    connector.bulkIndex("id1", "index1", std::string(600, 'a'));
+    connector.bulkIndex("id2", "index1", std::string(600, 'a'));
+
+    // flush() submits the 2-doc batch; 413 triggers splitting; the first
+    // single-doc chunk also gets 413 and throws because it cannot be split.
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+
+    // Prove the splitting path was exercised: at least 2 calls (full batch + 1 chunk).
+    EXPECT_GE(callCount, 2)
+        << "Expected at least 2 HTTP calls: the initial 2-doc batch and at least one split chunk after 413";
 }
 
 TEST_F(IndexerConnectorSyncTest, HandleError409VersionConflict)
@@ -1783,9 +1799,10 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
     auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
     EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for version test processing";
 
-    // Verify version is included in the bulk data for doc1
-    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version":"12345")"));
-    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version_type":"external_gte")"));
+    // Verify version is included in the bulk data for doc1 using update with script
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("update")"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("doc_version":12345)"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"(state.document_version)"));
 
     // Verify doc2 does not have version information
     std::size_t doc2_pos = capturedBulkData.find("doc2");
@@ -3390,4 +3407,1121 @@ TEST_F(IndexerConnectorSyncTest, RegisterNotifyCallbacksNotCalledOnError)
 
     // Callback should not be called on error
     EXPECT_EQ(callbackCount, 0);
+}
+
+// =============================================================================
+// Point In Time (PIT) Tests — Sync
+// =============================================================================
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTimeSuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::string pitResponse = R"({
+                    "pit_id": "abc123pitid",
+                    "creation_time": 1700000000000,
+                    "_shards": {"total": 5, "successful": 5, "skipped": 0, "failed": 0}
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(pitResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(pitResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    PointInTime pit = connector.createPointInTime({"wazuh-states-*"}, "5m", true);
+    EXPECT_EQ(pit.getPitId(), "abc123pitid");
+    EXPECT_EQ(pit.getCreationTime(), 1700000000000ULL);
+    EXPECT_EQ(pit.getKeepAlive(), "5m");
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTimeMultipleIndices)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::visit([&capturedUrl](auto&& req) { capturedUrl = req.url.url(); }, requestParams);
+
+                std::string pitResponse = R"({"pit_id": "multi_pit", "creation_time": 100})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(pitResponse);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(pitResponse));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    auto pit = connector.createPointInTime({"index-a", "index-b", "index-c"}, "1h");
+    EXPECT_EQ(pit.getPitId(), "multi_pit");
+    // URL should contain comma-separated indices
+    EXPECT_THAT(capturedUrl, HasSubstr("index-a,index-b,index-c"));
+    EXPECT_THAT(capturedUrl, HasSubstr("keep_alive=1h"));
+    // No expand_wildcards by default
+    EXPECT_THAT(capturedUrl, ::testing::Not(HasSubstr("expand_wildcards")));
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTimeWithExpandWildcards)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::visit([&capturedUrl](auto&& req) { capturedUrl = req.url.url(); }, requestParams);
+
+                std::string resp = R"({"pit_id": "pit_wc", "creation_time": 200})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(resp);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(resp));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.createPointInTime({"wazuh-*"}, "10m", true);
+
+    EXPECT_THAT(capturedUrl, HasSubstr("expand_wildcards=all"));
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTimeEmptyIndicesThrows)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.createPointInTime({}, "5m"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTimeEmptyKeepAliveThrows)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.createPointInTime({"index"}, ""), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTimeServerErrorThrows)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Server error", 500, "");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Server error", 500, "");
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    EXPECT_THROW(connector.createPointInTime({"index"}, "5m"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTimeMissingPitIdThrows)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                // Response missing pit_id
+                std::string resp = R"({"creation_time": 100})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(resp);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(resp));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    EXPECT_THROW(connector.createPointInTime({"index"}, "5m"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, DeletePointInTimeSuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string capturedUrl;
+    std::string capturedBody;
+    EXPECT_CALL(mockHttpRequest, delete_(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl,
+             &capturedBody](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::visit(
+                    [&capturedUrl, &capturedBody](auto&& req)
+                    {
+                        capturedUrl = req.url.url();
+                        if constexpr (std::is_same_v<std::decay_t<decltype(req.data)>, std::string>)
+                        {
+                            capturedBody = req.data;
+                        }
+                    },
+                    requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"succeeded":true,"num_freed":5})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"succeeded":true,"num_freed":5})");
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("test_pit_id_123", 1700000000000ULL, "5m");
+
+    EXPECT_NO_THROW(connector.deletePointInTime(pit));
+    EXPECT_THAT(capturedUrl, HasSubstr("/_search/point_in_time"));
+    auto bodyJson = nlohmann::json::parse(capturedBody);
+    EXPECT_EQ(bodyJson["pit_id"], "test_pit_id_123");
+}
+
+TEST_F(IndexerConnectorSyncTest, DeletePointInTimeEmptyIdThrows)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    PointInTime pit("", 0, "5m");
+    EXPECT_THROW(connector.deletePointInTime(pit), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, DeletePointInTimeServerErrorThrows)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, delete_(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Server error", 500, "");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Server error", 500, "");
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("valid_pit_id", 100, "5m");
+
+    EXPECT_THROW(connector.deletePointInTime(pit), IndexerConnectorException);
+}
+
+// =============================================================================
+// Search Tests — Sync (PIT-based)
+// =============================================================================
+
+TEST_F(IndexerConnectorSyncTest, SearchWithPitSuccess)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string capturedUrl;
+    std::string capturedBody;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl,
+             &capturedBody](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::visit(
+                    [&capturedUrl, &capturedBody](auto&& req)
+                    {
+                        capturedUrl = req.url.url();
+                        if constexpr (std::is_same_v<std::decay_t<decltype(req.data)>, std::string>)
+                        {
+                            capturedBody = req.data;
+                        }
+                    },
+                    requestParams);
+
+                std::string response = R"({
+                    "hits": {
+                        "total": {"value": 2, "relation": "eq"},
+                        "hits": [
+                            {"_id": "doc1", "_source": {"field": "value1"}, "sort": [1, "doc1"]},
+                            {"_id": "doc2", "_source": {"field": "value2"}, "sort": [2, "doc2"]}
+                        ]
+                    }
+                })";
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("search_pit_id", 100, "5m");
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
+
+    auto hits = connector.search(pit, 10, query, sort);
+
+    EXPECT_THAT(capturedUrl, HasSubstr("/_search"));
+    auto body = nlohmann::json::parse(capturedBody);
+    EXPECT_EQ(body["pit"]["id"], "search_pit_id");
+    EXPECT_EQ(body["pit"]["keep_alive"], "5m");
+    EXPECT_EQ(body["size"], 10);
+    EXPECT_TRUE(body.contains("track_total_hits"));
+    EXPECT_TRUE(hits.contains("hits"));
+    EXPECT_EQ(hits["hits"].size(), 2);
+}
+
+TEST_F(IndexerConnectorSyncTest, SearchWithPitAndSearchAfter)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string capturedBody;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBody](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::visit(
+                    [&capturedBody](auto&& req)
+                    {
+                        if constexpr (std::is_same_v<std::decay_t<decltype(req.data)>, std::string>)
+                        {
+                            capturedBody = req.data;
+                        }
+                    },
+                    requestParams);
+
+                std::string response = R"({"hits":{"total":{"value":1},"hits":[{"_id":"doc3","sort":[3,"doc3"]}]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("pit_sa", 100, "5m");
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
+    nlohmann::json searchAfter = nlohmann::json::array({2, "doc2"});
+
+    auto hits = connector.search(pit, 10, query, sort, searchAfter);
+
+    auto body = nlohmann::json::parse(capturedBody);
+    EXPECT_TRUE(body.contains("search_after"));
+    EXPECT_FALSE(body.contains("track_total_hits")); // search_after disables track_total_hits
+    EXPECT_EQ(body["search_after"], searchAfter);
+}
+
+TEST_F(IndexerConnectorSyncTest, SearchWithPitAndSourceFilter)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string capturedBody;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBody](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::visit(
+                    [&capturedBody](auto&& req)
+                    {
+                        if constexpr (std::is_same_v<std::decay_t<decltype(req.data)>, std::string>)
+                        {
+                            capturedBody = req.data;
+                        }
+                    },
+                    requestParams);
+
+                std::string response = R"({"hits":{"total":{"value":0},"hits":[]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("pit_src", 100, "5m");
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
+    nlohmann::json source = {{"includes", nlohmann::json::array({"field1"})}, {"excludes", nlohmann::json::array()}};
+
+    connector.search(pit, 5, query, sort, std::nullopt, source);
+
+    auto body = nlohmann::json::parse(capturedBody);
+    EXPECT_TRUE(body.contains("_source"));
+    EXPECT_EQ(body["_source"]["includes"], nlohmann::json::array({"field1"}));
+}
+
+TEST_F(IndexerConnectorSyncTest, SearchWithPitAndSlice)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::string capturedBody;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBody](auto requestParams, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::visit(
+                    [&capturedBody](auto&& req)
+                    {
+                        if constexpr (std::is_same_v<std::decay_t<decltype(req.data)>, std::string>)
+                        {
+                            capturedBody = req.data;
+                        }
+                    },
+                    requestParams);
+
+                std::string response = R"({"hits":{"total":{"value":0},"hits":[]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("pit_slice", 100, "5m");
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
+    nlohmann::json slice = {{"id", 0}, {"max", 4}};
+
+    connector.search(pit, 10, query, sort, std::nullopt, std::nullopt, slice);
+
+    auto body = nlohmann::json::parse(capturedBody);
+    EXPECT_TRUE(body.contains("slice"));
+    EXPECT_EQ(body["slice"]["id"], 0);
+    EXPECT_EQ(body["slice"]["max"], 4);
+}
+
+TEST_F(IndexerConnectorSyncTest, SearchWithPitServerErrorThrows)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Search failed", 500, "");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Search failed", 500, "");
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("pit_err", 100, "5m");
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
+
+    EXPECT_THROW(connector.search(pit, 10, query, sort), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, SearchWithPitMissingHitsThrows)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                std::string response = R"({"took":1})"; // No hits field
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("pit_nohits", 100, "5m");
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
+
+    EXPECT_THROW(connector.search(pit, 10, query, sort), IndexerConnectorException);
+}
+
+// =============================================================================
+// ExecuteSearchQueryWithPagination edge cases — Sync
+// =============================================================================
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPaginationSortArray)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    int pageCount = 0;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                // First page — 2 results with multi-element sort array
+                std::string resp = R"({
+                    "hits": {
+                        "total": {"value": 3},
+                        "hits": [
+                            {"_id": "d1", "sort": [100, "d1"]},
+                            {"_id": "d2", "sort": [200, "d2"]}
+                        ]
+                    }
+                })";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(resp);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(resp));
+                }
+            }))
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, const ConfigurationParameters& /*configParams*/)
+            {
+                // Second page — 1 result (less than page size → stops)
+                std::string resp = R"({
+                    "hits": {
+                        "total": {"value": 3},
+                        "hits": [
+                            {"_id": "d3", "sort": [300, "d3"]}
+                        ]
+                    }
+                })";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(resp);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(resp));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    nlohmann::json query;
+    query["size"] = 2;
+    query["query"] = {{"match_all", nlohmann::json::object()}};
+    query["sort"] = nlohmann::json::array({{{"_shard_doc", "asc"}}, {{"_id", "asc"}}});
+
+    connector.executeSearchQueryWithPagination(
+        "test-index", query, [&pageCount](const nlohmann::json& /*response*/) { pageCount++; });
+
+    EXPECT_EQ(pageCount, 2);
+}
+
+// =============================================================================
+// PTests for the connector-layer `isSafeIndexName` allowlist.
+// The connector refuses any index name that is empty or contains characters
+// outside [a-zA-Z0-9._*-]. Domain rules (e.g. "starts with wazuh-states-")
+// are enforced by callers, not here.
+// =============================================================================
+
+TEST_F(IndexerConnectorSyncTest, BulkIndex_RejectsIndexWithSlash)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkIndex("id1", "wazuh-states-/secret", R"({"a":1})"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkIndex_RejectsIndexWithQuestionMark)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkIndex("id1", "wazuh-states-?q=1", R"({"a":1})"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkIndex_RejectsIndexWithComma)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkIndex("id1", "wazuh-states-a,wazuh-states-b", R"({"a":1})"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkIndex_RejectsIndexWithNewline)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkIndex("id1", "wazuh-states-\nfoo", R"({"a":1})"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkIndex_AcceptsSystemIndexWithDotPrefix)
+{
+    // Indexes like `.wazuh-cti-consumers` are valid OpenSearch system indices
+    // used by other modules (content_manager). They must pass the safety check
+    // because they contain only [a-zA-Z0-9._-].
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkIndex("id1", ".wazuh-cti-consumers", R"({"a":1})"));
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkDelete_RejectsIndexWithSlash)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkDelete("id1", "wazuh-states-/secret"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, DeleteByQuery_RejectsUnsafeIndex_Throws)
+{
+    // An unsafe index must throw so the caller can't assume the delete was
+    // enqueued. The follow-up flush() must not POST anything because nothing
+    // was enqueued.
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    EXPECT_THROW(connector.deleteByQuery("wazuh-states-/evil", "001"), IndexerConnectorException);
+    connector.flush();
+}
+
+TEST_F(IndexerConnectorSyncTest, DeleteByQuery_AcceptsSafeIndex_Enqueues)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, auto /*configParams*/)
+            {
+                std::visit([&capturedUrl](const auto& p) { capturedUrl = p.url.url(); }, requestParams);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+            }));
+
+    connector.deleteByQuery("wazuh-states-vulnerabilities", "001");
+    connector.flush();
+    EXPECT_THAT(capturedUrl, HasSubstr("/wazuh-states-vulnerabilities/_delete_by_query"));
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuery_RejectsUnsafeIndex_Throws)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+    EXPECT_THROW(connector.executeSearchQuery("wazuh-states-/x", nlohmann::json::object()), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithPagination_RejectsUnsafeIndex_Throws)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+    EXPECT_THROW(connector.executeSearchQueryWithPagination(
+                     "wazuh-states-/x", nlohmann::json::object(), [](const nlohmann::json&) {}),
+                 IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuery_FiltersUnsafeEntries)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, auto /*configParams*/)
+            {
+                std::visit([&capturedUrl](const auto& p) { capturedUrl = p.url.url(); }, requestParams);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"updated":0,"total":0,"failures":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"updated":0,"total":0,"failures":[]})");
+                }
+            }));
+
+    nlohmann::json q;
+    q["query"]["match_all"] = nlohmann::json::object();
+
+    std::vector<std::string> indices = {"wazuh-states-fim-files", "wazuh-states-/evil", "bad name with space"};
+    connector.executeUpdateByQuery(indices, q);
+
+    // Only the safe entry should appear in the URL path.
+    EXPECT_THAT(capturedUrl, HasSubstr("/wazuh-states-fim-files/_update_by_query"));
+    EXPECT_THAT(capturedUrl, ::testing::Not(HasSubstr("/evil")));
+    EXPECT_THAT(capturedUrl, ::testing::Not(HasSubstr("bad name")));
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuery_AllUnsafe_FiresPendingNotify)
+{
+    // When all entries are filtered out, the function must still mark
+    // m_shouldNotifyAfterBulk=true so that the caller's invokePendingCallbacks
+    // can fire the registered notify (this is what kept the agent unlocked
+    // after the GroupCheck flow).
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+
+    std::atomic<bool> called {false};
+    connector.registerNotify([&called]() { called = true; });
+
+    nlohmann::json q;
+    q["query"]["match_all"] = nlohmann::json::object();
+    connector.executeUpdateByQuery({"wazuh-states-/x", ""}, q);
+    connector.invokePendingCallbacks();
+
+    EXPECT_TRUE(called);
+}
+
+TEST_F(IndexerConnectorSyncTest, ExecuteUpdateByQuery_AcceptsAnyValidNameRegardlessOfPrefix)
+{
+    // The connector no longer enforces the "wazuh-states-" prefix — that domain
+    // rule belongs to the inventory_sync caller. The connector only refuses
+    // injection-unsafe characters. Therefore an arbitrary safe name like
+    // "wazuh-other-foo" must be forwarded to the indexer.
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, auto /*configParams*/)
+            {
+                std::visit([&capturedUrl](const auto& p) { capturedUrl = p.url.url(); }, requestParams);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"updated":0,"total":0,"failures":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"updated":0,"total":0,"failures":[]})");
+                }
+            }));
+
+    nlohmann::json q;
+    q["query"]["match_all"] = nlohmann::json::object();
+    connector.executeUpdateByQuery({"wazuh-other-foo"}, q);
+
+    EXPECT_THAT(capturedUrl, HasSubstr("/wazuh-other-foo/_update_by_query"));
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTime_RejectsAnyUnsafeEntry_Throws)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+    EXPECT_THROW(connector.createPointInTime({"wazuh-states-x", "wazuh-states-/x"}, "5m"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, CreatePointInTime_AcceptsWildcardIndices)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [](auto /*requestParams*/, auto postParams, auto /*configParams*/)
+            {
+                const std::string ok = R"({"pit_id":"abc","creation_time":1})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(ok);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::string(ok));
+                }
+            }));
+
+    EXPECT_NO_THROW(connector.createPointInTime({"wazuh-states-*"}, "5m"));
+}
+
+TEST_F(IndexerConnectorSyncTest, Refresh_RejectsUnsafePattern)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _)).Times(0);
+    EXPECT_THROW(connector.refresh("wazuh-states-/oh"), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, Refresh_AcceptsWildcard)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    std::string capturedUrl;
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedUrl](auto requestParams, auto postParams, auto /*configParams*/)
+            {
+                std::visit([&capturedUrl](const auto& p) { capturedUrl = p.url.url(); }, requestParams);
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+            }));
+
+    EXPECT_NO_THROW(connector.refresh("wazuh-states-*"));
+    EXPECT_THAT(capturedUrl, HasSubstr("/wazuh-states-*/_refresh"));
+}
+
+TEST_F(IndexerConnectorSyncTest, IsSafeIndexName_Allowlist)
+{
+    // Spot-check the helper directly with a representative set of vectors so
+    // the documented allowlist is locked in by a regression test rather than
+    // only by indirect API exercising.
+    EXPECT_FALSE(isSafeIndexName(""));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-/x"));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-?q=1"));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-#x"));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-a,b"));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states- "));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-\nfoo"));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-\"foo\""));
+    EXPECT_FALSE(isSafeIndexName("wazuh-states-foo\\bar"));
+
+    EXPECT_TRUE(isSafeIndexName("wazuh-states-vulnerabilities"));
+    EXPECT_TRUE(isSafeIndexName("wazuh-states-inventory-system"));
+    EXPECT_TRUE(isSafeIndexName("wazuh-states-fim-files"));
+    EXPECT_TRUE(isSafeIndexName(".wazuh-cti-consumers"));
+    EXPECT_TRUE(isSafeIndexName("wazuh-states-*"));
+    EXPECT_TRUE(isSafeIndexName("Idx_With.MixedCase-1.2.3"));
+}
+
+// JSON config override tests for max_bulk_size and flush_interval_seconds
+TEST_F(IndexerConnectorSyncTest, MaxBulkSizeFromJsonConfigTriggersFlush)
+{
+    // SmallBulk but setting max_bulk_size=100 in config overrides the 1024-byte threshold to 100 bytes.
+    // processBulk() is called synchronously from within bulkIndex() when the size check fires,
+    // so callCount increments on the calling thread—no race with the 20s background timer.
+    //
+    // Size math for bulkIndex("id1", "test_index", R"({"data":"x"})"):
+    //   FORMATTED_SIZE(33) + VERSION_SIZE(32) + "test_index"(10) + "id1"(3) + R"({"data":"x"})"(13) = 91
+    // First call:  m_bulkData(0) + 91 = 91 <= 100 → no flush, ~60 bytes appended to buffer.
+    // Second call: m_bulkData(60) + 91 = 151 > 100 → processBulk() called synchronously.
+    config["max_bulk_size"] = 100;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    // SmallBulk
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id1", "test_index", R"({"data":"x"})");
+    EXPECT_EQ(callCount, 0) << "Flush should not occur before the configured size is exceeded";
+
+    connector.bulkIndex("id2", "test_index", R"({"data":"x"})");
+    EXPECT_GT(callCount, 0) << "processBulk() was not called when max_bulk_size was exceeded";
+}
+
+TEST_F(IndexerConnectorSyncTest, MaxBulkSizeMinValueTriggersFlushOnSecondElement)
+{
+    // Extreme low value: max_bulk_size=91 is the smallest value where the first element still fits
+    // (totalSize check = 91, condition is strictly >, so 91 > 91 is false → element added).
+    // The second element's check (60 + 91 = 151 > 91) triggers an immediate synchronous flush.
+    config["max_bulk_size"] = 91;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkIndex("id1", "test_index", R"({"data":"x"})"))
+        << "First element should fit at max_bulk_size=91 without triggering processBulk on empty buffer";
+    EXPECT_EQ(callCount, 0) << "No flush expected after first element";
+
+    EXPECT_NO_THROW(connector.bulkIndex("id2", "test_index", R"({"data":"x"})"))
+        << "Second element should trigger flush without throwing";
+    EXPECT_GT(callCount, 0) << "Flush should have been triggered by second element";
+}
+
+TEST_F(IndexerConnectorSyncTest, MaxBulkSizeDefaultUsedWhenAbsentFromJsonConfig)
+{
+    // No max_bulk_size in JSON config. SmallBulk's template default is MaxBulkSize=1024 bytes
+    // Two small elements whose total size check (~151 bytes) is below 1024 must NOT trigger a flush.
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    // SmallBulk
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id1", "test_index", R"({"data":"x"})");
+    connector.bulkIndex("id2", "test_index", R"({"data":"x"})");
+
+    EXPECT_EQ(callCount, 0) << "No flush should occur: total ~151 bytes is below the 1024-byte template default";
+}
+
+TEST_F(IndexerConnectorSyncTest, FlushIntervalSecondsFromJsonConfigTimerFires)
+{
+    // Verify that flush_interval_seconds from JSON config actually drives the background timer.
+    // Pushing one small element (well below the 10 MB size threshold) means only the timer
+    // can cause a flush.
+    config["flush_interval_seconds"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id1", "test_index", R"({"data":"timer-test"})");
+
+    // 2s is enough for the 1s timer.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    EXPECT_GT(callCount, 0) << "Expected 1s timer (from JSON flush_interval_seconds) to fire within 2s";
+}
+
+TEST_F(IndexerConnectorSyncTest, FlushIntervalTimerDoesNotFlushWhenNoData)
+{
+    // When the periodic timer fires but the buffer is empty, processBulk() must NOT be called.
+    config["flush_interval_seconds"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    // Let the timer fire at least once with no data in the buffer.
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+
+    EXPECT_EQ(callCount, 0) << "No HTTP post should be made when the timer fires on an empty buffer";
+}
+
+// Empty-buffer guard tests
+TEST_F(IndexerConnectorSyncTest, BulkIndexOnEmptyBufferDoesNotThrowWhenSingleDocExceedsMaxBulkSize)
+{
+    // max_bulk_size=1 forces totalSize > m_maxBulkSize on every call.
+    config["max_bulk_size"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkIndex("id1", "test_index", R"({"data":"x"})"))
+        << "First bulkIndex must not throw when totalSize > max_bulk_size on an empty buffer";
+    EXPECT_EQ(callCount, 0) << "Empty-buffer guard must suppress the flush on the first call";
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkIndexFlushesPreviousBufferWhenMaxBulkSizeIsTiny)
+{
+    // With max_bulk_size=1, every call after the first sees a non-empty buffer
+    // and totalSize > 1, so the guard does NOT inhibit flushing.
+    config["max_bulk_size"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(2))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkIndex("id1", "test_index", R"({"data":"x"})"));
+    EXPECT_EQ(callCount, 0) << "First call: empty buffer, no flush expected";
+
+    EXPECT_NO_THROW(connector.bulkIndex("id2", "test_index", R"({"data":"x"})"));
+    EXPECT_EQ(callCount, 1) << "Second call must flush the previously buffered element";
+
+    EXPECT_NO_THROW(connector.bulkIndex("id3", "test_index", R"({"data":"x"})"));
+    EXPECT_EQ(callCount, 2) << "Third call must flush the second element";
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkDeleteOnEmptyBufferDoesNotThrowWhenSingleDocExceedsMaxBulkSize)
+{
+    // Symmetric to BulkIndexOnEmptyBufferDoesNotThrow… but for the delete path,
+    // which has its own size guard using DELETE_FORMATTED_LENGTH as overhead.
+    config["max_bulk_size"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkDelete("id1", "test_index"))
+        << "First bulkDelete must not throw when totalSize > max_bulk_size on an empty buffer";
+    EXPECT_EQ(callCount, 0) << "Empty-buffer guard must suppress the flush on the first delete";
+}
+
+TEST_F(IndexerConnectorSyncTest, BulkDeleteFlushesPreviousBufferWhenMaxBulkSizeIsTiny)
+{
+    // Symmetric to BulkIndexFlushesPreviousBufferWhenMaxBulkSizeIsTiny for the
+    // delete path.
+    config["max_bulk_size"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(2))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkDelete("id1", "test_index"));
+    EXPECT_EQ(callCount, 0) << "First call: empty buffer, no flush expected";
+
+    EXPECT_NO_THROW(connector.bulkDelete("id2", "test_index"));
+    EXPECT_EQ(callCount, 1) << "Second delete must flush the previously buffered delete";
+
+    EXPECT_NO_THROW(connector.bulkDelete("id3", "test_index"));
+    EXPECT_EQ(callCount, 2) << "Third delete must flush the second delete";
+}
+
+TEST_F(IndexerConnectorSyncTest, MixedBulkIndexAndDeleteRespectEmptyBufferGuard)
+{
+    // Proves the guard and the size check share buffer state across both entry points
+    config["max_bulk_size"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
+                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_NO_THROW(connector.bulkDelete("id1", "test_index"));
+    EXPECT_EQ(callCount, 0) << "Empty buffer + bulkDelete: guard suppresses flush";
+
+    EXPECT_NO_THROW(connector.bulkIndex("id2", "test_index", R"({"data":"x"})"));
+    EXPECT_EQ(callCount, 1) << "bulkIndex must flush the previously buffered bulkDelete";
 }

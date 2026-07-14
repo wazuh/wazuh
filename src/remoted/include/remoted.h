@@ -36,6 +36,7 @@ typedef struct pending_data_t
     char* message;
     char* group;
     os_md5 merged_sum;
+    os_md5 last_reported_merged_sum;
     int changed;
 } pending_data_t;
 
@@ -129,6 +130,9 @@ void key_unlock(void);
 // Init message queue
 void rem_msginit(size_t size);
 
+// Free the message queue (unit tests only)
+void rem_msgdestroy(void);
+
 // Push message into queue
 int rem_msgpush(const char* buffer, unsigned long size, struct sockaddr_storage* addr, int sock);
 
@@ -143,6 +147,9 @@ size_t rem_get_tsize();
 
 // Free message
 void rem_msgfree(message_t* message);
+
+// Set the maximum total bytes for the input message queue (0 = unlimited)
+void rem_set_input_queue_max_bytes(size_t max_bytes);
 
 // Read config
 cJSON* getRemoteConfig(void);
@@ -186,6 +193,14 @@ void rem_initList(int initial_size);
 void rem_setCounter(int fd, size_t counter);
 size_t rem_getCounter(int fd);
 
+/**
+ * @brief Infers OS family type given a certain OS platform
+ *
+ * @param os_platform Platform of the machine where wazuh is being executed.
+ * @return const char* OS family type associated with the given platform
+ */
+const char* infer_os_type(const char *os_platform);
+
 /** Global variables **/
 
 extern keystore keys;
@@ -222,6 +237,8 @@ extern int shared_reload_interval;
 extern size_t global_counter;
 extern size_t batch_events_capacity;
 extern size_t batch_events_per_agent_capacity;
+extern size_t queue_max_bytes;
+extern size_t batch_events_max_bytes;
 extern int enrich_cache_expire_time;
 
 extern module_limits_t manager_module_limits;

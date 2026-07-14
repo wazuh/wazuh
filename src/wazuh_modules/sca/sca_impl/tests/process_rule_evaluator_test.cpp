@@ -104,9 +104,9 @@ TEST_F(ProcessRuleEvaluatorTest, GetProcessesFailureHasReasonString)
 
     auto evaluator = CreateEvaluator();
     EXPECT_EQ(evaluator.Evaluate(), RuleResult::Invalid);
-    EXPECT_FALSE(evaluator.GetInvalidReason().empty());
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("test_process"));
-    EXPECT_THAT(evaluator.GetInvalidReason(), ::testing::HasSubstr("Failed to get process list"));
+    EXPECT_FALSE(evaluator.GetUnresolvedReason().empty());
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("test_process"));
+    EXPECT_THAT(evaluator.GetUnresolvedReason(), ::testing::HasSubstr("Failed to get process list"));
 }
 
 TEST_F(ProcessRuleEvaluatorTest, NegatedProcessFoundReturnsNotFound)

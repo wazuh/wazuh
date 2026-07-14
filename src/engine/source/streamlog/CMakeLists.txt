@@ -62,9 +62,18 @@ gtest_discover_tests(streamlogger_utest)
 
 add_executable(streamlogger_ctest
     ${COMPONENT_SRC_DIR}/logger_test.cpp
+    ${COMPONENT_SRC_DIR}/channel_test.cpp
 )
 
-target_link_libraries(streamlogger_ctest PRIVATE streamlogger::streamlogger GTest::gtest_main)
+target_link_libraries(streamlogger_ctest
+    PRIVATE
+    GTest::gtest_main
+    GTest::gmock
+    streamlogger::streamlogger
+    scheduler::mocks
+    store::mocks
+)
+target_include_directories(streamlogger_ctest PRIVATE ${SRC_DIR})
 gtest_discover_tests(streamlogger_ctest)
 
 endif(ENGINE_BUILD_TEST)

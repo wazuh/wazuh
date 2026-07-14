@@ -652,7 +652,7 @@ sudo systemctl restart wazuh-agent
 
 - [Installation Guide](getting-started/installation.md)
 - [Upgrade Guide](upgrade.md)
-- [Configuration Reference](configuration.md)
+- [Configuration Reference](configuration/README.md)
 - [Cluster Documentation](modules/cluster/README.md)
 - [FIM Module](modules/fim/README.md)
 - [SCA Module](modules/sca/README.md)

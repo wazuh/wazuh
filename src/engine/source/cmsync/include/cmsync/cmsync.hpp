@@ -1,10 +1,12 @@
 #ifndef _CMSYNC_CMSYNC
 #define _CMSYNC_CMSYNC
 
+#include <atomic>
 #include <mutex>
 #include <shared_mutex>
 #include <string>
 
+#include <base/statusSnapshot.hpp>
 #include <cmcrud/icmcrudservice.hpp>
 #include <router/iapi.hpp>
 #include <store/istore.hpp>
@@ -33,6 +35,15 @@ private:
     mutable std::shared_mutex m_mutex; ///< Mutex to protect access to m_namespacesState and sync operations
     std::vector<SyncedNamespace> m_namespacesState; ///< State of the namespaces being synchronized
 
+    std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal graceful shutdown of sync operations
+
+    /// Lock-free status snapshot of all spaces. Read via load() (wait-free). Rebuilt and published
+    /// via store() by updateSpacesStatusSnapshot() on the single sync thread.
+    base::StatusSnapshot<SpaceStatus> m_spacesStatus;
+
+    /// Rebuild the spaces status from cached per-namespace state and publish it atomically (lock-free reads).
+    void updateSpacesStatusSnapshot();
+
     /**
      * @brief Check if a space exists in the wazuh-indexer
      *
@@ -47,37 +58,48 @@ private:
      *
      * @param originSpace Define the source space in the indexer
      * @param dstNamespace Define the destination namespace in the local store (Must not exist)
+     * @param consumerId Optional consumer ID to validate during policy retrieval
+     * @return true if the download succeeded, false if consumer is not ready
      * @throws std::runtime_error on errors.
      */
-    void downloadNamespace(std::string_view originSpace, const cm::store::NamespaceId& dstNamespace);
+    bool downloadNamespace(std::string_view originSpace,
+                           const cm::store::NamespaceId& dstNamespace,
+                           const std::optional<std::string_view>& consumerId = std::nullopt);
 
     /**
      * @brief Get remote policy hash and enabled status from the indexer
      *
      * @param space Space name in the indexer
-     * @return A pair containing the policy hash as a string and a boolean indicating if the policy is enabled
+     * @param consumerId Optional consumer ID to validate within PIT
+     * @return An optional pair containing the policy hash and enabled status.
+     *         Returns std::nullopt if the consumer is provided and is not ready.
      * @throws std::runtime_error on errors.
      */
-    std::pair<std::string, bool> getPolicyHashAndEnabledFromRemote(std::string_view space);
+    std::optional<std::pair<std::string, bool>>
+    getPolicyHashAndEnabledFromRemote(std::string_view space,
+                                      const std::optional<std::string_view>& consumerId = std::nullopt);
 
     /**
      * @brief Downloads a namespace from the indexer and enriches it with local assets
      *
      * This method performs a two-phase operation to prepare a complete namespace:
-     * 1. Downloads the policy and resources from the remote indexer (KVDB, decoders, integrations, policy)
+     * 1. Downloads the policy and resources from the wazuh-indexer (KVDB, decoders, integrations, policy)
      * 2. Enriches the namespace with local-only assets (outputs, filters, etc.)
      *
      * The method generates a unique temporary namespace ID to avoid conflicts and performs
      * automatic rollback on failure, ensuring the local store remains consistent.
      *
      * @param originSpace The source space name in the wazuh-indexer to download from
-     * @return cm::store::NamespaceId The newly created namespace ID in the local store,
+     * @param consumerId Optional consumer ID to validate during policy retrieval
+     * @return An optional NamespaceId. Returns std::nullopt if consumer is provided and not ready.
      * @throws std::runtime_error if any step of the process fails
      * @warning There is no ganrantee that the returned namespace is valid, should be verified by the router.
      * @note If the operation fails at any point, the temporary namespace is automatically deleted
      *       to maintain store consistency
      */
-    cm::store::NamespaceId downloadAndEnrichNamespace(std::string_view originSpace);
+    std::optional<cm::store::NamespaceId>
+    downloadAndEnrichNamespace(std::string_view originSpace,
+                               const std::optional<std::string_view>& consumerId = std::nullopt);
 
     /**
      * @brief Syncs a namespace in the router by updating or creating its route
@@ -112,13 +134,23 @@ public:
      * @brief Perform synchronization of all configured namespaces
      *
      * This method iterates through all namespaces configured for synchronization,
-     * checking for updates in the remote indexer. If changes are detected, it
+     * checking for updates in the wazuh-indexer. If changes are detected, it
      * downloads the updated namespace, enriches it with local assets, and updates
      * the router accordingly.
      *
      * @throws std::runtime_error if any step of the synchronization process fails
      */
     void synchronize();
+
+    /**
+     * @copydoc ICMSync::requestShutdown
+     */
+    void requestShutdown() override;
+
+    /**
+     * @copydoc ICMSync::getSpacesStatus
+     */
+    std::vector<SpaceStatus> getSpacesStatus() const override;
 };
 
 } // namespace cm::sync

@@ -10,6 +10,10 @@ inputs:
     required: false
     description: "Run test using valgrind"
     default: "false"
+  preload:
+    required: false
+    description: "Preload ASAN library for tests. Only used when valgrind is disabled."
+    default: "false"
 
 runs:
   using: "composite"
@@ -38,7 +42,11 @@ runs:
           if [[ "${{ inputs.valgrind }}" != "false" ]]; then
             valgrind ctest --output-on-failure -L ${{ inputs.target }}
           else
-            # Run for valgrind and coverage
-            ASAN_OPTIONS=alloc_dealloc_mismatch=0 ctest --output-on-failure -L ${{ inputs.target }}
+            if [[ "${{ inputs.preload }}" != "false" ]]; then
+              ASAN_LIB=$(gcc -print-file-name=libasan.so)
+              LD_PRELOAD="${ASAN_LIB}" ASAN_OPTIONS=alloc_dealloc_mismatch=0 ctest --output-on-failure -L ${{ inputs.target }}
+            else
+              ASAN_OPTIONS=alloc_dealloc_mismatch=0 ctest --output-on-failure -L ${{ inputs.target }}
+            fi
           fi
         shell: bash

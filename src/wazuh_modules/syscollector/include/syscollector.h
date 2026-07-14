@@ -79,6 +79,7 @@ EXPORTED void syscollector_init(const unsigned int inverval,
                                 const bool notifyOnFirstScan);
 
 EXPORTED void syscollector_stop();
+EXPORTED void syscollector_release_resources();
 EXPORTED void syscollector_start();
 
 // Sync protocol C wrapper functions
@@ -139,6 +140,7 @@ typedef void(*syscollector_init_func)(const unsigned int inverval,
 
 typedef void(*syscollector_start_func)();
 typedef void(*syscollector_stop_func)();
+typedef void(*syscollector_release_resources_func)();
 
 // Sync protocol C wrapper functions
 typedef void(*syscollector_init_sync_func)(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,

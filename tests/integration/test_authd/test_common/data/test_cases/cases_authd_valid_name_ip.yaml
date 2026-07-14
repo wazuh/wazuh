@@ -1,11 +1,12 @@
 - name: Agent name same as Manager
-  description: 'Check for register an agent with name same as manager: rejected'
+  description: 'Check for register an agent with name same as manager: accepted'
   configuration_parameters:
   metadata:
     input: "OSSEC A:'{}'\n"
     output:
-      status: error
-      message: 'Invalid agent name: {}'
+      status: success
+      name: '.+'
+      ip: any
     insert_hostname_in_query: true
     expected_fail: false
 

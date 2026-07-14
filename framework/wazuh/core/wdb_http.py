@@ -10,14 +10,6 @@ from httpx import AsyncClient, AsyncHTTPTransport, ConnectError, Timeout, Timeou
 APPLICATION_JSON = 'application/json'
 
 
-class AgentIDGroups:
-    """Pair of agent ID and its groups."""
-
-    def __init__(self, id: str, groups: list[str] = None):
-        self.id = id
-        self.groups = groups
-
-
 class AgentStatus:
     """Agent status."""
 
@@ -154,16 +146,6 @@ class WazuhDBHTTPClient:
 
         return response.json()
 
-    async def get_agents_ids(self) -> list[str]:
-        """Get system agents IDs.
-        
-        Returns
-        -------
-        list[str]
-            Agent IDs.
-        """
-        return await self._get('/agents/ids')
-    
     async def get_agent_groups(self, agent_id: str) -> list[str]:
         """Get agent groups.
         
@@ -178,35 +160,7 @@ class WazuhDBHTTPClient:
             Group names.
         """
         return await self._get(f'/agents/{agent_id}/groups')
-    
-    async def get_agents_groups(self) -> list[AgentIDGroups]:
-        """Get system agents groups.
-        
-        Returns
-        -------
-        list[str]
-            Group names.
-        """
-        response = await self._get('/agents/ids/groups')
-        if not response:
-            return []
-        return [AgentIDGroups(id=key.zfill(3), groups=value) for key, value in response['data'].items()]
 
-    async def get_group_agents(self, group_name: str) -> list[int]:
-        """Get group agents.
-        
-        Parameters
-        ----------
-        group_name : str
-            Group name.
-        
-        Returns
-        -------
-        list[int]
-            Agent IDs.
-        """
-        return await self._get(f'/agents/ids/groups/{group_name}')
-    
     async def get_agents_summary(self, agent_ids: list[str] = []) -> AgentsSummary:
         """Get agents information summary.
         

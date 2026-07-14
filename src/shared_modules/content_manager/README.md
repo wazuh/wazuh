@@ -50,19 +50,19 @@ After all pages are processed, the downloader signals completion via `indexer_co
     "configData": {
         "consumerName": "Wazuh VulnerabilityDetector",
         "contentSource": "indexer",
-        "databasePath": "queue/vd_updater/rocksdb",
+        "databasePath": "queue/vd/vd_updater/rocksdb",
         "indexer": {
             "hosts": ["https://localhost:9200"],
-            "username": "admin",
-            "password": "admin",
+            "username": "wazuh-manager",
+            "password": "wazuh-manager",
             "ssl": {
                 "certificate_authorities": ["/etc/wazuh-indexer/certs/root-ca.pem"],
                 "certificate": "",
                 "key": ""
             },
-            "index": ".cti-cves",
-            "consumerStatusIndex": ".cti-consumers",
-            "consumerStatusId": "t1-vulnerabilities-5_public-vulnerabilities-5",
+            "index": ".wazuh-threatintel-vulnerabilities",
+            "consumerStatusIndex": ".wazuh-cti-consumers",
+            "consumerStatusId": "cti:catalog:consumer:vulnerabilities",
             "pageSize": 250,
             "numSlices": 2
         }

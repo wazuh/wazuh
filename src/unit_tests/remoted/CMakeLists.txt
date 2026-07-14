@@ -57,9 +57,12 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,agent_meta_from_agent_info -Wl,--wrap,agent_meta_upsert_locked \
                             -Wl,--wrap,batch_queue_enqueue_ex \
                             -Wl,--wrap,w_mutex_lock -Wl,--wrap,w_mutex_unlock -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
-                            -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_evt \
+                            -Wl,--wrap,wnotify_add -Wl,--wrap,SendMSG -Wl,--wrap,rem_inc_recv_events \
+                            -Wl,--wrap,rem_inc_recv_states -Wl,--wrap,rem_inc_recv_upgrade_ack \
+                            -Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,rem_inc_recv_events_failed \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
-                            -Wl,--wrap,router_provider_send -Wl,--wrap,w_query_agentd ${HASH_OP_WRAPPERS}")
+                            -Wl,--wrap,router_provider_send -Wl,--wrap,router_provider_send_sync \
+                            -Wl,--wrap,w_query_agentd ${HASH_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_save_ctrlmsg_thread")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accept -Wl,--wrap,close \
@@ -99,6 +102,9 @@ list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUn
                            -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig -Wl,--wrap,rem_create_agents_state_json  \
                            -Wl,--wrap,assign_group_to_agent \
                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND remoted_names "test_queue")
+list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn")
 
 list(LENGTH remoted_names count)
 math(EXPR count "${count} - 1")

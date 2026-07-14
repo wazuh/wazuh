@@ -1702,64 +1702,6 @@ TEST_F(JsonSettersTest, SetString)
     ASSERT_THROW(jObjString.setString("newValue", "object/key"), std::runtime_error);
 }
 
-TEST_F(JsonSettersTest, SetStringStripsTrailingNullBytes)
-{
-    Json doc {};
-    std::string tmp;
-
-    // Single trailing \0 (the most common case: OS_SendUnix sends strlen+1 bytes)
-    {
-        std::string_view withNull {"hello\0", 6}; // size=6, includes the \0
-        doc.setString(withNull, "/field");
-        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field"));
-        ASSERT_EQ("hello", tmp);
-        ASSERT_EQ(5u, tmp.size()); // no null byte stored
-        // Serialised JSON must not contain \u0000
-        ASSERT_EQ(std::string::npos, doc.str().find("\\u0000"));
-    }
-
-    // Multiple trailing \0 bytes (e.g. padded buffer)
-    {
-        std::string_view multiNull {"abc\0\0\0", 6};
-        doc.setString(multiNull, "/field2");
-        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field2"));
-        ASSERT_EQ("abc", tmp);
-        ASSERT_EQ(3u, tmp.size());
-    }
-
-    // String that is all null bytes must become an empty string
-    {
-        std::string_view allNull {"\0\0", 2};
-        doc.setString(allNull, "/field3");
-        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field3"));
-        ASSERT_TRUE(tmp.empty());
-    }
-
-    // Normal string without any \0 must be stored unchanged
-    {
-        doc.setString("normal", "/field4");
-        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field4"));
-        ASSERT_EQ("normal", tmp);
-    }
-
-    // Empty string must remain empty
-    {
-        doc.setString("", "/field5");
-        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field5"));
-        ASSERT_TRUE(tmp.empty());
-    }
-
-    // \0 embedded in the MIDDLE is not stripped (only trailing ones are)
-    {
-        std::string_view embeddedNull {"a\0b", 3}; // \0 is in the middle
-        doc.setString(embeddedNull, "/field6");
-        ASSERT_EQ(json::RetGet::Success, doc.getString(tmp, "/field6"));
-        // Only the trailing-strip loop runs; the mid-string \0 followed by 'b' means
-        // no trailing \0 is stripped — the full 3-byte string is stored.
-        ASSERT_EQ(3u, tmp.size());
-    }
-}
-
 TEST_F(JsonSettersTest, SetInt)
 {
     Json jObjInt {R"({
@@ -2997,57 +2939,72 @@ INSTANTIATE_TEST_SUITE_P(Json,
                                            isEmptyT(false, R"({"a":false})", "/a/0"),
                                            isEmptyT(false, R"({"a":null})", "/a/0")));
 
-class JsonValidParamTest : public ::testing::TestWithParam<std::pair<bool, std::string>>
+class JsonDuplicateKeyTest : public ::testing::TestWithParam<std::tuple<std::string, size_t, std::string>>
 {
 };
 
-TEST_P(JsonValidParamTest, CheckDuplicateKey)
+TEST_P(JsonDuplicateKeyTest, CheckAndRemoveDuplicateKeys)
 {
-    const auto& param = GetParam();
-    const auto& verify = param.first;
-    const auto& jsonInput = param.second;
+    const auto& [jsonInput, expectedDups, expectedJson] = GetParam();
 
-    if (verify)
+    // Construction should NOT throw even with duplicates
+    json::Json doc {jsonInput.c_str()};
+
+    // checkDuplicateKeys detects them
+    auto error = doc.checkDuplicateKeys();
+    if (expectedDups > 0)
     {
-        ASSERT_NO_THROW(auto result = json::Json {jsonInput.c_str()});
+        ASSERT_TRUE(error.has_value());
     }
     else
     {
-        ASSERT_ANY_THROW(auto result = json::Json {jsonInput.c_str()});
+        ASSERT_FALSE(error.has_value());
+    }
+
+    // removeDuplicateKeys removes them and returns count
+    size_t removed = doc.removeDuplicateKeys();
+    ASSERT_EQ(removed, expectedDups);
+
+    // After removal, no more duplicates
+    ASSERT_FALSE(doc.checkDuplicateKeys().has_value());
+
+    // Verify resulting JSON matches expected
+    if (expectedDups > 0)
+    {
+        json::Json expected {expectedJson.c_str()};
+        ASSERT_EQ(doc, expected);
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(CheckDuplicateKey,
-                         JsonValidParamTest,
-                         ::testing::Values(std::make_pair(true, R"({
-        "check": "$event.id == 2"
-        })"),
-                                           std::make_pair(false, R"({
-        "a": 1,
-        "b": 2,
-        "c": {
-            "c": 3,
-            "c": 4
-        }
-        })"),
-                                           std::make_pair(false, R"({
-        "a": 1,
-        "b": 3,
-        "a": 2
-        })"),
-                                           std::make_pair(false, R"({
-        "b": 1,
-        "a": 3,
-        "a": 2
-        })"),
-                                           std::make_pair(false, R"({
-        "a": 3,
-        "a": 2
-        })"),
-                                           std::make_pair(false, R"({
-        "check": "$event == 2",
-        "check": "$event.id == 2"
-        })")));
+INSTANTIATE_TEST_SUITE_P(
+    CheckDuplicateKey,
+    JsonDuplicateKeyTest,
+    ::testing::Values(
+        // No duplicates
+        std::make_tuple(R"({"check": "$event.id == 2"})", size_t(0), R"({"check": "$event.id == 2"})"),
+        // Nested duplicate
+        std::make_tuple(R"({"a": 1, "b": 2, "c": {"c": 3, "c": 4}})", size_t(1), R"({"a":1,"b":2,"c":{"c":3}})"),
+        // Root duplicate (a appears twice)
+        std::make_tuple(R"({"a": 1, "b": 3, "a": 2})", size_t(1), R"({"a":1,"b":3})"),
+        // Root duplicate (different order)
+        std::make_tuple(R"({"b": 1, "a": 3, "a": 2})", size_t(1), R"({"b":1,"a":3})"),
+        // Only duplicates
+        std::make_tuple(R"({"a": 3, "a": 2})", size_t(1), R"({"a":3})"),
+        // Duplicate with complex values
+        std::make_tuple(
+            R"({"check": "$event == 2", "check": "$event.id == 2"})", size_t(1), R"({"check":"$event == 2"})"),
+        // Duplicate with same values
+        std::make_tuple(R"({"level": "5", "level": "5"})", size_t(1), R"({"level":"5"})"),
+        // Duplicate with object values
+        std::make_tuple(R"({"a": {"x": 1}, "a": {"x": 1}})", size_t(1), R"({"a":{"x":1}})"),
+        // Duplicate inside array element
+        std::make_tuple(R"({"items": [{"id": 1, "id": 2}, {"name": "foo"}]})",
+                        size_t(1),
+                        R"({"items":[{"id":1},{"name":"foo"}]})"),
+        // Duplicate inside second array element
+        std::make_tuple(R"({"items": [{"name": "foo"}, {"id": 1, "id": 1}]})",
+                        size_t(1),
+                        R"({"items":[{"name":"foo"},{"id":1}]})")));
 
 // ---------- Functors (templated-friendly) ----------
 struct Identity

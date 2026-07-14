@@ -10,6 +10,7 @@
 
 #include <shared.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include "auth.h"
 #include "defs.h"
 #include "os_err.h"
@@ -25,6 +26,12 @@
 #define __wazuh_version "v5.0.0"
 #endif
 
+typedef enum {
+    PASS_LINE_OK = 0,
+    PASS_LINE_INVALID,  /* missing, empty, or <= 2 chars after trimming */
+    PASS_LINE_TOO_LONG
+} pass_line_t;
+
 keystore keys;
 char shost[512];
 authd_config_t config;
@@ -33,6 +40,11 @@ struct keynode *queue_insert = NULL;
 struct keynode *queue_remove = NULL;
 struct keynode * volatile *insert_tail;
 struct keynode * volatile *remove_tail;
+
+/* Static regex for group validation */
+static regex_t w_auth_group_regex;
+static bool w_auth_group_regex_compiled = false;
+static pthread_mutex_t w_auth_group_regex_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // Append key to insertion queue
 void add_insert(const keyentry *entry,const char *group) {
@@ -389,6 +401,20 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
     const char delim[] = {MULTIGROUP_SEPARATOR,'\0'};
     w_err_t ret = OS_SUCCESS;
 
+    /* Compile regex once on first call */
+    w_mutex_lock(&w_auth_group_regex_mutex);
+    if (!w_auth_group_regex_compiled) {
+        if (regcomp(&w_auth_group_regex, "^[a-zA-Z0-9_\\.\\-]+$", REG_EXTENDED | REG_NOSUB) != 0) {
+            merror("Failed to compile group validation regex");
+            w_mutex_unlock(&w_auth_group_regex_mutex);
+            if (response) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Internal validation error");
+            }
+            return OS_INVALID;
+        }
+        w_auth_group_regex_compiled = true;
+    }
+
     os_strdup(groups, tmp_groups);
     char *group = strtok_r(tmp_groups, delim, &save_ptr);
 
@@ -407,6 +433,27 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
             break;
         }
 
+        /* Validate group name format */
+        if (regexec(&w_auth_group_regex, group, 0, NULL, 0) != 0) {
+            merror("Invalid group name '%s': contains forbidden characters", group);
+            if (response) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
+            }
+            ret = OS_INVALID;
+            break;
+        }
+
+        /* Explicit check for directory references (. and ..) */
+        if (strcmp(group, ".") == 0 || strcmp(group, "..") == 0) {
+            merror("Invalid group name '%s': directory reference not allowed", group);
+            if (response) {
+                snprintf(response, OS_SIZE_2048, "ERROR: Invalid group name: %s", group);
+            }
+            ret = OS_INVALID;
+            break;
+        }
+
+        /* Verify group directory exists (after validation) */
         snprintf(dir, PATH_MAX + 1, SHAREDCFG_DIR "/%s", group);
         dp = wopendir(dir);
         if (!dp) {
@@ -421,8 +468,18 @@ w_err_t w_auth_validate_groups(const char *groups, char *response) {
         group = strtok_r(NULL, delim, &save_ptr);
         closedir(dp);
     }
+    w_mutex_unlock(&w_auth_group_regex_mutex);
     os_free(tmp_groups);
     return ret;
+}
+
+void w_auth_validate_groups_cleanup(void) {
+    w_mutex_lock(&w_auth_group_regex_mutex);
+    if (w_auth_group_regex_compiled) {
+        regfree(&w_auth_group_regex);
+        w_auth_group_regex_compiled = false;
+    }
+    w_mutex_unlock(&w_auth_group_regex_mutex);
 }
 
 char *w_generate_random_pass()
@@ -479,4 +536,128 @@ char *w_generate_random_pass()
     free(rand4);
     os_free(str1);
     return(fstring);
+}
+
+/* Read and trim (CR/LF) the first line of an open password file. Shared by both readers. */
+static pass_line_t read_password_line(FILE *fp, char **out) {
+    char buf[4096 + 1];
+
+    *out = NULL;
+
+    if (!fgets(buf, sizeof(buf), fp)) {
+        return PASS_LINE_INVALID;
+    }
+
+    size_t len = strlen(buf);
+
+    /* fgets filled the buffer without a newline: line exceeds the maximum length. */
+    if (len == sizeof(buf) - 1 && buf[len - 1] != '\n') {
+        return PASS_LINE_TOO_LONG;
+    }
+
+    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+        buf[--len] = '\0';
+    }
+
+    if (len <= 2) {
+        return PASS_LINE_INVALID;
+    }
+
+    /* Reject all-whitespace content: it passes the length check but would otherwise
+     * become a valid shared enrollment secret, contradicting the fail-closed contract. */
+    bool all_space = true;
+    for (size_t i = 0; i < len; i++) {
+        if (!isspace((unsigned char)buf[i])) {
+            all_space = false;
+            break;
+        }
+    }
+    if (all_space) {
+        return PASS_LINE_INVALID;
+    }
+
+    *out = strdup(buf);
+    return PASS_LINE_OK;
+}
+
+char *w_authd_load_password(const char *path, bool *generated) {
+    FILE *fp;
+
+    *generated = false;
+
+    if (fp = wfopen(path, "r"), fp) {
+        char *pass = NULL;
+        pass_line_t status = read_password_line(fp, &pass);
+
+        fclose(fp);
+
+        /* Fail closed: an invalid existing file must never disable password enrollment. */
+        switch (status) {
+        case PASS_LINE_TOO_LONG:
+            merror_exit("Authentication password in '%s' is too long.", path);
+        case PASS_LINE_INVALID:
+            merror_exit("Invalid password provided in '%s'.", path);
+        case PASS_LINE_OK:
+            return pass;
+        }
+
+        return pass;
+    }
+
+    /* No file: generate and persist. umask 0137 (file mode 0640) avoids a world-readable create/chmod window. */
+    char *pass = w_generate_random_pass();
+
+    if (!pass) {
+        merror_exit("Unable to generate random password. Exiting.");
+    }
+
+    mode_t old_umask = umask(0137);
+    fp = wfopen(path, "w");
+    int saved_errno = errno;    /* before umask() can clobber it */
+    umask(old_umask);
+
+    if (!fp) {
+        os_free(pass);
+        merror_exit("Unable to write authentication password to '%s': %s", path, strerror(saved_errno));
+    }
+
+    if (fprintf(fp, "%s\n", pass) != (int)(strlen(pass) + 1)) {
+        fclose(fp);
+        os_free(pass);
+        merror_exit("Unable to persist authentication password to '%s'.", path);
+    }
+
+    if (fclose(fp) != 0) {
+        saved_errno = errno;
+        os_free(pass);
+        merror_exit("Unable to close authentication password file '%s': %s", path, strerror(saved_errno));
+    }
+
+    *generated = true;
+    return pass;
+}
+
+/* Read-only loader for cluster workers: never generates, persists, nor exits. */
+char *w_authd_read_password(const char *path) {
+    FILE *fp;
+
+    if (fp = wfopen(path, "r"), !fp) {
+        return NULL;
+    }
+
+    char *pass = NULL;
+    pass_line_t status = read_password_line(fp, &pass);
+
+    fclose(fp);
+
+    /* Distinguish a corrupt/malformed file from a file that is simply absent. Both
+     * return NULL to the caller, but the former warrants a distinct log entry so
+     * operators can tell a sync-lag apart from file corruption. */
+    if (status == PASS_LINE_TOO_LONG) {
+        mwarn("Authentication password in '%s' is too long; ignoring.", path);
+    } else if (status == PASS_LINE_INVALID) {
+        mwarn("Authentication password in '%s' is invalid or empty; ignoring.", path);
+    }
+
+    return pass;
 }

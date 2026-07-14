@@ -44,16 +44,16 @@ base::Expression fileOutputBuilder(const json::Json& definition,
     const auto failureTrace = fmt::format("{} -> Could not write event to output", name);
 
     return base::Term<base::EngineOp>::create(name,
-                                              [writer, successTrace, failureTrace, runState = buildCtx->runState()](
+                                              [writer, successTrace, failureTrace, isTestMode = buildCtx->isTestMode()](
                                                   base::Event event) -> base::result::Result<base::Event>
                                               {
                                                   if ((*writer)(event->str()))
                                                   {
-                                                      RETURN_SUCCESS(runState, event, successTrace);
+                                                      RETURN_SUCCESS(isTestMode, event, successTrace);
                                                   }
                                                   else
                                                   {
-                                                      RETURN_FAILURE(runState, event, failureTrace);
+                                                      RETURN_FAILURE(isTestMode, event, failureTrace);
                                                   }
                                               });
 }

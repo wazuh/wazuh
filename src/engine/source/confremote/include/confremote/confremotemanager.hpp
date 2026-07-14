@@ -1,6 +1,7 @@
 #ifndef CONFREMOTE_CONFREMOTEMANAGER_HPP
 #define CONFREMOTE_CONFREMOTEMANAGER_HPP
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -50,6 +51,11 @@ public:
     void synchronize() override;
 
     /**
+     * @brief Requests graceful shutdown for synchronization operations.
+     */
+    void requestShutdown() override;
+
+    /**
      * @brief Registers a callback trigger for a runtime setting key.
      *
      * Returns the last persisted value for the key if available,
@@ -81,6 +87,7 @@ private:
     std::weak_ptr<store::IStore> m_store;
     mutable std::shared_mutex m_mutex;
     std::unordered_map<std::string, SettingEntry> m_settings;
+    std::atomic<bool> m_shutdownRequested {false};
     std::size_t m_attempts;
     std::size_t m_waitSeconds;
 };

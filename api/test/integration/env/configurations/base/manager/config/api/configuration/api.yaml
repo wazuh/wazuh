@@ -31,3 +31,11 @@ access:
 
 # Drop privileges (Run as wazuh-manager user)
 drop_privileges: yes
+
+# Uploadable Wazuh configuration sections (allow all for testing)
+upload_configuration:
+  agents:
+    allow_higher_versions:
+      allow: yes
+  indexer:
+    allow: yes

@@ -178,6 +178,10 @@ public:
                       const std::string& /*asnPath*/) override
     {
     }
+
+    void requestShutdown() override {}
+
+    std::vector<geo::GeoDbStatus> getGeoStatus() const override { return {}; }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,10 +212,11 @@ json::Json makeMappingConfig(bool withGeo, bool withAs)
 /**
  * @brief Helper: build the enrichment expression once, then benchmark applying it.
  */
-base::Expression buildEnrichmentExpr(const std::shared_ptr<geo::IManager>& mgr, const json::Json& configDoc, bool trace)
+base::Expression
+buildEnrichmentExpr(const std::shared_ptr<geo::IManager>& mgr, const json::Json& configDoc, bool isTestMode)
 {
     auto enrichBuilder = builder::builders::enrichment::getGeoEnrichmentBuilder(mgr, configDoc);
-    auto [expr, name] = enrichBuilder(trace);
+    auto [expr, name] = enrichBuilder(isTestMode);
     return expr;
 }
 
@@ -307,7 +312,7 @@ bool evalExpression(const base::Expression& expression, const base::Event& event
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Benchmark: Geo + AS enrichment with a known IP (both succeed), trace OFF.
+ * Benchmark: Geo + AS enrichment with a known IP (both succeed), isTestMode OFF.
  */
 static void BM_GeoAS_KnownIP_NoTrace(benchmark::State& state)
 {
@@ -328,7 +333,7 @@ static void BM_GeoAS_KnownIP_NoTrace(benchmark::State& state)
 BENCHMARK(BM_GeoAS_KnownIP_NoTrace);
 
 /**
- * Benchmark: Geo + AS enrichment with a known IP (both succeed), trace ON.
+ * Benchmark: Geo + AS enrichment with a known IP (both succeed), isTestMode ON.
  */
 static void BM_GeoAS_KnownIP_Trace(benchmark::State& state)
 {
@@ -349,7 +354,7 @@ static void BM_GeoAS_KnownIP_Trace(benchmark::State& state)
 BENCHMARK(BM_GeoAS_KnownIP_Trace);
 
 /**
- * Benchmark: Geo-only enrichment with a known IP, trace OFF.
+ * Benchmark: Geo-only enrichment with a known IP, isTestMode OFF.
  */
 static void BM_GeoOnly_KnownIP_NoTrace(benchmark::State& state)
 {
@@ -370,7 +375,7 @@ static void BM_GeoOnly_KnownIP_NoTrace(benchmark::State& state)
 BENCHMARK(BM_GeoOnly_KnownIP_NoTrace);
 
 /**
- * Benchmark: AS-only enrichment with a known IP, trace OFF.
+ * Benchmark: AS-only enrichment with a known IP, isTestMode OFF.
  */
 static void BM_ASOnly_KnownIP_NoTrace(benchmark::State& state)
 {
@@ -391,7 +396,7 @@ static void BM_ASOnly_KnownIP_NoTrace(benchmark::State& state)
 BENCHMARK(BM_ASOnly_KnownIP_NoTrace);
 
 /**
- * Benchmark: Geo + AS enrichment with an unknown IP (no data), trace OFF.
+ * Benchmark: Geo + AS enrichment with an unknown IP (no data), isTestMode OFF.
  */
 static void BM_GeoAS_UnknownIP_NoTrace(benchmark::State& state)
 {
@@ -412,7 +417,7 @@ static void BM_GeoAS_UnknownIP_NoTrace(benchmark::State& state)
 BENCHMARK(BM_GeoAS_UnknownIP_NoTrace);
 
 /**
- * Benchmark: Geo + AS enrichment with an unknown IP (no data), trace ON.
+ * Benchmark: Geo + AS enrichment with an unknown IP (no data), isTestMode ON.
  */
 static void BM_GeoAS_UnknownIP_Trace(benchmark::State& state)
 {
@@ -433,7 +438,7 @@ static void BM_GeoAS_UnknownIP_Trace(benchmark::State& state)
 BENCHMARK(BM_GeoAS_UnknownIP_Trace);
 
 /**
- * Benchmark: Missing IP field in event (early exit path), trace OFF.
+ * Benchmark: Missing IP field in event (early exit path), isTestMode OFF.
  */
 static void BM_GeoAS_MissingIP_NoTrace(benchmark::State& state)
 {
@@ -454,7 +459,7 @@ static void BM_GeoAS_MissingIP_NoTrace(benchmark::State& state)
 BENCHMARK(BM_GeoAS_MissingIP_NoTrace);
 
 /**
- * Benchmark: Missing IP field in event (early exit path), trace ON.
+ * Benchmark: Missing IP field in event (early exit path), isTestMode ON.
  */
 static void BM_GeoAS_MissingIP_Trace(benchmark::State& state)
 {
@@ -475,7 +480,7 @@ static void BM_GeoAS_MissingIP_Trace(benchmark::State& state)
 BENCHMARK(BM_GeoAS_MissingIP_Trace);
 
 /**
- * Benchmark: Empty locators (DB not available scenario), known IP, trace OFF.
+ * Benchmark: Empty locators (DB not available scenario), known IP, isTestMode OFF.
  */
 static void BM_EmptyLocators_KnownIP_NoTrace(benchmark::State& state)
 {
@@ -496,7 +501,7 @@ static void BM_EmptyLocators_KnownIP_NoTrace(benchmark::State& state)
 BENCHMARK(BM_EmptyLocators_KnownIP_NoTrace);
 
 /**
- * Benchmark: Geo + AS enrichment with a known IP stored as array, trace OFF.
+ * Benchmark: Geo + AS enrichment with a known IP stored as array, isTestMode OFF.
  * Tests the fallback path: event->getString(path + "/0")
  */
 static void BM_GeoAS_ArrayIP_NoTrace(benchmark::State& state)

@@ -77,7 +77,7 @@ def test_authd_force_options_invalid_config(test_configuration, test_metadata, s
         or response message is made.
 
     wazuh_min_version:
-        4.3.0
+        5.0.0
 
     tier: 0
 

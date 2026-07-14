@@ -1,30 +1,35 @@
-# Rootcheck Configuration
+# Rootcheck Configuration Reference
 
-This document describes all configuration options for the rootcheck module.
+Complete configuration reference for the Rootcheck module.
 
-## Configuration Location
+The rootcheck module performs anomaly and behavior-based detection on monitored endpoints to identify potential security threats such as hidden processes, hidden network ports, unusual file system objects, and network interfaces in promiscuous mode.
 
-Rootcheck is configured in the agent's `ossec.conf` file within the `<rootcheck>` section:
+**Configuration file:** `/var/ossec/etc/ossec.conf`
 
-```xml
-<rootcheck>
-  <!-- Configuration options -->
-</rootcheck>
-```
+**XML Section:** `<rootcheck>`
+
+**Module:** Agent-only
+
+**Internal Options:** `rootcheck.*`
+
+For module overview and architecture, see [Rootcheck Module](index.html).
+
+---
 
 ## Configuration Options
 
-### Core Options
+**Deprecated options:** The following tags are parsed for backward compatibility but print migration messages. Functionality has been replaced by SCA and FIM:
+- `<windows_malware>`, `<windows_apps>` - Use SCA policies instead
+- `<check_files>`, `<check_trojans>` - Use FIM instead
+- `<check_unixaudit>`, `<check_winapps>`, `<check_winaudit>`, `<check_winmalware>` - Use SCA policies instead
 
-#### `disabled`
+### disabled
 
 Enable or disable the rootcheck module.
 
-| Attribute | Value |
-|-----------|-------|
-| **Type** | Boolean |
-| **Default** | no |
-| **Allowed values** | yes, no |
+- **Default value:** `no`
+- **Allowed values:** `yes`, `no`
+- **Note:** When disabled, all rootcheck detection capabilities are stopped
 
 **Example:**
 ```xml
@@ -33,15 +38,13 @@ Enable or disable the rootcheck module.
 </rootcheck>
 ```
 
-#### `frequency`
+### frequency
 
 Time interval between rootcheck scans, specified in seconds.
 
-| Attribute | Value |
-|-----------|-------|
-| **Type** | Integer |
-| **Default** | 43200 (12 hours) |
-| **Allowed values** | Any positive integer |
+- **Default value:** `43200` (12 hours)
+- **Allowed values:** Any positive integer
+- **Note:** Consider system resources when setting scan frequency
 
 **Example:**
 ```xml
@@ -50,20 +53,14 @@ Time interval between rootcheck scans, specified in seconds.
 </rootcheck>
 ```
 
-### Detection Options
-
-#### `check_dev`
+### check_dev
 
 Enable or disable checking of the `/dev` directory for suspicious files.
 
-| Attribute | Value |
-|-----------|-------|
-| **Type** | Boolean |
-| **Default** | yes |
-| **Allowed values** | yes, no |
-| **Platform** | Unix/Linux only |
-
-The `/dev` directory should only contain device-specific files. Rootcheck inspects all files in this directory because malware can use this partition to hide files.
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Platform:** Unix/Linux only
+- **Note:** The `/dev` directory should only contain device-specific files; malware can use this partition to hide files
 
 **Example:**
 ```xml
@@ -72,21 +69,13 @@ The `/dev` directory should only contain device-specific files. Rootcheck inspec
 </rootcheck>
 ```
 
-#### `check_sys`
+### check_sys
 
 Enable or disable checking for anomalous file system objects.
 
-| Attribute | Value |
-|-----------|-------|
-| **Type** | Boolean |
-| **Default** | yes |
-| **Allowed values** | yes, no |
-
-Scans the system for unusual files, permissions, and hidden files. Checks include:
-- Files owned by root with world-writable permissions
-- SUID files
-- Hidden directories
-- File size discrepancies
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Scans for unusual files, permissions, and hidden files including files owned by root with world-writable permissions, SUID files, hidden directories, and file size discrepancies
 
 **Example:**
 ```xml
@@ -95,17 +84,13 @@ Scans the system for unusual files, permissions, and hidden files. Checks includ
 </rootcheck>
 ```
 
-#### `check_pids`
+### check_pids
 
 Enable or disable checking for hidden processes.
 
-| Attribute | Value |
-|-----------|-------|
-| **Type** | Boolean |
-| **Default** | yes |
-| **Allowed values** | yes, no |
-
-Inspects all process IDs (PIDs) using different system calls to detect processes hidden from standard listing tools like `ps`.
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Inspects all process IDs (PIDs) using different system calls to detect processes hidden from standard listing tools like `ps`
 
 **Example:**
 ```xml
@@ -114,17 +99,13 @@ Inspects all process IDs (PIDs) using different system calls to detect processes
 </rootcheck>
 ```
 
-#### `check_ports`
+### check_ports
 
 Enable or disable checking for hidden network ports.
 
-| Attribute | Value |
-|-----------|-------|
-| **Type** | Boolean |
-| **Default** | yes |
-| **Allowed values** | yes, no |
-
-Scans for ports not visible in `netstat` output by attempting to bind to each port.
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Scans for ports not visible in `netstat` output by attempting to bind to each port
 
 **Example:**
 ```xml
@@ -133,17 +114,13 @@ Scans for ports not visible in `netstat` output by attempting to bind to each po
 </rootcheck>
 ```
 
-#### `check_if`
+### check_if
 
 Enable or disable checking network interfaces for promiscuous mode.
 
-| Attribute | Value |
-|-----------|-------|
-| **Type** | Boolean |
-| **Default** | yes |
-| **Allowed values** | yes, no |
-
-Detects network interfaces running in promiscuous mode, which can capture all network traffic and may indicate packet sniffing malware.
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Note:** Detects network interfaces running in promiscuous mode, which can capture all network traffic and may indicate packet sniffing malware
 
 **Example:**
 ```xml
@@ -152,20 +129,14 @@ Detects network interfaces running in promiscuous mode, which can capture all ne
 </rootcheck>
 ```
 
-### Additional Options
-
-#### `skip_nfs`
+### skip_nfs
 
 Enable or disable scanning of network-mounted filesystems.
 
-| Attribute | Value |
-|-----------|-------|
-| **Type** | Boolean |
-| **Default** | yes |
-| **Allowed values** | yes, no |
-| **Platform** | Linux, FreeBSD |
-
-When enabled, rootcheck will skip checking files on CIFS or NFS mounts to avoid performance issues.
+- **Default value:** `yes`
+- **Allowed values:** `yes`, `no`
+- **Platform:** Linux, FreeBSD
+- **Note:** When enabled, rootcheck will skip checking files on CIFS or NFS mounts to avoid performance issues
 
 **Example:**
 ```xml
@@ -174,18 +145,14 @@ When enabled, rootcheck will skip checking files on CIFS or NFS mounts to avoid 
 </rootcheck>
 ```
 
-#### `base_directory`
+### base_directory
 
 Base directory that will be prefixed to the `/dev` directory scan.
 
-| Attribute | Value |
-|-----------|-------|
-| **Type** | String (path) |
-| **Default (Unix)** | / |
-| **Default (Windows)** | C:\ |
-| **Allowed values** | Any valid directory path |
-
-> **Note:** In Wazuh 5.0, this option only affects `/dev` directory scanning since file check and trojan scan features have been removed.
+- **Default value (Unix):** `/`
+- **Default value (Windows):** `C:\`
+- **Allowed values:** Any valid directory path
+- **Note:** In Wazuh 5.0, this option only affects `/dev` directory scanning since file check and trojan scan features have been removed
 
 **Example:**
 ```xml
@@ -194,18 +161,14 @@ Base directory that will be prefixed to the `/dev` directory scan.
 </rootcheck>
 ```
 
-#### `ignore`
+### ignore
 
 List of files or directories to ignore during scans (one entry per line).
 
-| Attribute | Value |
-|-----------|-------|
-| **Type** | String (regex) |
-| **Allowed values** | Simple regex (sregex) |
-| **Valid for** | check_sys, check_dev |
-
-**Attributes:**
-- `type="sregex"`: Simple regex expression
+- **Default value:** none
+- **Allowed values:** Simple regex (sregex)
+- **Valid for:** `check_sys`, `check_dev`
+- **Attributes:** `type="sregex"` - Simple regex expression
 
 **Example:**
 ```xml
@@ -217,9 +180,34 @@ List of files or directories to ignore during scans (one entry per line).
 </rootcheck>
 ```
 
-## Complete Configuration Example
+---
+
+## Internal Options
+
+**Configuration file:** `/var/ossec/etc/local_internal_options.conf`
+
+Internal options provide low-level control over module behavior. These options are rarely needed for normal operation.
+
+### rootcheck.sleep
+
+Sleep time (in milliseconds) between each iteration of the rootcheck scan loop.
+
+- **Default value:** `50`
+- **Allowed values:** Positive integer
+- **Note:** Lower values increase scan speed but may impact system performance
+
+**Example:**
+```
+rootcheck.sleep=50
+```
+
+---
+
+## Configuration Examples
 
 ### Default Configuration
+
+Standard rootcheck settings for most deployments:
 
 ```xml
 <rootcheck>
@@ -246,6 +234,8 @@ List of files or directories to ignore during scans (one entry per line).
 
 ### Minimal Configuration
 
+Basic configuration with default values:
+
 ```xml
 <rootcheck>
   <disabled>no</disabled>
@@ -255,7 +245,7 @@ List of files or directories to ignore during scans (one entry per line).
 
 ### High-Frequency Monitoring
 
-For environments requiring more frequent checks:
+Configuration for environments requiring more frequent checks:
 
 ```xml
 <rootcheck>
@@ -293,73 +283,22 @@ Enable only specific detection types:
 </rootcheck>
 ```
 
-## Performance Considerations
+### Disable Rootcheck
 
-### Scan Frequency
-
-- **Default (12 hours)**: Suitable for most environments
-- **6-8 hours**: Recommended for high-security environments
-- **24 hours**: Acceptable for low-risk systems with limited resources
-
-Rootcheck scans can be resource-intensive. Consider your system's capabilities when setting the frequency.
-
-### Impact on System Resources
-
-- **CPU**: Moderate during scan execution
-- **I/O**: Can be significant when scanning large filesystems
-- **Network**: Minimal (only sends alerts)
-
-### Recommendations
-
-1. **Skip network mounts**: Keep `skip_nfs` enabled to avoid performance issues
-2. **Use ignore patterns**: Exclude directories known to change frequently
-3. **Schedule appropriately**: Consider running scans during off-peak hours
-4. **Monitor impact**: Watch system resources during initial scans
-
-## Troubleshooting
-
-### Rootcheck Not Running
-
-Check if rootcheck is enabled:
-```bash
-grep -A 5 "<rootcheck>" /var/ossec/etc/ossec.conf
-```
-
-Check logs for errors:
-```bash
-grep rootcheck /var/ossec/logs/ossec.log
-```
-
-### No Alerts Generated
-
-1. Verify rootcheck is not disabled
-2. Check scan frequency - wait for next scheduled scan
-3. Force immediate scan:
-   ```bash
-   /var/ossec/bin/wazuh-control restart
-   ```
-4. Check agent connection to manager
-
-### False Positives
-
-Use the `<ignore>` option to exclude known benign files or directories:
+Prevent all rootcheck detection:
 
 ```xml
 <rootcheck>
-  <ignore type="sregex">/path/to/benign/file</ignore>
+  <disabled>yes</disabled>
 </rootcheck>
 ```
 
-### High Resource Usage
-
-1. Increase scan frequency (reduce frequency of scans)
-2. Enable `skip_nfs` if not already enabled
-3. Add ignore patterns for large, frequently-changing directories
-4. Consider disabling specific checks not needed for your environment
+---
 
 ## See Also
 
-- [Architecture](architecture.md) - Technical details of detection methods
-- [Output Samples](output-samples.md) - Example alerts and their meanings
-- [SCA Module](../sca/README.md) - Policy and configuration assessment
-- [FIM Module](../fim/README.md) - File integrity monitoring
+- [Rootcheck Module](index.html) - Module overview and features
+- [Architecture](architecture.md) - Technical architecture and detection methods
+- [Output Samples](output-samples.md) - Alert formats and examples
+- [Security Configuration Assessment (SCA)](../sca/index.html) - Policy and configuration compliance checking
+- [File Integrity Monitoring (FIM)](../fim/index.html) - File change detection and monitoring

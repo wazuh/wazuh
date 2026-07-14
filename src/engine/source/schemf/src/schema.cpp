@@ -2,6 +2,7 @@
 #include "validator.hpp"
 
 #include <stdexcept>
+#include <unordered_set>
 
 #include <fmt/format.h>
 
@@ -233,6 +234,11 @@ void Schema::load(const json::Json& json)
         auto field = entryToField(key, value);
         addField(key, field);
     }
+}
+
+std::unordered_set<json::Json::Type> Schema::getJsonTypes(const DotPath& name) const
+{
+    return m_validator->getJsonTypes(name);
 }
 
 base::RespOrError<ValidationResult> Schema::validate(const DotPath& name, const ValidationToken& token) const

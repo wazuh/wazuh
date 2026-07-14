@@ -147,6 +147,45 @@ int wm_agent_upgrade_validate_system(const char *platform, const char *os_major,
     return return_code;
 }
 
+/**
+ * Extract the target version token from a canonical WPK filename of the form
+ * "wazuh_agent_v<VERSION>_<rest>.wpk". The extracted token is prefixed with 'v'
+ * so it can be compared directly with compare_wazuh_versions().
+ *
+ * @param file_path  Full path or basename of the WPK file.
+ * @param out        Output buffer for the version token (e.g. "v5.0.0").
+ * @param out_size   Capacity of out.
+ * @return true if a version token was found, false if the filename does not
+ *         follow the canonical pattern (renamed file, missing tokens, etc.).
+ */
+static bool wm_agent_upgrade_parse_wpk_custom_version(const char *file_path, char *out, size_t out_size) {
+    if (!file_path || !out || out_size == 0) {
+        return false;
+    }
+
+    const char *slash = strrchr(file_path, '/');
+    const char *fname = slash ? slash + 1 : file_path;
+    const char *vtag  = strstr(fname, "_v");
+    if (!vtag) {
+        return false;
+    }
+
+    const char *vstart = vtag + 1;
+    const char *vend   = strchr(vstart, '_');
+    if (!vend) {
+        return false;
+    }
+
+    size_t vlen = (size_t)(vend - vstart);
+    if (vlen == 0 || vlen >= out_size) {
+        return false;
+    }
+
+    memcpy(out, vstart, vlen);
+    out[vlen] = '\0';
+    return true;
+}
+
 int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *platform, wm_upgrade_command command, void *task) {
     char *tmp_agent_version = NULL;
     char *manager_version = NULL;
@@ -179,7 +218,22 @@ int wm_agent_upgrade_validate_version(const char *wazuh_version, const char *pla
                     }
                 }
             } else if (WM_UPGRADE_UPGRADE_CUSTOM == command) {
+                wm_upgrade_custom_task *custom_task = (wm_upgrade_custom_task *)task;
+                char target_version[32] = {0};
                 return_code = WM_UPGRADE_SUCCESS;
+
+                // Mirror the repo-path rule when the WPK filename follows the
+                // canonical "wazuh_agent_v<VERSION>_<...>.wpk" pattern: direct
+                // upgrade to v5.0.0+ from agents older than v4.14.0 is not
+                // supported and cannot be forced. Non-canonical filenames fall
+                // through to the agent-side preinst check.
+                if (custom_task &&
+                    wm_agent_upgrade_parse_wpk_custom_version(custom_task->custom_file_path,
+                                                              target_version, sizeof(target_version)) &&
+                    compare_wazuh_versions(target_version, WM_UPGRADE_5X_MINIMUM_VERSION, true) >= 0 &&
+                    compare_wazuh_versions(tmp_agent_version, WM_UPGRADE_REQUIRED_INTERMEDIATE_VERSION, true) < 0) {
+                    return_code = WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED;
+                }
             }
         }
     }

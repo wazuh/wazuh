@@ -2224,7 +2224,76 @@ void test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write(void
     will_return(__wrap_wm_state_io, -1);
 
     expect_string(__wrap__mterror, tag, WM_MS_GRAPH_LOGTAG);
-    expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
+    expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state for resource 'security' and relationship 'alerts_v2'. State file: 'var/wodles/ms-graph-example_tenant-security-alerts_v2'.");
+
+    wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
+}
+
+void test_wm_ms_graph_scan_relationships_slash_in_relationship_name(void **state) {
+    /*
+    Verifies that a relationship name containing '/' (e.g. "cases/eDiscoveryCases")
+    has its slash replaced with '-' when constructing the state file name, preventing
+    invalid subdirectory paths from being created.
+
+    <resource>
+      <name>security</name>
+      <relationship>cases/eDiscoveryCases</relationship>
+    </resource>
+    */
+    wm_ms_graph* module_data = (wm_ms_graph *)*state;
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config);
+    os_calloc(1, sizeof(wm_ms_graph_auth), module_data->auth_config[0]);
+    module_data->enabled = true;
+    module_data->only_future_events = true;
+    module_data->curl_max_size = 1024L;
+    module_data->page_size = 100;
+    module_data->time_delay = 10;
+    module_data->run_on_start = true;
+    module_data->scan_config.interval = 60;
+    os_strdup("v1.0", module_data->version);
+    os_strdup("example_client", module_data->auth_config[0]->client_id);
+    os_strdup("example_tenant", module_data->auth_config[0]->tenant_id);
+    os_strdup("example_secret", module_data->auth_config[0]->secret_value);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_LOGIN_FQDN, module_data->auth_config[0]->login_fqdn);
+    os_strdup(WM_MS_GRAPH_GLOBAL_API_QUERY_FQDN, module_data->auth_config[0]->query_fqdn);
+    os_malloc(sizeof(wm_ms_graph_resource), module_data->resources);
+    os_strdup("security", module_data->resources[0].name);
+    module_data->num_resources = 1;
+    os_malloc(sizeof(char*), module_data->resources[0].relationships);
+    os_strdup("cases/eDiscoveryCases", module_data->resources[0].relationships[0]);
+    module_data->resources[0].num_relationships = 1;
+    bool initial = true;
+
+#ifdef TEST_WINAGENT
+    will_return_count(__wrap_os_random, 12345, 2);
+#else
+    will_return(__wrap_os_random, 12345);
+#endif
+
+    // The '/' in "cases/eDiscoveryCases" must be replaced with '-' in the state file name,
+    // while the original relationship name is preserved in the bookmark log message.
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-cases-eDiscoveryCases");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, -1);
+
+    will_return(__wrap_isDebug, 1);
+
+#ifndef WIN32
+    will_return(__wrap_gmtime_r, 1);
+#endif
+    will_return(__wrap_strftime, "2023-02-08T12:24:56Z");
+    will_return(__wrap_strftime, 20);
+
+    expect_string(__wrap_wm_state_io, tag, "ms-graph-example_tenant-security-cases-eDiscoveryCases");
+    expect_value(__wrap_wm_state_io, op, WM_IO_WRITE);
+    expect_any(__wrap_wm_state_io, state);
+    expect_any(__wrap_wm_state_io, size);
+    will_return(__wrap_wm_state_io, 1);
+
+    expect_string(__wrap__mtdebug1, tag, WM_MS_GRAPH_LOGTAG);
+    expect_string(__wrap__mtdebug1, formatted_msg, "Bookmark updated to '2023-02-08T12:24:56Z' for tenant 'example_tenant' resource 'security' and relationship 'cases/eDiscoveryCases', waiting '60' seconds to run first scan.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
@@ -3414,7 +3483,7 @@ void test_wm_ms_graph_scan_relationships_single_success_two_resources(void **sta
     will_return(__wrap_wm_state_io, -1);
 
     expect_string(__wrap__mterror, tag, "wazuh-modulesd:ms-graph");
-    expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state.");
+    expect_string(__wrap__mterror, formatted_msg, "Couldn't save running state for resource 'deviceManagement' and relationship 'auditEvents'. State file: 'var/wodles/ms-graph-example_tenant-deviceManagement-auditEvents'.");
 
     wm_ms_graph_scan_relationships(module_data, module_data->auth_config[0], initial);
 }
@@ -4431,6 +4500,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_get_access_token_no_expire_time, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_initial_only_no, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_initial_only_yes_fail_write, setup_conf, teardown_conf),
+        cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_slash_in_relationship_name, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_initial_only_no_next_time_no_response, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_no_initial_no_timestamp, setup_conf, teardown_conf),
         cmocka_unit_test_setup_teardown(test_wm_ms_graph_scan_relationships_single_unsuccessful_status_code, setup_conf, teardown_conf),

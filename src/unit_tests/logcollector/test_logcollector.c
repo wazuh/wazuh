@@ -28,6 +28,7 @@
 #include "../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/signal_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 
 
 extern OSHash *files_status;
@@ -828,11 +829,11 @@ void test_w_save_file_status_wfopen_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 0);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json.tmp' due to [(0)-(Success)].");
     expect_assert_failure(w_save_file_status());
 }
 
@@ -895,19 +896,22 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, "test");
 
     will_return(__wrap_fwrite, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file 'queue/logcollector/file_status.json.tmp' due to [(0)-(Success)].");
 
     expect_function_call(__wrap_clearerr);
     expect_string(__wrap_clearerr, __stream, "test");
 
     expect_value(__wrap_fclose, _File, "test");
     will_return(__wrap_fclose, 1);
+
+    expect_string(__wrap_unlink, file, "queue/logcollector/file_status.json.tmp");
+    will_return(__wrap_unlink, 0);
 
     w_save_file_status();
 }
@@ -970,14 +974,94 @@ void test_w_save_file_status_OK(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, "test");
 
-    will_return(__wrap_fwrite, 1);
+    will_return(__wrap_fwrite, 9);
 
     expect_value(__wrap_fclose, _File, "test");
-    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_rename, __old, "queue/logcollector/file_status.json.tmp");
+    expect_string(__wrap_rename, __new, "queue/logcollector/file_status.json");
+    will_return(__wrap_rename, 0);
+
+    w_save_file_status();
+}
+
+void test_w_save_file_status_fclose_error(void ** state) {
+    test_logcollector_t *test_data = *state;
+
+    os_file_status_t * data = test_data->status;
+    OSHashNode *hash_node = test_data->node;
+
+    strcpy(data->hash,"test1234");
+    data->offset = 5;
+
+    hash_node->key = "test";
+    hash_node->data = data;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "files");
+    will_return(__wrap_cJSON_AddArrayToObject, (cJSON *) 1);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "path");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "hash");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test1234");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "offset");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "5");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    expect_value(__wrap_OSHash_Next, self, files_status);
+    will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, "test");
+
+    will_return(__wrap_fwrite, 9);
+
+    expect_value(__wrap_fclose, _File, "test");
+    will_return(__wrap_fclose, EOF);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Could not close file 'queue/logcollector/file_status.json.tmp': Success");
+
+    expect_string(__wrap_unlink, file, "queue/logcollector/file_status.json.tmp");
+    will_return(__wrap_unlink, 0);
 
     w_save_file_status();
 }
@@ -2858,6 +2942,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_save_file_status_str_NULL, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_wfopen_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_fwrite_error, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_fclose_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_OK, setup_log_context, teardown_log_context),
 
         // Test w_load_files_status

@@ -1,11 +1,14 @@
 #ifndef GEO_MANAGER_HPP
 #define GEO_MANAGER_HPP
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <shared_mutex>
 #include <string>
 
+#include <base/statusSnapshot.hpp>
+#include <base/syncStatus.hpp>
 #include <geo/idownloader.hpp>
 #include <geo/imanager.hpp>
 #include <store/istore.hpp>
@@ -34,6 +37,20 @@ private:
 
     std::shared_ptr<store::IStore> m_store;    ///< The store used to store the MMDB hash.
     std::shared_ptr<IDownloader> m_downloader; ///< The downloader used to download the MMDB database.
+
+    std::shared_ptr<std::atomic<bool>> m_shouldRun {std::make_shared<std::atomic<bool>>(
+        true)}; ///< Flag for graceful shutdown; false signals sync operations to stop.
+
+    /// Per-type status working state (available, status, hash, last update). Mutated ONLY by the sync
+    /// thread; the source of truth that the status snapshot is rebuilt from. Decoupled from m_dbs.
+    std::map<Type, GeoDbStatus> m_typeState;
+
+    /// Lock-free status snapshot of all geo types. Read via load() (wait-free). Rebuilt and published
+    /// via store() by updateGeoStatusSnapshot() on the single sync thread.
+    base::StatusSnapshot<GeoDbStatus> m_geoStatus;
+
+    /// Rebuild the geo status from m_typeState and publish it atomically (lock-free reads).
+    void updateGeoStatusSnapshot();
 
     /**
      * @brief Upsert the internal store entry for a local database (computes hash from file).
@@ -69,15 +86,6 @@ private:
     base::OptError addDbUnsafe(const std::string& path, const std::string& hash, const int64_t createdAt, Type type);
 
     /**
-     * @brief Write the MMDB database to the filesystem.
-     *
-     * @param path Path to store the database.
-     * @param content The content of the database.
-     * @return base::OptError An error if the database could not be written.
-     */
-    base::OptError writeDb(const std::string& path, const std::string& content);
-
-    /**
      * @brief Process a single database type from the manifest (download, validate, extract, load).
      *
      * @param path Path to store the database.
@@ -110,9 +118,24 @@ public:
     void remoteUpsert(const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath) override;
 
     /**
+     * @copydoc IManager::requestShutdown
+     */
+    void requestShutdown() override;
+
+    /**
+     * @brief Get a shared pointer to the should-run flag for sharing with the downloader.
+     */
+    std::shared_ptr<const std::atomic<bool>> shouldRunFlag() const { return m_shouldRun; }
+
+    /**
      * @copydoc IManager::getLocator
      */
     Result<std::shared_ptr<ILocator>> getLocator(Type type) const override;
+
+    /**
+     * @copydoc IManager::getGeoStatus
+     */
+    std::vector<GeoDbStatus> getGeoStatus() const override;
 };
 
 } // namespace geo

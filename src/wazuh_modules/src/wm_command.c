@@ -10,6 +10,36 @@
  */
 
 #include "wmodules.h"
+#include "time_op.h"
+
+// Each halving reduces allowed_output_len by 2^n; 4 attempts covers worst-case JSON escape expansion
+// (e.g. a single control character encodes to 6 bytes, so 3 halvings are enough with one spare).
+#define WM_COMMAND_TRUNCATE_MAX_ATTEMPTS 4
+
+#ifdef WIN32
+#include <windows.h>
+
+static void wm_command_reduce_win_backslashes(char *str) {
+    char *r = str, *w = str;
+    while (*r) {
+        if (r[0] == '\\' && r[1] == '\\') {
+            r++;
+        }
+        *w++ = *r++;
+    }
+    *w = '\0';
+}
+#endif
+
+static char *wm_command_build_event_payload(const char *event_start,
+                                            const char *tag,
+                                            const char *command_line,
+                                            const char *proc_name,
+                                            const char *proc_path,
+                                            char **proc_argv,
+                                            const wm_command_t *command,
+                                            int status,
+                                            const char *payload_output);
 
 #ifdef WIN32
 static DWORD WINAPI wm_command_main(void *arg);             // Module main function. It won't return
@@ -19,6 +49,79 @@ static void * wm_command_main(wm_command_t * command);    // Module main functio
 static void wm_command_destroy(wm_command_t * command);   // Destroy data
 cJSON *wm_command_dump(const wm_command_t * command);
 int validate_command_checksums(wm_command_t * command, const char * full_path); // Validate checksums
+
+static char *wm_command_build_event_payload(const char *event_start,
+                                            const char *tag,
+                                            const char *command_line,
+                                            const char *proc_name,
+                                            const char *proc_path,
+                                            char **proc_argv,
+                                            const wm_command_t *command,
+                                            int status,
+                                            const char *payload_output) {
+    cJSON *json_event = NULL;
+    char *json_payload = NULL;
+
+    json_event = cJSON_CreateObject();
+    if (!json_event) {
+        return NULL;
+    }
+
+    cJSON *event_obj = cJSON_AddObjectToObject(json_event, "event");
+    if (event_obj) {
+        cJSON_AddStringToObject(event_obj, "module", "wazuh-wodle-cmd");
+        cJSON_AddStringToObject(event_obj, "start", event_start ? event_start : "");
+    }
+    if (tag) {
+        cJSON *tags_array = cJSON_AddArrayToObject(json_event, "tags");
+        if (tags_array) {
+            cJSON_AddItemToArray(tags_array, cJSON_CreateString(tag));
+        }
+    }
+
+    cJSON *process = cJSON_AddObjectToObject(json_event, "process");
+    if (process) {
+        cJSON *process_args = cJSON_AddArrayToObject(process, "args");
+        if (process_args && proc_argv) {
+            for (size_t i = 1; proc_argv[i]; ++i) {
+                cJSON_AddItemToArray(process_args, cJSON_CreateString(proc_argv[i]));
+            }
+        }
+
+        cJSON_AddStringToObject(process, "name", proc_name ? proc_name : "");
+        cJSON_AddStringToObject(process, "path", proc_path ? proc_path : "");
+        cJSON_AddStringToObject(process, "command_line", command_line ? command_line : "");
+
+        if (command && ((command->md5_hash && command->md5_hash[0]) || (command->sha1_hash && command->sha1_hash[0]) ||
+                        (command->sha256_hash && command->sha256_hash[0]))) {
+            cJSON *hash = cJSON_AddObjectToObject(process, "hash");
+
+            if (hash) {
+                if (command->md5_hash && command->md5_hash[0]) {
+                    cJSON_AddStringToObject(hash, "md5", command->md5_hash);
+                }
+                if (command->sha1_hash && command->sha1_hash[0]) {
+                    cJSON_AddStringToObject(hash, "sha1", command->sha1_hash);
+                }
+                if (command->sha256_hash && command->sha256_hash[0]) {
+                    cJSON_AddStringToObject(hash, "sha256", command->sha256_hash);
+                }
+            }
+        }
+
+        cJSON_AddNumberToObject(process, "exit_code", status);
+
+        cJSON *process_io = cJSON_AddObjectToObject(process, "io");
+        if (process_io) {
+            cJSON_AddStringToObject(process_io, "text", payload_output ? payload_output : "");
+        }
+    }
+
+    json_payload = cJSON_PrintUnformatted(json_event);
+    cJSON_Delete(json_event);
+
+    return json_payload;
+}
 
 // Command module context definition
 
@@ -46,7 +149,9 @@ void * wm_command_main(wm_command_t * command) {
     char *command_cpy;
     char *binary;
     char *full_path = NULL;
+#ifndef WIN32
     char **argv;
+#endif
     char * timestamp = NULL;
     bool verify_command = command->md5_hash || command->sha1_hash || command->sha256_hash;
 
@@ -61,47 +166,157 @@ void * wm_command_main(wm_command_t * command) {
     }
 
     if (verify_command) {
+#ifdef WIN32
+        SafeWow64DisableWow64FsRedirection(NULL);
+#endif
         command_cpy = strdup(command->command);
 
+#ifdef WIN32
+        // On Windows, reduce \\\\ to \\ before extracting the binary token.
+        // This normalizes both conventions (single and double backslash) so
+        // that get_binary_path receives a valid Windows path and error
+        // messages show the path as the user intended.
+        wm_command_reduce_win_backslashes(command_cpy);
+
+        // Extract binary token without w_strtok (which treats \\ as escape
+        // and would strip the remaining single backslashes).
+        {
+            const char *s = command_cpy;
+            while (*s == ' ') s++;
+
+            char *bin_start = (char *)s;
+            if (*s == '"') {
+                s++;
+                bin_start = (char *)s;
+                while (*s && *s != '"') s++;
+                if (*s == '"') {
+                    *(char *)s = '\0';
+                }
+            } else {
+                while (*s && *s != ' ') s++;
+                if (*s == ' ') {
+                    *(char *)s = '\0';
+                }
+            }
+            os_strdup(bin_start, binary);
+        }
+#else
         argv = w_strtok(command_cpy);
     #ifndef __clang_analyzer__
         if (!argv) {
             merror("Could not split command: %s", command_cpy);
+            os_free(command_cpy);
             pthread_exit(NULL);
         }
     #endif
         binary = argv[0];
+#endif
 
         if (get_binary_path(binary, &full_path) == OS_INVALID) {
             mterror(WM_COMMAND_LOGTAG, "Cannot check binary: '%s'. Cannot stat binary file.", binary);
+#ifdef WIN32
+            os_free(binary);
+#else
+            free_strarray(argv);
+#endif
+            os_free(command_cpy);
+        #ifndef __clang_analyzer__
+            os_free(full_path);
+        #endif
             pthread_exit(NULL);
         }
 
-        // Modify command with full path.
+        // Find end of first token in original command string using the same
+        // quoting rules, then replace only the binary portion with the
+        // resolved full_path, preserving arguments verbatim.
         if (!command->full_command) {
-            os_malloc(strlen(full_path) + strlen(command->command) - strlen(binary) + 1, command->full_command);
+            const char *p = command->command;
+            bool binary_was_quoted = false;
+
+            while (*p == ' ') {
+                p++;
+            }
+
+            if (*p == '"') {
+                binary_was_quoted = true;
+            }
+
+            bool in_quotes = false;
+            while (*p) {
+#ifndef WIN32
+                if (*p == '\\' && p[1] != '\0') {
+                    p += 2;
+                } else
+#endif
+                if (*p == '"') {
+                    in_quotes = !in_quotes;
+                    p++;
+                } else if (*p == ' ' && !in_quotes) {
+                    break;
+                } else {
+                    p++;
+                }
+            }
+
+            bool need_quotes = !binary_was_quoted && strchr(full_path, ' ') != NULL;
+            const char *qc = (binary_was_quoted || need_quotes) ? "\"" : "";
+
+            if (*p == ' ') {
+                size_t len = strlen(full_path) + strlen(p) + strlen(qc) * 2 + 1;
+                os_malloc(len, command->full_command);
+                snprintf(command->full_command, len, "%s%s%s%s", qc, full_path, qc, p);
+            } else {
+                size_t len = strlen(full_path) + strlen(qc) * 2 + 1;
+                os_malloc(len, command->full_command);
+                snprintf(command->full_command, len, "%s%s%s", qc, full_path, qc);
+            }
         }
-        snprintf(command->full_command, strlen(full_path) + strlen(command->command) - strlen(binary) + 1, "%s %s", full_path, command->command + strlen(binary) + 1);
+#ifdef WIN32
+        os_free(binary);
+#else
         free_strarray(argv);
+#endif
 
         if (validate_command_checksums(command, full_path) != 0) {
+            os_free(command_cpy);
             os_free(full_path);
             pthread_exit(NULL);
         }
 
-        free(command_cpy);
+        os_free(command_cpy);
 
     } else {
         command->full_command = strdup(command->command);
+#ifdef WIN32
+        {
+            char *p = command->full_command;
+            while (*p == ' ') p++;
+            bool in_q = (*p == '"');
+            if (in_q) p++;
+            char *start = p;
+            while (*p) {
+                if (in_q && *p == '"') { p++; break; }
+                if (!in_q && *p == ' ') break;
+                p++;
+            }
+            char saved = *p;
+            *p = '\0';
+            wm_command_reduce_win_backslashes(start);
+            size_t new_len = strlen(start);
+            *p = saved;
+            memmove(start + new_len, p, strlen(p) + 1);
+        }
+#endif
     }
 
     mtinfo(WM_COMMAND_LOGTAG, "Module command:%s started", command->tag);
 
     // Set extended tag
 
-    extag_len = strlen(WM_COMMAND_CONTEXT.name) + strlen(command->tag) + 2;
+    // Keep a stable routing tag for all command events.
+    extag_len = strlen(WM_COMMAND_CONTEXT.name) + 1;
     os_malloc(extag_len * sizeof(char), extag);
-    snprintf(extag, extag_len, "%s_%s", WM_COMMAND_CONTEXT.name, command->tag);
+    snprintf(extag, extag_len, "%s", WM_COMMAND_CONTEXT.name);
 
     if (wm_state_io(extag, WM_IO_READ, &command->state, sizeof(command->state)) < 0) {
         memset(&command->state, 0, sizeof(command->state));
@@ -137,8 +352,10 @@ void * wm_command_main(wm_command_t * command) {
             timestamp = w_get_timestamp(next_scan_time);
             mtdebug2(WM_COMMAND_LOGTAG, "Sleeping until: %s", timestamp);
             os_free(timestamp);
-            w_sleep_until(next_scan_time);
+            wm_sleep_until_interruptible(next_scan_time);
+            if (wm_shutdown_requested) break;
         }
+        if (wm_shutdown_requested) break;
 
         if (full_path != NULL && verify_command && !command->skip_verification) {
             mtinfo(WM_COMMAND_LOGTAG, "Verifying command checksum '%s'.", command->tag);
@@ -150,8 +367,10 @@ void * wm_command_main(wm_command_t * command) {
 
         mtinfo(WM_COMMAND_LOGTAG, "Starting command '%s'.", command->tag);
 
-        int status = 0;
+        int status = -1;
         char *output = NULL;
+        char event_start[32] = {0};
+        get_iso8601_utc_time(event_start, sizeof(event_start));
         switch (wm_exec(command->full_command, command->ignore_output ? NULL : &output, &status, command->timeout, NULL)) {
         case 0:
             if (status > 0) {
@@ -163,30 +382,207 @@ void * wm_command_main(wm_command_t * command) {
             }
             break;
         case WM_ERROR_TIMEOUT:
+            status = -1;
             mterror(WM_COMMAND_LOGTAG, "%s: Timeout overtaken. You can modify your command timeout at '%s'. Exiting...", command->tag, WAZUHCONF);
             break;
 
         default:
+            status = -1;
             mterror(WM_COMMAND_LOGTAG, "Command '%s' failed.", command->tag);
             break;
         }
 
-        if (!command->ignore_output && output != NULL) {
-            char *line;
-            char *save_ptr = NULL;
-            for (line = strtok_r(output, "\n", &save_ptr); line; line = strtok_r(NULL, "\n", &save_ptr)){
-            #ifdef WIN32
-                wm_sendmsg(usec, 0, line, extag, LOCALFILE_MQ);
-            #else
-                wm_sendmsg(usec, command->queue_fd, line, extag, LOCALFILE_MQ);
-            #endif
+        if (!command->ignore_output) {
+            char *json_payload = NULL;
+            const char *raw_output = output ? output : "";
+            const char *payload_output = raw_output;
+            char *truncated_output = NULL;
+            const size_t header_len = 3 + strlen(extag); // "1:" + extag + ":"
+            const size_t max_message_len = header_len < OS_MAXSTR ? (OS_MAXSTR - header_len - 1) : 0;
+
+            // Best-effort process details.
+            const char *command_line = command->full_command ? command->full_command : "";
+            char *command_line_cpy = NULL;
+            char **proc_argv = NULL;
+            const char *proc_argv0 = "";
+            char *tmp_full_path = NULL;
+            const char *proc_path = full_path ? full_path : "";
+            const char *proc_name = "";
+            if (command_line[0]) {
+                command_line_cpy = strdup(command_line);
+                if (command_line_cpy) {
+                    proc_argv = w_strtok(command_line_cpy);
+                    if (proc_argv && proc_argv[0]) {
+                        proc_argv0 = proc_argv[0];
+                    }
+                }
             }
 
-            os_free(output);
+            if (!full_path && proc_argv0 && proc_argv0[0]) {
+                if (get_binary_path(proc_argv0, &tmp_full_path) != OS_INVALID) {
+                    proc_path = tmp_full_path;
+                }
+            }
+
+            if (proc_path && proc_path[0]) {
+                const char *slash = strrchr(proc_path, '/');
+                const char *backslash = strrchr(proc_path, '\\');
+                const char *separator = slash;
+
+                if (backslash && (!separator || backslash > separator)) {
+                    separator = backslash;
+                }
+
+                proc_name = separator ? (separator + 1) : proc_path;
+            } else if (proc_argv0 && proc_argv0[0]) {
+                const char *slash = strrchr(proc_argv0, '/');
+                const char *backslash = strrchr(proc_argv0, '\\');
+                const char *separator = slash;
+
+                if (backslash && (!separator || backslash > separator)) {
+                    separator = backslash;
+                }
+
+                proc_name = separator ? (separator + 1) : proc_argv0;
+            }
+
+            size_t base_json_len = 0;
+
+            // Compute JSON overhead with all fields except output content.
+            {
+                char *base_payload = wm_command_build_event_payload(event_start,
+                                                                    command->tag,
+                                                                    command_line,
+                                                                    proc_name,
+                                                                    proc_path,
+                                                                    proc_argv,
+                                                                    command,
+                                                                    status,
+                                                                    "");
+                if (base_payload) {
+                    base_json_len = strlen(base_payload);
+                    os_free(base_payload);
+                }
+            }
+
+            // Build JSON payload (single event with full output).
+            json_payload = wm_command_build_event_payload(event_start,
+                                                          command->tag,
+                                                          command_line,
+                                                          proc_name,
+                                                          proc_path,
+                                                          proc_argv,
+                                                          command,
+                                                          status,
+                                                          payload_output);
+
+            // If the final message could be truncated at the MQ layer, truncate the output and rebuild.
+            if (json_payload && max_message_len > 0 && strlen(json_payload) > max_message_len) {
+                const size_t output_len = strlen(raw_output);
+                size_t allowed_output_len = 0;
+                int attempts = 0;
+
+                if (base_json_len > 0 && max_message_len > base_json_len) {
+                    allowed_output_len = max_message_len - base_json_len;
+                }
+
+                // Best-effort: keep JSON valid by truncating the output field before encoding.
+                if (allowed_output_len > 0) {
+                    if (allowed_output_len > output_len) {
+                        allowed_output_len = output_len;
+                    }
+
+                    mtwarn(WM_COMMAND_LOGTAG, "Command output is too long to fit in a single message. Truncating.");
+
+                    do {
+                        os_free(truncated_output);
+                        truncated_output = NULL;
+
+                        os_malloc(allowed_output_len + 1, truncated_output);
+                        memcpy(truncated_output, raw_output, allowed_output_len);
+                        truncated_output[allowed_output_len] = '\0';
+                        payload_output = truncated_output;
+
+                        os_free(json_payload);
+                        json_payload = NULL;
+
+                        json_payload = wm_command_build_event_payload(event_start,
+                                                                      command->tag,
+                                                                      command_line,
+                                                                      proc_name,
+                                                                      proc_path,
+                                                                      proc_argv,
+                                                                      command,
+                                                                      status,
+                                                                      payload_output);
+
+                        if (json_payload && strlen(json_payload) <= max_message_len) {
+                            break;
+                        }
+
+                        // Reduce and try again (output escaping may enlarge JSON more than expected)
+                        allowed_output_len /= 2;
+                        attempts++;
+                    } while (allowed_output_len > 0 && attempts < WM_COMMAND_TRUNCATE_MAX_ATTEMPTS);
+
+                    if (json_payload && strlen(json_payload) > max_message_len) {
+                        os_free(json_payload);
+                        json_payload = NULL;
+
+                        // Last-resort: send a metadata-only event.
+                        mtwarn(WM_COMMAND_LOGTAG, "Command event is too large even after truncation. Dropping output but sending metadata-only event.");
+                        json_payload = wm_command_build_event_payload(event_start,
+                                                                      command->tag,
+                                                                      command_line,
+                                                                      proc_name,
+                                                                      proc_path,
+                                                                      proc_argv,
+                                                                      command,
+                                                                      status,
+                                                                      "");
+                    }
+                } else {
+                    mtwarn(WM_COMMAND_LOGTAG, "Command output is too long to fit in a single message. Dropping output but sending metadata-only event.");
+                    os_free(json_payload);
+                    json_payload = wm_command_build_event_payload(event_start,
+                                                                  command->tag,
+                                                                  command_line,
+                                                                  proc_name,
+                                                                  proc_path,
+                                                                  proc_argv,
+                                                                  command,
+                                                                  status,
+                                                                  "");
+                }
+            }
+            if (json_payload) {
+            #ifdef WIN32
+                if (wm_sendmsg(usec, 0, json_payload, extag, LOCALFILE_MQ) < 0) {
+                    mterror(WM_COMMAND_LOGTAG, "Unable to send command event to queue.");
+                }
+            #else
+                if (wm_sendmsg(usec, command->queue_fd, json_payload, extag, LOCALFILE_MQ) < 0) {
+                    mterror(WM_COMMAND_LOGTAG, "Unable to send command event to queue.");
+                }
+            #endif
+                os_free(json_payload);
+            } else {
+                mtwarn(WM_COMMAND_LOGTAG, "Could not build command event payload. Dropping event.");
+            }
+
+            os_free(truncated_output);
+
+            os_free(tmp_full_path);
+            free_strarray(proc_argv);
+            free(command_line_cpy);
+
+            if (output) {
+                os_free(output);
+            }
         }
 
         mtdebug1(WM_COMMAND_LOGTAG, "Command '%s' finished.", command->tag);
-    } while (FOREVER());
+    } while (FOREVER() && !wm_shutdown_requested);
 
     os_free(full_path);
     free(extag);

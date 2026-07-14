@@ -23,16 +23,18 @@ on:
 jobs:
   pick-architecture:
     name: Get architectures to build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - name: Generate dynamic matrix
         id: set-matrix
+        env:
+          INPUT_ARCHITECTURE: ${{ inputs.architecture }}
         run: |
           set -euo pipefail
           JSON_ARRAY=$(
-            echo "${{ inputs.architecture }}" \
+            echo "$INPUT_ARCHITECTURE" \
             | tr ',' '\n' \
             | while read -r raw_arch; do
                 arch=$(echo "$raw_arch" | xargs)
@@ -69,6 +71,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-24.04' }}
     permissions:
+      id-token: write
       contents: read
       packages: write
     steps:
@@ -98,32 +101,36 @@ jobs:
         run: |
           VERSION=$(jq -r '.version' $GITHUB_WORKSPACE/VERSION.json)
           echo "TAG=$VERSION" >> $GITHUB_ENV
-          echo "CONTAINER_NAME=pkg_rpm_manager_builder_${{ env.ARCH }}" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_rpm_manager_builder_${ARCH}" >> $GITHUB_ENV
 
       - name: Pull builder container image
         run: |
-          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} ${{ env.CONTAINER_NAME }} ${{ env.TAG }}
+          bash $GITHUB_WORKSPACE/.github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.GITHUB_TOKEN }}" "${{ github.actor }}" "$CONTAINER_NAME" "$TAG"
 
       - name: Run embedded Python compilation
         working-directory: framework/cpython
         run: |
-          docker run --env ARCH="${{ env.PACKAGE_ARCH }}" \
+          docker run --env ARCH="$PACKAGE_ARCH" \
             -v $GITHUB_WORKSPACE:/wazuh_host -v /tmp:/output \
-            --entrypoint=bash ${{ env.CONTAINER_NAME }}:${{ env.TAG }} \
+            --entrypoint=bash "$CONTAINER_NAME:$TAG" \
             /wazuh_host/framework/cpython/compile.sh \
               ${{ inputs.build_cpython == true && '--build-cpython' || '' }} \
               ${{ inputs.build_deps == true && '--build-deps' || '' }}
 
       - name: Upload Wazuh manager embedded Python sources to GitHub
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ env.ARCH }}-sources
           path: /tmp/cpython_${{ env.PACKAGE_ARCH }}.tar.gz
-          if-no-files-found: error
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload Wazuh manager out-of-the-box embedded Python to GitHub
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ env.ARCH }}-compiled
           path: /tmp/cpython.tar.gz
-          if-no-files-found: error
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

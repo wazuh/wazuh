@@ -5,7 +5,6 @@
 #include <variant>
 
 #include <base/error.hpp>
-#include <base/json.hpp>
 #include <google/protobuf/message.h>
 #include <google/protobuf/struct.pb.h>
 #include <google/protobuf/stubs/common.h>
@@ -13,56 +12,6 @@
 
 namespace eMessage
 {
-namespace detail
-{
-inline void toJsonValue(const google::protobuf::Value& v, json::Json& dest, std::string_view path);
-
-inline void toJsonObject(const google::protobuf::Struct& s, json::Json& dest, std::string_view path)
-{
-    dest.setObject(path);
-
-    for (const auto& [k, vv] : s.fields())
-    {
-        std::string fieldPath = std::string(path) + "/" + k;
-        toJsonValue(vv, dest, fieldPath);
-    }
-}
-
-inline void toJsonArray(const google::protobuf::ListValue& l, json::Json& dest, std::string_view path)
-{
-    dest.setArray(path);
-
-    int index = 0;
-    for (const auto& item : l.values())
-    {
-        std::string elemPath = std::string(path) + "/" + std::to_string(index);
-        toJsonValue(item, dest, elemPath);
-        index++;
-    }
-}
-
-inline void toJsonValue(const google::protobuf::Value& v, json::Json& dest, std::string_view path)
-{
-    switch (v.kind_case())
-    {
-        case google::protobuf::Value::kNullValue: dest.setNull(path); break;
-
-        case google::protobuf::Value::kNumberValue: dest.setDouble(v.number_value(), path); break;
-
-        case google::protobuf::Value::kStringValue: dest.setString(v.string_value(), path); break;
-
-        case google::protobuf::Value::kBoolValue: dest.setBool(v.bool_value(), path); break;
-
-        case google::protobuf::Value::kStructValue: toJsonObject(v.struct_value(), dest, path); break;
-
-        case google::protobuf::Value::kListValue: toJsonArray(v.list_value(), dest, path); break;
-
-        case google::protobuf::Value::KIND_NOT_SET:
-        default: dest.setNull(path); break;
-    }
-}
-} // namespace detail
-
 /**
  * @brief Parse a JSON string into a google::protobuf::Message.
  *
@@ -166,26 +115,6 @@ eRepeatedFieldToJson(const google::protobuf::RepeatedPtrField<T>& repeatedPtrFie
 inline void ShutdownEMessageLibrary()
 {
     google::protobuf::ShutdownProtobufLibrary();
-}
-
-/**
- * @brief Convert a google::protobuf::Struct into a json::Json object.
- *
- * @param s The Struct to convert.
- * @return A variant object with either an error message or the json::Json object.
- */
-inline std::variant<base::Error, json::Json> eStructToJson(const google::protobuf::Struct& s)
-{
-    try
-    {
-        json::Json result;
-        detail::toJsonObject(s, result, "");
-        return result;
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {e.what()};
-    }
 }
 
 } // namespace eMessage

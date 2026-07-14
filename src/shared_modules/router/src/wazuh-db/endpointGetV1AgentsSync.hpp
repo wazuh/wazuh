@@ -33,6 +33,7 @@ class TEndpointGetV1AgentsSync final
         std::string osVersion;
         std::string osMajor;
         std::string osMinor;
+        std::string osType;
         std::string osPlatform;
         std::string osArch;
         std::string version;
@@ -51,6 +52,7 @@ class TEndpointGetV1AgentsSync final
                     MAKE_FIELD("os_version", &SyncReq::osVersion),
                     MAKE_FIELD("os_major", &SyncReq::osMajor),
                     MAKE_FIELD("os_minor", &SyncReq::osMinor),
+                    MAKE_FIELD("os_type", &SyncReq::osType),
                     MAKE_FIELD("os_platform", &SyncReq::osPlatform),
                     MAKE_FIELD("os_arch", &SyncReq::osArch),
                     MAKE_FIELD("version", &SyncReq::version),
@@ -99,8 +101,8 @@ public:
 
             DBStatement stmtSyncReq( // LCOV_EXCL_LINE
                 db,
-                "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_platform, os_arch, version, "
-                "merged_sum, node_name, last_keepalive, connection_status, disconnection_time, "
+                "SELECT id, name, ip, os_name, os_version, os_major, os_minor, os_type, os_platform, os_arch, "
+                "version, merged_sum, node_name, last_keepalive, connection_status, disconnection_time, "
                 "group_config_status, status_code FROM agent WHERE id > 0 AND sync_status = 'syncreq';");
 
             while (stmtSyncReq.step() == SQLITE_ROW)
@@ -114,16 +116,17 @@ public:
                                                 .osVersion = stmtSyncReq.template value<std::string>(4),
                                                 .osMajor = stmtSyncReq.template value<std::string>(5),
                                                 .osMinor = stmtSyncReq.template value<std::string>(6),
-                                                .osPlatform = stmtSyncReq.template value<std::string>(7),
-                                                .osArch = stmtSyncReq.template value<std::string>(8),
-                                                .version = stmtSyncReq.template value<std::string>(9),
-                                                .mergedSum = stmtSyncReq.template value<std::string>(10),
-                                                .nodeName = stmtSyncReq.template value<std::string>(11),
-                                                .lastKeepalive = stmtSyncReq.template value<int64_t>(12),
-                                                .connectionStatus = stmtSyncReq.template value<std::string>(13),
-                                                .disconnectionTime = stmtSyncReq.template value<int64_t>(14),
-                                                .groupConfigStatus = stmtSyncReq.template value<std::string>(15),
-                                                .statusCode = stmtSyncReq.template value<int64_t>(16)});
+                                                .osType = stmtSyncReq.template value<std::string>(7),
+                                                .osPlatform = stmtSyncReq.template value<std::string>(8),
+                                                .osArch = stmtSyncReq.template value<std::string>(9),
+                                                .version = stmtSyncReq.template value<std::string>(10),
+                                                .mergedSum = stmtSyncReq.template value<std::string>(11),
+                                                .nodeName = stmtSyncReq.template value<std::string>(12),
+                                                .lastKeepalive = stmtSyncReq.template value<int64_t>(13),
+                                                .connectionStatus = stmtSyncReq.template value<std::string>(14),
+                                                .disconnectionTime = stmtSyncReq.template value<int64_t>(15),
+                                                .groupConfigStatus = stmtSyncReq.template value<std::string>(16),
+                                                .statusCode = stmtSyncReq.template value<int64_t>(17)});
             }
         }
 

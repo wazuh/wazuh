@@ -195,7 +195,7 @@ The agent's `wazuh-execd` daemon:
 
 ### Separation from Control Operations
 
-**Important**: Agent restart and reload operations are **not** part of Active Response. These control operations are handled by the [Control Module (wm_control)](../control/README.md), which provides a dedicated control channel for operational commands.
+**Important**: Agent restart and reload operations are **not** part of Active Response. These control operations are handled by the [Control Module (wm_control)](../control/index.html), which provides a dedicated control channel for operational commands.
 
 **Architecture**:
 - **Active Response (execd)**: Security response actions (block IP with enable/disable commands, disable account)
@@ -233,6 +233,6 @@ Log format:
 
 ## See Also
 
-- [Control Module](../control/README.md) - Agent restart/reload operations
-- [Remoted](../remoted/README.md) - Manager-agent communication layer
+- [Control Module](../control/index.html) - Agent restart/reload operations
+- [Remoted](../remoted/index.html) - Manager-agent communication layer
 - [Server API Reference](../server-api/api-reference.md) - API endpoints for triggering responses

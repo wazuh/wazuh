@@ -8,7 +8,7 @@ policy:
   regex_type: pcre2
 
 requirements:
-  title: "Check Linux platform."
+  name: "Check Linux platform."
   description: "Requirements for running the SCA scan against Linux systems"
   condition: any
   rules:
@@ -16,7 +16,7 @@ requirements:
 
 checks:
   - id: 99001
-    title: "Test check with valid compliance keys only"
+    name: "Test check with valid compliance keys only"
     description: "This check uses only allowed compliance keys in the new flat object format."
     rationale: "Validates that valid compliance keys are accepted."
     remediation: "No remediation needed."
@@ -29,7 +29,7 @@ checks:
       - "f:/etc/os-release"
 
   - id: 99002
-    title: "Test check with all 10 valid compliance keys"
+    name: "Test check with all 10 valid compliance keys"
     description: "This check uses all 10 allowed compliance framework keys."
     rationale: "Validates that all allowed keys are accepted."
     remediation: "No remediation needed."

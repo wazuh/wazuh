@@ -101,8 +101,7 @@ schemf/
     ├── mocks/
     │   └── schemf/
     │       ├── mockSchema.hpp                  # GMock mock for IValidator
-    │       ├── emptySchema.hpp                 # Test helper: schema with no fields
-    │       └── straightValidator.hpp           # Test helper: configurable pass/fail validator
+    │       └── emptySchema.hpp                 # Test helper: schema with no fields
     └── src/
         ├── unit/
         │   └── field_test.cpp                  # Unit tests for Field

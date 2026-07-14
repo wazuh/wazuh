@@ -237,3 +237,47 @@ def test_get_graph_events_error_responses(mock_get, mock_logging, status_code):
         assert mock_logging.call_count == 2
     else:
         response_mock.raise_for_status.assert_called_once()
+
+
+@patch('azure_services.graph.send_message')
+@patch('azure_services.graph.update_row_object')
+@patch('azure_services.graph.get')
+def test_get_graph_events_removes_app_when_none_or_str(mock_get, mock_update, mock_send):
+    """Test get_graph_events removes the 'app' key from initiatedBy when it is None or a plain string."""
+    for app_value in [None, 'plain-string-app']:
+        event = {
+            'activityDateTime': '2022-06-21T08:50:10Z',
+            'initiatedBy': {'app': app_value, 'user': {'id': 'u1'}},
+            'status': {'errorCode': 0}
+        }
+        response_mock = MagicMock(status_code=200)
+        response_mock.json.return_value = {'value': [event]}
+        mock_get.return_value = response_mock
+
+        mock_send.reset_mock()
+        get_graph_events(url='http://test', headers={}, md5_hash='', query='query', tag='tag', tenant='t')
+
+        sent_json = json.loads(mock_send.call_args[0][0])
+        assert 'app' not in sent_json.get('initiatedBy', {})
+
+
+@patch('azure_services.graph.send_message')
+@patch('azure_services.graph.update_row_object')
+@patch('azure_services.graph.get')
+def test_get_graph_events_removes_status_when_none_or_str(mock_get, mock_update, mock_send):
+    """Test get_graph_events removes the 'status' key when its value is None or a plain string."""
+    for status_value in [None, 'plain-string-status']:
+        event = {
+            'activityDateTime': '2022-06-21T08:50:10Z',
+            'initiatedBy': {'app': {'appId': 'id'}, 'user': {'id': 'u1'}},
+            'status': status_value
+        }
+        response_mock = MagicMock(status_code=200)
+        response_mock.json.return_value = {'value': [event]}
+        mock_get.return_value = response_mock
+
+        mock_send.reset_mock()
+        get_graph_events(url='http://test', headers={}, md5_hash='', query='query', tag='tag', tenant='t')
+
+        sent_json = json.loads(mock_send.call_args[0][0])
+        assert 'status' not in sent_json

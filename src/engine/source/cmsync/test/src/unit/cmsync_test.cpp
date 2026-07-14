@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include <base/json.hpp>
+#include <base/syncStatus.hpp>
 #include <cmcrud/mockcmcrud.hpp>
 #include <cmsync/cmsync.hpp>
 #include <router/mockRouter.hpp>
@@ -19,6 +20,8 @@ const base::Name STORE_NAME_CMSYNC {"cmsync/status/0"};
 constexpr size_t DEFAULT_ATTEMPTS = 3U;
 constexpr size_t DEFAULT_WAIT_SECONDS = 5U;
 
+constexpr std::string_view STANDARD_CONSUMER_ID = "beta-2-ruleset-5_public-ruleset-5";
+
 json::Json createStoredState()
 {
     json::Json state {};
@@ -27,6 +30,7 @@ json::Json createStoredState()
     json::Json standard {};
     standard.setString(std::string(STORE_ORIGIN_STANDARD), "/origin_space");
     standard.setString("stored_standard_ns", "/namespace_id");
+    standard.setString(std::string(STANDARD_CONSUMER_ID), "/consumer_id");
     state.appendJson(standard);
 
     json::Json custom {};
@@ -45,6 +49,10 @@ json::Json createStoredStateWithNs(const std::string& space, const std::string& 
     json::Json entry {};
     entry.setString(space, "/origin_space");
     entry.setString(nsId, "/namespace_id");
+    if (space == STORE_ORIGIN_STANDARD)
+    {
+        entry.setString(std::string(STANDARD_CONSUMER_ID), "/consumer_id");
+    }
     state.appendJson(entry);
 
     return state;
@@ -91,6 +99,8 @@ protected:
         std::make_shared<::testing::StrictMock<store::mocks::MockStore>>()};
     std::shared_ptr<::testing::StrictMock<router::mocks::MockRouterAPI>> router {
         std::make_shared<::testing::StrictMock<router::mocks::MockRouterAPI>>()};
+
+    void SetUp() override { logging::testInit(); }
 };
 
 class CMSyncSynchronizeTest : public ::testing::Test
@@ -110,9 +120,13 @@ protected:
         EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(true));
         EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC))
             .WillOnce(::testing::Return(store::mocks::storeReadDocResp(state)));
+        // Constructor calls updateSpacesStatusSnapshot which queries the router
+        EXPECT_CALL(*router, existsEntry(::testing::_)).WillRepeatedly(::testing::Return(false));
 
         return std::make_unique<cm::sync::CMSync>(indexer, crud, store, router, DEFAULT_ATTEMPTS, DEFAULT_WAIT_SECONDS);
     }
+
+    void SetUp() override { logging::testInit(); }
 };
 
 } // namespace
@@ -136,6 +150,8 @@ TEST_F(CMSyncConstructorTest, InitializesDefaultSpacesOnFirstSetup)
                 expectStateDocHasSpaces(doc, {std::string(STORE_ORIGIN_STANDARD), std::string(STORE_ORIGIN_CUSTOM)});
                 return store::mocks::storeOk();
             }));
+    // Constructor calls updateSpacesStatusSnapshot which queries the router
+    EXPECT_CALL(*router, existsEntry(::testing::_)).WillRepeatedly(::testing::Return(false));
 
     EXPECT_NO_THROW((cm::sync::CMSync {indexer, crud, store, router, DEFAULT_ATTEMPTS, DEFAULT_WAIT_SECONDS}));
 }
@@ -148,6 +164,7 @@ TEST_F(CMSyncConstructorTest, LoadsExistingStateWithoutReinitializingDefaults)
     EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC))
         .WillOnce(::testing::Return(store::mocks::storeReadDocResp(storedState)));
     EXPECT_CALL(*store, upsertDoc(::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*router, existsEntry(::testing::_)).WillRepeatedly(::testing::Return(false));
 
     EXPECT_NO_THROW((cm::sync::CMSync {indexer, crud, store, router, DEFAULT_ATTEMPTS, DEFAULT_WAIT_SECONDS}));
 }
@@ -160,6 +177,7 @@ TEST_F(CMSyncConstructorTest, LoadsExistingStateWithoutReinitializingDefaultsOnZ
     EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC))
         .WillOnce(::testing::Return(store::mocks::storeReadDocResp(storedState)));
     EXPECT_CALL(*store, upsertDoc(::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*router, existsEntry(::testing::_)).WillRepeatedly(::testing::Return(false));
 
     EXPECT_NO_THROW((cm::sync::CMSync {indexer, crud, store, router, 0u, DEFAULT_WAIT_SECONDS}));
 }
@@ -172,6 +190,7 @@ TEST_F(CMSyncConstructorTest, LoadsExistingStateWithoutReinitializingDefaultsOnZ
     EXPECT_CALL(*store, readDoc(STORE_NAME_CMSYNC))
         .WillOnce(::testing::Return(store::mocks::storeReadDocResp(storedState)));
     EXPECT_CALL(*store, upsertDoc(::testing::_, ::testing::_)).Times(0);
+    EXPECT_CALL(*router, existsEntry(::testing::_)).WillRepeatedly(::testing::Return(false));
 
     EXPECT_NO_THROW((cm::sync::CMSync {indexer, crud, store, router, DEFAULT_ATTEMPTS, 0u}));
 }
@@ -263,9 +282,12 @@ TEST_F(CMSyncSynchronizeTest, Case1_PolicyDisabledWithExistingRoute)
     // existSpaceInRemote
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
 
+    // isConsumerReadyForSync → ready
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+
     // getPolicyHashAndEnabledFromRemote → disabled
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("hash1"), false)));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), false))));
 
     // Route exists
     EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(true));
@@ -293,8 +315,9 @@ TEST_F(CMSyncSynchronizeTest, Case1_PolicyDisabledNoRoute)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("hash1"), false)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), false))));
 
     // No route
     EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(false));
@@ -309,8 +332,9 @@ TEST_F(CMSyncSynchronizeTest, Case2_PolicyEnabledHashUnchanged)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("same_hash"), true)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("same_hash"), true))));
 
     // Route exists with same hash
     EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(true));
@@ -329,8 +353,9 @@ TEST_F(CMSyncSynchronizeTest, Case3_PolicyEnabledNoRouteExists)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("new_hash"), true)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
     // Route does NOT exist (for synchronize's route check)
     EXPECT_CALL(*router, existsEntry("cmsync_standard"))
@@ -342,10 +367,13 @@ TEST_F(CMSyncSynchronizeTest, Case3_PolicyEnabledNoRouteExists)
 
     // getPolicy for download
     wiconnector::PolicyResources resources;
-    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
 
     // importNamespace
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     // syncNamespaceInRoute: no existing route → create new
@@ -366,8 +394,9 @@ TEST_F(CMSyncSynchronizeTest, Case4_PolicyEnabledHashChanged)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("new_hash"), true)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
     // Route exists with different hash
     auto entry = makeRouterEntry("cmsync_standard", "old_ns", 1, router::env::State::ENABLED, "old_hash");
@@ -380,8 +409,11 @@ TEST_F(CMSyncSynchronizeTest, Case4_PolicyEnabledHashChanged)
     // downloadAndEnrichNamespace
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
-    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     // hot-swap
@@ -404,8 +436,9 @@ TEST_F(CMSyncSynchronizeTest, Case4_RouteDisabledHashChanged)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("new_hash"), true)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
     // Route exists but DISABLED — enabledRoute is false, so hash comparison is skipped → sync happens
     auto entry = makeRouterEntry("cmsync_standard", "old_ns", 1, router::env::State::DISABLED, "old_hash");
@@ -417,8 +450,11 @@ TEST_F(CMSyncSynchronizeTest, Case4_RouteDisabledHashChanged)
 
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
-    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_)).WillOnce(::testing::Return(std::nullopt));
@@ -436,8 +472,9 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWhenGetEntryFails)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("hash1"), true)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), true))));
 
     EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(true));
     EXPECT_CALL(*router, getEntry("cmsync_standard"))
@@ -454,8 +491,9 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenHotSwapFails)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("new_hash"), true)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
     auto entry = makeRouterEntry("cmsync_standard", "old_ns", 1, router::env::State::ENABLED, "old_hash");
     EXPECT_CALL(*router, existsEntry("cmsync_standard"))
@@ -466,8 +504,11 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenHotSwapFails)
 
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
-    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     // hot-swap fails
@@ -488,17 +529,21 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWhenImportNamespaceFails)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("new_hash"), true)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
 
     EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(false));
 
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
-    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
 
     // importNamespace throws
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .WillOnce(::testing::Throw(std::runtime_error("import failed")));
 
     // Rollback in downloadNamespace
@@ -519,8 +564,8 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWithNextSpaceAfterFailure)
 
     // Custom — enabled, no route, full sync
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("custom"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("custom")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("hash_custom"), true)));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("custom"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash_custom"), true))));
 
     EXPECT_CALL(*router, existsEntry("cmsync_custom"))
         .WillOnce(::testing::Return(false))
@@ -528,8 +573,11 @@ TEST_F(CMSyncSynchronizeTest, ContinuesWithNextSpaceAfterFailure)
 
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
-    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("custom"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("custom"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     EXPECT_CALL(*router, getEntries()).WillOnce(::testing::Return(std::list<router::prod::Entry> {}));
@@ -550,8 +598,9 @@ TEST_F(CMSyncSynchronizeTest, DoesNotDeleteDummyNamespaceAfterSync)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("hash1"), true)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), true))));
 
     EXPECT_CALL(*router, existsEntry("cmsync_standard"))
         .WillOnce(::testing::Return(false))
@@ -559,8 +608,11 @@ TEST_F(CMSyncSynchronizeTest, DoesNotDeleteDummyNamespaceAfterSync)
 
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
-    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     EXPECT_CALL(*router, getEntries()).WillOnce(::testing::Return(std::list<router::prod::Entry> {}));
@@ -579,8 +631,9 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenPostEntryFails)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("hash"), true)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash"), true))));
 
     EXPECT_CALL(*router, existsEntry("cmsync_standard"))
         .WillOnce(::testing::Return(false))
@@ -588,8 +641,11 @@ TEST_F(CMSyncSynchronizeTest, RollsBackWhenPostEntryFails)
 
     EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
     wiconnector::PolicyResources resources;
-    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     EXPECT_CALL(*router, getEntries()).WillOnce(::testing::Return(std::list<router::prod::Entry> {}));
@@ -608,8 +664,9 @@ TEST_F(CMSyncSynchronizeTest, RetriesNamespaceIdGenerationOnCollision)
     auto sync = createSyncWithState(state);
 
     EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
-    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard")))
-        .WillOnce(::testing::Return(std::make_pair(std::string("hash"), true)));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash"), true))));
 
     EXPECT_CALL(*router, existsEntry("cmsync_standard"))
         .WillOnce(::testing::Return(false))
@@ -621,8 +678,11 @@ TEST_F(CMSyncSynchronizeTest, RetriesNamespaceIdGenerationOnCollision)
         .WillOnce(::testing::Return(false));
 
     wiconnector::PolicyResources resources;
-    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(resources));
-    EXPECT_CALL(*crud, importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
         .Times(1);
 
     EXPECT_CALL(*router, getEntries()).WillOnce(::testing::Return(std::list<router::prod::Entry> {}));
@@ -631,4 +691,273 @@ TEST_F(CMSyncSynchronizeTest, RetriesNamespaceIdGenerationOnCollision)
         .WillOnce(::testing::Return(store::mocks::storeOk()));
 
     EXPECT_NO_THROW(sync->synchronize());
+}
+
+// ==================== Shutdown Tests ====================
+
+// Shutdown before loop: requestShutdown() called before synchronize — no remote calls
+TEST_F(CMSyncSynchronizeTest, AbortsBeforeLoopWhenShutdownRequested)
+{
+    auto state = createStoredState(); // standard + custom
+    auto sync = createSyncWithState(state);
+
+    // Request shutdown before synchronize
+    sync->requestShutdown();
+
+    // No expectations on indexer, crud, or router — nothing should be called
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Shutdown mid-loop: requestShutdown() triggered via mock side effect after first namespace
+TEST_F(CMSyncSynchronizeTest, AbortsMidLoopAfterFirstNamespace)
+{
+    auto state = createStoredState(); // standard + custom
+    auto sync = createSyncWithState(state);
+
+    // Standard space: does not exist in remote — skipped quickly
+    // After existsPolicy returns, trigger shutdown so "custom" iteration aborts
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard")))
+        .WillOnce(::testing::DoAll(::testing::InvokeWithoutArgs([&sync]() { sync->requestShutdown(); }),
+                                   ::testing::Return(false)));
+
+    // Custom space: should NOT be called because shutdown triggers at start of second iteration
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Shutdown before download: requestShutdown() triggered via mock after getting policy info
+TEST_F(CMSyncSynchronizeTest, AbortsBeforeDownload)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::DoAll(::testing::InvokeWithoutArgs([&sync]() { sync->requestShutdown(); }),
+                                   ::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true)))));
+
+    // No route exists — case 3 (new sync needed), but shutdown triggers before download
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(false));
+
+    // No download or route sync should happen
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Hot swap failure triggers rollback (tests the rollback path, not shutdown per se)
+TEST_F(CMSyncSynchronizeTest, RollsBackOnHotSwapFailure)
+{
+    auto state = createStoredStateWithNs("standard", "stored_ns");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("new_hash"), true))));
+
+    // Route exists → hot swap path
+    EXPECT_CALL(*router, existsEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(true))  // routeConfig check
+        .WillOnce(::testing::Return(true)); // syncNamespaceInRoute check
+
+    auto routeEntry = makeRouterEntry("cmsync_standard", "stored_ns", 1, router::env::State::ENABLED, "old_hash");
+    EXPECT_CALL(*router, getEntry("cmsync_standard")).WillOnce(::testing::Return(routeEntry));
+
+    EXPECT_CALL(*crud, existsNamespace(::testing::_)).WillOnce(::testing::Return(false));
+    wiconnector::PolicyResources resources;
+    EXPECT_CALL(*indexer, getPolicy(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(resources)));
+    EXPECT_CALL(
+        *crud,
+        importNamespace(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, true))
+        .Times(1);
+
+    // hotSwapNamespace returns error
+    EXPECT_CALL(*router, hotSwapNamespace("cmsync_standard", ::testing::_))
+        .WillOnce(::testing::Return(base::Error {"Hot swap failed"}));
+
+    // Rollback: the downloaded namespace should be deleted after hot swap failure
+    EXPECT_CALL(*crud, deleteNamespace(::testing::_)).Times(1);
+
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Synchronize works normally without requestShutdown
+TEST_F(CMSyncSynchronizeTest, WorksNormallyWithoutShutdown)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(false));
+
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Consumer not ready: isConsumerReadyForSync returns false — sync skipped for that space
+TEST_F(CMSyncSynchronizeTest, SkipsWhenConsumerNotReady)
+{
+    auto state = createStoredStateWithNs("standard", "dummy_ns_id");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(false));
+
+    // No getPolicyHashAndEnabled, no download — StrictMock ensures nothing else is called
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// Consumer not ready for standard, but custom (no consumer) proceeds normally
+TEST_F(CMSyncSynchronizeTest, SkipsStandardWhenConsumerNotReadyButCustomProceeds)
+{
+    auto state = createStoredState(); // standard + custom
+    auto sync = createSyncWithState(state);
+
+    // Standard — exists but consumer not ready
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(false));
+
+    // Custom — no consumer ID, so no isConsumerReadyForSync check, but space doesn't exist
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("custom"))).WillOnce(::testing::Return(false));
+
+    EXPECT_NO_THROW(sync->synchronize());
+}
+
+// ==================== getSpacesStatus Tests ====================
+
+TEST_F(CMSyncConstructorTest, InitialStatusAllReady)
+{
+    EXPECT_CALL(*store, existsDoc(STORE_NAME_CMSYNC)).WillOnce(::testing::Return(false));
+    EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_)).WillOnce(::testing::Return(store::mocks::storeOk()));
+    // updateSpacesStatusSnapshot checks router for each space
+    EXPECT_CALL(*router, existsEntry(::testing::_)).WillRepeatedly(::testing::Return(false));
+
+    cm::sync::CMSync sync {indexer, crud, store, router, DEFAULT_ATTEMPTS, DEFAULT_WAIT_SECONDS};
+
+    auto status = sync.getSpacesStatus();
+    ASSERT_EQ(status.size(), 2U);
+
+    for (const auto& s : status)
+    {
+        EXPECT_EQ(s.status, base::SyncStatus::READY);
+        EXPECT_FALSE(s.available);
+        EXPECT_FALSE(s.enabled);
+        EXPECT_EQ(s.lastSuccessfulUpdate, 0U);
+    }
+}
+
+TEST_F(CMSyncSynchronizeTest, StatusReflectsAvailableAfterSync)
+{
+    auto state = createStoredStateWithNs("standard", "existing_ns");
+    auto sync = createSyncWithState(state);
+
+    // Initial status: not available (no routes at construction)
+    auto initialStatus = sync->getSpacesStatus();
+    ASSERT_EQ(initialStatus.size(), 1U);
+    EXPECT_EQ(initialStatus[0].name, "standard");
+    EXPECT_FALSE(initialStatus[0].available);
+    EXPECT_EQ(initialStatus[0].status, base::SyncStatus::READY);
+}
+
+// last_successful_update persisted in the store must be restored on load (survives restart).
+TEST_F(CMSyncSynchronizeTest, RestoresLastSuccessfulUpdateFromStore)
+{
+    json::Json state;
+    state.setArray();
+    json::Json entry;
+    entry.setString("standard", "/origin_space");
+    entry.setString("stored_ns", "/namespace_id");
+    entry.setString(std::string(STANDARD_CONSUMER_ID), "/consumer_id");
+    entry.setInt64(1700000000, "/last_successful_update");
+    state.appendJson(entry);
+
+    auto sync = createSyncWithState(state);
+
+    auto status = sync->getSpacesStatus();
+    ASSERT_EQ(status.size(), 1U);
+    EXPECT_EQ(status[0].name, "standard");
+    EXPECT_EQ(status[0].lastSuccessfulUpdate, 1700000000U);
+}
+
+// The enabled flag (remote-policy decision) must survive restart; available/hash are NOT persisted
+// (live state, re-derived from the router on the next sync).
+TEST_F(CMSyncSynchronizeTest, RestoresEnabledFromStoreButNotAvailable)
+{
+    json::Json state;
+    state.setArray();
+    json::Json entry;
+    entry.setString("standard", "/origin_space");
+    entry.setString("stored_ns", "/namespace_id");
+    entry.setString(std::string(STANDARD_CONSUMER_ID), "/consumer_id");
+    entry.setBool(true, "/enabled");
+    state.appendJson(entry);
+
+    auto sync = createSyncWithState(state);
+
+    auto status = sync->getSpacesStatus();
+    ASSERT_EQ(status.size(), 1U);
+    EXPECT_EQ(status[0].name, "standard");
+    EXPECT_TRUE(status[0].enabled);     // restored from store
+    EXPECT_FALSE(status[0].available);  // not persisted → false until re-derived from the router
+}
+
+// 'enabled' must reflect the remote policy (remoteEnabled), NOT the router route state. Here the route
+// is ENABLED in the router but the remote policy is DISABLED → reported enabled must be false.
+TEST_F(CMSyncSynchronizeTest, EnabledReflectsRemotePolicyNotRouteState)
+{
+    auto state = createStoredStateWithNs("standard", "old_ns");
+    auto sync = createSyncWithState(state);
+
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard"))).WillOnce(::testing::Return(true));
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true));
+    // Remote policy is DISABLED.
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("hash1"), false))));
+
+    // ...but the existing route is ENABLED in the router.
+    EXPECT_CALL(*router, existsEntry("cmsync_standard")).WillOnce(::testing::Return(true));
+    auto entry = makeRouterEntry("cmsync_standard", "old_ns", 1, router::env::State::ENABLED, "hash1");
+    EXPECT_CALL(*router, getEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(base::RespOrError<router::prod::Entry>(entry)));
+    EXPECT_CALL(*router, deleteEntry("cmsync_standard")).WillOnce(::testing::Return(std::nullopt));
+    EXPECT_CALL(*crud, deleteNamespace(cm::store::NamespaceId("old_ns"))).Times(1);
+    EXPECT_CALL(*store, upsertDoc(STORE_NAME_CMSYNC, ::testing::_))
+        .WillOnce(::testing::Return(store::mocks::storeOk()));
+
+    sync->synchronize();
+
+    auto status = sync->getSpacesStatus();
+    ASSERT_EQ(status.size(), 1U);
+    EXPECT_EQ(status[0].name, "standard");
+    EXPECT_FALSE(status[0].enabled);   // follows the DISABLED remote policy, not the ENABLED route
+    EXPECT_FALSE(status[0].available); // route removed by the disable handling
+}
+
+// A route removed out-of-band (e.g. manual delete) must flip the space to not-available on the next
+// sync — detected up-front from the router, so it works even when the indexer-dependent steps abort.
+TEST_F(CMSyncSynchronizeTest, MarksUnavailableWhenRouteRemovedOutOfBand)
+{
+    auto state = createStoredStateWithNs("standard", "current_ns");
+    auto sync = createSyncWithState(state);
+
+    auto entry = makeRouterEntry("cmsync_standard", "current_ns", 1, router::env::State::ENABLED, "h");
+    EXPECT_CALL(*router, existsEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(true))    // 1st sync: route present (up-front check + reused by routeConfig)
+        .WillOnce(::testing::Return(false));  // 2nd sync: route removed out-of-band
+    EXPECT_CALL(*router, getEntry("cmsync_standard"))
+        .WillOnce(::testing::Return(base::RespOrError<router::prod::Entry>(entry))); // 1st sync routeConfig
+    EXPECT_CALL(*indexer, existsPolicy(::testing::Eq("standard")))
+        .WillOnce(::testing::Return(true))    // 1st sync
+        .WillOnce(::testing::Return(false));  // 2nd sync: aborts here; up-front check already refreshed availability
+    EXPECT_CALL(*indexer, isConsumerReadyForSync(::testing::_)).WillOnce(::testing::Return(true)); // 1st sync only
+    EXPECT_CALL(*indexer, getPolicyHashAndEnabled(::testing::Eq("standard"), ::testing::_))
+        .WillOnce(::testing::Return(std::optional(std::make_pair(std::string("h"), true))));       // 1st sync only
+
+    // 1st sync: no-change → standard becomes available.
+    sync->synchronize();
+    ASSERT_EQ(sync->getSpacesStatus().size(), 1U);
+    ASSERT_TRUE(sync->getSpacesStatus()[0].available);
+
+    // 2nd sync: route is gone → up-front check marks it unavailable before aborting.
+    sync->synchronize();
+    EXPECT_FALSE(sync->getSpacesStatus()[0].available); // route removed → not available
+    EXPECT_TRUE(sync->getSpacesStatus()[0].enabled);    // policy still enabled (last known)
 }

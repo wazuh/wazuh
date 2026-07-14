@@ -39,9 +39,9 @@ chown -R root:wheel ${DIR}/bin
 chown -R root:wheel ${DIR}/lib
 
 # To the ossec queue (default for agentd to read)
-chown -R ${USER}:${GROUP} ${DIR}/queue/{alerts,diff,sockets,rids}
+chown -R ${USER}:${GROUP} ${DIR}/queue/{diff,sockets,rids}
 
-chmod -R 770 ${DIR}/queue/{alerts,sockets}
+chmod -R 770 ${DIR}/queue/{sockets}
 chmod -R 750 ${DIR}/queue/{diff,sockets,rids}
 
 # For the logging user
@@ -167,10 +167,19 @@ if [[ $(dscl . -read /Groups/ossec) ]]; then
     sudo /usr/bin/dscl . -delete "/Groups/ossec"
 fi
 
-# Remove 4.1.5 patch
-if [ -f ${DIR}/queue/alerts/sockets ]; then
-    echo "Removing 4.1.5 patch file socket"
-    rm ${DIR}/queue/alerts/sockets
+# Remove execq folder
+if [ -S ${DIR}/queue/alerts/execq ]; then
+    rm -f ${DIR}/queue/alerts/execq
+fi
+
+# Remove deprecated cfgaq socket
+if [ -S ${DIR}/queue/alerts/cfgaq ]; then
+    rm -f ${DIR}/queue/alerts/cfgaq
+fi
+
+# Remove alerts folder
+if [ -d ${DIR}/queue/alerts ]; then
+    rm -rf ${DIR}/queue/alerts
 fi
 
 # Remove deprecated binaries

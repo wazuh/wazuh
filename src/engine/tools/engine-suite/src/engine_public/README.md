@@ -6,6 +6,7 @@
     1. [engine-public cm policy-validate](#engine-public-cm-policy-validate)
     2. [engine-public cm validate](#engine-public-cm-validate)
     3. [engine-public cm logtest-cleanup](#engine-public-cm-logtest-cleanup)
+    4. [engine-public status get](#engine-public-status-get)
 
 ## Summary
 
@@ -65,3 +66,14 @@ engine-public cm logtest-cleanup
 ```
 
 Calls `DELETE /logtest` on the engine API.
+
+### engine-public status get
+
+Reports whether the engine has all required resources available to process events: the global `ready` flag plus the per-resource state of content-manager spaces, IOC databases and geo databases.
+
+```bash
+engine-public status get             # YAML output (default)
+engine-public status get -f json     # JSON output
+```
+
+Calls `GET /status` on the engine API.

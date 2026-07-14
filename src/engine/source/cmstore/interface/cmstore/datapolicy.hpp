@@ -1,6 +1,7 @@
-#ifndef _ICMSTORE_DATA_POLICY
-#define _ICMSTORE_DATA_POLICY
+#ifndef ICMSTORE_DATA_POLICY
+#define ICMSTORE_DATA_POLICY
 
+#include <regex>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -23,6 +24,7 @@
  *   {
  *     "title": "Development 0.0.1",
  *   },
+ *   "enabled": true,
  *   "root_decoder": "5c1df6b6-1458-4b2e-9001-96f67a8b12c8",
  *   "origin_space": "space1", -> optional, default value "UNDEFINED"
  *   "index_unclassified_events": true, -> optional, default value false
@@ -38,7 +40,9 @@
  *     "f61133f5-90b9-49ed-b1d5-0b88cb04355e",
  *     "369c3128-9715-4a30-9ff9-22fcac87688b",
  *   ],
- *   "outputs": [] -> opcional.
+ *   "outputs": [], -> optional.
+ *   "hash": "7ab287...5180", -> "optional hash value for integrity verification"
+ *   "id": "eb5c2519-feff-4789-8542-9a0453cc8690" -> "uuid for the policy"
  * }
  *
  */
@@ -61,12 +65,9 @@ constexpr std::string_view PATH_KEY_HASH = "/hash";
 constexpr std::string_view PATH_KEY_INDEX_DISCARDED_EVENTS = "/index_discarded_events";
 constexpr std::string_view PATH_KEY_CLEANUP_DECODER_VARIABLES = "/cleanup_decoder_variables";
 
-} // namespace jsonpolicy
-
-namespace
-{
 constexpr std::string_view DEFAULT_ORIGIN_SPACE = "UNDEFINED"; ///< Default origin space when not specified
-}
+
+} // namespace jsonpolicy
 
 /**
  * @brief Policy class representing a policy in wazuh-engine
@@ -89,6 +90,16 @@ private:
     bool m_indexUnclassifiedEvents; ///< Flag indicating whether to index unclassified events
     bool m_indexDiscardedEvents;    ///< Flag to control discarded event indexing
     bool m_cleanupDecoderVariables; ///< Flag to control cleanup of temporary decoder variables
+
+    void validateOriginSpace(std::string_view value) const
+    {
+        if (!std::regex_match(value.begin(), value.end(), std::regex("^[a-zA-Z0-9_]+$")))
+        {
+            throw std::runtime_error(fmt::format(
+                "'origin_space' contains invalid characters: '{}'. Only alphanumeric and underscores are allowed.",
+                value));
+        }
+    }
 
 public:
     ~Policy() = default;
@@ -122,6 +133,10 @@ public:
         cm::store::detail::findDuplicateOrInvalidUUID(m_integrations, "Integration");
         cm::store::detail::findDuplicateOrInvalidUUID(m_outputs, "Output");
         cm::store::detail::findDuplicateOrInvalidUUID(m_filters, "Filter");
+        if (m_originSpace != jsonpolicy::DEFAULT_ORIGIN_SPACE)
+        {
+            validateOriginSpace(m_originSpace);
+        }
     }
 
     // Dumper and loader
@@ -154,13 +169,15 @@ public:
             return enabledOpt.value();
         }();
 
-        // Get root decoder
+        // Get root decoder (treat null as an empty string)
         auto rootDecoder = [&]()
         {
             std::string rootDecoder;
-            if (policyJson.getString(rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT) != json::RetGet::Success)
+            if (policyJson.getString(rootDecoder, jsonpolicy::PATH_KEY_ROOT_PARENT) != json::RetGet::Success
+                && !policyJson.isNull(jsonpolicy::PATH_KEY_ROOT_PARENT))
             {
-                throw std::runtime_error("Policy JSON must have a 'root_decoder' field");
+
+                throw std::runtime_error("Policy JSON must have a 'root_decoder' string field or null");
             }
             return rootDecoder;
         }();
@@ -191,7 +208,7 @@ public:
             return integrations;
         }();
 
-        // filters
+        // Get filters
         std::vector<std::string> filters = [&]() -> auto
         {
             std::vector<std::string> filters;
@@ -217,7 +234,7 @@ public:
             return filters;
         }();
 
-        // enrichments
+        // Get enrichments
         std::vector<std::string> enrichments = [&]() -> auto
         {
             std::vector<std::string> enrichments;
@@ -236,7 +253,6 @@ public:
                     enrichments.push_back(std::move(enrichment));
                 }
             }
-            // TODO: Uncomment when enrichments are mandatory
             else
             {
                 throw std::runtime_error("Policy JSON must have an 'enrichments' array");
@@ -274,11 +290,13 @@ public:
             if (policyJson.getString(originSpace, jsonpolicy::PATH_KEY_ORIGIN_SPACE) != json::RetGet::Success
                 || originSpace.empty())
             {
-                return std::string(DEFAULT_ORIGIN_SPACE);
+                return std::string(jsonpolicy::DEFAULT_ORIGIN_SPACE);
             }
+
             return originSpace;
         }();
 
+        // optional hash
         auto policyHash = [&]() -> std::string
         {
             std::string hash;
@@ -289,6 +307,7 @@ public:
             return hash;
         }();
 
+        // Get index_unclassified_events flag
         auto indexUnclassifiedEvents = [&]() -> bool
         {
             auto indexOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_UNCLASSIFIED_EVENTS);
@@ -299,6 +318,7 @@ public:
             return indexOpt.value();
         }();
 
+        // Get index_discarded_events flag
         bool indexDiscardedEvents = [&]() -> bool
         {
             auto indexDiscardedOpt = policyJson.getBool(jsonpolicy::PATH_KEY_INDEX_DISCARDED_EVENTS);
@@ -309,6 +329,7 @@ public:
             return indexDiscardedOpt.value();
         }();
 
+        // Get cleanup_decoder_variables flag
         bool cleanupDecoderVariables = [&]() -> bool
         {
             auto cleanupDecoderVariablesOpt = policyJson.getBool(jsonpolicy::PATH_KEY_CLEANUP_DECODER_VARIABLES);
@@ -389,7 +410,11 @@ public:
 
     // Getters and setters of optional values
     const std::string& getOriginSpace() const { return m_originSpace; }
-    void setOriginSpace(std::string_view originSpace) { m_originSpace = originSpace; }
+    void setOriginSpace(std::string_view originSpace)
+    {
+        validateOriginSpace(originSpace);
+        m_originSpace = originSpace;
+    }
     bool shouldIndexUnclassifiedEvents() const { return m_indexUnclassifiedEvents; }
     bool shouldIndexDiscardedEvents() const { return m_indexDiscardedEvents; }
     bool shouldCleanupDecoderVariables() const { return m_cleanupDecoderVariables; }
@@ -397,4 +422,4 @@ public:
 
 } // namespace cm::store::dataType
 
-#endif // _ICMSTORE_DATA_POLICY
+#endif // ICMSTORE_DATA_POLICY

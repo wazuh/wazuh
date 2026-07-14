@@ -177,7 +177,7 @@ void SCAPolicyLoader::SyncPoliciesAndReportDelta(const nlohmann::json& data, con
         // LCOV_EXCL_STOP
     }
 
-    createEvents(modifiedPoliciesMap, modifiedChecksMap);
+    createEvents(std::move(modifiedPoliciesMap), std::move(modifiedChecksMap));
 }
 
 std::unordered_map<std::string, nlohmann::json> SCAPolicyLoader::SyncWithDBSync(const nlohmann::json& data,

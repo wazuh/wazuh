@@ -144,8 +144,9 @@ void * wm_office365_main(wm_office365* office365_config) {
         // Execute initial scan
         wm_office365_execute_scan(office365_config, 1);
 
-        while (1) {
-            sleep(office365_config->interval);
+        while (!wm_shutdown_requested) {
+            wm_sleep_interruptible(office365_config->interval);
+            if (wm_shutdown_requested) break;
             wm_office365_execute_scan(office365_config, 0);
             #ifdef WAZUH_UNIT_TESTING
                 break;

@@ -9,13 +9,16 @@ services:
     hostname: wazuh-indexer
     container_name: wazuh-indexer
     entrypoint: ["/entrypoint.sh"]
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
     volumes:
       - ./wazuh-indexer/entrypoint.sh:/entrypoint.sh:ro
       - ./certs:/certs:ro
-      # Persistent data volume
-      # - wazuh-indexer-data:/var/lib/wazuh-indexer
-      # # Security initialization flag
-      # - wazuh-indexer-config:/etc/wazuh-indexer-init
+      - wazuh-indexer-data:/var/lib/wazuh-indexer
+      - wazuh-indexer-config:/etc/wazuh-indexer-init
+      - wazuh-indexer-engine:/usr/share/wazuh-indexer/engine
     ports:
       - 9200:9200
 
@@ -37,8 +40,10 @@ services:
     depends_on:
       - wazuh-indexer
 
-# volumes:
-#   wazuh-indexer-data:
-#     driver: local
-#   wazuh-indexer-config:
-#     driver: local
+volumes:
+  wazuh-indexer-data:
+    driver: local
+  wazuh-indexer-config:
+    driver: local
+  wazuh-indexer-engine:
+    driver: local

@@ -47,6 +47,10 @@ int __wrap_OS_SetRecvTimeout(int socket, long seconds, long useconds);
 
 int __wrap_OS_SetSendTimeout(int socket, int seconds);
 
+int __wrap_OS_SetKeepalive(int socket);
+
+void __wrap_OS_SetKeepalive_Options(int socket, int idle, int intvl, int cnt);
+
 int __wrap_wnet_select(int sock, int timeout);
 
 uint32_t __wrap_wnet_order(uint32_t value);

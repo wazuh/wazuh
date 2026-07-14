@@ -5,6 +5,7 @@ if(NOT DEFINED WAZUH_MAIN_PROJECT)
 endif()
 
 include_directories(${SRC_FOLDER}/shared/include/)
+include_directories(${SRC_FOLDER}/shared_modules/keystore/include)
 
 # Copy input files to the build directory
 file(COPY input DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

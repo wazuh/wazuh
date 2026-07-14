@@ -311,3 +311,64 @@ TEST_F(AsyncValueDispatcherTest, CaptureWarningMsg)
     dispatcher.cancel();
     Log::deassignLogFunction();
 }
+
+TEST_F(AsyncValueDispatcherTest, Push_ReturnsTrueWhenAccepted)
+{
+    Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher([](int) {}, 1, /*maxQueueSize*/ 10);
+    EXPECT_TRUE(dispatcher.push(42));
+}
+
+TEST_F(AsyncValueDispatcherTest, Push_ReturnsFalseWhenQueueFull)
+{
+    constexpr auto QUEUE_SIZE = 2;
+    std::promise<void> blockWorker;
+    std::shared_future<void> blockFuture = blockWorker.get_future().share();
+
+    // Single worker blocks on the first message so subsequent pushes pile up on
+    // the queue until it hits maxQueueSize. Any push beyond that must return
+    // false, signalling the drop to the caller.
+    Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher([blockFuture](int) { blockFuture.wait(); },
+                                                                          /*numberOfThreads*/ 1,
+                                                                          QUEUE_SIZE);
+
+    // First push is consumed by the worker (which then blocks).
+    EXPECT_TRUE(dispatcher.push(1));
+    // Give the worker a moment to pick up the first message.
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    // The next QUEUE_SIZE pushes fill the bounded queue.
+    EXPECT_TRUE(dispatcher.push(2));
+    EXPECT_TRUE(dispatcher.push(3));
+
+    // Anything past QUEUE_SIZE is dropped.
+    EXPECT_FALSE(dispatcher.push(4));
+    EXPECT_FALSE(dispatcher.push(5));
+
+    // Release the worker so the dispatcher can shut down cleanly.
+    blockWorker.set_value();
+}
+
+TEST_F(AsyncValueDispatcherTest, Push_ReturnsFalseAfterCancel)
+{
+    Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher([](int) {}, 1, /*maxQueueSize*/ 10);
+    dispatcher.cancel();
+    EXPECT_FALSE(dispatcher.push(7));
+}
+
+TEST_F(AsyncValueDispatcherTest, Push_ReturnsTrueOnUnlimitedQueue)
+{
+    // Default constructor uses UNLIMITED_QUEUE_SIZE.
+    std::promise<void> blockWorker;
+    std::shared_future<void> blockFuture = blockWorker.get_future().share();
+    Utils::AsyncValueDispatcher<int, std::function<void(int)>> dispatcher([blockFuture](int) { blockFuture.wait(); },
+                                                                          1);
+
+    // Push more items than any reasonable bounded queue would accept; with the
+    // unlimited size, every push must succeed.
+    for (int i = 0; i < 1000; ++i)
+    {
+        EXPECT_TRUE(dispatcher.push(i));
+    }
+
+    blockWorker.set_value();
+}

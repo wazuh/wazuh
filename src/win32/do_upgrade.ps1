@@ -263,12 +263,14 @@ if ($msi_new_version -ne $null) {
             write-output "$(Get-Date -format u) - Upgrade failed: direct upgrade to v5.0.0 is not supported from version $($current_version). Please upgrade to v4.14.x first." >> .\upgrade\upgrade.log
             write-output "1" | out-file ".\upgrade\upgrade_result" -encoding ascii
             remove_upgrade_files
+            Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
             exit 1
         }
     } catch {
         write-output "$(Get-Date -format u) - Could not compare versions for compatibility check: $($_.Exception.Message)" >> .\upgrade\upgrade.log
         write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
         remove_upgrade_files
+        Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
         exit 1
     }
 }

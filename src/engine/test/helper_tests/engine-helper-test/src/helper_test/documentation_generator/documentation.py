@@ -34,7 +34,7 @@ def parse_yaml_to_documentation(parser: Parser):
 
     if parser.get_helper_type() != "map":
         target_field = TargetField(
-            parser.get_target_field_type(), parser.get_target_field_subset())
+            parser.get_target_field_type(), parser.get_target_field_subset(), parser.get_target_field_path())
 
     tests = parser.get_tests() or []
     examples = [

@@ -461,23 +461,6 @@ class ProxyAPI:
             json_body=json_body,
         )
 
-    async def get_backend_stats(self, backend_name: str) -> PROXY_API_RESPONSE:
-        """Get the statistics of the provided backend.
-
-        Parameters
-        ----------
-        backend_name : str
-            Backend name to query.
-
-        Returns
-        -------
-        PROXY_API_RESPONSE
-            Statistics of the backend.
-        """
-        query_params = {'type': 'backend', 'name': backend_name}
-
-        return await self._make_hap_request('services/haproxy/stats/native', query_parameters=query_params)
-
     async def get_backend_server_stats(self, backend_name: str, server_name: str) -> PROXY_API_RESPONSE:
         """Get the statistics of the provided backend server.
 
@@ -613,16 +596,6 @@ class Proxy:
             await self.api.update_global_configuration(new_configuration=configuration)
             self.hard_stop_after = hard_stop_after
             self.logger.info(f'Set `hard-stop-after` with {hard_stop_after} seconds.')
-
-    async def get_current_pid(self) -> int:
-        """Get the current HAProxy PID.
-
-        Returns
-        -------
-        int
-            Current PID.
-        """
-        return (await self.api.get_runtime_info())['pid']
 
     async def get_current_backends(self) -> dict:
         """Get the current backends from the Proxy.

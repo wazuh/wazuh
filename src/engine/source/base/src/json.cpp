@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <limits>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "rapidjson/schema.h"
@@ -51,12 +52,6 @@ Json::Json(const char* json)
         throw std::runtime_error(
             fmt::format("JSON document could not be parsed: {}", rapidjson::GetParseError_En(result.Code())));
     }
-
-    auto error = checkDuplicateKeys();
-    if (error)
-    {
-        throw std::runtime_error(fmt::format("JSON document has duplicated keys: {}", error->message));
-    }
 }
 
 Json::Json(std::string_view json)
@@ -67,12 +62,6 @@ Json::Json(std::string_view json)
     {
         throw std::runtime_error(
             fmt::format("JSON document could not be parsed: {}", rapidjson::GetParseError_En(result.Code())));
-    }
-
-    auto error = checkDuplicateKeys();
-    if (error)
-    {
-        throw std::runtime_error(fmt::format("JSON document has duplicated keys: {}", error->message));
     }
 }
 
@@ -172,6 +161,22 @@ bool Json::equals(std::string_view ptrPath, const Json& value) const
     {
         const auto got {fieldPtr.Get(m_document)};
         return (got && *got == value.m_document);
+    }
+
+    throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
+}
+
+bool Json::equalsString(std::string_view ptrPath, std::string_view str) const
+{
+    const auto fieldPtr = rapidjson::Pointer(ptrPath.data(), ptrPath.size());
+    if (fieldPtr.IsValid())
+    {
+        const auto got {fieldPtr.Get(m_document)};
+        if (!got || !got->IsString())
+        {
+            return false;
+        }
+        return std::string_view(got->GetString(), got->GetStringLength()) == str;
     }
 
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, ptrPath));
@@ -459,6 +464,26 @@ std::optional<std::vector<std::tuple<std::string, Json>>> Json::getObject(std::s
     }
 
     throw std::runtime_error(fmt::format(INVALID_POINTER_TYPE_MSG, path));
+}
+
+std::unordered_map<std::string, Json> Json::extractObjectMembers()
+{
+    if (!m_document.IsObject())
+    {
+        throw std::runtime_error("extractObjectMembers called on non-object Json");
+    }
+
+    std::unordered_map<std::string, Json> result;
+    result.reserve(m_document.MemberCount());
+
+    for (auto& m : m_document.GetObject())
+    {
+        Json entry;
+        entry.m_document.Swap(m.value); // Zero-copy: steals value, leaves null in source
+        result.try_emplace(std::string(m.name.GetString(), m.name.GetStringLength()), std::move(entry));
+    }
+
+    return result;
 }
 
 std::optional<std::vector<std::string>> Json::getFields() const
@@ -987,13 +1012,7 @@ void Json::setString(std::string_view value, std::string_view path)
     if (pp.IsValid())
     {
         const auto* data = value.data() ? value.data() : "";
-        auto len = value.size();
-        // Strip trailing null bytes: a JSON string must not contain embedded \0.
-        while (len > 0 && data[len - 1] == '\0')
-        {
-            --len;
-        }
-        rapidjson::Value v(data, static_cast<rapidjson::SizeType>(len), m_document.GetAllocator());
+        rapidjson::Value v(data, static_cast<rapidjson::SizeType>(value.size()), m_document.GetAllocator());
         pp.Set(m_document, v);
         return;
     }
@@ -1254,32 +1273,26 @@ std::optional<base::Error> Json::validate(const Json& schema) const
 
 std::optional<base::Error> Json::checkDuplicateKeys() const
 {
-    // TODO: This should be checked by the library, or make a better validator.
-    // As stated in rapidjson docs, if an object contains duplicated memebers,
-    // equality comparator always returns false, for said member or for the whole
-    // object if it contains duplicated members.
-
-    // If equality between a member and itself is false, then it is a duplicate or
-    // contains duplicated members.
-
-    // Exception is not throw when repeated keys have the same value. Check this operator == in
-    // https://miloyip.github.io/rapidjson/classrapidjson_1_1_generic_value.html#afbdbc9cbc3b59feb5a28d5bfee97dbb3
-
     auto validateDuplicatedKeys = [](const rapidjson::Value& value, auto& recurRef) -> void
     {
         if (value.IsObject())
         {
+            std::unordered_set<std::string> seen;
             for (auto it = value.MemberBegin(); it != value.MemberEnd(); ++it)
             {
-                if (value[it->name.GetString()] != value[it->name.GetString()])
+                std::string key {it->name.GetString(), it->name.GetStringLength()};
+                if (!seen.insert(key).second)
                 {
-                    throw std::runtime_error(fmt::format("Unable to build json document because there is a duplicated "
-                                                         "key '{}', or a duplicated key inside object '{}'.",
-                                                         it->name.GetString(),
-                                                         it->name.GetString()));
+                    throw std::runtime_error(fmt::format("Duplicate key '{}' found in JSON object.", key));
                 }
-
                 recurRef(it->value, recurRef);
+            }
+        }
+        else if (value.IsArray())
+        {
+            for (auto it = value.Begin(); it != value.End(); ++it)
+            {
+                recurRef(*it, recurRef);
             }
         }
     };
@@ -1288,13 +1301,7 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
     {
         if (m_document.IsObject())
         {
-            const rapidjson::Value& value = m_document;
-
-            if (value != value)
-            {
-                return base::Error {"Unable to build json document because there is a duplicated key"};
-            }
-            validateDuplicatedKeys(value, validateDuplicatedKeys);
+            validateDuplicatedKeys(m_document, validateDuplicatedKeys);
         }
     }
     catch (const std::exception& e)
@@ -1303,6 +1310,44 @@ std::optional<base::Error> Json::checkDuplicateKeys() const
     }
 
     return std::nullopt;
+}
+
+size_t Json::removeDuplicateKeys()
+{
+    size_t removedCount = 0;
+
+    auto deduplicate = [&removedCount](rapidjson::Value& value, auto& recurRef) -> void
+    {
+        if (value.IsObject())
+        {
+            std::unordered_set<std::string> seen;
+            for (auto it = value.MemberBegin(); it != value.MemberEnd();)
+            {
+                std::string key {it->name.GetString(), it->name.GetStringLength()};
+                if (!seen.insert(key).second)
+                {
+                    it = value.EraseMember(it);
+                    ++removedCount;
+                }
+                else
+                {
+                    recurRef(it->value, recurRef);
+                    ++it;
+                }
+            }
+        }
+        else if (value.IsArray())
+        {
+            for (auto it = value.Begin(); it != value.End(); ++it)
+            {
+                recurRef(*it, recurRef);
+            }
+        }
+    };
+
+    deduplicate(m_document, deduplicate);
+
+    return removedCount;
 }
 
 bool Json::eraseIfKey(const std::function<bool(const std::string&)>& func, bool recursive, const std::string& path)

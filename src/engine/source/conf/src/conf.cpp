@@ -54,17 +54,20 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
         key::GEO_MANIFEST_URL,
         "WAZUH_GEO_MANIFEST_URL",
         "https://wazuh-cloud-cti-web-components-dev.s3.us-east-2.amazonaws.com/maxmind_geoip/manifest.json");
-    addUnit<size_t>(key::GEO_DOWNLOAD_TIMEOUT, "WAZUH_GEO_DOWNLOAD_TIMEOUT", 5000);
+    addUnit<size_t>(key::GEO_DOWNLOAD_TIMEOUT, "WAZUH_GEO_DOWNLOAD_TIMEOUT", 60000);
 
     // Indexer connector
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});
-    addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "admin");
-    addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "admin");
+    addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "wazuh-manager");
+    addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "wazuh-manager");
     addUnit<std::vector<std::string>>(key::INDEXER_SSL_CA_BUNDLE, "WAZUH_INDEXER_SSL_CA_BUNDLE", {});
     addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
     addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
-    addUnit<size_t>(key::INDEXER_QUEUE_MAX_EVENTS, "WAZUH_INDEXER_QUEUE_MAX_EVENTS", 0x1 << 17);
-    addUnit<size_t>(key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE, "WAZUH_CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE", 100);
+    addUnit<size_t>(key::INDEXER_QUEUE_MAX_BYTES, "WAZUH_INDEXER_QUEUE_MAX_BYTES", size_t {0x1} << 26); // 64 MB
+    addUnit<size_t>(key::INDEXER_BULK_MAX_BYTES, "WAZUH_INDEXER_BULK_MAX_BYTES", size_t {0x1} << 24);   // 16 MB
+    addUnit<size_t>(key::INDEXER_FLUSH_INTERVAL, "WAZUH_INDEXER_FLUSH_INTERVAL", 20);
+    addUnit<size_t>(
+        key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE, "WAZUH_CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE", 100);
     // IOC Sync
     addUnit<size_t>(key::IOC_INDEXER_CONNECTOR_MAX_RETRIES, "WAZUH_IOC_INDEXER_CONNECTOR_MAX_RETRIES", 3);
     addUnit<size_t>(key::IOC_INDEXER_CONNECTOR_RETRY_INTERVAL, "WAZUH_IOC_INDEXER_CONNECTOR_RETRY_INTERVAL", 5);
@@ -84,6 +87,7 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     // Queue event module
     addUnit<size_t>(key::EVENT_QUEUE_SIZE, "WAZUH_EVENT_QUEUE_SIZE", 0x1 << 17);
     addUnit<size_t>(key::EVENT_QUEUE_EPS, "WAZUH_EVENT_QUEUE_EPS", 0);
+    addUnit<size_t>(key::EVENT_QUEUE_MAX_BYTES, "WAZUH_EVENT_QUEUE_MAX_BYTES", 0x1 << 25); // 0 = unlimited
 
     // Orchestrator module
     addUnit<int>(key::ORCHESTRATOR_THREADS, "WAZUH_ORCHESTRATOR_THREADS", 0);
@@ -112,17 +116,20 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
     addUnit<bool>(key::STREAMLOG_SHOULD_COMPRESS, "WAZUH_STREAMLOG_SHOULD_COMPRESS", true);
     addUnit<size_t>(key::STREAMLOG_COMPRESSION_LEVEL, "WAZUH_STREAMLOG_COMPRESSION_LEVEL", 5);
     addUnit<std::string>(
-        key::STREAMLOG_EVENTS_PATTERN, "WAZUH_STREAMLOG_EVENTS_PATTERN", "${YYYY}/${MMM}/wazuh-${name}-${DD}.json");
+        key::STREAMLOG_EVENTS_PATTERN, "WAZUH_STREAMLOG_EVENTS_PATTERN", "${YYYY}/${MMM}/wazuh-${name}-${DD}");
     addUnit<size_t>(key::STREAMLOG_EVENTS_MAX_SIZE, "WAZUH_STREAMLOG_EVENTS_MAX_SIZE", 0);
     addUnit<size_t>(key::STREAMLOG_EVENTS_BUFFER_SIZE, "WAZUH_STREAMLOG_EVENTS_BUFFER_SIZE", 0x1 << 20);
     addUnit<std::string>(
-        key::STREAMLOG_DUMPER_PATTERN, "WAZUH_STREAMLOG_DUMPER_PATTERN", "${YYYY}/${MMM}/wazuh-${name}-${DD}.json");
+        key::STREAMLOG_DUMPER_PATTERN, "WAZUH_STREAMLOG_DUMPER_PATTERN", "${YYYY}/${MMM}/wazuh-${name}-${DD}");
     addUnit<size_t>(key::STREAMLOG_DUMPER_MAX_SIZE, "WAZUH_STREAMLOG_DUMPER_MAX_SIZE", 0);
     addUnit<size_t>(key::STREAMLOG_DUMPER_BUFFER_SIZE, "WAZUH_STREAMLOG_DUMPER_BUFFER_SIZE", 0x1 << 20);
 
-    addUnit<std::string>(key::STREAMLOG_METRICS_PATTERN, "WAZUH_STREAMLOG_METRICS_PATTERN", "${YYYY}-${MM}-${DD}.json");
+    addUnit<std::string>(key::STREAMLOG_METRICS_PATTERN, "WAZUH_STREAMLOG_METRICS_PATTERN", "${YYYY}-${MM}-${DD}");
     addUnit<size_t>(key::STREAMLOG_METRICS_MAX_SIZE, "WAZUH_STREAMLOG_METRICS_MAX_SIZE", 10 * 1024 * 1024);
     addUnit<size_t>(key::STREAMLOG_METRICS_BUFFER_SIZE, "WAZUH_STREAMLOG_METRICS_BUFFER_SIZE", 0x1 << 20);
+    addUnit<size_t>(key::STREAMLOG_MAX_FILES, "WAZUH_STREAMLOG_MAX_FILES", 90);
+    addUnit<size_t>(
+        key::STREAMLOG_MAX_ACCUMULATED_SIZE, "WAZUH_STREAMLOG_MAX_ACCUMULATED_SIZE", 20ULL * 1024 * 1024 * 1024);
 
     // Metrics module
     addUnit<bool>(key::METRICS_LOG_ENABLED, "WAZUH_METRICS_LOG_ENABLED", false);

@@ -1,6 +1,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <iockvdb/dbHandle.hpp>
 #include <iockvdb/mockManager.hpp>
 #include <iockvdb/mockReadOnlyHandler.hpp>
 
@@ -481,4 +482,47 @@ TEST_F(HandlerMultiThreadTest, ConcurrentComplexJsonReads)
     }
 
     EXPECT_EQ(validationErrors, 0);
+}
+
+TEST(DbHandleTest, GetThrowsWhenNoInstance)
+{
+    DbHandle handle("testdb");
+
+    EXPECT_THROW(handle.get("key"), std::runtime_error);
+}
+
+TEST(DbHandleTest, MultiGetThrowsWhenNoInstance)
+{
+    DbHandle handle("testdb");
+
+    EXPECT_THROW(handle.multiGet({"key"}), std::runtime_error);
+}
+
+TEST(DbHandleTest, GetThrowsWhenBeingDeleted)
+{
+    DbHandle handle("testdb");
+    {
+        std::lock_guard<std::mutex> lk(handle.structuralMutex());
+        ASSERT_TRUE(handle.tryEnterDeleting());
+    }
+
+    EXPECT_THROW(handle.get("key"), std::runtime_error);
+}
+
+TEST(DbHandleTest, MultiGetThrowsWhenBeingDeleted)
+{
+    DbHandle handle("testdb");
+    {
+        std::lock_guard<std::mutex> lk(handle.structuralMutex());
+        ASSERT_TRUE(handle.tryEnterDeleting());
+    }
+
+    EXPECT_THROW(handle.multiGet({"key"}), std::runtime_error);
+}
+
+TEST(DbHandleTest, NameReturnsExpectedValue)
+{
+    DbHandle handle("my-database");
+
+    EXPECT_EQ(handle.name(), "my-database");
 }

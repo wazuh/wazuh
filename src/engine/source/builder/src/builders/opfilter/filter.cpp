@@ -9,31 +9,52 @@ namespace
 {
 FilterOp filterValue(const Reference& targetField, const Value& value, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    auto jValue(value.value());
-
     auto targetNotFound =
         fmt::format("{} -> Target field '{}' not found", buildCtx->context().opName, targetField.dotPath());
     auto valueMissmatch =
         fmt::format("{} -> Value missmatch for reference '{}'", buildCtx->context().opName, targetField.dotPath());
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
-    return [targetField = targetField.jsonPath(),
-            targetNotFound,
-            valueMissmatch,
-            successTrace,
-            runState = buildCtx->runState(),
-            jValue = std::move(jValue)](base::ConstEvent event) -> FilterResult
+    auto isTestMode = buildCtx->isTestMode();
+
+    // For string-only Values, capture the string directly (avoids json::Json steady-state overhead)
+    if (value.isStringValue())
+    {
+        std::string_view sv;
+        value.getString(sv);
+        auto strValue = std::string(sv);
+        return
+            [targetField = targetField.jsonPath(), targetNotFound, valueMissmatch, successTrace, isTestMode, strValue](
+                base::ConstEvent event) -> FilterResult
+        {
+            if (!event->exists(targetField))
+            {
+                RETURN_FAILURE(isTestMode, false, targetNotFound);
+            }
+
+            if (!event->equalsString(targetField, strValue))
+            {
+                RETURN_FAILURE(isTestMode, false, valueMissmatch);
+            }
+
+            RETURN_SUCCESS(isTestMode, true, successTrace);
+        };
+    }
+
+    auto jValue = value.sharedValue();
+    return [targetField = targetField.jsonPath(), targetNotFound, valueMissmatch, successTrace, isTestMode, jValue](
+               base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
-            RETURN_FAILURE(runState, false, targetNotFound);
+            RETURN_FAILURE(isTestMode, false, targetNotFound);
         }
 
-        if (!event->equals(targetField, jValue))
+        if (!event->equals(targetField, *jValue))
         {
-            RETURN_FAILURE(runState, false, valueMissmatch);
+            RETURN_FAILURE(isTestMode, false, valueMissmatch);
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 
@@ -52,7 +73,7 @@ FilterOp filterReference(const Reference& targetField,
     const auto successTrace = fmt::format("{} -> Success", buildCtx->context().opName);
     return [targetField = targetField.jsonPath(),
             successTrace,
-            runState = buildCtx->runState(),
+            isTestMode = buildCtx->isTestMode(),
             referenceNotFound,
             targetNotFound,
             valueMissmatch,
@@ -60,20 +81,20 @@ FilterOp filterReference(const Reference& targetField,
     {
         if (!event->exists(targetField))
         {
-            RETURN_FAILURE(runState, false, targetNotFound);
+            RETURN_FAILURE(isTestMode, false, targetNotFound);
         }
 
         if (!event->exists(referencePath))
         {
-            RETURN_FAILURE(runState, false, referenceNotFound);
+            RETURN_FAILURE(isTestMode, false, referenceNotFound);
         }
 
         if (!event->equals(targetField, referencePath))
         {
-            RETURN_FAILURE(runState, false, valueMissmatch);
+            RETURN_FAILURE(isTestMode, false, valueMissmatch);
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 } // namespace

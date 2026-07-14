@@ -222,6 +222,7 @@ typedef struct _directory_s {
 #endif
     unsigned int is_wildcard:1; // 1 if it is a wildcard, 0 if it is a directory
     unsigned int is_expanded:1; // Indicates if the wilcard has been expanded in this scan
+    bool symlink_warned;        // True after the one-time symlink warning has been issued
 } directory_t;
 
 typedef struct whodata_evt {
@@ -454,6 +455,7 @@ typedef struct _config {
 #endif // WIN32
     atomic_int_t fim_pause_requested;                  /* Flag to indicate scans should be paused (0=false, 1=true) */
     atomic_int_t fim_pausing_is_allowed;               /* Flag to indicate fim_run_integrity acknowledged pause (0=false, 1=true) */
+    atomic_int_t fim_first_sync_completed;             /* Flag (0=false, 1=true): the first post-start FIM sync iteration finished. Read by the IPC thread to report first_sync_completed in is_pause_completed. */
     rtfim *realtime;
     fdb_t *database;
 

@@ -26,6 +26,7 @@ option(ENGINE_BUILD_TEST "Generate tests" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" OFF)
 option(ENGINE_ENABLE_ASAN "Enable AddressSanitizer for all targets" OFF)
 option(ENGINE_ENABLE_TSAN "Enable ThreadSanitizer for all targets" OFF)
+option(ENGINE_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer for all targets" OFF)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
 option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
@@ -60,14 +61,29 @@ if(ENGINE_BUILD_BENCHMARK AND
     message(WARNING "Building and running benchmarks in '${CMAKE_BUILD_TYPE}' will skew the results; use Release or RelWithDebInfo.")
 endif()
 
+if(ENGINE_ENABLE_ASAN AND ENGINE_ENABLE_TSAN)
+  message(FATAL_ERROR "ENGINE_ENABLE_ASAN and ENGINE_ENABLE_TSAN cannot be enabled at the same time")
+endif()
+
+set(ENGINE_SANITIZER_OPTIONS "")
+
 if(ENGINE_ENABLE_ASAN)
   message(STATUS "Building engine with AddressSanitizer")
-  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-  add_link_options(-fsanitize=address -fno-omit-frame-pointer)
+  list(APPEND ENGINE_SANITIZER_OPTIONS -fsanitize=address)
 elseif(ENGINE_ENABLE_TSAN)
   message(STATUS "Building engine with ThreadSanitizer")
-  add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
-  add_link_options(-fsanitize=thread -fno-omit-frame-pointer)
+  list(APPEND ENGINE_SANITIZER_OPTIONS -fsanitize=thread)
+endif()
+
+if(ENGINE_ENABLE_UBSAN)
+  message(STATUS "Building engine with UndefinedBehaviorSanitizer")
+  list(APPEND ENGINE_SANITIZER_OPTIONS -fsanitize=undefined)
+endif()
+
+if(ENGINE_SANITIZER_OPTIONS)
+  list(APPEND ENGINE_SANITIZER_OPTIONS -fno-omit-frame-pointer)
+  add_compile_options(${ENGINE_SANITIZER_OPTIONS})
+  add_link_options(${ENGINE_SANITIZER_OPTIONS})
 endif()
 
 # Ensures that we do an out of source build
@@ -208,13 +224,23 @@ if(NOT _orig_rpath)
   set(_orig_rpath "")
 endif()
 
+# $ORIGIN/../lib -> manager install (bin/ -> ../lib/)
+# $ORIGIN/lib    -> standalone package and wazuh-indexer (bin/ -> bin/lib/)
 set(_new_paths
-  ${CMAKE_SOURCE_DIR}/build/lib     # For shared libwazuhext.so
-  ${ROCKSDB_LIB_BUILD_DIR}          # External precompiled rocksdb lib
-  ${INDEXERCONNECTOR_LIB_BUILD_DIR} # Internal precompiled indexer connector lib
   "$ORIGIN/../lib"
   "$ORIGIN/lib"
 )
+
+# Debug/sanitizer: also resolve libs from the build tree so the binary runs
+# straight from src/build/engine/ without LD_LIBRARY_PATH. Never in Release.
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR FSANITIZE)
+  list(PREPEND _new_paths
+    ${CMAKE_SOURCE_DIR}/build/lib
+    ${ROCKSDB_LIB_BUILD_DIR}
+    ${INDEXERCONNECTOR_LIB_BUILD_DIR}
+    ${CMAKE_SOURCE_DIR}/external/jemalloc/lib
+  )
+endif()
 
 # Append the new paths to the original RPATH
 list(APPEND _orig_rpath ${_new_paths})
@@ -293,7 +319,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/scheduler)
 add_subdirectory(${ENGINE_SOURCE_DIR}/geo)
 add_subdirectory(${ENGINE_SOURCE_DIR}/fastqueue)
 add_subdirectory(${ENGINE_SOURCE_DIR}/httpsrv)
-add_subdirectory(${ENGINE_SOURCE_DIR}/archiver)
+add_subdirectory(${ENGINE_SOURCE_DIR}/dumper)
 add_subdirectory(${ENGINE_SOURCE_DIR}/wiconnector)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmstore)
 add_subdirectory(${ENGINE_SOURCE_DIR}/cmcrud)
@@ -327,7 +353,8 @@ target_link_libraries(wazuh-engine
     httpsrv
     api::event
     fastqueue::fastqueue
-    archiver::archive
+    fastmetrics::fastmetrics
+    dumper::dumper
     cmstore::cmstore
     cmcrud::cmcrud
     cmsync::cmsync
@@ -336,8 +363,22 @@ target_link_libraries(wazuh-engine
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
-if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
+if(NOT ENGINE_SANITIZER_OPTIONS AND NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
     target_link_libraries(wazuh-engine -static-libgcc -static-libstdc++)
+endif()
+
+# Link jemalloc for reduced memory fragmentation (unless explicitly disabled)
+if(NOT DEFINED DISABLE_JEMALLOC OR NOT DISABLE_JEMALLOC)
+  find_library(
+    JEMALLOC_LIB jemalloc
+    PATHS ${CMAKE_SOURCE_DIR}/external/jemalloc/lib
+    NO_DEFAULT_PATH)
+  if(JEMALLOC_LIB)
+    target_link_libraries(wazuh-engine ${JEMALLOC_LIB})
+    message(STATUS "Linking wazuh-engine with jemalloc: ${JEMALLOC_LIB}")
+  else()
+    message(WARNING "jemalloc not found in ${CMAKE_SOURCE_DIR}/external/jemalloc/lib")
+  endif()
 endif()
 
 # Print LD anc CXX flags

@@ -8,7 +8,7 @@ policy:
   regex_type: pcre2
 
 requirements:
-  title: "Check Linux platform."
+  name: "Check Linux platform."
   description: "Requirements for running the SCA scan against Linux systems"
   condition: any
   rules:
@@ -17,7 +17,7 @@ requirements:
 
 checks:
   - id: 1
-    title: "Test_1"
+    name: "Test_1"
     description: "The cramfs filesystem type is a compressed read-only Linux filesystem embedded in small footprint systems. A cramfs image can be used without having to first decompress the image."
     rationale: "Test_1"
     remediation: "Run the following script to unload and disable the cramfs module."
@@ -25,8 +25,16 @@ checks:
       nist_800_53: ["CM.7"]
       pci_dss: ["1.3.4"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1005"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1005"
+        name:
+          - "Data from Local System"
     condition: all
     rules:
       - "c:modprobe -n -v cramfs -> r:install /bin/false|install /bin/true|Module cramfs not found"

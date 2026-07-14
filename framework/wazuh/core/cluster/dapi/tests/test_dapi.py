@@ -414,15 +414,17 @@ def test_DistributedAPI_logger():
        new=AsyncMock(return_value=WazuhResult({'testing': ['001', '002']})))
 def test_DistributedAPI_tmp_file():
     """Test the behaviour when processing temporal files to be send. Master node and unknown node."""
-    open('/tmp/dapi_file.txt', 'a').close()
+    tmp_file_path = os.path.join(common.OSSEC_TMP_PATH, 'dapi_file.txt')
+    os.makedirs(common.OSSEC_TMP_PATH, exist_ok=True)
+    open(tmp_file_path, 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
         with patch('wazuh.core.cluster.dapi.dapi.get_node_wrapper',
                    return_value=AffectedItemsWazuhResult(affected_items=[{'type': 'master', 'node': 'unknown'}])):
             dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
-                           'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
+                           'f_kwargs': {'tmp_file': 'dapi_file.txt'}}
             raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
-    open('/tmp/dapi_file.txt', 'a').close()
+    open(tmp_file_path, 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'unk', 'node': 'master'}):
         raise_if_exc_routine(dapi_kwargs=dapi_kwargs)
 
@@ -432,21 +434,23 @@ def test_DistributedAPI_tmp_file():
        new=AsyncMock(return_value=WazuhResult({'testing': ['001', '002']})))
 def test_DistributedAPI_tmp_file_cluster_error():
     """Test the behaviour when an error raises with temporal files function."""
-    open('/tmp/dapi_file.txt', 'a').close()
+    tmp_file_path = os.path.join(common.OSSEC_TMP_PATH, 'dapi_file.txt')
+    os.makedirs(common.OSSEC_TMP_PATH, exist_ok=True)
+    open(tmp_file_path, 'a').close()
     with patch('wazuh.core.cluster.cluster.get_node', return_value={'type': 'master', 'node': 'unknown'}):
         with patch('wazuh.core.cluster.dapi.dapi.get_node_wrapper',
                    return_value=AffectedItemsWazuhResult(affected_items=[{'type': 'master', 'node': 'unknown'}])):
             with patch('wazuh.core.cluster.local_client.LocalClient.execute',
                        new=AsyncMock(side_effect=WazuhClusterError(3022))):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
-                               'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
+                               'f_kwargs': {'tmp_file': 'dapi_file.txt'}}
                 raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3022)
 
-            open('/tmp/dapi_file.txt', 'a').close()
+            open(tmp_file_path, 'a').close()
             with patch('wazuh.core.cluster.local_client.LocalClient.execute',
                        new=AsyncMock(side_effect=WazuhClusterError(1000))):
                 dapi_kwargs = {'f': manager.status, 'logger': logger, 'request_type': 'distributed_master',
-                               'f_kwargs': {'tmp_file': '/tmp/dapi_file.txt'}}
+                               'f_kwargs': {'tmp_file': 'dapi_file.txt'}}
                 raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=1000)
 
 
@@ -845,3 +849,101 @@ async def test_SendSyncRequestQueue_run(loop_mock, contexlib_mock):
             with patch("wazuh.core.cluster.dapi.dapi.wazuh_sendsync", side_effect="noerror"):
                 with pytest.raises(Exception):
                     await sendsync.run()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('tmp_file, expected_error', [
+    ('../../etc/ossec.conf', WazuhClusterError),
+    ('../../../etc/passwd', WazuhClusterError),
+    ('/etc/passwd', WazuhClusterError),
+    ('../api/configuration/security/private_key.pem', WazuhClusterError),
+    ('/var/ossec/api/configuration/security/private_key.pem', WazuhClusterError),
+    ('valid_file.txt', None),
+    ('subdir/valid_file.txt', None),
+])
+async def test_send_tmp_file_path_validation(tmp_file, expected_error):
+    """Test send_tmp_file with various path formats."""
+    with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None):
+        dapi = DistributedAPI()
+        dapi.f_kwargs = {'tmp_file': tmp_file}
+        dapi.logger = TestingLogger('test')
+
+        mock_client = MagicMock()
+
+        with patch.object(dapi, 'get_client', return_value=mock_client):
+            if expected_error:
+                with pytest.raises(expected_error):
+                    await dapi.send_tmp_file()
+            else:
+                with patch('os.path.realpath') as mock_realpath:
+                    with patch('os.remove'):
+                        def mock_realpath_func(p):
+                            if common.OSSEC_TMP_PATH in p:
+                                return os.path.join(common.OSSEC_TMP_PATH, tmp_file)
+                            return p
+
+                        mock_realpath.side_effect = mock_realpath_func
+                        mock_client.send_file = AsyncMock(return_value=json.dumps(123))
+
+                        await dapi.send_tmp_file()
+
+                        assert mock_client.send_file.mock.called
+
+
+@pytest.mark.asyncio
+async def test_send_tmp_file_empty_parameter():
+    """Test send_tmp_file with missing tmp_file parameter."""
+    with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None):
+        dapi = DistributedAPI()
+        dapi.f_kwargs = {}
+        dapi.logger = TestingLogger('test')
+
+        with pytest.raises(WazuhClusterError) as exc_info:
+            await dapi.send_tmp_file()
+
+        assert 'tmp_file parameter is required' in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_send_tmp_file_absolute_path():
+    """Test send_tmp_file with absolute path."""
+    with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None):
+        dapi = DistributedAPI()
+        dapi.f_kwargs = {'tmp_file': '/var/ossec/api/configuration/security/private_key.pem'}
+        dapi.logger = TestingLogger('test')
+
+        with pytest.raises(WazuhClusterError) as exc_info:
+            await dapi.send_tmp_file()
+
+        assert 'Invalid tmp_file path' in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_send_tmp_file_parent_directory():
+    """Test send_tmp_file with parent directory reference."""
+    with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None):
+        dapi = DistributedAPI()
+        dapi.f_kwargs = {'tmp_file': '../etc/ossec.conf'}
+        dapi.logger = TestingLogger('test')
+
+        with pytest.raises(WazuhClusterError) as exc_info:
+            await dapi.send_tmp_file()
+
+        assert 'Invalid tmp_file path' in str(exc_info.value)
+
+
+@pytest.mark.asyncio
+async def test_send_tmp_file_symlink_resolution():
+    """Test send_tmp_file with symlink resolution."""
+    with patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.__init__', return_value=None):
+        dapi = DistributedAPI()
+        dapi.f_kwargs = {'tmp_file': 'symlink_to_file'}
+        dapi.logger = TestingLogger('test')
+
+        with patch('os.path.realpath') as mock_realpath:
+            mock_realpath.side_effect = lambda p: '/var/ossec/api/configuration/security/private_key.pem' if 'symlink' in p else p
+
+            with pytest.raises(WazuhClusterError) as exc_info:
+                await dapi.send_tmp_file()
+
+            assert 'Invalid tmp_file path' in str(exc_info.value)

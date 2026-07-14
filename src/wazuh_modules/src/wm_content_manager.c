@@ -36,7 +36,7 @@ const wm_context WM_CONTENT_MANAGER_CONTEXT = {
 
 void* wm_content_manager_main()
 {
-    mtinfo(WM_CONTENT_MANAGER_LOGTAG, "Starting content_manager module.");
+    mtinfo(WM_CONTENT_MANAGER_LOGTAG, STARTUP_MSG, (int)getpid());
 
     if (content_manager_module = so_get_module_handle("content_manager"), content_manager_module)
     {
@@ -64,7 +64,7 @@ void wm_content_manager_destroy() {}
 
 void wm_content_manager_stop()
 {
-    mtinfo(WM_CONTENT_MANAGER_LOGTAG, "Stopping content_manager module.");
+    mtinfo(WM_CONTENT_MANAGER_LOGTAG, "Module finished.");
 
     if (content_manager_stop_ptr)
     {

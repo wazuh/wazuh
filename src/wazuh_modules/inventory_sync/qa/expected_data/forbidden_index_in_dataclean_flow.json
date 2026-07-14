@@ -1,0 +1,52 @@
+{
+    "description": "Expected results for forbidden index in DataClean test",
+    "expected_message_count": 4,
+    "validate_session_consistency": true,
+    "expected_messages": [
+      {
+        "type": "start",
+        "expected_status": "sent",
+        "description": "Start message accepted normally",
+        "expected_response": {
+          "type": "flatbuffer",
+          "data": {
+            "type": "start_ack",
+            "status": 0
+          },
+          "validate_session": true,
+          "timeout": 5.0
+        }
+      },
+      {
+        "type": "dataclean",
+        "expected_status": "sent",
+        "description": "DataClean with non-states index dropped silently (no response expected)",
+        "expected_response": null
+      },
+      {
+        "type": "data",
+        "expected_status": "sent",
+        "description": "Valid DataValue queued for bulk indexing (no response expected)",
+        "expected_response": null
+      },
+      {
+        "type": "end",
+        "expected_status": "sent",
+        "description": "End must yield end_ack(Status_Ok) - the valid DataValue is indexed and the bad DataClean was filtered out",
+        "expected_response": {
+          "type": "flatbuffer",
+          "data": {
+            "type": "end_ack",
+            "status": 0
+          },
+          "validate_session": true,
+          "timeout": 30.0
+        }
+      }
+    ],
+    "validation_rules": {
+      "session_consistency": "All messages share the same session ID",
+      "message_order": "start -> dataclean -> data -> end",
+      "response_format": "Final end_ack must be Status_Ok; the filter must NOT abort the session"
+    }
+  }

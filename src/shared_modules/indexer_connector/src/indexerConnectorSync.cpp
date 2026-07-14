@@ -23,16 +23,14 @@ private:
     IndexerConnectorSyncImpl<TServerSelector<HTTPRequest>, HTTPRequest> m_impl;
 
 public:
-    Impl(const nlohmann::json& config,
-         const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-             logFunction)
-        : m_impl(config, logFunction)
+    Impl(const nlohmann::json& config, LoggingContext logging)
+        : m_impl(config, std::move(logging.second), nullptr, nullptr, std::move(logging.first))
     {
     }
 
-    void deleteByQuery(const std::string& index, const std::string& agentId)
+    void deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName)
     {
-        m_impl.deleteByQuery(index, agentId);
+        m_impl.deleteByQuery(index, agentId, clusterName);
     }
 
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
@@ -109,25 +107,29 @@ public:
         m_impl.registerNotify(std::move(callback));
     }
 
+    void refresh(std::string_view indexPattern)
+    {
+        m_impl.refresh(indexPattern);
+    }
+
     bool isAvailable() const
     {
         return m_impl.isAvailable();
     }
 };
 
-IndexerConnectorSync::IndexerConnectorSync(
-    const nlohmann::json& config,
-    const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-        logFunction)
-    : m_impl(std::make_unique<Impl>(config, logFunction))
+IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging)
+    : m_impl(std::make_unique<Impl>(config, std::move(logging)))
 {
 }
 
 IndexerConnectorSync::~IndexerConnectorSync() = default;
 
-void IndexerConnectorSync::deleteByQuery(const std::string& index, const std::string& agentId)
+void IndexerConnectorSync::deleteByQuery(const std::string& index,
+                                         const std::string& agentId,
+                                         const std::string& clusterName)
 {
-    m_impl->deleteByQuery(index, agentId);
+    m_impl->deleteByQuery(index, agentId, clusterName);
 }
 
 void IndexerConnectorSync::executeUpdateByQuery(const std::vector<std::string>& indices,
@@ -207,6 +209,11 @@ void IndexerConnectorSync::invokePendingCallbacks()
 void IndexerConnectorSync::registerNotify(std::function<void()> callback)
 {
     m_impl->registerNotify(std::move(callback));
+}
+
+void IndexerConnectorSync::refresh(std::string_view indexPattern)
+{
+    m_impl->refresh(indexPattern);
 }
 
 bool IndexerConnectorSync::isAvailable() const

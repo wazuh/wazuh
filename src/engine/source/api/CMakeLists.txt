@@ -3,11 +3,12 @@ add_subdirectory(metrics)
 add_subdirectory(geo)
 add_subdirectory(router)
 add_subdirectory(tester)
-add_subdirectory(archiver)
+add_subdirectory(dumper)
 add_subdirectory(rawevtindexer)
 add_subdirectory(event)
 add_subdirectory(cmcrud)
 add_subdirectory(ioccrud)
+add_subdirectory(status)
 
 add_library(api INTERFACE)
 target_include_directories(api INTERFACE
@@ -19,8 +20,9 @@ target_link_libraries(api INTERFACE
   api::router
   api::tester
   api::event
-  api::archiver
+  api::dumper
   api::cmcrud
   api::rawevtindexer
   api::ioccrud
+  api::status
 )

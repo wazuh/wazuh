@@ -298,9 +298,17 @@ async def test_create_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_re
 async def test_update_user(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'update_user' endpoint is working as expected."""
     with patch('api.controllers.security_controller.Body.validate_content_type'):
-        with patch('api.controllers.security_controller.CreateUserModel.get_kwargs',
+        with patch('api.controllers.security_controller.UpdateUserModel.get_kwargs',
                    return_value=AsyncMock()) as mock_getkwargs:
             result = await update_user(user_id='001')
+
+            # Verify that current_user is correctly passed from token_info
+            mock_getkwargs.assert_called_once()
+            call_kwargs = mock_getkwargs.call_args[1]
+            assert 'additional_kwargs' in call_kwargs
+            assert call_kwargs['additional_kwargs']['user_id'] == '001'
+            assert call_kwargs['additional_kwargs']['current_user'] == mock_request.context['token_info']['sub']
+
             mock_dapi.assert_called_once_with(
                 f=security.update_user,
                 f_kwargs=mock_remove.return_value,

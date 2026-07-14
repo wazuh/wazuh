@@ -83,10 +83,42 @@ backups_path = Path(WAZUH_PATH, 'backup', 'db')
 interval = 5
 timeout = 15
 
+# The "Created Global database backup" event requires wazuh_db debug level 1, set in the
+# manager internal options file.
+internal_options_path = Path(WAZUH_PATH, 'etc', 'wazuh-manager-internal-options.conf')
+wazuh_db_debug_option = 'wazuh_db.debug'
+
+
+@pytest.fixture()
+def configure_wazuh_db_debug():
+    original_options = internal_options_path.read_text() if internal_options_path.exists() else None
+    lines = original_options.splitlines() if original_options is not None else []
+    debug_configured = False
+    updated_lines = []
+
+    for line in lines:
+        if line.strip().startswith(f'{wazuh_db_debug_option}=') and not line.lstrip().startswith('#'):
+            updated_lines.append(f'{wazuh_db_debug_option}=1')
+            debug_configured = True
+        else:
+            updated_lines.append(line)
+
+    if not debug_configured:
+        updated_lines.append(f'{wazuh_db_debug_option}=1')
+
+    internal_options_path.write_text('\n'.join(updated_lines) + '\n')
+
+    yield
+
+    if original_options is None:
+        internal_options_path.unlink(missing_ok=True)
+    else:
+        internal_options_path.write_text(original_options)
+
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(t_configurations, t_config_metadata), ids=t_case_ids)
-def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configuration,
-                            truncate_monitored_files, remove_backups):
+def test_wdb_backup_configs(test_configuration, test_metadata, configure_wazuh_db_debug,
+                            set_wazuh_configuration, truncate_monitored_files, remove_backups):
     '''
     description: Check that given different wdb backup configuration parameters, the expected behavior is achieved.
                  For this, the test gets a series of parameters for the wazuh_db_backups_conf.yaml file and applies
@@ -94,7 +126,7 @@ def test_wdb_backup_configs(test_configuration, test_metadata, set_wazuh_configu
                  unable to start; otherwise it will check that after creating "max_files+1", there are a total of
                  "max_files" backup files in the backup folder.
 
-    wazuh_min_version: 4.4.0
+    wazuh_min_version: 5.0.0
 
     parameters:
         - test_configuration:

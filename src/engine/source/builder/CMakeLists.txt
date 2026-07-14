@@ -78,14 +78,13 @@ target_link_libraries(builder
     geo::igeo
     streamlogger::istreamlogger
     wIndexerConnector::iwIndexerConnector
-	fastmetrics::fastmetrics
+	fastmetrics::ifastmetrics
     logpar
 
     PRIVATE
     re2::re2
     logicexpr
     date::date
-    fastmetrics::fastmetrics
 )
 
 
@@ -115,11 +114,13 @@ target_link_libraries(builder_ctest
 	store::mocks
 	defs::mocks
 	base::test
+	fastmetrics::mocks
 )
 gtest_discover_tests(builder_ctest)
 ## Unit tests
 add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/baseBuilders_test.cpp
+	${UNIT_SRC_DIR}/builders/baseHelper_test.cpp
 	${UNIT_SRC_DIR}/allowedFields_test.cpp
 	${UNIT_SRC_DIR}/registry_test.cpp
 	${UNIT_SRC_DIR}/policy/factory_test.cpp
@@ -143,7 +144,6 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/opfilter/indexUnclassifiedEvents_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/types_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/match_test.cpp
-	${UNIT_SRC_DIR}/builders/opfilter/is_test_session_test.cpp
 	${UNIT_SRC_DIR}/builders/opfilter/keys_exist_in_list_test.cpp
 
 	# # Map Builders
@@ -164,6 +164,11 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/opmap/arrayObj_to_MapKv_test.cpp
 	${UNIT_SRC_DIR}/builders/opmap/array_extract_key_obj_test.cpp
 
+	# Enrichment Builders
+	${UNIT_SRC_DIR}/builders/enrichment/geo_test.cpp
+	${UNIT_SRC_DIR}/builders/enrichment/ioc_test.cpp
+	${UNIT_SRC_DIR}/builders/enrichment/enrichment_test.cpp
+
 	# # Transform Builders
 	${UNIT_SRC_DIR}/builders/optransform/strTransform_test.cpp
 	${UNIT_SRC_DIR}/builders/optransform/jsonTransform_test.cpp
@@ -171,6 +176,7 @@ add_executable(builder_utest
 	${UNIT_SRC_DIR}/builders/optransform/objectGet_test.cpp
 	# ${UNIT_SRC_DIR}/builders/optransform/windows_test.cpp
 	${UNIT_SRC_DIR}/builders/optransform/hlp_test.cpp
+	${UNIT_SRC_DIR}/builders/optransform/hlpAllParsers_test.cpp
 	# Stage Builders
 	${UNIT_SRC_DIR}/builders/stage/check_test.cpp
 	${UNIT_SRC_DIR}/builders/stage/map_test.cpp
@@ -195,9 +201,11 @@ target_link_libraries(builder_utest
 	defs::mocks
 	kvdbstore::mocks
 	geo::mocks
+	iockvdb::mocks
 	base::test
 	streamlogger::mocks
 	wIndexerConnector::mocks
+	fastmetrics::mocks
 )
 gtest_discover_tests(builder_utest)
 

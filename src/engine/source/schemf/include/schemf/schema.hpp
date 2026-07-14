@@ -17,9 +17,11 @@ namespace schemf
  */
 class Schema final : public IValidator
 {
+public:
+    class Validator;
+
 private:
     std::map<std::string, Field> m_fields; ///< First level fields of the schema.
-    class Validator;
     std::experimental::propagate_const<std::unique_ptr<Validator>> m_validator;
 
     /**
@@ -84,6 +86,11 @@ public:
      * @copydoc ISchema::getJsonType
      */
     inline json::Json::Type getJsonType(const DotPath& name) const override { return typeToJType(get(name).type()); }
+
+    /**
+     * @copydoc ISchema::getJsonTypes
+     */
+    std::unordered_set<json::Json::Type> getJsonTypes(const DotPath& name) const override;
 
     /**
      * @copydoc ISchema::hasField

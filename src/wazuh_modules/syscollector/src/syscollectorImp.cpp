@@ -16,7 +16,6 @@
 #include "timeHelper.h"
 #include <cstdint>
 #include <iostream>
-#include <fstream>
 #include <stack>
 #include <set>
 #include <chrono>
@@ -89,6 +88,8 @@ constexpr auto QUEUE_SIZE
 };
 
 constexpr auto SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY {"first_sync_completed"};
+constexpr auto SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY {"first_scan_completed"};
+constexpr auto SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY {"vd_first_sync_completed"};
 
 static const std::map<ReturnTypeCallback, std::string> OPERATION_MAP
 {
@@ -147,10 +148,6 @@ static const std::map<std::string, std::string> AGENTD_TO_INDEX_MAP
     {"browser_extensions", SYSCOLLECTOR_SYNC_INDEX_BROWSER_EXTENSIONS},
     // LCOV_EXCL_STOP
 };
-
-// VD (Vulnerability Detection) flag file path
-// This file is created after the first successful VD sync to distinguish VDFIRST from VDSYNC
-static constexpr auto VD_FIRST_SYNC_FLAG_FILE = "queue/syscollector/db/.vd_first_sync_done";
 
 static void sanitizeJsonValue(nlohmann::json& input)
 {
@@ -524,18 +521,19 @@ void Syscollector::setAgentdQueryFunction(AgentdQueryFunc queryFunc)
 void Syscollector::start()
 {
     // Don't start if initialization failed
-    if (!m_initialized)
-    {
-        if (m_logFunction)
-        {
-            m_logFunction(LOG_ERROR, "Cannot start Syscollector - module initialization failed");
-        }
-
-        return;
-    }
-
     {
         std::scoped_lock<std::mutex> lock{m_scan_mutex};
+
+        if (!m_initialized)
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_ERROR, "Cannot start Syscollector - module initialization failed");
+            }
+
+            return;
+        }
+
         m_stopping = false;
     }
 
@@ -691,20 +689,11 @@ bool Syscollector::handleNotifyDataClean()
     return ret;
 }
 
-void Syscollector::destroy()
+void Syscollector::quiesce()
 {
     m_stopping = true;
     m_cv.notify_all();
 
-    std::unique_lock<std::mutex> lock{m_scan_mutex, std::try_to_lock};
-    const bool scanMutexAvailable = lock.owns_lock();
-
-    if (scanMutexAvailable)
-    {
-        lock.unlock();
-    }
-
-    // Signal sync protocols to stop any ongoing operations
     if (m_spSyncProtocol)
     {
         m_spSyncProtocol->stop();
@@ -719,6 +708,31 @@ void Syscollector::destroy()
     {
         m_asyncFlushController->waitForFlushToFinish();
     }
+}
+
+void Syscollector::releaseResources()
+{
+    // Explicitly release all resources to ensure clean state between tests
+    // and prevent use-after-free when Syscollector singleton destructs
+    // after static dependencies have already been destroyed
+    m_spDBSync.reset();
+    m_spNormalizer.reset();
+    m_spSyncProtocol.reset();
+    m_spSyncProtocolVD.reset();
+    m_spInfo.reset();
+}
+
+void Syscollector::destroy()
+{
+    quiesce();
+
+    std::unique_lock<std::mutex> lock{m_scan_mutex, std::try_to_lock};
+    const bool scanMutexAvailable = lock.owns_lock();
+
+    if (scanMutexAvailable)
+    {
+        lock.unlock();
+    }
 
     if (!scanMutexAvailable)
     {
@@ -730,14 +744,7 @@ void Syscollector::destroy()
         return;
     }
 
-    // Explicitly release all resources to ensure clean state between tests
-    // and prevent use-after-free when Syscollector singleton destructs
-    // after static dependencies have already been destroyed
-    m_spDBSync.reset();
-    m_spNormalizer.reset();
-    m_spSyncProtocol.reset();
-    m_spSyncProtocolVD.reset();
-    m_spInfo.reset();
+    releaseResources();
 }
 
 std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& data, const std::string& table, bool createFields)
@@ -859,7 +866,7 @@ nlohmann::json Syscollector::ecsHardwareData(const nlohmann::json& originalData,
         {
             const auto& value = originalData["cpu_speed"];
 
-            if (value.is_number())
+            if (value.is_number() && value.get<double>() != 0.0)
             {
                 ret[pointer] = value.get<int64_t>();
             }
@@ -1019,7 +1026,25 @@ nlohmann::json Syscollector::ecsNetworkInterfaceData(const nlohmann::json& origi
     setJsonField(ret, originalData, "/host/network/egress/errors", "host_network_egress_errors", createFields);
     setJsonField(ret, originalData, "/host/network/egress/packets", "host_network_egress_packages", createFields);
     setJsonField(ret, originalData, "/interface/alias", "interface_alias", createFields);
-    setJsonField(ret, originalData, "/interface/mtu", "interface_mtu", createFields);
+
+    // Discard invalid MTU values: 4294967295 (UINT32_MAX) is reported by Windows and 0 by UNIX
+    // when the MTU is not available
+    if (createFields || originalData.contains("interface_mtu"))
+    {
+        const nlohmann::json::json_pointer pointer("/interface/mtu");
+
+        if (originalData.contains("interface_mtu") && originalData["interface_mtu"].is_number() &&
+                originalData["interface_mtu"].get<int64_t>() != UINT32_MAX &&
+                originalData["interface_mtu"].get<int64_t>() != 0)
+        {
+            ret[pointer] = originalData["interface_mtu"];
+        }
+        else
+        {
+            ret[pointer] = nullptr;
+        }
+    }
+
     setJsonField(ret, originalData, "/interface/name", "interface_name", createFields);
     setJsonField(ret, originalData, "/interface/state", "interface_state", createFields);
     setJsonField(ret, originalData, "/interface/type", "interface_type", createFields);
@@ -1834,6 +1859,15 @@ void Syscollector::scan()
     std::vector<std::pair<std::string, nlohmann::json>> itemsToUpdateSync;
     m_itemsToUpdateSync = &itemsToUpdateSync;
 
+    int64_t firstScanCompleted = 0;
+    const bool isFirstScan = !getMetadataValue(SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY, firstScanCompleted)
+                             || firstScanCompleted == 0;
+
+    if (isFirstScan)
+    {
+        m_logFunction(LOG_DEBUG, "Initial Syscollector scan starting.");
+    }
+
     m_logFunction(LOG_INFO, "Starting evaluation.");
     TRY_CATCH_TASK(scanHardware);
     TRY_CATCH_TASK(scanOs);
@@ -1872,14 +1906,18 @@ void Syscollector::scan()
     // This ensures deletions are committed to disk immediately
     deleteFailedItemsFromDB(failedItems);
 
+    if (isFirstScan)
+    {
+        updateMetadataValue(SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
+        m_logFunction(LOG_DEBUG, "First inventory scan completed — marker persisted.");
+    }
+
     m_notify = true;
     m_logFunction(LOG_INFO, "Evaluation finished.");
 }
 
 void Syscollector::syncLoop(std::unique_lock<std::mutex>& scan_lock)
 {
-    m_logFunction(LOG_INFO, "Module started.");
-
     if (m_scanOnStart)
     {
         scan();
@@ -2055,11 +2093,11 @@ nlohmann::json Syscollector::addPreviousFields(nlohmann::json& current, const nl
                     {
                         std::string relativePath = currentPath.substr(dotPos + 1);
                         nlohmann::json::json_pointer pointer("/" + std::regex_replace(relativePath, std::regex("\\."), "/"));
-                        current[topLevelKey]["previous"][pointer] = value;
+                        current[std::move(topLevelKey)]["previous"][pointer] = value;
                     }
                     else
                     {
-                        current[topLevelKey]["previous"][key] = value;
+                        current[std::move(topLevelKey)]["previous"][key] = value;
                     }
                 }
             }
@@ -2209,7 +2247,7 @@ void Syscollector::initSyncProtocol(const std::string& moduleName, const std::st
 }
 
 // LCOV_EXCL_START
-bool Syscollector::syncModule(Mode mode)
+SyncModuleResult Syscollector::syncModule(Mode mode)
 {
     if (m_paused || m_stopping.load())
     {
@@ -2218,7 +2256,7 @@ bool Syscollector::syncModule(Mode mode)
             m_logFunction(LOG_DEBUG, "Syscollector module is paused or stopping, skipping synchronization");
         }
 
-        return false;
+        return {false, {}};
     }
 
     m_logFunction(LOG_INFO, "Starting inventory synchronization.");
@@ -2226,14 +2264,15 @@ bool Syscollector::syncModule(Mode mode)
     // RAII guard ensures m_syncing is set to false even if function exits early
     ScanGuard syncGuard(m_syncing, m_pauseCv);
 
-    bool success = true;
+    bool overallSuccess = true;
+    std::string failureReason;
 
     // Sync regular (non-VD) data
     if (m_spSyncProtocol)
     {
-        success = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
+        SyncModuleResult result = m_spSyncProtocol->synchronizeModule(mode, Option::SYNC);
 
-        if (success)
+        if (result.success)
         {
             int64_t firstSyncCompleted = 0;
 
@@ -2242,13 +2281,20 @@ bool Syscollector::syncModule(Mode mode)
                 updateMetadataValue(SYSCOLLECTOR_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch());
             }
         }
+        else
+        {
+            overallSuccess = false;
+            failureReason = result.failureReason;
+            m_logFunction(LOG_WARNING, "Syscollector synchronization failed" +
+                          (result.failureReason.empty() ? "." : ": " + result.failureReason));
+        }
     }
 
     // Check if stopping before proceeding with VD sync
     if (m_stopping.load())
     {
         m_logFunction(LOG_DEBUG, "Stop received during synchronization, skipping VD sync");
-        return false;
+        return {false, {}};
     }
 
     // Sync VD data with appropriate option based on first scan status
@@ -2269,47 +2315,30 @@ bool Syscollector::syncModule(Mode mode)
             vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
         }
 
-        bool vdSuccess = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
+        SyncModuleResult vdResult = m_spSyncProtocolVD->synchronizeModule(mode, vdOption);
 
-        // Create flag file after successful first sync only if not stopping
-        if (vdSuccess && !firstSyncDone && !m_stopping.load())
+        persistVDFirstSyncIfNeeded(vdResult.success, firstSyncDone);
+
+        if (!vdResult.success)
         {
-            m_logFunction(LOG_DEBUG, "VD first sync successful, attempting to create flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
-            std::ofstream flagFile(VD_FIRST_SYNC_FLAG_FILE);
+            overallSuccess = false;
 
-            if (flagFile.is_open())
+            if (failureReason.empty())
             {
-                flagFile << "1";
-                flagFile.close();
-                m_logFunction(LOG_INFO, "VD first sync completed, flag file created");
+                failureReason = vdResult.failureReason;
             }
-            else
-            {
-                m_logFunction(LOG_ERROR, "Failed to create VD flag file: " + std::string(VD_FIRST_SYNC_FLAG_FILE));
-            }
-        }
-        else if (m_stopping.load() && vdSuccess && !firstSyncDone)
-        {
-            m_logFunction(LOG_DEBUG, "VD first sync successful but module is stopping, flag file not created");
-        }
-        else if (!vdSuccess)
-        {
-            m_logFunction(LOG_DEBUG, "VD sync was not successful, flag file not created");
-        }
 
-        success = vdSuccess && success;
+            m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed" +
+                          (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason));
+        }
     }
 
-    if (success)
+    if (overallSuccess)
     {
         m_logFunction(LOG_INFO, "Syscollector synchronization process finished successfully.");
     }
-    else
-    {
-        m_logFunction(LOG_WARNING, "Syscollector synchronization process failed.");
-    }
 
-    return success;
+    return {overallSuccess, failureReason};
 }
 // LCOV_EXCL_STOP
 
@@ -2519,12 +2548,37 @@ std::vector<std::string> Syscollector::getDataContextTables(Operation operation,
     return tables;
 }
 
-bool Syscollector::isVDFirstSyncDone() const
+bool Syscollector::isVDFirstSyncDone()
 {
-    std::ifstream flagCheck(VD_FIRST_SYNC_FLAG_FILE);
-    bool firstSyncDone = flagCheck.good();
-    flagCheck.close();
-    return firstSyncDone;
+    int64_t vdFirstSyncCompleted = 0;
+    return getMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, vdFirstSyncCompleted)
+           && vdFirstSyncCompleted > 0;
+}
+
+void Syscollector::persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone)
+{
+    if (vdResult && !firstSyncDone && !m_stopping.load())
+    {
+        if (updateMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, Utils::getSecondsFromEpoch()))
+        {
+            if (m_logFunction)
+            {
+                m_logFunction(LOG_INFO, "VD first sync completed, metadata marker persisted.");
+            }
+        }
+        else if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to persist VD first sync metadata marker.");
+        }
+    }
+    else if (m_stopping.load() && vdResult && !firstSyncDone)
+    {
+        m_logFunction(LOG_DEBUG, "VD first sync successful but module is stopping, metadata marker not persisted.");
+    }
+    else if (!vdResult)
+    {
+        m_logFunction(LOG_DEBUG, "VD sync was not successful, metadata marker not persisted.");
+    }
 }
 
 void Syscollector::processVDDataContext()
@@ -2778,20 +2832,48 @@ int Syscollector::executeFlushSync()
         m_logFunction(LOG_INFO, "Syscollector flush requested - syncing pending messages");
     }
 
-    if (!m_spSyncProtocol)
+    // Nothing to flush if neither sync protocol is initialized.
+    if (!m_spSyncProtocol && !m_spSyncProtocolVD)
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_WARNING, "Syscollector sync protocol not initialized, flush skipped");
+            m_logFunction(LOG_INFO, "Syscollector sync protocol not initialized, flush skipped");
         }
 
         return 0; // Not an error - just nothing to flush
     }
 
-    // Trigger immediate synchronization to flush pending messages
-    bool result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
+    // Trigger immediate synchronization to flush pending messages.
+    SyncModuleResult result = {true, {}};
+    SyncModuleResult vdResult = {true, {}};
 
-    if (result)
+    if (m_spSyncProtocol)
+    {
+        result = m_spSyncProtocol->synchronizeModule(Mode::DELTA);
+    }
+
+    if (m_spSyncProtocolVD)
+    {
+        Option vdOption;
+        const bool firstSyncDone = isVDFirstSyncDone();
+
+        if (!m_vdSyncEnabled)
+        {
+            vdOption = Option::SYNC;
+        }
+        else
+        {
+            vdOption = firstSyncDone ? Option::VDSYNC : Option::VDFIRST;
+        }
+
+        vdResult = m_spSyncProtocolVD->synchronizeModule(Mode::DELTA, vdOption);
+
+        persistVDFirstSyncIfNeeded(vdResult.success, firstSyncDone);
+    }
+
+    const bool overallSuccess = result.success && vdResult.success;
+
+    if (overallSuccess)
     {
         if (m_logFunction)
         {
@@ -2800,24 +2882,40 @@ int Syscollector::executeFlushSync()
 
         return 0;
     }
-    else
+
+    const bool stopping = (m_spSyncProtocol && m_spSyncProtocol->shouldStop()) ||
+                          (m_spSyncProtocolVD && m_spSyncProtocolVD->shouldStop());
+
+    if (m_logFunction)
     {
-        const bool stopping = m_spSyncProtocol->shouldStop();
-
-        if (m_logFunction)
+        if (stopping)
         {
-            if (stopping)
-            {
-                m_logFunction(LOG_INFO, "Syscollector flush skipped: module is stopping");
-            }
-            else
-            {
-                m_logFunction(LOG_ERROR, "Syscollector flush failed");
-            }
+            m_logFunction(LOG_INFO, "Syscollector flush skipped: module is stopping");
         }
+        else
+        {
+            std::string failedQueues;
 
-        return stopping ? 0 : -1;
+            if (!result.success && !vdResult.success)
+                failedQueues = "both syscollector and VD queues";
+            else if (!result.success)
+                failedQueues = "syscollector queue";
+            else
+                failedQueues = "VD queue";
+
+            std::string reason;
+
+            if (!result.success && !result.failureReason.empty())
+                reason = result.failureReason;
+
+            if (!vdResult.success && !vdResult.failureReason.empty())
+                reason += (reason.empty() ? "" : "; VD: ") + vdResult.failureReason;
+
+            m_logFunction(LOG_WARNING, "Syscollector flush failed: " + failedQueues + (reason.empty() ? "" : ": " + reason));
+        }
     }
+
+    return stopping ? 0 : -1;
 }
 
 int Syscollector::getMaxVersion()
@@ -3106,6 +3204,38 @@ std::string Syscollector::query(const std::string& jsonQuery)
             {
                 response["error"] = MQ_ERR_INTERNAL;
                 response["message"] = "Failed to retrieve Syscollector first sync completion";
+            }
+        }
+        else if (command == "get_first_scan_completed")
+        {
+            int64_t firstScanCompleted = 0;
+
+            if (getMetadataValue(SYSCOLLECTOR_FIRST_SCAN_COMPLETED_METADATA_KEY, firstScanCompleted))
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector first scan completion retrieved";
+                response["data"]["first_scan_completed"] = firstScanCompleted > 0 ? 1 : 0;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to retrieve Syscollector first scan completion";
+            }
+        }
+        else if (command == "get_vd_first_sync_completed")
+        {
+            int64_t vdFirstSyncCompleted = 0;
+
+            if (getMetadataValue(SYSCOLLECTOR_VD_FIRST_SYNC_COMPLETED_METADATA_KEY, vdFirstSyncCompleted))
+            {
+                response["error"] = MQ_SUCCESS;
+                response["message"] = "Syscollector VD first sync completion retrieved";
+                response["data"]["vd_first_sync_completed"] = vdFirstSyncCompleted > 0 ? 1 : 0;
+            }
+            else
+            {
+                response["error"] = MQ_ERR_INTERNAL;
+                response["message"] = "Failed to retrieve Syscollector VD first sync completion";
             }
         }
         else if (command == "set_version")
@@ -4009,7 +4139,7 @@ bool Syscollector::notifyDisableCollectorsDataClean()
     {
         if (m_logFunction)
         {
-            m_logFunction(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean");
+            m_logFunction(LOG_INFO, "Sync protocol not initialized, cannot notify data clean");
         }
 
         return false;
@@ -4311,7 +4441,20 @@ bool Syscollector::updateMetadataValue(const std::string& key, int64_t value)
 int64_t Syscollector::getLastSyncTime(const std::string& tableName)
 {
     int64_t lastSyncTime = 0;
-    getMetadataValue(tableName, lastSyncTime);
+
+    if (!getMetadataValue(tableName, lastSyncTime))
+    {
+        if (m_logFunction)
+        {
+            m_logFunction(LOG_ERROR, "Failed to retrieve last sync time for table: " + tableName);
+        }
+
+        // Reset to 0: the callback in getMetadataValue may have written a partial value
+        // from a previous row before the exception was thrown mid-stream.
+        // The caller relies on 0 as the "never synced" sentinel.
+        lastSyncTime = 0;
+    }
+
     return lastSyncTime;
 }
 
@@ -4462,9 +4605,9 @@ void Syscollector::runRecoveryProcess()
 
                 m_logFunction(LOG_DEBUG, "Persisted " + std::to_string(items.size()) + " recovery items in memory");
                 m_logFunction(LOG_DEBUG, "Starting recovery synchronization...");
-                bool success = syncModule(Mode::FULL);
+                bool recoverySucceeded = syncModule(Mode::FULL).success;
 
-                if (success)
+                if (recoverySucceeded)
                 {
                     m_logFunction(LOG_DEBUG, "Recovery completed successfully");
                 }
@@ -4497,13 +4640,15 @@ bool Syscollector::validateSchemaAndLog(const std::string& data, const std::stri
 
     if (!validator)
     {
-        // Validator not found for this index, log warning and allow message through
+        // No validator for this index: be restrictive and discard the message
+        // instead of queuing it unvalidated, since we cannot guarantee it matches
+        // the schema the indexer expects.
         if (m_logFunction)
         {
-            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Queuing message without validation.");
+            m_logFunction(LOG_WARNING, "No schema validator found for index: " + index + ". Discarding message.");
         }
 
-        return true;
+        return false;
     }
 
     auto validationResult = validator->validate(data);
@@ -4724,7 +4869,7 @@ std::string Syscollector::buildOrderByClause(const std::string& fields, bool asc
 
         if (!field.empty())
         {
-            fieldList.push_back(field);
+            fieldList.push_back(std::move(field));
         }
 
         start = end + 1;
@@ -4738,7 +4883,7 @@ std::string Syscollector::buildOrderByClause(const std::string& fields, bool asc
 
     if (!lastField.empty())
     {
-        fieldList.push_back(lastField);
+        fieldList.push_back(std::move(lastField));
     }
 
     // Build ORDER BY with COLLATE NOCASE for case-insensitive ordering

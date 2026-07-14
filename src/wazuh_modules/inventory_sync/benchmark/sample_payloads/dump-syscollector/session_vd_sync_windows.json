@@ -1,0 +1,49 @@
+{
+  "session_id": 6149001830750555120,
+  "metadata": {
+    "agentid": "001",
+    "agentname": "windows-server-2019",
+    "module": "syscollector_vd",
+    "mode": "ModuleDelta",
+    "option": "VDSync",
+    "size_declared": 1,
+    "indices": [
+      "wazuh-states-inventory-packages"
+    ]
+  },
+  "items": [
+    {
+      "seq": 0,
+      "operation": "Delete",
+      "id": "ae7663b9443ce4159f11153ae53b76613765382b",
+      "index": "wazuh-states-inventory-packages",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "6407931df7edf1be93c392f570b413b0b9f43f1a"
+          }
+        },
+        "package": {
+          "architecture": "x86_64",
+          "category": null,
+          "description": null,
+          "installed": "2026-05-21T18:42:59.000Z",
+          "multiarch": null,
+          "name": "WinRAR 6.22 (64-bit)",
+          "path": "C:\\Program Files\\WinRAR\\",
+          "priority": null,
+          "size": 0,
+          "source": null,
+          "type": "win",
+          "vendor": "win.rar GmbH",
+          "version": "6.22.0"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T18:44:44.673Z"
+        }
+      }
+    }
+  ]
+}

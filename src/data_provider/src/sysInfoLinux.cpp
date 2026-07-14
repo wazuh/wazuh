@@ -20,7 +20,7 @@
 #include "cmdHelper.h"
 #include "osinfo/sysOsParsers.h"
 #include "sysInfo.hpp"
-#include "readproc.h"
+#include "procpsWrapperLinux.hpp"
 #include "networkUnixHelper.h"
 #include "networkHelper.h"
 #include "network/networkLinuxWrapper.h"
@@ -42,21 +42,6 @@
 #include "firefox.hpp"
 
 using ProcessInfo = std::unordered_map<int64_t, std::pair<int32_t, std::string>>;
-
-struct ProcTableDeleter
-{
-    void operator()(PROCTAB* proc)
-    {
-        closeproc(proc);
-    }
-    void operator()(proc_t* proc)
-    {
-        freeproc(proc);
-    }
-};
-
-using SysInfoProcessesTable = std::unique_ptr<PROCTAB, ProcTableDeleter>;
-using SysInfoProcess        = std::unique_ptr<proc_t, ProcTableDeleter>;
 
 static void parseLineAndFillMap(const std::string& line, const std::string& separator, std::map<std::string, std::string>& systemInfo)
 {
@@ -90,7 +75,7 @@ static bool getSystemInfo(const std::string& fileName, const std::string& separa
     return ret;
 }
 
-static nlohmann::json getProcessInfo(const SysInfoProcess& process)
+static nlohmann::json getProcessInfo(const proc_t* process)
 {
     nlohmann::json jsProcessInfo{};
     // Current process information
@@ -458,6 +443,22 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
 
     const file_system::FileSystemWrapper fs;
 
+    // A process can disappear between listing /proc and inspecting it (a short-lived process).
+    // The throwing std::filesystem::is_directory would then raise an ESRCH/ENOENT
+    // filesystem_error that, if it escaped, would abort the whole ports scan and log a misleading
+    // error. Treat a vanished entry as "not a directory" so we simply skip that PID and continue.
+    auto safeIsDirectory = [&fs](const std::filesystem::path & path) -> bool
+    {
+        try
+        {
+            return fs.is_directory(path);
+        }
+        catch (const std::filesystem::filesystem_error&)
+        {
+            return false;
+        }
+    };
+
     if (fs.is_directory(procPath))
     {
         auto procFiles = fs.list_directory(procPath);
@@ -468,12 +469,12 @@ ProcessInfo portProcessInfo(const std::string& procPath, const std::deque<int64_
             // Only directories that represent a PID are inspected.
             std::string procFileName = procFile.filename().string();
 
-            if (Utils::isNumber(procFileName) && fs.is_directory(procFile))
+            if (Utils::isNumber(procFileName) && safeIsDirectory(procFile))
             {
                 // Only fd directory is inspected.
                 const std::filesystem::path pidFilePath = procFile / "fd";
 
-                if (fs.is_directory(pidFilePath))
+                if (safeIsDirectory(pidFilePath))
                 {
                     std::vector<std::filesystem::path> fdFiles;
 
@@ -610,21 +611,14 @@ nlohmann::json SysInfo::getPorts() const
 
 void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) const
 {
+    const int flags = PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG
+                      | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV;
 
-    const SysInfoProcessesTable spProcTable
+    ProcpsWrapper::scanProcesses(flags, [&callback](const proc_t* process)
     {
-        openproc(PROC_FILLMEM | PROC_FILLSTAT | PROC_FILLSTATUS | PROC_FILLARG | PROC_FILLGRP | PROC_FILLUSR | PROC_FILLCOM | PROC_FILLENV)
-    };
-
-    SysInfoProcess spProcInfo { readproc(spProcTable.get(), nullptr) };
-
-    while (nullptr != spProcInfo)
-    {
-        // Get process information object and push it to the caller
-        auto processInfo = getProcessInfo(spProcInfo);
+        auto processInfo = getProcessInfo(process);
         callback(processInfo);
-        spProcInfo.reset(readproc(spProcTable.get(), nullptr));
-    }
+    });
 }
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const

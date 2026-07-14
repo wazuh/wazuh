@@ -29,6 +29,29 @@
 #define STATIC static
 #endif
 
+static _Atomic time_t s_last_events_drop_warn = 0;
+static _Atomic size_t s_pending_events_drop = 0;
+
+/**
+ * @brief Increment the pending-drop counter and emit a rate-limited warning.
+ *
+ * At most one warning per 5-second window is printed. The CAS on
+ * s_last_events_drop_warn ensures exactly one thread wins the print slot when
+ * multiple handler threads discard events simultaneously.
+ */
+static void maybe_log_events_queue_drop(void) {
+    atomic_fetch_add_explicit(&s_pending_events_drop, 1, memory_order_relaxed);
+
+    time_t now  = time(NULL);
+    time_t last = atomic_load_explicit(&s_last_events_drop_warn, memory_order_relaxed);
+    if (now - last >= 5 &&
+        atomic_compare_exchange_strong_explicit(&s_last_events_drop_warn, &last, now,
+                                                memory_order_relaxed, memory_order_relaxed)) {
+        size_t count = atomic_exchange_explicit(&s_pending_events_drop, 0, memory_order_relaxed);
+        mwarn("Events queue discarded %zu event(s) in the last 5 seconds.", count);
+    }
+}
+
 /* Global variables */
 w_indexed_queue_t *control_msg_queue = NULL;
 w_rr_queue_t *events_queue = NULL;
@@ -169,6 +192,11 @@ static void dispose_evt_item(void *p) {
     os_free(e);
 }
 
+static size_t evt_item_get_bytes(const void *p) {
+    const evt_item_t *e = (const evt_item_t *)p;
+    return e ? e->len : 0;
+}
+
 void * dispach_events_thread(void * queue);
 
 typedef struct {
@@ -190,8 +218,9 @@ void HandleSecure()
 
     events_queue = batch_queue_init(batch_events_capacity);
     batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
-
+    batch_queue_set_get_item_bytes(events_queue, evt_item_get_bytes);
     batch_queue_set_agent_max(events_queue, batch_events_per_agent_capacity);
+    batch_queue_set_bytes_limit(events_queue, batch_events_max_bytes);
 
     uhttp_global_init();
 
@@ -213,8 +242,9 @@ void HandleSecure()
     /* Initialize manager */
     manager_init();
 
-    // Initialize messag equeue
+    // Initialize message queue
     rem_msginit(logr.queue_size);
+    rem_set_input_queue_max_bytes(queue_max_bytes);
 
     /* Initialize the agent key table mutex */
     key_lock_init();
@@ -252,7 +282,7 @@ void HandleSecure()
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
     // Router module logging initialization
-    router_initialize(taggedLogFunction);
+    router_initialize(taggedLogFunction, ARGV0);
 
     // Router providers initialization
     if (router_upgrade_ack_handle = router_provider_create("upgrade_notifications", false), !router_upgrade_ack_handle) {
@@ -284,6 +314,22 @@ void HandleSecure()
         for (int i = 0; i < worker_pool; i++) {
             w_create_thread(rem_handler_main, worker_args);
         }
+    }
+
+    /* Start up message */
+    {
+        char *_protocol = NULL;
+        if (logr.proto & REMOTED_NET_PROTOCOL_TCP) {
+            wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_TCP_STR, 0);
+        }
+        if (logr.proto & REMOTED_NET_PROTOCOL_UDP) {
+            wm_strcat(&_protocol, REMOTED_NET_PROTOCOL_UDP_STR, _protocol ? ',' : 0);
+        }
+        minfo(STARTUP_MSG " Listening on port %d/%s (secure).",
+            (int)getpid(),
+            logr.port,
+            _protocol ? _protocol : "unknown");
+        os_free(_protocol);
     }
 
     /* Read authentication keys */
@@ -645,8 +691,19 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
 
                     keys.keyentries[agentid]->rcvd = current_ts;
+                    keys.keyentries[agentid]->conflict_ts = 0;
                 } else {
-                    mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+                    // Warn only if the conflict outlives the overtake window: a reconnect self-heals,
+                    // a shared key does not.
+                    if (keys.keyentries[agentid]->conflict_ts == 0) {
+                        keys.keyentries[agentid]->conflict_ts = current_ts;
+                    }
+
+                    if ((logr.connection_overtake_time <= 0) || (current_ts - keys.keyentries[agentid]->conflict_ts) > logr.connection_overtake_time) {
+                        mwarn("Agent key already in use: agent ID '%s' (source IP: %s)", keys.keyentries[agentid]->id, srcip);
+                    } else {
+                        mdebug2("Agent ID '%s' reconnected from '%s' before its previous session was closed.", keys.keyentries[agentid]->id, srcip);
+                    }
 
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                     key_unlock();
@@ -702,8 +759,19 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
                     mdebug2("Idle socket [%d] from agent ID '%s' will be closed.", sock_idle, keys.keyentries[agentid]->id);
 
                     keys.keyentries[agentid]->rcvd = current_ts;
+                    keys.keyentries[agentid]->conflict_ts = 0;
                 } else {
-                    mwarn("Agent key already in use: agent ID '%s'", keys.keyentries[agentid]->id);
+                    // Warn only if the conflict outlives the overtake window: a reconnect self-heals,
+                    // a shared key does not.
+                    if (keys.keyentries[agentid]->conflict_ts == 0) {
+                        keys.keyentries[agentid]->conflict_ts = current_ts;
+                    }
+
+                    if ((logr.connection_overtake_time <= 0) || (current_ts - keys.keyentries[agentid]->conflict_ts) > logr.connection_overtake_time) {
+                        mwarn("Agent key already in use: agent ID '%s' (source IP: %s)", keys.keyentries[agentid]->id, srcip);
+                    } else {
+                        mdebug2("Agent ID '%s' reconnected from '%s' before its previous session was closed.", keys.keyentries[agentid]->id, srcip);
+                    }
 
                     w_mutex_unlock(&keys.keyentries[agentid]->mutex);
                     key_unlock();
@@ -724,7 +792,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
     }
 
     if (recv_b <= 0) {
-        mwarn("Received message is empty");
+        mwarn("Received message is empty from '%s'", srcip);
         key_unlock();
         if (message->sock >= 0) {
             _close_sock(&keys, message->sock);
@@ -744,11 +812,33 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
         key_unlock();
 
         if (message->sock >= 0) {
-            mwarn("Decrypt the message fail, socket %d", message->sock);
+            mwarn("Decrypt the message fail from '%s', socket %d", srcip, message->sock);
             _close_sock(&keys, message->sock);
         }
 
         if (sock_idle >= 0) {
+            _close_sock(&keys, sock_idle);
+        }
+
+        rem_inc_recv_unknown();
+        return;
+    }
+
+    if (msg_length > OS_MAXSTR)
+    {
+        mwarn("Message length (%zu) exceeds maximum allowed size (%d) from agent '%s'",
+              msg_length,
+              OS_MAXSTR,
+              keys.keyentries[agentid]->id);
+        key_unlock();
+
+        if (message->sock >= 0)
+        {
+            _close_sock(&keys, message->sock);
+        }
+
+        if (sock_idle >= 0)
+        {
             _close_sock(&keys, sock_idle);
         }
 
@@ -906,7 +996,7 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
                 ctrl_msg_data->key = key;
 
-                os_calloc(msg_length, sizeof(char), ctrl_msg_data->message);
+                os_calloc(tmp_msg_length + 1, sizeof(char), ctrl_msg_data->message);
                 // Use cleaned message from validation if available, otherwise use original
                 memcpy(ctrl_msg_data->message, cleaned_msg ? cleaned_msg : tmp_msg, tmp_msg_length);
 
@@ -979,15 +1069,29 @@ STATIC void HandleSecureMessage(const message_t *message, w_indexed_queue_t * co
 
     // Only send to analysisd if not forwarded to router
     if (!forwarded_to_router) {
+        /* Router-bound messages may be binary; trim only analysisd events. */
+        size_t stripped_nulls = 0;
+        while (msg_length > 0 && tmp_msg[msg_length - 1] == '\0') {
+            msg_length--;
+            stripped_nulls++;
+        }
+        if (stripped_nulls > 0) {
+            mdebug1("Stripped %zu trailing null byte(s) from event payload of agent '%s'",
+                    stripped_nulls, agentid_str);
+        }
+
         evt_item_t *e; os_calloc(1, sizeof(*e), e);
-        os_calloc(msg_length, sizeof(char), e->raw);
+        os_calloc(msg_length + 1, sizeof(char), e->raw);
         memcpy(e->raw, tmp_msg, msg_length);
         e->len = msg_length;
 
         int rc = batch_queue_enqueue_ex(batch_queue, agentid_str, e);
         if (rc < 0) {
             dispose_evt_item(e);
-            mwarn("Dropping event for agent '%s' (rc=%d)", agentid_str, rc);
+            rem_inc_recv_events_failed();
+            maybe_log_events_queue_drop();
+        } else {
+            rem_inc_recv_events(agentid_str);
         }
     }
 
@@ -1063,11 +1167,12 @@ bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
         size_t msg_size = msg_length - payload_offset;
 
         // Send the raw flatbuffer to inventory sync with anti-spoofing validation
-        if (router_provider_send_sync(router_sync_handle, msg_to_send, msg_size, agent_id) != 0) {
+        if (router_provider_send_sync(router_sync_handle, msg_to_send, msg_size, agent_id, cluster_name) != 0) {
             mdebug2("Unable to forward message for agent '%s'.", agent_id);
             return false;
         }
 
+        rem_inc_recv_states(agent_id);
         return true;
     }
     else if (message_type == MT_UPGRADE_ACK) {
@@ -1099,6 +1204,7 @@ bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
             // Free the printed message and JSON object
             cJSON_free(upgrade_message);
             cJSON_Delete(upgrade_ack_json);
+            rem_inc_recv_upgrade_ack(agent_id);
             return true;
         }
         else {
@@ -1181,7 +1287,7 @@ void * save_control_thread(void * control_msg_queue)
     return NULL;
 }
 
-static const char* infer_os_type(const char *os_platform) {
+const char* infer_os_type(const char *os_platform) {
     if (!os_platform) return NULL;
 
     if (strcmp(os_platform, "windows") == 0) {
@@ -1189,6 +1295,8 @@ static const char* infer_os_type(const char *os_platform) {
     } else if (strcmp(os_platform, "darwin") == 0) {
         return "macos";
     } else if (strcmp(os_platform, "bsd") == 0) {
+        return "unix";
+    } else if (strcmp(os_platform, "unix") == 0 || strcmp(os_platform, "Unix") == 0) {
         return "unix";
     }
 
@@ -1318,7 +1426,39 @@ static uint64_t mono_ms(void) {
 static void drop_consumer(void *data, void *user) {
     (void)user;
     mwarn("Dropped event: unable to connect with analysisd");
+    rem_inc_recv_events_failed();
     dispose_evt_item((evt_item_t *)data);
+}
+
+/**
+ * @brief Append event payload with continuation-line indentation.
+ *
+ * Multi-line payloads contain embedded '\n' characters.  The framing protocol
+ * uses "\nE " to delimit events.  To avoid ambiguity when a continuation line
+ * begins with "E ", we indent every continuation line with a single space.
+ * The receiver strips exactly one leading space from each continuation line to
+ * recover the original payload.
+ */
+static int bulk_append_indented(bulk_t *b, const char *raw, size_t len) {
+    const char *p = raw;
+    const char *end = raw + len;
+
+    while (p < end) {
+        const char *nl = (const char *)memchr(p, '\n', (size_t)(end - p));
+        if (!nl) {
+            // No more newlines: append the remaining chunk
+            return bulk_append(b, p, (size_t)(end - p));
+        }
+        // Append everything up to and including the '\n'
+        size_t chunk = (size_t)(nl - p) + 1;
+        if (bulk_append(b, p, chunk) < 0) return -1;
+        // Prefix the continuation line with a space
+        if (nl + 1 < end) {
+            if (bulk_append(b, " ", 1) < 0) return -1;
+        }
+        p = nl + 1;
+    }
+    return 0;
 }
 
 // Consumer: Only accumulates in ctx->bulk. Releases each item individually.
@@ -1333,9 +1473,11 @@ static void rr_collect_one(void *data, void *user) {
         }
     }
 
-    // Event Framing: "E <payload>\n"
+    // Event Framing: "E <indented_payload>\n"
+    // Continuation lines within multi-line payloads are space-indented to
+    // prevent false "\nE " delimiter matches inside event content.
     if (bulk_append_fmt(&ctx->bulk, "E ") < 0 ||
-        bulk_append(&ctx->bulk, e->raw, e->len) < 0 ||
+        bulk_append_indented(&ctx->bulk, e->raw, e->len) < 0 ||
         bulk_append(&ctx->bulk, "\n", 1) < 0) {
         mwarn("Unable to append event for agent '%s'", ctx->agent_id ?: "?");
     }

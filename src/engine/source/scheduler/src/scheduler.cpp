@@ -15,7 +15,7 @@ namespace scheduler
 
 Scheduler::Scheduler(int threads)
     : m_running(false)
-    , m_numThreads(std::max(1, threads))
+    , m_numThreads(std::max(2, threads))
 {
 }
 
@@ -30,7 +30,7 @@ void Scheduler::start()
     {
         return;
     }
-    LOG_DEBUG("Starting scheduler with %d threads...", m_numThreads);
+    LOG_DEBUG("[Scheduler] Starting scheduler with %d threads...", m_numThreads);
 
     m_running.store(true);
 
@@ -40,7 +40,6 @@ void Scheduler::start()
     {
         m_workers.emplace_back(&Scheduler::workerThread, this);
     }
-
 }
 
 void Scheduler::stop()
@@ -50,7 +49,7 @@ void Scheduler::stop()
         return;
     }
 
-    LOG_DEBUG("Stopping scheduler...");
+    LOG_INFO("[Scheduler] Requesting scheduler shutdown...");
 
     m_running.store(false);
 
@@ -74,6 +73,8 @@ void Scheduler::stop()
         std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
         m_tasks.clear();
     }
+
+    LOG_INFO("[Scheduler] Scheduler stopped.");
 }
 
 bool Scheduler::isRunning() const
@@ -106,6 +107,27 @@ void Scheduler::scheduleTask(std::string_view taskName, TaskConfig&& config)
     // Convert ScheduledTask to TaskItem
     TaskQueue::TaskItem taskItem(task->name, task->config, task->nextRun, task->isOneTime);
     m_taskQueue.push(taskItem);
+}
+
+void Scheduler::scheduleTaskFirst(std::string_view taskName)
+{
+    std::string name(taskName);
+
+    {
+        std::lock_guard<std::mutex> lock(m_tasksMutex);
+        if (m_tasks.find(name) == m_tasks.end())
+        {
+            throw std::invalid_argument("Task with name '" + name + "' is not registered");
+        }
+    }
+
+    if (!m_taskQueue.reprioritizeToFront(name))
+    {
+        LOG_WARNING("[Scheduler] Task '{}' not in queue (mid-execution); skipping reprioritization", name);
+        return;
+    }
+
+    LOG_DEBUG("[Scheduler] Task '{}' moved to front of queue", name);
 }
 
 void Scheduler::removeTask(std::string_view taskName)
@@ -149,29 +171,17 @@ void Scheduler::workerThread()
 
         const auto& task = taskItem.value();
 
-        // Check if it's time to execute
-        auto now = std::chrono::steady_clock::now();
-        if (task.nextRun > now)
-        {
-            // Task is not ready yet, put it back
-            m_taskQueue.push(task);
-
-            // Sleep for a short time to avoid busy waiting
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            continue;
-        }
-
         // Check if task still exists in task map (might have been removed)
         {
             std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
             if (m_tasks.find(task.name) == m_tasks.end())
             {
-                LOG_DEBUG("Task '{}' was removed before execution", task.name);
+                LOG_DEBUG("[Scheduler] Task '{}' was removed before execution", task.name);
                 continue;
             }
         }
 
-        LOG_DEBUG("Executing task '{}'", task.name);
+        LOG_DEBUG("[Scheduler] Executing task '{}'", task.name);
 
         // Execute the task
         executeTask(task);
@@ -179,21 +189,26 @@ void Scheduler::workerThread()
         // Reschedule if it's a recurring task, otherwise remove it from task map
         if (!task.isOneTime && task.config.interval > 0)
         {
-            LOG_DEBUG("Rescheduling recurring task '{}'", task.name);
-            // Create updated task with new next run time
-            auto updatedTask = task; // Copy the task
-            // Update next run time manually since TaskItem doesn't have updateNextRun anymore
-            updatedTask.nextRun = std::chrono::steady_clock::now() + std::chrono::seconds(task.config.interval);
-
-            // Add back to queue
-            m_taskQueue.push(updatedTask);
+            bool stillRegistered;
+            {
+                std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
+                stillRegistered = m_tasks.count(task.name) > 0;
+            }
+            if (stillRegistered)
+            {
+                LOG_DEBUG("[Scheduler] Rescheduling recurring task '{}'", task.name);
+                auto updatedTask = task;
+                updatedTask.nextRun = std::chrono::steady_clock::now() + std::chrono::seconds(task.config.interval);
+                m_taskQueue.push(updatedTask);
+            }
+            // else: task was removed while executing — skip re-queue (RC-2 fix)
         }
         else
         {
             // One-time task, remove from task map
             std::lock_guard<std::mutex> tasksLock(m_tasksMutex);
             m_tasks.erase(task.name);
-            LOG_DEBUG("Removed one-time task '{}' after execution", task.name);
+            LOG_DEBUG("[Scheduler] Removed one-time task '{}' after execution", task.name);
         }
     }
 }
@@ -217,11 +232,11 @@ void Scheduler::executeTask(const TaskQueue::TaskItem& task)
     }
     catch (const std::exception& e)
     {
-        LOG_WARNING("Error executing task '{}': {}", task.name, e.what());
+        LOG_WARNING("[Scheduler] Error executing task '{}': {}", task.name, e.what());
     }
     catch (...)
     {
-        LOG_WARNING("Unknown error executing task '{}'", task.name);
+        LOG_WARNING("[Scheduler] Unknown error executing task '{}'", task.name);
     }
 
     // Restore default priority
@@ -239,9 +254,9 @@ void Scheduler::setCurrentThreadPriority(int cpuPriority)
 
     if (setpriority(PRIO_PROCESS, 0, niceValue) != 0)
     {
-        LOG_WARNING("Failed to set thread CPU priority to %d", niceValue);
+        LOG_WARNING("[Scheduler] Failed to set thread CPU priority to %d", niceValue);
     }
-    LOG_DEBUG("Set thread CPU priority to %d", niceValue);
+    LOG_DEBUG("[Scheduler] Set thread CPU priority to %d", niceValue);
 }
 
 } // namespace scheduler

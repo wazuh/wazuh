@@ -1,3 +1,4 @@
+import json
 import sys
 from api_communication.client import APIClient
 import api_communication.proto.crud_pb2 as crud
@@ -11,7 +12,6 @@ def run(args):
     req = crud.resourceGet_Request()
     req.space = args['space']
     req.uuid = args['uuid']
-    req.asJson = args['json']
 
     # Create the api request
     try:
@@ -21,7 +21,7 @@ def run(args):
         if error:
             sys.exit(f'Error getting asset or collection: {error}')
 
-        print(response['content'])
+        print(json.dumps(response['jsonContent'], indent=4))
 
     except Exception as e:
         sys.exit(f'Error getting asset or collection: {e}')
@@ -31,11 +31,9 @@ def run(args):
 
 def configure(subparsers):
     parser_get = subparsers.add_parser(
-        'get', help='get type[/name[/version]]: Get a resource.')
+        'get', help='Get a resource as JSON.')
 
     parser_get.add_argument('uuid', type=str,
                             help=f'UUID of the resource to get.')
-
-    parser_get.add_argument('--json', action='store_true', help='Json format', default=False)
 
     parser_get.set_defaults(func=run)

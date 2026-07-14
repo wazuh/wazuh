@@ -4,6 +4,8 @@ project(wazuh-modulesd C CXX)
 
 if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../ ABSOLUTE)
+  list(APPEND CMAKE_MODULE_PATH "${SRC_FOLDER}/cmake")
+  include(WazuhRpath)
 endif()
 
 # Core include directories
@@ -204,12 +206,5 @@ elseif(NOT UNIT_TEST)
   target_link_libraries(${WAZUH_MODULESD_DAEMON_NAME}
                         PRIVATE wazuh_modulesd_lib)
 
-  if(APPLE)
-    set_target_properties(
-      ${WAZUH_MODULESD_DAEMON_NAME}
-      PROPERTIES BUILD_WITH_INSTALL_RPATH TRUE INSTALL_RPATH
-                                               "@executable_path/../lib")
-  else()
-    string(APPEND CMAKE_EXE_LINKER_FLAGS " -Wl,-rpath,$ORIGIN/../lib")
-  endif()
+  wazuh_set_runtime_rpath(${WAZUH_MODULESD_DAEMON_NAME})
 endif()

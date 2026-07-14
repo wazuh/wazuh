@@ -2,6 +2,8 @@
 #include "schemaResources.hpp"
 #include <sstream>
 #include <map>
+#include <mutex>
+#include <shared_mutex>
 #include <regex>
 #include <ctime>
 #include <iomanip>
@@ -10,11 +12,11 @@
 
 // Network headers for inet_pton
 #ifdef _WIN32
-    #include <winsock2.h>
-    #include <ws2tcpip.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #else
-    #include <arpa/inet.h>
-    #include <netinet/in.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #endif
 
 namespace SchemaValidator
@@ -39,6 +41,19 @@ namespace SchemaValidator
         struct in_addr addr4;
         struct in6_addr addr6;
 
+        // An address may carry an RFC 4007 zone/scope id (e.g. "fe80::1%eth0").
+        // inet_pton() rejects the "%zone" suffix, but OpenSearch's IpFieldMapper
+        // (InetAddresses.ipStringToBytes) ignores everything from the first '%'
+        // before parsing, so a value OpenSearch would index as "fe80::1" must be
+        // considered valid here too. Mirror that by stripping from the first '%'.
+        std::string ipCandidate = ipStr;
+        const std::size_t zonePos = ipStr.find('%');
+
+        if (zonePos != std::string::npos)
+        {
+            ipCandidate = ipStr.substr(0, zonePos);
+        }
+
 #ifdef _WIN32
         // Windows: Use GetProcAddress pattern (same as windowsHelper.h)
         typedef INT (WINAPI * inet_pton_t)(INT, PCSTR, PVOID);
@@ -48,10 +63,12 @@ namespace SchemaValidator
         if (!initialized)
         {
             auto hWs2_32 = GetModuleHandleA("ws2_32.dll");
+
             if (hWs2_32)
             {
                 pfnInetPton = reinterpret_cast<inet_pton_t>(GetProcAddress(hWs2_32, "inet_pton"));
             }
+
             initialized = true;
         }
 
@@ -62,26 +79,27 @@ namespace SchemaValidator
         }
 
         // Try IPv4 first
-        if (pfnInetPton(AF_INET, ipStr.c_str(), &addr4) == 1)
+        if (pfnInetPton(AF_INET, ipCandidate.c_str(), &addr4) == 1)
         {
             return true;
         }
 
         // Try IPv6
-        if (pfnInetPton(AF_INET6, ipStr.c_str(), &addr6) == 1)
+        if (pfnInetPton(AF_INET6, ipCandidate.c_str(), &addr6) == 1)
         {
             return true;
         }
 
         return false;
 #else
+
         // Linux/Unix: Use inet_pton directly
-        if (inet_pton(AF_INET, ipStr.c_str(), &addr4) == 1)
+        if (inet_pton(AF_INET, ipCandidate.c_str(), &addr4) == 1)
         {
             return true;
         }
 
-        if (inet_pton(AF_INET6, ipStr.c_str(), &addr6) == 1)
+        if (inet_pton(AF_INET6, ipCandidate.c_str(), &addr6) == 1)
         {
             return true;
         }
@@ -124,7 +142,7 @@ namespace SchemaValidator
                 if (m_schema.contains("template") && m_schema["template"].contains("mappings") &&
                         m_schema["template"]["mappings"].contains("properties"))
                 {
-                    m_properties = m_schema["template"]["mappings"]["properties"];
+                    m_properties = std::move(m_schema["template"]["mappings"]["properties"]);
                 }
                 else
                 {
@@ -152,7 +170,7 @@ namespace SchemaValidator
                     }
                     else
                     {
-                        m_schemaName = pattern;
+                        m_schemaName = std::move(pattern);
                     }
                 }
 
@@ -397,6 +415,12 @@ namespace SchemaValidator
         public:
             std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> m_validators;
             bool m_initialized;
+            // The factory is a process-wide singleton (see getInstance) that is
+            // initialized from several modules (syscollector, sca)
+            // running concurrently in the same process. Guard all access to
+            // m_validators/m_initialized so concurrent initialize() calls cannot race
+            // on the underlying std::map. Exclusive lock for mutation, shared for reads.
+            mutable std::shared_mutex m_mutex;
 
             Impl()
                 : m_initialized(false)
@@ -429,6 +453,7 @@ namespace SchemaValidator
                 }
             }
 
+            // Assumes the caller already holds an exclusive lock on m_mutex.
             bool initializeFromEmbeddedResources()
             {
                 try
@@ -451,6 +476,16 @@ namespace SchemaValidator
 
             bool initialize(std::map<std::string, std::shared_ptr<ISchemaValidatorEngine>> customValidators)
             {
+                std::unique_lock<std::shared_mutex> lock(m_mutex);
+
+                // Idempotent: the singleton is shared across modules, each of which calls
+                // initialize() at startup. Once loaded, return success without re-loading
+                // (and without mutating the map while another thread may be reading it).
+                if (m_initialized)
+                {
+                    return true;
+                }
+
                 if (!customValidators.empty())
                 {
                     // Use injected custom validators (for testing or extensibility)
@@ -465,6 +500,8 @@ namespace SchemaValidator
 
             std::shared_ptr<ISchemaValidatorEngine> getValidator(const std::string& indexPattern)
             {
+                std::shared_lock<std::shared_mutex> lock(m_mutex);
+
                 auto it = m_validators.find(indexPattern);
 
                 if (it != m_validators.end())
@@ -473,6 +510,19 @@ namespace SchemaValidator
                 }
 
                 return nullptr;
+            }
+
+            bool isInitialized() const
+            {
+                std::shared_lock<std::shared_mutex> lock(m_mutex);
+                return m_initialized;
+            }
+
+            void reset()
+            {
+                std::unique_lock<std::shared_mutex> lock(m_mutex);
+                m_validators.clear();
+                m_initialized = false;
             }
     };
 
@@ -501,13 +551,12 @@ namespace SchemaValidator
 
     bool SchemaValidatorFactory::isInitialized() const
     {
-        return m_impl->m_initialized;
+        return m_impl->isInitialized();
     }
 
     void SchemaValidatorFactory::reset()
     {
-        m_impl->m_validators.clear();
-        m_impl->m_initialized = false;
+        m_impl->reset();
     }
 
 } // namespace SchemaValidator

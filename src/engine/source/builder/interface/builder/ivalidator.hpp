@@ -39,7 +39,7 @@ public:
      *  - Check that the asset structure is valid according to its type.
      *
      * @param nsReader Namespace reader used to verify parent dependencies.
-     * @param assetJson Asset JSON definition (already parsed from YAML/JSON by upper layers).
+     * @param assetJson Asset JSON definition (already parsed by upper layers).
      * @return base::OptError Empty on success, otherwise an error describing the failure.
      */
     virtual base::OptError validateAsset(const std::shared_ptr<cm::store::ICMStoreNSReader>& nsReader,

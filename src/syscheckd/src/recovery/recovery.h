@@ -55,7 +55,7 @@ typedef bool (*SynchronizeModuleCallback)(void);
  * @param handle Sync Protocol handle
  * @param directories_list The OSList of directory_t objects to use for configuration lookup (must not be NULL)
  */
-EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList *directories_list);
+EXPORTED void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHandle* handle, const OSList* directories_list);
 
 /**
  * @brief Checks if a full sync is required by calculating the checksum-of-checksums for a table and comparing it with the manager's
@@ -82,7 +82,7 @@ EXPORTED bool fim_recovery_integrity_interval_has_elapsed(char* table_name, int6
  * @param directories_list The OSList of directory_t objects to use for configuration lookup (must not be NULL)
  * @return Stateful event as a cJSON object (must be freed by caller), NULL on error
  */
-EXPORTED cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sha1_hash, uint64_t document_version, const OSList *directories_list);
+EXPORTED cJSON* buildFileStatefulEvent(const char* path, cJSON* file_data, const char* sha1_hash, uint64_t document_version, const OSList* directories_list);
 
 #ifdef WIN32
 /**

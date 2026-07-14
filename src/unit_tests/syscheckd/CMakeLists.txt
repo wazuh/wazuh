@@ -405,6 +405,23 @@ if(NOT ${TARGET} STREQUAL "winagent")
   target_include_directories(test_check_rc_sys PRIVATE ${SRC_FOLDER}/rootcheck/include)
   target_link_libraries(test_check_rc_sys SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_SYS_FLAGS}")
   add_test(NAME test_check_rc_sys COMMAND test_check_rc_sys)
+
+  set(COMMON_FLAGS "-Wl,--wrap,wopendir \
+                    -Wl,--wrap,closedir \
+                    -Wl,--wrap,w_stat \
+                    -Wl,--wrap,waccess \
+                    -Wl,--wrap,wfopen \
+                    -Wl,--wrap,fclose \
+                    -Wl,--wrap,OS_Regex \
+                    -Wl,--wrap,OS_Match2 \
+                    -Wl,--wrap,OSList_GetFirstNode \
+                    -Wl,--wrap,OSList_GetNextNode \
+                    ${DEBUG_OP_WRAPPERS}")
+
+  add_executable(test_common test_common.c)
+  target_include_directories(test_common PRIVATE ${SRC_FOLDER}/rootcheck/include)
+  target_link_libraries(test_common SYSCHECK_O ${TEST_DEPS} "${COMMON_FLAGS}")
+  add_test(NAME test_common COMMAND test_common)
 endif()
 
 # fim_scan.c tests
@@ -457,7 +474,8 @@ if(${TARGET} STREQUAL "winagent")
 else()
     target_link_libraries(test_fim_scan "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
                                           -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \
-                                          -Wl,--wrap,atexit -Wl,--wrap,remove_audit_rule_syscheck")
+                                          -Wl,--wrap,atexit -Wl,--wrap,remove_audit_rule_syscheck \
+                                          -Wl,--wrap,IsLink")
 endif()
 
 add_test(NAME test_fim_scan COMMAND test_fim_scan)
@@ -475,6 +493,7 @@ set(FIM_SYNC_LIMITS_BASE_FLAGS "-Wl,--wrap,validate_and_persist_fim_event \
                                 -Wl,--wrap,fim_db_get_documents_to_demote \
                                 -Wl,--wrap,fim_db_count_synced_docs \
                                 -Wl,--wrap,fim_db_set_sync_flag \
+                                -Wl,--wrap,fim_configuration_directory \
                                 -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 target_link_libraries(test_fim_sync_limits SYSCHECK_O ${TEST_DEPS})
@@ -501,6 +520,7 @@ set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_
                          -Wl,--wrap,merror -Wl,--wrap,minfo -Wl,--wrap,mdebug1 \
                          -Wl,--wrap,build_stateful_event_file -Wl,--wrap,build_stateful_event_registry_key \
                          -Wl,--wrap,build_stateful_event_registry_value \
+                         -Wl,--wrap,fim_configuration_directory \
                          -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_validate \
                          -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 

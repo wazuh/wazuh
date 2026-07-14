@@ -42,6 +42,20 @@ void expect_StartMQ_call(const char *qpath, int type, int ret) {
     will_return(__wrap_StartMQ, ret);
 }
 
+int __wrap_StartMQPredicated(const char *path, short int type, __attribute__((unused)) short int n_attempts, bool (*fn_ptr)()) {
+    check_expected(path);
+    check_expected(type);
+    check_expected_ptr(fn_ptr);
+    return mock();
+}
+
+void expect_StartMQPredicated_call(const char *qpath, int type, bool (*fn_ptr)(), int ret) {
+    expect_string(__wrap_StartMQPredicated, path, qpath);
+    expect_value(__wrap_StartMQPredicated, type, type);
+    expect_value(__wrap_StartMQPredicated, fn_ptr, fn_ptr);
+    will_return(__wrap_StartMQPredicated, ret);
+}
+
 void expect_SendMSG_call(const char *message, const char *locmsg, char loc, int ret) {
     expect_string(__wrap_SendMSG, message, message);
     expect_string(__wrap_SendMSG, locmsg, locmsg);

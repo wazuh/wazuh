@@ -61,59 +61,59 @@ static void callbackFileUpdateModified(ReturnTypeCallback result_type, const cJS
 
 class DBTestFixture : public testing::Test
 {
-protected:
-    DBTestFixture() = default;
-    virtual ~DBTestFixture() = default;
+    protected:
+        DBTestFixture() = default;
+        virtual ~DBTestFixture() = default;
 
-    txn_context_test txn_ctx;
-    event_data_t evt_data;
+        txn_context_test txn_ctx;
+        event_data_t evt_data;
 
-    void SetUp() override
-    {
-        mockLog = new MockLoggingCall();
+        void SetUp() override
+        {
+            mockLog = new MockLoggingCall();
 
-        fim_db_init(FIM_DB_MEMORY, mockLoggingFunction, MAX_FILE_LIMIT, 100000, nullptr);
+            fim_db_init(FIM_DB_MEMORY, mockLoggingFunction, MAX_FILE_LIMIT, 100000, nullptr);
 
-        evt_data = {};
-        evt_data.report_event = true;
-        evt_data.mode = FIM_SCHEDULED;
-        evt_data.w_evt = NULL;
-        txn_ctx = {.evt_data = &evt_data};
+            evt_data = {};
+            evt_data.report_event = true;
+            evt_data.mode = FIM_SCHEDULED;
+            evt_data.w_evt = NULL;
+            txn_ctx = {.evt_data = &evt_data};
 
-        evt_data1 = {};
-        evt_data1.report_event = true;
-        evt_data1.mode = FIM_REALTIME;
-        evt_data1.w_evt = NULL;
-        configuration1 = {};
-        configuration1.options = -1;
+            evt_data1 = {};
+            evt_data1.report_event = true;
+            evt_data1.mode = FIM_REALTIME;
+            evt_data1.w_evt = NULL;
+            configuration1 = {};
+            configuration1.options = -1;
 
-        evt_data2 = {};
-        evt_data2.report_event = true;
-        evt_data2.mode = FIM_REALTIME;
-        evt_data2.w_evt = NULL;
-        configuration2 = {};
-        configuration2.options = -1;
+            evt_data2 = {};
+            evt_data2.report_event = true;
+            evt_data2.mode = FIM_REALTIME;
+            evt_data2.w_evt = NULL;
+            configuration2 = {};
+            configuration2.options = -1;
 
-        ctx1 = {};
-        ctx1.event = &evt_data1;
-        ctx1.config = &configuration1;
+            ctx1 = {};
+            ctx1.event = &evt_data1;
+            ctx1.config = &configuration1;
 
-        ctx2 = {};
-        ctx2.event = &evt_data2;
-        ctx2.config = &configuration2;
+            ctx2 = {};
+            ctx2.event = &evt_data2;
+            ctx2.config = &configuration2;
 
-        callback_data_added.callback_txn = callbackFileUpdateAdded;
-        callback_data_added.context = &ctx1;
-        callback_data_modified.callback_txn = callbackFileUpdateModified;
-        callback_data_modified.context = &ctx2;
-        callback_null.callback = NULL;
-        callback_null.context = NULL;
-    }
-    void TearDown() override
-    {
-        fim_db_teardown();
-        delete mockLog;
-    }
+            callback_data_added.callback_txn = callbackFileUpdateAdded;
+            callback_data_added.context = &ctx1;
+            callback_data_modified.callback_txn = callbackFileUpdateModified;
+            callback_data_modified.context = &ctx2;
+            callback_null.callback = NULL;
+            callback_null.context = NULL;
+        }
+        void TearDown() override
+        {
+            fim_db_teardown();
+            delete mockLog;
+        }
 };
 
 #endif //_DB_TEST_H

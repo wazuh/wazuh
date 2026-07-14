@@ -518,7 +518,7 @@ auto kvdbNotDeclared(const std::string& dbName)
         static Context ctx;
         ctx.assetName = "test/asset";
         ctx.policyName = "test/policy";
-        ctx.availableKvdbs = std::unordered_map<std::string, bool> {};
+        ctx.integration.availableKvdbs= std::unordered_map<std::string, bool> {};
 
         ON_CALL(*mocks.ctx, context()).WillByDefault(testing::ReturnRef(ctx));
         ON_CALL(*mocks.ctx, isKvdbAvailable(testing::_)).WillByDefault(testing::Return(std::make_pair(false, false)));
@@ -534,7 +534,7 @@ auto kvdbDisabled(const std::string& dbName)
         static Context ctx;
         ctx.assetName = "test/asset";
         ctx.policyName = "test/policy";
-        ctx.availableKvdbs = std::unordered_map<std::string, bool> {{dbName, false}};
+        ctx.integration.availableKvdbs = std::unordered_map<std::string, bool> {{dbName, false}};
 
         ON_CALL(*mocks.ctx, context()).WillByDefault(testing::ReturnRef(ctx));
         ON_CALL(*mocks.ctx, isKvdbAvailable(dbName)).WillByDefault(testing::Return(std::make_pair(true, false)));
@@ -550,7 +550,7 @@ auto kvdbEnabled(const std::string& dbName)
         static Context ctx;
         ctx.assetName = "test/asset";
         ctx.policyName = "test/policy";
-        ctx.availableKvdbs = std::unordered_map<std::string, bool> {{dbName, true}};
+        ctx.integration.availableKvdbs = std::unordered_map<std::string, bool> {{dbName, true}};
 
         ON_CALL(*mocks.ctx, context()).WillByDefault(testing::ReturnRef(ctx));
         ON_CALL(*mocks.ctx, isKvdbAvailable(dbName)).WillByDefault(testing::Return(std::make_pair(true, true)));

@@ -5,8 +5,8 @@
 
 import os
 import sqlite3
-import sys
 from copy import copy
+from datetime import datetime
 from unittest.mock import AsyncMock, patch, mock_open, call
 
 import pytest
@@ -21,24 +21,6 @@ with patch('wazuh.core.common.wazuh_uid'):
 # all necessary params
 
 test_data_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'data', 'test_agent')
-
-
-def get_WazuhDBQuery_params(wdb_class):
-    """Get default parameters for the specified WazuhDBQuery class.
-
-    Parameters
-    ----------
-    wdb_class : str
-        Suffix of the WazuhDBQuery class. Example: 'Agents' to get default parameters from `WazuhDBQueryAgents` class.
-
-    Returns
-    -------
-    parameters_dict
-        Dictionary with all the default parameters.
-    """
-    with patch('wazuh.core.agent.WazuhDBQuery.__init__') as wdbquery_mock:
-        getattr(sys.modules[__name__], f'WazuhDBQuery{wdb_class}')()
-        return wdbquery_mock.call_args.kwargs
 
 
 # list with Wazuh packages availables with their hash
@@ -387,56 +369,6 @@ def test_WazuhDBQueryGroup__add_sort_to_query(mock_socket_conn, send_mock):
     assert 'count' in query_group.fields and query_group.fields['count'] == 'count(id_group)'
 
 
-@patch('socket.socket.connect')
-def test_WazuhDBQueryMultigroups__init__(mock_socket_conn):
-    """Tests if method __init__ of WazuhDBQueryMultigroups works properly."""
-    query_multigroups = WazuhDBQueryMultigroups(group_id='test')
-
-    assert 'group=test' in query_multigroups.q, 'Query returned does not match the expected one'
-
-
-@pytest.mark.parametrize('group_id', [
-    'null',
-    'test'
-])
-@patch('socket.socket.connect')
-def test_WazuhDBQueryMultigroups_default_query(mock_socket_conn, group_id):
-    """Tests if method _default_query of WazuhDBQueryMultigroups works properly.
-
-    Parameters
-    ----------
-    group_id : str
-        Identifier of the group.
-    """
-    query_multigroups = WazuhDBQueryMultigroups(group_id=group_id)
-    result = query_multigroups._default_query()
-
-    if group_id == 'null':
-        assert 'SELECT {0} FROM agent a' in result, 'Query returned does not match the expected one'
-    else:
-        assert 'SELECT {0} FROM agent a LEFT JOIN belongs b ON a.id = b.id_agent' in result, \
-            'Query returned does not match the expected one'
-
-
-@patch('socket.socket.connect')
-def test_WazuhDBQueryMultigroups_default_count_query(mock_socket_conn):
-    """Tests if method _default_count_query of WazuhDBQueryMultigroups works properly."""
-    query_multigroups = WazuhDBQueryMultigroups(group_id='test')
-    result = query_multigroups._default_count_query()
-
-    assert 'COUNT(DISTINCT a.id)' in result, 'Query returned does not match the expected one'
-
-
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_WazuhDBQueryMultigroups_get_total_items(mock_socket_conn, send_mock):
-    """Tests if method _get_total_items of WazuhDBQueryMultigroups works properly."""
-    query_multigroups = WazuhDBQueryMultigroups(group_id='test')
-    query_multigroups._get_total_items()
-
-    assert 'GROUP BY a.id' in query_multigroups.query, 'Query returned does not match the expected one'
-
-
 @pytest.mark.parametrize('id, ip, name, key', [
     ('1', '127.0.0.1', 'test_agent', 'b3650e11eba2f27er4d160c69de533ee7eed6016fga85ba2455d53a90927747D'),
 ])
@@ -774,35 +706,6 @@ def test_agent_delete_single_group(mock_exists, mock_rmtree):
     mock_rmtree.assert_called_once_with(os.path.join(common.SHARED_PATH, group))
 
 
-@pytest.mark.parametrize("agent_id, expected_result", [
-    (1, 'Ubuntu'),
-    (7, 'Windows'),
-])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agent_os_name(socket_mock, send_mock, agent_id, expected_result):
-    """Tests if method get_agent_os_name() returns expected value
-
-    Parameters
-    ----------
-    agent_id : int
-        ID of the agent to return the attribute from.
-    expected_result : str
-        Expected value to be obtained.
-    """
-    agent = Agent(agent_id)
-    result = agent.get_agent_os_name()
-    assert result == expected_result
-
-
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_agent_os_name_ko(socket_mock, send_mock):
-    """Tests if method get_agent_os_name() returns expected value when there is no attribute in the DB"""
-    agent = Agent('004')
-    assert 'null' == agent.get_agent_os_name()
-
-
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
 def test_agent_get_agents_overview_default(socket_mock, send_mock):
@@ -996,40 +899,6 @@ async def test_agent_add_group_to_agent_ko(agent_groups_mock):
         # Multigroup limit exceeded.
         with pytest.raises(WazuhError, match='.* 1737 .*'):
             await Agent.add_group_to_agent('test_group', '002')
-
-
-@pytest.mark.parametrize("agent_id, seconds, expected_result", [
-    ('002', 10, True),
-    ('002', 700, False)
-])
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_check_if_delete_agent(socket_mock, send_mock, agent_id, seconds, expected_result):
-    """Test if check_if_delete_agent() returns True when time from last connection is greater than <seconds>
-
-    Parameters
-    ----------
-    agent_id : str
-        Id of the agent to be searched.
-    seconds : int
-        Number of seconds.
-    expected_result : bool
-        Result that check_if_delete_agent() should return with given params.
-    """
-    result = Agent.check_if_delete_agent(agent_id, seconds)
-    assert result == expected_result, f'Result is {result} but should be {expected_result}'
-
-
-@patch("wazuh.core.agent.Agent.get_basic_information")
-def test_agent_check_if_delete_agent_ko(mock_agent):
-    """Test if check_if_delete_agent() returns True when lastKeepAlive == 0 or not instance of datetime"""
-    mock_agent.return_value = {'lastKeepAlive': 0}
-    result = Agent.check_if_delete_agent(0, 700)
-    assert result, f'Result is {result} but should be True'
-
-    mock_agent.return_value = {'lastKeepAlive': '2000-01-01 00:00:00'}
-    result = Agent.check_if_delete_agent(0, 700)
-    assert result, f'Result is {result} but should be True'
 
 
 @pytest.mark.parametrize("group_exists", [

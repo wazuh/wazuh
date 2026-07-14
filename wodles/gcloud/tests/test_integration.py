@@ -87,3 +87,22 @@ def test_WazuhGCloudIntegration_send_message_ko():
     with pytest.raises(exceptions.WazuhIntegrationInternalError) as e:
         integration.send_msg(test_message)
     assert e.value.errcode == 3
+
+
+def test_WazuhGCloudIntegration_check_permissions_raises_not_implemented():
+    """Test check_permissions raises NotImplementedError for the base class."""
+    integration = WazuhGCloudIntegration(logger=MagicMock())
+    with pytest.raises(NotImplementedError):
+        integration.check_permissions()
+
+
+@patch('integration.logging.warning')
+@patch('integration.socket.socket')
+def test_WazuhGCloudIntegration_send_message_logs_warning_when_oversized(mock_socket, mock_warning):
+    """Test send_msg logs a warning when the encoded event exceeds MAX_EVENT_SIZE."""
+    from integration import MAX_EVENT_SIZE
+    integration = WazuhGCloudIntegration(logger=MagicMock())
+    with integration.initialize_socket():
+        integration.send_msg('x' * (MAX_EVENT_SIZE + 1))
+    mock_warning.assert_called_once()
+    assert str(MAX_EVENT_SIZE) in mock_warning.call_args[0][0]

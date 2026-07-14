@@ -104,7 +104,7 @@ class WazuhQueue(BaseQueue):
         """Send message to agent.
 
         Active-response
-          Agents: /var/wazuh-manager/queue/alerts/ar
+          Agents: /var/wazuh-manager/queue/sockets/ar
             - Existing command:
               - (msg_to_agent) [] NNS 001 restart-wazuh0 arg1 arg2 arg3
               - (msg_to_agent) [] ANN (null) restart-wazuh0 arg1 arg2 arg3

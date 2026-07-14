@@ -5,6 +5,7 @@
 #include <idbsync.hpp>
 #include <ifilesystem_wrapper.hpp>
 #include <sca_utils.hpp>
+#include "agent_sync_protocol_types.hpp"
 #include "asyncFlushController.hpp"
 #include "iagent_sync_protocol.hpp"
 
@@ -16,6 +17,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -59,6 +61,16 @@ class SecurityConfigurationAssessment
         /// @copydoc IModule::Stop
         void Stop() ;
 
+        /// @brief Signals the module to stop and waits for in-flight operations
+        /// to finish, but does not release owned resources (e.g. m_dBSync).
+        /// Safe to call while the sync worker thread is still running.
+        void quiesce();
+
+        /// @brief Releases owned resources after the sync worker thread has exited.
+        /// Must be called only after all threads that may use those resources
+        /// (in particular the sync worker thread) have been joined.
+        void releaseResources();
+
         /// @copydoc IModule::Name
         const std::string& Name() const ;
 
@@ -92,7 +104,7 @@ class SecurityConfigurationAssessment
 
         /// @brief Synchronize the module
         /// @param mode Synchronization mode
-        /// @return true if synchronization was successful, false otherwise
+        /// @return true on success, false on failure (a WARNING with the reason is logged internally).
         bool syncModule(Mode mode);
 
         /// @brief Persist a difference
@@ -158,6 +170,13 @@ class SecurityConfigurationAssessment
         /// @brief Cached first-sync completion state used to gate initial stateful publication.
         std::atomic<bool> m_firstSyncCompleted {false};
 
+        /// @brief In-memory flag set after each complete scan iteration, cleared at Run() startup.
+        /// Polled by the C sync thread (via get_scan_completed query) to avoid triggering the
+        /// first snapshot before any check has had a chance to run. Note that "Not run" rows
+        /// are additionally filtered out of the snapshot SELECT to handle timeouts, which
+        /// legitimately leave checks in that state past scan completion. Non-zero means completed.
+        std::atomic<int64_t> m_scanCompleted {0};
+
         /// @brief Condition variable for pause/resume coordination
         std::condition_variable m_pauseCv;
 
@@ -205,11 +224,11 @@ class SecurityConfigurationAssessment
         /// @brief Synchronize the current DB snapshot using FULL mode.
         /// @param increaseVersions Whether to bump versions before building the snapshot.
         /// @param syncReason Reason used in logs.
-        /// @return true on success.
-        bool synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
+        /// @return SyncModuleResult with success flag and an optional failure reason string.
+        SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
 
         /// @brief Perform full recovery: load all checks and resync
-        /// @return true on success
+        /// @return true on success, false on failure.
         bool performRecovery();
 
         /// @brief Check with manager if full sync required via checksum
@@ -279,6 +298,16 @@ class SecurityConfigurationAssessment
 
         /// @brief Controller for asynchronous flush requests.
         std::unique_ptr<Utils::AsyncFlushController> m_asyncFlushController;
+
+        /// @brief Serializes releaseResources() against the entry points that other threads
+        /// keep driving while the module tears down: wcom's dispatcher (query() and
+        /// parseResponseBuffer()) is detached and never joined, and agent-info's coordination
+        /// queries call query() in-process from its own module thread. Those entry points take
+        /// it shared around each access; releaseResources() resets the members under the
+        /// exclusive lock. The sync worker and the flush worker do not take it: the former is
+        /// joined before releaseResources() runs and the latter is joined by the flush
+        /// controller destruction before m_spSyncProtocol/m_dBSync are reset.
+        mutable std::shared_mutex m_resourcesMutex;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;

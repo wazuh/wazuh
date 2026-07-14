@@ -1,3 +1,5 @@
+#include <ctime>
+#include <memory>
 #include <optional>
 #include <set>
 #include <stdexcept>
@@ -23,7 +25,7 @@ namespace
 {
 
 const base::Name STORE_NAME_IOCSYNC {"iocsync/status/0"}; ///< Name of the internal store document
-constexpr std::string_view COMPONENT_NAME = "IOCSync";    ///< Component name for logging
+constexpr std::string_view COMPONENT_NAME = "IOC::Sync";  ///< Component name for logging
 
 void ensureTargetDbExists(const std::shared_ptr<ioc::kvdb::IKVDBManager>& kvdbiocPtr, std::string_view targetDBName)
 {
@@ -58,9 +60,13 @@ private:
     std::string m_iocType;      ///< IOC type from document.type (e.g., connection, url_domain, url_full, hash_md5,
                                 ///< hash_sha1, hash_sha256)
     std::string m_lastDataHash; ///< Last known data hash
+    uint32_t m_lastSuccessfulUpdate {0};                     ///< Unix timestamp of last successful sync
+    base::SyncStatus m_syncStatus {base::SyncStatus::READY}; ///< Per-type sync status
 
     static constexpr std::string_view JPATH_IOC_TYPE = "/ioc_type";             ///< JSON path for IOC type
     static constexpr std::string_view JPATH_LAST_DATA_HASH = "/last_data_hash"; ///< JSON path for last data hash
+    static constexpr std::string_view JPATH_LAST_SUCCESSFUL_UPDATE =
+        "/last_successful_update"; ///< JSON path for last successful update timestamp
 
 public:
     SyncedIOCDatabase() = delete;
@@ -81,6 +87,10 @@ public:
     const std::string& getLastDataHash() const { return m_lastDataHash; }
     void setLastDataHash(std::string_view hash) { m_lastDataHash = hash; }
     void setIocType(std::string_view iocType) { m_iocType = iocType; }
+    uint32_t getLastSuccessfulUpdate() const { return m_lastSuccessfulUpdate; }
+    void setLastSuccessfulUpdate(uint32_t ts) { m_lastSuccessfulUpdate = ts; }
+    base::SyncStatus getSyncStatus() const { return m_syncStatus; }
+    void setSyncStatus(base::SyncStatus s) { m_syncStatus = s; }
 
     /**
      * @brief Serialize the SyncedIOCDatabase to a JSON object
@@ -92,6 +102,7 @@ public:
         json::Json j {};
         j.setString(m_iocType, JPATH_IOC_TYPE);
         j.setString(m_lastDataHash, JPATH_LAST_DATA_HASH);
+        j.setInt64(static_cast<int64_t>(m_lastSuccessfulUpdate), JPATH_LAST_SUCCESSFUL_UPDATE);
         return j;
     }
 
@@ -116,7 +127,13 @@ public:
             throw std::runtime_error("SyncedIOCDatabase::fromJson: Missing last_data_hash field");
         }
 
-        return {iocType, lastHash};
+        SyncedIOCDatabase db {iocType, lastHash};
+        // Restore the last successful update timestamp if present (absent in older state documents).
+        if (const auto ts = j.getInt64(JPATH_LAST_SUCCESSFUL_UPDATE); ts.has_value())
+        {
+            db.setLastSuccessfulUpdate(static_cast<uint32_t>(*ts));
+        }
+        return db;
     }
 };
 
@@ -138,6 +155,7 @@ IocSync::IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexer
     if (storePtr->existsDoc(STORE_NAME_IOCSYNC))
     {
         loadStateFromStore();
+        updateIocStatusSnapshot(); // Publish initial status
         return;
     }
 
@@ -149,6 +167,7 @@ IocSync::IocSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexer
         addIOCTypeToSync(iocType);
     }
     saveStateToStore();
+    updateIocStatusSnapshot(); // Publish initial status
 }
 
 IocSync::~IocSync() = default;
@@ -158,24 +177,27 @@ bool IocSync::existIocDataInRemote()
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
 
     return base::utils::executeWithRetry([&indexerPtr]() { return indexerPtr->existsIocDataIndex(); },
-                                         fmt::format("{}::existIocDataInRemote()", COMPONENT_NAME),
-                                         "Check if IOC data index exists in remote indexer",
+                                         fmt::format("{}", COMPONENT_NAME),
+                                         "Check if IOC data index exists in wazuh-indexer",
                                          m_attempts,
-                                         m_waitSeconds);
+                                         m_waitSeconds,
+                                         m_shutdownRequested);
 }
 
-std::unordered_map<std::string, std::string> IocSync::getRemoteHashesFromRemote()
+std::optional<std::unordered_map<std::string, std::string>> IocSync::getRemoteHashesFromRemote()
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "Indexer Connector");
 
-    return base::utils::executeWithRetry([&indexerPtr]() { return indexerPtr->getIocTypeHashes(); },
-                                         fmt::format("{}::getRemoteHashesFromRemote()", COMPONENT_NAME),
-                                         "Get IOC type hashes from remote indexer",
-                                         m_attempts,
-                                         m_waitSeconds);
+    return base::utils::executeWithRetry(
+        [&indexerPtr]() { return indexerPtr->getIocTypeHashes(wiconnector::IOC_ENRICHMENT_CONSUMER_ID); },
+        fmt::format("{}", COMPONENT_NAME),
+        "Get IOC type hashes from wazuh-indexer",
+        m_attempts,
+        m_waitSeconds,
+        m_shutdownRequested);
 }
 
-void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string& dbName)
+bool IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string& dbName)
 {
     auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
     auto kvdbiocPtr = base::utils::lockWeakPtr(m_kvdbiocManagerPtr, "KVDBIOCManager");
@@ -185,10 +207,9 @@ void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
 
     try
     {
-        std::size_t processedDocs = 0;
         std::size_t stored = 0;
 
-        processedDocs = indexerPtr->streamIocsByType(
+        auto processedDocsOpt = indexerPtr->streamIocsByType(
             iocType,
             m_iocSyncBatchSize,
             [&stored, &kvdbiocPtr, &dbName](const std::string& key, const std::string& value)
@@ -198,9 +219,35 @@ void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
                 json::Json valueJson {value.c_str()};
                 ioc::kvdb::details::updateValueInDB(kvdbiocPtr, dbName, normalizedKey, valueJson);
                 stored++;
-            });
+            },
+            wiconnector::IOC_ENRICHMENT_CONSUMER_ID);
 
-        LOG_DEBUG("[IOC::Sync] Downloaded {} IOCs of type '{}' (processed {} docs)", stored, iocType, processedDocs);
+        // Consumer is not ready — rollback and signal caller
+        if (!processedDocsOpt.has_value())
+        {
+            LOG_DEBUG("[IOC::Sync] Consumer is not ready for IOC type '{}', "
+                      "rolling back database '{}'",
+                      iocType,
+                      dbName);
+            try
+            {
+                kvdbiocPtr->remove(dbName);
+            }
+            catch (const std::exception& ex)
+            {
+                LOG_WARNING("[IOC::Sync] Failed to rollback database '{}' after consumer "
+                            "not ready: {}",
+                            dbName,
+                            ex.what());
+            }
+            return false;
+        }
+
+        LOG_DEBUG("[IOC::Sync] Downloaded {} IOCs of type '{}' "
+                  "(processed {} docs)",
+                  stored,
+                  iocType,
+                  *processedDocsOpt);
 
         if (stored == 0)
         {
@@ -216,12 +263,12 @@ void IocSync::downloadAndPopulateDB(std::string_view iocType, const std::string&
         }
         catch (const std::exception& ex)
         {
-            LOG_WARNING("[IocSync::downloadAndPopulateDB] Failed to rollback database '{}' after download failure: {}",
-                        dbName,
-                        ex.what());
+            LOG_WARNING("[IOC::Sync] Failed to rollback database '{}' after download failure: {}", dbName, ex.what());
         }
         throw std::runtime_error(fmt::format("Failed to download IOCs to database '{}': {}", dbName, e.what()));
     }
+
+    return true;
 }
 
 void IocSync::addIOCTypeToSync(std::string_view iocType)
@@ -364,7 +411,11 @@ bool IocSync::syncIOCType(SyncedIOCDatabase& dbState,
 
         try
         {
-            downloadAndPopulateDB(dbState.getIocType(), tempDBName);
+            if (!downloadAndPopulateDB(dbState.getIocType(), tempDBName))
+            {
+                LOG_DEBUG("[IOC::Sync] IOC consumer is not ready for type '{}', skipping", dbState.getIocType());
+                return false;
+            }
         }
         catch (const std::exception& e)
         {
@@ -431,30 +482,80 @@ void IocSync::synchronize()
 {
     LOG_DEBUG("[IOC::Sync] Checking for IOC database updates to synchronize");
 
+    if (m_shutdownRequested.load(std::memory_order_relaxed))
+    {
+        LOG_INFO("[IOC::Sync] Synchronization aborted before start");
+        return;
+    }
+
     try
     {
         // Lock weak pointers and acquire mutex
         const auto kvdbiocPtr = base::utils::lockWeakPtr(m_kvdbiocManagerPtr, "KVDBIOCManager");
         std::unique_lock lock(m_mutex);
 
+        // Pre-flight check: verify IOC consumer is ready and has data (local_offset != 0)
+        {
+            auto indexerPtr = base::utils::lockWeakPtr(m_indexerPtr, "IndexerConnector");
+            const bool ready = base::utils::executeWithRetry(
+                [&indexerPtr]() { return indexerPtr->isConsumerReadyForSync(wiconnector::IOC_ENRICHMENT_CONSUMER_ID); },
+                fmt::format("{}", COMPONENT_NAME),
+                "Check IOC consumer readiness",
+                m_attempts,
+                m_waitSeconds,
+                m_shutdownRequested);
+
+            if (!ready)
+            {
+                LOG_INFO("[IOC::Sync] IOC syncronization skipped because wazuh-indexer consumer for IOCs is not ready "
+                         "for sync (might be updating or no data yet)");
+                reportSyncFailure(); // types without a usable version → FAILED (could not sync)
+                return;
+            }
+        }
+
         // Check if remote index exists
         if (!existIocDataInRemote())
         {
             LOG_WARNING("[IOC::Sync] Remote IOC data index does not exist; skipping sync cycle");
+            reportSyncFailure();
             return;
         }
 
-        // Get remote hashes
-        const auto remoteTypeHashes = getRemoteHashesFromRemote();
+        // Get remote hashes (returns nullopt if IOC consumer is not ready)
+        const auto remoteTypeHashesOpt = getRemoteHashesFromRemote();
+        if (!remoteTypeHashesOpt.has_value())
+        {
+            LOG_INFO("[IOC::Sync] IOC syncronization skipped because the IOC consumer is not ready (data/hash is being "
+                     "updated in the indexer)");
+            reportSyncFailure();
+            return;
+        }
+        const auto& remoteTypeHashes = *remoteTypeHashesOpt;
 
         // Synchronize each IOC type
         bool stateChanged = false;
         for (auto& dbState : m_databasesState)
         {
+            if (m_shutdownRequested.load(std::memory_order_relaxed))
+            {
+                LOG_INFO("[IOC::Sync] Synchronization aborted during IOC type iteration");
+                updateIocStatusSnapshot();
+                return;
+            }
+
+            // Mark this type as running and publish
+            dbState.setSyncStatus(base::SyncStatus::UPDATING);
+            updateIocStatusSnapshot();
+
             if (syncIOCType(dbState, remoteTypeHashes, kvdbiocPtr))
             {
+                dbState.setLastSuccessfulUpdate(static_cast<uint32_t>(std::time(nullptr)));
                 stateChanged = true;
             }
+
+            dbState.setSyncStatus(base::SyncStatus::READY);
+            updateIocStatusSnapshot();
         }
 
         // Save state if changed
@@ -474,8 +575,80 @@ void IocSync::synchronize()
     }
     catch (const std::exception& e)
     {
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            LOG_INFO("[IOC::Sync] Synchronization aborted during remote operation");
+            // Reset any in-progress types
+            for (auto& dbState : m_databasesState)
+            {
+                if (dbState.getSyncStatus() == base::SyncStatus::UPDATING)
+                {
+                    dbState.setSyncStatus(base::SyncStatus::READY);
+                }
+            }
+            updateIocStatusSnapshot();
+            return;
+        }
         LOG_WARNING("[IOC::Sync] Synchronization cycle failed: {}", e.what());
+        // Mark in-progress and never-synced types as failed (the failure may have occurred during the
+        // pre-flight, before any type was set RUNNING).
+        reportSyncFailure();
+        return;
     }
+
+    updateIocStatusSnapshot();
+}
+
+void IocSync::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[IOC::Sync] Shutdown requested");
+}
+
+std::vector<IocTypeStatus> IocSync::getIocStatus() const
+{
+    return *m_iocStatus.load();
+}
+
+void IocSync::updateIocStatusSnapshot()
+{
+    // Full rebuild from m_databasesState (sync-thread working state), then publish atomically.
+    auto kvdbiocPtr = m_kvdbiocManagerPtr.lock();
+
+    std::vector<IocTypeStatus> result;
+    result.reserve(m_databasesState.size());
+
+    for (const auto& dbState : m_databasesState)
+    {
+        IocTypeStatus entry;
+        entry.type = dbState.getIocType();
+        entry.hash = dbState.getLastDataHash();
+        entry.status = dbState.getSyncStatus();
+
+        if (!entry.hash.empty() && kvdbiocPtr)
+        {
+            entry.available = kvdbiocPtr->exists(ioc::kvdb::details::getDbNameFromType(dbState.getIocType()));
+        }
+
+        entry.lastSuccessfulUpdate = dbState.getLastSuccessfulUpdate();
+        result.push_back(std::move(entry));
+    }
+
+    m_iocStatus.store(std::move(result));
+}
+
+void IocSync::reportSyncFailure()
+{
+    for (auto& dbState : m_databasesState)
+    {
+        // No usable version yet, or interrupted mid-sync → the failed attempt is reflected as FAILED.
+        // A type that already holds a version (non-empty hash, not running) stays as-is (usable).
+        if (dbState.getLastDataHash().empty() || dbState.getSyncStatus() == base::SyncStatus::UPDATING)
+        {
+            dbState.setSyncStatus(base::SyncStatus::FAILED);
+        }
+    }
+    updateIocStatusSnapshot();
 }
 
 } // namespace ioc::sync

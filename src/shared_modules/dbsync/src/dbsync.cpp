@@ -1038,6 +1038,24 @@ SelectQuery& SelectQuery::countOpt(const uint32_t count)
     return *this;
 }
 
+SelectQuery& SelectQuery::rowFilterBindText(const std::string& value)
+{
+    nlohmann::json param;
+    param["type"] = "text";
+    param["value"] = value;
+    m_jsQuery["query"]["row_filter_params"].push_back(param);
+    return *this;
+}
+
+SelectQuery& SelectQuery::rowFilterBindInt(const int64_t value)
+{
+    nlohmann::json param;
+    param["type"] = "int";
+    param["value"] = value;
+    m_jsQuery["query"]["row_filter_params"].push_back(param);
+    return *this;
+}
+
 DeleteQuery& DeleteQuery::data(const nlohmann::json& data)
 {
     m_jsQuery["query"]["data"].push_back(data);

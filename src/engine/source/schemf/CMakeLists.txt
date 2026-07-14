@@ -38,8 +38,14 @@ add_library(schemf::mocks ALIAS schemf_mocks)
 
 add_executable(schemf_utest
     ${UNIT_SRC_DIR}/field_test.cpp
+    ${UNIT_SRC_DIR}/validator_test.cpp
+    ${UNIT_SRC_DIR}/valueValidator_test.cpp
+    ${UNIT_SRC_DIR}/ivalidator_test.cpp
+    ${UNIT_SRC_DIR}/schema_test.cpp
+    ${UNIT_SRC_DIR}/type_test.cpp
 )
-target_link_libraries(schemf_utest PRIVATE schemf GTest::gtest_main)
+target_include_directories(schemf_utest PRIVATE ${SRC_DIR} ${INC_DIR}/schemf)
+target_link_libraries(schemf_utest PRIVATE schemf hlp GTest::gtest_main GTest::gmock schemf::mocks base::test)
 gtest_discover_tests(schemf_utest)
 
 add_executable(schemf_ctest

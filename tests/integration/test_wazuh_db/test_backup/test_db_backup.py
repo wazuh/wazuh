@@ -56,12 +56,13 @@ from pathlib import Path
 import time
 import pytest
 
-from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.daemons import WAZUH_DB_DAEMON
+from wazuh_testing.constants.paths import WAZUH_PATH
 from wazuh_testing.constants.paths.sockets import WAZUH_DB_SOCKET_PATH
 from wazuh_testing.utils.database import query_wdb
 from wazuh_testing.utils import configuration
 from wazuh_testing.utils.db_queries.global_db import remove_metadata_value
+from wazuh_testing.utils import services
 
 from . import TEST_CASES_FOLDER_PATH
 
@@ -86,9 +87,25 @@ get_backups_command = 'global backup get'
 sql_select_command = 'global sql select * from metadata'
 
 
+@pytest.fixture(scope='module')
+def configure_wdb_socket_environment_module():
+    """Keep the Wazuh DB socket lifecycle isolated without stopping unrelated daemons."""
+    services.control_service('stop', daemon=WAZUH_DB_DAEMON)
+    services.wait_expected_daemon_status(target_daemon=WAZUH_DB_DAEMON, running_condition=False)
+    services.control_service('start', daemon=WAZUH_DB_DAEMON, debug_mode=True)
+    services.wait_expected_daemon_status(target_daemon=WAZUH_DB_DAEMON, running_condition=True)
+
+    yield
+
+    services.control_service('stop', daemon=WAZUH_DB_DAEMON)
+    services.wait_expected_daemon_status(target_daemon=WAZUH_DB_DAEMON, running_condition=False)
+    services.control_service('start', daemon=WAZUH_DB_DAEMON)
+    services.wait_expected_daemon_status(target_daemon=WAZUH_DB_DAEMON, running_condition=True)
+
+
 # Tests
 @pytest.mark.parametrize('test_metadata', t_config_metadata, ids=t_case_ids)
-def test_wdb_backup_command(configure_sockets_environment_module, connect_to_sockets_module, remove_backups,
+def test_wdb_backup_command(configure_wdb_socket_environment_module, connect_to_sockets_module, remove_backups,
                             add_database_values, test_metadata):
     '''
     description: Check that every input message using the 'backup' command in wazuh-manager-db socket generates
@@ -97,12 +114,12 @@ def test_wdb_backup_command(configure_sockets_environment_module, connect_to_soc
                  field, as well as checking that the files have been created and the state of the data in DB in cases
                  where the 'restore' parameter is used.
 
-    wazuh_min_version: 4.4.0
+    wazuh_min_version: 5.0.0
 
     parameters:
-        - configure_sockets_environment:
+        - configure_wdb_socket_environment_module:
             type: fixture
-            brief: Configure environment for sockets and MITM.
+            brief: Configure Wazuh DB socket environment.
         - connect_to_sockets_module:
             type: fixture
             brief: Module scope version of 'connect_to_sockets' fixture.
@@ -153,12 +170,14 @@ def test_wdb_backup_command(configure_sockets_environment_module, connect_to_soc
     if 'restore' in test_metadata:
         # Assert the DB has the test_values
         db_response = query_wdb(sql_select_command)
-        assert test_values[0] in db_response[-1]['key'], f'Expected value key:"{test_values[0]}" was not found.'
+        keys = {row['key'] for row in db_response}
+        assert test_values[0] in keys, f'Expected value key:"{test_values[0]}" was not found.'
 
         # Remove the test_values from the DB
         remove_metadata_value(test_values[0])
         db_response = query_wdb(sql_select_command)
-        assert test_values[0] not in db_response[-1]['key'], f'Found unexpected "key":"{test_values[0]}" value.'
+        keys = {row['key'] for row in db_response}
+        assert test_values[0] not in keys, f'Found unexpected "key":"{test_values[0]}" value.'
 
         # Generate the correct restore command for test
         save_pre_restore = test_metadata['save_pre_restore']
@@ -183,7 +202,8 @@ def test_wdb_backup_command(configure_sockets_environment_module, connect_to_soc
 
         # Assert the test_values have been restored into the DB
         db_response = query_wdb(sql_select_command)
-        assert test_values[0] in db_response[-1]['key'], f'Expected value key:"{test_values[0]}" was not found.'
+        keys = {row['key'] for row in db_response}
+        assert test_values[0] in keys, f'Expected value key:"{test_values[0]}" was not found.'
 
         if save_pre_restore == 'true':
             backups = query_wdb(get_backups_command)
@@ -204,5 +224,5 @@ def test_wdb_backup_command(configure_sockets_environment_module, connect_to_soc
 
                 # Check that DB is empty does not have test_values after restoring
                 db_response = query_wdb(sql_select_command)
-                assert test_values[0] not in db_response[-1]['key'], f'Found unexpected  \
-                                                                    "key":"{test_values[0]}" value.'
+                keys = {row['key'] for row in db_response}
+                assert test_values[0] not in keys, f'Found unexpected "key":"{test_values[0]}" value.'

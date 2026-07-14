@@ -459,8 +459,13 @@ WriteManager()
         DisableAuthd
     fi
 
+    if command -v openssl >/dev/null 2>&1; then
+        CLUSTER_KEY=$(openssl rand -hex 16)
+    else
+        CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    fi
     # Writting cluster configuration
-    cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
+    sed -e "s|\${CLUSTER_KEY}|$CLUSTER_KEY|g" "${CLUSTER_TEMPLATE}" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     echo "</wazuh_config>" >> $NEWCONFIG
@@ -757,7 +762,6 @@ InstallCommon()
   fi
 
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
-  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/alerts
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sockets
   if [ "X${INSTYPE}" = "Xagent" ]; then
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/diff
@@ -842,18 +846,40 @@ InstallCommon()
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/selinux
 
-  if [ -f selinux/wazuh.pp ]
-  then
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} selinux/wazuh.pp ${INSTALLDIR}/var/selinux/
-    InstallSELinuxPolicyPackage
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/selinux
+    if [ -f selinux/wazuh.pp ]; then
+      ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} selinux/wazuh.pp ${INSTALLDIR}/var/selinux/
+      InstallSELinuxPolicyPackage
+    fi
   fi
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup
 
 }
 
+
+installIndexerTemplates()
+{
+    local SRC_DIR="external/indexer-plugins"
+    local DEST_DIR="${INSTALLDIR}/etc/indexer-plugins"
+    local STREAMS="metrics-agents.json metrics-comms.json metrics-normalization.json"
+
+    if [ ! -d "${SRC_DIR}" ]; then
+        echo "WARNING: ${SRC_DIR} not found. Metrics schemas will be missing."
+        return 0
+    fi
+
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} "${DEST_DIR}"
+    for f in ${STREAMS}; do
+        if [ -f "${SRC_DIR}/${f}" ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} "${SRC_DIR}/${f}" "${DEST_DIR}/"
+        else
+            echo "WARNING: ${SRC_DIR}/${f} not found."
+        fi
+    done
+}
 
 generateSchemaFiles()
 {
@@ -917,10 +943,10 @@ installEngineStore()
     # Copy default output configuration files
     local OUTPUTS_PATH=${INSTALLDIR}/etc/outputs
     local DEFAULT_OUTPUTS_PATH=${OUTPUTS_PATH}/default
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${DEFAULT_OUTPUTS_PATH}
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${DEFAULT_OUTPUTS_PATH}
     cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${DEFAULT_OUTPUTS_PATH}/"
     chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${OUTPUTS_PATH}
-    find ${OUTPUTS_PATH} -type d -exec chmod 770 {} \; -o -type f -exec chmod 660 {} \;
+    find ${OUTPUTS_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
 
     # Create /var/wazuh-manager/data/ruleset
     install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/data/ruleset
@@ -1038,6 +1064,8 @@ InstallLocal()
 
     generateSchemaFiles
 
+    installIndexerTemplates
+
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data
 
     installEngineStore
@@ -1088,7 +1116,6 @@ InstallLocal()
 TransferShared()
 {
     rm -f ${INSTALLDIR}/etc/shared/merged.mg
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -exec cp -pf {} ${INSTALLDIR}/backup/shared \;
     find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
 }
 
@@ -1143,7 +1170,6 @@ InstallServer()
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/cluster
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared/default
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/shared
 
     TransferShared
 
@@ -1157,7 +1183,6 @@ InstallServer()
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/queue/agents-timestamp
     fi
 
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/agents
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/db
 
     if [ ! -f ${INSTALLDIR}/etc/shared/default/agent.conf ]; then

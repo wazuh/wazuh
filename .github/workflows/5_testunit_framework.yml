@@ -2,6 +2,7 @@ name: 5.X - Framework - Unit tests
 
 on:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - '.github/workflows/5_testunit_framework.yml'
       - 'framework/**'
@@ -23,8 +24,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build: 
+  build:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -49,9 +52,9 @@ jobs:
 
       - name: Run Framework tests
         run: |
-          set -o pipefail 
+          set -o pipefail
           python -m pytest framework -vv --ignore=tests --cov=framework | tee ${TEST_REPORT_PATH}
-      
+
       - name: Generate test report
         if: inputs.generate_report
         run: |

@@ -8,6 +8,9 @@ Wazuh collects, analyzes, and stores logs from endpoints, network devices, and a
 
 ## Table of content
 
+- [Log collectors](collectors.md)
+- [Configuration](configuration.md)
+
 
 
 

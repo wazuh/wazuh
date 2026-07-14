@@ -627,6 +627,7 @@ void test_HandleSecureMessage_shutdown_message(void** state)
     w_ctrl_msg_data_t * node = indexed_queue_pop(control_msg_queue);
     assert_non_null(node);
     assert_string_equal(node->message, "agent shutdown ");
+    assert_int_equal('\0', node->message[strlen("agent shutdown ")]);
     assert_int_equal(node->key->keyid, 1);
     assert_int_equal(node->key->sock, 1);
     assert_string_equal(node->key->id, "009");
@@ -1026,7 +1027,7 @@ void test_HandleSecureMessage_invalid_message(void** state)
     expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
     will_return(__wrap_OS_IsAllowedDynamicID, 0);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty");
+    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty from '127.0.0.1'");
 
     expect_function_call(__wrap_key_unlock);
 
@@ -1083,10 +1084,13 @@ void test_HandleSecureMessage_different_sock(void** state)
     key->id = strdup("001");
     key->sock = 4;
     key->keyid = 1;
+    key->rcvd = 200;         // not idle, no overtake
+    key->conflict_ts = 100;  // conflict older than the window -> warn
 
     keys.keyentries[0] = key;
 
     global_counter = 0;
+    current_ts = 200;
 
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -1101,7 +1105,7 @@ void test_HandleSecureMessage_different_sock(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
 
     expect_function_call(__wrap_key_lock_read);
 
@@ -1156,10 +1160,13 @@ void test_HandleSecureMessage_different_sock_2(void** state)
     key->id = strdup("001");
     key->sock = 4;
     key->keyid = 1;
+    key->rcvd = 200;         // not idle, no overtake
+    key->conflict_ts = 100;  // conflict older than the window -> warn
 
     keys.keyentries[0] = key;
 
     global_counter = 0;
+    current_ts = 200;
 
     peer_info.sin_family = AF_INET;
     peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -1173,7 +1180,161 @@ void test_HandleSecureMessage_different_sock_2(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_DeleteSocket
+    expect_value(__wrap_OS_DeleteSocket, sock, message.sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    will_return(__wrap_close, 0);
+
+    // nb_close
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    // rem_setCounter
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+void test_HandleSecureMessage_conflict_first_seen(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "!12!";
+    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    logr.connection_overtake_time = 60;
+    current_ts = 100;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("001");
+    key->sock = 4;
+    key->keyid = 1;
+    key->rcvd = 100;        // not idle, no overtake
+    key->conflict_ts = 0;   // first conflict
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent ID '001' reconnected from '127.0.0.1' before its previous session was closed.");
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_DeleteSocket
+    expect_value(__wrap_OS_DeleteSocket, sock, message.sock);
+    will_return(__wrap_OS_DeleteSocket, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    will_return(__wrap_close, 0);
+
+    // nb_close
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_value(__wrap_nb_close, sock, message.sock);
+    expect_function_call(__wrap_rem_dec_tcp);
+
+    // rem_setCounter
+    expect_value(__wrap_rem_setCounter, fd, 1);
+    expect_value(__wrap_rem_setCounter, counter, 0);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [1]");
+
+    expect_function_call(__wrap_rem_inc_recv_unknown);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    assert_int_equal(key->conflict_ts, 100); // conflict recorded
+
+    os_free(key->id);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+void test_HandleSecureMessage_conflict_persists(void** state)
+{
+    char buffer[OS_MAXSTR + 1] = "!12!";
+    message_t message = {.buffer = buffer, .size = 4, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    logr.connection_overtake_time = 60;
+    current_ts = 200;
+
+    keyentry** keyentries;
+    os_calloc(1, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+
+    key->id = strdup("001");
+    key->sock = 4;
+    key->keyid = 1;
+    key->rcvd = 200;         // not idle, no overtake
+    key->conflict_ts = 100;  // conflict older than the window -> warn
+
+    keys.keyentries[0] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    // OS_IsAllowedDynamicID
+    expect_string(__wrap_OS_IsAllowedDynamicID, id, "12");
+    expect_string(__wrap_OS_IsAllowedDynamicID, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedDynamicID, 0);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
 
     expect_function_call(__wrap_key_lock_read);
 
@@ -1283,13 +1444,16 @@ void test_HandleSecureMessage_close_idle_sock(void** state)
     expect_value(__wrap_rem_setCounter, counter, 0);
 
     expect_string(__wrap__mdebug1, formatted_msg, "TCP peer disconnected [4]");
+    expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
 
     /* enqueue */
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -1384,7 +1548,9 @@ void test_HandleSecureMessage_close_idle_sock_2(void** state)
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -1439,7 +1605,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
 
     expect_function_call(__wrap_key_lock_read);
 
@@ -1517,7 +1683,7 @@ void test_HandleSecureMessage_close_idle_sock_disabled_2(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001'");
+    expect_string(__wrap__mwarn, formatted_msg, "Agent key already in use: agent ID '001' (source IP: 127.0.0.1)");
 
     expect_function_call(__wrap_key_lock_read);
 
@@ -1596,7 +1762,7 @@ void test_HandleSecureMessage_close_idle_sock_recv_fail(void** state)
 
     expect_string(__wrap__mdebug2, formatted_msg, "Idle socket [4] from agent ID '001' will be closed.");
 
-    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty");
+    expect_string(__wrap__mwarn, formatted_msg, "Received message is empty from '127.0.0.1'");
 
     expect_function_call(__wrap_key_unlock);
 
@@ -1711,7 +1877,7 @@ void test_HandleSecureMessage_close_idle_sock_decrypt_fail(void** state)
 
     expect_function_call(__wrap_key_unlock);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Decrypt the message fail, socket 1");
+    expect_string(__wrap__mwarn, formatted_msg, "Decrypt the message fail from '127.0.0.1', socket 1");
 
     // Close new socket
     expect_function_call(__wrap_key_lock_read);
@@ -1967,13 +2133,16 @@ void test_HandleSecureMessage_close_same_sock(void** state)
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
     expect_function_call(__wrap_key_unlock);
+    expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
 
     /* enqueue */
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2040,13 +2209,16 @@ void test_HandleSecureMessage_close_same_sock_2(void** state)
     will_return(__wrap_ReadSecMSG, KS_VALID);
 
     expect_function_call(__wrap_key_unlock);
+    expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
 
     /* enqueue */
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2118,6 +2290,7 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_success(void** state
     expect_string(__wrap_router_provider_send, message, "{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\",\"agents\":[1]}}");
     expect_value(__wrap_router_provider_send, message_size, strlen("{\"command\":\"upgrade_update_status\",\"parameters\":{\"error\":0,\"message\":\"Upgrade successful\",\"status\":\"Done\",\"agents\":[1]}}") + 1);
     will_return(__wrap_router_provider_send, 0);
+    expect_string(__wrap_rem_inc_recv_upgrade_ack, agent_id, "001");
 
     // Since message was successfully forwarded to router, it should NOT be enqueued to analysisd
 
@@ -2196,7 +2369,9 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_no_handle(void** sta
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2272,7 +2447,9 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_invalid_json(void** 
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2349,7 +2526,9 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_json_without_paramet
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2432,7 +2611,9 @@ void test_HandleSecureMessage_router_forwarding_upgrade_ack_send_failed(void** s
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "042");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '042' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2504,13 +2685,16 @@ void test_HandleSecureMessage_router_forwarding_disabled(void** state)
 
     // Set router_forwarding_disabled to 1 to test disabled forwarding
     router_forwarding_disabled = 1;
+    expect_string(__wrap__mdebug1, formatted_msg, "Stripped 1 trailing null byte(s) from event payload of agent '001'");
 
     /* enqueue - since router forwarding is disabled, message goes to analysisd */
     expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
     expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
     expect_any(__wrap_batch_queue_enqueue_ex, data);
     will_return(__wrap_batch_queue_enqueue_ex, -1);
-    expect_string(__wrap__mwarn, formatted_msg, "Dropping event for agent '001' (rc=-1)");
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
 
@@ -2582,6 +2766,381 @@ void test_HandleSecureMessage_discard_dbsync_message(void** state)
     // Message should be discarded, not forwarded to router or analysisd
 
     HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+static int check_evt_item_sentinel(const LargestIntegralType value,
+                                   const LargestIntegralType check_value_data) {
+    (void)check_value_data;
+    evt_item_t *e = (evt_item_t *)(uintptr_t)value;
+    assert_non_null(e);
+    assert_non_null(e->raw);
+    assert_int_equal('\0', e->raw[e->len]);
+    return 1;
+}
+
+/* When batch_queue_enqueue_ex is mocked as successful the production code
+ * relinquishes ownership of the evt_item; capture it here so the test can
+ * dispose it after HandleSecureMessage returns. */
+static evt_item_t *g_captured_evt_item;
+
+static int check_evt_item_capture(const LargestIntegralType value,
+                                  const LargestIntegralType check_value_data) {
+    (void)check_value_data;
+    g_captured_evt_item = (evt_item_t *)(uintptr_t)value;
+    assert_non_null(g_captured_evt_item);
+    assert_non_null(g_captured_evt_item->raw);
+    return 1;
+}
+
+void test_HandleSecureMessage_event_without_trailing_null(void** state)
+{
+    const char *payload = "Apr 23 12:34:56 host dpkg[1]: status installed foo:amd64 1.0.0";
+    size_t payload_len = strlen(payload);
+
+    char buffer[OS_MAXSTR + 1];
+    memset(buffer, 0xAA, sizeof(buffer));
+    memcpy(buffer, payload, payload_len);
+
+    message_t message = {.buffer = buffer, .size = payload_len, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("name");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_any(__wrap_ReadSecMSG, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, payload_len);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    router_forwarding_disabled = 1;
+
+    expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
+    expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
+    expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_sentinel, NULL);
+    will_return(__wrap_batch_queue_enqueue_ex, -1);
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    router_forwarding_disabled = 0;
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+void test_HandleSecureMessage_event_enqueue_success(void** state)
+{
+    const char *payload = "Apr 23 12:34:56 host dpkg[1]: status installed foo:amd64 1.0.0";
+    size_t payload_len = strlen(payload);
+
+    char buffer[OS_MAXSTR + 1];
+    memset(buffer, 0xAA, sizeof(buffer));
+    memcpy(buffer, payload, payload_len);
+
+    message_t message = {.buffer = buffer, .size = payload_len, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("name");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_any(__wrap_ReadSecMSG, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, payload_len);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    router_forwarding_disabled = 1;
+
+    g_captured_evt_item = NULL;
+    expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
+    expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
+    expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_capture, NULL);
+    will_return(__wrap_batch_queue_enqueue_ex, 0);
+    expect_string(__wrap_rem_inc_recv_events, agent_id, "001");
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    router_forwarding_disabled = 0;
+
+    /* The mocked queue did not actually take ownership; release the item. */
+    if (g_captured_evt_item) {
+        dispose_evt_item(g_captured_evt_item);
+        g_captured_evt_item = NULL;
+    }
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+static int check_evt_item_trimmed(const LargestIntegralType value,
+                                  const LargestIntegralType check_value_data) {
+    (void)check_value_data;
+    evt_item_t *e = (evt_item_t *)(uintptr_t)value;
+    assert_non_null(e);
+    assert_non_null(e->raw);
+    assert_int_equal(62, e->len);
+    assert_int_not_equal('\0', e->raw[e->len - 1]);
+    assert_int_equal('\0', e->raw[e->len]);
+    return 1;
+}
+
+void test_HandleSecureMessage_event_with_trailing_null(void** state)
+{
+    const char *payload = "Apr 23 12:34:56 host dpkg[1]: status installed foo:amd64 1.0.0";
+    size_t payload_len = strlen(payload);
+    assert_int_equal(62, payload_len);
+
+    char buffer[OS_MAXSTR + 1];
+    memset(buffer, 0xAA, sizeof(buffer));
+    memcpy(buffer, payload, payload_len);
+    buffer[payload_len] = '\0';
+
+    message_t message = {.buffer = buffer, .size = payload_len + 1, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("name");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_any(__wrap_ReadSecMSG, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, payload_len + 1);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Stripped 1 trailing null byte(s) from event payload of agent '001'");
+
+    router_forwarding_disabled = 1;
+
+    expect_value(__wrap_batch_queue_enqueue_ex, sched, events_queue);
+    expect_string(__wrap_batch_queue_enqueue_ex, agent_key, "001");
+    expect_check(__wrap_batch_queue_enqueue_ex, data, check_evt_item_trimmed, NULL);
+    will_return(__wrap_batch_queue_enqueue_ex, -1);
+    expect_value(__wrap_time, time, NULL);
+    will_return(__wrap_time, 0);
+    expect_function_call(__wrap_rem_inc_recv_events_failed);
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    router_forwarding_disabled = 0;
+
+    os_free(key->id);
+    os_free(key->name);
+    os_free(key->ip);
+    os_free(key);
+    os_free(keyentries);
+    indexed_queue_free(control_msg_queue);
+    batch_queue_free(events_queue);
+}
+
+static const unsigned char g_expected_flatbuf_with_trailing_zeros[] = {
+    0xAB, 0xCD, 0x12, 0x34, 0x56, 0x78,
+    0x00, 0x00, 0x00
+};
+static const size_t g_expected_flatbuf_len =
+    sizeof(g_expected_flatbuf_with_trailing_zeros);
+
+static int check_flatbuf_unchanged(const LargestIntegralType value,
+                                   const LargestIntegralType check_value_data) {
+    (void)check_value_data;
+    const unsigned char *got = (const unsigned char *)(uintptr_t)value;
+    assert_memory_equal(got,
+                        g_expected_flatbuf_with_trailing_zeros,
+                        g_expected_flatbuf_len);
+    return 1;
+}
+
+void test_HandleSecureMessage_inventory_sync_preserves_trailing_null(void** state)
+{
+    const char prefix[] = "s:fim:";
+    const size_t prefix_len = sizeof(prefix) - 1; /* exclude the C-string NUL */
+
+    char buffer[OS_MAXSTR + 1];
+    memset(buffer, 0xAA, sizeof(buffer));
+    memcpy(buffer, prefix, prefix_len);
+    memcpy(buffer + prefix_len,
+           g_expected_flatbuf_with_trailing_zeros,
+           g_expected_flatbuf_len);
+    size_t total_len = prefix_len + g_expected_flatbuf_len;
+
+    message_t message = {.buffer = buffer, .size = total_len, .sock = 1};
+    struct sockaddr_in peer_info;
+    w_indexed_queue_t * control_msg_queue = indexed_queue_init(10);
+    w_rr_queue_t * events_queue = batch_queue_init(10);
+    batch_queue_set_dispose(events_queue, (void (*)(void *))dispose_evt_item);
+
+    keyentry** keyentries;
+    os_calloc(2, sizeof(keyentry*), keyentries);
+    keys.keyentries = keyentries;
+
+    keyentry* key = NULL;
+    os_calloc(1, sizeof(keyentry), key);
+    os_calloc(1, sizeof(os_ip), key->ip);
+
+    key->id = strdup("001");
+    key->sock = 1;
+    key->keyid = 1;
+    key->rcvd = 0;
+    key->ip->ip = "127.0.0.1";
+    key->name = strdup("name");
+
+    keys.keyentries[1] = key;
+
+    global_counter = 0;
+
+    peer_info.sin_family = AF_INET;
+    peer_info.sin_addr.s_addr = inet_addr("127.0.0.1");
+    memcpy(&message.addr, &peer_info, sizeof(peer_info));
+
+    expect_function_call(__wrap_key_lock_read);
+
+    expect_string(__wrap_OS_IsAllowedIP, srcip, "127.0.0.1");
+    will_return(__wrap_OS_IsAllowedIP, 1);
+
+    expect_value(__wrap_ReadSecMSG, keys, &keys);
+    expect_any(__wrap_ReadSecMSG, buffer);
+    expect_value(__wrap_ReadSecMSG, id, 1);
+    expect_string(__wrap_ReadSecMSG, srcip, "127.0.0.1");
+    will_return(__wrap_ReadSecMSG, total_len);
+    will_return(__wrap_ReadSecMSG, buffer);
+    will_return(__wrap_ReadSecMSG, KS_VALID);
+
+    expect_function_call(__wrap_key_unlock);
+
+    ROUTER_PROVIDER_HANDLE saved_handle = router_sync_handle;
+    router_sync_handle = (ROUTER_PROVIDER_HANDLE)0xDEADBEEF;
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Forwarding message to router");
+
+    expect_check(__wrap_router_provider_send_sync, message,
+                 check_flatbuf_unchanged, NULL);
+    expect_value(__wrap_router_provider_send_sync, message_size,
+                 g_expected_flatbuf_len);
+    expect_string(__wrap_router_provider_send_sync, authenticated_agent_id, "001");
+    expect_any(__wrap_router_provider_send_sync, manager_cluster_name);
+    will_return(__wrap_router_provider_send_sync, 0);
+    expect_string(__wrap_rem_inc_recv_states, agent_id, "001");
+
+    HandleSecureMessage(&message, control_msg_queue, events_queue);
+
+    router_sync_handle = saved_handle;
 
     os_free(key->id);
     os_free(key->name);
@@ -2944,6 +3503,8 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_OldMessage_NoShutdownMessage),
         cmocka_unit_test(test_HandleSecureMessage_different_sock),
         cmocka_unit_test(test_HandleSecureMessage_different_sock_2),
+        cmocka_unit_test(test_HandleSecureMessage_conflict_first_seen),
+        cmocka_unit_test(test_HandleSecureMessage_conflict_persists),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_2),
         cmocka_unit_test(test_HandleSecureMessage_close_idle_sock_disabled),
@@ -2960,6 +3521,10 @@ int main(void)
         cmocka_unit_test(test_HandleSecureMessage_router_forwarding_upgrade_ack_send_failed),
         cmocka_unit_test(test_HandleSecureMessage_router_forwarding_disabled),
         cmocka_unit_test(test_HandleSecureMessage_discard_dbsync_message),
+        cmocka_unit_test(test_HandleSecureMessage_event_without_trailing_null),
+        cmocka_unit_test(test_HandleSecureMessage_event_enqueue_success),
+        cmocka_unit_test(test_HandleSecureMessage_event_with_trailing_null),
+        cmocka_unit_test(test_HandleSecureMessage_inventory_sync_preserves_trailing_null),
         // Tests handle_new_tcp_connection
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_success, setup_new_tcp, teardown_new_tcp),
         cmocka_unit_test_setup_teardown(test_handle_new_tcp_connection_wnotify_fail, setup_new_tcp, teardown_new_tcp),

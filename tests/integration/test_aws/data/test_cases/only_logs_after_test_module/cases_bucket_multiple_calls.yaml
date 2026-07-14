@@ -107,18 +107,6 @@
     only_logs_after: 2022-NOV-20
     expected_results: 1
 
-- name: guardduty_only_logs_after_multiple_calls
-  description: GuardDuty only_logs_after multiple calls configurations
-  configuration_parameters:
-    BUCKET_TYPE: guardduty
-    BUCKET_NAME: wazuh-guardduty-integration-tests
-  metadata:
-    resource_type: bucket
-    bucket_type: guardduty
-    bucket_name: wazuh-guardduty-integration-tests
-    only_logs_after: 2022-NOV-20
-    expected_results: 1
-
 - name: native_guardduty_only_logs_after_multiple_calls
   description: Native GuardDuty only_logs_after multiple calls configurations
   configuration_parameters:

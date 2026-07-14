@@ -184,7 +184,7 @@ int hm_put(hashmap_t* hm, const char* key, void* value)
         {
             // insert into empty slot (reuse tombstone if found earlier)
             hm_entry_t* target = first_tomb ? first_tomb : e;
-            if (first_tomb)
+            if (first_tomb && hm->tombstones > 0)
                 hm->tombstones--;
             os_strdup(key, target->key);
             if (!target->key)

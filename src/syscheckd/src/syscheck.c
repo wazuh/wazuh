@@ -148,6 +148,44 @@ void process_pending_sync_updates(char* table_name, OSList *pending_items) {
 }
 
 /**
+ * @brief Drop documents whose path is no longer covered by the current FIM configuration.
+ *
+ * Run before promoting file_entry rows at startup: if a directory was removed from the
+ * configuration since the last run (e.g. an agent group with a realtime FIM rule was
+ * unassigned), the persisted rows for files under that path can no longer build a
+ * stateful event — build_stateful_event_file would fail and log a spurious ERROR.
+ * The scheduled scan that follows fim_initialize emits the real DELETE for these
+ * rows via handle_orphaned_delete, so dropping them here is safe.
+ *
+ * Only applies to file_entry; registry tables use a different config model.
+ *
+ * @param table_name Name of the table the documents belong to.
+ * @param docs cJSON array of documents about to be promoted. Modified in place.
+ * @return Number of documents dropped.
+ */
+int drop_orphaned_promoted_documents(const char* table_name, cJSON* docs) {
+    if (!docs || !cJSON_IsArray(docs) || strcmp(table_name, FIMDB_FILE_TABLE_NAME) != 0) {
+        return 0;
+    }
+
+    int dropped = 0;
+    for (int i = cJSON_GetArraySize(docs) - 1; i >= 0; i--) {
+        const cJSON* item = cJSON_GetArrayItem(docs, i);
+        const cJSON* path_json = cJSON_GetObjectItem(item, "path");
+        const char* path = cJSON_GetStringValue(path_json);
+        if (path == NULL) {
+            continue;
+        }
+        if (fim_configuration_directory(path, false, syscheck.directories) == NULL) {
+            mdebug2("Skipping promotion of orphaned path (no active configuration): %s", path);
+            cJSON_DeleteItemFromArray(docs, i);
+            dropped++;
+        }
+    }
+    return dropped;
+}
+
+/**
  * @brief Extract primary keys from full document for sync flag update
  *
  * @param table_name Name of the table
@@ -339,7 +377,11 @@ static int fim_startmq(const char* key, short type, short attempts) {
 }
 
 static int fim_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
-    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+    // Predicated so a synchronization parked in the manager-disconnected wait (os_wait)
+    // returns on shutdown: asp_stop() wakes every wait inside the sync protocol but
+    // cannot interrupt this one, and the shutdown waiter joins the synchronization
+    // thread with no timeout (issue #37334).
+    return SendBinaryMSGPredicated(queue, message, message_len, locmsg, loc, fim_shutdown_process_on);
 }
 
 /**
@@ -401,6 +443,15 @@ bool fetch_document_limits_from_agentd(){
 }
 
 void fim_initialize() {
+    // Initialize the coordination atomics first, before any early return below.
+    // On Windows (winpthreads) PTHREAD_MUTEX_INITIALIZER is a non-zero sentinel,
+    // so a zero-initialized global mutex is invalid: if fim_db_init() fails and we
+    // return early, the disabled path in start_daemon() would call atomic_int_set()
+    // on an uninitialized mutex and abort. They are also read by the syscom thread.
+    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+
     // Create store data
 #ifndef WIN32
     FIMDBErrorCode ret_val = fim_db_init(FIM_DB_DISK,
@@ -444,8 +495,6 @@ void fim_initialize() {
 #else
     w_mutex_init(&syscheck.fim_symlink_mutex, NULL);
 #endif
-    syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
-    syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
 
     notify_scan = syscheck.notify_first_scan;
 
@@ -486,6 +535,11 @@ void fim_initialize() {
             synced_docs_ptr = &synced_docs_registry_values;
         }
 
+        if (synced_docs_ptr == NULL) {
+            mwarn("fim_initialize: unknown table name '%s', skipping limit check.", table_name);
+            continue;
+        }
+
         *synced_docs_ptr = fim_db_count_synced_docs(table_name);
         if (*synced_docs_ptr != 0) { // No need to check if no scans have been run
             if (limit == 0) { // If moving from limited agent to unlimited, promote everything
@@ -496,6 +550,11 @@ void fim_initialize() {
                 cJSON* docs_to_promote = fim_db_get_documents_to_promote(table_name, document_count);
 
                 if (docs_to_promote) { // Limit has increased
+                    // Drop rows whose path is no longer covered by the current FIM
+                    // configuration (e.g. a group with a realtime rule was removed).
+                    // The scheduled scan that follows handles them via the orphan-delete path.
+                    drop_orphaned_promoted_documents(table_name, docs_to_promote);
+
                     // Send promoted documents to persistent queue as CREATE events
                     mdebug1("Document limit increased from  %d to %d for index %s. Currently synced documents: %d", *synced_docs_ptr, limit, table_name, *synced_docs_ptr + cJSON_GetArraySize(docs_to_promote));
                     persist_sync_documents(table_name, docs_to_promote, OPERATION_CREATE);

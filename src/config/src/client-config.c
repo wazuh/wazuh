@@ -96,7 +96,7 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         else if (strcmp(node[i]->element, xml_client_manager) == 0 ||
                  strcmp(node[i]->element, xml_client_server) == 0) {
             if (strcmp(node[i]->element, xml_client_server) == 0) {
-                mwarn("The <%s> tag is deprecated, please use <manager> instead.", xml_client_server);
+                minfo("The <%s> tag is deprecated, please use <manager> instead.", xml_client_server);
             }
             if (!(chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 merror(XML_INVELEM, node[i]->element);
@@ -171,9 +171,9 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 return (OS_INVALID);
             }
         } else if (strcmp(node[i]->element, xml_protocol) == 0) {
-            mwarn("Ignoring the 'protocol' option. Switching to TCP.");
+            minfo("Ignoring the 'protocol' option. Switching to TCP.");
         } else if(strcmp(node[i]->element, xml_crypto_method) == 0){
-            mwarn("Ignoring the 'crypto_method' option. Switching to AES.");
+            minfo("Ignoring the 'crypto_method' option. Switching to AES.");
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -286,7 +286,7 @@ int Read_Client_Server(XML_NODE node, agent * logr)
             }
             network_interface = (uint32_t)interface_numeric;
         } else if (strcmp(node[j]->element, xml_protocol) == 0) {
-            mwarn("Ignoring the 'protocol' option. Switching to TCP.");
+            minfo("Ignoring the 'protocol' option. Switching to TCP.");
         } else if (strcmp(node[j]->element, xml_max_retries) == 0) {
             if (!OS_StrIsNum(node[j]->content)) {
                 merror(XML_VALUEERR, node[j]->element, node[j]->content);

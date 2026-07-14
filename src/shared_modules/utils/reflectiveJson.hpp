@@ -156,7 +156,7 @@ constexpr bool IS_REFLECTABLE_MEMBER =
     std::is_same_v<std::decay_t<T>, std::int64_t> || std::is_same_v<std::decay_t<T>, std::int32_t>;
 
 template<typename C, typename T>
-constexpr auto makeFieldChecked(const char* keyLiteral, const char* keyLiteralField, T C::*member)
+constexpr auto makeFieldChecked(const char* keyLiteral, const char* keyLiteralField, T C::* member)
 {
     static_assert(IS_REFLECTABLE_MEMBER<T>, "Invalid member type for reflection");
     return std::make_tuple(std::string_view {keyLiteral}, std::string_view {keyLiteralField}, member);

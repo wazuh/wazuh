@@ -11,8 +11,9 @@ using namespace builder::builders;
 FilterOp
 startsWithValue(const Reference& targetField, const Value& value, const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
-    // Value must be a string
-    if (!value.value().isString())
+    // Value must be a string. Capture it referencing the Value's internal storage (zero-copy).
+    std::string_view sv;
+    if (value.getString(sv) != json::RetGet::Success)
     {
         throw std::runtime_error(fmt::format("Expected 'string' value but got '{}'", value.value().typeName()));
     }
@@ -23,9 +24,13 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
     const auto failure = fmt::format("{} -> Failure", buildCtx->context().opName);
     const auto targetNotString =
         fmt::format("{} -> Target field '{}' is not a string", buildCtx->context().opName, targetField.dotPath());
+
+    // Copy into an owned string to capture in the per-event operation.
+    std::string valueStr(sv);
+
     return [targetField = targetField.jsonPath(),
-            value = json::Json(value.value()),
-            runState = buildCtx->runState(),
+            valueStr = std::move(valueStr),
+            isTestMode = buildCtx->isTestMode(),
             targetNotFound,
             failure,
             successTrace,
@@ -33,32 +38,27 @@ startsWithValue(const Reference& targetField, const Value& value, const std::sha
     {
         if (!event->exists(targetField))
         {
-            RETURN_FAILURE(runState, false, targetNotFound);
+            RETURN_FAILURE(isTestMode, false, targetNotFound);
         }
 
         auto targetValue = event->getJson(targetField).value();
         if (!targetValue.isString())
         {
-            RETURN_FAILURE(runState, false, targetNotString);
+            RETURN_FAILURE(isTestMode, false, targetNotString);
         }
 
         std::string_view targetString;
         if (auto ret = targetValue.getString(targetString); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
-        }
-        std::string_view valueString;
-        if (auto ret = value.getString(valueString); ret != json::RetGet::Success)
-        {
-            RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
+            RETURN_FAILURE(isTestMode, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
         }
 
-        if (!base::utils::string::startsWith(targetString, valueString))
+        if (!base::utils::string::startsWith(targetString, valueStr))
         {
-            RETURN_FAILURE(runState, false, failure);
+            RETURN_FAILURE(isTestMode, false, failure);
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 
@@ -88,7 +88,7 @@ FilterOp startsWithReference(const Reference& targetField,
 
     return [targetField = targetField.jsonPath(),
             reference = reference.jsonPath(),
-            runState = buildCtx->runState(),
+            isTestMode = buildCtx->isTestMode(),
             referenceNotFound,
             referenceNotString,
             targetNotFound,
@@ -98,41 +98,41 @@ FilterOp startsWithReference(const Reference& targetField,
     {
         if (!event->exists(targetField))
         {
-            RETURN_FAILURE(runState, false, targetNotFound);
+            RETURN_FAILURE(isTestMode, false, targetNotFound);
         }
         if (!event->exists(reference))
         {
-            RETURN_FAILURE(runState, false, referenceNotFound);
+            RETURN_FAILURE(isTestMode, false, referenceNotFound);
         }
 
         auto targetValue = event->getJson(targetField).value();
         if (!targetValue.isString())
         {
-            RETURN_FAILURE(runState, false, targetNotString);
+            RETURN_FAILURE(isTestMode, false, targetNotString);
         }
 
         auto referenceValue = event->getJson(reference).value();
         if (!referenceValue.isString())
         {
-            RETURN_FAILURE(runState, false, referenceNotString);
+            RETURN_FAILURE(isTestMode, false, referenceNotString);
         }
 
         std::string_view targetString;
         if (auto ret = targetValue.getString(targetString); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
+            RETURN_FAILURE(isTestMode, false, ret == json::RetGet::NotFound ? targetNotFound : targetNotString);
         }
         std::string_view referenceString;
         if (auto ret = referenceValue.getString(referenceString); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, ret == json::RetGet::NotFound ? referenceNotFound : referenceNotString);
+            RETURN_FAILURE(isTestMode, false, ret == json::RetGet::NotFound ? referenceNotFound : referenceNotString);
         }
         if (!base::utils::string::startsWith(targetString, referenceString))
         {
-            RETURN_FAILURE(runState, false, failure);
+            RETURN_FAILURE(isTestMode, false, failure);
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 } // namespace

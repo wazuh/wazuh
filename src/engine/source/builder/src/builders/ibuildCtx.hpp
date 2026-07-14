@@ -1,5 +1,5 @@
-#ifndef _BUILDER_BUILDERS_IBUILDCTX_HPP
-#define _BUILDER_BUILDERS_IBUILDCTX_HPP
+#ifndef BUILDER_BUILDERS_IBUILDCTX_HPP
+#define BUILDER_BUILDERS_IBUILDCTX_HPP
 
 #include <memory>
 #include <optional>
@@ -17,13 +17,15 @@ namespace builder::builders
 {
 
 /**
- * @brief Control flags for the runtime.
+ * @brief Struct representing integration-related data in the build context
+ *
  */
-struct RunState
+struct IntegrationData
 {
-    bool trace;   ///< Whether trace messages are active.
-    bool sandbox; ///< Whether test/sandbox mode is active.
-    bool check;   ///< Whether hard type enforcement mode is active.
+    std::string name;     ///< Name of the current integration being built.
+    std::string category; ///< Category of the current integration being built.
+    std::optional<std::unordered_map<std::string, bool>>
+        availableKvdbs; ///< Available KVDBs: nullopt = no validation, value = validate with this map.
 };
 
 /**
@@ -31,17 +33,14 @@ struct RunState
  */
 struct Context
 {
-    std::string assetName;           ///< Name of the current asset being built.
-    std::string integrationName;     ///< Name of the current integration being built.
-    std::string integrationCategory; ///< Category of the current integration being built.
-    std::string policyName;          ///< Name of the current policy being built.
-    std::string originSpace;         ///< Origin space of the policy (from DataPolicy, default "UNDEFINED").
-    std::string stageName;           ///< Name of the current stage being built.
-    std::string opName;              ///< Name of the current operation being built.
-    std::optional<std::unordered_map<std::string, bool>>
-        availableKvdbs;              ///< Available KVDBs: nullopt = no validation, value = validate with this map.
-    bool indexDiscardedEvents;       ///< Policy configuration: whether to index discarded events.
-    bool indexUnclassifiedEvents;    ///< Policy configuration: whether to index unclassified events.
+    std::string assetName;        ///< Name of the current asset being built.
+    std::string policyName;       ///< Name of the current policy being built.
+    std::string originSpace;      ///< Origin space of the policy (from DataPolicy, default "UNDEFINED").
+    std::string stageName;        ///< Name of the current stage being built.
+    std::string opName;           ///< Name of the current operation being built.
+    IntegrationData integration;  ///< Data related to the current integration being built.
+    bool indexDiscardedEvents;    ///< Policy configuration: whether to index discarded events.
+    bool indexUnclassifiedEvents; ///< Policy configuration: whether to index unclassified events.
 };
 
 /**
@@ -123,11 +122,13 @@ public:
     virtual Context& context() = 0;
 
     /**
-     * @brief Get the run state object
+     * @brief Whether the policy is built in test mode (enables trace messages and sandbox behavior).
      *
-     * @return std::shared_ptr<const RunState>
+     * This is a policy-level immutable flag set once at construction time.
+     *
+     * @return bool True if test mode is active, false for production.
      */
-    virtual std::shared_ptr<const RunState> runState() const = 0;
+    virtual bool isTestMode() const = 0;
 
     /**
      * @brief Get the allowed fields object
@@ -197,4 +198,4 @@ public:
 
 } // namespace builder::builders
 
-#endif // _BUILDER_BUILDERS_IBUILDCTX_HPP
+#endif // BUILDER_BUILDERS_IBUILDCTX_HPP

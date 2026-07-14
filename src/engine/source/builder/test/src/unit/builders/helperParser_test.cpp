@@ -198,6 +198,36 @@ class IsDefaultHelperTest : public ::testing::TestWithParam<IsDefaultT>
 {
 };
 
+TEST(ValueTest, StringOnlyValueMatchesJsonStringSerialization)
+{
+    const std::string literal {R"(quoted "value" with \ slash and
+newline)"};
+    Value value {literal};
+
+    json::Json expected;
+    expected.setString(literal);
+
+    ASSERT_TRUE(value.isStringValue());
+    ASSERT_EQ(value.type(), json::Json::Type::String);
+    ASSERT_EQ(value.value(), expected);
+    ASSERT_EQ(value.str(), expected.str());
+}
+
+TEST(ValueTest, GetStringWorksForStringOnlyAndJsonStringValues)
+{
+    const std::string literal {R"(value "with" \ escaped chars)"};
+    Value stringOnly {literal};
+    Value jsonBacked {json::Json(R"("value \"with\" \\ escaped chars")")};
+
+    std::string_view stringOnlyView;
+    std::string_view jsonBackedView;
+
+    ASSERT_EQ(stringOnly.getString(stringOnlyView), json::RetGet::Success);
+    ASSERT_EQ(jsonBacked.getString(jsonBackedView), json::RetGet::Success);
+    ASSERT_EQ(stringOnlyView, literal);
+    ASSERT_EQ(jsonBackedView, literal);
+}
+
 TEST_P(IsDefaultHelperTest, parse)
 {
     auto [input, expected] = GetParam();

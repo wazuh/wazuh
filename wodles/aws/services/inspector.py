@@ -4,7 +4,7 @@
 
 import sys
 from os import path
-from datetime import datetime
+from datetime import datetime, timezone
 
 sys.path.append(path.dirname(path.realpath(__file__)))
 import aws_service
@@ -12,15 +12,12 @@ import aws_service
 sys.path.insert(0, path.dirname(path.dirname(path.abspath(__file__))))
 import aws_tools
 
-INSPECTOR_V1_REGIONS = (
-    'ap-northeast-1', 'ap-northeast-2', 'ap-south-1', 'ap-southeast-2', 'eu-central-1', 'eu-north-1', 'eu-west-1',
-    'eu-west-2', 'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'
-)
-
-INSPECTOR_V2_REGIONS = INSPECTOR_V1_REGIONS + (
-    'af-south-1', 'ap-east-1', 'ap-northeast-3', 'ap-southeast-1', 'ap-southeast-3', 'ap-southeast-4', 'ap-southeast-5',
-    'ap-southeast-7', 'ap-south-2', 'ca-central-1', 'ca-west-1', 'eu-west-3', 'eu-central-2', 'eu-south-1',
-    'eu-south-2', 'il-central-1', 'me-central-1', 'sa-east-1', 'mx-central-1'
+INSPECTOR_V2_REGIONS = (
+    'af-south-1', 'ap-east-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3', 'ap-south-1', 'ap-south-2',
+    'ap-southeast-1', 'ap-southeast-2', 'ap-southeast-3', 'ap-southeast-4', 'ap-southeast-5', 'ap-southeast-7',
+    'ca-central-1', 'ca-west-1', 'eu-central-1', 'eu-central-2', 'eu-north-1', 'eu-south-1', 'eu-south-2',
+    'eu-west-1', 'eu-west-2', 'eu-west-3', 'il-central-1', 'me-central-1', 'mx-central-1', 'sa-east-1',
+    'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2'
 )
 
 
@@ -74,29 +71,7 @@ class AWSInspector(aws_service.AWSService):
         # max DB records for region
         self.retain_db_records = 5
         self.sent_events = 0
-        self.sent_events_v1 = 0
         self.sent_events_v2 = 0
-
-    def send_describe_findings(self, arn_list: list):
-        """
-        Collect and send to analysisd the requested findings.
-
-        Parameters
-        ----------
-        arn_list : list[str]
-            The ARN of the findings that should be requested to AWS and sent to analysisd.
-        """
-        if arn_list:
-            response = self.client.describe_findings(findingArns=arn_list)['findings']
-            aws_tools.debug(f"+++ [InspectorV1] Processing {len(response)} events", 3)
-            for elem in response:
-                if self.event_should_be_skipped(elem):
-                    aws_tools.debug(f'+++ [InspectorV1] The "{self.discard_regex.pattern}" regex found a match in the '
-                                    f'"{self.discard_field}" field. The event will be skipped.', 2)
-                    continue
-                self.send_msg(self.format_message(elem))
-                self.sent_events += 1
-                self.sent_events_v1 += 1
 
     def get_alerts(self):
         self.init_db(self.sql_create_table.format(table_name=self.db_table_name))
@@ -127,37 +102,15 @@ class AWSInspector(aws_service.AWSService):
             date_scan = date_only_logs if date_only_logs > date_last_scan else date_last_scan
 
         # get current time (UTC)
-        date_current = datetime.utcnow()
+        date_current = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        # Note: Regions in both INSPECTOR_V1_REGIONS and INSPECTOR_V2_REGIONS will process
-        # findings from both APIs, accumulating events in self.sent_events
-        if self.region in INSPECTOR_V1_REGIONS:
-            aws_tools.debug(f"+++ Listing findings from {date_scan}", 2)
-            response = self.client.list_findings(maxResults=100,
-                                                 filter={'creationTimeRange': {'beginDate': date_scan,
-                                                                               'endDate': date_current}})
-            self.send_describe_findings(response['findingArns'])
+        aws_tools.debug(f"+++ Attempting to fetch Inspector V2 findings from {date_scan}", 2)
+        self.get_alerts_inspector_v2(date_scan, date_current)
 
-            while 'nextToken' in response:
-                response = self.client.list_findings(maxResults=100,
-                                                     nextToken=response['nextToken'],
-                                                     filter={'creationTimeRange': {'beginDate': date_scan,
-                                                                                   'endDate': date_current}})
-                self.send_describe_findings(response['findingArns'])
-
-        if self.region in INSPECTOR_V2_REGIONS:
-            aws_tools.debug(f"+++ Attempting to fetch Inspector V2 findings from {date_scan}", 2)
-            self.get_alerts_inspector_v2(date_scan, date_current)
-
-        # Log events collected from each API separately for validation
-        if self.region in INSPECTOR_V1_REGIONS:
-            aws_tools.debug(f"+++ [InspectorV1] {self.sent_events_v1} events collected and processed", 1)
-
-        if self.region in INSPECTOR_V2_REGIONS:
-            if self.sent_events_v2 > 0:
-                aws_tools.debug(f"+++ [InspectorV2] {self.sent_events_v2} events collected and processed", 1)
-            else:
-                aws_tools.debug(f"+++ [InspectorV2] No findings with recent updates in the specified time range", 1)
+        if self.sent_events_v2 > 0:
+            aws_tools.debug(f"+++ [InspectorV2] {self.sent_events_v2} events collected and processed", 1)
+        else:
+            aws_tools.debug(f"+++ [InspectorV2] No findings with recent updates in the specified time range", 1)
 
         if self.sent_events:
             aws_tools.debug(f"+++ Total: {self.sent_events} events collected and processed in {self.region}", 1)
@@ -169,7 +122,7 @@ class AWSInspector(aws_service.AWSService):
             'service_name': self.service_name,
             'aws_account_id': self.account_id,
             'aws_region': self.region,
-            'scan_date': date_current})
+            'scan_date': date_current.strftime('%Y-%m-%d %H:%M:%S.%f')})
         # DB maintenance
         self.db_cursor.execute(self.sql_db_maintenance.format(table_name=self.db_table_name), {
             'service_name': self.service_name,
@@ -250,5 +203,5 @@ class AWSInspector(aws_service.AWSService):
 
     @staticmethod
     def check_region(region: str) -> None:
-        if region not in INSPECTOR_V1_REGIONS and region not in INSPECTOR_V2_REGIONS:
+        if region not in INSPECTOR_V2_REGIONS:
             raise ValueError(f"Unsupported region '{region}'")

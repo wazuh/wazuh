@@ -142,28 +142,41 @@ public:
     }
 
     /**
-     * @brief Get a task from the queue (blocking)
-     * @return TaskItem or empty if shutdown
+     * @brief Get a task from the queue (blocking, timed).
+     * @details Blocks until the front task is due, a new earlier task is pushed,
+     *          reprioritizeToFront() is called, or shutdown is signaled.
+     *          Returns nullopt immediately on shutdown.
+     * @return TaskItem (deep copy) or nullopt on shutdown
      */
     std::optional<TaskItem> pop()
     {
         std::unique_lock<std::mutex> lock(m_mutex);
-        m_condition.wait(lock, [this] { return !m_tasks.empty() || m_shutdown; });
-
-        if (m_shutdown && m_tasks.empty())
+        while (true)
         {
-            return std::nullopt;
-        }
+            if (m_shutdown)
+            {
+                return std::nullopt;
+            }
 
-        if (!m_tasks.empty())
-        {
-            // DEEP COPY to avoid data races
-            TaskItem item = m_tasks.front(); // Copy constructor
-            m_tasks.pop_front();
-            return item;
-        }
+            if (m_tasks.empty())
+            {
+                m_condition.wait(lock, [this] { return !m_tasks.empty() || m_shutdown; });
+                continue;
+            }
 
-        return std::nullopt;
+            auto now = std::chrono::steady_clock::now();
+            if (m_tasks.front().nextRun <= now)
+            {
+                // DEEP COPY to avoid data races
+                TaskItem item = m_tasks.front();
+                m_tasks.pop_front();
+                return item;
+            }
+
+            // Front task not yet due — sleep until its deadline or until interrupted
+            auto deadline = m_tasks.front().nextRun;
+            m_condition.wait_until(lock, deadline);
+        }
     }
 
     /**
@@ -204,6 +217,29 @@ public:
         std::lock_guard<std::mutex> lock(m_mutex);
         m_tasks.clear();
     }
+
+    /**
+     * @brief Move a task to the front of the queue by name.
+     * @return true if found and moved; false if task is not currently in the queue.
+     */
+    bool reprioritizeToFront(const std::string& taskName)
+    {
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            auto it = std::find_if(
+                m_tasks.begin(), m_tasks.end(), [&taskName](const TaskItem& item) { return item.name == taskName; });
+            if (it == m_tasks.end())
+            {
+                return false;
+            }
+            TaskItem item = *it;
+            item.nextRun = std::chrono::steady_clock::time_point {};
+            m_tasks.erase(it);
+            m_tasks.push_front(item);
+        }
+        m_condition.notify_one(); // wake a worker: epoch task is now at front and immediately due
+        return true;
+    }
 };
 ;
 
@@ -229,7 +265,7 @@ struct ScheduledTask
     {
         nextRun = [&]() -> std::chrono::steady_clock::time_point
         {
-            if (isOneTime)
+            if (isOneTime || config.runImmediately)
             {
                 return std::chrono::steady_clock::now();
             }
@@ -323,10 +359,10 @@ public:
      * @details Creates a new scheduler with the specified number of worker threads.
      *          The scheduler is created in stopped state and must be started explicitly.
      *
-     * @param threads Number of worker threads to create (minimum 1)
-     * @note If threads <= 0, exactly 1 thread will be created
+     * @param threads Number of worker threads to create (minimum 2)
+     * @note If threads <= 0, exactly 2 thread will be created
      */
-    Scheduler(int threads = 1);
+    Scheduler(int threads = 2);
 
     /**
      * @brief Destructor
@@ -370,6 +406,11 @@ public:
      * @copydoc IScheduler::scheduleTask
      */
     void scheduleTask(std::string_view taskName, TaskConfig&& config) override;
+
+    /**
+     * @copydoc IScheduler::scheduleTaskFirst
+     */
+    void scheduleTaskFirst(std::string_view taskName) override;
 
     /**
      * @copydoc IScheduler::removeTask

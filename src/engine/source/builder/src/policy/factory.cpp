@@ -75,7 +75,7 @@ namespace builder::policy::factory
 BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
                         const std::shared_ptr<cm::store::ICMStoreNSReader>& cmStoreNsReader,
                         const std::shared_ptr<IAssetBuilder>& assetBuilder,
-                        const bool sandbox)
+                        const bool isTestMode)
 {
     BuiltAssets builtAssets;
 
@@ -129,7 +129,14 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         stageData.assets.emplace(asset.name(), std::move(asset));
     };
 
-    const base::Name rootDecoderName {std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoderUUID()))};
+    const auto rootDecoderName = [&]() -> base::Name
+    {
+        if (policy.getRootDecoderUUID().empty())
+        {
+            throw std::runtime_error("Missing root decoder");
+        }
+        return std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoderUUID()));
+    }();
 
     // NOTE: The order of integrations and their decoders defines the final evaluation order for
     // sibling decoders in the expression. We preserve insertion order via orderedAssets.
@@ -144,8 +151,8 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         // TODO: Only decoder should have the integration context
         // TODO: The context integration should has the aviable KVDBs for validation
         // Configure partial build context for the integration.
-        assetBuilder->getContext().integrationName = integration.getName();
-        assetBuilder->getContext().integrationCategory = integration.getCategory();
+        assetBuilder->getContext().integration.name = integration.getName();
+        assetBuilder->getContext().integration.category = integration.getCategory();
         // Set availability map in the build context (integration-scoped).
         assetBuilder->setAvailableKvdbs(buildKvdbsMap(integration, cmStoreNsReader, integUUID));
 
@@ -216,8 +223,7 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         }
     }
 
-    // TODO: Should clear all integration related context
-    assetBuilder->clearAvailableKvdbs();
+    assetBuilder->clearIntegrationData();
 
     // Filters
     for (const auto& filterUUID : policy.getFiltersUUIDs())
@@ -243,10 +249,10 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
     }
 
     // TODO: Only available for production -->> Remove this, outputs should always be associated with a policy
-    if (!sandbox)
+    if (!isTestMode)
     {
         // Default outputs are not associated with an integration; clear KVDB validation.
-        assetBuilder->clearAvailableKvdbs();
+        assetBuilder->clearIntegrationData();
 
         const auto outputsForSpace = cmStoreNsReader->getOutputsForSpace(policy.getOriginSpace());
         for (const auto& output : outputsForSpace)

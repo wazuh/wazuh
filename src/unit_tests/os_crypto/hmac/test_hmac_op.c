@@ -107,9 +107,14 @@ void test_hmac_file_popen_fail(void **state)
     char file_name[256];
     strncpy(file_name, "/tmp/tmp_file-XXXXXX", 256);
 
-    expect_value(__wrap_fopen, path, file_name);
-    expect_string(__wrap_fopen, mode, "r");
-    will_return(__wrap_fopen, 0);
+    // OS_HMAC_SHA1_File calls wfopen directly on every target; on Linux
+    // wfopen internally calls fopen so the previous expect_*(__wrap_fopen, ...)
+    // happened to work, but on winagent wfopen uses Win32 APIs (CreateFile)
+    // and never reaches fopen. Wrap wfopen so the expectation matches the
+    // actual call on both targets.
+    expect_string(__wrap_wfopen, path, file_name);
+    expect_string(__wrap_wfopen, mode, "r");
+    will_return(__wrap_wfopen, NULL);
 
     assert_int_equal(OS_HMAC_SHA1_File(key, file_name, buffer, OS_TEXT), -1);
 }

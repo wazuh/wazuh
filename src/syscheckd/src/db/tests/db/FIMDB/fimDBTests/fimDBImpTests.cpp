@@ -26,91 +26,95 @@ void mockLoggingFunction(const modules_log_level_t logLevel, const char* tag)
 
 class FimDBWinFixture : public ::testing::Test
 {
-protected:
-    MockDBSyncHandler* mockDBSync;
-    MockFIMDB fimDBMock;
-    unsigned int mockMaxRowsFile;
-    unsigned int mockMaxRowsReg;
+    protected:
+        MockDBSyncHandler* mockDBSync;
+        MockFIMDB fimDBMock;
+        unsigned int mockMaxRowsFile;
+        unsigned int mockMaxRowsReg;
 
-    void SetUp() override
-    {
-        constexpr auto MOCK_SQL_STATEMENT {
-            R"(CREATE TABLE mock_db (
+        void SetUp() override
+        {
+            constexpr auto MOCK_SQL_STATEMENT
+            {
+                R"(CREATE TABLE mock_db (
                 mock_text TEXT,
                 PRIMARY KEY (mock_text))
                 )"};
 
-        mockMaxRowsFile = 1000;
-        mockMaxRowsReg = 1000;
+            mockMaxRowsFile = 1000;
+            mockMaxRowsReg = 1000;
 
-        std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper {
-            [](modules_log_level_t level, const std::string& log)
+            std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper
             {
-                mockLoggingFunction(level, log.c_str());
-            }};
+                [](modules_log_level_t level, const std::string & log)
+                {
+                    mockLoggingFunction(level, log.c_str());
+                }};
 
-        std::shared_ptr<DBSync> dbsyncHandler = std::make_unique<MockDBSyncHandler>(
-            HostType::AGENT, DbEngineType::SQLITE3, MOCK_DB_PATH, MOCK_SQL_STATEMENT);
-        mockDBSync = (MockDBSyncHandler*)dbsyncHandler.get();
-        mockLog = new MockLoggingCall();
+            std::shared_ptr<DBSync> dbsyncHandler = std::make_unique<MockDBSyncHandler>(
+                                                        HostType::AGENT, DbEngineType::SQLITE3, MOCK_DB_PATH, MOCK_SQL_STATEMENT);
+            mockDBSync = (MockDBSyncHandler*)dbsyncHandler.get();
+            mockLog = new MockLoggingCall();
 
-        fimDBMock.init(callbackLogWrapper, dbsyncHandler, mockMaxRowsFile, mockMaxRowsReg);
-    }
+            fimDBMock.init(callbackLogWrapper, dbsyncHandler, mockMaxRowsFile, mockMaxRowsReg);
+        }
 
-    void TearDown() override
-    {
-        fimDBMock.teardown();
-        std::remove(MOCK_DB_PATH);
-        delete mockLog;
-    };
+        void TearDown() override
+        {
+            fimDBMock.teardown();
+            std::remove(MOCK_DB_PATH);
+            delete mockLog;
+        };
 };
 
 class FimDBFixture : public ::testing::Test
 {
-protected:
-    MockDBSyncHandler* mockDBSync;
-    MockFIMDB fimDBMock;
-    unsigned int mockMaxRowsFile;
-    unsigned int mockMaxRowsReg;
+    protected:
+        MockDBSyncHandler* mockDBSync;
+        MockFIMDB fimDBMock;
+        unsigned int mockMaxRowsFile;
+        unsigned int mockMaxRowsReg;
 
-    void SetUp() override
-    {
-        constexpr auto MOCK_SQL_STATEMENT {
-            R"(CREATE TABLE mock_db (
+        void SetUp() override
+        {
+            constexpr auto MOCK_SQL_STATEMENT
+            {
+                R"(CREATE TABLE mock_db (
                 mock_text TEXT,
                 PRIMARY KEY (mock_text))
                 )"};
 
-        mockMaxRowsFile = 1000;
-        mockMaxRowsReg = 1000;
+            mockMaxRowsFile = 1000;
+            mockMaxRowsReg = 1000;
 
-        std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper {
-            [](modules_log_level_t level, const std::string& log)
+            std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper
             {
-                mockLoggingFunction(level, log.c_str());
-            }};
+                [](modules_log_level_t level, const std::string & log)
+                {
+                    mockLoggingFunction(level, log.c_str());
+                }};
 
-        std::shared_ptr<DBSync> dbsyncHandler = std::make_unique<MockDBSyncHandler>(
-            HostType::AGENT, DbEngineType::SQLITE3, MOCK_DB_PATH, MOCK_SQL_STATEMENT);
-        mockDBSync = (MockDBSyncHandler*)dbsyncHandler.get();
-        mockLog = new MockLoggingCall();
+            std::shared_ptr<DBSync> dbsyncHandler = std::make_unique<MockDBSyncHandler>(
+                                                        HostType::AGENT, DbEngineType::SQLITE3, MOCK_DB_PATH, MOCK_SQL_STATEMENT);
+            mockDBSync = (MockDBSyncHandler*)dbsyncHandler.get();
+            mockLog = new MockLoggingCall();
 
-        EXPECT_CALL((*mockDBSync), setTableMaxRow("file_entry", mockMaxRowsFile));
+            EXPECT_CALL((*mockDBSync), setTableMaxRow("file_entry", mockMaxRowsFile));
 
 #ifdef WIN32
-        EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_key", mockMaxRowsReg));
-        EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_data", mockMaxRowsReg));
+            EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_key", mockMaxRowsReg));
+            EXPECT_CALL((*mockDBSync), setTableMaxRow("registry_data", mockMaxRowsReg));
 #endif
 
-        fimDBMock.init(callbackLogWrapper, dbsyncHandler, mockMaxRowsFile, mockMaxRowsReg);
-    }
+            fimDBMock.init(callbackLogWrapper, dbsyncHandler, mockMaxRowsFile, mockMaxRowsReg);
+        }
 
-    void TearDown() override
-    {
-        fimDBMock.teardown();
-        std::remove(MOCK_DB_PATH);
-        delete mockLog;
-    };
+        void TearDown() override
+        {
+            fimDBMock.teardown();
+            std::remove(MOCK_DB_PATH);
+            delete mockLog;
+        };
 };
 
 TEST_F(FimDBFixture, dbSyncHandlerInitSuccess)

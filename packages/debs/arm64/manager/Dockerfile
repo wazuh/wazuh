@@ -17,7 +17,7 @@ RUN /usr/local/bin/retry.sh --attempts 5 --delay 10 --backoff 2 --max-delay 40 -
     curl gcc g++ make sudo expect gnupg \
     perl-base perl wget libc-bin libc6 libc6-dev \
     build-essential cdbs devscripts equivs automake \
-    autoconf libtool libaudit-dev selinux-basics \
+    autoconf libtool libaudit-dev \
     libdb5.3 libdb5.3 libssl1.0.2 gawk libsigsegv2
 
 # Add Debian's source repository and, Install NodeJS 12

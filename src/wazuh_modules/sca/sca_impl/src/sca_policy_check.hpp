@@ -15,7 +15,8 @@ enum class RuleResult
 {
     Invalid = -1,
     Found,
-    NotFound
+    NotFound,
+    NotRun
 };
 
 struct RuleEvaluationResult
@@ -51,7 +52,7 @@ class IRuleEvaluator
 
         virtual const PolicyEvaluationContext& GetContext() const = 0;
 
-        virtual std::string GetInvalidReason() const = 0;
+        virtual std::string GetUnresolvedReason() const = 0;
 };
 
 class RuleEvaluator : public IRuleEvaluator
@@ -61,15 +62,15 @@ class RuleEvaluator : public IRuleEvaluator
 
         const PolicyEvaluationContext& GetContext() const override;
 
-        std::string GetInvalidReason() const override
+        std::string GetUnresolvedReason() const override
         {
-            return m_lastInvalidReason;
+            return m_lastUnresolvedReason;
         }
 
     protected:
         std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper = nullptr;
         PolicyEvaluationContext m_ctx = {};
-        std::string m_lastInvalidReason;
+        std::string m_lastUnresolvedReason;
 };
 
 class FileRuleEvaluator : public RuleEvaluator
@@ -97,6 +98,7 @@ class CommandRuleEvaluator : public RuleEvaluator
             std::string StdOut;
             std::string StdErr;
             int ExitCode;
+            bool TimedOut = false;
         };
 
         /// @brief Function that takes a command and returns the output and error as a pair of strings.
@@ -184,6 +186,14 @@ class RegistryRuleEvaluator : public RuleEvaluator
         EnumValuesFunc m_enumValues = nullptr;
         GetValueFunc m_getValue = nullptr;
 };
+
+namespace sca::win
+{
+    /// @brief Expands Win32 environment variables (e.g. "%PROGRAMFILES%\\foo")
+    ///        in SCA rule inputs. Unknown %VAR% tokens are left literal.
+    ///        Returns the input unchanged on failure.
+    std::string ExpandEnvironmentVariables(const std::string& input);
+}
 
 class RuleEvaluatorFactory
 {

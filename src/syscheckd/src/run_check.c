@@ -59,6 +59,29 @@ void audit_set_db_consistency(void);
 // Global flag to stop sync module
 volatile int fim_sync_module_running = 0;
 
+#ifndef WIN32
+// Handle to the FIM inventory synchronization thread. Kept joinable (issue #37334) so
+// the shutdown waiter (fim_shutdown_waiter(), main.c) can wait for it to exit before
+// destroying the sync protocol handle, letting its SQLite connection to fim_sync.db
+// close cleanly (checkpoint + removal of the -wal/-shm files) instead of leaking it
+// on a graceful stop.
+pthread_t fim_sync_thread;
+bool fim_sync_thread_initialized = false;
+
+// Self-pipe fim_run_integrity() writes to on exit so the shutdown waiter can bound its
+// wait for the thread (poll + timeout) instead of blocking forever in pthread_join().
+// Created in main() before the waiter thread; stays {-1, -1} in the unit-test builds so
+// the write below is skipped.
+int fim_sync_exit_pipe[2] = {-1, -1};
+#endif
+
+// Serializes syscheck.sync_handle use against the shutdown teardown (issue #37334): the
+// users that are not joined before asp_destroy() (event persistence, syscom's fim_sync
+// responses, the DataClean paths and the scheduled-scan asp_reset) take it for reading
+// around each asp_* call, and the shutdown waiter destroys the handle under the write
+// lock. Statically initialized so it is valid no matter how early those threads run.
+pthread_rwlock_t fim_sync_handle_rwlock = PTHREAD_RWLOCK_INITIALIZER;
+
 // Flush on-demand synchronization variables (thread-safe with atomic operations)
 atomic_int_t fim_flush_in_progress = ATOMIC_INT_INITIALIZER(0);  // 0 = idle, 1 = flush active
 atomic_int_t fim_flush_result = ATOMIC_INT_INITIALIZER(0);       // 0 = success, -1 = error
@@ -217,7 +240,11 @@ STATIC bool send_data_clean_with_retry(const char* indices[], size_t indices_cou
     bool dataCleanSent = false;
 
     while (!dataCleanSent && !fim_shutdown_process_on()) {
-        dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+        w_rwlock_rdlock(&fim_sync_handle_rwlock);
+        if (syscheck.sync_handle) {
+            dataCleanSent = asp_notify_data_clean(syscheck.sync_handle, indices, indices_count);
+        }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
         if (!dataCleanSent) {
             mdebug1("DataClean notification failed, retrying after sync interval (%u seconds)...", syscheck.sync_interval);
             for (uint32_t i = 0; i < syscheck.sync_interval && !fim_shutdown_process_on(); i++) {
@@ -225,7 +252,11 @@ STATIC bool send_data_clean_with_retry(const char* indices[], size_t indices_cou
             }
         } else {
             mdebug1("DataClean notification sent successfully.");
-            asp_delete_database(syscheck.sync_handle);
+            w_rwlock_rdlock(&fim_sync_handle_rwlock);
+            if (syscheck.sync_handle) {
+                asp_delete_database(syscheck.sync_handle);
+            }
+            w_rwlock_unlock(&fim_sync_handle_rwlock);
             fim_db_close_and_delete_database();
             mdebug1("FIM databases deleted successfully.");
         }
@@ -255,7 +286,7 @@ STATIC bool handle_all_paths_removed(void) {
     mdebug1("All monitored paths removed from configuration but database has data. Initiating DataClean process.");
 
     if (!syscheck.sync_handle) {
-        merror("Sync protocol not initialized, cannot send DataClean notification.");
+        minfo("Sync protocol not initialized, cannot send DataClean notification.");
         return false;
     }
 
@@ -299,7 +330,11 @@ STATIC void handle_fim_disabled(void) {
         send_data_clean_with_retry(indices, indices_count);
     } else {
         minfo("Syscheck is disabled, FIM database has no entries. Skipping data clean notification.");
-        asp_delete_database(syscheck.sync_handle);
+        w_rwlock_rdlock(&fim_sync_handle_rwlock);
+        if (syscheck.sync_handle) {
+            asp_delete_database(syscheck.sync_handle);
+        }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
         fim_db_close_and_delete_database();
         mdebug1("FIM databases deleted successfully.");
     }
@@ -319,7 +354,9 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
         }
 
         // Try to send it again
-        SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on);
+        if (SendMSGPredicated(syscheck.queue, msg, location, mq, fim_shutdown_process_on) < 0) {
+            merror("Failed to send message after reopening queue");
+        }
     }
 }
 
@@ -353,7 +390,11 @@ void persist_syscheck_msg(const char *id, Operation_t operation, const char *ind
 
         // Validation is now done before DBSync insertion in the callbacks
         // This function just persists the already-validated data
-        asp_persist_diff(syscheck.sync_handle, id, operation, index, msg, version);
+        w_rwlock_rdlock(&fim_sync_handle_rwlock);
+        if (syscheck.sync_handle) {
+            asp_persist_diff(syscheck.sync_handle, id, operation, index, msg, version);
+        }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
 
         os_free(msg);
     } else {
@@ -531,6 +572,16 @@ int send_log_msg(const char * msg)
 
 // LCOV_EXCL_START
 // Periodically run the integrity checker
+// Prime the in-memory first-sync flag from the persisted marker. On a restart where the
+// first sync already completed in a previous run, this lets syscom report
+// first_sync_completed=true immediately so agent-info does not defer coordination during
+// the startup baseline-scan window (before fim_run_integrity sets the flag itself).
+STATIC void prime_fim_first_sync_from_marker(void) {
+    if (fim_db_get_last_sync_time(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY) > 0) {
+        atomic_int_set(&syscheck.fim_first_sync_completed, 1);
+    }
+}
+
 void start_daemon()
 {
     int day_scanned = 0;
@@ -594,6 +645,7 @@ void start_daemon()
 
     if (syscheck.disabled) {
         handle_fim_disabled();
+        atomic_int_set(&syscheck.fim_first_sync_completed, 1);
         minfo("Syscheck is disabled. Exiting.");
         return;
     }
@@ -603,11 +655,12 @@ void start_daemon()
     if (!fim_has_configured_paths()) {
         mdebug1("Syscheck enabled but no monitored paths configured. Checking for orphaned data.");
         handle_all_paths_removed();
+        atomic_int_set(&syscheck.fim_first_sync_completed, 1);
         minfo("No monitored paths configured. FIM module exiting after DataClean.");
         return;
     }
 
-    mdebug1(FIM_DAEMON_STARTED);
+    minfo(FIM_DAEMON_STARTED);
 
     if (syscheck.file_limit_enabled) {
         mdebug2(FIM_FILE_LIMIT_VALUE, syscheck.file_entry_limit);
@@ -623,8 +676,13 @@ void start_daemon()
     }
 #endif
 
+    // Prime the first-sync flag from the persisted marker so that on a restart — where the
+    // first sync already completed in a previous run — agent-info does not defer coordination
+    // during the startup baseline-scan window, before fim_run_integrity sets it.
+    prime_fim_first_sync_from_marker();
+
     // Create File integrity monitoring base-line
-    mdebug1(FIM_FREQUENCY_TIME, syscheck.time);
+    minfo(FIM_FREQUENCY_TIME, syscheck.time);
     fim_scan();
 
 #ifndef WIN32
@@ -635,9 +693,25 @@ void start_daemon()
     w_create_thread(symlink_checker_thread, NULL);
 
     if (syscheck.enable_synchronization) {
-        fim_sync_module_running = 1;
-        // Launch inventory synchronization thread
-        w_create_thread(fim_run_integrity, NULL);
+        // Launch the inventory synchronization thread as joinable so the shutdown waiter
+        // can wait for it before destroying the sync protocol handle (issue #37334). The
+        // creation and fim_sync_thread_initialized are published under the handle write
+        // lock, which the waiter also takes to decide the join: either the thread is
+        // visible there and joined before the handle is destroyed, or the waiter ran
+        // first and the shutdown check below keeps the thread from being created at all.
+        w_rwlock_wrlock(&fim_sync_handle_rwlock);
+        if (fim_shutdown_process_on()) {
+            mdebug1("Shutdown in progress: not launching the FIM inventory synchronization thread.");
+        } else {
+            fim_sync_module_running = 1;
+            if (CreateThreadJoinable(&fim_sync_thread, fim_run_integrity, NULL) != 0) {
+                merror(THREAD_ERROR);
+                fim_sync_module_running = 0;
+            } else {
+                fim_sync_thread_initialized = true;
+            }
+        }
+        w_rwlock_unlock(&fim_sync_handle_rwlock);
     } else {
         mdebug1("FIM inventory synchronization is disabled");
     }
@@ -755,8 +829,12 @@ void start_daemon()
         }
 
         // Reset sync protocol stop flag if scheduled scan is triggered
-        if (run_now && syscheck.sync_handle) {
-            asp_reset(syscheck.sync_handle);
+        if (run_now) {
+            w_rwlock_rdlock(&fim_sync_handle_rwlock);
+            if (syscheck.sync_handle) {
+                asp_reset(syscheck.sync_handle);
+            }
+            w_rwlock_unlock(&fim_sync_handle_rwlock);
         }
 
         // If time elapsed is higher than the syscheck time, run syscheck time
@@ -900,6 +978,7 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 #endif
 
     if (first_sync_completed) {
+        atomic_int_set(&syscheck.fim_first_sync_completed, 1);
         mdebug1("FIM first synchronization already completed in a previous run. Keeping startup synchronization delay.");
     } else {
         mdebug1("Initial FIM scan data is ready. Triggering first synchronization without startup delay.");
@@ -915,14 +994,6 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
         } else {
             // Wait for sync_interval, checking for pause and flush requests
             for (uint32_t i = 0; i < syscheck.sync_interval && fim_sync_module_running; i++) {
-                // Check for pause request (atomic read, no mutex needed)
-                int pause_requested = atomic_int_get(&syscheck.fim_pause_requested);
-
-                if (pause_requested) {
-                    // Acknowledge pause immediately (atomic write, no mutex needed)
-                    atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
-                }
-
                 // Check for flush request
                 if (atomic_int_get(&fim_flush_in_progress)) {
                     flush_request_detected = true;
@@ -944,35 +1015,34 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
         // Handle pause: if paused and no flush, skip this iteration
         if (pause_requested && !flush_request_detected) {
-            // Acknowledge pause (atomic write, no mutex needed)
-            atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
-
             mdebug2("FIM is paused, skipping sync iteration");
             continue;
         }
 
-        // If paused and flush requested, acknowledge pause and sync without mutexes
+        // If paused and flush requested, sync without mutexes
         if (pause_requested && flush_request_detected) {
-            // Acknowledge pause (atomic write, no mutex needed)
-            atomic_int_set(&syscheck.fim_pausing_is_allowed, 1);
-
             minfo("Starting FIM synchronization requested by agent-info.");
 
-            bool sync_result = asp_sync_module(syscheck.sync_handle,
+            SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
 
-            minfo("FIM synchronization requested by agent-info finished.");
-
-            // If there's a flush request active, mark it as completed
-            if (flush_request_detected) {
-                int result = sync_result ? 0 : -1;
-                atomic_int_set(&fim_flush_result, result);
-                atomic_int_set(&fim_flush_in_progress, 0);
+            if (sync_result.success) {
+                minfo("FIM synchronization requested by agent-info finished successfully.");
+            } else {
+                mwarn("FIM synchronization requested by agent-info failed%s%s",
+                      sync_result.failure_reason[0] != '\0' ? ": " : "",
+                      sync_result.failure_reason);
             }
 
-            if (sync_result && !first_sync_completed) {
+            // Mark the flush as completed (flush_request_detected is always true here).
+            int result = sync_result.success ? 0 : -1;
+            atomic_int_set(&fim_flush_result, result);
+            atomic_int_set(&fim_flush_in_progress, 0);
+
+            if (sync_result.success && !first_sync_completed) {
                 fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
                 first_sync_completed = true;
+                atomic_int_set(&syscheck.fim_first_sync_completed, 1);
             }
         } else {
             // Take a snapshot of the current directories list to avoid holding the lock during integrity checks.
@@ -987,23 +1057,42 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                 continue;
             }
 
-            // Lock FIM's scheduled and realtime scans during sync and recovery process
-            w_mutex_lock(&syscheck.fim_scan_mutex);
-            w_mutex_lock(&syscheck.fim_realtime_mutex);
-            #ifdef WIN32
-            w_mutex_lock(&syscheck.fim_registry_scan_mutex);
-            #endif
             minfo("Starting FIM synchronization.");
 
-            bool sync_result = asp_sync_module(syscheck.sync_handle,
+            SyncModuleResult_t sync_result = asp_sync_module(syscheck.sync_handle,
                                                MODE_DELTA);
-            if (sync_result) {
+            if (sync_result.success) {
                 minfo("FIM synchronization finished successfully.");
 
                 if (!first_sync_completed) {
                     fim_db_update_last_sync_time_value(FIM_FIRST_SYNC_COMPLETED_METADATA_KEY, (int64_t)time(NULL));
                     first_sync_completed = true;
+                    atomic_int_set(&syscheck.fim_first_sync_completed, 1);
                 }
+            } else {
+                mwarn("FIM synchronization failed%s%s", sync_result.failure_reason[0] != '\0' ? ": " : "", sync_result.failure_reason);
+            }
+
+            // If a flush was triggered while paused but processed here (after resume),
+            // clear the flush state so pollFlushCompletion() can return "completed".
+            // Touches only atomics, so it stays outside the scan mutex.
+            if (flush_request_detected) {
+                int result = sync_result.success ? 0 : -1;
+                atomic_int_set(&fim_flush_result, result);
+                atomic_int_set(&fim_flush_in_progress, 0);
+                mdebug1("Pending flush request completed via normal sync path.");
+            }
+
+            // Lock FIM's scheduled and realtime scans only for the recovery/integrity
+            // process, which reads and writes the file_entry table. Skipped once shutdown
+            // starts: fim_scan_mutex can be held by an in-flight scan for minutes, and the
+            // shutdown waiter is waiting to join this thread.
+            if (sync_result.success && fim_sync_module_running) {
+                w_mutex_lock(&syscheck.fim_scan_mutex);
+                w_mutex_lock(&syscheck.fim_realtime_mutex);
+                #ifdef WIN32
+                w_mutex_lock(&syscheck.fim_registry_scan_mutex);
+                #endif
 
                 for (int i = 0; i < table_count; i++) {
                     if (fim_recovery_integrity_interval_has_elapsed(table_names[i], syscheck.integrity_interval)) {
@@ -1020,17 +1109,16 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                         fim_db_update_last_sync_time(table_names[i]);
                     }
                 }
-            } else {
-                mwarn("FIM synchronization failed.");
+
+                #ifdef WIN32
+                w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
+                #endif
+                w_mutex_unlock(&syscheck.fim_realtime_mutex);
+                w_mutex_unlock(&syscheck.fim_scan_mutex);
             }
 
             // Clean up the directories snapshot
             OSList_Destroy(directories_snapshot);
-            #ifdef WIN32
-            w_mutex_unlock(&syscheck.fim_registry_scan_mutex);
-            #endif
-            w_mutex_unlock(&syscheck.fim_realtime_mutex);
-            w_mutex_unlock(&syscheck.fim_scan_mutex);
             mdebug1("FIM synchronization finished, waiting for %d seconds before next run.", syscheck.sync_interval);
         }
     }
@@ -1038,6 +1126,12 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 #ifdef WIN32
     return 0;
 #else
+    // Report the exit to the shutdown waiter so its bounded wait on the exit pipe
+    // returns immediately and it can join this thread without an unbounded stall.
+    if (fim_sync_exit_pipe[1] >= 0) {
+        while (write(fim_sync_exit_pipe[1], "", 1) < 0 && errno == EINTR) {}
+    }
+
     return NULL;
 #endif
 }

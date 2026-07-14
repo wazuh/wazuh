@@ -8,6 +8,7 @@ from engine_public.cmds.cm.validate import configure as configure_validate
 from engine_public.cmds.ioc.state import configure as configure_ioc_state
 from engine_public.cmds.ioc.update import configure as configure_ioc_update
 from engine_public.cmds.tester.logtest_cleanup import configure as configure_logtest_cleanup
+from engine_public.cmds.status.get import configure as configure_status_get
 
 def parse_args():
     meta = metadata('engine-suite')
@@ -85,6 +86,22 @@ def parse_args():
 
     configure_ioc_state(ioc_subparsers)
     configure_ioc_update(ioc_subparsers)
+
+    # ==========================================================
+    # Status commands (engine readiness)
+    # ==========================================================
+    status_parser = subparsers.add_parser(
+        'status',
+        help='Engine readiness/status operations'
+    )
+
+    status_subparsers = status_parser.add_subparsers(
+        title='status commands',
+        required=True,
+        dest='status_command'
+    )
+
+    configure_status_get(status_subparsers)
 
     try:
         import argcomplete

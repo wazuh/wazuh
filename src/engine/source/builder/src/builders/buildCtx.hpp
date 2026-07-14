@@ -1,5 +1,5 @@
-#ifndef _BUILDER_BUILDERS_BUILDCTX_HPP
-#define _BUILDER_BUILDERS_BUILDCTX_HPP
+#ifndef BUILDER_BUILDERS_BUILDCTX_HPP
+#define BUILDER_BUILDERS_BUILDCTX_HPP
 
 #include <string>
 
@@ -14,7 +14,7 @@ namespace builder::builders
 class BuildCtx final : public IBuildCtx
 {
 private:
-    std::shared_ptr<RunState> m_runState; ///< Runtime state
+    bool m_isTestMode {false};            ///< Policy-level immutable: true for test/tester, false for production.
     Context m_context;                    ///< Context
 
     std::shared_ptr<const RegistryType> m_registry; ///< Builders registry
@@ -34,7 +34,7 @@ private:
 public:
     BuildCtx()
     {
-        m_runState = std::make_shared<RunState>();
+        m_isTestMode = false;
         m_context = Context();
         m_registry = nullptr;
         m_definitions = nullptr;
@@ -42,7 +42,7 @@ public:
         m_allowedFields = nullptr;
         m_storeNSReader = nullptr;
         m_allowMissingDependencies = false;
-        m_context.availableKvdbs = std::nullopt;
+        m_context.integration.availableKvdbs = std::nullopt;
         m_context.indexDiscardedEvents = false;
         m_context.indexUnclassifiedEvents = false;
     }
@@ -52,14 +52,14 @@ public:
     /**
      * @brief Construct a new Build Ctx object
      *
-     * @param runState Runtime state
+     * @param isTestMode Whether the policy is built in test mode.
      * @param context Context
      * @param registry Builders registry
      * @param definitions Definitions
      * @param schemaValidator Schema validator
      * @param allowedFields Allowed fields
      */
-    BuildCtx(const std::shared_ptr<RunState>& runState,
+    BuildCtx(bool isTestMode,
              const Context& context,
              const std::shared_ptr<const RegistryType>& registry,
              const std::shared_ptr<const defs::IDefinitions>& definitions,
@@ -67,7 +67,7 @@ public:
              const std::shared_ptr<const builder::IAllowedFields>& allowedFields,
              const std::shared_ptr<cm::store::ICMStoreNSReader>& storeNSReader,
              bool allowMissingDependencies)
-        : m_runState(runState)
+        : m_isTestMode(isTestMode)
         , m_context(context)
         , m_registry(registry)
         , m_definitions(definitions)
@@ -85,7 +85,7 @@ public:
      */
     inline std::shared_ptr<IBuildCtx> clone() const override
     {
-        return std::make_shared<BuildCtx>(m_runState,
+        return std::make_shared<BuildCtx>(m_isTestMode,
                                           m_context,
                                           m_registry,
                                           m_definitions,
@@ -147,14 +147,14 @@ public:
     inline Context& context() override { return m_context; }
 
     /**
-     * @copydoc IBuildCtx::runState
+     * @copydoc IBuildCtx::isTestMode
      */
-    inline std::shared_ptr<const RunState> runState() const override { return m_runState; }
+    inline bool isTestMode() const override { return m_isTestMode; }
 
     /**
-     * @copydoc IBuildCtx::runState
+     * @brief Set the test mode flag. Should be called once during policy construction.
      */
-    inline RunState& runState() { return *m_runState; }
+    inline void setTestMode(bool isTestMode) { m_isTestMode = isTestMode; }
 
     /**
      * @copydoc IBuildCtx::allowedFields
@@ -209,13 +209,13 @@ public:
      */
     inline std::pair<bool, bool> isKvdbAvailable(const std::string& kvdbName) const override
     {
-        if (!m_context.availableKvdbs.has_value())
+        if (!m_context.integration.availableKvdbs.has_value())
         {
             return {false, false};
         }
 
-        auto it = m_context.availableKvdbs.value().find(kvdbName);
-        if (it == m_context.availableKvdbs.value().end())
+        auto it = m_context.integration.availableKvdbs.value().find(kvdbName);
+        if (it == m_context.integration.availableKvdbs.value().end())
         {
             return {false, false};
         }
@@ -233,4 +233,4 @@ public:
 
 } // namespace builder::builders
 
-#endif // _BUILDER_BUILDERS_BUILDCTX_HPP
+#endif // BUILDER_BUILDERS_BUILDCTX_HPP

@@ -89,6 +89,7 @@ namespace utils
  * @throw std::runtime_error if the YML string is invalid.
  */
 std::string ymlToPrettyYaml(const std::string& ymlStr, bool sort = false);
+
 } // namespace utils
 
 } // namespace yml

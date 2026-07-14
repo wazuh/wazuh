@@ -22,79 +22,11 @@
                     "value": "trace"
                 },
                 // Data, store, kvdb and indexer store
-                {
-                    "name": "WAZUH_KVDB_PATH",
-                    "value": "${env:ENGINE_STANDALONE_DIR}/kvdb/"
-                },
-                {
-                    "name": "WAZUH_STORE_PATH",
-                    "value": "${env:ENGINE_STANDALONE_DIR}/store"
-                },
-                // Server and sockets
-                {
-                    "name": "WAZUH_SERVER_API_SOCKET",
-                    "value": "${env:ENGINE_STANDALONE_SOCKET_API}"
-                },
-                {
-                    "name": "WAZUH_SERVER_ENRICHED_EVENTS_SOCKET",
-                    "value": "${env:ENGINE_STANDALONE_SOCKET_REMOTED}"
-                },
-                {
-                    "name": "WAZUH_SERVER_EVENT_SOCKET",
-                    "value": "${env:ENGINE_STANDALONE_SOCKET_LEGACY}"
-                },
-                // TZDB
-                {
-                    "name": "WAZUH_TZDB_PATH",
-                    "value": "${env:ENGINE_STANDALONE_DIR}/tzdb"
-                },
-                {
-                    "name": "WAZUH_TZDB_AUTO_UPDATE",
-                    "value": "true"
-                },
                 //{
-                //    "name": "WAZUH_TZDB_FORCE_VERSION_UPDATE",
-                //    "value": "2024a"
+                //    "name": "WAZUH_KVDB_PATH",
+                //    "value": "${env:ENGINE_STANDALONE_DIR}/kvdb/"
                 //},
-                // Dumper
-                {
-                    "name": "WAZUH_DUMPER_ENABLED",
-                    "value": "false"
-                },
-                {
-                    "name": "WAZUH_STREAMLOG_BASE_PATH",
-                    "value": "${env:ENGINE_STANDALONE_DIR}/logs/"
-                },
-                // Orchestrator
-                {
-                    "name": "WAZUH_ORCHESTRATOR_THREADS",
-                    "value": "2"
-                },
-                // Indexer conector
-                {
-                    "name": "WAZUH_INDEXER_HOSTS",
-                    "value": "https://localhost:9200"
-                },
-                {
-                    "name": "WAZUH_INDEXER_USER",
-                    "value": "admin"
-                },
-                {
-                    "name": "WAZUH_INDEXER_PASSWORD",
-                    "value": "admin"
-                },
-                {
-                    "name": "WAZUH_INDEXER_SSL_CERTIFICATE",
-                    "value": "/etc/wazuh-indexer/certs/admin.pem"
-                },
-                {
-                    "name": "WAZUH_INDEXER_SSL_KEY",
-                    "value": "/etc/wazuh-indexer/certs/admin-key.pem"
-                },
-                             {
-                    "name": "WAZUH_INDEXER_SSL_CA_BUNDLE",
-                    "value": "/etc/wazuh-indexer/certs/root-ca.pem"
-                },
+
                 // Standalone mode
                 {
                     "name": "WAZUH_ENGINE_STANDALONE",
@@ -102,7 +34,7 @@
                 },
                 {
                     "name": "WAZUH_SERVER_ENABLE_EVENT_PROCESSING",
-                    "value": "true"
+                    "value": "false"
                 },
             ],
             "MIMode": "gdb",
@@ -129,7 +61,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${env:ENGINE_BUILD}/wazuh-engine",
-            "args": ["-f"],
+            "args": ["-f", "-dd"],
             "stopAtEntry": false,
             "cwd": "/var/wazuh-manager/",
             "environment": [
@@ -140,6 +72,10 @@
                 {
                     "name": "WAZUH_ORCHESTRATOR_THREADS",
                     "value": "2"
+                },
+                {
+                    "name": "WAZUH_ENGINE_FORCE_HOME",
+                    "value": "/var/wazuh-manager/"
                 },
                 {
                     "name": "WAZUH_LOG_LEVEL",
@@ -171,7 +107,47 @@
             "request": "launch",
             "program": "/var/wazuh-manager/bin/wazuh-manager-analysisd",
            // "additionalSOLibSearchPath": "${workspaceFolder}/wazuh/src/",
-            "args": ["-f", "-d"],
+            //"args": ["-f", "-dd"],
+            "args": ["-f"],
+            "stopAtEntry": false,
+            "cwd": "/var/wazuh-manager/",
+            "environment": [
+                {
+                    "name": "MALLOC_CHECK_",
+                    "value": "2"
+                },
+                {
+                    "name": "WAZUH_ORCHESTRATOR_THREADS",
+                    "value": "2"
+                },
+            ],
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Enable capture SIGINT",
+                    "text": "handle SIGINT print nostop pass",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Muchos caracteres",
+                    "text": "-interpreter-exec console \"set print elements 300\"",
+                    "ignoreFailures": true
+                },
+            ]
+        },
+        {
+            "name": "wazuh-remoted",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/var/wazuh-manager/bin/wazuh-manager-remoted",
+           // "additionalSOLibSearchPath": "${workspaceFolder}/wazuh/src/",
+            "args": ["-f", "-dd"],
+            //"args": ["-f"],
             "stopAtEntry": false,
             "cwd": "/var/wazuh-manager/",
             "environment": [
@@ -267,6 +243,27 @@
         * "cwd": "${env:TMP_CLEAN_ENV}", is temporary,
         *  it is used until we can have a configuration for indexer conector folder
         *********************************************************************************/
+        {
+            "name": "Python: engine-test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/tools/engine-suite/src/engine_test/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "-c", "/workspaces/wazuh-5.x/z_temp_files/input_test_logs/engine-test-conf.json",
+                "run",
+                "-j",
+                "-dd",
+                "-s", "engine_test_8d51a",
+                "test"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+
         {
             "name": "Python: engine-helper-test init",
             "type": "debugpy",
@@ -390,7 +387,7 @@
             "justMyCode": false
         },
         {
-            "name": "Python: run IT behave",
+            "name": "Python: run IT behave - one feature",
             "cwd": "${env:ENGINE_SRC}/",
             "type": "debugpy",
             "request": "launch",
@@ -399,7 +396,7 @@
             "args": [
                  // "-e", "/tmp/engine-integration-test",
                  // "-f","${env:ENGINE_SRC}/test/integration_tests/router/features/api.feature"
-                 "${env:ENGINE_SRC}/test/integration_tests/router"
+                 "${env:ENGINE_SRC}/test/integration_tests/tester"
             ],
             "env": {
                 "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
@@ -410,7 +407,7 @@
             "justMyCode": false
         },
         {
-            "name": "Python: engine-test",
+            "name": "Python: engine-test - 2",
             "type": "debugpy",
             "request": "launch",
             "program": "${env:ENGINE_SRC}/tools/engine-suite/src/engine_test/__main__.py",
@@ -418,6 +415,22 @@
             "python": "${command:python.interpreterPath}",
             "args": [
                 "run", "syslog"
+            ],
+            "env": {
+                "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",
+            },
+            "justMyCode": false
+        },
+        {
+            "name": "Python: engine-public ioc",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${env:ENGINE_SRC}/tools/engine-suite/src/engine_public/__main__.py",
+            "console": "integratedTerminal",
+            "python": "${command:python.interpreterPath}",
+            "args": [
+                "ioc",
+                "state"
             ],
             "env": {
                 "PYTHONPATH": "${env:ENGINE_PYTHONPATH_DBG}:${env:PYTHONPATH}",

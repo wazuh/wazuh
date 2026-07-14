@@ -86,7 +86,7 @@ eTester::Result fromOutput(const ::router::test::Output& output)
     return result;
 }
 
-std::variant<std::string,json::Json> validatePublicMetadata(const json::Json& metadataObj)
+std::variant<std::string, json::Json> validatePublicMetadata(const json::Json& metadataObj)
 {
     // Empty metadata is allowed
     if (metadataObj.isEmpty())
@@ -268,6 +268,12 @@ void collectOutputErrors(const json::Json& node,
         }
     }
 
+    // Null accepted and treated as a missing value for every type.
+    if (node.isNull())
+    {
+        return;
+    }
+
     if (node.isObject())
     {
         if (!schemaPath.empty())
@@ -317,23 +323,39 @@ void collectOutputErrors(const json::Json& node,
 
     if (node.isArray())
     {
-        if (!schemaPath.empty() && isArrayItem)
+        if (!schemaPath.empty())
         {
-            // Arrays of arrays are not supported. Report as invalid_type.
             const DotPath dotPath(schemaPath);
-            try
+            if (schema.getType(dotPath) == schemf::Type::GEO_POINT)
             {
-                errors.push_back(makeValidationError(reportPath,
-                                                     "invalid_type",
-                                                     schemf::typeToStr(schema.getType(dotPath)),
-                                                     json::Json::typeToStr(node.type())));
+                // GEO_POINT allows arrays of two floats as representation.
+                auto validation = schema.validate(dotPath, node);
+                if (base::isError(validation))
+                {
+                    errors.push_back(makeValidationError(reportPath,
+                                                         "invalid_type",
+                                                         schemf::typeToStr(schema.getType(dotPath)),
+                                                         json::Json::typeToStr(node.type())));
+                }
+                return;
             }
-            catch (const std::exception&)
+            else if (isArrayItem)
             {
-                errors.push_back(
-                    makeValidationError(reportPath, "invalid_type", {}, json::Json::typeToStr(node.type())));
+                // Arrays of arrays are not supported. Report as invalid_type.
+                try
+                {
+                    errors.push_back(makeValidationError(reportPath,
+                                                         "invalid_type",
+                                                         schemf::typeToStr(schema.getType(dotPath)),
+                                                         json::Json::typeToStr(node.type())));
+                }
+                catch (const std::exception&)
+                {
+                    errors.push_back(
+                        makeValidationError(reportPath, "invalid_type", {}, json::Json::typeToStr(node.type())));
+                }
+                return;
             }
-            return;
         }
 
         auto arrOpt = node.getArray();
@@ -682,15 +704,14 @@ adapter::RouteHandler runPost(const std::shared_ptr<::router::ITesterAPI>& teste
         // Use provided agent_metadata if available, otherwise use empty struct
         if (protoReq.has_agent_metadata())
         {
-            auto jsonOrErr = eMessage::eStructToJson(protoReq.agent_metadata());
-            if (std::holds_alternative<base::Error>(jsonOrErr))
+            auto jsonOrErr = getJsonFieldFromBody(req.body, "/agent_metadata", "Field /agent_metadata cannot be empty");
+            if (base::isError(jsonOrErr))
             {
-                res = adapter::userErrorResponse<ResponseType>(fmt::format(
-                    "Error converting agent_metadata to JSON: {}", std::get<base::Error>(jsonOrErr).message));
+                res = adapter::userErrorResponse<ResponseType>(base::getError(jsonOrErr).message);
                 return;
             }
 
-            agentMetadata = std::move(std::get<json::Json>(jsonOrErr));
+            agentMetadata = std::move(base::getResponse(jsonOrErr));
         }
         else
         {
@@ -795,16 +816,14 @@ adapter::RouteHandler publicRunPost(const std::shared_ptr<::router::ITesterAPI>&
         std::string eventStr {};
         if (protoReq.has_metadata())
         {
-            // Convert protobuf Struct to json::Json
-            auto metadataOrError = eMessage::eStructToJson(protoReq.metadata());
-            if (std::holds_alternative<base::Error>(metadataOrError))
+            auto metadataOrError = getJsonFieldFromBody(req.body, "/metadata", "Field /metadata cannot be empty");
+            if (base::isError(metadataOrError))
             {
-                res = adapter::userErrorResponse<ResponseType>(fmt::format(
-                    "Error converting metadata to JSON: {}", std::get<base::Error>(metadataOrError).message));
+                res = adapter::userErrorResponse<ResponseType>(base::getError(metadataOrError).message);
                 return;
             }
 
-            const auto& metadata = std::get<json::Json>(metadataOrError);
+            metadata = std::move(base::getResponse(metadataOrError));
             if (!metadata.isObject())
             {
                 res = adapter::userErrorResponse<ResponseType>("Metadata must be a JSON object");

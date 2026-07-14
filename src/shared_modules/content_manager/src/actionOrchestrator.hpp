@@ -74,11 +74,13 @@ public:
      */
     explicit ActionOrchestrator(const nlohmann::json& parameters,
                                 std::shared_ptr<ConditionSync> stopActionCondition,
-                                const FileProcessingCallback fileProcessingCallback)
+                                const FileProcessingCallback fileProcessingCallback,
+                                ContentUpdateCallbacks updateCallbacks = {})
     {
         try
         {
-            m_spBaseContext = std::make_shared<UpdaterBaseContext>(stopActionCondition, fileProcessingCallback);
+            m_spBaseContext = std::make_shared<UpdaterBaseContext>(
+                stopActionCondition, fileProcessingCallback, std::move(updateCallbacks));
             m_spBaseContext->topicName = parameters.at("topicName");
             m_spBaseContext->configData = parameters.at("configData");
 
@@ -114,8 +116,28 @@ public:
         }
         catch (const std::exception& e)
         {
+            invokeContentUpdateCallback(m_spBaseContext->updateCallbacks.onFailure, "failure");
             cleanContext();
             throw std::runtime_error {"Orchestration run failed: " + std::string {e.what()}};
+        }
+    }
+
+    uint64_t getCurrentOffset() const
+    {
+        if (!m_spBaseContext->spRocksDB)
+        {
+            return 0;
+        }
+
+        try
+        {
+            const auto value =
+                m_spBaseContext->spRocksDB->getLastKeyValue(Components::Columns::CURRENT_OFFSET).second.ToString();
+            return value.empty() ? 0 : std::stoull(value);
+        }
+        catch (const std::exception&)
+        {
+            return 0;
         }
     }
 

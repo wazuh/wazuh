@@ -22,7 +22,10 @@ providing a centralized and efficient workflow.
 - **engine-clear**: Clears specific configurations or data from the engine.
 - **engine-integration**: Handles integrations with external systems.
 - **engine-policy**: Manages policies within the Wazuh engine.
-- **engine-router**: Configures and tests routing within the engine.
+- **engine-private**: Hosts internal-only operations for namespace management, content-manager CRUD, geo, and raw-event tooling.
+- **engine-public**: Hosts public-facing validation, IOC, and logtest cleanup commands.
+- **engine-router**: Provides internal route management and event ingestion tooling.
+- **engine-event-dumper**: Manages the internal event-dumper endpoints.
 - **engine-test**: Provides utilities for testing engine functionality.
 
 For more details, refer to the README on src/engine/tools/engine-suite/README.md

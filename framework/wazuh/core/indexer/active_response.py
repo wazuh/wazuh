@@ -467,16 +467,6 @@ class ActiveResponseBuilder:
             bookmark_file if bookmark_file is not None else ActiveResponseBookmarkFile()
         )
 
-    def get_target_agents(self) -> List[str]:
-        """Return the target active agents.
-
-        Returns
-        -------
-        List[str]
-            List of active agent IDs.
-        """
-        return self._active_agents
-
     async def fetch_ars(self, validate: bool = True) -> "ActiveResponseBuilder":
         """Fetch AR documents and initialize objects.
 

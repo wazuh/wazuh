@@ -7,6 +7,7 @@
 #include <stringHelper.h>
 #include <timeHelper.h>
 
+#include <array>
 #include <sstream>
 
 #include "logging_helper.hpp"
@@ -229,6 +230,8 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
         return;
         // LCOV_EXCL_STOP
     }
+
+    checkData.erase("version");
 
     auto updateResultQuery = SyncRowQuery::builder().table("sca_check").data(checkData).returnOldData().build();
 
@@ -517,6 +520,15 @@ std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::Proces
             {
                 check = event["check"];
             }
+
+            const auto resultIt = check.find("result");
+
+            if (resultIt != check.end() &&
+                    resultIt->is_string() &&
+                    resultIt->get<std::string>() == "Not run")
+            {
+                return {{}, SELECTED, 0};
+            }
         }
         else
         {
@@ -578,6 +590,12 @@ std::tuple<nlohmann::json, ReturnTypeCallback, uint64_t> SCAEventHandler::Proces
 
 nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) const
 {
+    if (event.contains("result") &&
+            static_cast<ReturnTypeCallback>(event["result"]) == DELETED)
+    {
+        return {};
+    }
+
     nlohmann::json check;
     nlohmann::json policy;
     nlohmann::json changedFields = nlohmann::json::array();
@@ -601,9 +619,45 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                 check.erase("sync");
             }
 
+            // "Not run" means either (a) the check has not been executed yet in this
+            // scan cycle (DB placeholder), or (b) the check was attempted but did not
+            // complete (e.g. command timeout). Never emit a stateless event for a check
+            // in this state, regardless of the operation type (INSERTED, MODIFIED, DELETED).
+            {
+                const auto resultIt = check.find("result");
+
+                if (resultIt != check.end() &&
+                        resultIt->is_string() &&
+                        resultIt->get<std::string>() == "Not run")
+                {
+                    return {};
+                }
+            }
+
             if (event["check"].contains("old") && event["check"]["old"].is_object())
             {
                 const auto& old = event["check"]["old"];
+
+                // For MODIFIED events, stateless is only meaningful for transitions
+                // between real executed results. Transitions where the old result was
+                // "Not run" (placeholder being replaced by first real result, or a
+                // timeout recovering) don't generate alerts. Metadata-only changes
+                // (no result change) also don't constitute a transition worth alerting on.
+                // Note: new result == "Not run" is already caught above.
+                if (static_cast<ReturnTypeCallback>(event["result"]) == MODIFIED)
+                {
+                    const auto oldResultIt = old.find("result");
+                    const bool resultChanged = oldResultIt != old.end();
+                    const bool oldResultIsNotRun = resultChanged &&
+                                                   oldResultIt->is_string() &&
+                                                   oldResultIt->get<std::string>() == "Not run";
+
+                    if (!resultChanged || oldResultIsNotRun)
+                    {
+                        return {};
+                    }
+                }
+
                 nlohmann::json previous;
 
                 for (auto& [key, value] : old.items())
@@ -613,11 +667,15 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                         continue;
                     }
 
-                    previous[key] = value;
-                    changedFields.push_back("check." + key);
+                    const auto normalizedKey = (key == "title") ? "name" : key;
+                    previous[normalizedKey] = value;
+                    changedFields.push_back("check." + normalizedKey);
                 }
 
-                check["previous"] = previous;
+                if (!previous.empty())
+                {
+                    check["previous"] = previous;
+                }
             }
         }
         else
@@ -649,8 +707,9 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
                         continue;
                     }
 
-                    previous[key] = value;
-                    changedFields.push_back("policy." + key);
+                    const auto normalizedKey = (key == "title") ? "name" : key;
+                    previous[normalizedKey] = value;
+                    changedFields.push_back("policy." + normalizedKey);
                 }
 
                 policy["previous"] = previous;
@@ -659,6 +718,13 @@ nlohmann::json SCAEventHandler::ProcessStateless(const nlohmann::json& event) co
         else
         {
             LoggingHelper::getInstance().log(LOG_ERROR, "Stateless event does not contain policy");
+            return {};
+        }
+
+        // Drop MODIFIED events whose only pseudo-change was the "Not run" default
+        // being replaced by a real scan result: nothing user-visible changed.
+        if (static_cast<ReturnTypeCallback>(event["result"]) == MODIFIED && changedFields.empty())
+        {
             return {};
         }
 
@@ -758,6 +824,16 @@ nlohmann::json SCAEventHandler::StringToJsonArray(const std::string& input) cons
 
 void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 {
+    if (!check.contains("name") && check.contains("title") && check["title"].is_string())
+    {
+        check["name"] = check["title"];
+    }
+
+    if (check.contains("title"))
+    {
+        check.erase("title");
+    }
+
     if (check.contains("refs") && check["refs"].is_string())
     {
         check["references"] = StringToJsonArray(check["refs"].get<std::string>());
@@ -783,6 +859,48 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
             check["mitre"] = nlohmann::json::parse(check["mitre"].get<std::string>());
         }
         catch (const nlohmann::json::parse_error&)
+        {
+            check.erase("mitre");
+        }
+    }
+
+    if (check.contains("mitre") && check["mitre"].is_object())
+    {
+        static const std::array<const char*, 3> MITRE_FIELDS = {"tactic", "technique", "subtechnique"};
+        static const std::array<const char*, 2> MITRE_SUBFIELDS = {"id", "name"};
+
+        for (const auto* field : MITRE_FIELDS)
+        {
+            if (!check["mitre"].contains(field))
+            {
+                continue;
+            }
+
+            auto& mitreField = check["mitre"][field];
+
+            // Each tactic/technique/subtechnique is an object holding "id" and "name" lists.
+            if (!mitreField.is_object())
+            {
+                check["mitre"].erase(field);
+                continue;
+            }
+
+            for (const auto* subfield : MITRE_SUBFIELDS)
+            {
+                if (mitreField.contains(subfield) && !mitreField[subfield].is_array())
+                {
+                    // Keep schema alignment by dropping invalid mitre subfield types.
+                    mitreField.erase(subfield);
+                }
+            }
+
+            if (mitreField.empty())
+            {
+                check["mitre"].erase(field);
+            }
+        }
+
+        if (check["mitre"].empty())
         {
             check.erase("mitre");
         }
@@ -819,6 +937,16 @@ void SCAEventHandler::NormalizeCheck(nlohmann::json& check) const
 
 void SCAEventHandler::NormalizePolicy(nlohmann::json& policy) const
 {
+    if (!policy.contains("name") && policy.contains("title") && policy["title"].is_string())
+    {
+        policy["name"] = policy["title"];
+    }
+
+    if (policy.contains("title"))
+    {
+        policy.erase("title");
+    }
+
     if (policy.contains("refs") && policy["refs"].is_string())
     {
         policy["references"] = StringToJsonArray(policy["refs"].get<std::string>());
@@ -853,7 +981,10 @@ bool SCAEventHandler::ValidateAndHandleStatefulMessage(const nlohmann::json& sta
 
     if (!validator)
     {
-        return true;
+        // No validator for this index: be restrictive and discard the message.
+        LoggingHelper::getInstance().log(LOG_WARNING,
+                                         "No schema validator found for index: " + std::string(SCA_SYNC_INDEX) + ". Discarding message.");
+        return false;
     }
 
     std::string statefulData = statefulEvent.dump();

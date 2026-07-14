@@ -1,7 +1,14 @@
 # Generate agent upgrade library
+# mingw cross-builds emit .c.obj instead of .c.o, so the GLOB has to match both
+# extensions for the agent/manager (Linux .c.o) and winagent (mingw .c.obj) flows.
+if(${TARGET} STREQUAL "winagent")
+    set(_UT_OBJ_EXT ".c.obj")
+else()
+    set(_UT_OBJ_EXT ".c.o")
+endif()
 file(GLOB_RECURSE upgrade_files
-    ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
-list(REMOVE_ITEM upgrade_files ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+    ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*${_UT_OBJ_EXT})
+list(REMOVE_ITEM upgrade_files ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main${_UT_OBJ_EXT})
 
 add_library(UPGRADE_O STATIC ${upgrade_files})
 
@@ -70,8 +77,8 @@ if(${TARGET} STREQUAL "manager")
 else()
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_agent")
-    list(APPEND upgrade_flags "-Wl,--wrap,wm_sendmsg -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose -Wl,--wrap,StartMQ -Wl,--wrap,sleep -Wl,--wrap,close -Wl,--wrap,wfopen \
-                               -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,wm_agent_upgrade_process_command \
+    list(APPEND upgrade_flags "-Wl,--wrap,wm_sendmsg -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose -Wl,--wrap,StartMQ -Wl,--wrap,StartMQPredicated -Wl,--wrap,sleep -Wl,--wrap,close -Wl,--wrap,wfopen \
+                               -Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,wm_agent_upgrade_process_command \
                                -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,CreateThread -Wl,--wrap,unlink -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
                                -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
 
@@ -100,6 +107,18 @@ foreach(counter RANGE ${count})
         UPGRADE_O
         ${TEST_DEPS}
     )
+
+    if(${TARGET} STREQUAL "winagent")
+        # UPGRADE_O / DEPENDENCIES_O / libwazuh_test bring in objects whose
+        # `#ifdef WIN32` paths reference syscheckd symbols that the agent_upgrade
+        # tests never exercise. Reuse the existing __wrap_* helpers in
+        # src/unit_tests/wrappers/wazuh/syscheckd/ to satisfy the linker — same
+        # pattern already used by client-agent/test_buffer on winagent.
+        target_link_libraries(${test_name}
+            -Wl,--wrap=syscom_dispatch
+            -Wl,--wrap=Start_win32_Syscheck
+            -Wl,--wrap=is_fim_shutdown)
+    endif()
 
     if(NOT test_flags STREQUAL " ")
         target_link_libraries(

@@ -25,16 +25,14 @@ SAMPLE_MESSAGE = {"handle": SAMPLE_RAW_MESSAGE['Messages'][0]['ReceiptHandle']}
 SAMPLE_URL = "sqs-test-url.com"
 
 
-@patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.get_client')
 @patch('s3_log_handler.AWSS3LogHandler.__init__', return_value=None)
 @patch('sqs_message_processor.AWSQueueMessageProcessor.__init__')
 @patch('sqs_queue.AWSSQSQueue._get_sqs_url')
-@patch('wazuh_integration.WazuhIntegration.__init__', side_effet=wazuh_integration.WazuhIntegration.__init__)
+@patch('wazuh_integration.WazuhIntegration.__init__', return_value=None)
 def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs_url, mock_message_processor,
-                                            mock_bucket_log_handler_init, mock_client, mock_sts_client):
+                                            mock_bucket_log_handler_init, mock_client):
     """Test if the instances of AWSSQSQueue are created properly."""
-    mock_sts_client.return_value = mock_client
     kwargs = utils.get_aws_sqs_queue_parameters(name=utils.TEST_SQS_NAME,
                                                 external_id=utils.TEST_EXTERNAL_ID,
                                                 service_endpoint=utils.TEST_SERVICE_ENDPOINT,
@@ -58,14 +56,29 @@ def test_aws_sqs_queue_initializes_properly(mock_wazuh_integration, mock_get_sqs
     assert integration.iam_role_arn == kwargs['iam_role_arn']
     mock_get_sqs_url.assert_called_once()
     mock_bucket_log_handler_init.assert_called_once()
-    mock_sts_client.assert_called_with(None, None, None)
-    mock_client.get_caller_identity.assert_called_once()
+
+
+# both configs must omit the owner id when resolving the queue URL
+@pytest.mark.parametrize('iam_role_arn', [
+    utils.TEST_IAM_ROLE_ARN,  # cross-/same-account via assumed role
+    None,                     # direct credentials, no role
+])
+@patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
+def test_aws_sqs_queue_get_sqs_url_omits_queue_owner_account_id(mock_wazuh_integration, iam_role_arn):
+    """Test '_get_sqs_url' resolves the queue URL without passing QueueOwnerAWSAccountId.
+
+    The SQS client is already scoped to the iam_role_arn target (or to the direct credentials),
+    so SQS derives the queue owner from the caller account. Passing an account id would break the
+    cross-account case (queue looked up in the manager's account instead of the role's account).
+    """
+    instance = utils.get_mocked_aws_sqs_queue(iam_role_arn=iam_role_arn)
+    # asserting the exact kwargs guarantees QueueOwnerAWSAccountId is not passed
+    instance.client.get_queue_url.assert_called_once_with(QueueName=instance.sqs_name)
 
 
 @patch('sqs_queue.AWSSQSQueue._get_sqs_url', return_value=SAMPLE_URL)
-@patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_sqs_queue_delete_message(mock_wazuh_integration, mock_sts_client, mock_get_url):
+def test_aws_sqs_queue_delete_message(mock_wazuh_integration, mock_get_url):
     """Test 'delete_message' method sends the given message to SQS."""
     instance = utils.get_mocked_aws_sqs_queue()
     instance.delete_message(SAMPLE_MESSAGE)
@@ -73,9 +86,8 @@ def test_aws_sqs_queue_delete_message(mock_wazuh_integration, mock_sts_client, m
     instance.client.delete_message.assert_called_with(QueueUrl=SAMPLE_URL, ReceiptHandle=SAMPLE_MESSAGE["handle"])
 
 
-@patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_sqs_queue_delete_message_handles_exception_when_deleting_message(mock_wazuh_integration, mock_sts_client):
+def test_aws_sqs_queue_delete_message_handles_exception_when_deleting_message(mock_wazuh_integration):
     """Test 'delete_message' handles exceptions raised when trying to delete a message from SQS."""
     instance = utils.get_mocked_aws_sqs_queue()
     instance.client.delete_message.side_effect = Exception
@@ -86,9 +98,8 @@ def test_aws_sqs_queue_delete_message_handles_exception_when_deleting_message(mo
 
 
 @patch('sqs_queue.AWSSQSQueue._get_sqs_url', return_value=SAMPLE_URL)
-@patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_sqs_queue_fetch_messages(mock_wazuh_integration, mock_sts_client, mock_get_url):
+def test_aws_sqs_queue_fetch_messages(mock_wazuh_integration, mock_get_url):
     """Test 'fetch_messages' method retrieves one or more messages from the specified queue."""
     instance = utils.get_mocked_aws_sqs_queue()
     mock_receive = instance.client.receive_message
@@ -101,9 +112,8 @@ def test_aws_sqs_queue_fetch_messages(mock_wazuh_integration, mock_sts_client, m
     assert type(raw_messages) is dict
 
 
-@patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_sqs_queue_fetch_messages_handles_exception_when_getting_messages(mock_wazuh_integration, mock_sts_client):
+def test_aws_sqs_queue_fetch_messages_handles_exception_when_getting_messages(mock_wazuh_integration):
     """Test 'fetch_messages' handles exceptions raised when trying to retrieve messages from SQS."""
     instance = utils.get_mocked_aws_sqs_queue()
 
@@ -116,9 +126,8 @@ def test_aws_sqs_queue_fetch_messages_handles_exception_when_getting_messages(mo
 
 
 @patch('sqs_queue.AWSSQSQueue.fetch_messages', return_value=SAMPLE_RAW_MESSAGE)
-@patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_sqs_queue_get_messages(mock_wazuh_integration, mock_sts_client, mock_fetch):
+def test_aws_sqs_queue_get_messages(mock_wazuh_integration, mock_fetch):
     """Test 'get_messages' method returns parsed messages."""
     instance = utils.get_mocked_aws_sqs_queue()
     mocked_processor_extract = instance.message_processor.extract_message_info
@@ -126,9 +135,8 @@ def test_aws_sqs_queue_get_messages(mock_wazuh_integration, mock_sts_client, moc
     mocked_processor_extract.assert_called_with(SAMPLE_RAW_MESSAGE['Messages'])
 
 
-@patch('wazuh_integration.WazuhIntegration.get_sts_client')
 @patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
-def test_aws_sqs_queue_sync_events(mock_wazuh_integration, mock_sts_client):
+def test_aws_sqs_queue_sync_events(mock_wazuh_integration):
     """Test 'sync_events' method gets messages from the SQS queue, sends them to AnalysisD
     and deletes from the queue until it is empty."""
     instance = utils.get_mocked_aws_sqs_queue()
@@ -144,3 +152,39 @@ def test_aws_sqs_queue_sync_events(mock_wazuh_integration, mock_sts_client):
 
         mock_process.assert_called()
         mock_delete.assert_called()
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
+def test_aws_sqs_queue_get_sqs_url_exits_20_on_client_error(mock_wazuh_integration, mock_sts_client):
+    """Test '_get_sqs_url' exits with code 20 when a ClientError is raised (queue does not exist)."""
+    import botocore.exceptions
+    instance = utils.get_mocked_aws_sqs_queue()
+    instance.client.get_queue_url.side_effect = botocore.exceptions.ClientError(
+        {'Error': {'Code': 'AWS.SimpleQueueService.NonExistentQueue', 'Message': 'Queue not found'}},
+        'GetQueueUrl'
+    )
+
+    with pytest.raises(SystemExit) as e:
+        instance._get_sqs_url()
+    assert e.value.code == 20
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhIntegration.__init__', side_effect=wazuh_integration.WazuhIntegration.__init__)
+def test_aws_sqs_queue_sync_events_skips_message_without_route_key(mock_wazuh_integration, mock_sts_client):
+    """Test 'sync_events' logs a debug message and continues when a processed message lacks the 'route' key."""
+    instance = utils.get_mocked_aws_sqs_queue()
+
+    bad_message = {"raw_message": {"some": "data"}, "handle": "h1"}
+
+    with patch('sqs_queue.AWSSQSQueue.get_messages', side_effect=[[bad_message], []]), \
+            patch('sqs_queue.AWSSQSQueue.delete_message') as mock_delete, \
+            patch('sqs_queue.aws_tools.debug') as mock_debug:
+        instance.sync_events()
+
+    mock_delete.assert_not_called()
+    expected_msg_without_handle = {k: v for k, v in bad_message.items() if k != 'handle'}
+    mock_debug.assert_any_call(
+        f"Processed message {expected_msg_without_handle} does not contain the expected format, "
+        f"omitting message.", 2)

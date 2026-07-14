@@ -716,6 +716,6 @@ for (const auto& item : items)
 
 1. Review [API Reference](api-reference.md) for complete API documentation
 2. Check module-specific integration in:
-   - [Syscollector Architecture](../../modules/syscollector/architecture.md#schema-validation-integration)
-   - [SCA Architecture](../../modules/sca/architecture.md#schema-validation-integration)
-   - [FIM Architecture](../../modules/fim/architecture.md#schema-validation-integration)
+   - [Syscollector Architecture](../../syscollector/architecture.md#schema-validation-integration)
+   - [SCA Architecture](../../sca/architecture.md#schema-validation-integration)
+   - [FIM Architecture](../../fim/architecture.md#schema-validation-integration)

@@ -83,7 +83,3 @@ class Wazuh:
             self.tz_name = None
 
         return self.to_dict()
-
-
-def main():
-    print("Wazuh HIDS Library")

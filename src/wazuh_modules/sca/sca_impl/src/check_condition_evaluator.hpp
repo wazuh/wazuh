@@ -23,7 +23,7 @@ class CheckConditionEvaluator
         void AddResult(const RuleEvaluationResult& result);
 
         sca::CheckResult Result() const;
-        std::string GetInvalidReason() const;
+        std::string GetUnresolvedReason() const;
 
     private:
         ConditionType m_type;
@@ -31,5 +31,10 @@ class CheckConditionEvaluator
         int m_passedRules {0};
         std::optional<bool> m_result;
         bool m_hasInvalid = false;
-        std::string m_invalidReason;
+        bool m_hasNotRun = false;
+
+        /// Concatenated reasons from rules that didn't resolve to Found/NotFound,
+        /// covering both Invalid (e.g. missing file, disabled commands) and NotRun
+        /// (command timeout) cases.
+        std::string m_unresolvedReason;
 };

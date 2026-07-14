@@ -35,7 +35,7 @@ target_link_libraries(router_router
     bk::ibk
     fastqueue::ifastqueue
     rawevtindexer::irawindexer
-    fastmetrics::fastmetrics
+    fastmetrics::ifastmetrics
 
     PRIVATE
     base
@@ -71,6 +71,7 @@ if(ENGINE_BUILD_TEST)
         store::mocks
         bk::mocks
         fastqueue::mocks
+        fastmetrics::mocks
         rawevtindexer::mocks
     )
 
@@ -83,6 +84,7 @@ if(ENGINE_BUILD_TEST)
         ${UNIT_SRC_DIR}/tester_test.cpp
         ${UNIT_SRC_DIR}/table_test.cpp
         ${UNIT_SRC_DIR}/orchestrator_test.cpp
+        ${UNIT_SRC_DIR}/worker_test.cpp
     )
     target_include_directories(router_utest PRIVATE ${SRC_DIR})
     target_link_libraries(router_utest
@@ -94,6 +96,7 @@ if(ENGINE_BUILD_TEST)
         bk::mocks
         bk::rx
         fastqueue::mocks
+        fastmetrics::mocks
         rawevtindexer::mocks
     )
     gtest_discover_tests(router_utest router_ctest)

@@ -13,16 +13,16 @@
 #include "agent_sync_protocol_c_interface_types.h"
 #include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
-#include "isync_message_transport.hpp"
+#include "mqueue_transport.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <unordered_map>
 #include <vector>
-#include <condition_variable>
 
 class AgentSyncProtocol : public IAgentSyncProtocol
 {
@@ -56,7 +56,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
                                        uint64_t version) override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeModule
-        bool synchronizeModule(Mode mode, Option option = Option::SYNC) override;
+        SyncModuleResult synchronizeModule(Mode mode, Option option = Option::SYNC) override;
 
         /// @copydoc IAgentSyncProtocol::requiresFullSync
         bool requiresFullSync(const std::string& index,
@@ -66,7 +66,7 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         void clearInMemoryData() override;
 
         /// @copydoc IAgentSyncProtocol::synchronizeMetadataOrGroups
-        bool synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
+        SyncModuleResult synchronizeMetadataOrGroups(Mode mode, const std::vector<std::string>& indices, uint64_t globalVersion) override;
 
         /// @copydoc IAgentSyncProtocol::notifyDataClean
         bool notifyDataClean(const std::vector<std::string>& indices, Option option = Option::SYNC) override;
@@ -105,8 +105,8 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// @brief Name of the module associated with this instance.
         std::string m_moduleName;
 
-        /// @brief The message transport (MQueue or Router).
-        std::unique_ptr<ISyncMessageTransport> m_transport;
+        /// @brief The MQueue message transport.
+        std::unique_ptr<MQueueTransport> m_transport;
 
         /// @brief Persistent message queue used to store and replay differences for synchronization.
         std::shared_ptr<IPersistentQueue> m_persistentQueue;
@@ -293,6 +293,14 @@ class AgentSyncProtocol : public IAgentSyncProtocol
 
         /// @brief Manages the state for the current synchronization operation.
         SyncState m_syncState;
+
+        /// @brief Guards against concurrent calls to synchronizeModule().
+        ///
+        /// AsyncFlushController spawns a background thread that calls synchronizeModule()
+        /// on the same instance as the module's periodic timer thread. If a sync is already
+        /// in progress the second caller skips its cycle — the in-flight sync drains the
+        /// shared queue, making the concurrent call redundant.
+        std::atomic<bool> m_syncInProgress{false};
 };
 
 #endif // AGENT_SYNC_PROTOCOL_HPP

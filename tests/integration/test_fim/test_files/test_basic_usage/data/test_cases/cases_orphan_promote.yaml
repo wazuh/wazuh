@@ -1,0 +1,30 @@
+# Reproduces issue #36134: removing a realtime FIM rule from the agent
+# configuration must not produce
+#   ERROR: Failed to get configuration for path: <orphaned-file>
+# on the next restart, and the orphaned row must be cleaned up by the
+# regular handle_orphaned_delete path.
+- name: Orphan promote - Real-time directory dropped from config
+  description: A realtime directory is monitored, a file is created under it
+               via the inotify path (so the row lands in fim.db with sync=0),
+               the agent is stopped, the realtime <directories> entry is
+               removed from ossec.conf, and the agent is restarted.
+               fim_initialize must drop the orphan from docs_to_promote
+               instead of feeding it to build_stateful_event_file, and the
+               scheduled scan that follows must emit the orphan delete event
+               for both the realtime-added file and the seed file that
+               lived under the same directory.
+  configuration_parameters:
+    TEST_DIR_REALTIME: !!python/object/apply:os.path.join [/test_dir_36134_realtime]
+    TEST_DIR_KEEP: !!python/object/apply:os.path.join [/test_keep_36134]
+    FREQUENCY: 30
+    FIM_MODE:
+      realtime: 'yes'
+    SYNC_INTERVAL: 5
+    INTEGRITY_INTERVAL: 30
+  metadata:
+    realtime_folder: !!python/object/apply:os.path.join [/test_dir_36134_realtime]
+    keep_folder: !!python/object/apply:os.path.join [/test_keep_36134]
+    fim_mode: realtime
+    test_file: testfile_36134
+    seed_file: seed_36134
+    keep_seed_file: keep_seed_36134

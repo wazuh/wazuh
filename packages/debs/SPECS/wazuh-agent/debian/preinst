@@ -97,6 +97,21 @@ EOF
             if [ -d ${DIR}/queue/ossec ]; then
                 mv ${DIR}/queue/ossec ${DIR}/queue/sockets
             fi
+
+            # Remove execq socket so when restarting the agent it is regenerated in its new location
+            if [ -S ${DIR}/queue/alerts/execq ]; then
+                rm -f ${DIR}/queue/alerts/execq
+            fi
+
+            # Remove deprecated cfgaq socket
+            if [ -S ${DIR}/queue/alerts/cfgaq ]; then
+                rm -f ${DIR}/queue/alerts/cfgaq
+            fi
+
+            # Remove alerts folder
+            if [ -d ${DIR}/queue/alerts ]; then
+                rm -rf ${DIR}/queue/alerts
+            fi
         fi
 
         if [ ! -z "$2" ] && [ ! -f ${DIR}/etc/ossec.conf ] ; then
@@ -107,6 +122,7 @@ EOF
         if [ -f /etc/init.d/ossec ]; then
             rm /etc/init.d/ossec
         fi
+
         # back up the current user rules
         if [ -f ${DIR}/etc/client.keys ]; then
             cp ${DIR}/etc/client.keys ${WAZUH_TMP_DIR}/client.keys

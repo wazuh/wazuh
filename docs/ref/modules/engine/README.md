@@ -170,6 +170,41 @@ Processed event:
     },
     "space": {
       "name": "standard"
+    },
+    "threat": {
+      "enrichments": [
+        {
+          "indicator": {
+            "confidence": 100,
+            "feed": {
+              "name": "dyingbreeds_"
+            },
+            "first_seen": "2026-01-13T00:35:01.000Z",
+            "id": "1718594",
+            "last_seen": "2026-01-13T00:35:01.000Z",
+            "name": "8.8.8.8:8010",
+            "provider": "threat-fox",
+            "software": {
+              "alias": [
+                "Unknown malware"
+              ],
+              "name": "unknown",
+              "type": "botnet_cc"
+            },
+            "tags": [
+              "AS55990",
+              "Botnet",
+              "byob",
+              "C2",
+              "censys"
+            ],
+            "type": "connection"
+          },
+          "matched": {
+            "field": "source.ip, source.port"
+          }
+        }
+      ]
     }
   },
   "event": {
@@ -249,41 +284,6 @@ Processed event:
     ],
     "hosts": [
       "amazonlinux-2-repos-us-east-1.s3.dualstack.us-east-1.amazonaws.com."
-    ]
-  },
-  "threat": {
-    "enrichments": [
-      {
-        "indicator": {
-          "confidence": 100,
-          "feed": {
-            "name": "dyingbreeds_"
-          },
-          "first_seen": "2026-01-13T00:35:01.000Z",
-          "id": "1718594",
-          "last_seen": "2026-01-13T00:35:01.000Z",
-          "name": "8.8.8.8:8010",
-          "provider": "threat-fox",
-          "software": {
-            "alias": [
-              "Unknown malware"
-            ],
-            "name": "unknown",
-            "type": "botnet_cc"
-          },
-          "tags": [
-            "AS55990",
-            "Botnet",
-            "byob",
-            "C2",
-            "censys"
-          ],
-          "type": "connection"
-        },
-        "matched": {
-          "field": "source.ip, source.port"
-        }
-      }
     ]
   }
 }
@@ -690,18 +690,20 @@ Conceptually:
 
 ```json
 {
-  "threat": {
-    "indicator": {
-      "type": "ipv4-addr",
-      "ip": "203.0.113.10"
-    },
-    "enrichments": [
-      {
-        "matched": {
-          "field": "destination.ip"
+  "wazuh": {
+    "threat": {
+      "indicator": {
+        "type": "ipv4-addr",
+        "ip": "203.0.113.10"
+      },
+      "enrichments": [
+        {
+          "matched": {
+            "field": "destination.ip"
+          }
         }
-      }
-    ]
+      ]
+    }
   }
 }
 ```
@@ -840,47 +842,42 @@ flowchart TD
     linkStyle 2,3 stroke:#D50000,fill:none
 ```
 
-> [!WARNING]
-> The output files in `default/` are **replaced on every installation or update** of `wazuh-manager`.
-> Modifications to those files will be overwritten. To preserve custom outputs across updates, place
-> them in a space-specific folder (`standard/` or `custom/`) instead of `default/`.
-
 #### Unclassified events
 
-An event is considered **unclassified** when it was only processed by the root decoder and no other decoder
-accepted it. This happens because the root decoder typically has no `check` stage — it accepts every event
-unconditionally, acting solely as the entry point of the decoder tree. When no child decoder matches the event,
-the root decoder remains the only one that has processed it.
-
-The engine tracks which decoders accepted each event by recording their names in the
-`wazuh.integration.decoders` array field. An event is therefore identified as unclassified when that array
-contains exactly one element (only the root decoder).
+An event is considered **unclassified** when its `wazuh.integration.category` field equals `"unclassified"`.
+This happens when the last decoder that matched the event belongs to an integration whose category is
+`unclassified`. That integration acts as a catch-all — its decoder accepts events that no other integration's
+decoder matched, ensuring every event that completes the pipeline has an assigned category.
 
 The `indexer.yml` output uses the [`index_unclassified_events`](ref-helper-functions.md#index_unclassified_events)
-helper to apply this check and route the event accordingly:
+helper to determine whether an unclassified event should be indexed:
 
 ```yaml
 # Excerpt from indexer.yml
 outputs:
   - first_of:
-    - check: index_unclassified_events($wazuh.integration.decoders)
+    - check: index_unclassified_events($wazuh.integration.category)
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-unclassified"
 
-    - check: NOT array_length_eq($wazuh.integration.decoders, 1)
+    - check: string_not_equal($wazuh.integration.category, "unclassified")
       then:
         - wazuh-indexer:
             index: "wazuh-events-v5-${wazuh.integration.category}"
 ```
 
-The routing logic evaluates two conditions in order:
+The routing logic uses a `first_of` block that evaluates two conditions in order:
 
 1. If `index_unclassified_events` returns `true` — meaning the policy has unclassified-events indexing enabled
-   **and** `wazuh.integration.decoders` contains exactly one entry — the event is sent to
+   **and** `wazuh.integration.category` equals `"unclassified"` — the event is sent to
    `wazuh-events-v5-unclassified`.
-2. Otherwise, if the decoder array has more than one entry, the event is classified and sent to the
-   data stream corresponding to its integration category: `wazuh-events-v5-${wazuh.integration.category}`.
+2. If `string_not_equal` succeeds — meaning the category is not `"unclassified"` — the event is classified
+   and sent to the data stream corresponding to its integration category:
+   `wazuh-events-v5-${wazuh.integration.category}`.
+
+If neither condition matches — the event is unclassified but the policy has unclassified-events indexing
+disabled — no output is selected and the event is **not indexed**.
 
 ```mermaid
 flowchart TD
@@ -891,13 +888,17 @@ classDef alt fill:#3f51b5,stroke-width:2px,color:#fff
 classDef skip fill:#9e9e9e,stroke-width:1px,color:#fff
 
 start["Output stage (indexer.yml)"]:::cond
-check["index_unclassified_events(wazuh.integration.decoders)?"]:::cond
+check1["index_unclassified_events($wazuh.integration.category)"]:::cond
+check2["string_not_equal($wazuh.integration.category, 'unclassified')"]:::cond
 unclassified["wazuh-events-v5-unclassified"]:::yes
-classified["wazuh-events-v5-\${wazuh.integration.category}"]:::alt
+classified["wazuh-events-v5-${wazuh.integration.category}"]:::alt
+dropped["Event not indexed"]:::skip
 
-start --> check
-check -->|"true: policy enabled AND array length == 1"| unclassified
-check -->|"false: array length > 1"| classified
+start --> check1
+check1 -->|"true: policy enabled AND category == unclassified"| unclassified
+check1 -->|"false"| check2
+check2 -->|"true: category ≠ unclassified"| classified
+check2 -->|"false: category == unclassified, indexing disabled"| dropped
 ```
 
 
@@ -1659,7 +1660,7 @@ Decoders can parse date and timestamp fields in a wide range of formats and time
 schema fields (e.g., `@timestamp`, `event.start`) are applied automatically when those fields appear in a
 `parse|<field>` expression. Once parsed, the Engine normalizes all timestamps to UTC, ensuring consistency across
 event processing and indexing. For the full list of supported formats and parameters, see the
-[date parser documentation](ref-parser.html#date-parser).
+[date parser documentation](ref-parser.md#date-parser).
 
 #### Geolocation
 
@@ -1849,7 +1850,7 @@ kanban
 
 - **Outputs**: The delivery stage. Defines how the event is sent to its destination. Each entry can be a direct
   output operation (e.g., `wazuh-indexer:`, `file:`) or a `first_of` block with conditional branching. Cannot
-  modify the event. See the [Outputs stage](#stages-1) for syntax details.
+  modify the event. See the [Outputs stage](#output) for syntax details.
 
 ### Filters
 
@@ -2325,7 +2326,7 @@ The following metric names are defined by the module.
 
 ##### `indexer.queue.size`
 
-Current number of elements in the indexer queue.
+Current number of bytes buffered in the indexer queue.
 
 **Used for:** monitoring queue growth and backpressure.
 
@@ -2489,7 +2490,7 @@ Most Engine messages use the `wazuh-manager-analysisd` component tag, but some s
 2026/04/14 20:07:44 wazuh-manager-analysisd: INFO: Indexer Connector initialized.
 2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Archiver initialized.
 2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Remote engine's server initialized and started.
-2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Engine started and ready to process events.
+2026/04/14 20:09:16 wazuh-manager-analysisd: INFO: Engine started.
 ```
 
 Warning and error lines include a context tag in brackets that identifies the internal
@@ -2706,6 +2707,8 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 | Setting | Description | Default |
 |:--------|:------------|:-------:|
 | `analysisd.indexer_queue_max_events` | Maximum number of events waiting in the indexer output queue. Events can be dropped when this queue is full. | `131072` |
+| `analysisd.indexer_bulk_size_events` | Maximum number of **documents** (event count) accumulated in the asynchronous indexer bulk buffer before a `_bulk` request is dispatched to `wazuh-indexer`. Counts documents, not bytes. Allowed range: `1` to `1000000`. | `25000` |
+| `analysisd.indexer_flush_interval` | Seconds between periodic flushes of the asynchronous indexer bulk buffer. Drives the background timer that forwards buffered events to `wazuh-indexer` when the document-count threshold has not been reached. Allowed range: `1` to `3600`. | `20` |
 
 ### Synchronization settings
 
@@ -2721,7 +2724,7 @@ Edit the file and restart the `wazuh-manager` service for changes to take effect
 | `analysisd.ioc_sync_interval` | Seconds between IoC database synchronization cycles. `0` disables IoC sync. | `360` |
 | `analysisd.ioc_indexer_connector_max_retries` | Maximum retry attempts for IoC synchronization requests to the Wazuh Indexer. | `3` |
 | `analysisd.ioc_indexer_connector_retry_interval` | Seconds between retry attempts for IoC synchronization. | `5` |
-| `analysisd.ioc_indexer_connector_ioc_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
+| `analysisd.ioc_indexer_connector_sync_batch_size` | Maximum number of IoC documents streamed per Wazuh Indexer page while synchronizing IoC databases. | `1000` |
 | `analysisd.geo_sync_interval` | Seconds between GeoIP database synchronization cycles. `0` disables GeoIP sync. | `360` |
 
 ## F.A.Q

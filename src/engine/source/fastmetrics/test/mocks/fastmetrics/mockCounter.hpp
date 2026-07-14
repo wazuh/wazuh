@@ -20,6 +20,7 @@ public:
     MOCK_METHOD(void, disable, (), (override));
     MOCK_METHOD(void, reset, (), (override));
     MOCK_METHOD(void, add, (uint64_t), (override));
+    MOCK_METHOD(double, value, (), (const, override));
     MOCK_METHOD(uint64_t, get, (), (const, override));
 };
 

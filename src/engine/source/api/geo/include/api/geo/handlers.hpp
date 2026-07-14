@@ -13,8 +13,8 @@ adapter::RouteHandler listDb(const std::shared_ptr<::geo::IManager>& geoManager)
 inline void registerHandlers(const std::shared_ptr<::geo::IManager>& geoManager,
                              const std::shared_ptr<httpsrv::Server>& server)
 {
-    server->addRoute(httpsrv::Method::POST, "/geo/db/get", getDb(geoManager));
-    server->addRoute(httpsrv::Method::POST, "/geo/db/list", listDb(geoManager));
+    server->addRoute(httpsrv::Method::POST, "/_internal/geo/db/get", getDb(geoManager));
+    server->addRoute(httpsrv::Method::POST, "/_internal/geo/db/list", listDb(geoManager));
 }
 
 } // namespace api::geo::handlers

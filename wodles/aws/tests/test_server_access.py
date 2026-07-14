@@ -236,3 +236,133 @@ def test_aws_server_access_load_information_from_file(mock_sts_client):
 
     with patch('aws_bucket.AWSBucket.decompress_file', mock_open(read_data=data)):
         assert instance.load_information_from_file(utils.TEST_LOG_KEY) == expected_information
+
+
+@patch('aws_tools.debug')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('aws_bucket.AWSBucket.build_s3_filter_args')
+def test_aws_server_access_iter_files_in_bucket_uses_instance_account_id_when_none_given(mock_build, mock_sts, mock_debug):
+    """Test iter_files_in_bucket uses self.aws_account_id when aws_account_id argument is None."""
+    mock_build.return_value = {}
+    instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
+    instance.aws_account_id = utils.TEST_ACCOUNT_ID
+    instance.client = MagicMock()
+    instance.client.list_objects_v2.return_value = {'IsTruncated': False}
+
+    instance.iter_files_in_bucket()  # No aws_account_id argument
+
+    mock_build.assert_called_with(utils.TEST_ACCOUNT_ID, None, custom_delimiter='-')
+
+
+@patch('aws_tools.debug')
+@patch('aws_bucket.AWSBucket._print_no_logs_to_process_message')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('aws_bucket.AWSBucket.build_s3_filter_args')
+def test_aws_server_access_iter_files_in_bucket_skips_folder_keys(mock_build, mock_sts, mock_print_no_logs, mock_debug):
+    """Test iter_files_in_bucket skips bucket files whose key ends with '/'."""
+    mock_build.return_value = {}
+    instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
+    instance.client = MagicMock()
+    instance.client.list_objects_v2.return_value = {
+        'Contents': [{'Key': 'some/folder/'}],
+        'IsTruncated': False
+    }
+
+    with patch.object(instance, 'iter_events') as mock_iter_events:
+        instance.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+
+    mock_iter_events.assert_not_called()
+
+
+@patch('aws_tools.debug')
+@patch('aws_bucket.AWSBucket._print_no_logs_to_process_message')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('aws_bucket.AWSBucket.build_s3_filter_args')
+def test_aws_server_access_iter_files_in_bucket_skips_invalid_filename_when_skip_on_error(mock_build, mock_sts, mock_print_no_logs, mock_debug):
+    """Test iter_files_in_bucket skips files with an invalid key format when skip_on_error is True."""
+    mock_build.return_value = {}
+    instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
+    instance.client = MagicMock()
+    instance.skip_on_error = True
+    invalid_key = ['invalid_list_key']
+    instance.client.list_objects_v2.return_value = {
+        'Contents': [{'Key': invalid_key}],
+        'IsTruncated': False
+    }
+
+    instance.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+
+    mock_debug.assert_any_call(
+        f"+++ WARNING: The format of the {invalid_key} filename is not valid, skipping it.", 1)
+
+
+@patch('aws_bucket.AWSBucket.build_s3_filter_args')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+def test_aws_server_access_iter_files_in_bucket_handles_exception_with_message_attr(mock_sts, mock_build):
+    """Test iter_files_in_bucket logs err.message when the exception has a message attribute."""
+    err = Exception("S3 error")
+    err.message = "detailed S3 error message"
+    mock_build.side_effect = err
+
+    with patch('aws_tools.debug') as mock_debug, pytest.raises(SystemExit) as e:
+        instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
+        instance.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+
+    assert e.value.code == utils.UNEXPECTED_ERROR_WORKING_WITH_S3
+    mock_debug.assert_any_call(f"+++ Unexpected error: {err.message}", 2)
+
+
+@patch('aws_bucket.AWSCustomBucket.get_sts_client')
+@patch('aws_bucket.AWSBucket.decompress_file')
+def test_aws_server_access_load_information_from_file_handles_type_error_in_merge_values(mock_decompress, mock_sts):
+    """Test parse_line handles TypeError inside merge_values when next_ is non-subscriptable (integer)."""
+    class FakeLine:
+        def split(self, sep):
+            # double-quoted token opens merge_values; integer next_ triggers TypeError inside it
+            return ['"start', 1]
+
+    ctx = MagicMock()
+    ctx.__enter__ = MagicMock(return_value=[FakeLine()])
+    ctx.__exit__ = MagicMock(return_value=False)
+    mock_decompress.return_value = ctx
+
+    instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
+    result = instance.load_information_from_file(utils.TEST_LOG_KEY)
+    assert isinstance(result, list)
+
+
+@patch('aws_bucket.AWSCustomBucket.get_sts_client')
+@patch('aws_bucket.AWSBucket.decompress_file')
+def test_aws_server_access_load_information_from_file_handles_single_quoted_value(mock_decompress, mock_sts):
+    """Test parse_line merges tokens when a value starts with single-quote but does not end with one."""
+    ctx = MagicMock()
+    ctx.__enter__ = MagicMock(return_value=["'hello world'\n"])
+    ctx.__exit__ = MagicMock(return_value=False)
+    mock_decompress.return_value = ctx
+
+    instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
+    result = instance.load_information_from_file(utils.TEST_LOG_KEY)
+
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]['bucket_owner'] == "'hello world'"
+
+
+@patch('aws_bucket.AWSCustomBucket.get_sts_client')
+@patch('aws_bucket.AWSBucket.decompress_file')
+def test_aws_server_access_load_information_from_file_handles_type_error_in_value_indexing_and_replace(mock_decompress, mock_sts):
+    """Test parse_line handles TypeError when value is a non-subscriptable integer (outer loop)
+    and when value_list[-1] is bytes causing .replace to raise TypeError (after while loop)."""
+    class FakeLine:
+        def split(self, sep):
+            # integer triggers outer TypeError; bytes triggers replace TypeError
+            return [1, b"end\n"]
+
+    ctx = MagicMock()
+    ctx.__enter__ = MagicMock(return_value=[FakeLine()])
+    ctx.__exit__ = MagicMock(return_value=False)
+    mock_decompress.return_value = ctx
+
+    instance = utils.get_mocked_bucket(class_=server_access.AWSServerAccess)
+    result = instance.load_information_from_file(utils.TEST_LOG_KEY)
+    assert isinstance(result, list)

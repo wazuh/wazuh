@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <functional>
 #include <future>
+#include <memory>
 #include <sqlite3.h>
 #include <thread>
 
@@ -209,6 +210,7 @@ void SyscollectorImpTest::SetUp()
     mockValidators["wazuh-states-inventory-hardware"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-system"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-interfaces"] = m_mockValidator;
+    mockValidators["wazuh-states-inventory-protocols"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-networks"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-ports"] = m_mockValidator;
     mockValidators["wazuh-states-inventory-packages"] = m_mockValidator;
@@ -2918,6 +2920,318 @@ TEST_F(SyscollectorImpTest, queryCommandFlushReportsCompletedError)
     Syscollector::instance().destroy();
 }
 
+TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncNotDone_FlushSucceeds)
+{
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,    // scanOnStart
+                                  false,    // hardware
+                                  true,     // os  (VD requires os)
+                                  false,    // network
+                                  true,     // packages (VD requires packages)
+                                  false,    // ports
+                                  false,    // portsAll
+                                  false,    // processes
+                                  false,    // hotfixes
+                                  false,    // groups
+                                  false,    // users
+                                  false,    // services
+                                  false,    // browserExtensions
+                                  false);   // notifyOnFirstScan
+
+    MQ_Functions successMq {};
+    successMq.start = [](const char*, short, short) -> int { return 0; };
+    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              successMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return r["data"]["status"] == "completed";
+    }));
+
+    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(r["data"]["status"], "completed");
+    EXPECT_EQ(r["data"]["result"], "success");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, executeFlushSync_VDEnabled_FirstSyncAlreadyDone_FlushSucceeds)
+{
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // Initialize once to create the schema (including table_metadata), then destroy to
+    // release the DB so we can seed the VD first-sync marker directly.
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,    // scanOnStart
+                                  false,    // hardware
+                                  true,     // os
+                                  false,    // network
+                                  true,     // packages
+                                  false,    // ports
+                                  false,    // portsAll
+                                  false,    // processes
+                                  false,    // hotfixes
+                                  false,    // groups
+                                  false,    // users
+                                  false,    // services
+                                  false,    // browserExtensions
+                                  false);   // notifyOnFirstScan
+    Syscollector::instance().destroy();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+        std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db {rawDb, &sqlite3_close};
+
+        char* rawErrMsg = nullptr;
+        const int execResult = sqlite3_exec(db.get(),
+                                            "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('vd_first_sync_completed', 123456);",
+                                            nullptr,
+                                            nullptr,
+                                            &rawErrMsg);
+        std::unique_ptr<char, decltype(&sqlite3_free)> errMsg {rawErrMsg, &sqlite3_free};
+        ASSERT_EQ(execResult, SQLITE_OK) << (errMsg ? errMsg.get() : "");
+    }
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600,
+                                  false,    // scanOnStart
+                                  false,    // hardware
+                                  true,     // os  (VD requires os)
+                                  false,    // network
+                                  true,     // packages (VD requires packages)
+                                  false,    // ports
+                                  false,    // portsAll
+                                  false,    // processes
+                                  false,    // hotfixes
+                                  false,    // groups
+                                  false,    // users
+                                  false,    // services
+                                  false,    // browserExtensions
+                                  false);   // notifyOnFirstScan
+
+    MQ_Functions successMq {};
+    successMq.start = [](const char*, short, short) -> int { return 0; };
+    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              successMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return r["data"]["status"] == "completed";
+    }));
+
+    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(r["data"]["status"], "completed");
+    EXPECT_EQ(r["data"]["result"], "success");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, executeFlushSync_VDSyncDisabled_FlushSucceeds)
+{
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    // os=false, packages=false → m_vdSyncEnabled=false → VD protocol uses Option::SYNC
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    MQ_Functions successMq {};
+    successMq.start = [](const char*, short, short) -> int { return 0; };
+    successMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              successMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return r["data"]["status"] == "completed";
+    }));
+
+    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(r["data"]["status"], "completed");
+    EXPECT_EQ(r["data"]["result"], "success");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueFails_VDSucceeds_FlushFails)
+{
+    static std::atomic<int> s_startCallCount {0};
+    s_startCallCount = 0;
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    // First start call (regular protocol) fails; second (VD protocol) succeeds
+    MQ_Functions partialMq {};
+    partialMq.start = [](const char*, short, short) -> int
+    {
+        return (++s_startCallCount == 1) ? -1 : 0;
+    };
+    partialMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              partialMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return r["data"]["status"] == "completed";
+    }));
+
+    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(r["data"]["status"], "completed");
+    EXPECT_EQ(r["data"]["result"], "error");
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, executeFlushSync_RegularQueueSucceeds_VDQueueFails_FlushFails)
+{
+    static std::atomic<int> s_startCallCount {0};
+    s_startCallCount = 0;
+
+    const auto spInfoWrapper {std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false,
+                                  false, false, false, false, false, false, false, false);
+
+    // First start call (regular protocol) succeeds; second (VD protocol) fails
+    MQ_Functions partialMq {};
+    partialMq.start = [](const char*, short, short) -> int
+    {
+        return (++s_startCallCount == 1) ? 0 : -1;
+    };
+    partialMq.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+    Syscollector::instance().initSyncProtocol("syscollector",
+                                              ":memory:",
+                                              ":memory:",
+                                              partialMq,
+                                              std::chrono::seconds(0),
+                                              std::chrono::seconds(1),
+                                              1,
+                                              100,
+                                              0);
+
+    auto flushResponse = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"flush"})"));
+    EXPECT_EQ(flushResponse["error"], MQ_SUCCESS);
+
+    EXPECT_TRUE(waitUntil([]()
+    {
+        auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+        return r["data"]["status"] == "completed";
+    }));
+
+    auto r = nlohmann::json::parse(Syscollector::instance().query(R"({"command":"is_flush_completed"})"));
+    EXPECT_EQ(r["data"]["status"], "completed");
+    EXPECT_EQ(r["data"]["result"], "error");
+
+    Syscollector::instance().destroy();
+}
+
 TEST_F(SyscollectorImpTest, queryCommandGetVersion)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
@@ -3064,6 +3378,248 @@ TEST_F(SyscollectorImpTest, queryCommandGetFirstSyncCompletedReturnsTrueWhenMeta
     EXPECT_EQ(responseJson["data"]["first_sync_completed"], 1);
 
     Syscollector::instance().destroy();
+}
+
+// ── first_scan_completed marker and query ────────────────────────────────────
+
+TEST_F(SyscollectorImpTest, queryCommandGetFirstScanCompletedDefaultsToFalse)
+{
+    // No scan has run and no marker is present: expect first_scan_completed == 0.
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_first_scan_completed"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["first_scan_completed"], 0);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandGetFirstScanCompletedReturnsTrueWhenMetadataExists)
+{
+    // Seed the marker directly into the DB, then verify the query reports it.
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    Syscollector::instance().destroy();
+
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('first_scan_completed', 123456);",
+                           nullptr,
+                           nullptr,
+                           &errMsg),
+              SQLITE_OK)
+            << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_first_scan_completed"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["first_scan_completed"], 1);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, scanSetsFirstScanCompletedMarkerAfterFullScan)
+{
+    // After a complete scan() the first_scan_completed marker must be written
+    // with a positive Unix timestamp.
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillRepeatedly([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PACKAGES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HOTFIXES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .WillRepeatedly([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    std::thread t
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          persistFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_TEST_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Verify the raw timestamp was written and is non-zero.
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+    sqlite3_stmt* stmt = nullptr;
+    ASSERT_EQ(sqlite3_prepare_v2(db,
+                                 "SELECT last_sync_time FROM table_metadata WHERE table_name='first_scan_completed';",
+                                 -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    int64_t ts = sqlite3_column_int64(stmt, 0);
+    EXPECT_GT(ts, 0);
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+}
+
+TEST_F(SyscollectorImpTest, scanFirstScanCompletedMarkerIsIdempotent)
+{
+    // If the marker is already set, a subsequent scan must NOT overwrite the timestamp.
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HARDWARE_JSON)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_OS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_NETWORKS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_PORTS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, packages(_))
+    .WillRepeatedly([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PACKAGES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_HOTFIXES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, processes(_))
+    .WillRepeatedly([](const std::function<void(nlohmann::json&)>& cb)
+    {
+        auto data = nlohmann::json::parse(EXPECT_CALL_PROCESSES_JSON);
+        cb(data);
+    });
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_GROUPS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_USERS_JSON)));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_SERVICES_JSON)));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json::parse(EXPECT_CALL_BROWSER_EXTENSIONS_JSON)));
+
+    constexpr int64_t PRIOR_TIMESTAMP = 111111;
+
+    // Seed the marker before the first scan.
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+    Syscollector::instance().destroy();
+
+    sqlite3* db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+    char* errMsg = nullptr;
+    ASSERT_EQ(sqlite3_exec(db,
+                           "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('first_scan_completed', 111111);",
+                           nullptr, nullptr, &errMsg), SQLITE_OK)
+            << (errMsg ? errMsg : "");
+
+    if (errMsg)
+    {
+        sqlite3_free(errMsg);
+    }
+
+    sqlite3_close(db);
+
+    // Now run a full scan — the marker must NOT be overwritten.
+    std::thread t
+    {
+        [&spInfoWrapper]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          reportFunction,
+                                          persistFunction,
+                                          logFunction,
+                                          SYSCOLLECTOR_TEST_DB_PATH,
+                                          "",
+                                          "",
+                                          3600, true, true, true, true, true, true, true, true, true, true, true, true, true, true);
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds{2});
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Verify the original timestamp was preserved.
+    db = nullptr;
+    ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &db, SQLITE_OPEN_READONLY, nullptr), SQLITE_OK);
+    sqlite3_stmt* stmt = nullptr;
+    ASSERT_EQ(sqlite3_prepare_v2(db,
+                                 "SELECT last_sync_time FROM table_metadata WHERE table_name='first_scan_completed';",
+                                 -1, &stmt, nullptr), SQLITE_OK);
+    ASSERT_EQ(sqlite3_step(stmt), SQLITE_ROW);
+    int64_t ts = sqlite3_column_int64(stmt, 0);
+    EXPECT_EQ(ts, PRIOR_TIMESTAMP);
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
 }
 
 TEST_F(SyscollectorImpTest, queryCommandSetVersion)
@@ -3697,8 +4253,8 @@ TEST_F(SyscollectorImpTest, notifyDisableCollectorsDataCleanWithDisabledCollecto
     // This tests the error handling path
     EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
-    // Verify error log for missing sync protocol
-    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+    // Verify info log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Sync protocol not initialized, cannot notify data clean"));
 
     Syscollector::instance().destroy();
 }
@@ -3855,8 +4411,8 @@ TEST_F(SyscollectorImpTest, allCollectorsDisabledWithData)
     // We can verify this by calling notifyDisableCollectorsDataClean (will fail without sync protocol)
     EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
-    // Verify error log for missing sync protocol
-    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+    // Verify info log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Sync protocol not initialized, cannot notify data clean"));
 
     Syscollector::instance().destroy();
 }
@@ -3911,8 +4467,8 @@ TEST_F(SyscollectorImpTest, networkCollectorDisabledThreeIndices)
     // Verify by attempting notification (will fail without sync protocol but tests the detection)
     EXPECT_FALSE(Syscollector::instance().notifyDisableCollectorsDataClean());
 
-    // Verify error log for missing sync protocol
-    EXPECT_TRUE(logCapture.contains(LOG_ERROR, "Sync protocol not initialized, cannot notify data clean"));
+    // Verify info log for missing sync protocol
+    EXPECT_TRUE(logCapture.contains(LOG_INFO, "Sync protocol not initialized, cannot notify data clean"));
 
     // Cleanup should work even without sync protocol
     EXPECT_NO_THROW(Syscollector::instance().deleteDisableCollectorsData());
@@ -4303,6 +4859,296 @@ TEST_F(SyscollectorImpTest, schemaValidationWithCorrectedDataTypes)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 }
 
+TEST_F(SyscollectorImpTest, hardwareCpuSpeedZeroIsReportedAsNull)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // cpu_speed as 0.0 represents an unavailable value (e.g. macOS ARM) and must be
+    // reported as null instead of a misleading 0.
+    const std::string hardwareJson = R"({"serial_number":"Apple Inc.", "cpu_speed":0.0,"cpu_cores":8,"cpu_name":"Apple M1","memory_free":1000000,"memory_total":2000000,"memory_used":1000000})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json::parse(hardwareJson)));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, ports()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            if (index == "wazuh-states-inventory-hardware")
+            {
+                auto jsonData = nlohmann::json::parse(data);
+
+                // cpu_speed 0.0 must be reported as null, not as a literal 0
+                EXPECT_TRUE(jsonData["host"]["cpu"]["speed"].is_null());
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, true, false, false, false, false, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+// Windows reports interface_mtu as 4294967295 (UINT32_MAX) when the MTU is not available;
+// this correction must discard that placeholder and report interface.mtu as null.
+TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnWindows)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // No "IPv4"/"IPv6" sub-arrays are included on purpose, so that only the
+    // "dbsync_network_iface" table (and its "wazuh-states-inventory-interfaces" index)
+    // is generated, keeping this test focused on the MTU normalization.
+    const std::string networksJson =
+        R"({"iface":[{"host_mac":"d4:5d:64:51:07:5d", "interface_mtu":4294967295, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0}]})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(networksJson)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            auto jsonData = nlohmann::json::parse(data);
+
+            if (index == "wazuh-states-inventory-interfaces")
+            {
+                // interface.mtu should be null instead of the raw 4294967295 placeholder
+                EXPECT_TRUE(jsonData["interface"]["mtu"].is_null());
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-interfaces"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
+// UNIX (Linux/BSD) reports interface_mtu as 0 when the MTU is not available;
+// this correction must discard that placeholder and report interface.mtu as null.
+TEST_F(SyscollectorImpTest, schemaValidationDiscardsInvalidMtuValueOnUnix)
+{
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+
+    // No "IPv4"/"IPv6" sub-arrays are included on purpose, so that only the
+    // "dbsync_network_iface" table (and its "wazuh-states-inventory-interfaces" index)
+    // is generated, keeping this test focused on the MTU normalization.
+    const std::string networksJson =
+        R"({"iface":[{"host_mac":"d4:5d:64:51:07:5d", "interface_mtu":0, "interface_name":"enp4s0", "interface_alias":" ", "interface_type":"ethernet", "interface_state":"up","host_network_ingress_bytes":0,"host_network_ingress_drops":0,"host_network_ingress_errors":0,"host_network_ingress_packages":0,"host_network_egress_bytes":0,"host_network_egress_drops":0,"host_network_egress_errors":0,"host_network_egress_packages":0}]})";
+
+    EXPECT_CALL(*spInfoWrapper, hardware()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, os()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, networks()).WillRepeatedly(Return(nlohmann::json::parse(networksJson)));
+    EXPECT_CALL(*spInfoWrapper, ports()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, packages(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, hotfixes()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, processes(_)).Times(0);
+    EXPECT_CALL(*spInfoWrapper, groups()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, users()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, services()).WillRepeatedly(Return(nlohmann::json{}));
+    EXPECT_CALL(*spInfoWrapper, browserExtensions()).WillRepeatedly(Return(nlohmann::json{}));
+
+    CallbackMock wrapperDelta;
+    std::function<void(const std::string&)> callbackDataDelta
+    {
+        [&wrapperDelta](const std::string & data)
+        {
+            wrapperDelta.callbackMock(data);
+        }
+    };
+
+    CallbackMockPersist wrapperPersist;
+    std::function<void(const std::string&, Operation_t, const std::string&, const std::string&, uint64_t)> callbackDataPersist
+    {
+        [&wrapperPersist](const std::string & id, Operation_t operation, const std::string & index, const std::string & data, uint64_t version)
+        {
+            auto jsonData = nlohmann::json::parse(data);
+
+            if (index == "wazuh-states-inventory-interfaces")
+            {
+                // interface.mtu should be null instead of the raw 0 placeholder
+                EXPECT_TRUE(jsonData["interface"]["mtu"].is_null());
+            }
+
+            wrapperPersist.callbackMock(id, operation, index, data, version);
+        }
+    };
+
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-interfaces"), testing::_, testing::_)).Times(1);
+
+    std::thread t
+    {
+        [&spInfoWrapper, &callbackDataDelta, &callbackDataPersist]()
+        {
+            Syscollector::instance().init(spInfoWrapper,
+                                          callbackDataDelta,
+                                          callbackDataPersist,
+                                          logFunction,
+                                          SYSCOLLECTOR_DB_PATH,
+                                          "",
+                                          "",
+                                          5, true, false, false, true, false, false, false, false, false, false, false, false, false, false);
+
+            // Initialize sync protocol to enable schema validation
+            MQ_Functions mqFuncs;
+            mqFuncs.start = [](const char*, short, short) -> int { return 0; };
+            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char) -> int { return 0; };
+
+            Syscollector::instance().initSyncProtocol(
+                "syscollector",
+                ":memory:",
+                ":memory:",
+                mqFuncs,
+                std::chrono::seconds(10),
+                std::chrono::seconds(5),
+                3,
+                100,
+                86400
+            );
+
+            Syscollector::instance().start();
+        }
+    };
+
+    std::this_thread::sleep_for(std::chrono::seconds(2));
+    Syscollector::instance().destroy();
+
+    if (t.joinable())
+    {
+        t.join();
+    }
+
+    // Reset factory after test
+    SchemaValidator::SchemaValidatorFactory::getInstance().reset();
+}
+
 // Schema validation test using mock to force rejection
 TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
 {
@@ -4345,11 +5191,12 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
     // Expect NO persist callback for invalid hardware data (will be rejected by mock validator)
     EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(0);
 
-    // Capture log messages to verify validation errors
-    std::vector<std::string> loggedMessages;
-    auto customLogFunction = [&loggedMessages](modules_log_level_t, const std::string & message)
+    // Capture log messages to verify validation errors.
+    // Keep data on heap because Syscollector may still invoke the logger during fixture TearDown.
+    auto loggedMessages = std::make_shared<std::vector<std::string>>();
+    auto customLogFunction = [loggedMessages](modules_log_level_t, const std::string & message)
     {
-        loggedMessages.push_back(message);
+        loggedMessages->push_back(message);
     };
 
     // Create mock validator that will reject all validations
@@ -4419,13 +5266,13 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
     SchemaValidator::SchemaValidatorFactory::getInstance().reset();
 
     // Verify that validation errors were logged
-    EXPECT_FALSE(loggedMessages.empty());
+    ASSERT_FALSE(loggedMessages->empty());
 
     bool foundValidationError = false;
     bool foundDiscardMessage = false;
     bool foundDeferredDeletion = false;
 
-    for (const auto& msg : loggedMessages)
+    for (const auto& msg : *loggedMessages)
     {
         if (msg.find("Schema validation failed") != std::string::npos)
         {
@@ -4449,8 +5296,9 @@ TEST_F(SyscollectorImpTest, schemaValidationRejectsInvalidDataWithMock)
     EXPECT_TRUE(foundDeferredDeletion) << "Expected deferred deletion log not found";
 }
 
-// Test for missing validator: factory is initialized but no validator for the index
-TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
+// Test for missing validator: factory is initialized but no validator for the index.
+// The message must be discarded (restrictive behaviour) and a warning logged.
+TEST_F(SyscollectorImpTest, schemaValidationDiscardsWhenValidatorNotFound)
 {
     const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
 
@@ -4487,8 +5335,8 @@ TEST_F(SyscollectorImpTest, schemaValidationQueuesWhenValidatorNotFound)
         }
     };
 
-    // Expect persist callback for hardware data (should be queued despite missing validator)
-    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(1);
+    // No persist callback expected: with no validator for the index the message is discarded
+    EXPECT_CALL(wrapperPersist, callbackMock(testing::_, testing::_, testing::Eq("wazuh-states-inventory-hardware"), testing::_, testing::_)).Times(0);
 
     // Capture log messages to verify warning is logged
     // Use shared_ptr to prevent dangling references after test completes
@@ -5197,4 +6045,131 @@ TEST_F(SyscollectorImpTest, destroyWaitsForOngoingFlush)
     destroyThread.join();
 
     EXPECT_TRUE(destroyDone);
+}
+
+TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedDefaultsToFalse)
+{
+    // No VD sync has run and no marker is present: expect vd_first_sync_completed == 0.
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_vd_first_sync_completed"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["vd_first_sync_completed"], 0);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedReturnsTrueWhenMetadataExists)
+{
+    // Seed the marker directly into the DB, then verify the query reports it.
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    Syscollector::instance().destroy();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+        std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db {rawDb, &sqlite3_close};
+
+        char* rawErrMsg = nullptr;
+        const int execResult = sqlite3_exec(db.get(),
+                                            "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('vd_first_sync_completed', 123456);",
+                                            nullptr,
+                                            nullptr,
+                                            &rawErrMsg);
+        std::unique_ptr<char, decltype(&sqlite3_free)> errMsg {rawErrMsg, &sqlite3_free};
+        ASSERT_EQ(execResult, SQLITE_OK) << (errMsg ? errMsg.get() : "");
+    }
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_vd_first_sync_completed"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["vd_first_sync_completed"], 1);
+
+    Syscollector::instance().destroy();
+}
+
+TEST_F(SyscollectorImpTest, queryCommandGetVDFirstSyncCompletedIgnoresZeroTimestamp)
+{
+    // A row with last_sync_time=0 must NOT be reported as completed (boolean is "> 0").
+    const auto spInfoWrapper{std::make_shared<MockSysInfo>()};
+    EXPECT_CALL(*spInfoWrapper, hardware()).Times(0);
+    EXPECT_CALL(*spInfoWrapper, os()).Times(0);
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    Syscollector::instance().destroy();
+
+    {
+        sqlite3* rawDb = nullptr;
+        ASSERT_EQ(sqlite3_open_v2(SYSCOLLECTOR_TEST_DB_PATH, &rawDb, SQLITE_OPEN_READWRITE, nullptr), SQLITE_OK);
+        std::unique_ptr<sqlite3, decltype(&sqlite3_close)> db {rawDb, &sqlite3_close};
+
+        char* rawErrMsg = nullptr;
+        const int execResult = sqlite3_exec(db.get(),
+                                            "INSERT OR REPLACE INTO table_metadata (table_name, last_sync_time) VALUES ('vd_first_sync_completed', 0);",
+                                            nullptr,
+                                            nullptr,
+                                            &rawErrMsg);
+        std::unique_ptr<char, decltype(&sqlite3_free)> errMsg {rawErrMsg, &sqlite3_free};
+        ASSERT_EQ(execResult, SQLITE_OK) << (errMsg ? errMsg.get() : "");
+    }
+
+    Syscollector::instance().init(spInfoWrapper,
+                                  reportFunction,
+                                  persistFunction,
+                                  logFunction,
+                                  SYSCOLLECTOR_TEST_DB_PATH,
+                                  "",
+                                  "",
+                                  3600, false, false, false, false, false, false, false, false, false, false, false, false, false, false);
+
+    std::string response = Syscollector::instance().query(R"({"command":"get_vd_first_sync_completed"})");
+    auto responseJson = nlohmann::json::parse(response);
+
+    EXPECT_EQ(responseJson["error"], MQ_SUCCESS);
+    EXPECT_EQ(responseJson["data"]["vd_first_sync_completed"], 0);
+
+    Syscollector::instance().destroy();
 }

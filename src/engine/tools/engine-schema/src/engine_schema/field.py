@@ -231,6 +231,11 @@ class Field:
             obj['type'].append(str(JsonType.STRING))
             obj['pattern'] = HELPER_REF_STR_PATTERN
 
+        # allow array values; the engine expands them as field.0, field.1, ...
+        item_schema = {k: v for k, v in obj.items() if k != 'description'}
+        obj['type'] = obj['type'] + [str(JsonType.ARRAY), 'null']
+        obj['items'] = item_schema
+
         return obj
 
     def to_jmapping(self) -> dict:
@@ -295,36 +300,47 @@ class FieldTree:
         node = self._add_field_node(path)
         node[self._field_tag] = field
 
-    def _get_jschema_rec(self, properties: dict, current: dict, full_name: str):
-        # Get type info
+    def _build_nested_schema(self, current: dict) -> dict:
         if self._field_tag in current:
-            field = current[self._field_tag]
+            schema = dict(current[self._field_tag].to_jschema())
+        else:
+            schema = {
+                'type': [str(JsonType.OBJECT)],
+            }
 
-            # Add info
-            field_jschema = field.to_jschema()
-            properties[full_name] = field_jschema
+        if self._children_tag in current:
+            child_props = {}
+            for child_name, child_node in current[self._children_tag].items():
+                child_props[child_name] = self._build_nested_schema(child_node)
+            schema['additionalProperties'] = False
+            schema['properties'] = child_props
 
-            # If object or array of objects add children (nested form)
-            # a:
-            #  b:
-            #   c: ...
+        return schema
+
+    def _get_jschema_rec(self, properties: dict, current: dict, full_name: str):
+        if self._field_tag in current:
+            if '.' not in full_name:
+                properties[full_name] = self._build_nested_schema(current)
+            else:
+                properties[full_name] = dict(current[self._field_tag].to_jschema())
+
             if self._children_tag in current:
-                next_properties = properties
-                if str(JsonType.OBJECT) in field_jschema['type']:
-                    properties[full_name]['additionalProperties'] = False
-                    properties[full_name]['properties'] = dict()
-                    next_properties = properties[full_name]['properties']
-                else:
-                    raise Exception(
-                        f'{full_name} field node has children but is not object')
-
                 for child_name, child_node in current[self._children_tag].items():
                     self._get_jschema_rec(
-                        next_properties, child_node, child_name)
+                        properties, child_node, full_name + '.' + child_name)
 
-        # Default parent field object, add children in dotted form
-        # a.b.c.d: ...
         elif self._children_tag in current:
+            if '.' not in full_name:
+                # not a WCS leaf — register as object so nested-object notation is valid
+                child_props = {}
+                for child_name, child_node in current[self._children_tag].items():
+                    child_props[child_name] = self._build_nested_schema(child_node)
+                properties[full_name] = {
+                    'type': [str(JsonType.OBJECT)],
+                    'additionalProperties': False,
+                    'properties': child_props,
+                }
+
             for child_name, child_node in current[self._children_tag].items():
                 self._get_jschema_rec(
                     properties, child_node, full_name + '.' + child_name)

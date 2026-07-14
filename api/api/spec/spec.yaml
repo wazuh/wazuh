@@ -40,11 +40,11 @@ info:
     <SecurityDefinitions />
 
   version: '5.0.0'
-  x-revision: 'beta1'
+  x-revision: 'beta4'
   title: 'Wazuh API REST'
   license:
     name: 'GPL 2.0'
-    url: 'https://github.com/wazuh/wazuh/blob/main/LICENSE'
+    url: 'https://github.com/wazuh/wazuh/blob/v5.0.0-beta4/LICENSE'
 
 servers:
   - url: '{protocol}://{host}:{port}'
@@ -363,7 +363,7 @@ components:
             detail: "Permission denied: Resource type: *:*"
             remediation: "Please, make sure you have permissions to execute the current request. For more information
             on how to set up permissions, please visit
-            https://documentation.wazuh.com/main/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
             error: 4000
             dapi_errors:
               unknown-node:
@@ -430,7 +430,7 @@ components:
             title: "Wazuh Error"
             detail: "Maximum number of requests per minute reached"
             remediation: "This limit can be changed in api.yaml file. More information here:
-            https://documentation.wazuh.com/main/user-manual/api/security/configuration.html"
+            https://documentation.wazuh.com/5.0/user-manual/api/security/configuration.html"
             code: 6001
 
     ResourceNotFoundResponse:
@@ -443,7 +443,7 @@ components:
             title: "Resource Not Found"
             detail: "The group does not exist"
             remediation: "Please, use `GET /groups` to find all available groups:
-            https://documentation.wazuh.com/main/user-manual/api/rbac/configuration.html"
+            https://documentation.wazuh.com/5.0/user-manual/api/rbac/configuration.html"
             code: 1710
             dapi_errors:
               unknown-node:
@@ -855,15 +855,17 @@ components:
           properties:
             major:
               type: string
+            minor:
+              type: string
             name:
               type: string
             platform:
               type: string
+            type:
+              type: string
             version:
               type: string
             arch:
-              type: string
-            minor:
               type: string
           description: "Agent OS information"
         status_code:
@@ -2670,25 +2672,148 @@ components:
                                   type: integer
                                   format: int32
 
+    NodeDaemonStatus:
+      type: object
+      description: "Per-daemon readiness status reported by a cluster node."
+      properties:
+        ready:
+          type: boolean
+          description: "Whether the daemon is ready to handle requests."
+        running:
+          type: boolean
+          description: "Whether the daemon process is currently running."
+
+    AnalysisdStatus:
+      allOf:
+        - $ref: '#/components/schemas/NodeDaemonStatus'
+        - type: object
+          description: "Extended status for wazuh-manager-analysisd including engine resource states."
+          properties:
+            spaces:
+              type: object
+              description: "Status of content spaces (e.g. standard, custom)."
+              additionalProperties:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  enabled:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [ready, updating, failed]
+                  hash:
+                    type: string
+                  last_successful_update:
+                    type: integer
+                    format: int64
+            ioc:
+              type: object
+              description: "Status of IOC resource types."
+              additionalProperties:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [ready, updating, failed]
+                  hash:
+                    type: string
+                  last_successful_update:
+                    type: integer
+                    format: int64
+            geo:
+              type: object
+              description: "Status of GeoIP databases."
+              additionalProperties:
+                type: object
+                properties:
+                  available:
+                    type: boolean
+                  status:
+                    type: string
+                    enum: [ready, updating, failed]
+                  hash:
+                    type: string
+                  last_successful_update:
+                    type: integer
+                    format: int64
+
+    VulnerabilityDetectorStatus:
+      type: object
+      description: "Status of the vulnerability-detector module as reported by the modulesd socket."
+      properties:
+        available:
+          type: boolean
+          description: "Whether the CVE feed has been loaded at least once and is usable for scanning."
+        status:
+          type: string
+          enum: [updating, ready, failed]
+          description: "Current feed lifecycle state."
+        enabled:
+          type: boolean
+          description: "Whether vulnerability detection is enabled in the configuration."
+        offset:
+          type: integer
+          format: int64
+          description: "Feed cursor (content manager offset) of the last completed download cycle."
+        last_successful_update:
+          type: integer
+          format: int64
+          description: "Unix timestamp of the last successful feed completion, or 0 if none."
+
+    ModulesdStatus:
+      allOf:
+        - $ref: '#/components/schemas/NodeDaemonStatus'
+        - type: object
+          description: "Extended status for wazuh-manager-modulesd including sub-module states."
+          properties:
+            modules:
+              type: object
+              description: "Status of manager-exclusive modulesd sub-modules."
+              properties:
+                vulnerability-detector:
+                  $ref: '#/components/schemas/VulnerabilityDetectorStatus'
+                inventory-sync:
+                  type: object
+                  properties:
+                    available:
+                      type: boolean
+                content-manager:
+                  type: object
+                  properties:
+                    available:
+                      type: boolean
+                task-manager:
+                  type: object
+                  properties:
+                    available:
+                      type: boolean
+
     WazuhDaemonsStatus:
       type: object
+      description: "Readiness and running status of all Wazuh manager daemons on a cluster node."
       properties:
+        ready:
+          type: boolean
+          description: "True only when every daemon on the node is ready."
         wazuh-manager-analysisd:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/AnalysisdStatus'
         wazuh-manager-authd:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-monitord:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-remoted:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-apid:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-clusterd:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-db:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/NodeDaemonStatus'
         wazuh-manager-modulesd:
-          $ref: '#/components/schemas/DaemonStatus'
+          $ref: '#/components/schemas/ModulesdStatus'
 
     WazuhInfo:
       type: object
@@ -2767,7 +2892,7 @@ components:
             - warning
         tag:
           type: string
-          format: alphanumeric
+          format: alphanumeric_symbols
           description: "Wazuh component that logged the event"
         timestamp:
           type: string
@@ -2910,6 +3035,9 @@ components:
                     type: string
                     format: alphanumeric_symbols
                   platform:
+                    type: string
+                    format: alphanumeric_symbols
+                  type:
                     type: string
                     format: alphanumeric_symbols
                   version:
@@ -3766,7 +3894,7 @@ components:
       description: "Wazuh component that logged the event"
       schema:
         type: string
-        format: alphanumeric
+        format: alphanumeric_symbols
     log_level:
       in: query
       name: level
@@ -3794,6 +3922,13 @@ components:
       schema:
         type: string
         format: alphanumeric
+    os.type:
+      in: query
+      name: os.type
+      description: "Filter by OS family (Linux, Windows, Unix, ...)"
+      schema:
+        type: string
+        format: alphanumeric
     os.platform:
       in: query
       name: os.platform
@@ -3808,6 +3943,27 @@ components:
       schema:
         type: string
         format: alphanumeric_symbols
+    os.major:
+      in: query
+      name: os.major
+      description: "Filter by OS major version"
+      schema:
+        type: string
+        format: numbers
+    os.minor:
+      in: query
+      name: os.minor
+      description: "Filter by OS minor version"
+      schema:
+        type: string
+        format: numbers
+    os.arch:
+      in: query
+      name: os.arch
+      description: "Filter by OS architecture"
+      schema:
+        type: string
+        format: alphanumeric
     older_than:
       in: query
       name: older_than
@@ -3972,9 +4128,9 @@ paths:
               example:
                 title: "Wazuh API"
                 api_version: "v4.5.0"
-                revision: 'beta1'
+                revision: 'beta4'
                 license_name: "GPL 2.0"
-                license_url: "https://github.com/wazuh/wazuh/blob/main/LICENSE"
+                license_url: "https://github.com/wazuh/wazuh/blob/v5.0.0-beta4/LICENSE"
                 hostname: "wazuh"
                 timestamp: "2019-04-02T08:08:11Z"
 
@@ -3995,8 +4151,12 @@ paths:
         - $ref: '#/components/parameters/statusDeleteAgentParam'
         - $ref: '#/components/parameters/older_than'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4058,8 +4218,12 @@ paths:
         - $ref: '#/components/parameters/statusAgentParam'
         - $ref: '#/components/parameters/query'
         - $ref: '#/components/parameters/olderThanParam'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4090,6 +4254,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '001'
@@ -4110,6 +4275,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '002'
@@ -4130,6 +4296,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2021-05-26T12:40:40Z'
                       id: '003'
@@ -4746,8 +4913,12 @@ paths:
         - $ref: '#/components/parameters/force'
         - $ref: '#/components/parameters/package_type'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4801,8 +4972,12 @@ paths:
         - $ref: '#/components/parameters/file_path'
         - $ref: '#/components/parameters/installer'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -4854,8 +5029,12 @@ paths:
         - $ref: '#/components/parameters/wait_for_complete'
         - $ref: '#/components/parameters/agents_list'
         - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/os.type'
         - $ref: '#/components/parameters/os.platform'
         - $ref: '#/components/parameters/os.version'
+        - $ref: '#/components/parameters/os.major'
+        - $ref: '#/components/parameters/os.minor'
+        - $ref: '#/components/parameters/os.arch'
         - $ref: '#/components/parameters/os.name'
         - $ref: '#/components/parameters/version'
         - $ref: '#/components/parameters/agent_group'
@@ -5454,6 +5633,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2024-02-26T12:40:40Z'
                       id: '001'
@@ -5474,6 +5654,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       lastKeepAlive: '2024-02-26T12:40:40Z'
                       id: '002'
@@ -5547,8 +5728,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/main/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/main/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -5658,8 +5839,8 @@ paths:
                           code: 1707
                           message: "Cannot send request, agent is not active"
                           remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/main/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/main/user-manual/agents/agent-connection.html
+                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
+                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
                            to obtain more information on registering and connecting agents"
                         id:
                           - '009'
@@ -6063,6 +6244,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       mergedSum: 2c769b2ea138d472ee8f1ba23412b5d4
                       node_name: worker1
@@ -6084,6 +6266,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       node_name: worker1
@@ -6105,6 +6288,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: 20.04.2 LTS
                       mergedSum: 9a016508cea1e997ab8569f5cfab30f5
                       node_name: worker2
@@ -6761,16 +6945,6 @@ paths:
                           block_time: 300
                           max_request_per_minute: 300
                         upload_configuration:
-                          remote_commands:
-                            localfile:
-                              allow: true
-                              exceptions: []
-                            wodle_command:
-                              allow: true
-                              exceptions: []
-                          limits:
-                            eps:
-                              allow: true
                           agents:
                             allow_higher_versions:
                               allow: true
@@ -6808,16 +6982,6 @@ paths:
                           block_time: 300
                           max_request_per_minute: 300
                         upload_configuration:
-                          remote_commands:
-                            localfile:
-                              allow: true
-                              exceptions: []
-                            wodle_command:
-                              allow: true
-                              exceptions: []
-                          limits:
-                            eps:
-                              allow: true
                           agents:
                             allow_higher_versions:
                               allow: true
@@ -6855,16 +7019,6 @@ paths:
                           block_time: 300
                           max_request_per_minute: 300
                         upload_configuration:
-                          remote_commands:
-                            localfile:
-                              allow: true
-                              exceptions: []
-                            wodle_command:
-                              allow: true
-                              exceptions: []
-                          limits:
-                            eps:
-                              allow: true
                           agents:
                             allow_higher_versions:
                               allow: true
@@ -6890,8 +7044,8 @@ paths:
     get:
       tags:
         - Cluster
-      summary: "Get node status"
-      description: "Return the status of all Wazuh daemons in node node_id"
+      summary: "Get node readiness"
+      description: "Return whether the node is ready to process events. Each daemon reports running (PID check) and ready; analysisd embeds the engine resources (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node-level ready is true only when every daemon is ready."
       operationId: api.controllers.cluster_controller.get_status_node
       x-rbac-actions:
         - $ref: '#/x-rbac-catalog/actions/cluster:read'
@@ -6901,7 +7055,7 @@ paths:
         - $ref: '#/components/parameters/node_id'
       responses:
         '200':
-          description: "Node wazuh daemons statuses"
+          description: "Node readiness"
           content:
             application/json:
               schema:
@@ -6910,22 +7064,58 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/WazuhDaemonsStatus'
+                        type: object
+                        properties:
+                          affected_items:
+                            type: array
+                            items:
+                              type: object
+                              additionalProperties: true
+                          total_affected_items:
+                            type: integer
+                          total_failed_items:
+                            type: integer
+                          failed_items:
+                            type: array
+                            items:
+                              type: object
               example:
                 data:
                   affected_items:
-                    - wazuh-manager-analysisd: running
-                      wazuh-manager-authd: stopped
-                      wazuh-manager-monitord: running
-                      wazuh-manager-remoted: running
-                      wazuh-manager-apid: running
-                      wazuh-manager-clusterd: running
-                      wazuh-manager-db: running
-                      wazuh-manager-modulesd: running
+                    - ready: false
+                      wazuh-manager-analysisd:
+                        ready: false
+                        running: true
+                        spaces:
+                          standard: { available: true, enabled: true, status: ready, hash: "abc", last_successful_update: 1750068600 }
+                          custom: { available: false, enabled: false, status: ready, hash: "", last_successful_update: 0 }
+                        ioc:
+                          connection: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          url_domain: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          url_full: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          hash_md5: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          hash_sha1: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                          hash_sha256: { available: true, status: ready, hash: "h", last_successful_update: 1750068600 }
+                        geo:
+                          city: { available: true, status: ready, hash: "h", last_successful_update: 1750066800 }
+                          asn: { available: false, status: running, hash: "", last_successful_update: 0 }
+                      wazuh-manager-modulesd:
+                        ready: true
+                        running: true
+                        modules:
+                          vulnerability-detector: { available: true, status: ready, enabled: true, offset: 0, last_successful_update: 1782822942 }
+                          inventory-sync: { available: true }
+                          content-manager: { available: true }
+                          task-manager: { available: true }
+                      wazuh-manager-remoted: { ready: true, running: true }
+                      wazuh-manager-db: { ready: true, running: true }
+                      wazuh-manager-authd: { ready: false, running: false }
+                      wazuh-manager-clusterd: { ready: true, running: true }
+                      wazuh-manager-apid: { ready: true, running: true }
                   total_affected_items: 1
                   total_failed_items: 0
                   failed_items: []
-                message: "Processes status was successfully read in specified node"
+                message: "Node readiness was successfully read in specified node"
                 error: 0
         '400':
           $ref: '#/components/responses/ResponseError'
@@ -9894,6 +10084,7 @@ paths:
                         minor: '04'
                         name: Ubuntu
                         platform: ubuntu
+                        type: linux
                         version: "20.04.02 LTS"
                       node_name: worker1
                       lastKeepAlive: "2021-05-31T10:56:52Z"
@@ -10076,4 +10267,4 @@ paths:
 
 externalDocs:
   description: "Learn more about the Wazuh API"
-  url: 'https://documentation.wazuh.com/main/user-manual/api/index.html'
+  url: 'https://documentation.wazuh.com/5.0/user-manual/api/index.html'

@@ -86,6 +86,12 @@ extern int wm_task_nice;        // Nice value for tasks.
 extern int wm_max_eps;          // Maximum events per second sent by Wazuh Module
 extern int wm_kill_timeout;     // Time for a process to quit before killing it
 extern int wm_debug_level;
+extern volatile sig_atomic_t wm_shutdown_requested;
+
+void wm_sleep_interruptible(int seconds);
+void wm_sleep_until_interruptible(time_t abs_time);
+// Like select() on a single read fd but checks wm_shutdown_requested every second; returns 0 on shutdown.
+int wm_select_interruptible(int sock, fd_set *fdset);
 
 // Read XML configuration and internal options
 int wm_config();

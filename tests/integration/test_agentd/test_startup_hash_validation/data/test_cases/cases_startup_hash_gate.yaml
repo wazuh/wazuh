@@ -15,3 +15,21 @@
   configuration_parameters:
   metadata:
     scenario: push_after_delay
+
+- name: startup hash gate releases when reload chain fails
+  description: gate releases directly even when reloadAgent cannot reach modulesd control socket (issue 36239)
+  configuration_parameters:
+  metadata:
+    scenario: reload_chain_fails_gate_still_releases
+
+- name: startup hash gate does not let modules run during reload retry window
+  description: when the reload chain runs normally, module daemons must not start before the chain dispatches (issue 36239 regression caught 2026-05-22)
+  configuration_parameters:
+  metadata:
+    scenario: no_premature_module_start_during_reload
+
+- name: startup hash gate blocks rootcheck on group reassignment
+  description: when an agent restarts with a stale local merged.mg (e.g. after a group reassignment), rootcheck (and every other agent module) must NOT log Started before the reload chain dispatches (issue 36239 regression observed 2026-05-26)
+  configuration_parameters:
+  metadata:
+    scenario: stale_local_merged_mg_no_premature_module_start

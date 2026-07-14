@@ -1,5 +1,5 @@
-#ifndef _BUILDER2_REGISTER_HPP
-#define _BUILDER2_REGISTER_HPP
+#ifndef BUILDER2_REGISTER_HPP
+#define BUILDER2_REGISTER_HPP
 
 #include <memory>
 
@@ -61,8 +61,6 @@ void registerOpBuilders(const std::shared_ptr<Registry>& registry, const builder
                                                      {schemf::runtimeValidation(), builders::opfilter::existsBuilder});
     registry->template add<builders::OpBuilderEntry>(
         "not_exists", {schemf::runtimeValidation(), builders::opfilter::notExistsBuilder});
-    registry->template add<builders::OpBuilderEntry>(
-        "is_test_session", {schemf::runtimeValidation(), builders::opfilter::opBuilderHelperIsTestSession});
     registry->template add<builders::OpBuilderEntry>(
         "array_contains", {schemf::elementValidationToken(), builders::opfilter::opBuilderHelperContains});
     registry->template add<builders::OpBuilderEntry>(
@@ -464,4 +462,4 @@ void registerEnrichmentBuilders(const std::shared_ptr<Registry>& registry,
 
 } // namespace builder::detail
 
-#endif // _BUILDER2_REGISTER_HPP
+#endif // BUILDER2_REGISTER_HPP

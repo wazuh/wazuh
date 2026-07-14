@@ -21,6 +21,13 @@ int __wrap_StartMQ(const char *path, short int type, short int n_attempts);
  */
 void expect_StartMQ_call(const char *qpath, int type, int ret);
 
+int __wrap_StartMQPredicated(const char *path, short int type, short int n_attempts, bool (*fn_ptr)());
+
+/**
+ * @brief This function loads the expect and will_return calls for the function StartMQPredicated
+ */
+void expect_StartMQPredicated_call(const char *qpath, int type, bool (*fn_ptr)(), int ret);
+
 /**
  * @brief This function loads the expect and will_return calls for the function SendMSG
  */

@@ -8,7 +8,7 @@ import yaml
 from pathlib import Path
 from typing import Optional
 
-from google.protobuf.json_format import MessageToJson, ParseDict
+from google.protobuf.json_format import MessageToDict, MessageToJson, ParseDict
 from google.protobuf.message import Message
 
 from api_communication.client import APIClient
@@ -43,6 +43,65 @@ HELPERS_INTEG_UUID   = "e9d1a9c3-8f2b-4a6a-9f4b-2c6d5e7f2b10"
 
 # KVDB resource UUID in CM
 KVDB_RESOURCE_UUID = "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10"
+HELPER_TEST_ASSET_AUTHOR = "Wazuh Inc."
+HELPER_TEST_ASSET_DATE = "2025-10-06T13:32:19Z"
+
+
+def get_helper_test_asset_metadata(title: str, description: str) -> dict:
+    """
+    Return asset metadata following the ruleset asset format.
+    """
+    return {
+        "title": title,
+        "author": HELPER_TEST_ASSET_AUTHOR,
+        "date": HELPER_TEST_ASSET_DATE,
+        "description": description,
+    }
+
+
+def get_helper_test_kvdb_resource() -> dict:
+    """
+    Return the KVDB resource used by helper function tests.
+    """
+    return {
+        "id": KVDB_RESOURCE_UUID,
+        "metadata": get_helper_test_asset_metadata(
+            "windows_kerberos_status_code_to_code_name",
+            "KVDB resource used by helper function tests.",
+        ),
+        "content": {
+            "0x0": "KDC_ERR_NONE",
+            "0x1": "KDC_ERR_NAME_EXP",
+            "0x2": "KDC_ERR_SERVICE_EXP",
+            "0x3": "KDC_ERR_BAD_PVNO",
+            "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+            "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+            "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+            "bitmask_test_values": [0, 1, 2, 3, 4, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31],
+            "access_mask": {
+                "0": "Create Child",
+                "1": "Delete Child",
+                "2": "List Contents",
+                "3": "SELF",
+                "4": "Read Property",
+                "5": "Write Property",
+                "6": "Delete Tree",
+                "7": "List Object",
+                "8": "Control Access",
+                "16": "DELETE",
+                "17": "READ_CONTROL",
+                "18": "WRITE_DAC",
+                "19": "WRITE_OWNER",
+                "20": "SYNCHRONIZE",
+                "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+                "31": "ADS_RIGHT_GENERIC_READ",
+                "30": "ADS_RIGHT_GENERIC_WRITE",
+                "29": "ADS_RIGHT_GENERIC_EXECUTE",
+                "28": "ADS_RIGHT_GENERIC_ALL",
+            },
+        },
+        "enabled": True,
+    }
 
 
 # ===================================================================
@@ -84,6 +143,23 @@ def load_yaml(file_path: str) -> dict:
             return yaml.safe_load(stream)
         except yaml.YAMLError as exc:
             raise Exception(f"Error loading YAML file: {exc}")
+
+
+def _post_json_content(api_client: APIClient, req: Message, payload_dict: dict) -> api_engine.GenericStatus_Response:
+    """
+    Send a creation request with jsonContent as a native Python dict,
+    bypassing google.protobuf.Struct (which converts integers to floats).
+    Returns a GenericStatus_Response compatible with existing callers.
+    """
+    params = MessageToDict(req)
+    params["jsonContent"] = payload_dict
+    error, response = api_client.jsend(params, req, api_engine.GenericStatus_Response())
+    if error:
+        result = api_engine.GenericStatus_Response()
+        result.status = api_engine.ERROR
+        result.error = error
+        return result
+    return ParseDict(response, api_engine.GenericStatus_Response())
 
 
 # ===================================================================
@@ -375,7 +451,7 @@ def delete_namespace(api_client: APIClient):
     assert response.status == api_engine.OK, f"{response.error}"
 
 
-def build_asset_request(asset: dict) -> api_crud.resourcePost_Request:
+def build_asset_request(asset: dict):
     """
     Build a resourcePost request for a decoder in engine-cm.
 
@@ -383,6 +459,9 @@ def build_asset_request(asset: dict) -> api_crud.resourcePost_Request:
       - name = ASSET_NAME
       - id   = HELPERS_DECODER_UUID
     so that the integration can reference the decoder by UUID.
+
+    Returns (req, payload_dict) so callers can send via _post_json_content,
+    preserving integer types in the JSON payload.
     """
     asset = dict(asset)  # copy to avoid mutating original
 
@@ -390,13 +469,10 @@ def build_asset_request(asset: dict) -> api_crud.resourcePost_Request:
     asset["id"] = HELPERS_DECODER_UUID
     asset["enabled"] = True
 
-    yml = yaml.safe_dump(asset, sort_keys=False)
-
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "decoder"
-    req.ymlContent = yml
-    return req
+    return req, asset
 
 
 def create_asset_for_runtime(api_client: APIClient, result_evaluator: Evaluator) -> bool:
@@ -404,8 +480,8 @@ def create_asset_for_runtime(api_client: APIClient, result_evaluator: Evaluator)
     Create a decoder in runtime (in POLICY_NS) and evaluate the result
     according to should_pass and skipped.
     """
-    request = build_asset_request(result_evaluator.asset)
-    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
+    request, payload = build_asset_request(result_evaluator.asset)
+    response = _post_json_content(api_client, request, payload)
     if response.status == api_engine.OK:
         return True
 
@@ -424,8 +500,8 @@ def create_asset_for_buildtime(api_client: APIClient, result_evaluator: Evaluato
     Create a decoder for build-time tests in POLICY_NS and classify
     the result using Evaluator.check_response.
     """
-    request = build_asset_request(result_evaluator.asset)
-    response = send_recv(api_client, request, api_engine.GenericStatus_Response())
+    request, payload = build_asset_request(result_evaluator.asset)
+    response = _post_json_content(api_client, request, payload)
     result_evaluator.check_response(response)
 
 
@@ -457,23 +533,25 @@ def create_helpers_integration(api_client: APIClient):
     and associates the KVDB resource.
     The policy will be built solely from integrations.
     """
-    integration_yaml = f"""\
-id: {HELPERS_INTEG_UUID}
-metadata:
-  title: helpers-test
-enabled: true
-category: other
-default_parent: {HELPERS_DECODER_UUID}
-decoders:
-  - "{HELPERS_DECODER_UUID}"
-kvdbs:
-  - "{KVDB_RESOURCE_UUID}"
-"""
+    integration_json = json.dumps(
+        {
+            "id": HELPERS_INTEG_UUID,
+            "metadata": get_helper_test_asset_metadata(
+                "helpers-test",
+                "Integration used by helper function tests.",
+            ),
+            "enabled": True,
+            "category": "other",
+            "default_parent": HELPERS_DECODER_UUID,
+            "decoders": [HELPERS_DECODER_UUID],
+            "kvdbs": [KVDB_RESOURCE_UUID],
+        },
+        separators=(",", ":"),
+    )
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "integration"
-    req.ymlContent = integration_yaml
-    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    response = _post_json_content(api_client, req, json.loads(integration_json))
     assert response.status == api_engine.OK, f"{response.error}"
 
 
@@ -485,26 +563,29 @@ def create_policy(api_client: APIClient):
       - default_parent and root_decoder point to the helpers decoder (ASSET_NAME),
       - the integrations list contains HELPERS_INTEG_UUID.
     """
-    policy_yaml = f"""\
-type: policy
-enabled: true
-metadata:
-  title: Helpers Testing Policy
-hash: "helpers-test-hash"
-enrichments: []
-filters: []
-index_unclassified_events: true
-index_discarded_events: false
-default_parent: {HELPERS_DECODER_UUID}
-root_decoder: {HELPERS_DECODER_UUID}
-cleanup_decoder_variables: false
-integrations:
-  - "{HELPERS_INTEG_UUID}"
-"""
+    policy_json = json.dumps(
+        {
+            "type": "policy",
+            "enabled": True,
+            "metadata": get_helper_test_asset_metadata(
+                "Helpers Testing Policy",
+                "Policy used by helper function tests.",
+            ),
+            "hash": "helpers-test-hash",
+            "enrichments": [],
+            "filters": [],
+            "index_unclassified_events": True,
+            "index_discarded_events": False,
+            "default_parent": HELPERS_DECODER_UUID,
+            "root_decoder": HELPERS_DECODER_UUID,
+            "cleanup_decoder_variables": False,
+            "integrations": [HELPERS_INTEG_UUID],
+        },
+        separators=(",", ":"),
+    )
     req = api_crud.policyPost_Request()
     req.space = POLICY_NS
-    req.ymlContent = policy_yaml
-    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    response = _post_json_content(api_client, req, json.loads(policy_json))
     assert response.status == api_engine.OK, f"{response.error}"
 
 
@@ -542,57 +623,12 @@ def create_kvdb_resource(api_client: APIClient):
     Create or update a KVDB resource in POLICY_NS using valid JSON content.
     """
 
-    kvdb_json = {
-        "id": KVDB_RESOURCE_UUID,
-        "date": "2025-10-06T13:32:19Z",
-        "metadata": {"title": "windows_kerberos_status_code_to_code_name"},
-        "author": "Wazuh Inc.",
-        "content": {
-
-            "0x0": "KDC_ERR_NONE",
-            "0x1": "KDC_ERR_NAME_EXP",
-            "0x2": "KDC_ERR_SERVICE_EXP",
-            "0x3": "KDC_ERR_BAD_PVNO",
-            "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
-            "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
-            "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
-
-
-            "bitmask_test_values": [0, 1, 2, 3, 4, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31],
-
-
-            "access_mask": {
-                "0": "Create Child",
-                "1": "Delete Child",
-                "2": "List Contents",
-                "3": "SELF",
-                "4": "Read Property",
-                "5": "Write Property",
-                "6": "Delete Tree",
-                "7": "List Object",
-                "8": "Control Access",
-                "16": "DELETE",
-                "17": "READ_CONTROL",
-                "18": "WRITE_DAC",
-                "19": "WRITE_OWNER",
-                "20": "SYNCHRONIZE",
-                "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
-                "31": "ADS_RIGHT_GENERIC_READ",
-                "30": "ADS_RIGHT_GENERIC_WRITE",
-                "29": "ADS_RIGHT_GENERIC_EXECUTE",
-                "28": "ADS_RIGHT_GENERIC_ALL"
-            },
-        },
-        "enabled": True,
-    }
+    kvdb_json = get_helper_test_kvdb_resource()
 
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS
     req.type = "kvdb"
-    # api_crud.resourcePost_Request expects YAML/JSON as string in ymlContent
-    req.ymlContent = json.dumps(kvdb_json, separators=(",", ":"))
-
-    response = send_recv(api_client, req, api_engine.GenericStatus_Response())
+    response = _post_json_content(api_client, req, kvdb_json)
     assert response.status == api_engine.OK, f"{response.error}"
 
 

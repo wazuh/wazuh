@@ -7,7 +7,17 @@ on:
     paths:
       - "src/**"
       - "packages/**"
+      - "ruleset/**"
+      - "framework/requirements.txt"
+      - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-macos.yml"
+      - ".github/workflows/5_testintegration_agent-start.yml"
+      - ".github/workflows/5_testintegration_macos-integration-tests.yml"
+      - ".github/test_modules_macos.json"
+      - ".github/actions/5_builderpackage_get-last-stable-version/**"
+      - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
+      - ".github/actions/5_builderpackage_macos-smoke-upgrade-test/**"
+      - ".github/actions/5_testintegration_detect-changes/**"
   workflow_dispatch:
     inputs:
       architecture:
@@ -43,9 +53,18 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+# Granted at the workflow level so the reusable smoke-test / integration-test
+# calls (which run S3 uploads/downloads over OIDC) can request id-token.
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build-macos-intel64:
-    if: github.event_name == 'pull_request' || inputs.architecture == 'intel64'
+    permissions:
+      id-token: write
+      contents: read
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.architecture == 'intel64'
     runs-on: macos-14-large
     timeout-minutes: 90
     name: Build PKG package (intel64)
@@ -95,31 +114,40 @@ jobs:
           echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}
           path: packages/macos/output/${{ steps.build.outputs.package-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload debug symbols as artifact
         if: steps.build.outputs.package-symbols-name != ''
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-symbols-name }}
           path: packages/macos/output/${{ steps.build.outputs.package-symbols-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload checksums as artifacts
         if: inputs.checksum == true
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}-checksums
           path: |
             packages/macos/output/${{ steps.build.outputs.package-name }}.sha512
             packages/macos/output/${{ steps.build.outputs.package-symbols-name }}.sha512
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   test-macos-intel64:
+    permissions:
+      id-token: write
+      contents: read
     needs: build-macos-intel64
     runs-on: macos-14-large
     timeout-minutes: 30
@@ -130,10 +158,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download package artifact
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.build-macos-intel64.outputs.package-name }}
           path: packages/macos/output
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set environment variables
         run: |
@@ -196,32 +227,47 @@ jobs:
           expected_upgrade_version: ${{ env.VERSION }}
 
   upload-macos-intel64-to-s3:
+    permissions:
+      id-token: write
+      contents: read
     needs: [build-macos-intel64, test-macos-intel64]
     if: success()
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 15
     name: Upload PKG to S3 (intel64)
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.build-macos-intel64.outputs.package-name }}
           path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Download debug symbols artifacts
         if: needs.build-macos-intel64.outputs.package-symbols-name != ''
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.build-macos-intel64.outputs.package-symbols-name }}
           path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Download checksums
         if: inputs.checksum == true
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.build-macos-intel64.outputs.package-name }}-checksums
           path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -276,7 +322,10 @@ jobs:
           fi
 
   build-macos-arm64:
-    if: github.event_name == 'pull_request' || inputs.architecture == 'arm64'
+    permissions:
+      id-token: write
+      contents: read
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.architecture == 'arm64'
     runs-on: macos-14
     timeout-minutes: 90
     name: Build PKG package (arm64)
@@ -326,31 +375,40 @@ jobs:
           echo "version=${{ env.VERSION }}" >> $GITHUB_OUTPUT
 
       - name: Upload package as artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}
           path: packages/macos/output/${{ steps.build.outputs.package-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload debug symbols as artifact
         if: steps.build.outputs.package-symbols-name != ''
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-symbols-name }}
           path: packages/macos/output/${{ steps.build.outputs.package-symbols-name }}
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload checksums as artifacts
         if: inputs.checksum == true
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ steps.build.outputs.package-name }}-checksums
           path: |
             packages/macos/output/${{ steps.build.outputs.package-name }}.sha512
             packages/macos/output/${{ steps.build.outputs.package-symbols-name }}.sha512
-          retention-days: 7
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
   test-macos-arm64:
+    permissions:
+      id-token: write
+      contents: read
     needs: build-macos-arm64
     runs-on: macos-14
     timeout-minutes: 30
@@ -361,10 +419,13 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Download package artifact
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.build-macos-arm64.outputs.package-name }}
           path: packages/macos/output
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set environment variables
         run: |
@@ -427,32 +488,47 @@ jobs:
           expected_upgrade_version: ${{ env.VERSION }}
 
   upload-macos-arm64-to-s3:
+    permissions:
+      id-token: write
+      contents: read
     needs: [build-macos-arm64, test-macos-arm64]
     if: success()
-    runs-on: wz-linux-amd64
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
     timeout-minutes: 15
     name: Upload PKG to S3 (arm64)
 
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Download package artifacts
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.build-macos-arm64.outputs.package-name }}
           path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Download debug symbols artifacts
         if: needs.build-macos-arm64.outputs.package-symbols-name != ''
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.build-macos-arm64.outputs.package-symbols-name }}
           path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Download checksums
         if: inputs.checksum == true
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
           name: ${{ needs.build-macos-arm64.outputs.package-name }}-checksums
           path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Set up AWS CLI
         uses: aws-actions/configure-aws-credentials@v4
@@ -507,10 +583,56 @@ jobs:
           fi
 
   smoke-test-macos:
-    needs: [upload-macos-arm64-to-s3]
+    needs: [upload-macos-arm64-to-s3, detect-changes]
     if: success()
     uses: ./.github/workflows/5_testintegration_agent-start.yml
     with:
       base_branch: ''
       platform: 'macos'
+    secrets: inherit
+
+  detect-changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 10
+    name: Detect changed macOS test modules
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      any_matched: ${{ steps.detect.outputs.any_matched }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed modules
+        id: detect
+        uses: ./.github/actions/5_testintegration_detect-changes
+        with:
+          modules-config: .github/test_modules_macos.json
+          none-matrix: '{"include":[{"name":"none","shard_name":"none","pytest_target":"","pytest_extra_args":"","pytest_tier_args":"","pre_install":"","timeout_minutes":1}]}'
+          field-defaults: '{"pytest_extra_args":"","pre_install":"","timeout_minutes":120}'
+
+  run-integration-tests:
+    needs: [upload-macos-arm64-to-s3, detect-changes]
+    if: >
+      needs.upload-macos-arm64-to-s3.result == 'success' &&
+      needs.detect-changes.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
+    name: ${{ matrix.name == 'none' && 'Skipped IT MacOS - no relevant changes' || format('IT MacOS - {0} ({1})', matrix.name, matrix.shard_name) }}
+    uses: ./.github/workflows/5_testintegration_macos-integration-tests.yml
+    with:
+      base_branch: ${{ github.event.pull_request.base.ref }}
+      build_run_id: ${{ github.run_id }}
+      module_name: ${{ matrix.name }}
+      shard_name: ${{ matrix.shard_name }}
+      pytest_target: ${{ matrix.pytest_target }}
+      pytest_extra_args: ${{ matrix.pytest_extra_args }}
+      pytest_tier_args: ${{ matrix.pytest_tier_args }}
+      pre_install: ${{ matrix.pre_install }}
+      timeout_minutes: ${{ matrix.timeout_minutes }}
     secrets: inherit

@@ -37,6 +37,12 @@
 
 // Global flag to stop sync module
 static volatile int sca_sync_module_running = 0;
+#ifndef WIN32
+static pthread_t sca_sync_worker_thread;
+#else
+static HANDLE sca_sync_worker_thread = NULL;
+#endif
+static bool sca_sync_worker_thread_initialized = false;
 
 // SCA message queue variables
 static int g_shutting_down = 0;
@@ -106,6 +112,7 @@ void *sca_module = NULL;
 sca_init_func sca_init_ptr = NULL;
 sca_start_func sca_start_ptr = NULL;
 sca_stop_func sca_stop_ptr = NULL;
+sca_release_resources_func sca_release_resources_ptr = NULL;
 sca_set_wm_exec_func sca_set_wm_exec_ptr = NULL;
 sca_set_log_function_func sca_set_log_function_ptr = NULL;
 sca_set_push_functions_func sca_set_push_functions_ptr = NULL;
@@ -309,7 +316,11 @@ static int wm_sca_startmq(const char* key, short type, short attempts) {
 }
 
 static int wm_sca_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
-    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+    // Predicated so a synchronization parked in the manager-disconnected wait (os_wait)
+    // returns on shutdown: the protocol's stop() cannot interrupt this wait, and a parked
+    // send would stall the sync worker join in wm_sca_start() — and, if it arrived through
+    // a wcom query holding m_resourcesMutex shared, the releaseResources() teardown too.
+    return SendBinaryMSGPredicated(queue, message, message_len, locmsg, loc, wm_sca_is_shutting_down);
 }
 
 static bool wm_sca_parse_query_int(const char* output, const char* field, int* value)
@@ -397,21 +408,21 @@ static wm_sca_startup_action_t wm_sca_get_startup_action(bool* first_sync_comple
         return SCA_STARTUP_ACTION_WAIT;
     }
 
-    mdebug1("SCA initial scan data is not ready yet. First synchronization will wait for scan data.");
+    mdebug1("SCA initial scan has not completed yet. First synchronization will wait for a full scan.");
 
     while (sca_sync_module_running && !g_shutting_down)
     {
-        int version = 0;
+        int scan_completed = 0;
 
-        if (!wm_sca_query_int("{\"command\":\"get_version\"}", "version", &version))
+        if (!wm_sca_query_int("{\"command\":\"get_scan_completed\"}", "scan_completed", &scan_completed))
         {
-            mdebug1("Failed to detect initial SCA scan data. Keeping startup synchronization delay.");
+            mdebug1("Failed to detect initial SCA scan completion. Keeping startup synchronization delay.");
             return SCA_STARTUP_ACTION_WAIT;
         }
 
-        if (version > 0)
+        if (scan_completed > 0)
         {
-            mdebug1("Initial SCA scan data is ready. Triggering first synchronization without startup delay.");
+            mdebug1("Initial SCA scan completed. Triggering first synchronization.");
             return SCA_STARTUP_ACTION_IMMEDIATE;
         }
 
@@ -509,10 +520,10 @@ void * wm_sca_main(wm_sca_t * data) {
 #endif
     // If module is disabled, exit
     if (data->enabled) {
-        mdebug1("SCA module enabled.");
+        mdebug1("Module enabled.");
     } else {
         wm_handle_sca_disable_and_notify_data_clean();
-        mdebug1("SCA module disabled. Exiting.");
+        mdebug1("Module disabled. Exiting.");
         pthread_exit(NULL);
     }
 
@@ -521,6 +532,7 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_init_ptr = so_get_function_sym(sca_module, "sca_init");
         sca_start_ptr = so_get_function_sym(sca_module, "sca_start");
         sca_stop_ptr = so_get_function_sym(sca_module, "sca_stop");
+        sca_release_resources_ptr = so_get_function_sym(sca_module, "sca_release_resources");
         sca_set_wm_exec_ptr = so_get_function_sym(sca_module, "sca_set_wm_exec");
         sca_set_log_function_ptr = so_get_function_sym(sca_module, "sca_set_log_function");
         sca_set_push_functions_ptr = so_get_function_sym(sca_module, "sca_set_push_functions");
@@ -612,7 +624,7 @@ void * wm_sca_main(wm_sca_t * data) {
         sca_set_sync_limit_ptr(sync_limit);
     }
 
-    mdebug1("Starting SCA module...");
+    mdebug1("Starting module.");
 
     wm_sca_start(data);
 
@@ -643,13 +655,24 @@ static int wm_sca_start(wm_sca_t *sca) {
 
     // Initialize sync protocol if enabled
     if (sca_enable_synchronization && sca_sync_module_ptr) {
-        sca_sync_module_running = 1;
 #ifndef WIN32
-        // Launch SCA synchronization thread
-        w_create_thread(wm_sca_sync_module, NULL);
-#else
-        if (CreateThread(NULL, 0, wm_sca_sync_module, NULL, 0, NULL) == NULL) {
+        // Launch SCA synchronization thread as joinable so we can wait for it
+        // before releasing resources on shutdown
+        sca_sync_module_running = 1;
+        sca_sync_worker_thread_initialized = (CreateThreadJoinable(&sca_sync_worker_thread, wm_sca_sync_module, NULL) == 0);
+        if (!sca_sync_worker_thread_initialized)
+        {
             merror(THREAD_ERROR);
+            sca_sync_module_running = 0;
+        }
+#else
+        sca_sync_module_running = 1;
+        sca_sync_worker_thread = CreateThread(NULL, 0, wm_sca_sync_module, NULL, 0, NULL);
+        if (sca_sync_worker_thread == NULL) {
+            merror(THREAD_ERROR);
+            sca_sync_module_running = 0;
+        } else {
+            sca_sync_worker_thread_initialized = true;
         }
 #endif
     } else {
@@ -657,6 +680,40 @@ static int wm_sca_start(wm_sca_t *sca) {
     }
 
     sca_start_ptr(sca);
+
+    // Ensure the sync worker exits even if sca_start_ptr returned early
+    // (e.g., all collectors disabled) without wm_sca_stop() being called first.
+    sca_sync_module_running = 0;
+
+    // Join the sync worker before releasing m_dBSync.  This guarantees the worker
+    // is no longer inside synchronizeDatabaseSnapshot() (which uses m_dBSync).
+    // wm_sca_stop() only signals the thread to exit; the join must happen here,
+    // after the main SCA run loop has also returned, so no code path can still
+    // be holding a reference to m_dBSync.
+#ifndef WIN32
+    if (sca_sync_worker_thread_initialized)
+    {
+        sca_sync_worker_thread_initialized = false;
+        pthread_join(sca_sync_worker_thread, NULL);
+    }
+#else
+    if (sca_sync_worker_thread_initialized && sca_sync_worker_thread != NULL)
+    {
+        sca_sync_worker_thread_initialized = false;
+        WaitForSingleObject(sca_sync_worker_thread, INFINITE);
+        CloseHandle(sca_sync_worker_thread);
+        sca_sync_worker_thread = NULL;
+    }
+#endif
+
+    // Safe to release resources now that both the sync worker and the main SCA
+    // run loop have exited.  m_dBSync is no longer referenced by any thread.
+    if (sca_release_resources_ptr)
+    {
+        sca_release_resources_ptr();
+        sca_release_resources_ptr = NULL;
+    }
+
     return 0;
 }
 
@@ -673,6 +730,10 @@ void wm_sca_stop(__attribute__((unused)) wm_sca_t* data)
     g_shutting_down = 1;
     sca_sync_module_running = 0;
 
+    // Quiesce the sync protocol and the main SCA loop.  Resource teardown
+    // (join + releaseResources) is deferred to wm_sca_start() after
+    // sca_start_ptr() returns, so that we do not free m_dBSync while the
+    // SCA run loop is still using it.
     if (sca_stop_ptr) {
         sca_stop_ptr();
     }
@@ -726,16 +787,21 @@ static int wm_sca_send_stateless(const char* message) {
     mdebug1("Sending SCA event: %s", message);
 
     if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0) {
-        merror("Error sending message to queue");
+        if (wm_sca_is_shutting_down()) {
+            return -1;
+        }
+
+        mdebug1("Failed to send message to queue, attempting reconnection.");
 
         if ((g_sca_queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_sca_is_shutting_down)) < 0) {
-            merror("Cannot restart SCA message queue");
             return -1;
         }
 
         // Try to send it again
         if (SendMSGPredicated(g_sca_queue, message, "sca", SCA_MQ, wm_sca_is_shutting_down) < 0) {
-            merror("Error sending message to queue after restart");
+            if (!wm_sca_is_shutting_down()) {
+                merror("Error sending message to queue after restart");
+            }
             return -1;
         }
     }
@@ -897,6 +963,15 @@ static size_t wm_sca_query_handler(void *data, char *query, char **output) {
 
     if (!query || !output) {
         return 0;
+    }
+
+    // Mirrors #36762 (FIM): when synchronization is disabled the sync worker never runs, so the SCA
+    // first-sync marker is never set. Report it as completed so agent-info coordination is not blocked
+    // deferring on a first sync that will never happen. The startup priming path calls sca_query_ptr
+    // directly and is unaffected by this handler-level short-circuit.
+    if (!sca_enable_synchronization && strstr(query, "get_first_sync_completed")) {
+        os_strdup("{\"error\":0,\"data\":{\"action\":\"get_first_sync_completed\",\"module\":\"sca\",\"first_sync_completed\":1}}", *output);
+        return strlen(*output);
     }
 
     // Call the C++ query function if available

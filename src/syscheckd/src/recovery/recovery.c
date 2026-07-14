@@ -178,6 +178,15 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
         cJSON* stateful_event = NULL;
 
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+            // Skip rows whose path is no longer covered by the current FIM configuration
+            // (e.g. a group with a realtime rule was removed since the row was synced).
+            // The scheduled scan emits the real DELETE for these rows via handle_orphaned_delete.
+            if (fim_configuration_directory(path, false, directories_list) == NULL) {
+                mdebug2("Skipping recovery of orphaned path (no active configuration): %s", path);
+                cJSON_Delete(item_copy);
+                os_free(id_str);
+                continue;
+            }
             stateful_event = buildFileStatefulEvent(path, item_copy, checksum, document_version, directories_list);
         }
 #ifdef WIN32
@@ -232,12 +241,12 @@ void fim_recovery_persist_table_and_resync(char* table_name, AgentSyncProtocolHa
     cJSON_Delete(items);
 
     // Synchronize
-    bool success = asp_sync_module(handle, MODE_FULL);
+    SyncModuleResult_t result = asp_sync_module(handle, MODE_FULL);
 
-    if (success) {
+    if (result.success) {
         mdebug1("Recovery completed successfully");
     } else {
-        mdebug1("Recovery synchronization failed, will retry later");
+        mdebug1("Recovery synchronization failed, will retry later%s%s", result.failure_reason[0] != '\0' ? ": " : "", result.failure_reason);
     }
 }
 

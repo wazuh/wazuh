@@ -74,7 +74,7 @@ void syscollector_init(const unsigned int inverval,
         }
     };
 
-    DBSync::initialize(callbackErrorLogWrapper);
+    DBSync::initialize(std::move(callbackErrorLogWrapper));
 
     try
     {
@@ -103,7 +103,7 @@ void syscollector_init(const unsigned int inverval,
     }
     catch (const std::exception& ex)
     {
-        callbackErrorLogWrapper(ex.what());
+        callbackLog(LOG_ERROR, ex.what(), WM_SYS_LOGTAG);
         // DO NOT re-throw - this is called from C code which cannot catch C++ exceptions
         // The module will be in a failed state and subsequent calls will be no-ops
     }
@@ -136,7 +136,12 @@ void syscollector_start()
 
 void syscollector_stop()
 {
-    Syscollector::instance().destroy();
+    Syscollector::instance().quiesce();
+}
+
+void syscollector_release_resources()
+{
+    Syscollector::instance().releaseResources();
 }
 
 void syscollector_init_sync(const char* moduleName, const char* syncDbPath, const char* syncDbPathVD, const MQ_Functions* mqFuncs, unsigned int syncEndDelay, unsigned int timeout,
@@ -165,7 +170,9 @@ void syscollector_init_sync(const char* moduleName, const char* syncDbPath, cons
 bool syscollector_sync_module(Mode_t mode)
 {
     Mode syncMode = (mode == MODE_FULL) ? Mode::FULL : Mode::DELTA;
-    return Syscollector::instance().syncModule(syncMode);
+    // Syscollector::syncModule() already logs a WARNING with the failure reason before returning.
+    // The C caller only needs the bool to track sync state (e.g. first_sync_completed).
+    return Syscollector::instance().syncModule(syncMode).success;
 }
 
 void syscollector_persist_diff(const char* id, Operation_t operation, const char* index, const char* data, uint64_t version)

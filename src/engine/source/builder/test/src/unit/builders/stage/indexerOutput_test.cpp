@@ -3,20 +3,9 @@
 #include "builders/baseBuilders_test.hpp"
 #include "builders/stage/indexerOutput.hpp"
 
-#include <fastmetrics/registry.hpp>
 #include <wiconnector/mockswindexerconnector.hpp>
 
 using namespace builder::builders;
-
-namespace
-{
-// Register fastmetrics manager once for all tests in this file
-struct FastMetricsInit
-{
-    FastMetricsInit() { fastmetrics::registerManager(); }
-};
-static FastMetricsInit fastMetricsInit_;
-} // namespace
 
 namespace stagebuildtest
 {
@@ -81,7 +70,7 @@ INSTANTIATE_TEST_SUITE_P(
                SUCCESS(
                    [](const BuildersMocks& mocks)
                    {
-                       EXPECT_CALL(*mocks.ctx, runState());
+                       EXPECT_CALL(*mocks.ctx, isTestMode());
                        return base::Term<base::EngineOp>::create(
                            "write.output(wazuh-indexer/wazuh-events-v5-applications)", {});
                    }))
@@ -135,6 +124,7 @@ protected:
     {
         // Reset the mock
         ::testing::Mock::VerifyAndClearExpectations(&mockConnector);
+        BaseBuilderTest::TearDown();
     }
 };
 
@@ -144,7 +134,7 @@ TEST_F(IndexerOutputOperationTest, output_success)
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
     auto definition = json::Json(R"({"index": "wazuh-events-v5-applications"})");
     auto expression = builder(definition, this->mocks->ctx);
     auto event = std::make_shared<json::Json>(messageStr.c_str());
@@ -173,7 +163,7 @@ TEST_F(IndexerOutputOperationTest, output_several_references)
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
 
     auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.a}${wazuh.b}${wazuh.c}"})");
     auto expression = builder(definition, this->mocks->ctx);
@@ -204,7 +194,7 @@ TEST_F(IndexerOutputOperationTest, output_several_references_separators)
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
 
     auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.a}---somecrazystring--${wazuh.c}"})");
     auto expression = builder(definition, this->mocks->ctx);
@@ -234,7 +224,7 @@ TEST_F(IndexerOutputOperationTest, output_success_with_complex_category_referenc
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
 
     auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name}"})");
     auto expression = builder(definition, this->mocks->ctx);
@@ -265,7 +255,7 @@ TEST_F(IndexerOutputOperationTest, validate_applications_category)
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
 
     auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}"})");
     auto expression = builder(definition, this->mocks->ctx);
@@ -295,7 +285,7 @@ TEST_F(IndexerOutputOperationTest, validate_system_activity_category)
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
 
     auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}"})");
     auto expression = builder(definition, this->mocks->ctx);
@@ -325,7 +315,7 @@ TEST_F(IndexerOutputOperationTest, validate_network_activity_category)
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
 
     auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}"})");
     auto expression = builder(definition, this->mocks->ctx);
@@ -355,7 +345,7 @@ TEST_F(IndexerOutputOperationTest, validate_azure_cloud_integration)
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
 
     auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name}"})");
     auto expression = builder(definition, this->mocks->ctx);
@@ -385,7 +375,7 @@ TEST_F(IndexerOutputOperationTest, validate_gcp_cloud_integration)
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
 
     auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}-${wazuh.integration.name}"})");
     auto expression = builder(definition, this->mocks->ctx);
@@ -415,7 +405,7 @@ TEST_F(IndexerOutputOperationTest, validate_security_category)
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
 
     auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}"})");
     auto expression = builder(definition, this->mocks->ctx);
@@ -445,7 +435,7 @@ TEST_F(IndexerOutputOperationTest, validate_access_management_category)
     auto iConnector = std::shared_ptr<wiconnector::IWIndexerConnector>(&mockConnector, [](auto*) {});
     auto builder = getIndexerOutputBuilder(iConnector);
 
-    EXPECT_CALL(*(mocks->ctx), runState());
+    EXPECT_CALL(*(mocks->ctx), isTestMode());
 
     auto definition = json::Json(R"({"index": "wazuh-events-v5-${wazuh.integration.category}"})");
     auto expression = builder(definition, this->mocks->ctx);

@@ -1,7 +1,9 @@
 #include "manager.hpp"
 
+#include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <mutex>
 
 #include <fmt/format.h>
@@ -34,7 +36,8 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
     auto docResp = m_store->readDoc(base::Name(INTERNAL_NAME));
     if (base::isError(docResp))
     {
-        LOG_DEBUG("Geo module do not have dbs in the store: {}", base::getError(docResp).message);
+        LOG_DEBUG("[Geo::Manager] Geo module do not have dbs in the store: {}", base::getError(docResp).message);
+        updateGeoStatusSnapshot(); // Publish initial status even with no dbs
         return;
     }
 
@@ -50,17 +53,34 @@ Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_
             auto addResp = addDbUnsafe(pathStr, hashStr, createdAt.value(), type);
             if (base::isError(addResp))
             {
-                LOG_ERROR("Geo cannot add {} db '{}': {}", typeName(type), pathStr, base::getError(addResp).message);
+                LOG_ERROR("[Geo::Manager] Geo cannot add {} db '{}': {}",
+                          typeName(type),
+                          pathStr,
+                          base::getError(addResp).message);
+            }
+            else
+            {
+                // Loaded from store: the type has a version available for queries.
+                m_typeState[type].available = true;
+                m_typeState[type].hash = hashStr;
+                // Restore the last successful update timestamp if present (absent in older docs).
+                if (const auto ts = doc.getInt64(fmt::format("/{}/last_successful_update", typeName(type)));
+                    ts.has_value())
+                {
+                    m_typeState[type].lastSuccessfulUpdate = static_cast<uint32_t>(*ts);
+                }
             }
         }
         else
         {
-            LOG_WARNING("Geo store has incomplete {} database information, skipping", typeName(type));
+            LOG_WARNING("[Geo::Manager] Geo store has incomplete {} database information, skipping", typeName(type));
         }
     };
 
     checkAndLoadDb(Type::CITY);
     checkAndLoadDb(Type::ASN);
+
+    updateGeoStatusSnapshot(); // Publish initial status
 }
 
 base::OptError
@@ -76,11 +96,13 @@ Manager::upsertStoreEntry(const std::string& path, Type type, const std::string&
         doc = std::move(base::getResponse(docResp));
     }
 
-    // Update fields for the specific type
+    // Update fields for the specific type. This is the successful-update persistence point, so we
+    // also record our local sync timestamp (reported as last_successful_update, survives restart).
     auto typePrefix = fmt::format("/{}", typeName(type));
     doc.setString(path, typePrefix + "/path");
     doc.setString(hash, typePrefix + "/hash");
     doc.setInt64(createdAt, typePrefix + "/generated_at");
+    doc.setInt64(static_cast<int64_t>(std::time(nullptr)), typePrefix + "/last_successful_update");
 
     auto storeResp = m_store->upsertDoc(internalName, doc);
     if (base::isError(storeResp))
@@ -162,44 +184,6 @@ Manager::addDbUnsafe(const std::string& path, const std::string& hash, const int
     return base::noError();
 }
 
-base::OptError Manager::writeDb(const std::string& path, const std::string& content)
-{
-    auto filePath = std::filesystem::path(path);
-
-    // Create directories if they do not exist
-    try
-    {
-        std::filesystem::create_directories(filePath.parent_path());
-        // Set permissions to 770 (rwxrwx---)
-        std::filesystem::permissions(filePath.parent_path(),
-                                     std::filesystem::perms::owner_all | std::filesystem::perms::group_all,
-                                     std::filesystem::perm_options::replace);
-    }
-    catch (const std::exception& e)
-    {
-        return base::Error {fmt::format("Cannot create directories for '{}': {}", path, e.what())};
-    }
-
-    // Write the content to the file
-    std::ofstream file(path, std::ios::binary);
-    if (!file.is_open())
-    {
-        return base::Error {fmt::format("Cannot open file '{}'", path)};
-    }
-    try
-    {
-        file.write(content.c_str(), content.size());
-        file.close();
-    }
-    catch (const std::exception& e)
-    {
-        file.close();
-        return base::Error {fmt::format("Cannot write to file '{}': {}", path, e.what())};
-    }
-
-    return base::noError();
-}
-
 base::OptError Manager::processDbEntry(const std::string& path,
                                        Type type,
                                        const std::string& gzUrl,
@@ -249,9 +233,20 @@ base::OptError Manager::processDbEntry(const std::string& path,
 
     for (int i = 0; i < MAX_RETRIES; ++i)
     {
+        if (!m_shouldRun->load())
+        {
+            return base::Error {"Shutdown requested, aborting geo database download"};
+        }
+
         auto downloadResp = m_downloader->downloadHTTPS(gzUrl);
         if (base::isError(downloadResp))
         {
+            // If shutdown was requested mid-transfer, exit immediately instead of retrying
+            if (!m_shouldRun->load())
+            {
+                return base::Error {"Shutdown requested, aborting geo database download"};
+            }
+
             error = base::Error {
                 fmt::format("Cannot download database from '{}': {}", gzUrl, base::getError(downloadResp).message)};
             continue;
@@ -333,12 +328,24 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
 {
     LOG_DEBUG("[Geo::Manager] Checking for geo database updates from manifest '{}'", manifestUrl);
 
+    if (!m_shouldRun->load())
+    {
+        LOG_DEBUG("[Geo::Manager] Shutdown requested, skipping geo sync");
+        return;
+    }
+
     // Download and parse manifest
     auto manifestResp = m_downloader->downloadManifest(manifestUrl);
     if (base::isError(manifestResp))
     {
         LOG_WARNING(
             "[Geo::Manager] Cannot download manifest from '{}': {}", manifestUrl, base::getError(manifestResp).message);
+        // Mark all types as failed (keep previous availability/hash: an old version may still be usable)
+        for (auto type : {Type::CITY, Type::ASN})
+        {
+            m_typeState[type].status = base::SyncStatus::FAILED;
+        }
+        updateGeoStatusSnapshot();
         return;
     }
 
@@ -370,19 +377,32 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
             return;
         }
 
+        // Mark this type as running (a previously loaded version, if any, stays available)
+        m_typeState[type].status = base::SyncStatus::UPDATING;
+        updateGeoStatusSnapshot();
+
         LOG_INFO("[Geo::Manager] Changes detected for {} database '{}', updating...", typeName, dbName);
         auto error = processDbEntry(path, type, url, md5, createdAt.value());
         if (base::isError(error))
         {
-            LOG_ERROR("[Geo::Manager] Failed to process {} database '{}': {}",
-                      typeName,
-                      dbName,
-                      base::getError(error).message);
+            // Failed update: keep previous availability/hash, only report FAILED status.
+            m_typeState[type].status = base::SyncStatus::FAILED;
+            LOG_WARNING("[Geo::Manager] Failed to process {} database '{}': {}",
+                        typeName,
+                        dbName,
+                        base::getError(error).message);
         }
         else
         {
+            // Successful swap: this type now has the manifest version available.
+            m_typeState[type].available = true;
+            m_typeState[type].hash = md5;
+            m_typeState[type].lastSuccessfulUpdate = static_cast<uint32_t>(std::time(nullptr));
+            m_typeState[type].status = base::SyncStatus::READY;
             LOG_INFO("[Geo::Manager] Successfully updated {} database '{}'", typeName, dbName);
         }
+
+        updateGeoStatusSnapshot();
     };
 
     // Process city database if present
@@ -390,6 +410,13 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     manifest.getString(cityUrl, "/city/url");
     manifest.getString(cityMd5, "/city/md5");
     processDatabase(Type::CITY, cityPath, cityUrl, cityMd5, "CITY");
+
+    if (!m_shouldRun->load())
+    {
+        LOG_DEBUG("[Geo::Manager] Shutdown requested, skipping ASN database sync");
+        return;
+    }
+
     // Process ASN database if present
     std::string asnUrl, asnMd5;
     manifest.getString(asnUrl, "/asn/url");
@@ -397,6 +424,12 @@ void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& ci
     processDatabase(Type::ASN, asnPath, asnUrl, asnMd5, "ASN");
 
     LOG_DEBUG("[Geo::Manager] Finished synchronization of geo databases");
+}
+
+void Manager::requestShutdown()
+{
+    m_shouldRun->store(false);
+    LOG_INFO("[Geo::Manager] Shutdown requested");
 }
 
 Result<std::shared_ptr<ILocator>> Manager::getLocator(Type type) const
@@ -433,6 +466,28 @@ std::vector<DbInfo> Manager::listDbs() const
         dbs.emplace_back(DbInfo {name, inst->path(), inst->hash(), inst->createdAt(), inst->type()});
     }
     return dbs;
+}
+
+std::vector<GeoDbStatus> Manager::getGeoStatus() const
+{
+    return *m_geoStatus.load();
+}
+
+void Manager::updateGeoStatusSnapshot()
+{
+    // Full rebuild from m_typeState (sync-thread working state), then publish atomically.
+    // Both types are always reported, keyed by their type name ("city" and "asn").
+    std::vector<GeoDbStatus> result;
+    result.reserve(2);
+
+    for (auto type : {Type::CITY, Type::ASN})
+    {
+        GeoDbStatus entry = m_typeState[type]; // copy current per-type state (default: unavailable, READY)
+        entry.name = typeName(type);
+        result.push_back(std::move(entry));
+    }
+
+    m_geoStatus.store(std::move(result));
 }
 
 } // namespace geo

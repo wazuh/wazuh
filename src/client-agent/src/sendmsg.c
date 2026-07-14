@@ -36,34 +36,67 @@ int send_msg(const char *msg, ssize_t msg_length)
     }
 
     w_mutex_lock(&send_mutex);
+    if (agt->sock < 0) {
+        /* Socket was already invalidated by another thread; skip the send
+         * to avoid calling OS_SendSecureTCP(-1, ...) and reading a stale errno. */
+        w_mutex_unlock(&send_mutex);
+        return -1;
+    }
     retval = OS_SendSecureTCP(agt->sock, msg_size, crypt_msg);
+    /* OS_SendSecureTCP returns 0 on success or OS_SOCKTERR (-1) on any error,
+     * including partial writes — it never returns a positive partial count,
+     * so checking retval != 0 is sufficient to detect all failure modes. */
 #ifndef WIN32
     error = errno;
-#endif
-    w_mutex_unlock(&send_mutex);
-
-    if (!retval) {
-        w_agentd_state_update(INCREMENT_MSG_SEND, NULL);
-    } else {
-#ifdef WIN32
-        error = WSAGetLastError();
-        mwarn(SEND_ERROR, "server", win_strerror(error));
-#else
+    if (retval != 0) {
+        bool socket_dead = true;
         switch (error) {
         case EPIPE:
             mdebug2(TCP_EPIPE);
             break;
+        case ECONNRESET:
+            mdebug2("Connection reset by manager.");
+            break;
+        case ETIMEDOUT:
+        case EAGAIN:
+#if defined(EWOULDBLOCK) && (EWOULDBLOCK != EAGAIN)
+        case EWOULDBLOCK:
+#endif
+            /* SO_SNDTIMEO expiry: kernel returns EAGAIN/EWOULDBLOCK on
+             * blocking sockets, or ETIMEDOUT on retransmit exhaustion. */
+            mdebug2(SEND_ERROR, "server", strerror(error));
+            break;
         case ECONNREFUSED:
+            /* The remote end refused the connection — socket is unusable. */
             mdebug2(CONN_REF);
+            break;
+        case ENOTCONN:
+            /* Kernel already tore down the connection (e.g. after keepalive
+             * exhaustion or a previous hard error). */
+            mdebug2("Socket not connected.");
             break;
         default:
             mwarn(SEND_ERROR, "server", strerror(error));
+            socket_dead = false;
             break;
         }
-
-#endif
-        sleep(1);
+        if (socket_dead && agt->sock >= 0) {
+            OS_CloseSocket(agt->sock);
+            agt->sock = -1;
+        }
     }
+#endif
+    w_mutex_unlock(&send_mutex);
+
+    if (retval == 0) {
+        w_agentd_state_update(INCREMENT_MSG_SEND, NULL);
+    }
+#ifdef WIN32
+    else {
+        error = WSAGetLastError();
+        mwarn(SEND_ERROR, "server", win_strerror(error));
+    }
+#endif
 
     return retval;
 }

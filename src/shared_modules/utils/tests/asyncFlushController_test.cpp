@@ -43,11 +43,7 @@ protected:
 
 TEST_F(AsyncFlushControllerTest, IdleStatusIsCompletedSuccess)
 {
-    Utils::AsyncFlushController controller {"test",
-                                            []()
-                                            {
-                                                return 0;
-                                            }};
+    Utils::AsyncFlushController controller {"test", []() { return 0; }};
 
     const auto flushStatus = controller.getFlushStatus();
     EXPECT_FALSE(flushStatus.running);
@@ -113,11 +109,7 @@ TEST_F(AsyncFlushControllerTest, DuplicateRequestWhileRunningIsIdempotent)
 
 TEST_F(AsyncFlushControllerTest, FailedFlushReturnsErrorStatus)
 {
-    Utils::AsyncFlushController controller {"test",
-                                            []()
-                                            {
-                                                return -1;
-                                            }};
+    Utils::AsyncFlushController controller {"test", []() { return -1; }};
 
     EXPECT_TRUE(controller.startFlush());
     EXPECT_TRUE(waitUntil([&controller]() { return !controller.getFlushStatus().running; }));
@@ -129,11 +121,7 @@ TEST_F(AsyncFlushControllerTest, FailedFlushReturnsErrorStatus)
 
 TEST_F(AsyncFlushControllerTest, ExceptionMapsToErrorStatus)
 {
-    Utils::AsyncFlushController controller {"test",
-                                            []() -> int
-                                            {
-                                                throw std::runtime_error("boom");
-                                            }};
+    Utils::AsyncFlushController controller {"test", []() -> int { throw std::runtime_error("boom"); }};
 
     EXPECT_TRUE(controller.startFlush());
     EXPECT_TRUE(waitUntil([&controller]() { return !controller.getFlushStatus().running; }));

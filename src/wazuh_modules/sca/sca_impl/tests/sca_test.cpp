@@ -613,7 +613,7 @@ TEST_F(ScaTest, SyncModule_PerformsInitialFullSnapshotBeforeFirstSync)
         EXPECT_EQ(payload["policy"]["id"], "policy-1");
     }));
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::FULL, Option::SYNC))
-    .WillOnce(testing::Return(true));
+    .WillOnce(testing::Return(SyncModuleResult{true}));
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
     .Times(0);
     EXPECT_CALL(*mockSyncProtocol, persistDifference(testing::_, testing::_, testing::_, testing::_, testing::_, testing::_))
@@ -645,7 +645,7 @@ TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
     insertRow(dbSync, "sca_metadata", {{"key", "first_sync_completed"}, {"value", 123456}});
 
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
-    .WillOnce(testing::Return(true));
+    .WillOnce(testing::Return(SyncModuleResult{true}));
     EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::FULL, Option::SYNC))
     .Times(0);
     EXPECT_CALL(*mockSyncProtocol, clearInMemoryData())

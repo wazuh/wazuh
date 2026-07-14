@@ -21,6 +21,9 @@ namespace conf
 
 namespace
 {
+
+inline constexpr std::string_view LOG_MODULE_NAME = "Config"; ///< Log module name for configuration
+
 template<typename U>
 std::string toStr(const U& value)
 {
@@ -161,7 +164,8 @@ public:
         {
             if (const auto envValue = unit->template getEnvValue<T>())
             {
-                LOG_DEBUG("Using configuration key '{}' from environment variable '{}': '{}'",
+                LOG_DEBUG("[{}] Using configuration key '{}' from environment variable '{}': '{}'",
+                          LOG_MODULE_NAME,
                           key,
                           unit->getEnv(),
                           toStr<T>(envValue.value()));
@@ -170,7 +174,11 @@ public:
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING("Failed to retrieve or convert environment variable for key '{}': {}", key, e.what());
+            LOG_WARNING("[{}] Failed to retrieve or convert environment variable for key '{}': {}. "
+                        " Falling back to file or default value.",
+                        LOG_MODULE_NAME,
+                        key,
+                        e.what());
         }
 
         // 2. Configuration file
@@ -182,7 +190,7 @@ public:
             {
                 if constexpr (std::is_same_v<T, std::string>)
                 {
-                    LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, rawValue);
+                    LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, rawValue);
                     return rawValue;
                 }
                 else if constexpr (std::is_same_v<T, bool>)
@@ -199,7 +207,7 @@ public:
                     }
 
                     bool value = (lowerValue == "true");
-                    LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, value);
+                    LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, value);
                     return value;
                 }
                 else if constexpr (std::is_same_v<T, int>)
@@ -213,20 +221,22 @@ public:
                             throw std::runtime_error(
                                 fmt::format("Extra characters after int: '{}'", rawValue.substr(pos)));
                         }
-                        LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, value);
+                        LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, value);
                         return value;
                     }
                     catch (const std::invalid_argument& e)
                     {
-                        throw std::runtime_error(fmt::format(
-                            "Invalid configuration type for key '{}'. Could not parse '{}'.", key, rawValue));
+                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
+                                                             "Could not parse '{}'.",
+                                                             key,
+                                                             rawValue));
                     }
                     catch (const std::out_of_range& e)
                     {
-                        throw std::runtime_error(
-                            fmt::format("Invalid configuration type for key '{}'. Value out of range for int: '{}'.",
-                                        key,
-                                        rawValue));
+                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
+                                                             "Value out of range for int: '{}'.",
+                                                             key,
+                                                             rawValue));
                     }
                 }
                 else if constexpr (std::is_same_v<T, int64_t>)
@@ -240,30 +250,32 @@ public:
                             throw std::runtime_error(
                                 fmt::format("Extra characters after int64: '{}'", rawValue.substr(pos)));
                         }
-                        LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, value);
+                        LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, value);
                         return value;
                     }
                     catch (const std::invalid_argument& e)
                     {
-                        throw std::runtime_error(fmt::format(
-                            "Invalid configuration type for key '{}'. Could not parse '{}'.", key, rawValue));
+                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
+                                                             "Could not parse '{}'.",
+                                                             key,
+                                                             rawValue));
                     }
                     catch (const std::out_of_range& e)
                     {
-                        throw std::runtime_error(
-                            fmt::format("Invalid configuration type for key '{}'. Value out of range for int64: '{}'.",
-                                        key,
-                                        rawValue));
+                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
+                                                             "Value out of range for int64: '{}'.",
+                                                             key,
+                                                             rawValue));
                     }
                 }
                 else if constexpr (std::is_same_v<T, size_t>)
                 {
                     if (!base::utils::string::isNumber(rawValue))
                     {
-                        throw std::runtime_error(
-                            fmt::format("Invalid configuration type for key '{}'. Expected unsigned integer, got '{}'.",
-                                        key,
-                                        rawValue));
+                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
+                                                             "Expected unsigned integer, got '{}'.",
+                                                             key,
+                                                             rawValue));
                     }
 
                     std::size_t pos = 0;
@@ -275,20 +287,22 @@ public:
                             throw std::runtime_error(
                                 fmt::format("Extra characters after size_t: '{}'", rawValue.substr(pos)));
                         }
-                        LOG_DEBUG("Using configuration key '{}' from file: '{}'", key, value);
+                        LOG_DEBUG("[{}] Using configuration key '{}' from file: '{}'", LOG_MODULE_NAME, key, value);
                         return value;
                     }
                     catch (const std::invalid_argument& e)
                     {
-                        throw std::runtime_error(fmt::format(
-                            "Invalid configuration type for key '{}'. Could not parse '{}'.", key, rawValue));
+                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
+                                                             "Could not parse '{}'.",
+                                                             key,
+                                                             rawValue));
                     }
                     catch (const std::out_of_range& e)
                     {
-                        throw std::runtime_error(
-                            fmt::format("Invalid configuration type for key '{}'. Value out of range for size_t: '{}'.",
-                                        key,
-                                        rawValue));
+                        throw std::runtime_error(fmt::format("Invalid configuration type for key '{}'. "
+                                                             "Value out of range for size_t: '{}'.",
+                                                             key,
+                                                             rawValue));
                     }
                 }
                 else if constexpr (std::is_same_v<T, std::vector<std::string>>)
@@ -325,8 +339,12 @@ public:
             }
             catch (const std::exception& e)
             {
-                LOG_WARNING(
-                    "Failed to convert value '{}' for key '{}': {}. Using default value.", rawValue, key, e.what());
+                LOG_WARNING("[{}] Failed to convert value '{}' for key '{}': {}. "
+                            "Using default value",
+                            LOG_MODULE_NAME,
+                            rawValue,
+                            key,
+                            e.what());
             }
         }
 
@@ -343,7 +361,7 @@ public:
             return strVal;
         }();
 
-        LOG_DEBUG("Using configuration key '{}' from default: '{}'", key, strVal);
+        LOG_DEBUG("[{}] Using configuration key '{}' from default: '{}'", LOG_MODULE_NAME, key, strVal);
 
         return value;
     }

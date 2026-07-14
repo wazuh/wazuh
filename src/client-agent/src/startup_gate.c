@@ -95,6 +95,7 @@ void startup_gate_process_handshake(bool is_startup, const char *merged_sum) {
     if (!startup_gate_enabled) {
         startup_gate_set_locked(true, "disabled");
         w_mutex_unlock(&startup_gate_mutex);
+        mdebug1("Startup hash gate: remote configuration disabled, gate released.");
         return;
     }
 
@@ -102,13 +103,19 @@ void startup_gate_process_handshake(bool is_startup, const char *merged_sum) {
         startup_gate_expected_sum[0] = '\0';
         startup_gate_set_locked(true, "legacy_handshake");
         w_mutex_unlock(&startup_gate_mutex);
+        mdebug1("Startup hash gate: legacy handshake (no merged_sum), gate released.");
         return;
     }
 
     if (!startup_gate_valid_md5(merged_sum)) {
+        // The gate stays blocked: an invalid merged_sum means the manager
+        // sent us nothing we can validate against, so modules must not
+        // start. Recovery requires a fresh handshake with a valid hash
+        // (typically after an agentd restart).
         startup_gate_expected_sum[0] = '\0';
         startup_gate_set_locked(false, "invalid_handshake_hash");
         w_mutex_unlock(&startup_gate_mutex);
+        mdebug1("Startup hash gate: invalid merged_sum in handshake, gate stays blocked.");
         return;
     }
 
@@ -117,10 +124,15 @@ void startup_gate_process_handshake(bool is_startup, const char *merged_sum) {
 
     w_mutex_unlock(&startup_gate_mutex);
 
+    mdebug1("Startup hash gate: expected merged_sum set to '%s'.", merged_sum);
+
     if (startup_gate_hash_matches_local()) {
         w_mutex_lock(&startup_gate_mutex);
         startup_gate_set_locked(true, "hash_match");
         w_mutex_unlock(&startup_gate_mutex);
+        mdebug1("Startup hash gate: local hash matches expected, gate released immediately.");
+    } else {
+        mdebug1("Startup hash gate: local hash does not match expected, waiting for merged.mg update.");
     }
 }
 

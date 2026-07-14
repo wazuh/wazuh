@@ -60,6 +60,8 @@ int wdb_wmdb_sock = -1;
 
 // Module main function. It won't return
 static void* wm_database_main(wm_database *data);
+// Stop module
+static void wm_database_stop(wm_database *data);
 // Destroy data
 static void wm_database_destroy(wm_database *data);
 // Read config
@@ -86,7 +88,7 @@ const wm_context WM_DATABASE_CONTEXT = {
     .destroy = (void(*)(void *))wm_database_destroy,
     .dump = (cJSON * (*)(const void *))wm_database_dump,
     .sync = NULL,
-    .stop = NULL,
+    .stop = (void(*)(void *))wm_database_stop,
     .query = NULL,
 };
 
@@ -94,7 +96,7 @@ const wm_context WM_DATABASE_CONTEXT = {
 void* wm_database_main(wm_database *data) {
     module = data;
 
-    mtinfo(WM_DATABASE_LOGTAG, "Module started.");
+    mtinfo(WM_DATABASE_LOGTAG, STARTUP_MSG, (int)getpid());
 
     // Check if it is a worker node
     is_worker = w_is_worker();
@@ -106,7 +108,8 @@ void* wm_database_main(wm_database *data) {
     // in the master.
 
     // Wait for inventory_sync to subscribe to router before sending deletion messages
-    sleep(5);
+    wm_sleep_interruptible(5);
+    if (wm_shutdown_requested) return NULL;
     wm_sync_agents();
 
     // Groups synchronization with the database
@@ -119,8 +122,10 @@ void* wm_database_main(wm_database *data) {
 
         wm_inotify_setup(data);
 
-        while (1) {
+        while (!wm_shutdown_requested) {
             path = wm_inotify_pop();
+
+            if (!path) break;
 
             if (!strcmp(path, KEYS_FILE)) {
                 // The syncronization with client.keys only happens in worker nodes
@@ -151,9 +156,9 @@ void* wm_database_main(wm_database *data) {
         struct timespec spec1;
 
         // Initial wait
-        sleep(data->interval);
+        wm_sleep_interruptible(data->interval);
 
-        while (1) {
+        while (!wm_shutdown_requested) {
             tstart = (long long) time(NULL);
             cstart = clock();
             gettime(&spec0);
@@ -168,7 +173,7 @@ void* wm_database_main(wm_database *data) {
             mtdebug1(WM_DATABASE_LOGTAG, "Cycle completed: %.3lf ms (%.3f clock ms).", spec1.tv_sec * 1000 + spec1.tv_nsec / 1000000.0, (double)(clock() - cstart) / CLOCKS_PER_SEC * 1000);
 
             if (tsleep = tstart + (long long) data->interval - (long long) time(NULL), tsleep >= 0) {
-                sleep(tsleep);
+                wm_sleep_interruptible((int)tsleep);
             } else {
                 mtwarn(WM_DATABASE_LOGTAG, "Time interval exceeded by %lld seconds.", -tsleep);
             }
@@ -223,6 +228,7 @@ void wm_sync_agents() {
 
 static router_provider_create_func router_provider_create_ptr = NULL;
 static router_provider_send_func router_provider_send_ptr = NULL;
+static void *router_module = NULL;
 
 /**
  * @brief Initialize router functions for agent deletion notifications
@@ -230,7 +236,7 @@ static router_provider_send_func router_provider_send_ptr = NULL;
  * @return true if router functions were successfully loaded, false otherwise
  */
 static bool initialize_router_functions(void) {
-    void *router_module = so_get_module_handle("router");
+    router_module = so_get_module_handle("router");
     if (router_module) {
         router_provider_create_ptr = so_get_function_sym(router_module, "router_provider_create");
         router_provider_send_ptr = so_get_function_sym(router_module, "router_provider_send");
@@ -442,6 +448,15 @@ cJSON *wm_database_dump(const wm_database *data) {
 // Destroy data
 void wm_database_destroy(wm_database *data) {
     free(data);
+}
+
+static void wm_database_stop(wm_database *data) {
+    (void)data;
+#ifdef INOTIFY_ENABLED
+    w_mutex_lock(&mutex_queue);
+    w_cond_broadcast(&cond_pending);
+    w_mutex_unlock(&mutex_queue);
+#endif
 }
 
 // Read configuration and return a module (if enabled) or NULL (if disabled)
@@ -687,8 +702,13 @@ char * wm_inotify_pop() {
 
     w_mutex_lock(&mutex_queue);
 
-    while (queue_empty(queue)) {
+    while (queue_empty(queue) && !wm_shutdown_requested) {
         w_cond_wait(&cond_pending, &mutex_queue);
+    }
+
+    if (wm_shutdown_requested) {
+        w_mutex_unlock(&mutex_queue);
+        return NULL;
     }
 
     path = queue_pop(queue);

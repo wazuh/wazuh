@@ -6,7 +6,7 @@ stages:
   - name: Get all existent tasks (At this point there are no tasks created)
     request: &get_tasks
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/tasks/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -23,7 +23,7 @@ stages:
   - name: Upgrade old agents to create tasks
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -48,7 +48,7 @@ stages:
   - name: Upgrade agents to create tasks (Invalid version)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/agents/upgrade"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade"
       method: PUT
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -275,7 +275,7 @@ stages:
   - name: Get specified tasks
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/tasks/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -304,7 +304,7 @@ stages:
   - name: Get specified tasks, agent_id (005)
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/tasks/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -328,7 +328,7 @@ stages:
   - name: Get all existent tasks with module=upgrade_module
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/tasks/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -359,7 +359,7 @@ stages:
   - name: Get all existent tasks with command=upgrade
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/tasks/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -372,7 +372,7 @@ stages:
   - name: Get all existent tasks with node=worker2
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/tasks/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
@@ -390,7 +390,7 @@ stages:
   - name: Get all existent tasks with status=In progress
     request:
       verify: False
-      url: "{protocol:s}://{host:s}:{port:d}/tasks/status"
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/tasks/status"
       method: GET
       headers:
         Authorization: "Bearer {test_login_token}"

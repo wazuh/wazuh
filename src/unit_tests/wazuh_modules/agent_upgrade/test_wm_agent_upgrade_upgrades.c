@@ -59,8 +59,9 @@ static int teardown_string(void **state) {
 static int setup_config(void **state) {
     wm_manager_configs *config = NULL;
     os_calloc(1, sizeof(wm_manager_configs), config);
+    config->max_threads = 8;
     *state = config;
-    upgrade_queue = linked_queue_init();
+    wm_agent_upgrade_init_upgrade_queue(config->max_threads);
     return 0;
 }
 

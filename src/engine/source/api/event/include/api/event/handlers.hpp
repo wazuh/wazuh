@@ -5,13 +5,13 @@
 #include <string_view>
 
 #include <api/adapter/adapter.hpp>
-#include <archiver/iarchiver.hpp>
+#include <dumper/idumper.hpp>
 #include <router/iapi.hpp>
 
 namespace api::event::handlers
 {
 adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
-                                const std::shared_ptr<::archiver::IArchiver>& archiver);
+                                const std::shared_ptr<::dumper::IDumper>& dumper);
 
 } // namespace api::event::handlers
 

@@ -893,6 +893,9 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     full_path = safe_join(common.WAZUH_PATH, file_path)
                     item_key = data['cluster_item_key']
 
+                    if item_key not in cluster_items['files']:
+                        raise exception.WazuhClusterError(3022, extra_message=f"Invalid cluster_item_key: {item_key}")
+
                     # Only valid client.keys is the local one (master).
                     if os.path.basename(file_path) == 'client.keys':
                         raise exception.WazuhClusterError(3007)
@@ -905,6 +908,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                             try:
                                 # Destination path.
                                 full_unmerged_name = safe_join(common.WAZUH_PATH, unmerged_file_path)
+                                expected_base = safe_join(common.WAZUH_PATH, item_key)
+                                if not os.path.commonpath([full_unmerged_name, expected_base]).startswith(expected_base):
+                                    raise exception.WazuhClusterError(3022,
+                                        extra_message=f"File path outside allowed directory: {unmerged_file_path}")
                                 # Path where to create the file before moving it to the destination path.
                                 tmp_unmerged_path = safe_join(common.WAZUH_PATH, 'queue', 'cluster', worker_name,
                                                                  os.path.basename(unmerged_file_path))
@@ -940,6 +947,16 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                     # If the file is not 'merged' type, move it directly to the destination path.
                     else:
                         try:
+                            expected_base = safe_join(common.WAZUH_PATH, item_key)
+                            if not os.path.commonpath([full_path, expected_base]).startswith(expected_base):
+                                raise exception.WazuhClusterError(3022,
+                                    extra_message=f"File path outside allowed directory: {file_path}")
+
+                            file_basename = os.path.basename(file_path)
+                            if file_basename in cluster_items['files'].get('excluded_files', []):
+                                raise exception.WazuhClusterError(3022,
+                                    extra_message=f"File is in excluded list: {file_path}")
+
                             zip_path = safe_join(decompressed_files_path, file_path)
                             utils.safe_move(zip_path, full_path, ownership=(common.wazuh_uid(), common.wazuh_gid()),
                                             permissions=cluster_items['files'][item_key]['permissions'])

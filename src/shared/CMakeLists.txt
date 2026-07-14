@@ -49,7 +49,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/os_zlib)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-  add_definitions(-DWIN32=1 -D_POSIX_C_SOURCE -DPSAPI_VERSION=1)
+  add_definitions(-DWIN32=1 -D_POSIX_C_SOURCE -DPSAPI_VERSION=1 -D_WIN32_WINNT=0x600)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   add_definitions(-DDarwin -DHIGHFIRST)
 endif()

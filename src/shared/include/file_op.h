@@ -746,7 +746,8 @@ int w_uncompress_bz2_gz_file(const char * path, const char * dest);
 /**
  * @brief Get the Wazuh installation directory
  *
- * It is obtained from the /proc directory, argv[0], or the env variable WAZUH_HOME
+ * The target-specific env var (`WAZUH_MANAGER_HOME` or `WAZUH_AGENT_HOME`) wins
+ * if set; otherwise it is auto-detected from /proc, then argv[0].
  *
  * @param arg ARGV0 - Program name
  * @return Pointer to the Wazuh installation path on success

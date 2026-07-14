@@ -39,7 +39,6 @@ This documentation provides an overview of the auxiliary functions available. Au
 - [is_object](#is_object)
 - [is_public_ip](#is_public_ip)
 - [is_string](#is_string)
-- [is_test_session](#is_test_session)
 - [keys_exist_in_list](#keys_exist_in_list)
 - [kvdb_match](#kvdb_match)
 - [kvdb_not_match](#kvdb_not_match)
@@ -1613,9 +1612,9 @@ field: index_unclassified_events()
 
 ## Target Field
 
-| Type | Possible values |
-| ---- | --------------- |
-| array | [number, string, boolean, object, array] |
+| Path | Type | Possible values |
+| ---- | ---- | --------------- |
+| wazuh.integration.category | string | Any string |
 
 
 ## Description
@@ -1623,19 +1622,21 @@ field: index_unclassified_events()
 Determines whether unclassified events should be indexed based on policy configuration.
 This filter returns true if and only if:
 1. The policy flag 'indexUnclassifiedEvents' is enabled (configured at build time)
-2. The target field is an array containing exactly 1 element
+2. The target field is exactly 'wazuh.integration.category'
+3. 'wazuh.integration.category' equals the string "unclassified"
 
-This helper is used in output routing to decide whether to index events that have only
-one decoder (unclassified events) when the policy allows it. If the policy flag is
-disabled or the array has a different size, the validation fails.
+This helper is used in output routing to decide whether to index events that the
+root decoder tagged as unclassified (no integration decoder matched) when the
+policy allows it. If the policy flag is disabled, the category differs from
+"unclassified", or the field is missing / not a string, the validation fails.
 
-Note: This helper does not accept any arguments and depends on the policy context
-configured at build time.
+Note: This helper does not accept any arguments, rejects any target field other than
+'wazuh.integration.category', and depends on the policy context configured at build time.
 
 
 ## Keywords
 
-- `array` 
+- `string` 
 
 - `policy` 
 
@@ -1643,22 +1644,20 @@ configured at build time.
 
 ### Example 1
 
-Array with exactly one element (unclassified event)
+Category equals "unclassified" (event tagged by the root decoder)
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": [
-    "single_decoder"
-  ]
+  "wazuh.integration.category": "unclassified"
 }
 ```
 
@@ -1666,13 +1665,55 @@ check:
 
 ### Example 2
 
-Empty array - not an unclassified event
+Category is a known one different from "unclassified"
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
+```
+
+#### Input Event
+
+```json
+{
+  "wazuh.integration.category": "security"
+}
+```
+
+*The check was performed with errors*
+
+### Example 3
+
+Category is a known one different from "unclassified"
+
+#### Asset
+
+```yaml
+check:
+  - wazuh.integration.category: index_unclassified_events()
+```
+
+#### Input Event
+
+```json
+{
+  "wazuh.integration.category": "system-activity"
+}
+```
+
+*The check was performed with errors*
+
+### Example 4
+
+Category is an empty string
+
+#### Asset
+
+```yaml
+check:
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
@@ -1683,71 +1724,22 @@ check:
 
 *The check was performed with errors*
 
-### Example 3
-
-Array with two elements - classified event
-
-#### Asset
-
-```yaml
-check:
-  - target_field: index_unclassified_events()
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": [
-    "decoder1",
-    "decoder2"
-  ]
-}
-```
-
-*The check was performed with errors*
-
-### Example 4
-
-Array with three elements - classified event
-
-#### Asset
-
-```yaml
-check:
-  - target_field: index_unclassified_events()
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": [
-    "d1",
-    "d2",
-    "d3"
-  ]
-}
-```
-
-*The check was performed with errors*
-
 ### Example 5
 
-Target field is not an array
+Target field is a number, not a string
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": "not_an_array"
+  "wazuh.integration.category": 42
 }
 ```
 
@@ -1755,20 +1747,22 @@ check:
 
 ### Example 6
 
-Target field is a number, not an array
+Target field is an array, not a string
 
 #### Asset
 
 ```yaml
 check:
-  - target_field: index_unclassified_events()
+  - wazuh.integration.category: index_unclassified_events()
 ```
 
 #### Input Event
 
 ```json
 {
-  "target_field": 42
+  "wazuh.integration.category": [
+    "unclassified"
+  ]
 }
 ```
 
@@ -3627,7 +3621,7 @@ check:
 {}
 ```
 
-*The check was performed with errors*
+*The check was successful*
 
 ### Example 2
 
@@ -4187,60 +4181,6 @@ check:
 
 
 ---
-# is_test_session
-
-## Signature
-
-```
-
-field: is_test_session()
-```
-
-## Target Field
-
-| Type | Possible values |
-| ---- | --------------- |
-| [number, string, boolean, array, object] | - |
-
-
-## Description
-
-Check if the environment in use is testing or production.
-This helper function is typically used in the check stage
-
-
-## Keywords
-
-- `undefined` 
-
-## Examples
-
-### Example 1
-
-Is test session
-
-#### Asset
-
-```yaml
-check:
-  - target_field: is_test_session()
-```
-
-#### Input Event
-
-```json
-{
-  "target_field": {
-    "key": "value"
-  }
-}
-```
-
-*The check was successful*
-
-
-
----
 # keys_exist_in_list
 
 ## Signature
@@ -4518,6 +4458,70 @@ check:
 
 
 
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
+
 ---
 # kvdb_not_match
 
@@ -4642,6 +4646,70 @@ check:
 *The check was successful*
 
 
+
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
 
 ---
 # match_value
@@ -14688,6 +14756,70 @@ normalize:
 
 
 
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
+
 ---
 # kvdb_get
 
@@ -14977,6 +15109,70 @@ normalize:
 *The operation was successful*
 
 
+
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
 
 ---
 # kvdb_get_array
@@ -15344,6 +15540,70 @@ normalize:
 
 
 
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
+
 ---
 # kvdb_get_merge
 
@@ -15679,6 +15939,70 @@ normalize:
 *The operation was successful*
 
 
+
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
 
 ---
 # kvdb_get_merge_recursive
@@ -16028,6 +16352,70 @@ normalize:
 
 
 
+## Test KVDB
+
+The examples for this helper use the following KVDB resource during tests:
+
+```json
+{
+  "id": "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10",
+  "metadata": {
+    "title": "windows_kerberos_status_code_to_code_name",
+    "author": "Wazuh Inc.",
+    "date": "2025-10-06T13:32:19Z",
+    "description": "KVDB resource used by helper function tests."
+  },
+  "content": {
+    "0x0": "KDC_ERR_NONE",
+    "0x1": "KDC_ERR_NAME_EXP",
+    "0x2": "KDC_ERR_SERVICE_EXP",
+    "0x3": "KDC_ERR_BAD_PVNO",
+    "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+    "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+    "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+    "bitmask_test_values": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      16,
+      17,
+      18,
+      19,
+      20,
+      24,
+      28,
+      29,
+      30,
+      31
+    ],
+    "access_mask": {
+      "0": "Create Child",
+      "1": "Delete Child",
+      "2": "List Contents",
+      "3": "SELF",
+      "4": "Read Property",
+      "5": "Write Property",
+      "6": "Delete Tree",
+      "7": "List Object",
+      "8": "Control Access",
+      "16": "DELETE",
+      "17": "READ_CONTROL",
+      "18": "WRITE_DAC",
+      "19": "WRITE_OWNER",
+      "20": "SYNCHRONIZE",
+      "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+      "31": "ADS_RIGHT_GENERIC_READ",
+      "30": "ADS_RIGHT_GENERIC_WRITE",
+      "29": "ADS_RIGHT_GENERIC_EXECUTE",
+      "28": "ADS_RIGHT_GENERIC_ALL"
+    }
+  },
+  "enabled": true
+}
+```
+
 ---
 # merge
 
@@ -16205,6 +16593,8 @@ field: merge_key_in(any_object, key)
 Merge in target field value with the content of some key in the specified object, where the key is specified with a reference to another field.
 The object parameter must be a definition object or a reference to a field containing the object.
 This helper function is typically used in the map stage.
+When a key exists in both the source and the target, the source value overwrites the target value entirely (no recursion into nested structures).
+If the source contains duplicate keys, all occurrences are iterated and the last duplicate value is the one that remains in the target.
 
 
 ## Keywords
@@ -16427,9 +16817,11 @@ field: merge_recursive_key_in(any_object, key)
 
 Recursively merge the target field value with the content of a specified key in the given object.
 The key is identified through a reference to another field.
-If the key's value contains nested objects, the merge operation is applied recursively, combining all levels of the structure.
+If the key's value contains nested objects or arrays, the merge operation is applied recursively, combining all levels of the structure.
+For primitive values (strings, numbers, booleans), when a key exists in both source and target, the source value overwrites the target value.
 The object parameter must be a definition object or a reference to a field containing the object.
 This helper function is typically used in the map stage to ensure deep merging of complex objects.
+If the source contains duplicate keys, all occurrences are iterated and the last duplicate value is the one that remains in the target.
 
 
 ## Keywords

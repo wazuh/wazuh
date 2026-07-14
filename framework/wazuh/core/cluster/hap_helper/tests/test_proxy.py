@@ -38,7 +38,6 @@ class TestProxyAPI:
                 'change_backend_server_state',
                 {'backend_name': 'foo', 'server_name': 'bar', 'state': ProxyServerState.DRAIN},
             ),
-            ('get_backend_stats', {'backend_name': 'foo'}),
             ('get_backend_server_stats', {'backend_name': 'foo', 'server_name': 'bar'}),
         ],
     )
@@ -482,27 +481,6 @@ class TestProxyAPI:
             params={'backend': backend_name, 'version': 0},
         )
 
-    async def test_get_backend_stats(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
-        """Check the correct output of `get_backend_stats` method."""
-
-        endpoint = 'services/haproxy/stats/native'
-        data = {'data': {'foo': 1, 'bar': 2}}
-        request_mock.return_value = mock.MagicMock(
-            **{'status_code': 200, 'is_success': True, 'json.return_value': data}
-        )
-
-        backend_name = 'foo'
-        ret_val = await proxy_api.get_backend_stats(backend_name)
-
-        request_mock.assert_called_once_with(
-            method=ProxyAPIMethod.GET.value,
-            url=f'{proxy_api.protocol}://{proxy_api.address}:{proxy_api.port}/v2/{endpoint}',
-            auth=(proxy_api.username, proxy_api.password),
-            json=None,
-            params={'type': 'backend', 'name': backend_name, 'version': 0},
-        )
-        assert ret_val == data
-
     async def test_get_backend_server_stats(self, proxy_api: ProxyAPI, request_mock: mock.AsyncMock):
         """Check the correct output of `get_backend_server_stats` method."""
 
@@ -616,14 +594,6 @@ class TestProxy:
             proxy_api_mock.update_global_configuration.assert_called_once_with(new_configuration=new_configuration)
         else:
             proxy_api_mock.update_global_configuration.assert_not_called()
-
-    async def test_get_current_pid(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
-        """Check the correct output of `get_current_pid` method."""
-
-        pid = 10
-        proxy_api_mock.get_runtime_info.return_value = {'pid': pid}
-
-        assert (await proxy.get_current_pid()) == pid
 
     async def test_get_current_backends(self, proxy_api_mock: mock.MagicMock, proxy: Proxy):
         """Check the correct output of `get_current_backends` method."""

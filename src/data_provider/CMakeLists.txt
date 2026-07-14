@@ -43,8 +43,6 @@ include_directories(
 include_directories(${SRC_FOLDER}/shared_modules/file_helper/file_io/include/)
 include_directories(${SRC_FOLDER}/external/libplist/bin/include/)
 include_directories(${SRC_FOLDER}/external/libdb/build_unix/)
-include_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
-include_directories(${SRC_FOLDER}/external/libarchive/libarchive/)
 include_directories(${SRC_FOLDER}/external/rpm/builddir/output/include/)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
@@ -88,8 +86,6 @@ link_directories(${SRC_FOLDER}/external/procps/)
 link_directories(${SRC_FOLDER}/external/bzip2/)
 link_directories(${SRC_FOLDER}/external/libplist/bin/lib/)
 link_directories(${SRC_FOLDER}/external/libdb/build_unix/)
-link_directories(${SRC_FOLDER}/external/pacman/lib/libalpm/)
-link_directories(${SRC_FOLDER}/external/libarchive/.libs/)
 link_directories(${SRC_FOLDER}/external/rpm/builddir/)
 link_directories(${SRC_FOLDER}/external/openssl/)
 link_directories(${SRC_FOLDER}/shared_modules/file_helper/build)
@@ -179,6 +175,7 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
             ws2_32
             wbemuuid
             uuid
+            wuguid
             ole32
             oleaut32
             shell32

@@ -10,6 +10,7 @@
 #include "syntax.hpp"
 #include <base/baseTypes.hpp>
 #include <base/utils/ipUtils.hpp>
+#include <cmstore/categories.hpp>
 #include <fastmetrics/registry.hpp>
 
 namespace builder::builders::opfilter
@@ -145,7 +146,7 @@ FilterOp getIntCmpFunction(const std::string& targetField,
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
-    return [=, runState = buildCtx->runState()](base::ConstEvent event) -> FilterResult
+    return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> FilterResult
     {
         // We assert that references exists, checking if the optional from Json getter is
         // empty ot not. Then if is a reference we get the value from the event, otherwise
@@ -154,7 +155,7 @@ FilterOp getIntCmpFunction(const std::string& targetField,
         auto lValue = event->getIntAsInt64(targetField);
         if (!lValue.has_value())
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         int64_t resolvedValue {0};
@@ -163,7 +164,7 @@ FilterOp getIntCmpFunction(const std::string& targetField,
             auto resolvedRValue = event->getIntAsInt64(std::get<std::string>(rValue));
             if (!resolvedRValue.has_value())
             {
-                RETURN_FAILURE(runState, false, failureTrace2);
+                RETURN_FAILURE(isTestMode, false, failureTrace2);
             }
             resolvedValue = resolvedRValue.value();
         }
@@ -174,11 +175,11 @@ FilterOp getIntCmpFunction(const std::string& targetField,
 
         if (cmpFunction(lValue.value(), resolvedValue))
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
         else
         {
-            RETURN_FAILURE(runState, false, failureTrace3);
+            RETURN_FAILURE(isTestMode, false, failureTrace3);
         }
     };
 }
@@ -282,7 +283,7 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: Comparison is false", name)};
 
     // Function that implements the helper
-    return [=, runState = buildCtx->runState()](base::ConstEvent event) -> FilterResult
+    return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> FilterResult
     {
         // We assert that references exists, checking if the optional from Json getter is
         // empty ot not. Then if is a reference we get the value from the event, otherwise
@@ -291,7 +292,7 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
         auto lValue = event->getNumberAsDouble(targetField);
         if (!lValue.has_value())
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         double resolvedValue {0.0};
@@ -300,7 +301,7 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
             auto resolvedRValue = event->getNumberAsDouble(std::get<std::string>(rValue));
             if (!resolvedRValue.has_value())
             {
-                RETURN_FAILURE(runState, false, failureTrace2);
+                RETURN_FAILURE(isTestMode, false, failureTrace2);
             }
             resolvedValue = resolvedRValue.value();
         }
@@ -311,11 +312,11 @@ FilterOp getNumberCmpFunction(const std::string& targetField,
 
         if (cmpFunction(lValue.value(), resolvedValue))
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
         else
         {
-            RETURN_FAILURE(runState, false, failureTrace3);
+            RETURN_FAILURE(isTestMode, false, failureTrace3);
         }
     };
 }
@@ -397,14 +398,18 @@ FilterOp getStringCmpFunction(const std::string& targetField,
     }
 
     const auto name = buildCtx->context().opName;
+    // Pre-extract value string to avoid lazy json::Json creation per-event
+    std::optional<std::string> preExtractedValueStr;
     if (rightParameter->isValue())
     {
-        std::string value;
-        if (std::static_pointer_cast<Value>(rightParameter)->value().getString(value) != json::RetGet::Success)
+        auto asValue = std::static_pointer_cast<const Value>(rightParameter);
+        std::string_view sv;
+        if (asValue->getString(sv) != json::RetGet::Success)
         {
             throw std::runtime_error(
                 fmt::format(R"({} function: Expected a string but got {}.)", name, rightParameter->str()));
         }
+        preExtractedValueStr = std::string(sv);
     }
     else
     {
@@ -439,7 +444,7 @@ FilterOp getStringCmpFunction(const std::string& targetField,
             : std::nullopt;
 
     // Function that implements the helper
-    return [=, runState = buildCtx->runState()](base::ConstEvent event) -> FilterResult
+    return [=, isTestMode = buildCtx->isTestMode()](base::ConstEvent event) -> FilterResult
     {
         // We assert that references exists, checking if the optional from Json getter is
         // empty ot not. Then if is a reference we get the value from the event, otherwise
@@ -448,34 +453,29 @@ FilterOp getStringCmpFunction(const std::string& targetField,
         std::string_view lValue;
         if (event->getString(lValue, targetFieldPP) != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         std::string_view rValue {};
-        if (rightParameter->isValue())
+        if (preExtractedValueStr.has_value())
         {
-            if (std::static_pointer_cast<Value>(rightParameter)->value().getString(rValue) != json::RetGet::Success)
-            {
-                RETURN_FAILURE(runState,
-                               false,
-                               fmt::format("{} function: Expected a string but got {}.", name, rightParameter->str()));
-            }
+            rValue = *preExtractedValueStr;
         }
         else
         {
             if (event->getString(rValue, *rightParamPP) != json::RetGet::Success)
             {
-                RETURN_FAILURE(runState, false, failureTrace2);
+                RETURN_FAILURE(isTestMode, false, failureTrace2);
             }
         }
 
         if (cmpFunction(lValue, rValue))
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
         else
         {
-            RETURN_FAILURE(runState, false, failureTrace3);
+            RETURN_FAILURE(isTestMode, false, failureTrace3);
         }
     };
 }
@@ -805,20 +805,20 @@ FilterOp opBuilderHelperBinaryAnd(const Reference& targetField,
     };
 
     // The filter
-    return [getValue, runState = buildCtx->runState(), mask, successTrace, failAndTrace](
+    return [getValue, isTestMode = buildCtx->isTestMode(), mask, successTrace, failAndTrace](
                base::ConstEvent event) -> FilterResult
     {
         auto valueResult = getValue(event);
         if (base::isError(valueResult))
         {
-            RETURN_FAILURE(runState, false, base::getError(valueResult).message);
+            RETURN_FAILURE(isTestMode, false, base::getError(valueResult).message);
         }
 
         if (base::getResponse(valueResult) & mask)
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
-        RETURN_FAILURE(runState, false, failAndTrace);
+        RETURN_FAILURE(isTestMode, false, failAndTrace);
     };
 }
 
@@ -859,22 +859,22 @@ FilterOp opBuilderHelperRegexMatch(const Reference& targetField,
     const std::string failureTrace2 {fmt::format("[{}] -> Failure: Regex did not match", name)};
 
     // Return Op
-    return [=, runState = buildCtx->runState(), targetField = json::PointerPath(targetField.jsonPath())](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
         std::string_view resolvedField;
         if (event->getString(resolvedField, targetField) != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         if (RE2::PartialMatch(resolvedField, *regex_ptr))
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
         else
         {
-            RETURN_FAILURE(runState, false, failureTrace2);
+            RETURN_FAILURE(isTestMode, false, failureTrace2);
         }
     };
 }
@@ -916,22 +916,22 @@ FilterOp opBuilderHelperRegexNotMatch(const Reference& targetField,
     const std::string failureTrace2 {fmt::format("[{}] -> Failure: Regex did match", name)};
 
     // Return Op
-    return [=, runState = buildCtx->runState(), targetField = json::PointerPath(targetField.jsonPath())](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
         std::string_view resolvedField;
         if (event->getString(resolvedField, targetField) != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         if (!RE2::PartialMatch(resolvedField, *regex_ptr))
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
         else
         {
-            RETURN_FAILURE(runState, false, failureTrace2);
+            RETURN_FAILURE(isTestMode, false, failureTrace2);
         }
     };
 }
@@ -1007,13 +1007,13 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
     const std::string failureTrace3 {fmt::format("[{}] -> Failure: IP address is not in CIDR", name)};
 
     // Return Op
-    return [=, runState = buildCtx->runState(), targetField = json::PointerPath(targetField.jsonPath())](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
         std::string resolvedField;
         if (event->getString(resolvedField, targetField) != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         uint32_t ip {};
@@ -1023,18 +1023,18 @@ FilterOp opBuilderHelperIPCIDR(const Reference& targetField,
         }
         catch (std::exception& e)
         {
-            RETURN_FAILURE(runState,
+            RETURN_FAILURE(isTestMode,
                            false,
                            failureTrace2
                                + fmt::format("'{}' could not be converted to int: {}", resolvedField, e.what()));
         }
         if (net_lower <= ip && ip <= net_upper)
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
         else
         {
-            RETURN_FAILURE(runState, false, failureTrace3);
+            RETURN_FAILURE(isTestMode, false, failureTrace3);
         }
     };
 }
@@ -1071,27 +1071,27 @@ FilterOp opBuilderHelperPublicIP(const Reference& targetField,
     };
 
     // Return Op
-    return [=, runState = buildCtx->runState(), targetField = json::PointerPath(targetField.jsonPath())](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
         std::string resolvedField;
         if (event->getString(resolvedField, targetField) != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         // checkFn requires std::string
         auto checkResult = checkFn(resolvedField);
         if (base::isError(checkResult))
         {
-            RETURN_FAILURE(runState, false, failureTrace3);
+            RETURN_FAILURE(isTestMode, false, failureTrace3);
         }
 
         if (base::getResponse(checkResult))
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
-        RETURN_FAILURE(runState, false, failureTrace2);
+        RETURN_FAILURE(isTestMode, false, failureTrace2);
     };
 }
 
@@ -1123,18 +1123,18 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
                     presenceCheck ? "does not contain at least one" : "contains at least one")};
 
     // Return Op
-    return [=, parameters = opArgs, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+    return [=, parameters = opArgs, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
                base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         const auto resolvedArray {event->getArray(targetField)};
         if (!resolvedArray.has_value())
         {
-            RETURN_FAILURE(runState, false, failureTrace2);
+            RETURN_FAILURE(isTestMode, false, failureTrace2);
         }
 
         json::Json cmpValue {};
@@ -1168,18 +1168,18 @@ FilterOp opBuilderHelperArrayPresence(const Reference& targetField,
             {
                 if (atleastOne)
                 {
-                    RETURN_SUCCESS(runState, true, successTrace);
+                    RETURN_SUCCESS(isTestMode, true, successTrace);
                 }
 
                 matchCount++;
                 if (matchCount == parameters.size())
                 {
-                    RETURN_SUCCESS(runState, true, successTrace);
+                    RETURN_SUCCESS(isTestMode, true, successTrace);
                 }
             }
         }
 
-        RETURN_FAILURE(runState, false, failureTrace3);
+        RETURN_FAILURE(isTestMode, false, failureTrace3);
     };
 }
 
@@ -1243,7 +1243,7 @@ FilterOp typeMatcher(const Reference& targetField,
         fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath());
 
     // Return Op
-    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
                base::ConstEvent event) -> FilterResult
     {
         FilterResult result;
@@ -1252,13 +1252,13 @@ FilterOp typeMatcher(const Reference& targetField,
         {
             if ((event->type(targetField) == type) != negated)
             {
-                RETURN_SUCCESS(runState, true, successTrace);
+                RETURN_SUCCESS(isTestMode, true, successTrace);
             }
 
-            RETURN_FAILURE(runState, false, failureTrace);
+            RETURN_FAILURE(isTestMode, false, failureTrace);
         }
 
-        RETURN_FAILURE(runState, false, failureMissingValueTrace);
+        RETURN_FAILURE(isTestMode, false, failureMissingValueTrace);
     };
 }
 
@@ -1393,12 +1393,12 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
     const std::string failureTrace5 {fmt::format("[{}] -> Failure", name)};
 
     // Return op
-    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath(), parameter = opArgs[0]](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath(), parameter = opArgs[0]](
                base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         // Get value
@@ -1411,7 +1411,7 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
             }
             else
             {
-                RETURN_FAILURE(runState, false, failureTrace2);
+                RETURN_FAILURE(isTestMode, false, failureTrace2);
             }
         }
 
@@ -1432,12 +1432,12 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
             auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
             if (!event->exists(refPath))
             {
-                RETURN_FAILURE(runState, false, failureTrace3);
+                RETURN_FAILURE(isTestMode, false, failureTrace3);
             }
 
             if (!event->isArray(refPath))
             {
-                RETURN_FAILURE(runState, false, failureTrace4);
+                RETURN_FAILURE(isTestMode, false, failureTrace4);
             }
 
             isSuccess = searchCmpValue(event->getArray(refPath).value());
@@ -1452,11 +1452,11 @@ FilterOp opBuilderHelperMatchValue(const Reference& targetField,
         // Check if the array contains the value
         if (isSuccess)
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
 
         // Not found
-        RETURN_FAILURE(runState, false, failureTrace5);
+        RETURN_FAILURE(isTestMode, false, failureTrace5);
     };
 }
 
@@ -1509,7 +1509,7 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
 
     // Return op
     return [=,
-            runState = buildCtx->runState(),
+            isTestMode = buildCtx->isTestMode(),
             targetField = targetField.jsonPath(),
             targetFieldPP = json::PointerPath(targetField.jsonPath()),
             parameter = opArgs[0]](base::ConstEvent event) -> FilterResult
@@ -1517,7 +1517,7 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
         std::string_view targetStr;
         if (auto ret = event->getString(targetStr, targetFieldPP); ret != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, ret == json::RetGet::WrongType ? failureTrace2 : failureTrace1);
+            RETURN_FAILURE(isTestMode, false, ret == json::RetGet::WrongType ? failureTrace2 : failureTrace1);
         }
 
         auto pointerPath = json::Json::formatJsonPath(targetStr);
@@ -1528,12 +1528,12 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
             auto refPath = std::static_pointer_cast<Reference>(parameter)->jsonPath();
             if (!event->exists(refPath))
             {
-                RETURN_FAILURE(runState, false, failureTrace3);
+                RETURN_FAILURE(isTestMode, false, failureTrace3);
             }
 
             if (!event->isObject(refPath))
             {
-                RETURN_FAILURE(runState, false, failureTrace5);
+                RETURN_FAILURE(isTestMode, false, failureTrace5);
             }
 
             exists = event->exists(refPath + pointerPath);
@@ -1547,10 +1547,10 @@ FilterOp opBuilderHelperMatchKey(const Reference& targetField,
         // Check if object contains the key
         if (!exists)
         {
-            RETURN_FAILURE(runState, false, failureTrace6);
+            RETURN_FAILURE(isTestMode, false, failureTrace6);
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 
@@ -1606,14 +1606,14 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
             failureTrace3,
             failureTrace4,
             successTrace,
-            runState = buildCtx->runState(),
+            isTestMode = buildCtx->isTestMode(),
             targetField = json::PointerPath(targetField.jsonPath()),
             parameter = opArgs[0]](base::ConstEvent event) -> FilterResult
     {
         std::string_view targetString;
         if (event->getString(targetString, targetField) != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         if (parameter->isReference())
@@ -1622,29 +1622,29 @@ FilterOp opBuilderHelperEndsWith(const Reference& targetField,
             std::string_view stringReference;
             if (event->getString(stringReference, refPath) != json::RetGet::Success)
             {
-                RETURN_FAILURE(runState, false, failureTrace1);
+                RETURN_FAILURE(isTestMode, false, failureTrace1);
             }
 
             if (!base::utils::string::endsWith(targetString, stringReference))
             {
-                RETURN_FAILURE(runState, false, failureTrace4);
+                RETURN_FAILURE(isTestMode, false, failureTrace4);
             }
 
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
         else
         {
             std::string_view valueString;
-            if (std::static_pointer_cast<Value>(parameter)->value().getString(valueString) != json::RetGet::Success)
+            if (std::static_pointer_cast<Value>(parameter)->getString(valueString) != json::RetGet::Success)
             {
-                RETURN_FAILURE(runState, false, failureTrace3);
+                RETURN_FAILURE(isTestMode, false, failureTrace3);
             }
             if (!base::utils::string::endsWith(targetString, valueString))
             {
-                RETURN_FAILURE(runState, false, failureTrace4);
+                RETURN_FAILURE(isTestMode, false, failureTrace4);
             }
 
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
     };
 }
@@ -1669,21 +1669,21 @@ FilterOp opBuilderHelperIsIpv4(const Reference& targetField,
     return [failureTrace1,
             failureTrace2,
             successTrace,
-            runState = buildCtx->runState(),
+            isTestMode = buildCtx->isTestMode(),
             targetField = json::PointerPath(targetField.jsonPath())](base::ConstEvent event) -> FilterResult
     {
         std::string targetString;
         if (event->getString(targetString, targetField) != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         if (!::utils::ip::checkStrIsIPv4(targetString)) // checkStrIsIPv4 requires std::string
         {
-            RETURN_FAILURE(runState, false, failureTrace2);
+            RETURN_FAILURE(isTestMode, false, failureTrace2);
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 
@@ -1707,49 +1707,21 @@ FilterOp opBuilderHelperIsIpv6(const Reference& targetField,
     return [failureTrace1,
             failureTrace2,
             successTrace,
-            runState = buildCtx->runState(),
+            isTestMode = buildCtx->isTestMode(),
             targetField = json::PointerPath(targetField.jsonPath())](base::ConstEvent event) -> FilterResult
     {
         std::string targetString;
         if (event->getString(targetString, targetField) != json::RetGet::Success)
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         if (!::utils::ip::checkStrIsIPv6(targetString)) // checkStrIsIPv6 requires std::string
         {
-            RETURN_FAILURE(runState, false, failureTrace2);
+            RETURN_FAILURE(isTestMode, false, failureTrace2);
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
-    };
-}
-
-// <field>: +is_test_session
-FilterOp opBuilderHelperIsTestSession(const Reference& targetField,
-                                      const std::vector<OpArg>& opArgs,
-                                      const std::shared_ptr<const IBuildCtx>& buildCtx)
-{
-    // Assert expected number of parameters
-    utils::assertSize(opArgs, 0);
-
-    const auto name = buildCtx->context().opName;
-    const auto runState = buildCtx->runState();
-
-    // Tracing
-    const std::string successTrace {fmt::format("[{}] -> Success", name)};
-
-    const std::string failureTrace {
-        fmt::format("[{}] -> Failure: The evaluated environment is a production environment", name)};
-
-    // Return op
-    return [failureTrace, successTrace, runState](base::ConstEvent event) -> FilterResult
-    {
-        if (runState->sandbox)
-        {
-            RETURN_SUCCESS(runState, true, successTrace);
-        }
-        RETURN_FAILURE(runState, false, failureTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 
@@ -1812,15 +1784,15 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
             failureTrace3,
             failureTrace4,
             successTrace,
-            runState = buildCtx->runState(),
+            isTestMode = buildCtx->isTestMode(),
             targetField = targetField.jsonPath(),
             parameter = opArgs[0],
             expectedKeys](base::ConstEvent event) -> FilterResult
     {
-        const auto objectTarget = event->getObject(targetField);
-        if (!objectTarget.has_value())
+        const auto objectFields = event->getFields(targetField);
+        if (!objectFields.has_value())
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         std::unordered_set<std::string> localKeys = expectedKeys;
@@ -1830,34 +1802,34 @@ FilterOp opBuilderHelperKeysExistInList(const Reference& targetField,
             const auto list = event->getArray(refPath);
             if (!list.has_value())
             {
-                RETURN_FAILURE(runState, false, failureTrace2);
+                RETURN_FAILURE(isTestMode, false, failureTrace2);
             }
             for (const auto& element : list.value())
             {
                 std::string elemStr;
                 if (element.getString(elemStr) != json::RetGet::Success)
                 {
-                    RETURN_FAILURE(runState, false, failureTrace3);
+                    RETURN_FAILURE(isTestMode, false, failureTrace3);
                 }
 
                 localKeys.insert(std::move(elemStr));
             }
         }
 
-        if (localKeys.size() < objectTarget.value().size())
+        if (localKeys.size() < objectFields->size())
         {
-            RETURN_FAILURE(runState, false, failureTrace4);
+            RETURN_FAILURE(isTestMode, false, failureTrace4);
         }
 
-        for (const auto& [key, value] : objectTarget.value())
+        for (const auto& key : objectFields.value())
         {
             if (localKeys.erase(key) == 0)
             {
-                RETURN_FAILURE(runState, false, failureTrace4);
+                RETURN_FAILURE(isTestMode, false, failureTrace4);
             }
         }
 
-        RETURN_SUCCESS(runState, true, successTrace);
+        RETURN_SUCCESS(isTestMode, true, successTrace);
     };
 }
 
@@ -1900,26 +1872,26 @@ FilterOp opBuilderHelperArrayLength(const Reference& targetField,
         fmt::format("[{}] -> Failure: Array length does not match expected length {}", name, expectedLength)};
 
     // Return Op
-    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
                base::ConstEvent event) -> FilterResult
     {
         if (!event->exists(targetField))
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
         }
 
         const auto resolvedArray {event->getArray(targetField)};
         if (!resolvedArray.has_value())
         {
-            RETURN_FAILURE(runState, false, failureTrace2);
+            RETURN_FAILURE(isTestMode, false, failureTrace2);
         }
 
         if (static_cast<int64_t>(resolvedArray.value().size()) == expectedLength)
         {
-            RETURN_SUCCESS(runState, true, successTrace);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
 
-        RETURN_FAILURE(runState, false, failureTrace3);
+        RETURN_FAILURE(isTestMode, false, failureTrace3);
     };
 }
 
@@ -1928,6 +1900,13 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
                                                 const std::vector<OpArg>& opArgs,
                                                 const std::shared_ptr<const IBuildCtx>& buildCtx)
 {
+    if (targetField.jsonPath() != syntax::asset::CATEGORY_PATH)
+    {
+        throw std::runtime_error(
+            fmt::format("index_unclassified_events: target field must be 'wazuh.integration.category', got '{}'",
+                        targetField.dotPath()));
+    }
+
     // Assert expected number of parameters
     utils::assertSize(opArgs, 0);
 
@@ -1936,44 +1915,40 @@ FilterOp opBuilderHelperIndexUnclassifiedEvents(const Reference& targetField,
 
     // Tracing
     const std::string successTrace {
-        fmt::format("[{}] -> Success: Policy index_unclassified_events=true and array has 1 element", name)};
+        fmt::format("[{}] -> Success: Policy index_unclassified_events=true and category is 'unclassified'", name)};
     const std::string failureTrace1 {
         fmt::format("[{}] -> Failure: Target field '{}' not found", name, targetField.dotPath())};
     const std::string failureTrace2 {
-        fmt::format("[{}] -> Failure: Target field '{}' is not an array", name, targetField.dotPath())};
-    const std::string failureTrace3 {fmt::format(
-        "[{}] -> Failure: Policy index_unclassified_events=false or array does not have exactly 1 element", name)};
+        fmt::format("[{}] -> Failure: Target field '{}' is not a string", name, targetField.dotPath())};
+    const std::string failureTrace3 {
+        fmt::format("[{}] -> Failure: Policy index_unclassified_events=false or category is not 'unclassified'", name)};
 
-    return [=, runState = buildCtx->runState(), targetField = targetField.jsonPath()](
+    return [=, isTestMode = buildCtx->isTestMode(), targetFieldPP = json::PointerPath(targetField.jsonPath())](
                base::ConstEvent event) -> FilterResult
     {
         // Check if policy flag is enabled
         if (!policyIndexUnclassified)
         {
-            RETURN_FAILURE(runState, false, failureTrace3);
+            RETURN_FAILURE(isTestMode, false, failureTrace3);
         }
 
-        // Check if field exists
-        if (!event->exists(targetField))
+        std::string_view category;
+        const auto ret = event->getString(category, targetFieldPP);
+        if (ret == json::RetGet::NotFound)
         {
-            RETURN_FAILURE(runState, false, failureTrace1);
+            RETURN_FAILURE(isTestMode, false, failureTrace1);
+        }
+        if (ret == json::RetGet::WrongType)
+        {
+            RETURN_FAILURE(isTestMode, false, failureTrace2);
         }
 
-        // Check if array has exactly 1 element
-        try
+        if (category == cm::store::categories::UNCLASSIFIED_CATEGORY)
         {
-            if (event->size(targetField) == 1)
-            {
-                RETURN_SUCCESS(runState, true, successTrace);
-            }
-        }
-        catch (const std::exception&)
-        {
-            // size() throws if field is not an array, object, or string
-            RETURN_FAILURE(runState, false, failureTrace2);
+            RETURN_SUCCESS(isTestMode, true, successTrace);
         }
 
-        RETURN_FAILURE(runState, false, failureTrace3);
+        RETURN_FAILURE(isTestMode, false, failureTrace3);
     };
 }
 

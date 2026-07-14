@@ -16,11 +16,10 @@ namespace cm::store
 
 namespace pathns
 {
-constexpr std::string_view JSON_ID_PATH = "/id";      ///< Universal path for UUID field in JSON/YML objects
-constexpr std::string_view YML_PAIR_FMT = "id: {}\n"; ///< YML pair format for UUID field
+constexpr std::string_view JSON_ID_PATH = "/id"; ///< Universal path for UUID field in stored resource objects
 // Files and extensions
 constexpr std::string_view CACHE_NS_FILE = "cache_ns.json";
-constexpr std::string_view ASSET_EXTENSION = ".yml";
+constexpr std::string_view ASSET_EXTENSION = ".json";
 constexpr std::string_view POLICY_FILE = "policy.json";
 // Directories
 constexpr std::string_view KVDBS_DIR = "kvdbs";
@@ -68,15 +67,15 @@ private:
     void rebuildCacheFromStorage();
 
     /**
-     * @brief Upsert the UUID field in the given YML/Json content
+     * @brief Upsert the UUID field in the given JSON content
      *
      * If the UUID field already exists, it will be checked for validity and returned.
      * If it does not exist, a new UUID will be generated, inserted into the content, and returned.
-     * @param ymlContent YML content as a string (will be modified if UUID is added)
+     * @param content JSON content to inspect and update
      * @return std::string UUID of the content
      * @throw std::runtime_error if the existing UUID is invalid or content parsing fails
      */
-    std::string upsertUUID(std::string& ymlContent);
+    std::string upsertUUID(json::Json& content);
 
     /**
      * @brief Get the path for a resource based on its name and type
@@ -164,11 +163,11 @@ public:
     /*********************************** General Resource ************************************/
 
     /** @copydoc ICMStoreNS::createResource */
-    std::string createResource(const std::string& name, ResourceType type, const std::string& ymlContent) override;
+    std::string createResource(const std::string& name, ResourceType type, const json::Json& content) override;
     /** @copydoc ICMStoreNS::updateResourceByName */
-    void updateResourceByName(const std::string& name, ResourceType type, const std::string& ymlContent) override;
+    void updateResourceByName(const std::string& name, ResourceType type, const json::Json& content) override;
     /** @copydoc ICMStoreNS::updateResourceByUUID */
-    void updateResourceByUUID(const std::string& uuid, const std::string& ymlContent) override;
+    void updateResourceByUUID(const std::string& uuid, const json::Json& content) override;
     /** @copydoc ICMStoreNS::deleteResourceByName */
     void deleteResourceByName(const std::string& name, ResourceType type) override;
     /** @copydoc ICMStoreNS::deleteResourceByUUID */

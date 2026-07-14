@@ -9,8 +9,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include <streamlog/logger.hpp>
-
 #include <fastmetrics/atomicCounter.hpp>
 #include <fastmetrics/atomicGauge.hpp>
 #include <fastmetrics/iManager.hpp>
@@ -88,6 +86,36 @@ private:
         return metric;
     }
 
+    template<typename T>
+    void registerPullMetricImpl(const std::string& name,
+                                std::function<T()> getter,
+                                const std::string& description = "",
+                                const std::string& unit = "")
+    {
+        {
+            std::shared_lock lock(m_mutex);
+            if (m_metrics.find(name) != m_metrics.end())
+            {
+                return;
+            }
+        }
+
+        {
+            std::unique_lock lock(m_mutex);
+            if (m_metrics.find(name) != m_metrics.end())
+            {
+                return;
+            }
+
+            auto metric = std::make_shared<PullMetric<T>>(name, std::move(getter));
+            if (!m_globalEnabled.load(std::memory_order_relaxed))
+            {
+                metric->disable();
+            }
+            m_metrics[name] = metric;
+        }
+    }
+
 public:
     Manager()
         : m_globalEnabled(true)
@@ -118,44 +146,32 @@ public:
         return getOrCreate<IGaugeInt, AtomicGaugeInt>(name);
     }
 
-    template<typename T>
+    /**
+     * @copydoc IManager::registerPullMetric()
+     */
     void registerPullMetric(const std::string& name,
-                            std::function<T()> getter,
+                            std::function<uint64_t()> getter,
                             const std::string& description = "",
-                            const std::string& unit = "")
+                            const std::string& unit = "") override
     {
-        // Check if already exists (fast path with shared lock)
-        {
-            std::shared_lock lock(m_mutex);
-            if (m_metrics.find(name) != m_metrics.end())
-            {
-                return; // Already registered, skip
-            }
-        }
-
-        // Create new metric (slow path with unique lock)
-        {
-            std::unique_lock lock(m_mutex);
-            // Double-check after acquiring unique lock (another thread might have created it)
-            if (m_metrics.find(name) != m_metrics.end())
-            {
-                return;
-            }
-
-            auto metric = std::make_shared<PullMetric<T>>(name, std::move(getter));
-            if (!m_globalEnabled.load(std::memory_order_relaxed))
-            {
-                metric->disable();
-            }
-            m_metrics[name] = metric;
-        }
+        registerPullMetricImpl<uint64_t>(name, std::move(getter), description, unit);
     }
 
     /**
-     * @brief Write all metrics as JSON lines using the provided writer.
-     * @param metricsWriter Writer to output each JSON line.
+     * @copydoc IManager::registerPullMetricDouble()
      */
-    void writeAllMetrics(std::shared_ptr<streamlog::WriterEvent> metricsWriter) const;
+    void registerPullMetricDouble(const std::string& name,
+                                  std::function<double()> getter,
+                                  const std::string& description = "",
+                                  const std::string& unit = "") override
+    {
+        registerPullMetricImpl<double>(name, std::move(getter), description, unit);
+    }
+
+    /**
+     * @copydoc IManager::writeAllMetrics()
+     */
+    void writeAllMetrics(std::shared_ptr<streamlog::WriterEvent> metricsWriter) const override;
 
     /** @copydoc IManager::get() */
     std::shared_ptr<IMetric> get(const std::string& name) const override;

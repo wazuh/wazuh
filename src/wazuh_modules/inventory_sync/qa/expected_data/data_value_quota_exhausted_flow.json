@@ -1,0 +1,26 @@
+{
+    "description": "Expected results for DataValue quota exhausted test",
+    "expected_message_count": 1,
+    "validate_session_consistency": true,
+    "expected_messages": [
+      {
+        "type": "start",
+        "expected_status": "sent",
+        "description": "Start with size above the quota - manager must respond Status_Offline with session=-1",
+        "expected_response": {
+          "type": "flatbuffer",
+          "data": {
+            "type": "start_ack",
+            "status": 2
+          },
+          "validate_session": false,
+          "timeout": 5.0
+        }
+      }
+    ],
+    "validation_rules": {
+      "session_consistency": "Not applicable - session is never created when the quota check rejects the Start",
+      "message_order": "Single Start message followed by its rejection",
+      "response_format": "Status 2 = Status_Offline; session is UINT64_MAX (-1) because no session was created"
+    }
+  }

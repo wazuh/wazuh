@@ -29,13 +29,19 @@ runs:
   - name: Get package url
     id: get-package-url
     shell: bash
+    env:
+      INPUT_COMPONENT: ${{ inputs.component }}
+      INPUT_OS: ${{ inputs.os }}
+      INPUT_SYSTEM: ${{ inputs.system }}
+      INPUT_VERSION: ${{ inputs.version }}
+      INPUT_ARCHITECTURE: ${{ inputs.architecture }}
     run: |
       script_path=$(find . -name "get_upgrade_test_package_url.py")
       package_url=$($script_path \
-          -c "${{ inputs.component }}" \
-          -o "${{ inputs.os }}" \
-          -s "${{ inputs.system }}" \
-          -v "${{ inputs.version }}" \
-          -a "${{ inputs.architecture }}"
+          -c "$INPUT_COMPONENT" \
+          -o "$INPUT_OS" \
+          -s "$INPUT_SYSTEM" \
+          -v "$INPUT_VERSION" \
+          -a "$INPUT_ARCHITECTURE"
       )
-      echo package-url=$package_url >> $GITHUB_OUTPUT
+      echo "package-url=$package_url" >> $GITHUB_OUTPUT

@@ -38,7 +38,6 @@ private:
 
     std::unordered_map<std::string, std::shared_ptr<TracerImpl>> m_traces; ///< Traces
     std::unordered_set<std::string> m_traceables;                          ///< Traceables
-    base::Expression m_expression;                                         ///< Expression
 
     rxcpp::subjects::subject<RxEvent> m_policySubject;
     rxcpp::subscriber<RxEvent> m_policyInput;

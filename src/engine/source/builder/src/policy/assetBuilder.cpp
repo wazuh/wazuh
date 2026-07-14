@@ -64,9 +64,6 @@ std::vector<base::Name> AssetBuilder::getParents(const json::Json& value) const
             throw std::runtime_error(fmt::format("Invalid parent name '{}': {}", parentStr, e.what()));
         }
 
-        // TODO : check parent is the same type as the asset??
-        // if (parentName.parts().front() != name.parts().front()) -> error
-
         // Check for duplicates
         if (std::find(parents.begin(), parents.end(), parentName) != parents.end())
         {
@@ -220,8 +217,8 @@ base::Expression AssetBuilder::buildExpression(const base::Name& name,
     if (isDecoder)
     {
         // Inject integration.categories from context (non-invasive, independent of "normalize")
-        const auto integrationName = newContext->context().integrationName;
-        const auto integrationCategory = newContext->context().integrationCategory;
+        const auto& integrationName = newContext->context().integration.name;
+        const auto& integrationCategory = newContext->context().integration.category;
 
         auto automapping = base::Term<base::EngineOp>::create(
             "Automapping",

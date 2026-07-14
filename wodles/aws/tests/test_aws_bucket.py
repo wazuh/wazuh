@@ -1256,3 +1256,185 @@ def test_aws_custom_bucket_db_maintenance_handles_exceptions(mock_wazuh_aws_data
     instance.db_maintenance(aws_account_id=utils.TEST_ACCOUNT_ID)
 
     mock_print.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# rewind_marker_to_day_folder — ValueError branch (unparseable date)
+# ---------------------------------------------------------------------------
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_aws_bucket_rewind_marker_returns_marker_when_date_unparseable(mock_wazuh_aws_database, mock_sts):
+    """rewind_marker_to_day_folder returns the original marker when the date string cannot be parsed."""
+    instance = utils.get_mocked_bucket(class_=AWSCloudTrailBucket)
+    # Craft a marker whose date_regex match returns a string that strptime cannot parse
+    bad_marker = 'AWSLogs/123456/CloudTrail/us-east-1/9999/99/99/file.json.gz'
+    with patch.object(instance, 'marker_custom_date') as mock_custom:
+        result = instance.rewind_marker_to_day_folder(bad_marker, utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+    assert result == bad_marker
+    mock_custom.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# iter_regions_and_accounts — no regions found for an account (continue branch)
+# ---------------------------------------------------------------------------
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_iter_regions_and_accounts_skips_account_when_no_regions_found(mock_wazuh_aws_database, mock_sts):
+    """iter_regions_and_accounts skips an account when find_regions returns an empty list."""
+    instance = utils.get_mocked_bucket(class_=AWSCloudTrailBucket)
+    instance.find_account_ids = MagicMock(return_value=[utils.TEST_ACCOUNT_ID])
+    instance.find_regions = MagicMock(return_value=[])
+    instance.iter_files_in_bucket = MagicMock()
+    instance.db_maintenance = MagicMock()
+
+    instance.iter_regions_and_accounts(account_id=None, regions=None)
+
+    instance.iter_files_in_bucket.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _print_no_logs_to_process_message — bucket-only branch
+# ---------------------------------------------------------------------------
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_print_no_logs_uses_bucket_when_account_or_region_is_none(mock_wazuh_aws_database, mock_sts):
+    """_print_no_logs_to_process_message uses bucket name when account_id or region is None."""
+    instance = utils.get_mocked_bucket(class_=AWSCloudTrailBucket)
+    instance.empty_bucket_message_template = "+++ No logs to process in bucket: {bucket}"
+    with patch('aws_tools.debug') as mock_debug:
+        instance._print_no_logs_to_process_message('my-bucket', None, None)
+    mock_debug.assert_called_once_with('+++ No logs to process in bucket: my-bucket', 1)
+
+
+# ---------------------------------------------------------------------------
+# _filter_bucket_files — folder key (Key ends with '/') is skipped
+# ---------------------------------------------------------------------------
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_filter_bucket_files_skips_folder_keys(mock_wazuh_aws_database, mock_sts):
+    """_filter_bucket_files skips entries whose Key ends with '/' (folders)."""
+    instance = utils.get_mocked_bucket(class_=AWSCloudTrailBucket)
+    files = [
+        {'Key': 'AWSLogs/folder/'},
+        {'Key': 'AWSLogs/file.json.gz'},
+    ]
+    result = list(instance._filter_bucket_files(files))
+    assert len(result) == 1
+    assert result[0]['Key'] == 'AWSLogs/file.json.gz'
+
+
+# ---------------------------------------------------------------------------
+# iter_files_in_bucket — aws_account_id defaulting to self.aws_account_id
+# ---------------------------------------------------------------------------
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_iter_files_in_bucket_uses_instance_account_id_when_none_given(mock_wazuh_aws_database, mock_sts):
+    """iter_files_in_bucket falls back to self.aws_account_id when aws_account_id is not provided."""
+    instance = utils.get_mocked_bucket(class_=AWSCloudTrailBucket)
+    instance.aws_account_id = utils.TEST_ACCOUNT_ID
+    instance.reparse = False
+    instance.check_prefix = False
+    instance.delete_file = False
+    # Return no Contents so the function returns immediately after the message
+    instance.client = MagicMock()
+    instance.client.list_objects_v2.return_value = {}
+    instance.build_s3_filter_args = MagicMock(return_value={})
+    instance._print_no_logs_to_process_message = MagicMock()
+
+    instance.iter_files_in_bucket()  # no aws_account_id passed
+
+    # build_s3_filter_args should have been called with the instance's account id
+    call_args = instance.build_s3_filter_args.call_args
+    assert call_args.args[0] == utils.TEST_ACCOUNT_ID
+
+
+# ---------------------------------------------------------------------------
+# iter_files_in_bucket — generic Exception with .message attribute
+# ---------------------------------------------------------------------------
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_iter_files_in_bucket_logs_err_message_attribute_on_unexpected_error(mock_wazuh_aws_database, mock_sts):
+    """iter_files_in_bucket uses err.message when the exception has that attribute."""
+    instance = utils.get_mocked_bucket(class_=AWSCloudTrailBucket)
+    instance.reparse = False
+    instance.check_prefix = False
+
+    class ErrorWithMessage(Exception):
+        message = "custom message attr"
+
+    instance.client = MagicMock()
+    instance.client.list_objects_v2.side_effect = ErrorWithMessage("boom")
+    instance.build_s3_filter_args = MagicMock(return_value={})
+
+    with patch('aws_tools.debug') as mock_debug, pytest.raises(SystemExit) as exc_info:
+        instance.iter_files_in_bucket(utils.TEST_ACCOUNT_ID, utils.TEST_REGION)
+
+    assert exc_info.value.code == 7
+    mock_debug.assert_any_call('+++ Unexpected error: custom message attr', 2)
+
+
+# ---------------------------------------------------------------------------
+# AWSCustomBucket.reformat_msg — macie Events KeyError is silenced
+# ---------------------------------------------------------------------------
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_custom_bucket_reformat_msg_silences_keyerror_in_events(mock_wazuh_aws_database, mock_sts):
+    """reformat_msg does not raise when 'Events' key is missing from the macie summary."""
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+    event = {
+        'aws': {
+            'source': 'macie',
+            'summary': {}   # no 'Events' key → KeyError should be silently swallowed
+        }
+    }
+    # Should not raise
+    result = instance.reformat_msg(event)
+    assert result['aws']['source'] == 'macie'
+
+
+# ---------------------------------------------------------------------------
+# AWSCustomBucket.load_information_from_file — macie_location_pattern ValueError branch
+# ---------------------------------------------------------------------------
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_custom_bucket_load_information_handles_macie_location_pattern(mock_wazuh_aws_database, mock_sts):
+    """load_information_from_file fixes malformed lat/lon values matching macie_location_pattern."""
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+    # Craft JSON with zero-padded floats that json.JSONDecoder cannot parse directly
+    # but the macie_location_pattern can fix. File must start with '{'.
+    raw = '{"lat":00.123456,"lon":-00.654321}'
+    import io
+    mock_file = io.StringIO(raw)
+
+    with patch.object(instance, 'decompress_file') as mock_decompress:
+        mock_decompress.return_value.__enter__ = lambda s: mock_file
+        mock_decompress.return_value.__exit__ = MagicMock(return_value=False)
+        result = instance.load_information_from_file('fake_key')
+
+    # The function should return a list (even if empty due to no 'detail' key)
+    assert isinstance(result, list)
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('wazuh_integration.WazuhAWSDatabase.__init__')
+def test_custom_bucket_load_information_reraises_value_error_when_pattern_not_found(mock_wazuh_aws_database, mock_sts):
+    """load_information_from_file re-raises ValueError when macie_location_pattern does not match."""
+    instance = utils.get_mocked_bucket(class_=aws_bucket.AWSCustomBucket)
+    # Invalid JSON that does NOT contain zero-padded lat/lon → pattern won't match → raise err
+    raw = '{invalid_json_no_macie_pattern}'
+    import io
+    mock_file = io.StringIO(raw)
+
+    with patch.object(instance, 'decompress_file') as mock_decompress:
+        mock_decompress.return_value.__enter__ = lambda s: mock_file
+        mock_decompress.return_value.__exit__ = MagicMock(return_value=False)
+        with pytest.raises(ValueError):
+            instance.load_information_from_file('fake_key')

@@ -11,6 +11,7 @@
 
 #include <json.hpp>
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <map>
@@ -57,6 +58,20 @@ class AgentInfoImpl
 
         void start(int interval, int integrityInterval = 86400, std::function<bool()> shouldContinue = nullptr);
         void stop();
+
+        /// @brief Override the flush poll delay (milliseconds). Only used in unit tests to avoid real sleeps.
+        /// Negative values are clamped to 0.
+        void setFlushPollDelayMs(int delayMs)
+        {
+            m_flushPollDelayMs = clampNonNegative(delayMs);
+        }
+
+        /// @brief Override the FIM pause-completion poll delay (milliseconds). Only used in unit tests
+        /// to avoid real sleeps. Negative values are clamped to 0.
+        void setPausePollDelayMs(int delayMs)
+        {
+            m_pausePollDelayMs = clampNonNegative(delayMs);
+        }
 
         /// @brief Initialize the synchronization protocol with only in-memory synchronization
         /// @param moduleName Name of the module
@@ -108,11 +123,29 @@ class AgentInfoImpl
         /// @param groups List of agent groups
         void updateMetadataProvider(const nlohmann::json& agentMetadata, const std::vector<std::string>& groups);
 
+        /// @brief Clamp a delay value to be non-negative (shared by the poll-delay setters).
+        static int clampNonNegative(int delayMs)
+        {
+            return delayMs < 0 ? 0 : delayMs;
+        }
+
+        /// @brief Result of probing FIM for pause completion
+        /// Deferred means FIM's first sync is still in progress: the caller must not
+        /// treat this as an error, must resume FIM, and must retry next cycle.
+        enum class PauseProbeResult { Completed, Deferred, Failed };
+
+        /// @brief Result of a module coordination cycle. Deferred is distinct from
+        /// Failed so the caller can retry quietly (no WARNING) and keep the sync flag set.
+        enum class CoordinationResult { Success, Deferred, Failed };
+
+        /// @brief Result of pausing the coordination modules.
+        enum class PauseCoordinationResult { Success, Deferred, Failed };
+
         /// @brief Coordinate modules for version synchronization
         /// This method manages the coordination process: pause, flush, sync versions, set version, sync table, resume
         /// @param table Table name (AGENT_METADATA_TABLE or AGENT_GROUPS_TABLE)
-        /// @return true if coordination was successful, false otherwise
-        bool coordinateModules(const std::string& table);
+        /// @return CoordinationResult: Success, Deferred (FIM first sync in progress, retry), or Failed
+        CoordinationResult coordinateModules(const std::string& table);
 
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
@@ -190,8 +223,17 @@ class AgentInfoImpl
 
         /// @brief Poll FIM module for pause completion
         /// @param moduleName Module name (should be FIM)
-        /// @return true if pause completed successfully, false otherwise
-        bool pollFimPauseCompletion(const std::string& moduleName);
+        /// @return Completed (pause acknowledged), Deferred (FIM first sync still running,
+        ///         caller should defer coordination), or Failed (timeout/error/shutdown)
+        PauseProbeResult pollFimPauseCompletion(const std::string& moduleName);
+
+        /// @brief Query a coordination module for whether its first synchronization has completed.
+        /// @param moduleName Module name (e.g. sca, syscollector).
+        /// @return false when the module reports first_sync_completed=0 or has not recorded a
+        ///         completed first sync yet (metadata unset = still in progress); true otherwise
+        ///         (already synced, or sync disabled — the module reports completed — or the module
+        ///         did not answer at all), so coordination is never wedged on a module that will not sync.
+        bool isModuleFirstSyncCompleted(const std::string& moduleName);
 
         /// @brief Poll all requested module flushes until completion.
         /// @param pendingModules Set of modules with an accepted flush request.
@@ -200,13 +242,13 @@ class AgentInfoImpl
 
         /// @brief Pause all coordination modules
         /// @param pausedModules Output parameter for successfully paused modules
-        /// @return true if at least one module was paused successfully
-        bool pauseCoordinationModules(std::set<std::string>& pausedModules);
+        /// @return Success, Deferred (FIM first sync in progress; modules resumed, retry next cycle), or Failed
+        PauseCoordinationResult pauseCoordinationModules(std::set<std::string>& pausedModules);
 
-        /// @brief Flush all paused modules
+        /// @brief Trigger flush on all paused modules (fire-and-forget, does not wait for completion)
         /// @param pausedModules Set of paused modules to flush
-        /// @return true if all flushes succeeded, false otherwise
-        bool flushPausedModules(const std::set<std::string>& pausedModules);
+        /// @return true if all flush IPCs were sent successfully, false otherwise
+        bool triggerModuleFlush(const std::set<std::string>& pausedModules);
 
         /// @brief Get versions from all paused modules and calculate new version
         /// @param pausedModules Set of paused modules
@@ -253,8 +295,28 @@ class AgentInfoImpl
         /// @brief Sync configuration: maximum events per second
         long m_syncMaxEps = 10;
 
-        /// @brief Flag to track if module has been stopped
-        bool m_stopped = false;
+        /// @brief Flag to track if module has been stopped.
+        /// Atomic so the poll loops can read it without holding m_mutex while
+        /// stop() writes it from another thread (avoids a data race).
+        std::atomic<bool> m_stopped{false};
+
+        /// @brief Delay in milliseconds between flush completion polls (10 seconds in production).
+        /// Overridable in unit tests to avoid real sleeps.
+        int m_flushPollDelayMs = 10000;
+
+        /// @brief Delay in milliseconds between FIM pause completion polls (1 second in production).
+        /// Overridable in unit tests to avoid real sleeps.
+        int m_pausePollDelayMs = 1000;
+
+        /// @brief Modules whose current deferral streak has logged its INFO line, so
+        /// repeated deferrals during the same first sync stay at DEBUG. Tracked per
+        /// module: FIM's probe runs (and ends its episode) every cycle before
+        /// SCA/syscollector are evaluated, so a shared flag would be cleared each cycle
+        /// and re-emit the INFO for the whole duration of their first sync.
+        /// A module is erased when its deferral episode ends: it reports the first sync
+        /// is complete, or (FIM) the probe gives up (timeout/IPC failure) without
+        /// deferring.
+        std::set<std::string> m_deferralLoggedModules;
 
         /// @brief Condition variable for efficient sleep/wake mechanism
         std::condition_variable m_cv;

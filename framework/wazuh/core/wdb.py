@@ -317,26 +317,6 @@ class WazuhDBConnection:
 
         return new_query
 
-    def delete_agents_db(self, agents_id: List[str]) -> dict:
-        """Delete agents db through wazuh-manager-db service.
-
-        Parameters
-        ----------
-        agents_id : List[str]
-            List of agents.
-
-        Returns
-        -------
-        dict
-            Dict received from wazuh db in the form: {"agents": {"ID": "MESSAGE"}}, where MESSAGE may be one of the
-            following:
-                - Ok
-                - Invalid agent ID
-                - DB waiting for deletion
-                - DB not found
-        """
-        return self._send(f"wazuhdb remove {' '.join(agents_id)}")
-
     def send(self, query: str, raw: bool = True) -> Union[str, dict]:
         """Send a message to the wdb socket.
 

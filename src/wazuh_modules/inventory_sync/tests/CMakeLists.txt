@@ -53,7 +53,6 @@ target_include_directories(
           ${SRC_FOLDER}/shared_modules/utils
           ${SRC_FOLDER}/shared_modules/utils/flatbuffers/include
           ${SRC_FOLDER}/shared_modules/common
-          ${SRC_FOLDER}/shared_modules/router/include
           ${SRC_FOLDER}/shared/include
           ${SRC_FOLDER}/external/flatbuffers/include
           ${SRC_FOLDER}/external/cJSON

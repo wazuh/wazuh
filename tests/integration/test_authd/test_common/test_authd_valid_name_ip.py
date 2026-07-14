@@ -46,6 +46,7 @@ from wazuh_testing.utils.configuration import load_configuration_template, get_t
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
 from wazuh_testing.modules.authd.utils import validate_authd_response
+from wazuh_testing.modules.authd.configuration import AUTHD_DEBUG_CONFIG
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -61,24 +62,25 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 
 # Variables
 receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
-monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (MODULES_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 hostname = socket.gethostname()
 
 daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': True}
+local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 
 
 # Test
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_valid_name_ip(test_configuration, test_metadata, set_wazuh_configuration, configure_sockets_environment_module,
                              connect_to_sockets_module,
-                             truncate_monitored_files, daemons_handler, wait_for_authd_startup):
+                             truncate_monitored_files, configure_local_internal_options, daemons_handler, wait_for_authd_startup):
     '''
     description:
         Checks that every input message in authd port generates the adequate output.
 
     wazuh_min_version:
-        4.2.0
+        5.0.0
 
     tier: 0
 
@@ -107,6 +109,9 @@ def test_authd_valid_name_ip(test_configuration, test_metadata, set_wazuh_config
         - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Set local internal options (authd debug=2 so startup message appears in logs).
 
     assertions:
         - The manager registers agents with valid IP and name

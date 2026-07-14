@@ -182,6 +182,7 @@ def start(params: dict):
     app.add_error_handler(HTTPException, error_handler.http_error_handler)
     app.add_error_handler(ProblemException, error_handler.problem_error_handler)
     app.add_error_handler(403, error_handler.problem_error_handler)
+    app.add_error_handler(RecursionError, error_handler.recursion_error_handler)
 
     # API configuration logging
     logger.debug(f'Loaded API configuration: {api_conf}')
@@ -290,7 +291,6 @@ if __name__ == '__main__':
     import logging.config
     import ssl
 
-    import jwt
     import uvicorn
     from connexion import AsyncApp
     from connexion.exceptions import HTTPException, ProblemException, Unauthorized

@@ -4,17 +4,17 @@
  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
 
+import re
 import pytest
-import time
 
 from pathlib import Path
+from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.agent_simulator import connect
 from wazuh_testing.utils.callbacks import generate_callback
 from wazuh_testing.modules.remoted import patterns
 from wazuh_testing.utils.sockets import send_active_response_message
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.modules.remoted.configuration import REMOTED_DEBUG
 from wazuh_testing.tools.monitors import queue_monitor
 
@@ -75,24 +75,36 @@ def test_active_response_ar_sending(test_configuration, test_metadata, configure
     '''
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
-
     agent = simulate_agents[0]
 
-    time.sleep(1)
-    sender, injector = connect(agent, protocol = test_metadata['protocol'], manager_port = test_metadata['port'])
-    active_response_message = fr"(local_source) [] NRN {agent.id} {ACTIVE_RESPONSE_EXAMPLE_COMMAND}"
-    send_active_response_message(active_response_message)
+    sender, injector = connect(agent, protocol=test_metadata['protocol'],
+                               manager_port=test_metadata['port'], wait_status='')
 
-    log_monitor.start(callback=generate_callback(patterns.ACTIVE_RESPONSE_RECEIVED))
+    try:
+        sender.send_event(agent.startup_msg)
 
-    assert log_monitor.callback_result
+        ack_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
+        ack_monitor.start(callback=generate_callback(patterns.ACK_MESSAGE), timeout=30)
+        assert ack_monitor.callback_result, (
+            f"Manager did not ACK the startup message via {test_metadata['protocol']} "
+            f"on port {test_metadata['port']} — agent-manager communication not established."
+        )
 
-    log_monitor.start(callback=generate_callback(patterns.ACTIVE_RESPONSE_SENT))
+        active_response_message = fr"(local_source) [] NRN {agent.id} {ACTIVE_RESPONSE_EXAMPLE_COMMAND}"
+        send_active_response_message(active_response_message)
 
-    assert log_monitor.callback_result
-
-    log_queue_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
-    log_queue_monitor.start(callback=generate_callback(regex=patterns.EXECD_MESSAGE,
-                                                       replacement={"message": ACTIVE_RESPONSE_EXAMPLE_COMMAND}))
-    assert log_monitor.callback_result
-    injector.stop_receive()
+        log_monitor.start(callback=generate_callback(patterns.ACTIVE_RESPONSE_SENT))
+        assert log_monitor.callback_result, (
+            f"Remoted did not send the active response to agent {agent.id} via "
+            f"{test_metadata['protocol']} on port {test_metadata['port']}."
+        )
+        log_queue_monitor = queue_monitor.QueueMonitor(agent.rcv_msg_queue)
+        log_queue_monitor.start(callback=generate_callback(
+            regex=patterns.EXECD_MESSAGE,
+            replacement={"message": re.escape(ACTIVE_RESPONSE_EXAMPLE_COMMAND)}
+        ))
+        assert log_queue_monitor.callback_result, (
+            f"Agent {agent.id} did not receive the active response command."
+        )
+    finally:
+        injector.stop_receive()

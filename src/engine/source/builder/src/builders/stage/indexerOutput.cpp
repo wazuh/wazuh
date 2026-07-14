@@ -107,7 +107,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
          failureTrace,
          failureTrace2,
          failureTrace3,
-         runState = buildCtx->runState()](base::Event event) -> base::result::Result<base::Event>
+         isTestMode = buildCtx->isTestMode()](base::Event event) -> base::result::Result<base::Event>
         {
             std::string finalIndexName = indexName;
             for (const auto& [placeholder, jsonPathPP] : placeholderPPVec)
@@ -115,7 +115,7 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
                 std::string fieldValue;
                 if (event->getString(fieldValue, jsonPathPP) != json::RetGet::Success)
                 {
-                    RETURN_FAILURE(runState, event, fmt::format(failureTrace2, placeholder));
+                    RETURN_FAILURE(isTestMode, event, fmt::format(failureTrace2, placeholder));
                 }
 
                 // Replace all occurrences of the placeholder in the indexName
@@ -129,12 +129,12 @@ base::Expression indexerOutputBuilder(const json::Json& definition,
 
             if (finalIndexName.size() > 255)
             {
-                RETURN_FAILURE(runState, event, fmt::format(failureTrace3, finalIndexName));
+                RETURN_FAILURE(isTestMode, event, fmt::format(failureTrace3, finalIndexName));
             }
 
             wic->index(finalIndexName, event->str());
 
-            RETURN_SUCCESS(runState, event, successTrace);
+            RETURN_SUCCESS(isTestMode, event, successTrace);
         });
 }
 

@@ -28,6 +28,8 @@ class AgentSessionTest : public ::testing::Test
 protected:
     using AgentSessionForTest = AgentSessionImpl<MockStore, MockIndexerQueue, MockResponseDispatcher>;
 
+    static inline const LogFn s_logFn {};
+
     StrictMock<MockStore> mockStore;
     StrictMock<MockIndexerQueue> mockIndexerQueue;
     StrictMock<MockResponseDispatcher> mockResponseDispatcher;
@@ -75,14 +77,18 @@ TEST_F(AgentSessionTest, Constructor_Success)
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
 
-    ASSERT_NO_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); });
+    ASSERT_NO_THROW({
+        AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+    });
 }
 
 TEST_F(AgentSessionTest, Constructor_NullData)
 {
     EXPECT_THROW(
-        { AgentSessionForTest session(sessionId, nullptr, mockStore, mockIndexerQueue, mockResponseDispatcher); },
+        {
+            AgentSessionForTest session(
+                sessionId, nullptr, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+        },
         AgentSessionException);
 }
 
@@ -94,7 +100,9 @@ TEST_F(AgentSessionTest, Constructor_InvalidSize)
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Error, _, _, _)).Times(1);
     EXPECT_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); },
+        {
+            AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+        },
         AgentSessionException);
 }
 
@@ -111,8 +119,9 @@ TEST_F(AgentSessionTest, Constructor_NullModule)
 
     // Now this should succeed since we use the constructor parameter for moduleName
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
-    EXPECT_NO_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); });
+    EXPECT_NO_THROW({
+        AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+    });
 }
 
 TEST_F(AgentSessionTest, Constructor_ValidAgentIdZero)
@@ -123,7 +132,7 @@ TEST_F(AgentSessionTest, Constructor_ValidAgentIdZero)
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
 
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 }
 
 TEST_F(AgentSessionTest, HandleData_Success)
@@ -133,7 +142,7 @@ TEST_F(AgentSessionTest, HandleData_Success)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     flatbuffers::FlatBufferBuilder dataBuilder;
 
@@ -163,7 +172,7 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndNotReceived)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     flatbuffers::FlatBufferBuilder dataBuilder;
 
@@ -193,7 +202,7 @@ TEST_F(AgentSessionTest, HandleData_CompletesGapSet_EndReceived)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(_, _, _, _)).Times(1);
     session.handleEnd(mockResponseDispatcher); // Simulate end received first
@@ -226,7 +235,7 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetNotEmpty)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     EXPECT_CALL(mockResponseDispatcher, sendEndMissingSeq(_, _, _, _)).Times(1);
     EXPECT_CALL(mockIndexerQueue, push(_)).Times(0);
@@ -241,7 +250,7 @@ TEST_F(AgentSessionTest, HandleEnd_GapSetEmpty)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     flatbuffers::FlatBufferBuilder dataBuilder;
 
@@ -277,7 +286,7 @@ TEST_F(AgentSessionTest, HandleChecksumModule_Success)
 
     // Create session with ModuleCheck mode (size can be 0 for ModuleCheck)
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Create ChecksumModule message
     flatbuffers::FlatBufferBuilder checksumBuilder;
@@ -304,7 +313,7 @@ TEST_F(AgentSessionTest, HandleChecksumModule_NullData)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     EXPECT_THROW({ session.handleChecksumModule(nullptr); }, AgentSessionException);
 }
@@ -317,7 +326,7 @@ TEST_F(AgentSessionTest, HandleChecksumModule_EmptyChecksum)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Create ChecksumModule message with no checksum
     flatbuffers::FlatBufferBuilder checksumBuilder;
@@ -342,7 +351,7 @@ TEST_F(AgentSessionTest, HandleDataClean_Success)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Create DataClean message
     flatbuffers::FlatBufferBuilder dataCleanBuilder;
@@ -368,7 +377,7 @@ TEST_F(AgentSessionTest, HandleDataClean_MultipleIndices)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Create DataClean messages for multiple indices
     std::vector<std::string> indices = {
@@ -398,7 +407,7 @@ TEST_F(AgentSessionTest, HandleDataClean_NullData)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Passing null should throw
     ASSERT_THROW({ session.handleDataClean(nullptr); }, AgentSessionException);
@@ -411,7 +420,7 @@ TEST_F(AgentSessionTest, HandleDataClean_WithEnd)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Create DataClean message
     flatbuffers::FlatBufferBuilder dataCleanBuilder;
@@ -452,7 +461,7 @@ TEST_F(AgentSessionTest, HandleDataContext_Success)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Create DataContext message
     flatbuffers::FlatBufferBuilder dataContextBuilder;
@@ -490,7 +499,7 @@ TEST_F(AgentSessionTest, HandleDataContext_MultipleMessages)
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
     EXPECT_CALL(mockStore, put(_, _)).Times(3); // Expect 3 put calls for 3 DataContext messages
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Create multiple DataContext messages
     for (size_t i = 0; i < 3; ++i)
@@ -525,7 +534,7 @@ TEST_F(AgentSessionTest, HandleDataContext_NullData)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Passing null should throw
     ASSERT_THROW({ session.handleDataContext(nullptr, nullptr, 0); }, AgentSessionException);
@@ -539,7 +548,7 @@ TEST_F(AgentSessionTest, HandleDataContext_WithEnd)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Create DataContext message
     flatbuffers::FlatBufferBuilder dataContextBuilder;
@@ -602,8 +611,9 @@ TEST_F(AgentSessionTest, Constructor_ValidSize_ModuleCheck)
     auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
-    ASSERT_NO_THROW(
-        { AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher); });
+    ASSERT_NO_THROW({
+        AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+    });
 }
 
 TEST_F(AgentSessionTest, HandleData_ReserializedFromDataBatch)
@@ -619,7 +629,7 @@ TEST_F(AgentSessionTest, HandleData_ReserializedFromDataBatch)
 
     EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
     EXPECT_CALL(mockStore, put(_, _)).Times(static_cast<int>(ITEM_COUNT));
-    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
 
     // Build a DataBatch containing ITEM_COUNT DataValues
     flatbuffers::FlatBufferBuilder batchBuilder;
@@ -688,4 +698,460 @@ TEST_F(AgentSessionTest, HandleData_ReserializedFromDataBatch)
 
         ASSERT_NO_THROW({ session.handleData(reserialized, dvBuilder.GetBufferPointer(), dvBuilder.GetSize()); });
     }
+}
+
+// =============================================================================
+// Tests cover the safeguards/security hardening  (`wazuh-states-*` filtering,
+// out-of-range seq, dedup guards, and the declaredSize() accessor).
+// =============================================================================
+
+namespace
+{
+    flatbuffers::Offset<Wazuh::SyncSchema::Start>
+    createStartWithIndices(flatbuffers::FlatBufferBuilder& builder,
+                           uint64_t size,
+                           const std::vector<std::string>& indices,
+                           Wazuh::SyncSchema::Mode mode = Wazuh::SyncSchema::Mode_ModuleFull,
+                           const std::string& moduleName = "syscollector")
+    {
+        auto agentIdOffset = builder.CreateString("001");
+        auto agentNameOffset = builder.CreateString("test-agent");
+        auto agentVersionOffset = builder.CreateString("4.0.0");
+        auto moduleOffset = builder.CreateString(moduleName);
+
+        std::vector<flatbuffers::Offset<flatbuffers::String>> indexOffsets;
+        indexOffsets.reserve(indices.size());
+        for (const auto& idx : indices)
+        {
+            indexOffsets.push_back(builder.CreateString(idx));
+        }
+        auto indexVector = builder.CreateVector(indexOffsets);
+
+        Wazuh::SyncSchema::StartBuilder startBuilder(builder);
+        startBuilder.add_module_(moduleOffset);
+        startBuilder.add_size(size);
+        startBuilder.add_mode(mode);
+        startBuilder.add_option(Wazuh::SyncSchema::Option_Sync);
+        startBuilder.add_agentid(agentIdOffset);
+        startBuilder.add_agentname(agentNameOffset);
+        startBuilder.add_agentversion(agentVersionOffset);
+        startBuilder.add_index(indexVector);
+        return startBuilder.Finish();
+    }
+} // namespace
+
+TEST_F(AgentSessionTest, Constructor_StartIndices_FiltersOutNonStatePrefix)
+{
+    auto startMsg = createStartWithIndices(builder, 1, {"wazuh-states-fim-files", "wazuh-other-foo", "random"});
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    const auto& storedIndices = session.getContext()->indices;
+    ASSERT_EQ(storedIndices.size(), 1u);
+    EXPECT_EQ(storedIndices[0], "wazuh-states-fim-files");
+}
+
+TEST_F(AgentSessionTest, Constructor_StartIndices_EmptyPrefixOnlyRejected)
+{
+    // "wazuh-states-" (empty suffix) matches no agent-scoped family: rejected.
+    auto startMsg = createStartWithIndices(builder, 1, {"wazuh-states-"});
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    EXPECT_TRUE(session.getContext()->indices.empty());
+}
+
+TEST_F(AgentSessionTest, Constructor_StartIndices_AllValidPassedThrough)
+{
+    auto startMsg = createStartWithIndices(
+        builder, 1, {"wazuh-states-vulnerabilities", "wazuh-states-inventory-system", "wazuh-states-fim-files"});
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    EXPECT_EQ(session.getContext()->indices.size(), 3u);
+}
+
+// A wazuh-states-* name outside the agent scope must be rejected.
+TEST_F(AgentSessionTest, Constructor_StartIndices_RejectsOutOfScopeStateIndex)
+{
+    auto startMsg = createStartWithIndices(
+        builder, 1, {"wazuh-states-inventory-packages", "wazuh-states-something-else", "wazuh-states-rules"});
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    const auto& storedIndices = session.getContext()->indices;
+    ASSERT_EQ(storedIndices.size(), 1u);
+    EXPECT_EQ(storedIndices[0], "wazuh-states-inventory-packages");
+}
+
+// Manager-governance indices must be rejected.
+TEST_F(AgentSessionTest, Constructor_StartIndices_RejectsManagerGovernanceIndices)
+{
+    auto startMsg = createStartWithIndices(builder,
+                                           1,
+                                           {"wazuh-states-agent-management",
+                                            "wazuh-states-cluster-nodes",
+                                            "wazuh-states-manager-status",
+                                            "wazuh-states-vulnerabilities"},
+                                           Wazuh::SyncSchema::Mode_ModuleFull,
+                                           "syscollector_vd");
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(Wazuh::SyncSchema::Status_Ok, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    // Only the in-scope vulnerabilities index survives.
+    const auto& storedIndices = session.getContext()->indices;
+    ASSERT_EQ(storedIndices.size(), 1u);
+    EXPECT_EQ(storedIndices[0], "wazuh-states-vulnerabilities");
+}
+
+// Direct coverage of the index-authorization predicate.
+TEST_F(AgentSessionTest, IsAgentScopedStateIndex_AllowlistAndBlocklist)
+{
+    // In-scope families.
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-inventory-packages"));
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-inventory-system"));
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-vulnerabilities"));
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-fim-files"));
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-fim-registry-keys"));
+    EXPECT_TRUE(isAgentScopedStateIndex("wazuh-states-sca"));
+
+    // Manager-governance indices: denied (not in the allowlist).
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-states-agent-management"));
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-states-cluster-nodes"));
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-states-manager-status"));
+
+    // Out-of-scope / malformed names.
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-states-"));
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-states-rules"));
+    EXPECT_FALSE(isAgentScopedStateIndex("wazuh-other-foo"));
+    EXPECT_FALSE(isAgentScopedStateIndex("random"));
+    EXPECT_FALSE(isAgentScopedStateIndex(""));
+}
+
+TEST_F(AgentSessionTest, HandleChecksumModule_NonStateIndex_Ignored)
+{
+    auto startMsg =
+        createStartMessage(0, "001", "test-agent", "4.0.0", "syscollector", Wazuh::SyncSchema::Mode_ModuleCheck);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    flatbuffers::FlatBufferBuilder checksumBuilder;
+    auto checksumStr = checksumBuilder.CreateString("abc123");
+    auto indexStr = checksumBuilder.CreateString("wazuh-other-foo");
+
+    Wazuh::SyncSchema::ChecksumModuleBuilder cmBuilder(checksumBuilder);
+    cmBuilder.add_session(sessionId);
+    cmBuilder.add_checksum(checksumStr);
+    cmBuilder.add_index(indexStr);
+    auto cmMsg = cmBuilder.Finish();
+    checksumBuilder.Finish(cmMsg);
+
+    auto checksumModule = flatbuffers::GetRoot<Wazuh::SyncSchema::ChecksumModule>(checksumBuilder.GetBufferPointer());
+    ASSERT_NO_THROW({ session.handleChecksumModule(checksumModule); });
+
+    // The non-states index must NOT be persisted on the context. The checksum
+    // value itself is still allowed in (it is used for comparison only and never
+    // reaches the indexer URL), but checksumIndex must stay empty.
+    EXPECT_TRUE(session.getContext()->checksumIndex.empty());
+}
+
+TEST_F(AgentSessionTest, HandleChecksumModule_StateIndex_Stored)
+{
+    auto startMsg =
+        createStartMessage(0, "001", "test-agent", "4.0.0", "syscollector", Wazuh::SyncSchema::Mode_ModuleCheck);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    flatbuffers::FlatBufferBuilder checksumBuilder;
+    auto checksumStr = checksumBuilder.CreateString("abc123");
+    auto indexStr = checksumBuilder.CreateString("wazuh-states-vulnerabilities");
+
+    Wazuh::SyncSchema::ChecksumModuleBuilder cmBuilder(checksumBuilder);
+    cmBuilder.add_session(sessionId);
+    cmBuilder.add_checksum(checksumStr);
+    cmBuilder.add_index(indexStr);
+    auto cmMsg = cmBuilder.Finish();
+    checksumBuilder.Finish(cmMsg);
+
+    auto checksumModule = flatbuffers::GetRoot<Wazuh::SyncSchema::ChecksumModule>(checksumBuilder.GetBufferPointer());
+    ASSERT_NO_THROW({ session.handleChecksumModule(checksumModule); });
+
+    EXPECT_EQ(session.getContext()->checksumIndex, "wazuh-states-vulnerabilities");
+}
+
+TEST_F(AgentSessionTest, HandleDataClean_NonStateIndex_Ignored)
+{
+    auto startMsg = createStartMessage(1, "001", "test-agent", "4.0.0", "fim", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    flatbuffers::FlatBufferBuilder dcBuilder;
+    auto indexStr = dcBuilder.CreateString("wazuh-not-states");
+
+    Wazuh::SyncSchema::DataCleanBuilder b(dcBuilder);
+    b.add_session(sessionId);
+    b.add_seq(0);
+    b.add_index(indexStr);
+    auto msg = b.Finish();
+    dcBuilder.Finish(msg);
+
+    auto dc = flatbuffers::GetRoot<Wazuh::SyncSchema::DataClean>(dcBuilder.GetBufferPointer());
+    ASSERT_NO_THROW({ session.handleDataClean(dc); });
+
+    EXPECT_TRUE(session.getContext()->dataCleanIndices.empty());
+}
+
+TEST_F(AgentSessionTest, HandleData_SeqOutOfRange_DoesNotStore)
+{
+    // declaredSize=1 means only seq=0 is valid. seq=1 is out of range and must
+    // be rejected. m_gapSet->observe throws std::out_of_range and the handler
+    // surfaces it; m_store.put is NEVER reached, so the bulk path stays clean
+    // of orphan keys.
+    auto startMsg = createStartMessage(1, "001");
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    flatbuffers::FlatBufferBuilder dataBuilder;
+    std::vector<int8_t> testData = {0x01};
+    auto dataVector = dataBuilder.CreateVector(testData);
+    Wazuh::SyncSchema::DataValueBuilder dvb(dataBuilder);
+    dvb.add_seq(1); // OUT OF RANGE
+    dvb.add_session(sessionId);
+    dvb.add_data(dataVector);
+    auto dvOff = dvb.Finish();
+    dataBuilder.Finish(dvOff);
+
+    auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::DataValue>(dataBuilder.GetBufferPointer());
+
+    EXPECT_CALL(mockStore, put(_, _)).Times(0);
+    EXPECT_CALL(mockIndexerQueue, push(_)).Times(0);
+
+    EXPECT_THROW(
+        { session.handleData(data, reinterpret_cast<const uint8_t*>(data->data()->data()), data->data()->size()); },
+        std::out_of_range);
+}
+
+TEST_F(AgentSessionTest, HandleDataContext_SeqOutOfRange_DoesNotStore)
+{
+    auto startMsg = createStartMessage(1, "001");
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    flatbuffers::FlatBufferBuilder dcBuilder;
+    std::vector<int8_t> raw = {0x01};
+    auto dataVec = dcBuilder.CreateVector(raw);
+    Wazuh::SyncSchema::DataContextBuilder b(dcBuilder);
+    b.add_seq(1); // OUT OF RANGE
+    b.add_session(sessionId);
+    b.add_data(dataVec);
+    auto off = b.Finish();
+    dcBuilder.Finish(off);
+
+    auto ctx = flatbuffers::GetRoot<Wazuh::SyncSchema::DataContext>(dcBuilder.GetBufferPointer());
+
+    EXPECT_CALL(mockStore, put(_, _)).Times(0);
+    EXPECT_CALL(mockIndexerQueue, push(_)).Times(0);
+
+    EXPECT_THROW(
+        { session.handleDataContext(ctx, reinterpret_cast<const uint8_t*>(ctx->data()->data()), ctx->data()->size()); },
+        std::out_of_range);
+}
+
+TEST_F(AgentSessionTest, HandleDataClean_SeqOutOfRange_DoesNotInsertIndex)
+{
+    auto startMsg = createStartMessage(1, "001", "test-agent", "4.0.0", "fim", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    flatbuffers::FlatBufferBuilder dcBuilder;
+    auto indexStr = dcBuilder.CreateString("wazuh-states-fim-files");
+    Wazuh::SyncSchema::DataCleanBuilder b(dcBuilder);
+    b.add_session(sessionId);
+    b.add_seq(1); // OUT OF RANGE (declared size is 1)
+    b.add_index(indexStr);
+    auto msg = b.Finish();
+    dcBuilder.Finish(msg);
+
+    auto dc = flatbuffers::GetRoot<Wazuh::SyncSchema::DataClean>(dcBuilder.GetBufferPointer());
+
+    EXPECT_CALL(mockIndexerQueue, push(_)).Times(0);
+
+    EXPECT_THROW({ session.handleDataClean(dc); }, std::out_of_range);
+    EXPECT_TRUE(session.getContext()->dataCleanIndices.empty());
+}
+
+TEST_F(AgentSessionTest, HandleData_DuplicateAfterEnd_DoesNotRePush)
+{
+    auto startMsg = createStartMessage(1, "001");
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    flatbuffers::FlatBufferBuilder dataBuilder;
+    std::vector<int8_t> testData = {0x01};
+    auto dataVector = dataBuilder.CreateVector(testData);
+    Wazuh::SyncSchema::DataValueBuilder dvb(dataBuilder);
+    dvb.add_seq(0);
+    dvb.add_session(sessionId);
+    dvb.add_data(dataVector);
+    auto dvOff = dvb.Finish();
+    dataBuilder.Finish(dvOff);
+
+    auto data = flatbuffers::GetRoot<Wazuh::SyncSchema::DataValue>(dataBuilder.GetBufferPointer());
+
+    // Two store puts (one per delivery — idempotent overwrite), one indexer
+    // push only — the duplicate must NOT re-enqueue after the End has been
+    // forwarded to the indexer.
+    EXPECT_CALL(mockStore, put(_, _)).Times(2);
+    EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
+    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
+
+    session.handleData(data, reinterpret_cast<const uint8_t*>(data->data()->data()), data->data()->size());
+    session.handleEnd(mockResponseDispatcher);
+    // Retransmission arrives AFTER the End has been pushed.
+    session.handleData(data, reinterpret_cast<const uint8_t*>(data->data()->data()), data->data()->size());
+}
+
+TEST_F(AgentSessionTest, HandleDataContext_DuplicateAfterEnd_DoesNotRePush)
+{
+    auto startMsg = createStartMessage(1, "001");
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    flatbuffers::FlatBufferBuilder dcBuilder;
+    std::vector<int8_t> raw = {0x01};
+    auto dataVec = dcBuilder.CreateVector(raw);
+    Wazuh::SyncSchema::DataContextBuilder b(dcBuilder);
+    b.add_seq(0);
+    b.add_session(sessionId);
+    b.add_data(dataVec);
+    auto off = b.Finish();
+    dcBuilder.Finish(off);
+
+    auto ctx = flatbuffers::GetRoot<Wazuh::SyncSchema::DataContext>(dcBuilder.GetBufferPointer());
+
+    EXPECT_CALL(mockStore, put(_, _)).Times(2);
+    EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
+    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
+
+    session.handleDataContext(ctx, reinterpret_cast<const uint8_t*>(ctx->data()->data()), ctx->data()->size());
+    session.handleEnd(mockResponseDispatcher);
+    session.handleDataContext(ctx, reinterpret_cast<const uint8_t*>(ctx->data()->data()), ctx->data()->size());
+}
+
+TEST_F(AgentSessionTest, HandleDataClean_DuplicateAfterEnd_DoesNotRePush)
+{
+    auto startMsg = createStartMessage(1, "001", "test-agent", "4.0.0", "fim", Wazuh::SyncSchema::Mode_ModuleDelta);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    flatbuffers::FlatBufferBuilder dcBuilder;
+    auto indexStr = dcBuilder.CreateString("wazuh-states-fim-files");
+    Wazuh::SyncSchema::DataCleanBuilder b(dcBuilder);
+    b.add_session(sessionId);
+    b.add_seq(0);
+    b.add_index(indexStr);
+    auto msg = b.Finish();
+    dcBuilder.Finish(msg);
+
+    auto dc = flatbuffers::GetRoot<Wazuh::SyncSchema::DataClean>(dcBuilder.GetBufferPointer());
+
+    EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
+    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
+
+    session.handleDataClean(dc);
+    session.handleEnd(mockResponseDispatcher);
+    session.handleDataClean(dc); // duplicate after the End was pushed
+}
+
+TEST_F(AgentSessionTest, HandleChecksumModule_AfterEnd_IsIgnored)
+{
+    // size=0 + Mode_ModuleCheck so the End handler pushes the Response right
+    // away (no missing seqs). A late ChecksumModule must not modify the
+    // context — the bulk thread could already be reading checksumIndex/checksum
+    // and the agent must not race against it.
+    auto startMsg =
+        createStartMessage(0, "001", "test-agent", "4.0.0", "syscollector", Wazuh::SyncSchema::Mode_ModuleCheck);
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    EXPECT_CALL(mockIndexerQueue, push(_)).Times(1);
+    EXPECT_CALL(mockResponseDispatcher, sendEndAck(Wazuh::SyncSchema::Status_Processing, _, _, _)).Times(1);
+
+    // End first.
+    session.handleEnd(mockResponseDispatcher);
+
+    // Late ChecksumModule must NOT mutate the context.
+    flatbuffers::FlatBufferBuilder checksumBuilder;
+    auto checksumStr = checksumBuilder.CreateString("late-checksum");
+    auto indexStr = checksumBuilder.CreateString("wazuh-states-vulnerabilities");
+    Wazuh::SyncSchema::ChecksumModuleBuilder cmBuilder(checksumBuilder);
+    cmBuilder.add_session(sessionId);
+    cmBuilder.add_checksum(checksumStr);
+    cmBuilder.add_index(indexStr);
+    auto cmMsg = cmBuilder.Finish();
+    checksumBuilder.Finish(cmMsg);
+
+    auto checksumModule = flatbuffers::GetRoot<Wazuh::SyncSchema::ChecksumModule>(checksumBuilder.GetBufferPointer());
+    ASSERT_NO_THROW({ session.handleChecksumModule(checksumModule); });
+
+    EXPECT_TRUE(session.getContext()->checksum.empty());
+    EXPECT_TRUE(session.getContext()->checksumIndex.empty());
+}
+
+TEST_F(AgentSessionTest, DeclaredSize_ReturnsValueFromStart)
+{
+    constexpr uint64_t kSize = 5;
+    auto startMsg = createStartMessage(kSize, "001");
+    builder.Finish(startMsg);
+    auto start = flatbuffers::GetRoot<Wazuh::SyncSchema::Start>(builder.GetBufferPointer());
+
+    EXPECT_CALL(mockResponseDispatcher, sendStartAck(_, _, _, _)).Times(1);
+    AgentSessionForTest session(sessionId, start, mockStore, mockIndexerQueue, mockResponseDispatcher, s_logFn);
+
+    EXPECT_EQ(session.declaredSize(), kSize);
 }

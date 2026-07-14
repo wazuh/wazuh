@@ -8,7 +8,7 @@
 # Tests list and flags
 list(APPEND tests_names "test_wm_aws")
 list(APPEND tests_flags "-Wl,--wrap=time,--wrap=w_time_delay,--wrap=w_sleep_until,--wrap=_mwarn,--wrap=_minfo,--wrap=_merror \
-                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_aws_run_s3,--wrap=StartMQ,--wrap=FOREVER \
+                         -Wl,--wrap=_mtwarn,--wrap=_mtinfo,--wrap=_mterror,--wrap=wm_aws_run_s3,--wrap=StartMQ,--wrap=FOREVER,--wrap=wm_sleep_until_interruptible \
                          -Wl,--wrap=atexit -Wl,--wrap=wm_state_io -Wl,--wrap=w_query_agentd")
 list(APPEND use_shared_libs 1)
 

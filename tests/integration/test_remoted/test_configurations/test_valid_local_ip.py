@@ -4,8 +4,11 @@
  This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 """
 
+import copy
+import socket
+
+import psutil
 import pytest
-import netifaces
 
 from pathlib import Path
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -31,15 +34,12 @@ def get_dynamic_data():
     array_interfaces_ip = []
     final_metadata = []
     final_configuration = []
-    network_interfaces = netifaces.interfaces()
 
-    for interface in network_interfaces:
-        try:
-            ip = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
-            array_interfaces_ip.append(ip)
-        except KeyError:
-            pass
-    import copy
+    for addr_list in psutil.net_if_addrs().values():
+        for addr in addr_list:
+            if addr.family == socket.AF_INET:
+                array_interfaces_ip.append(addr.address)
+                break
 
     for ip in array_interfaces_ip:
         test_configuration[0]['LOCAL_IP'] = ip

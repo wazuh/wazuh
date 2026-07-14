@@ -34,18 +34,19 @@ void CheckConditionEvaluator::AddResult(const RuleEvaluationResult& result)
         return;
     }
 
-    if (result.result == RuleResult::Invalid)
+    if (result.result == RuleResult::Invalid || result.result == RuleResult::NotRun)
     {
-        m_hasInvalid = true;
+        m_hasInvalid = m_hasInvalid || (result.result == RuleResult::Invalid);
+        m_hasNotRun = m_hasNotRun || (result.result == RuleResult::NotRun);
 
         if (!result.reason.empty())
         {
-            if (!m_invalidReason.empty())
+            if (!m_unresolvedReason.empty())
             {
-                m_invalidReason += "\n";
+                m_unresolvedReason += "\n";
             }
 
-            m_invalidReason += result.reason;
+            m_unresolvedReason += result.reason;
         }
     }
 
@@ -87,6 +88,11 @@ sca::CheckResult CheckConditionEvaluator::Result() const
         return *m_result ? sca::CheckResult::Passed : sca::CheckResult::Failed;
     }
 
+    if (m_hasNotRun)
+    {
+        return sca::CheckResult::NotRun;
+    }
+
     if (m_totalRules == 0 || m_hasInvalid)
     {
         return sca::CheckResult::NotApplicable;
@@ -110,7 +116,7 @@ sca::CheckResult CheckConditionEvaluator::Result() const
     }
 }
 
-std::string CheckConditionEvaluator::GetInvalidReason() const
+std::string CheckConditionEvaluator::GetUnresolvedReason() const
 {
-    return m_invalidReason;
+    return m_unresolvedReason;
 }

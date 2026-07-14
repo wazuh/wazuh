@@ -47,6 +47,23 @@ The module persists its own state (which spaces are tracked and their current na
 
 ## Key Concepts
 
+### Consumer Validation for Consistency
+
+To prevent partial policy downloads when the wazuh-indexer is mid-update, `CMSync` implements **consumer validation via Point-In-Time (PIT)**:
+
+1. **Hash check phase**: `getPolicyHashAndEnabledFromRemote()` passes `STANDARD_RULESET_CONSUMER_ID` to the indexer connector.
+   - The connector creates a multi-index PIT (policy indices + `.wazuh-cti-consumers`).
+   - It validates the consumer is in the `idle` status within that PIT snapshot.
+   - If idle: returns the hash and enabled status (and the check is consistent).
+   - If not idle: returns `std::nullopt` → sync cycle is skipped.
+
+2. **Download phase**: `downloadAndEnrichNamespace()` → `downloadNamespace()` calls `getPolicy()` with the same consumer ID.
+   - The connector again validates the consumer is idle within a NEW PIT snapshot.
+   - If idle: retrieves full policy resources within that PIT.
+   - If not idle: returns `std::nullopt` → download is skipped, partial namespace is rolled back.
+
+This two-phase validation ensures the indexer is NOT actively updating policy/decoder/KVDB assets before or during the download.
+
 ### Synchronization Lifecycle
 
 The `synchronize()` method iterates through all tracked spaces and handles four cases:
@@ -74,9 +91,10 @@ An internal class (defined in `cmsync.cpp`) that tracks the state of a single sy
 
 ### Download and Enrich
 
-`downloadAndEnrichNamespace()` performs a two-phase operation:
+`downloadAndEnrichNamespace()` performs a two-phase operation with consumer validation:
 
-1. **Download** — fetches KVDBs, decoders, integrations, and the policy from the wazuh-indexer via `wiconnector::getPolicy()`, then imports them into a new namespace via `cmcrud::importNamespace()` with `softValidation = true`.
+1. **Download** — fetches KVDBs, decoders, integrations, and the policy from the wazuh-indexer via `wiconnector::getPolicy(consumerIdToValidate=STANDARD_RULESET_CONSUMER_ID)`, then imports them into a new namespace via `cmcrud::importNamespace()` with `softValidation = true`.
+   - If the consumer is not idle (returns `std::nullopt`), download is skipped and `std::nullopt` is returned (sync cycle aborts gracefully).
 2. **Enrich** — placeholder for adding local-only assets (outputs, default filters) that don't come from the indexer.
 
 The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`) to avoid collisions. On failure the namespace is rolled back.
@@ -90,7 +108,17 @@ The target namespace gets a unique random ID (`cmsync_<space>_<hex4>`) to avoid 
 
 ### Retry With Back-off
 
-Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are wrapped in `base::utils::executeWithRetry()`, which retries up to `m_attempts` times with `m_waitSeconds` between each attempt.
+Remote operations (`existsPolicy`, `getPolicy`, `getPolicyHashAndEnabled`) are wrapped in `base::utils::executeWithRetry()`, which retries up to `m_attempts` times with `m_waitSeconds` between each attempt. The shutdown flag `m_shutdownRequested` is passed to `executeWithRetry`, which checks it before each attempt and splits inter-retry sleep into 1-second chunks for responsive cancellation.
+
+### Graceful Shutdown
+
+`CMSync` supports responsive shutdown via `requestShutdown()`:
+
+- Sets `m_shutdownRequested` (`std::atomic<bool>`) to `true`.
+- `synchronize()` checks the flag at multiple points: before starting, before each namespace iteration, and before download.
+- `executeWithRetry` aborts early when the flag is set.
+- If the underlying indexer throws during `getPolicy()` (due to `WIndexerConnector::requestShutdown()`), CMSync catches the exception, rolls back the partial namespace, and aborts the sync loop.
+- The module is registered in the exit handler in `main.cpp`; on SIGINT/SIGTERM, `requestShutdown()` is called and the sync cycle aborts within one batch round-trip.
 
 ### Weak-Pointer Resource Model
 
@@ -130,10 +158,11 @@ class ICMSync
 {
 public:
     virtual ~ICMSync() = default;
+    virtual void requestShutdown() = 0;
 };
 ```
 
-A minimal base interface. The concrete `CMSync` class exposes the full API.
+Base interface with a single lifecycle method for signaling abort.
 
 ### `CMSync`
 
@@ -156,6 +185,14 @@ public:
      * updated content, enriches it, and updates the router routes.
      */
     void synchronize();
+
+    /**
+     * @brief Signal the module to abort as soon as possible.
+     *
+     * Idempotent, thread-safe. Sets an internal flag checked at multiple
+     * checkpoints within synchronize().
+     */
+    void requestShutdown();
 };
 ```
 
@@ -187,8 +224,8 @@ for each SyncedNamespace in m_namespacesState:
 | Method | Purpose |
 |---|---|
 | `existSpaceInRemote(space)` | Checks policy existence in indexer with retry |
-| `downloadNamespace(origin, dst)` | Downloads policy resources and imports into namespace via `cmcrud::importNamespace()` |
-| `getPolicyHashAndEnabledFromRemote(space)` | Gets SHA-256 hash and enabled flag with retry |
+| `downloadNamespace(origin, dst)` | Downloads policy resources via `getPolicy(consumerIdToValidate)` and imports into namespace. Returns `bool` (false if consumer not idle). |
+| `getPolicyHashAndEnabledFromRemote(space)` | Gets SHA-256 hash and enabled flag with retry, passing consumer validation. Returns `std::optional` (nullopt if consumer not idle). |
 | `downloadAndEnrichNamespace(origin)` | Generates unique NS ID, downloads, enriches (placeholder), returns NS ID |
 | `syncNamespaceInRoute(nsState, newNsId)` | Hot-swaps or creates router route |
 | `addSpaceToSync(space)` | Adds a space to the tracked list |
@@ -215,7 +252,7 @@ Component tests (`cmsync_ctest`) are defined but currently commented out in the 
 
 ## Testing
 
-- **Unit tests** (`test/src/unit/cmsync_test.cpp`) — test the full lifecycle with all four dependencies mocked (strict mocks): constructor initialisation (first-setup vs. restore), state serialisation to/from store, and the `synchronize()` flow for each of the four cases.
+- **Unit tests** (`test/src/unit/cmsync_test.cpp`) — test the full lifecycle with all four dependencies mocked (strict mocks): constructor initialisation (first-setup vs. restore), state serialisation to/from store, the `synchronize()` flow for each of the four cases, and `requestShutdown()` abort behaviour (before loop, mid-loop, before download, hot-swap failure rollback).
 - **Component tests** (`test/src/component/cmsync_test.cpp`) — exist in the tree but are currently disabled in the build.
 - **Mock** (`test/mocks/cmsync/mockcmsync.hpp`) — provides `MockICMSync` for downstream consumers that need to mock the `ICMSync` interface.
 

@@ -21,7 +21,6 @@ namespace eEngine = ::com::wazuh::api::engine;
 
 // Error messages
 constexpr auto MESSAGE_SPACE_REQUIRED = "Field /space cannot be empty";
-constexpr auto MESSAGE_YML_REQUIRED = "Field /ymlContent cannot be empty";
 constexpr auto MESSAGE_JSON_REQUIRED = "Field /jsonContent cannot be empty";
 constexpr auto MESSAGE_UUID_REQUIRED = "Field /uuid cannot be empty";
 constexpr auto MESSAGE_TYPE_REQUIRED = "Field /type is required";
@@ -233,16 +232,30 @@ adapter::RouteHandler policyUpsert(std::shared_ptr<cm::crud::ICrudService> crud)
             return;
         }
 
-        if (protoReq.ymlcontent().empty())
+        if (!protoReq.has_jsoncontent())
         {
-            res = adapter::userErrorResponse<ResponseType>(MESSAGE_YML_REQUIRED);
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_JSON_REQUIRED);
+            return;
+        }
+
+        auto payloadOrErr = adapter::helpers::getJsonFieldFromBody(req.body, "/jsonContent", MESSAGE_JSON_REQUIRED);
+        if (base::isError(payloadOrErr))
+        {
+            res = adapter::userErrorResponse<ResponseType>(base::getError(payloadOrErr).message);
+            return;
+        }
+
+        const auto& payload = base::getResponse(payloadOrErr);
+        if (!payload.isObject())
+        {
+            res = adapter::userErrorResponse<ResponseType>("Payload top-level must be an object");
             return;
         }
 
         try
         {
             const cm::store::NamespaceId nsId {protoReq.space()};
-            service->upsertPolicy(nsId, protoReq.ymlcontent());
+            service->upsertPolicy(nsId, payload);
         }
         catch (const std::exception& ex)
         {
@@ -322,26 +335,14 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
 
         const bool loadInTester = protoReq.load_in_tester();
 
-        auto jsonOrErr = eMessage::eMessageToJson(protoReq.full_policy(), /*printPrimitiveFields=*/true);
-        if (std::holds_alternative<base::Error>(jsonOrErr))
+        auto fullPolicyOrErr = adapter::helpers::getJsonFieldFromBody(req.body, "/full_policy", "Missing full policy");
+        if (base::isError(fullPolicyOrErr))
         {
-            res = adapter::userErrorResponse<ResponseType>(fmt::format(
-                "Error converting full_policy to JSON object: {}", std::get<base::Error>(jsonOrErr).message));
+            res = adapter::userErrorResponse<ResponseType>(base::getError(fullPolicyOrErr).message);
             return;
         }
 
-        const auto& fullPolicyStr = std::get<std::string>(jsonOrErr);
-        json::Json fullPolicy;
-        try
-        {
-            fullPolicy = json::Json(fullPolicyStr.c_str());
-        }
-        catch (const std::exception& e)
-        {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error parsing full policy JSON object: {}", e.what()));
-            return;
-        }
+        const auto& fullPolicy = base::getResponse(fullPolicyOrErr);
 
         if (fullPolicy.isEmpty())
         {
@@ -438,7 +439,7 @@ adapter::RouteHandler policyValidate(std::shared_ptr<cm::crud::ICrudService> cru
             // Step 1: Import into temp namespace (validates structure).
             // ============================================================
             const cm::store::dataType::Policy pol =
-                service->importNamespace(tmpNsId, fullPolicyStr, finalSessionName, /*force=*/true);
+                service->importNamespace(tmpNsId, fullPolicy.str(), finalSessionName, /*force=*/true);
             guard.namespaceOwned = true;
 
             const bool isEnabled = pol.isEnabled();
@@ -679,10 +680,8 @@ adapter::RouteHandler resourceGet(std::shared_ptr<cm::crud::ICrudService> crud)
         try
         {
             const cm::store::NamespaceId nsId {protoReq.space()};
-            const auto content = service->getResourceByUUID(nsId, protoReq.uuid(), protoReq.asjson());
-            eResponse.set_content(content);
-            eResponse.set_status(eEngine::ReturnStatus::OK);
-            res = adapter::userResponse(eResponse);
+            const auto content = service->getResourceByUUID(nsId, protoReq.uuid());
+            res = adapter::helpers::buildJsonContentResponse(content);
         }
         catch (const std::exception& ex)
         {
@@ -725,9 +724,9 @@ adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> cru
             return;
         }
 
-        if (protoReq.ymlcontent().empty())
+        if (!protoReq.has_jsoncontent())
         {
-            res = adapter::userErrorResponse<ResponseType>(MESSAGE_YML_REQUIRED);
+            res = adapter::userErrorResponse<ResponseType>(MESSAGE_JSON_REQUIRED);
             return;
         }
 
@@ -738,10 +737,24 @@ adapter::RouteHandler resourceUpsert(std::shared_ptr<cm::crud::ICrudService> cru
             return;
         }
 
+        auto payloadOrErr = adapter::helpers::getJsonFieldFromBody(req.body, "/jsonContent", MESSAGE_JSON_REQUIRED);
+        if (base::isError(payloadOrErr))
+        {
+            res = adapter::userErrorResponse<ResponseType>(base::getError(payloadOrErr).message);
+            return;
+        }
+
+        const auto& payload = base::getResponse(payloadOrErr);
+        if (!payload.isObject())
+        {
+            res = adapter::userErrorResponse<ResponseType>("Payload top-level must be an object");
+            return;
+        }
+
         try
         {
             const cm::store::NamespaceId nsId {protoReq.space()};
-            service->upsertResource(nsId, rType, protoReq.ymlcontent());
+            service->upsertResource(nsId, rType, payload);
         }
         catch (const std::exception& ex)
         {
@@ -873,15 +886,14 @@ adapter::RouteHandler resourceValidate(std::shared_ptr<cm::crud::ICrudService> c
             return;
         }
 
-        auto payloadOrErr = eMessage::eStructToJson(protoReq.resource());
-        if (std::holds_alternative<base::Error>(payloadOrErr))
+        auto payloadOrErr = adapter::helpers::getJsonFieldFromBody(req.body, "/resource", MESSAGE_RESOURCE_REQUIRED);
+        if (base::isError(payloadOrErr))
         {
-            res = adapter::userErrorResponse<ResponseType>(
-                fmt::format("Error converting /resource to JSON: {}", std::get<base::Error>(payloadOrErr).message));
+            res = adapter::userErrorResponse<ResponseType>(base::getError(payloadOrErr).message);
             return;
         }
 
-        const auto& payload = std::get<json::Json>(payloadOrErr);
+        const auto& payload = base::getResponse(payloadOrErr);
 
         try
         {

@@ -19,6 +19,8 @@ namespace
 using namespace hlp;
 using namespace hlp::parser;
 
+constexpr std::string_view LOG_MODULE_NAME = "hlp::timezone"; ///< Log module name for timezone parser
+
 Mapper getMapper(std::string&& parsed, std::string_view targetField)
 {
     return [parsed = std::move(parsed), targetField](json::Json& event)
@@ -181,12 +183,12 @@ bool loadTimeZoneDB(const std::string& version, bool autoUpdate)
     try
     {
         const auto& db = date::get_tzdb();
-        LOG_DEBUG("Loaded timezone database version: '{}'", db.version);
+        LOG_DEBUG("[{}] Loaded timezone database version: '{}'", LOG_MODULE_NAME, db.version);
         return !(autoUpdate && db.version != version);
     }
     catch (std::exception& e)
     {
-        LOG_WARNING("Failed to load timezone database: '{}', try to download it", e.what());
+        LOG_WARNING("[{}] Failed to load timezone database: '{}', try to download it", LOG_MODULE_NAME, e.what());
         return false;
     }
 }
@@ -226,14 +228,14 @@ void initTZDB(const std::string& path, bool autoUpdate, const std::string& force
 
     if (autoUpdate)
     {
-        LOG_INFO("Auto-update for timezone database is enabled");
+        LOG_INFO("[{}] Auto-update for timezone database is enabled", LOG_MODULE_NAME);
         rv = date::remote_version();
     }
-    LOG_DEBUG("Remote timezone database version: '{}'", rv);
+    LOG_DEBUG("[{}] Remote timezone database version: '{}'", LOG_MODULE_NAME, rv);
 
     if (!forceVersion.empty())
     {
-        LOG_INFO("Forcing timezone database version: '{}'", forceVersion);
+        LOG_INFO("[{}] Forcing timezone database version: '{}'", LOG_MODULE_NAME, forceVersion);
         rv = forceVersion;
         autoUpdate = true;
     }
@@ -250,7 +252,7 @@ void initTZDB(const std::string& path, bool autoUpdate, const std::string& force
 
     downloadAndInstallTimeZoneDB(rv);
     const auto& db = date::get_tzdb(); // Check if the database is loaded correctly
-    LOG_INFO("Timezone database updated to version: '{}'", db.version);
+    LOG_INFO("[{}] Timezone database updated to version: '{}'", LOG_MODULE_NAME, db.version);
 }
 
 namespace parsers

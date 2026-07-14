@@ -161,7 +161,7 @@ wait_for_ready() {
 
     # 1. Wait for the "ready" log line
     while [[ $SECONDS -lt $deadline ]]; do
-        if grep -q "Engine started and ready to process events" "${ANALYSISD_LOG}" 2>/dev/null; then
+        if grep -q "Engine started." "${ANALYSISD_LOG}" 2>/dev/null; then
             log "Engine ready (log detected)."
             break
         fi
@@ -176,7 +176,7 @@ wait_for_ready() {
     log "Verifying route '${ROUTE_NAME}'..."
     local resp
     resp=$(curl -s --unix-socket "${ANALYSIS_SOCK}" \
-        -X POST http://localhost/router/route/get \
+        -X POST http://localhost/_internal/router/route/get \
         -H "Content-Type: application/json" \
         -d "{\"name\": \"${ROUTE_NAME}\"}" 2>&1) || true
 

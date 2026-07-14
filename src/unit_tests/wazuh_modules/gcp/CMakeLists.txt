@@ -12,7 +12,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND tests_names "test_wm_gcp")
 list(APPEND tests_flags "-Wl,--wrap,wm_exec \
                          -Wl,--wrap,sched_scan_dump,--wrap,sched_scan_get_time_until_next_scan \
-                         -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,FOREVER,--wrap,w_get_timestamp \
+                         -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,FOREVER -Wl,--wrap,wm_sleep_until_interruptible,--wrap,w_get_timestamp \
                          -Wl,--wrap,w_sleep_until,--wrap,isDebug -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 list(APPEND use_shared_libs 0)
 

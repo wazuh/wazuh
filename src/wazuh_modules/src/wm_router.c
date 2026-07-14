@@ -37,7 +37,7 @@ const wm_context WM_ROUTER_CONTEXT = {
 
 void* wm_router_main()
 {
-    mtinfo(WM_ROUTER_LOGTAG, "Starting router module.");
+    mtinfo(WM_ROUTER_LOGTAG, STARTUP_MSG, (int)getpid());
     if (router_module = so_get_module_handle("router"), router_module)
     {
         router_start_ptr = so_get_function_sym(router_module, "router_start");
@@ -46,7 +46,7 @@ void* wm_router_main()
 
         if (router_initialize_ptr)
         {
-            router_initialize_ptr(taggedLogFunction);
+            router_initialize_ptr(taggedLogFunction, ARGV0);
         }
         else
         {
@@ -77,7 +77,7 @@ void wm_router_destroy() {}
 
 void wm_router_stop()
 {
-    mtinfo(WM_ROUTER_LOGTAG, "Stopping router module.");
+    mtinfo(WM_ROUTER_LOGTAG, "Module finished.");
     if (router_stop_ptr)
     {
         router_stop_ptr();

@@ -1,0 +1,16 @@
+{
+    "registry": {
+        "path": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+        "key": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Run",
+        "hive": "HKLM",
+        "architecture": "[x64]",
+        "permissions": ["{\"S-1-5-32-544\":{\"allowed\":[\"read_control\",\"read_data\",\"write_data\",\"create_sub_key\",\"enumerate_sub_keys\",\"notify\",\"create_link\"]}}"],
+        "uid": "S-1-5-18",
+        "owner": "NT AUTHORITY\\SYSTEM",
+        "gid": "S-1-5-18",
+        "group": "NT AUTHORITY\\SYSTEM",
+        "mtime": 1705315800
+    },
+    "checksum": {"hash": {"sha1": "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3"}},
+    "state": {"document_version": 1, "modified_at": "2024-01-15T10:30:00Z"}
+}

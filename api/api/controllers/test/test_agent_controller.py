@@ -64,7 +64,7 @@ async def test_delete_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_
                 },
                 'q': None
                 }
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
     mock_dapi.awaited_once_with(f=agent.delete_agents,
@@ -110,7 +110,7 @@ async def test_get_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_exp
                 'q': None,
                 'distinct': False
                 }
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
     mock_dapi.assert_called_once_with(f=agent.get_agents,
@@ -433,7 +433,7 @@ async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                 'q': None
                 }
 
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
 
@@ -484,7 +484,7 @@ async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_
                 'q': None
                 }
 
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
 
@@ -578,7 +578,7 @@ async def test_get_agent_upgrade(mock_exc, mock_dapi, mock_remove, mock_dfunc,
                 }
 
     # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform']
+    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
     for field in nested:
         f_kwargs['filters'][field] = mock_request.query_params.get(field, None)
 

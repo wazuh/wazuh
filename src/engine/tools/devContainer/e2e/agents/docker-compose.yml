@@ -1,44 +1,78 @@
+name: dev-env-engine-agents
+
+x-agent-defaults: &agent_defaults
+  pull_policy: build
+  restart: unless-stopped
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+
 services:
-  agent_4143_rocky8:
+  agent_4x_centos:
+    <<: *agent_defaults
     build:
-      context: ./rpm/4.14.3
+      context: .
+      dockerfile: centos/4.x/Dockerfile
       network: host
-    container_name: wazuh-agent-4143-rocky8
-    hostname: wazuh-agent-4143-rocky8
-    restart: unless-stopped
-
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
+    container_name: wazuh-agent-4x-centos
+    hostname: wazuh-agent-4x-centos
     environment:
       MANAGER_HOST: "host.docker.internal"
       MANAGER_PORT: "1514"
       AUTHD_PORT: "1515"
-      AGENT_NAME: "agent-4143-rocky8"
-
+      AGENT_NAME: "agent-4x-centos"
     volumes:
-      - agent_4143_rocky8_var:/var/ossec
+      - agent_4x_centos_var:/var/ossec
 
-  agent_50_rocky8:
+  agent_4x_ubuntu:
+    <<: *agent_defaults
     build:
-      context: ./rpm/5.x
+      context: .
+      dockerfile: ubuntu/4.x/Dockerfile
       network: host
-    container_name: wazuh-agent-50-rocky8
-    hostname: wazuh-agent-50-rocky8
-    restart: unless-stopped
-
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
+    container_name: wazuh-agent-4x-ubuntu
+    hostname: wazuh-agent-4x-ubuntu
     environment:
       MANAGER_HOST: "host.docker.internal"
       MANAGER_PORT: "1514"
       AUTHD_PORT: "1515"
-      AGENT_NAME: "agent-50-rocky8"
-
+      AGENT_NAME: "agent-4x-ubuntu"
     volumes:
-      - agent_50_rocky8_var:/var/ossec
+      - agent_4x_ubuntu_var:/var/ossec
+
+  agent_5x_centos:
+    <<: *agent_defaults
+    build:
+      context: .
+      dockerfile: centos/5.x/Dockerfile
+      network: host
+    container_name: wazuh-agent-5x-centos
+    hostname: wazuh-agent-5x-centos
+    environment:
+      MANAGER_HOST: "host.docker.internal"
+      MANAGER_PORT: "1514"
+      AUTHD_PORT: "1515"
+      AGENT_NAME: "agent-5x-centos"
+    volumes:
+      - agent_5x_centos_var:/var/ossec
+
+  agent_5x_ubuntu:
+    <<: *agent_defaults
+    build:
+      context: .
+      dockerfile: ubuntu/5.x/Dockerfile
+      network: host
+    container_name: wazuh-agent-5x-ubuntu
+    hostname: wazuh-agent-5x-ubuntu
+    environment:
+      MANAGER_HOST: "host.docker.internal"
+      MANAGER_PORT: "1514"
+      AUTHD_PORT: "1515"
+      AGENT_NAME: "agent-5x-ubuntu"
+    volumes:
+      - agent_5x_ubuntu_var:/var/ossec
 
 volumes:
-  agent_4143_rocky8_var:
-  agent_50_rocky8_var:
+  agent_4x_centos_var:
+  agent_4x_ubuntu_var:
+  agent_5x_centos_var:
+  agent_5x_ubuntu_var:

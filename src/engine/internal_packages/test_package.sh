@@ -5,7 +5,7 @@
 set -uo pipefail  # Removed -e to allow test failures without stopping script
 
 TOOLS=(
-  engine-archiver
+  engine-event-dumper
   engine-helper-test
   engine-test
   engine-public
@@ -22,6 +22,7 @@ EXTRA_TESTS=(
   "engine-private rawevt -h"
   "engine-public cm -h"
   "engine-public ioc -h"
+  "engine-public status -h"
 )
 
 echo "=========================================="

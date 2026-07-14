@@ -202,9 +202,9 @@ The module gracefully handles initialization and validation failures:
 
 | Module | Integration Status | Documentation |
 |--------|-------------------|---------------|
-| Syscollector | Integrated | [Architecture](../../modules/syscollector/architecture.md#schema-validation-integration) |
-| SCA | Integrated | [Architecture](../../modules/sca/architecture.md#schema-validation-integration) |
-| FIM | Integrated | [Architecture](../../modules/fim/architecture.md#schema-validation-integration) |
+| Syscollector | Integrated | [Architecture](../../syscollector/architecture.md#schema-validation-integration) |
+| SCA | Integrated | [Architecture](../../sca/architecture.md#schema-validation-integration) |
+| FIM | Integrated | [Architecture](../../fim/architecture.md#schema-validation-integration) |
 
 ## Building
 

@@ -23,7 +23,7 @@ Active Response is implemented through `wazuh-execd`, a daemon running on agents
                                  │ {"command": "enable", ...}
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        wazuh-remoted                                │
+│                     wazuh-manager-remoted                           │
 │                                                                     │
 │  Forwards AR commands to target agents                             │
 └────────────────────────────────┬────────────────────────────────────┘
@@ -469,4 +469,4 @@ IP blocking scripts implement safety measures:
 
 - [Active Response README](README.md) - Module overview and usage
 - [Executables Reference](executables.md) - Detailed executable inventory
-- [Control Module](../control/README.md) - Agent restart/reload (separated in v5.0)
+- [Control Module](../control/index.html) - Agent restart/reload (separated in v5.0)

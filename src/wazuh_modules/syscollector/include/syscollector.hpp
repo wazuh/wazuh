@@ -24,6 +24,7 @@
 #include "syscollectorNormalizer.hpp"
 #include "syscollector.h"
 #include "asyncFlushController.hpp"
+#include "agent_sync_protocol_types.hpp"
 #include "iagent_sync_protocol.hpp"
 
 // Define EXPORTED for any platform
@@ -85,13 +86,15 @@ class EXPORTED Syscollector final
         void setAgentdQueryFunction(AgentdQueryFunc queryFunc);
 
         void start();
+        void quiesce();
+        void releaseResources();
         void destroy();
 
         // Sync protocol methods
         void initSyncProtocol(const std::string& moduleName, const std::string& syncDbPath, const std::string& syncDbPathVD, MQ_Functions mqFuncs, std::chrono::seconds syncEndDelay,
                               std::chrono::seconds timeout, unsigned int retries,
                               size_t maxEps, uint32_t integrityInterval);
-        bool syncModule(Mode mode);
+        SyncModuleResult syncModule(Mode mode);
         void persistDifference(const std::string& id, Operation operation, const std::string& index, const std::string& data, uint64_t version, bool isDataContext = false);
         bool parseResponseBuffer(const uint8_t* data, size_t length);
         bool parseResponseBufferVD(const uint8_t* data, size_t length);
@@ -149,11 +152,14 @@ class EXPORTED Syscollector final
         std::vector<std::string> getDataContextTables(Operation operation, const std::string& index);
 
         /**
-         * @brief Checks if the first VD sync has been completed
+         * @brief Checks if the first VD sync has been completed.
+         * @details The state is persisted in @c table_metadata under the
+         *          @c vd_first_sync_completed key as an epoch-seconds timestamp;
+         *          any value > 0 means the first VD sync already completed.
          * @return true if first VD sync is done, false if this is the first scan (VDFIRST)
          */
-        bool isVDFirstSyncDone() const;
-
+        bool isVDFirstSyncDone();
+        void persistVDFirstSyncIfNeeded(const bool vdResult, const bool firstSyncDone);
         /**
          * @brief Processes VD DataContext after scan completes
          * @details Queries the VD sync protocol database for pending DataValue items,

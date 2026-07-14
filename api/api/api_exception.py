@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from connexion.exceptions import ProblemException
-from api.constants import RELATIVE_CONFIG_FILE_PATH, RELATIVE_SECURITY_PATH
+from api.constants import RELATIVE_CONFIG_FILE_PATH
 from wazuh.core.exception import DOCU_VERSION, WazuhTooManyRequests
 
 

@@ -8,10 +8,11 @@ namespace cm::store::categories
 {
 
 /**
- * @brief Special category for unclassified events
- * 
- * Events with this category are assigned by the root decoder (according to CTI integrations).
- * Pipeline behavior for these events depends on policy.index_unclassified_events configuration.
+ * @brief Special category for unclassified events.
+ *
+ * Events are tagged with this category by the root decoder when no integration
+ * decoder matches. Output routing and metrics behavior for these events depend
+ * on the policy flag `index_unclassified_events`.
  */
 inline constexpr std::string_view UNCLASSIFIED_CATEGORY = "unclassified";
 
@@ -21,8 +22,14 @@ inline constexpr std::string_view UNCLASSIFIED_CATEGORY = "unclassified";
  * This map defines the available categories
  * in the CMStore system. Any integration or asset should belong to one of these categories.
  */
-inline constexpr std::array<std::string_view, 8> AVAILABLE_CATEGORIES = {
-    "access-management", "applications", "cloud-services", "network-activity", "other", "security", "system-activity", UNCLASSIFIED_CATEGORY};
+inline constexpr std::array<std::string_view, 8> AVAILABLE_CATEGORIES = {"access-management",
+                                                                         "applications",
+                                                                         "cloud-services",
+                                                                         "network-activity",
+                                                                         "other",
+                                                                         "security",
+                                                                         "system-activity",
+                                                                         UNCLASSIFIED_CATEGORY};
 
 /**
  * @brief Get all available categories and their indexes in the namespace

@@ -1,5 +1,6 @@
 from helper_test.documentation_generator.types import Documentation, Example
 from helper_test.documentation_generator.exporter import *
+from helper_test.runner import get_helper_test_kvdb_resource
 from collections import defaultdict
 from pathlib import Path
 from typing import List
@@ -100,6 +101,8 @@ class MarkdownGenerator(IExporter):
 
         rows = []
         row = []
+        if getattr(output, "path", None):
+            row.append(output.path)
         if isinstance(output.type_, list):
             row.append(f"[{', '.join(output.type_)}]")
             row.append("-")
@@ -176,17 +179,19 @@ class MarkdownGenerator(IExporter):
                             args_values.append(self._format_call_arg(arg))
 
             if getattr(example, "target_field", None):
-                event_data["target_field"] = example.target_field
+                target_field_name = getattr(doc.target_field, "path", None) or "target_field"
+                event_data[target_field_name] = example.target_field
 
             call_str = f"{doc.name}({', '.join(args_values)})" if args_values else f"{doc.name}()"
+            target_field_name = getattr(doc.target_field, "path", None) or "target_field"
 
             self.content.append(f"{description}\n")
             self.content.append(f"#### Asset\n")
 
             if helper_type == "filter":
-                self.content.append("```yaml\ncheck:\n  - target_field: " + call_str + "\n```\n")
+                self.content.append("```yaml\ncheck:\n  - " + target_field_name + ": " + call_str + "\n```\n")
             else:
-                self.content.append("```yaml\nnormalize:\n  - map:\n      - target_field: " + call_str + "\n```\n")
+                self.content.append("```yaml\nnormalize:\n  - map:\n      - " + target_field_name + ": " + call_str + "\n```\n")
 
             self.content.append("#### Input Event\n")
             self.content.append("```json\n" + json.dumps(event_data, indent=2) + "\n```\n")
@@ -198,7 +203,7 @@ class MarkdownGenerator(IExporter):
                 final_event = dict(event_data)
                 if example.expected is not None:
                     if example.should_pass or doc.helper_type == "transformation":
-                        final_event["target_field"] = example.expected
+                        final_event[target_field_name] = example.expected
 
                 if all(v is None for v in final_event.values()):
                     final_event = {}
@@ -210,6 +215,20 @@ class MarkdownGenerator(IExporter):
                 self.content.append(f"*{result_msg}*\n")
 
         self.content.append("\n")
+
+    def uses_test_kvdb(self, doc: Documentation) -> bool:
+        """
+        Return whether the helper documentation should include the helper test KVDB resource.
+        """
+        return doc.name.startswith("kvdb_") or "kvdb" in doc.keywords
+
+    def create_test_kvdb_section(self):
+        """
+        Add the KVDB resource used by KVDB helper examples.
+        """
+        self.content.append("## Test KVDB\n")
+        self.content.append("The examples for this helper use the following KVDB resource during tests:\n")
+        self.content.append("```json\n" + json.dumps(get_helper_test_kvdb_resource(), indent=2) + "\n```\n")
 
     def create_document(self, doc: Documentation):
         """
@@ -237,7 +256,7 @@ class MarkdownGenerator(IExporter):
 
         if doc.target_field:
             self.content.append(f"## Target Field\n")
-            headers = ["Type", "Possible values"]
+            headers = ["Path", "Type", "Possible values"] if getattr(doc.target_field, "path", None) else ["Type", "Possible values"]
             self.create_output_table(doc.target_field, headers)
 
         if doc.output:
@@ -258,6 +277,9 @@ class MarkdownGenerator(IExporter):
 
         if doc.examples:
             self.create_tests_table(doc)
+
+        if self.uses_test_kvdb(doc):
+            self.create_test_kvdb_section()
 
         self.all_contents[doc.helper_type][doc.name] = {
             "keywords": doc.keywords,

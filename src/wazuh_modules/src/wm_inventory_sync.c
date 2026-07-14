@@ -53,7 +53,7 @@
 
  void* wm_inventory_sync_main(__attribute__((unused))wm_inventory_sync_t* data)
  {
-     mtinfo(WM_INVENTORY_SYNC_LOGTAG, "Starting inventory_sync module.");
+     mtinfo(WM_INVENTORY_SYNC_LOGTAG, STARTUP_MSG, (int)getpid());
      if (inventory_sync_module = so_get_module_handle("inventory_sync"), inventory_sync_module)
      {
         inventory_sync_start_ptr = so_get_function_sym(inventory_sync_module, "inventory_sync_start");
@@ -82,12 +82,24 @@
              os_free(manager_node_name);
 
              // Add max sessions from internal_options (inventory_sync specific)
-#ifdef CLIENT
-             int max_sessions = getDefine_Int("wazuh_modules", "max_sessions", 1, 100000);
-#else
              int max_sessions = getDefine_Int_default("wazuh_modules", "max_sessions", 1, 100000, 1000);
-#endif
              cJSON_AddNumberToObject(config_json, "maxSessions", max_sessions);
+
+             // Add input worker queue size from internal_options
+             int queue_size = getDefine_Int_default("wazuh_modules", "inventory_sync_queue_size", 100, 1000000, 10000);
+             cJSON_AddNumberToObject(config_json, "queueSize", queue_size);
+
+             // Add global DataValue quota from internal_options
+             int data_value_quota = getDefine_Int_default("wazuh_modules", "inventory_sync_data_value_quota", 1, 1000000000, 500000);
+             cJSON_AddNumberToObject(config_json, "dataValueQuota", data_value_quota);
+
+             // Add indexer bulk-size threshold (bytes) from internal_options.
+             int indexer_bulk_size_bytes = getDefine_Int_default("wazuh_modules", "inventory_sync_indexer_bulk_size_bytes", 4096, 100 * 1024 * 1024, 10 * 1024 * 1024);
+             cJSON_AddNumberToObject(config_json, "indexerBulkSize", indexer_bulk_size_bytes);
+
+             // Add indexer periodic flush interval (seconds) from internal_options.
+             int indexer_flush_interval = getDefine_Int_default("wazuh_modules", "inventory_sync_indexer_flush_interval", 1, 3600, 20);
+             cJSON_AddNumberToObject(config_json, "indexerFlushInterval", indexer_flush_interval);
 
              wm_inventory_sync_log_config(config_json);
              inventory_sync_start_ptr(mtLoggingFunctionsWrapper, config_json);
@@ -115,7 +127,7 @@
 
  void wm_inventory_sync_stop(__attribute__((unused)) wm_inventory_sync_t* data)
  {
-     mtinfo(WM_INVENTORY_SYNC_LOGTAG, "Stopping inventory_sync module.");
+     mtinfo(WM_INVENTORY_SYNC_LOGTAG, "Module finished.");
      if (inventory_sync_stop_ptr)
      {
          inventory_sync_stop_ptr();

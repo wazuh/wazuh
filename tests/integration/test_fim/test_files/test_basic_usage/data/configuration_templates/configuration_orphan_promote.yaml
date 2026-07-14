@@ -1,0 +1,50 @@
+# Configuration template for tests covering issue #36134:
+# a previously realtime-monitored directory is removed from the FIM
+# configuration and the agent is restarted, so fim_initialize must
+# *not* log an ERROR for the rows that still live in fim.db.
+#
+# Two <directories> entries:
+#   - TEST_DIR_REALTIME (realtime) is what the test drops at restart;
+#     this is the path the regression error is reported for.
+#   - TEST_DIR_KEEP (scheduled) stays in the configuration so the
+#     scheduled scan after restart still has a path to walk, which
+#     keeps the handle_orphaned_delete path reachable (an empty
+#     <directories> list would trigger a DataClean instead).
+- sections:
+  - section: syscheck
+    elements:
+    - disabled:
+        value: 'no'
+    - frequency:
+        value: FREQUENCY
+    - directories:
+        value: TEST_DIR_REALTIME
+        attributes:
+        - check_all: 'yes'
+        - FIM_MODE
+    - directories:
+        value: TEST_DIR_KEEP
+        attributes:
+        - check_all: 'yes'
+    - synchronization:
+        elements:
+        - enabled:
+            value: 'yes'
+        - interval:
+            value: SYNC_INTERVAL
+        - integrity_interval:
+            value: INTEGRITY_INTERVAL
+  - section: sca
+    elements:
+    - enabled:
+        value: 'no'
+  - section: rootcheck
+    elements:
+    - disabled:
+        value: 'yes'
+  - section: wodle
+    attributes:
+      - name: 'syscollector'
+    elements:
+      - disabled:
+          value: 'yes'

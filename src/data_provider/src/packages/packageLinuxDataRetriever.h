@@ -20,13 +20,6 @@
 #include "utilsWrapperLinux.hpp"
 
 /**
- * @brief Fills a JSON object with all available pacman-related information
- * @param libPath  Path to pacman's database directory
- * @param callback Callback to be called for every single element being found
- */
-void getPacmanInfo(const std::string& libPath, std::function<void(nlohmann::json&)> callback);
-
-/**
  * @brief Fills a JSON object with all available rpm-related information
  * @param callback Callback to be called for every single element being found
  */
@@ -52,13 +45,6 @@ void getDpkgInfo(const std::string& libPath, std::function<void(nlohmann::json&)
 void getDpkgPythonPackages(std::unordered_set<std::string>& pythonPackages);
 
 /**
- * @brief Fills a JSON object with all available apk-related information
- * @param libPath Path to apk's database directory
- * @param callback Callback to be called for every single element being found
- */
-void getApkInfo(const std::string& libPath, std::function<void(nlohmann::json&)> callback);
-
-/**
  * @brief Fills a JSON object with all available snap-related information
  * @param callback Callback to be called for every single element being found
  */
@@ -68,7 +54,7 @@ void getSnapInfo(std::function<void(nlohmann::json&)> callback);
 class FactoryPackagesCreator final
 {
     public:
-        static void getPackages(std::function<void(nlohmann::json&)> callback)
+        static void getPackages(const std::function<void(nlohmann::json&)>& callback)
         {
             const file_system::FileSystemWrapper fs;
 
@@ -77,19 +63,9 @@ class FactoryPackagesCreator final
                 getDpkgInfo(DPKG_STATUS_PATH, callback);
             }
 
-            if (fs.is_directory(PACMAN_PATH))
-            {
-                getPacmanInfo(PACMAN_PATH, callback);
-            }
-
             if (fs.is_directory(RPM_PATH))
             {
                 getRpmInfo(callback);
-            }
-
-            if (fs.is_directory(APK_PATH))
-            {
-                getApkInfo(APK_DB_PATH, callback);
             }
 
             if (fs.is_directory(SNAP_PATH))

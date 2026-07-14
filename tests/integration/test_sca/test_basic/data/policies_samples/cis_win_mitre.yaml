@@ -8,7 +8,7 @@ policy:
   regex_type: pcre2
 
 requirements:
-  title: Check Windows family platform
+  name: Check Windows family platform
   description: Requirements for running the policy against Windows family.
   condition: any
   rules:
@@ -16,7 +16,7 @@ requirements:
 
 checks:
   - id: 1
-    title: "Test_1"
+    name: "Test_1"
     description: "Ensure the Administrator account is disabled."
     rationale: "Test_1"
     remediation: "Disable the built-in Administrator account."
@@ -24,8 +24,16 @@ checks:
       nist_800_53: ["CM.7"]
       pci_dss: ["1.3.4"]
     mitre:
-      tactic: ["TA0005"]
-      technique: ["T1005"]
+      tactic:
+        id:
+          - "TA0005"
+        name:
+          - "Stealth"
+      technique:
+        id:
+          - "T1005"
+        name:
+          - "Data from Local System"
     condition: all
     rules:
       - 'c:net user administrator -> r:Account active\s+No'

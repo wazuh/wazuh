@@ -88,24 +88,24 @@ StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t
                 parseExpression = base::Term<base::EngineOp>::create(
                     logparExpr,
                     [=,
-                     runState = buildCtx->runState(),
+                     isTestMode = buildCtx->isTestMode(),
                      parser = std::move(parser),
                      fieldPP = json::PointerPath(field)](base::Event event)
                     {
                         std::string_view ev;
                         if (event->getString(ev, fieldPP) != json::RetGet::Success)
                         {
-                            RETURN_FAILURE(runState, event, failureTrace1);
+                            RETURN_FAILURE(isTestMode, event, failureTrace1);
                         }
                         // The parser modify the event, but rapidjson use MemoryPoolAllocator,
                         // so the string_view is still valid after parsing
-                        auto error = hlp::parser::run(parser, ev, *event, runState->trace);
+                        auto error = hlp::parser::run(parser, ev, *event, isTestMode);
                         if (error)
                         {
-                            RETURN_FAILURE(runState, event, failureTrace2 + error.value().message);
+                            RETURN_FAILURE(isTestMode, event, failureTrace2 + error.value().message);
                         }
 
-                        RETURN_SUCCESS(runState, event, successTrace);
+                        RETURN_SUCCESS(isTestMode, event, successTrace);
                     });
             }
             catch (const std::exception& e)

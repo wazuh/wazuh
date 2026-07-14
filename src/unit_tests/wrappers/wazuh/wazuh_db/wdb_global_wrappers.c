@@ -47,6 +47,7 @@ int __wrap_wdb_global_update_agent_version(__attribute__((unused)) wdb_t *wdb,
                                            const char *os_version,
                                            const char *os_major,
                                            const char *os_minor,
+                                           const char *os_type,
                                            const char *os_platform,
                                            const char *os_arch,
                                            const char *version,
@@ -61,6 +62,7 @@ int __wrap_wdb_global_update_agent_version(__attribute__((unused)) wdb_t *wdb,
     check_expected(os_version);
     check_expected(os_major);
     check_expected(os_minor);
+    check_expected(os_type);
     check_expected(os_platform);
     check_expected(os_arch);
     check_expected(version);

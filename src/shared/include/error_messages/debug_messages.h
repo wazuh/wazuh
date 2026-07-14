@@ -32,7 +32,6 @@
 #define FIM_MAX_RECURSION_LEVEL             "(6217): Maximum level of recursion reached. Depth:%d recursion_level:%d '%s'"
 #define FIM_SYMBOLIC_LINK_DISCARDED         "(6218): Discarding symbolic link '%s' is already added in the configuration."
 #define FIM_SYMBOLIC_LINK_ADD               "(6219): Directory added to FIM configuration by link '%s'"
-#define FIM_SHUTDOWN_DETECTED               "(6220): Reconnection attempts terminated due to the shutdown of FIM."
 #define FIM_FREQUENCY_DIRECTORY             "(6221): Directory loaded from syscheck db: '%s'"
 #define FIM_STAT_FAILED                     "(6222): Stat() function failed on: '%s' due to [(%d)-(%s)]"
 #define FIM_SKIP_NFS                        "(6223): FIM skip_nfs=%d, '%s'::is_nfs=%d"
@@ -194,7 +193,6 @@
 /* Modules messages */
 #define WM_UPGRADE_RESULT_AGENT_INFO         "(8151): Agent Information obtained: '%s'"
 #define WM_UPGRADE_MODULE_DISABLED           "(8152): Module Agent Upgrade disabled. Exiting..."
-#define WM_UPGRADE_MODULE_STARTED            "(8153): Module Agent Upgrade started."
 #define WM_UPGRADE_MODULE_FINISHED           "(8154): Module Agent Upgrade finished."
 #define WM_UPGRADE_INCOMMING_MESSAGE         "(8155): Incomming message: '%s'"
 #define WM_UPGRADE_RESPONSE_MESSAGE          "(8156): Response message: '%s'"
@@ -215,7 +213,6 @@
 #define WM_UPGRADE_UNSUPPORTED_UPGRADE       "(8171): Agent '%d' with unsupported platform '%s' won't be upgraded without a default package."
 #define WM_UPGRADE_UNSUPPORTED_DEFAULT       "(8172): Agent '%d' with unsupported platform '%s' will be upgraded with package '%s'"
 
-#define MOD_TASK_START                      "(8200): Module Task Manager started."
 #define MOD_TASK_FINISH                     "(8201): Module Task Manager finished."
 #define MOD_TASK_DISABLED                   "(8202): Module disabled. Exiting..."
 #define MOD_TASK_EMPTY_MESSAGE              "(8203): Empty message from local client."
@@ -227,6 +224,7 @@
 
 /* Generic messages */
 #define SUCCESSFULLY_RECONNECTED_SOCKET     "(8300): Successfully reconnected to '%s'"
+#define MQ_SHUTDOWN_DETECTED                "(8301): Reconnection attempts terminated due to shutdown."
 
 /* Logcollector */
 

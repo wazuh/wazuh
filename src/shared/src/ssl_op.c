@@ -103,11 +103,12 @@ SSL_CTX *get_ssl_context(const char *ciphers, int auto_method)
         goto CONTEXT_ERR;
     }
 
-    /* Explicitly set options and cipher list */
-
-    // If auto_method isn't set, allow TLSv1.2 only
-    if (!auto_method) {
-        SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 | SSL_OP_NO_TLSv1_1);
+    if (auto_method) {
+        /* <ssl_auto_negotiate>yes</ssl_auto_negotiate>: allow legacy TLS 1.0/1.1 */
+        SSL_CTX_set_min_proto_version(ctx, TLS1_VERSION);
+        SSL_CTX_set_security_level(ctx, 0);
+    } else {
+        SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
     }
 
     if (!(SSL_CTX_set_cipher_list(ctx, ciphers))) {

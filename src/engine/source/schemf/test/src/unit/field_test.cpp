@@ -1,6 +1,8 @@
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include <schemf/field.hpp>
+#include <sstream>
 
 using namespace schemf;
 
@@ -180,9 +182,7 @@ INSTANTIATE_TEST_SUITE_P(
         EqualsTuple({.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}},
                     {.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}},
                     true),
-        EqualsTuple({.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}},
-                    {Type::OBJECT},
-                    false),
+        EqualsTuple({.type = Type::OBJECT, .properties = {{"a", Field({Type::TEXT})}}}, {Type::OBJECT}, false),
         EqualsTuple({.type = Type::NESTED, .properties = {{"a", Field({Type::KEYWORD})}}},
                     {.type = Type::NESTED, .properties = {{"a", Field({Type::KEYWORD})}}},
                     true)));
@@ -283,5 +283,34 @@ INSTANTIATE_TEST_SUITE_P(FieldTest,
                              BuildsParamsTuple({.type = Type::NESTED, .properties = {{}}}, true),
                              BuildsParamsTuple({.type = Type::FLAT_OBJECT, .properties = {{}}}, true),
                              BuildsParamsTuple({.type = Type::TEXT, .properties = {{}}}, false),
-                             BuildsParamsTuple({.type = Type::KEYWORD, .properties = {{}}}, false)))
-;
+                             BuildsParamsTuple({.type = Type::KEYWORD, .properties = {{}}}, false)));
+
+// ---------------------------------------------------------------------------
+// Stream insertion operator
+// ---------------------------------------------------------------------------
+
+TEST(FieldTest, StreamOutputContainsType)
+{
+    Field f({.type = Type::KEYWORD});
+    std::ostringstream oss;
+    oss << f;
+    EXPECT_THAT(oss.str(), ::testing::HasSubstr("keyword"));
+}
+
+TEST(FieldTest, StreamOutputContainsPropertyCount)
+{
+    Field f({.type = Type::OBJECT});
+    f.addProperty("a", {.type = Type::TEXT});
+    f.addProperty("b", {.type = Type::INTEGER});
+    std::ostringstream oss;
+    oss << f;
+    EXPECT_THAT(oss.str(), ::testing::HasSubstr("2"));
+}
+
+TEST(FieldTest, FieldParametersStreamOutput)
+{
+    Field::Parameters params {.type = Type::TEXT};
+    std::ostringstream oss;
+    oss << params;
+    EXPECT_THAT(oss.str(), ::testing::HasSubstr("text"));
+}

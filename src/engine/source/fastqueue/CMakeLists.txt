@@ -123,4 +123,21 @@ target_link_libraries(fastqueue_comparison_benchmark
     fastqueue::bench
 )
 
+# Memory profiling (standalone, no Google Benchmark dependency)
+add_executable(fastqueue_memory_profile
+    ${BENCH_SRC_DIR}/memory_profile_bench.cpp
+)
+
+target_include_directories(fastqueue_memory_profile
+    PRIVATE
+    ${BENCH_SRC_DIR}
+    ${SRC_DIR}
+    ${INC_DIR}
+)
+
+target_link_libraries(fastqueue_memory_profile
+    PUBLIC
+    fastqueue::fastqueue
+)
+
 endif(ENGINE_BUILD_BENCHMARK)

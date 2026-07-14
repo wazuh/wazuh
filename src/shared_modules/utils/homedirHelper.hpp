@@ -21,21 +21,27 @@ namespace Utils
         std::filesystem::path homeDir;
         std::error_code ec;
 
-        homeDir = std::filesystem::read_symlink("/proc/self/exe", ec).parent_path();
-        if (homeDir.filename() == "bin")
+        // Target-specific env var wins if set (manager/agent separation
+        // for co-hosted installs).
+#ifdef CLIENT
+        const char* envHome = std::getenv("WAZUH_AGENT_HOME");
+#else
+        const char* envHome = std::getenv("WAZUH_MANAGER_HOME");
+#endif
+        if (envHome != nullptr && *envHome != '\0')
         {
-            homeDir.remove_filename();
+            homeDir = envHome;
         }
-        if (ec)
+        else
         {
-            const char* envHome = std::getenv("WAZUH_HOME");
-            if (envHome != nullptr)
-            {
-                homeDir = envHome;
-            }
-            else
+            homeDir = std::filesystem::read_symlink("/proc/self/exe", ec).parent_path();
+            if (ec)
             {
                 throw std::runtime_error(ec.message());
+            }
+            if (homeDir.filename() == "bin")
+            {
+                homeDir.remove_filename();
             }
         }
 

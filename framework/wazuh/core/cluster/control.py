@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
-from typing import Optional
 
 from wazuh import WazuhInternalError
 from wazuh.core import common
@@ -182,21 +181,6 @@ async def get_system_nodes():
         return [node['name'] for node in result['items']]
     except WazuhInternalError as e:
         raise e
-
-async def get_system_nodes_or_none() -> Optional[dict]:
-    """Get the list of system nodes or None if an exception occurs.
-
-    Returns
-    -------
-    nodes : list or None
-        List of node names or None if an exception is raised.
-    """
-    nodes = await get_system_nodes()
-    if isinstance(nodes, Exception):
-        nodes = None
-
-    return nodes
-
 
 async def get_system_nodes_or_none() -> list | None:
     """Get the list of system nodes or None if an exception occurs.

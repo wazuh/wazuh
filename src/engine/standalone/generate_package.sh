@@ -182,6 +182,7 @@ build_standalone() {
 
     # Generate engine schemas
     echo "Generating engine schemas..."
+    python3 -m pip install -r ${WAZUH_PATH}/src/engine/tools/engine-schema/requirements.txt || return 1
     python3 ${WAZUH_PATH}/src/engine/tools/engine-schema/engine_schema.py generate \
         --output-dir ${WAZUH_PATH}/src/engine/ruleset/schemas/ \
         --wcs-path ${WAZUH_PATH}/src/external/wcs-flat-files/ \
@@ -240,6 +241,7 @@ build_standalone() {
 
     # Copy libraries and binaries
     cp ${WAZUH_PATH}/src/external/rocksdb/build/librocksdb.so.8 ${TEMP_DIR}/bin/lib
+    cp ${WAZUH_PATH}/src/external/jemalloc/lib/libjemalloc.so.2 ${TEMP_DIR}/bin/lib
     cp ${WAZUH_PATH}/src/build/lib/libwazuhext.so ${TEMP_DIR}/bin/lib
     cp ${WAZUH_PATH}/src/build/lib/libindexer_connector.so ${TEMP_DIR}/bin/lib
     cp ${WAZUH_PATH}/gcc-libs/libstdc++.so.6* ${TEMP_DIR}/bin/lib/

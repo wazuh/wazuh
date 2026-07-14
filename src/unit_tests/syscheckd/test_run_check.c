@@ -56,6 +56,9 @@ bool fim_has_configured_directories(void);
 bool fim_has_configured_paths(void);
 bool fim_has_data_in_database(void);
 bool handle_all_paths_removed(void);
+
+/* First-sync flag priming (start_daemon helper) */
+void prime_fim_first_sync_from_marker(void);
 #ifdef WIN32
 bool fim_has_configured_registries(void);
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
@@ -154,6 +157,7 @@ static int setup_group(void ** state) {
     fim_flush_result.data = 0;
     syscheck.fim_pause_requested = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
     syscheck.fim_pausing_is_allowed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
 
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -297,6 +301,7 @@ static int teardown_group(void **state) {
     fim_flush_result.data = 0;
     syscheck.fim_pause_requested.data = 0;
     syscheck.fim_pausing_is_allowed.data = 0;
+    syscheck.fim_first_sync_completed.data = 0;
 
 #ifdef TEST_WINAGENT
     expect_function_call_any(__wrap_pthread_rwlock_wrlock);
@@ -396,7 +401,7 @@ static void expect_fim_startup_log(bool first_sync_completed) {
                       : "Initial FIM scan data is ready. Triggering first synchronization without startup delay.");
 }
 
-static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, uint32_t sync_interval, bool persist_first_sync_marker) {
+static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, uint32_t sync_interval, bool persist_first_sync_marker, bool expect_recovery_pass) {
     expect_string(__wrap__minfo, formatted_msg, "Starting FIM synchronization.");
 
     expect_value(__wrap_asp_sync_module, handle, handle);
@@ -413,15 +418,21 @@ static void expect_fim_run_integrity_sync_body(AgentSyncProtocolHandle* handle, 
         expect_any(__wrap_fim_db_update_last_sync_time_value, timestamp);
     }
 
+    // The recovery/integrity pass is skipped when the module was stopped during the
+    // synchronization (fim_sync_module_running already cleared), so tests that stop the
+    // loop through the sync wrapper must not expect it.
+    if (expect_recovery_pass) {
 #ifdef TEST_WINAGENT
-    /* On Windows, fim_run_integrity checks 3 tables: file, registry key, and registry value */
-    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
-    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
-    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
-    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+        /* On Windows, fim_run_integrity checks 3 tables: file, registry key, and registry value */
+        expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+        will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+        expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+        will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
 #endif
-    expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
-    will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+        expect_function_call(__wrap_fim_recovery_integrity_interval_has_elapsed);
+        will_return(__wrap_fim_recovery_integrity_interval_has_elapsed, false);
+    }
+
     expect_string(__wrap__mdebug1,
                   formatted_msg,
                   sync_interval == 1
@@ -436,7 +447,7 @@ static void expect_fim_flush_sync_body(AgentSyncProtocolHandle* handle, bool per
     expect_value(__wrap_asp_sync_module, mode, MODE_DELTA);
     will_return(__wrap_asp_sync_module, true);
 
-    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished.");
+    expect_string(__wrap__minfo, formatted_msg, "FIM synchronization requested by agent-info finished successfully.");
 
     if (persist_first_sync_marker) {
 #ifndef TEST_WINAGENT
@@ -1194,7 +1205,8 @@ void test_fim_run_integrity_skips_initial_wait_for_pending_first_sync(void **sta
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
     will_return(__wrap_fim_db_get_last_sync_time, 0);
     expect_fim_startup_log(false);
-    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
+    // The sync wrapper stops the module, so the recovery pass is skipped.
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true, false);
 
     call_real_fim_run_integrity();
 
@@ -1232,7 +1244,8 @@ void test_fim_run_integrity_keeps_initial_wait_after_first_sync(void **state) {
     expect_value(__wrap_sleep, seconds, 1);
 #endif
 
-    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, false);
+    // The sync wrapper stops the module, so the recovery pass is skipped.
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, false, false);
 
     call_real_fim_run_integrity();
 
@@ -1264,7 +1277,9 @@ void test_fim_run_integrity_pause_still_waits_after_skip_is_consumed(void **stat
     expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
     will_return(__wrap_fim_db_get_last_sync_time, 0);
     expect_fim_startup_log(false);
-    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true);
+    // The module keeps running after the sync (it stops on the sleep), so the
+    // recovery pass still runs.
+    expect_fim_run_integrity_sync_body(handle, syscheck.sync_interval, true, true);
 #ifdef TEST_WINAGENT
     expect_value(wrap_Sleep, dwMilliseconds, 1000);
 #else
@@ -1273,14 +1288,11 @@ void test_fim_run_integrity_pause_still_waits_after_skip_is_consumed(void **stat
 
     call_real_fim_run_integrity();
 
-    assert_int_equal(syscheck.fim_pausing_is_allowed.data, 1);
-
     stop_fim_integrity_on_sleep = false;
     request_pause_after_sync = false;
     syscheck.sync_handle = original_handle;
     syscheck.sync_interval = original_sync_interval;
     syscheck.fim_pause_requested.data = 0;
-    syscheck.fim_pausing_is_allowed.data = 0;
 }
 
 void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_completion(void **state) {
@@ -1311,12 +1323,9 @@ void test_fim_run_integrity_pause_and_flush_syncs_without_wait_and_marks_complet
 
     assert_int_equal(fim_flush_in_progress.data, 0);
     assert_int_equal(fim_flush_result.data, 0);
-    assert_int_equal(syscheck.fim_pausing_is_allowed.data, 1);
-
     stop_fim_integrity_on_sync = false;
     syscheck.sync_handle = original_handle;
     syscheck.fim_pause_requested.data = 0;
-    syscheck.fim_pausing_is_allowed.data = 0;
     fim_flush_in_progress.data = 0;
     fim_flush_result.data = 0;
 }
@@ -1364,6 +1373,43 @@ void test_fim_has_configured_paths_with_directories(void **state) {
     assert_true(result);
 }
 
+// When the persisted marker indicates the first sync already completed in a previous run,
+// start_daemon must prime fim_first_sync_completed to 1 before fim_scan() so agent-info does
+// not defer coordination during the startup baseline-scan window.
+void test_prime_fim_first_sync_from_marker_sets_flag_when_present(void **state) {
+    (void)state;
+
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 123456);
+
+    prime_fim_first_sync_from_marker();
+
+    assert_int_equal(syscheck.fim_first_sync_completed.data, 1);
+}
+
+// On a genuine first-ever run there is no marker, so the flag stays 0 and coordination is
+// correctly deferred until the first sync actually completes.
+void test_prime_fim_first_sync_from_marker_keeps_flag_clear_when_absent(void **state) {
+    (void)state;
+
+    syscheck.fim_first_sync_completed = (atomic_int_t)ATOMIC_INT_INITIALIZER(0);
+
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    expect_string(__wrap_fim_db_get_last_sync_time, table_name, TEST_FIM_FIRST_SYNC_COMPLETED_METADATA_KEY);
+    will_return(__wrap_fim_db_get_last_sync_time, 0);
+
+    prime_fim_first_sync_from_marker();
+
+    assert_int_equal(syscheck.fim_first_sync_completed.data, 0);
+}
+
 void test_fim_has_data_in_database_no_entries(void **state) {
     will_return(__wrap_fim_db_get_count_file_entry, 0);
 #ifdef WIN32
@@ -1406,7 +1452,7 @@ void test_handle_all_paths_removed_no_sync_handle(void **state) {
     will_return(__wrap_fim_db_get_count_file_entry, 10);
 
     expect_string(__wrap__mdebug1, formatted_msg, "All monitored paths removed from configuration but database has data. Initiating DataClean process.");
-    expect_string(__wrap__merror, formatted_msg, "Sync protocol not initialized, cannot send DataClean notification.");
+    expect_string(__wrap__minfo, formatted_msg, "Sync protocol not initialized, cannot send DataClean notification.");
 
     bool result = handle_all_paths_removed();
 
@@ -1416,6 +1462,35 @@ void test_handle_all_paths_removed_no_sync_handle(void **state) {
 }
 
 /* ---------------------------------- End DataClean Tests ---------------------------------- */
+
+void test_persist_syscheck_msg_destroyed_sync_handle(void **state) {
+    (void) state;
+    AgentSyncProtocolHandle *original_handle = syscheck.sync_handle;
+    unsigned int original_enable_synchronization = syscheck.enable_synchronization;
+
+    // The shutdown teardown destroyed the handle: the event must be dropped without
+    // touching the sync protocol (asp_persist_diff is not called).
+    syscheck.enable_synchronization = 1;
+    syscheck.sync_handle = NULL;
+
+    cJSON *msg = cJSON_CreateObject();
+    cJSON_AddStringToObject(msg, "test", "data");
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(6339): Persisting FIM event: {\"test\":\"data\"}");
+
+    // The fim_sync_handle_rwlock guard is taken around the handle check even when the
+    // handle is NULL. Only the winagent build wraps these locks.
+#ifdef TEST_WINAGENT
+    expect_function_call_any(__wrap_pthread_rwlock_rdlock);
+    expect_function_call_any(__wrap_pthread_rwlock_unlock);
+#endif
+
+    persist_syscheck_msg("test-id", OPERATION_CREATE, "wazuh-states-fim-files", msg, 1);
+
+    cJSON_Delete(msg);
+    syscheck.sync_handle = original_handle;
+    syscheck.enable_synchronization = original_enable_synchronization;
+}
 
 int main(void) {
 #ifndef WIN_WHODATA
@@ -1441,10 +1516,13 @@ int main(void) {
         cmocka_unit_test(test_fim_has_configured_directories_null_list),
         cmocka_unit_test(test_fim_has_configured_directories_with_directories),
         cmocka_unit_test(test_fim_has_configured_paths_with_directories),
+        cmocka_unit_test(test_prime_fim_first_sync_from_marker_sets_flag_when_present),
+        cmocka_unit_test(test_prime_fim_first_sync_from_marker_keeps_flag_clear_when_absent),
         cmocka_unit_test(test_fim_has_data_in_database_no_entries),
         cmocka_unit_test(test_fim_has_data_in_database_with_file_entries),
         cmocka_unit_test(test_handle_all_paths_removed_no_data_in_db),
         cmocka_unit_test(test_handle_all_paths_removed_no_sync_handle),
+        cmocka_unit_test(test_persist_syscheck_msg_destroyed_sync_handle),
 #ifndef TEST_WINAGENT
         cmocka_unit_test(test_fim_run_realtime_first_error),
         cmocka_unit_test(test_fim_run_realtime_first_timeout),

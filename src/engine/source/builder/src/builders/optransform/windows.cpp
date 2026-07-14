@@ -157,20 +157,20 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
         return [=,
                 targetField = targetField.jsonPath(),
                 sidListRef = json::PointerPath(sidListRef.jsonPath()),
-                runState = buildCtx->runState()](base::Event event) -> TransformResult
+                isTestMode = buildCtx->isTestMode()](base::Event event) -> TransformResult
         {
             // Get reference
             std::string strList;
             if (auto ret = event->getString(strList, sidListRef); ret != json::RetGet::Success)
             {
                 RETURN_FAILURE(
-                    runState, event, ret == json::RetGet::NotFound ? referenceNotFoundTrace : failureRefErrorParsing);
+                    isTestMode, event, ret == json::RetGet::NotFound ? referenceNotFoundTrace : failureRefErrorParsing);
             }
 
             auto sidList = parserListSID(strList);
             if (sidList.empty())
             {
-                RETURN_FAILURE(runState, event, failureRefErrorParsing);
+                RETURN_FAILURE(isTestMode, event, failureRefErrorParsing);
             }
 
             // Iterate over the sids and get the mappings
@@ -210,7 +210,7 @@ TransformBuilder getWindowsSidListDescHelperBuilder(const std::shared_ptr<kvdbMa
                 }
             }
 
-            RETURN_SUCCESS(runState, event, successTrace);
+            RETURN_SUCCESS(isTestMode, event, successTrace);
         };
     };
 }

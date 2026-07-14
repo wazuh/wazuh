@@ -54,7 +54,7 @@ class DisconnectedAgentSyncTasks:
         server: master.Master = None,
         cluster_items: dict = None,
         logger: object = None,
-        indexer_client: object = None,
+        get_indexer_client_func: callable = None,
     ):
         """
         Initialize the disconnected agent group sync task.
@@ -65,6 +65,12 @@ class DisconnectedAgentSyncTasks:
             Reference to the Master server instance.
         cluster_items : dict
             Cluster configuration with intervals and parameters.
+        logger : logging.Logger, optional
+            Logger instance for backward compatibility with tests.
+        get_indexer_client_func : callable, optional
+            Factory function that returns an async context manager for indexer client.
+            Defaults to get_indexer_client from indexer module.
+            For testing, inject a mock factory function.
         """
         # Backwards-compatible constructor: accept either `server` (with
         # `setup_task_logger`) or `manager` + `logger` from older tests.
@@ -77,8 +83,12 @@ class DisconnectedAgentSyncTasks:
             self.logger = logging.getLogger("disconnected_agent_sync_task")
 
         self.cluster_items = cluster_items or {}
-        # Allow injecting an indexer client for tests
-        self._indexer_client_override = indexer_client
+
+        # Dependency injection for indexer client factory
+        if get_indexer_client_func is not None:
+            self._get_indexer_client = get_indexer_client_func
+        else:
+            self._get_indexer_client = get_indexer_client
 
         # Use from_import=True to avoid raising during tests when wazuh configuration file
         # does not contain the indexer section. The config is only used for
@@ -113,31 +123,22 @@ class DisconnectedAgentSyncTasks:
         """
         Verify the indexer's availability by performing a health check.
 
-        This method checks whether the indexer service is reachable. If a client
-        override has been set (e.g., for testing or dependency injection), the
-        check is skipped entirely. Otherwise, it obtains an indexer client via
-        ``get_indexer_client()`` and calls its ``healthcheck()`` method. Any
-        failure to connect results in an ``IndexerUnavailableError`` being raised.
+        This method checks whether the indexer service is reachable by obtaining
+        an indexer client and calling its ``healthcheck()`` method. Any failure
+        to connect results in an ``IndexerUnavailableError`` being raised.
 
         Returns
         -------
         None
-            Returns when the indexer is confirmed reachable or when the client
-            override bypasses the check.
+            Returns when the indexer is confirmed reachable.
 
         Raises
         ------
         IndexerUnavailableError
-            If the indexer is not reachable and no client override is present.
+            If the indexer is not reachable.
         """
-        if self._indexer_client_override is not None:
-            self.logger.debug(
-                "Indexer client override in use; skipping availability check"
-            )
-            return
-
         try:
-            async with get_indexer_client() as client:
+            async with self._get_indexer_client() as client:
                 await client.healthcheck()
             self.logger.debug("Indexer is available")
         except IndexerUnavailableError:
@@ -312,12 +313,8 @@ class DisconnectedAgentSyncTasks:
         }
 
         try:
-            if self._indexer_client_override:
-                client = self._indexer_client_override
-                result = await client.search(query=query)
-            else:
-                async with get_indexer_client() as client:
-                    result = await client.max_version_components.search(query=query)
+            async with self._get_indexer_client() as client:
+                result = await client.max_version_components.search(query=query)
 
             max_versions = {}
 
@@ -509,14 +506,9 @@ class DisconnectedAgentSyncTasks:
                 f"Starting Cluster name synchronization for {len(agents_to_update)} disconnected agents "
                 f"with cluster_name={cluster_name}"
             )
-            # Resolve indexer client once
-            if self._indexer_client_override:
-                client = self._indexer_client_override
-                context = None
-            else:
-                context = get_indexer_client()
 
-            async def _update(client):
+            # Update cluster names via indexer client
+            async with self._get_indexer_client() as client:
                 for agent_id in agents_to_update:
                     global_version = max_versions.get(agent_id, 0)
                     try:
@@ -533,12 +525,6 @@ class DisconnectedAgentSyncTasks:
                         self.logger.error(
                             f"Failed updating cluster-name for agent={agent_id}: {e}"
                         )
-
-            if context:
-                async with context as client:
-                    await _update(client)
-            else:
-                await _update(client)
 
             self.logger.info(
                 f"Disconnected agents cluster-name sync completed "
@@ -628,7 +614,7 @@ class DisconnectedAgentSyncTasks:
             f"with external_gte={external_gte}"
         )
 
-        async with get_indexer_client() as client:
+        async with self._get_indexer_client() as client:
             for agent_id in valid_agents:
                 try:
                     await client.max_version_components.update_agent_groups(
@@ -747,12 +733,8 @@ class DisconnectedAgentSyncTasks:
         }
 
         try:
-            if self._indexer_client_override:
-                client = self._indexer_client_override
-                result = await client.search(query=query)
-            else:
-                async with get_indexer_client() as client:
-                    result = await client.max_version_components.search(query=query)
+            async with self._get_indexer_client() as client:
+                result = await client.max_version_components.search(query=query)
             agent_cluster_map: Dict[str, str] = {}
 
             buckets = (

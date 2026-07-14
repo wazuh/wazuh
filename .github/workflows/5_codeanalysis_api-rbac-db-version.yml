@@ -3,6 +3,7 @@ name: 5.X - API RBAC DB Version Check
 on:
   workflow_dispatch:
   pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
     paths:
       - ".github/workflows/5_codeanalysis_api-rbac-db-version.yml"
       - "framework/wazuh/rbac/default/**"
@@ -14,7 +15,9 @@ concurrency:
 
 jobs:
   guard:
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4

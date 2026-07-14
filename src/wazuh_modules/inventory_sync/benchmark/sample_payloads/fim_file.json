@@ -1,0 +1,22 @@
+{
+    "file": {
+        "attributes": "regular file",
+        "device": "8,1",
+        "gid": "0",
+        "group": "root",
+        "hash": {
+            "md5":    "d41d8cd98f00b204e9800998ecf8427e",
+            "sha1":   "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "inode": "131072",
+        "mtime": "2024-01-15T10:30:00Z",
+        "owner": "root",
+        "path": "/etc/shadow",
+        "permissions": "0640",
+        "size": 1024,
+        "uid": "0"
+    },
+    "checksum": {"hash": {"sha1": "da39a3ee5e6b4b0d3255bfef95601890afd80709"}},
+    "state": {"document_version": 1, "modified_at": "2024-01-15T10:30:00Z"}
+}

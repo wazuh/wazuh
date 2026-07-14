@@ -23,6 +23,11 @@ public:
 
     json::Json::Type getJsonType(const DotPath& name) const override { throw std::runtime_error("Not implemented"); }
 
+    std::unordered_set<json::Json::Type> getJsonTypes(const DotPath& name) const override
+    {
+        throw std::runtime_error("Not implemented");
+    }
+
     base::RespOrError<TargetFieldKind> validateTargetField(const DotPath& name) const override
     {
         if (name.isRoot())

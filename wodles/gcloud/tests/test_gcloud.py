@@ -98,3 +98,30 @@ def test_gcloud_ko(mock_logger, mock_data, mock_json, mock_messages, mock_permis
         gcloud.main()
     assert err.type == SystemExit
     assert err.value.code == errcode
+
+
+# ---------------------------------------------------------------------------
+# __main__ block
+# ---------------------------------------------------------------------------
+
+@patch('gcloud.GCSAccessLogs')
+@patch('gcloud.WazuhGCloudSubscriber')
+@patch('gcloud.ThreadPoolExecutor')
+@patch('gcloud.tools.get_stdout_logger')
+@patch('gcloud.cpu_count', side_effect=TypeError)
+def test_main_block_invokes_main(mock_cpu_count, mock_logger, mock_threads, mock_subscriber, mock_access_logs):
+    """Running gcloud.py as __main__ calls main()."""
+    import runpy
+
+    gcloud_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'gcloud.py')
+    kwargs = get_wodle_config(integration_type='access_logs')
+
+    # Patch at the source-module level so runpy's fresh namespace picks them up
+    with patch('tools.get_script_arguments', return_value=Namespace(**kwargs)), \
+            patch('tools.get_stdout_logger', mock_logger), \
+            patch('buckets.access_logs.GCSAccessLogs', mock_access_logs), \
+            patch('os.cpu_count', side_effect=TypeError), \
+            pytest.raises(SystemExit) as err:
+        runpy.run_path(gcloud_path, run_name='__main__')
+
+    assert err.value.code == 0

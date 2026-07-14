@@ -527,6 +527,17 @@ int OS_RecvUnix(int socket, int sizet, char *ret)
 
 /* Send a message using a Unix socket
  * Returns the OS_SOCKETERR if it fails
+ *
+ * On ENOBUFS (the receiver's datagram buffer is transiently full) we retry with
+ * a short, bounded backoff instead of dropping the message immediately. macOS
+ * does not apply blocking flow-control to AF_UNIX SOCK_DGRAM sockets: when the
+ * peer buffer is full it returns ENOBUFS right away (even on a blocking socket)
+ * rather than waiting for space as Linux does, and its default buffer is tiny
+ * (~4 KB). The userspace backoff emulates that flow-control so a brief
+ * backpressure spike (e.g. the FIM/inventory sync burst at agent startup while
+ * agentd is momentarily not draining the queue) no longer costs a message.
+ * Kept in microseconds on purpose: this is the local hot path, unlike
+ * OS_SendUDPbySize (a remote socket) which can afford whole-second waits.
  */
 int OS_SendUnix(int socket, const char *msg, int size)
 {
@@ -534,15 +545,23 @@ int OS_SendUnix(int socket, const char *msg, int size)
         size = strlen(msg) + 1;
     }
 
-    if (send(socket, msg, size, 0) < size) {
-        if (errno == ENOBUFS) {
+    for (int attempt = 0; ; attempt++) {
+        if (send(socket, msg, size, 0) >= size) {
+            return (OS_SUCCESS);
+        }
+
+        if (errno != ENOBUFS) {
+            return (OS_SOCKTERR);
+        }
+
+        if (attempt >= OS_UNIX_SEND_RETRIES) {
+            /* Still congested after the backoff budget: keep the original
+             * contract so the caller drops the message and warns once. */
             return (OS_SOCKBUSY);
         }
 
-        return (OS_SOCKTERR);
+        usleep((useconds_t)OS_UNIX_SEND_BACKOFF_US << attempt);
     }
-
-    return (OS_SUCCESS);
 }
 #endif
 
@@ -612,18 +631,14 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, (void *)&cnt, sizeof(cnt)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPCNT) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive count parameter: unsupported platform.");
 #endif
     }
 
     if (idle > 0) {
 #if !defined(WIN32) && !defined(OpenBSD)
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPIDLE, (void *)&idle, sizeof(idle)) < 0) {
-            merror("OS_SetKeepalive_Options(SO_KEEPIDLE) failed with error '%s'", strerror(errno));
+            merror("OS_SetKeepalive_Options(TCP_KEEPIDLE) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive idle parameter: unsupported platform.");
 #endif
     }
 
@@ -632,8 +647,6 @@ void OS_SetKeepalive_Options(__attribute__((unused)) int socket, int idle, int i
         if (setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, (void *)&intvl, sizeof(intvl)) < 0) {
             merror("OS_SetKeepalive_Options(TCP_KEEPINTVL) failed with error '%s'", strerror(errno));
         }
-#else
-        mwarn("Cannot set up keepalive interval parameter: unsupported platform.");
 #endif
     }
 }

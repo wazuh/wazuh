@@ -6,6 +6,8 @@ metadata:
     Merge in target field value with the content of some key in the specified object, where the key is specified with a reference to another field.
     The object parameter must be a definition object or a reference to a field containing the object.
     This helper function is typically used in the map stage.
+    When a key exists in both the source and the target, the source value overwrites the target value entirely (no recursion into nested structures).
+    If the source contains duplicate keys, all occurrences are iterated and the last duplicate value is the one that remains in the target.
 
   keywords:
     - undefined

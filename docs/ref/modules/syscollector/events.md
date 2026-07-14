@@ -451,7 +451,7 @@ Generated when system user accounts are created, modified, or removed.
 
 Generated when system groups are created, modified, or removed.
 
-#### Group Event Fields  
+#### Group Event Fields
 - `group_name` - Group name
 - `group_description` - Group description
 - `group_id` - Group ID (GID)

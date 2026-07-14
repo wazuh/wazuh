@@ -35,8 +35,13 @@ constexpr auto QUEUE_SIZE = 4096;
 constexpr auto AGENT_METADATA_TABLE = "agent_metadata";
 constexpr auto AGENT_GROUPS_TABLE = "agent_groups";
 
-// Module coordination configuration
-const std::vector<std::string> COORDINATION_MODULES = {SCA_WM_NAME, SYSCOLLECTOR_WM_NAME, FIM_NAME};
+// Module coordination configuration.
+// FIM is listed first so its async pause-completion probe runs before the other
+// modules are paused: while FIM's first sync is in progress the probe defers the
+// whole cycle, and pausing SCA/Syscollector first would freeze them for nothing
+// (every cycle for the entire first-sync window). Probing FIM first means a
+// deferral pauses and resumes only FIM, leaving the other modules untouched.
+const std::vector<std::string> COORDINATION_MODULES = {FIM_NAME, SCA_WM_NAME, SYSCOLLECTOR_WM_NAME};
 constexpr int MAX_COORDINATION_RETRIES = 3;
 constexpr int COORDINATION_RETRY_DELAY_MS = 1000;
 
@@ -145,7 +150,7 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
         throw std::invalid_argument("Query module function must be provided");
     }
 
-    m_logFunction(LOG_INFO, "AgentInfo initialized.");
+    m_logFunction(LOG_DEBUG, "AgentInfo initialized.");
 }
 
 AgentInfoImpl::~AgentInfoImpl()
@@ -173,7 +178,7 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
     }
 
     // Initial delay before first run to allow other modules to start
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    m_cv.wait_for(lock, std::chrono::seconds(5), [this] { return m_stopped.load(); });
 
     // Run at least once
     do
@@ -240,7 +245,7 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
         if (shouldLoop && !m_stopped)
         {
             // Wait for the interval or until stop is signaled
-            m_cv.wait_for(lock, std::chrono::seconds(interval), [this] { return m_stopped; });
+            m_cv.wait_for(lock, std::chrono::seconds(interval), [this] { return m_stopped.load(); });
         }
 
     }
@@ -333,7 +338,7 @@ bool AgentInfoImpl::parseResponseBuffer(const uint8_t* data, size_t length)
         return m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
-    m_logFunction(LOG_ERROR, "Sync protocol not initialized or invalid data");
+    m_logFunction(LOG_WARNING, "Sync protocol not initialized or invalid data");
     return false;
 }
 
@@ -665,7 +670,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
                     if (!looksLikeHash)
                     {
                         // Single-group format: the first line is the actual group name
-                        groups.push_back(firstLineValue);
+                        groups.push_back(std::move(firstLineValue));
                         return false; // Stop reading, we have the single group
                     }
 
@@ -704,7 +709,7 @@ std::vector<std::string> AgentInfoImpl::readAgentGroups() const
 
                 if (!groupName.empty())
                 {
-                    groups.push_back(groupName);
+                    groups.push_back(std::move(groupName));
                 }
             }
         }
@@ -724,7 +729,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 {
     bool hasChanges = false;
 
-    const auto callback = [this, table, &hasChanges](ReturnTypeCallback result, const nlohmann::json & data)
+    const auto callback = [this, &table, &hasChanges](ReturnTypeCallback result, const nlohmann::json & data)
     {
         if (result == INSERTED || result == MODIFIED || result == DELETED)
         {
@@ -747,7 +752,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 
         if (!m_dBSync)
         {
-            m_logFunction(LOG_WARNING, "DBSync not available for table " + table);
+            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
             return false;
         }
 
@@ -775,7 +780,7 @@ void AgentInfoImpl::processEvent(ReturnTypeCallback result, const nlohmann::json
 {
     try
     {
-        nlohmann::json eventData = result == MODIFIED && data.contains("new") ? data["new"] : data;
+        const auto& eventData = result == MODIFIED && data.contains("new") ? data["new"] : data;
         nlohmann::json ecsFormattedData = ecsData(eventData, table);
 
         // Remove checksum from ECS data before sending stateless event
@@ -1050,6 +1055,27 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
 
     for (int attempt = 1; attempt <= MAX_COORDINATION_RETRIES; ++attempt)
     {
+        // Cooperative cancellation: bail out immediately if the agent is shutting down
+        // instead of burning the remaining retries against a socket that is being torn
+        // down. On macOS the module thread is joined without a timeout (see the non-Linux
+        // branch in src/wazuh_modules/src/main.c), so a non-interruptible retry here would
+        // stall modulesd shutdown, leak its PID file and block the next start.
+        if (m_stopped)
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting query to " + moduleName);
+
+            nlohmann::json errorJson;
+            errorJson["error"] = MQ_ERR_INTERNAL;
+            errorJson["message"] = "Agent stopping, query to " + moduleName + " aborted";
+
+            ModuleResponse aborted;
+            aborted.success = false;
+            aborted.response = errorJson.dump();
+            aborted.errorCode = MQ_ERR_INTERNAL;
+            aborted.isModuleUnavailable = false;
+            return aborted;
+        }
+
         char* rawResponse = nullptr;
         int result = m_queryModuleFunction(moduleName, jsonMessage, &rawResponse);
 
@@ -1099,11 +1125,33 @@ AgentInfoImpl::ModuleResponse AgentInfoImpl::queryModuleWithRetry(const std::str
 
         if (attempt < MAX_COORDINATION_RETRIES)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(COORDINATION_RETRY_DELAY_MS));
+            // Interruptible back-off: wake up at once if a stop is requested during the
+            // delay so shutdown is not held for COORDINATION_RETRY_DELAY_MS per attempt.
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            if (m_cv.wait_for(lock,
+                              std::chrono::milliseconds(COORDINATION_RETRY_DELAY_MS),
+                              [this] { return m_stopped.load(); }))
+            {
+                lock.unlock();
+                m_logFunction(LOG_INFO, "Agent stopping, aborting query to " + moduleName);
+
+                nlohmann::json errorJson;
+                errorJson["error"] = MQ_ERR_INTERNAL;
+                errorJson["message"] = "Agent stopping, query to " + moduleName + " aborted";
+
+                ModuleResponse aborted;
+                aborted.success = false;
+                aborted.response = errorJson.dump();
+                aborted.errorCode = MQ_ERR_INTERNAL;
+                aborted.isModuleUnavailable = false;
+                // coverity[double_unlock]
+                return aborted;
+            }
         }
     }
 
-    m_logFunction(LOG_WARNING,
+    m_logFunction(LOG_INFO,
                   "Failed to query " + moduleName + " after " + std::to_string(MAX_COORDINATION_RETRIES) + " attempts");
 
     // Return failure response with structured error JSON
@@ -1130,20 +1178,39 @@ void AgentInfoImpl::resumePausedModules(const std::set<std::string>& pausedModul
 
         if (!response.success)
         {
-            m_logFunction(LOG_ERROR, "Failed to resume module " + module + ": " + response.response);
+            if (!m_stopped && !response.isModuleUnavailable)
+            {
+                m_logFunction(LOG_WARNING, "Failed to resume module " + module + ": " + response.response);
+            }
         }
     }
 }
 
-bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
+AgentInfoImpl::PauseProbeResult AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
 {
-    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 30; // 30 seconds max wait
-    constexpr int PAUSE_POLL_DELAY_MS = 1000;   // 1 second between polls
+    // fim_execute_is_pause_completed() uses trylock: it returns in-progress while
+    // fim_run_integrity holds fim_scan_mutex (across the full sync iteration). Retries
+    // are needed until the current sync cycle ends and the mutex becomes available.
+    // 30 attempts at 1 s covers sync cycles that take up to ~30 s under high load.
+    constexpr int MAX_PAUSE_POLL_ATTEMPTS = 30; // 30 seconds max
 
     m_logFunction(LOG_DEBUG_VERBOSE, "Polling " + moduleName + " for pause completion (async pause)");
 
+    // Interruptible wait: returns true if the agent was stopped during the wait.
+    auto waitOrStopped = [this]() -> bool
+    {
+        std::unique_lock<std::mutex> lock(m_mutex);
+        return m_cv.wait_for(lock, std::chrono::milliseconds(m_pausePollDelayMs), [this] { return m_stopped.load(); });
+    };
+
     for (int attempt = 1; attempt <= MAX_PAUSE_POLL_ATTEMPTS; ++attempt)
     {
+        if (m_stopped)
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting FIM pause poll for " + moduleName);
+            return PauseProbeResult::Failed;
+        }
+
         std::string isPauseCompletedMessage = createJsonCommand("is_pause_completed");
         ModuleResponse pollResponse = queryModuleWithRetry(moduleName, isPauseCompletedMessage);
 
@@ -1152,7 +1219,13 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
             m_logFunction(LOG_WARNING,
                           "Failed to poll pause status for " + moduleName + " (attempt " + std::to_string(attempt) +
                           "/" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
-            std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+
+            if (waitOrStopped())
+            {
+                m_logFunction(LOG_INFO, "Agent stopping, aborting FIM pause poll for " + moduleName);
+                return PauseProbeResult::Failed;
+            }
+
             continue;
         }
 
@@ -1163,6 +1236,39 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
 
             if (pollJson.contains("data") && pollJson["data"].contains("status"))
             {
+                bool firstSyncCompleted = true;
+
+                if (pollJson["data"].contains("first_sync_completed") &&
+                        pollJson["data"]["first_sync_completed"].is_boolean())
+                {
+                    firstSyncCompleted = pollJson["data"]["first_sync_completed"].get<bool>();
+                }
+
+                if (moduleName == FIM_NAME && !firstSyncCompleted)
+                {
+                    if (m_deferralLoggedModules.insert(moduleName).second)
+                    {
+                        m_logFunction(LOG_INFO,
+                                      "Deferring coordination until FIM first sync completes, will retry next cycle");
+                    }
+                    else
+                    {
+                        m_logFunction(LOG_DEBUG,
+                                      "Still deferring coordination until FIM first sync completes");
+                    }
+
+                    return PauseProbeResult::Deferred;
+                }
+
+                // FIM first sync is no longer in progress: the deferral episode (if any)
+                // has ended. Clear the throttle here rather than only on full coordination
+                // success, so a failure later in the cycle does not leave it stuck and
+                // suppress the operator-visible INFO on a future deferral episode.
+                if (moduleName == FIM_NAME)
+                {
+                    m_deferralLoggedModules.erase(moduleName);
+                }
+
                 std::string status = pollJson["data"]["status"].get<std::string>();
 
                 if (status == "in_progress")
@@ -1170,7 +1276,13 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
                     m_logFunction(LOG_DEBUG,
                                   moduleName + " pause still in progress (attempt " + std::to_string(attempt) + "/" +
                                   std::to_string(MAX_PAUSE_POLL_ATTEMPTS) + ")");
-                    std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+
+                    if (waitOrStopped())
+                    {
+                        m_logFunction(LOG_INFO, "Agent stopping, aborting FIM pause poll for " + moduleName);
+                        return PauseProbeResult::Failed;
+                    }
+
                     continue;
                 }
                 else if (status == "completed")
@@ -1180,12 +1292,12 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
 
                     if (!pauseSucceeded)
                     {
-                        m_logFunction(LOG_ERROR, moduleName + " pause completed with error");
-                        return false;
+                        m_logFunction(LOG_WARNING, moduleName + " pause completed with error");
+                        return PauseProbeResult::Failed;
                     }
 
-                    m_logFunction(LOG_INFO, moduleName + " pause completed successfully");
-                    return true;
+                    m_logFunction(LOG_DEBUG, moduleName + " pause completed successfully");
+                    return PauseProbeResult::Completed;
                 }
             }
         }
@@ -1196,20 +1308,33 @@ bool AgentInfoImpl::pollFimPauseCompletion(const std::string& moduleName)
                           " - Response: " + pollResponse.response);
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(PAUSE_POLL_DELAY_MS));
+        if (waitOrStopped())
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting FIM pause poll for " + moduleName);
+            return PauseProbeResult::Failed;
+        }
     }
 
-    m_logFunction(LOG_ERROR,
-                  moduleName + " pause did not complete within timeout (" + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) +
-                  " seconds)");
-    return false;
+    // The probe gave up without FIM ever reporting first-sync completion, so any deferral
+    // episode ends here too. Clear the throttle (and the deferral counter) so a later
+    // deferral episode logs its INFO marker again instead of being stuck at DEBUG.
+    if (moduleName == FIM_NAME)
+    {
+        m_deferralLoggedModules.erase(moduleName);
+    }
+
+    m_logFunction(LOG_WARNING,
+                  moduleName + " pause did not complete within " + std::to_string(MAX_PAUSE_POLL_ATTEMPTS) +
+                  " seconds (scan mutex may be held by a long sync cycle, or IPC communication failure)");
+    return PauseProbeResult::Failed;
 }
 
 bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 {
-    constexpr int FLUSH_POLL_DELAY_MS = 10000;       // 10 seconds between polls
-    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6; // Log progress every 60 seconds (6 * 10s)
+    const int FLUSH_POLL_DELAY_MS = m_flushPollDelayMs > 0 ? m_flushPollDelayMs : 1;
+    constexpr int LOG_PROGRESS_EVERY_N_ATTEMPTS = 6; // Log progress every 6 poll intervals
     std::map<std::string, int> attempts;
+    bool anyFailed = false;
 
     for (const auto& moduleName : pendingModules)
     {
@@ -1231,7 +1356,7 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
             if (!pollResponse.success)
             {
-                m_logFunction(LOG_WARNING,
+                m_logFunction(LOG_DEBUG,
                               "Failed to poll flush status for " + moduleName + " (attempt " +
                               std::to_string(attempt) + "), will retry...");
                 continue;
@@ -1273,8 +1398,11 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
                         if (!flushSucceeded)
                         {
-                            m_logFunction(LOG_ERROR, moduleName + " flush completed with error");
-                            return false;
+                            // Flush did not complete successfully. Modules are already resumed;
+                            // data will be retried in the next regular sync cycle. Continue
+                            // monitoring remaining modules rather than aborting early.
+                            m_logFunction(LOG_INFO, moduleName + " flush did not complete — data will be retried in the next sync cycle");
+                            anyFailed = true;
                         }
 
                         completedModules.push_back(moduleName);
@@ -1296,27 +1424,89 @@ bool AgentInfoImpl::pollFlushCompletion(std::set<std::string> pendingModules)
 
         if (!pendingModules.empty())
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(FLUSH_POLL_DELAY_MS));
+            // Interruptible back-off: wake up at once if a stop is requested during the
+            // delay so shutdown is not held for FLUSH_POLL_DELAY_MS. On macOS the module
+            // thread is joined without a timeout (see the non-Linux branch in
+            // src/wazuh_modules/src/main.c), so a non-interruptible sleep here would stall
+            // modulesd shutdown.
+            std::unique_lock<std::mutex> lock(m_mutex);
+
+            if (m_cv.wait_for(lock,
+                              std::chrono::milliseconds(FLUSH_POLL_DELAY_MS),
+                              [this] { return m_stopped.load(); }))
+            {
+                break; // stop requested - exit the poll loop immediately
+            }
         }
     }
 
     if (pendingModules.empty())
     {
-        return true;
+        return !anyFailed;
     }
 
-    m_logFunction(LOG_INFO, "Module stopping, aborting pending operations polling");
+    m_logFunction(LOG_INFO, "Module stopping, aborting pending flush monitoring");
     return false;
 }
 
-bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModules)
+bool AgentInfoImpl::isModuleFirstSyncCompleted(const std::string& moduleName)
+{
+    // Ask the module whether its one-shot first synchronization has completed. SCA and syscollector
+    // answer get_first_sync_completed with a first_sync_completed field (1/0); while the first sync
+    // is still in progress the metadata is unset and the field is absent. When synchronization is
+    // disabled the module reports completed (see wm_sca.c / wm_syscollector.c), so we never defer
+    // forever on a sync that will not run.
+    const std::string message = createJsonCommand("get_first_sync_completed");
+    const ModuleResponse response = queryModuleWithRetry(moduleName, message);
+
+    try
+    {
+        const nlohmann::json parsed = nlohmann::json::parse(response.response);
+
+        if (parsed.contains("data") && parsed["data"].contains("first_sync_completed"))
+        {
+            const auto& value = parsed["data"]["first_sync_completed"];
+
+            if (value.is_number())
+            {
+                return value.get<int>() != 0;
+            }
+
+            if (value.is_boolean())
+            {
+                return value.get<bool>();
+            }
+        }
+
+        // No first_sync_completed field. SCA/syscollector answer get_first_sync_completed with an
+        // error while their first-sync marker is not set yet (metadata unset) — that is exactly the
+        // "first sync still in progress" state, so defer. A successful response without the field
+        // means the module has nothing to defer on, so treat it as completed and do not wedge
+        // coordination.
+        if (parsed.contains("error") && parsed["error"].is_number() && parsed["error"].get<int>() != 0)
+        {
+            return false;
+        }
+
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        // No / unparseable response (module unreachable): do not wedge coordination, treat as done.
+        m_logFunction(LOG_DEBUG,
+                      "Could not read first_sync_completed from " + moduleName + ": " + std::string(e.what()));
+        return true;
+    }
+}
+
+AgentInfoImpl::PauseCoordinationResult AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModules)
 {
     for (const auto& module : COORDINATION_MODULES)
     {
         if (m_stopped)
         {
             m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pause phase");
-            return false;
+            return PauseCoordinationResult::Failed;
         }
 
         m_logFunction(LOG_INFO, "Pausing " + module + " module for synchronization coordination");
@@ -1325,21 +1515,58 @@ bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModule
         ModuleResponse response = queryModuleWithRetry(module, pauseMessage);
         m_logFunction(LOG_DEBUG, "Response from " + module + " pause: " + response.response);
 
+        if (m_stopped)
+        {
+            m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pause phase");
+            return PauseCoordinationResult::Failed;
+        }
+
         if (response.success)
         {
             // FIM-specific: Poll for pause completion (pause is async for FIM)
             if (module == FIM_NAME)
             {
-                if (!pollFimPauseCompletion(module))
+                PauseProbeResult probe = pollFimPauseCompletion(module);
+
+                if (probe == PauseProbeResult::Deferred)
                 {
-                    m_logFunction(LOG_ERROR, module + " pause failed or timed out, aborting coordination");
+                    pausedModules.insert(module);
                     resumePausedModules(pausedModules);
-                    return false;
+                    return PauseCoordinationResult::Deferred;
+                }
+
+                if (probe == PauseProbeResult::Failed)
+                {
+                    pausedModules.insert(module);
+                    resumePausedModules(pausedModules);
+                    return PauseCoordinationResult::Failed;
                 }
             }
             else
             {
-                // Other modules: pause is synchronous, already completed
+                // SCA/syscollector pause synchronously, but like FIM they deliver their initial
+                // state via a one-shot first sync. Defer coordination until that completes so we do
+                // not pause/flush and advance the group/metadata version mid-first-sync (extends the
+                // FIM guard from #36762 to these modules).
+                if (!isModuleFirstSyncCompleted(module))
+                {
+                    if (m_deferralLoggedModules.insert(module).second)
+                    {
+                        m_logFunction(LOG_INFO,
+                                      "Deferring coordination until " + module +
+                                      " first sync completes, will retry next cycle");
+                    }
+                    else
+                    {
+                        m_logFunction(LOG_DEBUG, "Still deferring coordination until " + module + " first sync completes");
+                    }
+
+                    pausedModules.insert(module);
+                    resumePausedModules(pausedModules);
+                    return PauseCoordinationResult::Deferred;
+                }
+
+                m_deferralLoggedModules.erase(module);
                 m_logFunction(LOG_DEBUG, "Successfully paused " + module);
             }
 
@@ -1358,53 +1585,51 @@ bool AgentInfoImpl::pauseCoordinationModules(std::set<std::string>& pausedModule
             else
             {
                 // Communication error or other failure - abort coordination
-                m_logFunction(LOG_WARNING,
+                m_logFunction(LOG_DEBUG,
                               "Failed to pause " + module + " (communication error " +
                               std::to_string(response.errorCode) +
                               "), aborting coordination: " + response.response);
                 resumePausedModules(pausedModules);
-                return false;
+                return PauseCoordinationResult::Failed;
             }
         }
     }
 
-    // Return true even if pausedModules is empty - this means all modules are unavailable,
+    // Return Success even if pausedModules is empty - this means all modules are unavailable,
     // which is a valid state (not an error)
-    return true;
+    return PauseCoordinationResult::Success;
 }
 
-bool AgentInfoImpl::flushPausedModules(const std::set<std::string>& pausedModules)
+bool AgentInfoImpl::triggerModuleFlush(const std::set<std::string>& pausedModules)
 {
-    std::set<std::string> pendingModules;
-
     for (const auto& module : pausedModules)
     {
         if (m_stopped)
         {
-            m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during pending operations phase");
+            m_logFunction(LOG_INFO, "Agent stopping, aborting module coordination during flush trigger phase");
             return false;
         }
 
-        m_logFunction(LOG_INFO, "Waiting for " + module + " module to complete synchronization");
+        m_logFunction(LOG_DEBUG, "Triggering flush for " + module + " module");
 
         std::string flushMessage = createJsonCommand("flush");
         ModuleResponse response = queryModuleWithRetry(module, flushMessage);
-        m_logFunction(LOG_DEBUG, "Response from " + module + " flush: " + response.response);
+        m_logFunction(LOG_DEBUG, "Response from " + module + " flush trigger: " + response.response);
 
         if (!response.success)
         {
-            m_logFunction(LOG_ERROR,
-                          "Failed to flush " + module + " (error " + std::to_string(response.errorCode) +
+            m_logFunction(LOG_WARNING,
+                          "Failed to trigger flush for " + module + " (error " + std::to_string(response.errorCode) +
                           "), aborting coordination");
             return false;
         }
 
-        m_logFunction(LOG_DEBUG, "Successfully requested flush for " + module);
-        pendingModules.insert(module);
+        m_logFunction(LOG_DEBUG, "Successfully triggered flush for " + module);
     }
 
-    return pendingModules.empty() ? true : pollFlushCompletion(std::move(pendingModules));
+    return true;
 }
+
 
 int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModules,
                                        bool incrementVersion,
@@ -1427,9 +1652,13 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_ERROR,
-                          "Failed to get version from " + module + " (error " + std::to_string(response.errorCode) +
-                          "), aborting coordination");
+            if (!m_stopped && !response.isModuleUnavailable)
+            {
+                m_logFunction(LOG_WARNING,
+                              "Failed to get version from " + module + " (error " + std::to_string(response.errorCode) +
+                              "), aborting coordination");
+            }
+
             return -1;
         }
 
@@ -1454,7 +1683,7 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
         }
         catch (const std::exception& e)
         {
-            m_logFunction(LOG_ERROR,
+            m_logFunction(LOG_WARNING,
                           "Failed to parse JSON response from " + module + ": " + std::string(e.what()) +
                           " - Response: " + response.response);
             return -1;
@@ -1488,9 +1717,13 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
 
         if (!response.success)
         {
-            m_logFunction(LOG_WARNING,
-                          "Failed to set version on " + module + " (error " + std::to_string(response.errorCode) +
-                          "), aborting coordination");
+            if (!m_stopped && !response.isModuleUnavailable)
+            {
+                m_logFunction(LOG_WARNING,
+                              "Failed to set version on " + module + " (error " + std::to_string(response.errorCode) +
+                              "), aborting coordination");
+            }
+
             return -1;
         }
 
@@ -1500,13 +1733,13 @@ int AgentInfoImpl::calculateNewVersion(const std::set<std::string>& pausedModule
     return newVersion;
 }
 
-bool AgentInfoImpl::coordinateModules(const std::string& table)
+AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::string& table)
 {
     // Check if query function is available
     if (!m_queryModuleFunction)
     {
         m_logFunction(LOG_WARNING, "Module query function not available, skipping coordination");
-        return false;
+        return CoordinationResult::Failed;
     }
 
     // Determine if we should increment version based on table
@@ -1517,40 +1750,74 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
     // State tracking
     std::set<std::string> pausedModules;
     std::map<std::string, int> moduleVersions;
+    bool modulesResumed = false;
 
     m_logFunction(LOG_INFO, "Starting module coordination process");
 
     try
     {
         // Step 1: Pause all coordination modules
-        if (!pauseCoordinationModules(pausedModules))
+        PauseCoordinationResult pauseResult = pauseCoordinationModules(pausedModules);
+
+        if (pauseResult == PauseCoordinationResult::Deferred)
         {
-            return false;
+            // FIM first sync still in progress: modules already resumed inside
+            // pauseCoordinationModules. Retry on the next cycle, no error.
+            return CoordinationResult::Deferred;
+        }
+
+        if (pauseResult == PauseCoordinationResult::Failed)
+        {
+            return CoordinationResult::Failed;
         }
 
         if (pausedModules.empty())
         {
             m_logFunction(LOG_DEBUG, "No modules available for coordination, skipping synchronization");
-            return true;
+            return CoordinationResult::Success;
         }
 
-        // Step 2: Flush all paused modules
-        if (!flushPausedModules(pausedModules))
-        {
-            resumePausedModules(pausedModules);
-            return false;
-        }
-
-        // Step 3: Get versions, calculate new version, and set it on all modules
+        // Step 2: Get versions, calculate new version, and set it on all modules
         int newVersion = calculateNewVersion(pausedModules, incrementVersion, moduleVersions);
 
         if (newVersion < 0)
         {
             resumePausedModules(pausedModules);
-            return false;
+            return CoordinationResult::Failed;
         }
 
-        // Step 4: Build indices list based on enabled modules and synchronize
+        // Step 3: Trigger flush while still paused.
+        // fim_flush_in_progress is armed before resume, so FIM's sync thread will process it
+        // on its next cycle. run_check.c clears fim_flush_in_progress in both the pause+flush
+        // branch and the normal sync branch, so the flag is cleaned up regardless of timing.
+        if (!triggerModuleFlush(pausedModules))
+        {
+            resumePausedModules(pausedModules);
+            return CoordinationResult::Failed;
+        }
+
+        // Step 4: Resume all modules immediately. The pause window is now minimized to:
+        // pause → get_version → trigger_flush → resume. Modules restart scanning while
+        // we wait for the flush to complete (Step 5 below).
+        size_t coordinatedModulesCount = pausedModules.size();
+        resumePausedModules(pausedModules);
+        modulesResumed = true;
+
+        // Step 5: Wait for flush completion before handing the new version to the manager.
+        // Modules are already resumed, so their scans are not blocked during this wait.
+        // We must ensure the indexer has received all pending module events before the
+        // manager sees newVersion — otherwise the manager would try to reconcile
+        // documents that have not yet arrived at the indexer.
+        if (!pollFlushCompletion(pausedModules))
+        {
+            m_logFunction(LOG_INFO,
+                          "One or more module flushes did not complete; aborting version sync to avoid "
+                          "indexer inconsistency — coordination will be retried in the next cycle");
+            return CoordinationResult::Failed;
+        }
+
+        // Step 6: Build indices list based on enabled modules and synchronize.
+        // The indexer is now up to date — it is safe to hand the new version to the manager.
         std::vector<std::string> indicesToSync;
 
         for (const auto& module : pausedModules)
@@ -1566,45 +1833,51 @@ bool AgentInfoImpl::coordinateModules(const std::string& table)
 
         if (m_spSyncProtocol)
         {
-            bool syncSuccess = m_spSyncProtocol->synchronizeMetadataOrGroups(
-                                   TABLE_DELTA_MODE_MAP.at(table), indicesToSync, newVersion);
+            SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(
+                                              TABLE_DELTA_MODE_MAP.at(table), indicesToSync, newVersion);
 
-            if (!syncSuccess)
+            if (!syncResult.success)
             {
-                m_logFunction(LOG_WARNING, "Failed to synchronize " + table);
-                resumePausedModules(pausedModules);
-                return false;
+                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed to synchronize " + table +
+                              (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
+                return CoordinationResult::Failed;
             }
 
             m_logFunction(LOG_DEBUG, "Successfully synchronized " + table);
         }
         else
         {
-            m_logFunction(LOG_WARNING, "Sync protocol not available, skipping synchronization");
+            m_logFunction(LOG_INFO, "Sync protocol not available, skipping synchronization");
         }
-
-        // Step 5: Resume all modules
-        size_t coordinatedModulesCount = pausedModules.size();
-        resumePausedModules(pausedModules);
 
         m_logFunction(LOG_INFO, "Synchronization coordination completed successfully");
         m_logFunction(LOG_DEBUG,
                       "Coordinated modules: " + std::to_string(coordinatedModulesCount) +
                       ", New version: " + std::to_string(newVersion));
 
-        return true;
+        return CoordinationResult::Success;
     }
     catch (const std::exception& e)
     {
         m_logFunction(LOG_ERROR, "Exception during module coordination: " + std::string(e.what()));
-        resumePausedModules(pausedModules);
-        return false;
+
+        if (!modulesResumed)
+        {
+            resumePausedModules(pausedModules);
+        }
+
+        return CoordinationResult::Failed;
     }
     catch (...)
     {
         m_logFunction(LOG_ERROR, "Unknown exception during module coordination");
-        resumePausedModules(pausedModules);
-        return false;
+
+        if (!modulesResumed)
+        {
+            resumePausedModules(pausedModules);
+        }
+
+        return CoordinationResult::Failed;
     }
 }
 
@@ -1664,7 +1937,7 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 
             if (!m_dBSync)
             {
-                m_logFunction(LOG_WARNING, "Cannot set sync flag: DBSync not available");
+                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
                 return;
             }
         }
@@ -1701,7 +1974,7 @@ void AgentInfoImpl::loadSyncFlags()
 
             if (!m_dBSync)
             {
-                m_logFunction(LOG_WARNING, "Cannot load sync flags: DBSync not available");
+                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
                 return;
             }
 
@@ -1789,7 +2062,7 @@ void AgentInfoImpl::resetSyncFlag(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(LOG_WARNING, "Cannot reset sync flag: DBSync not available");
+                m_logFunction(LOG_DEBUG, "Cannot reset sync flag: DBSync not available");
                 return;
             }
         }
@@ -1854,9 +2127,14 @@ bool AgentInfoImpl::shouldPerformIntegrityCheck(const std::string& table, int in
     if (lastCheck == 0)
     {
         // Release lock before calling updateLastIntegrityTime to avoid deadlock
+        // (updateLastIntegrityTime internally acquires m_syncFlagsMutex).
         lock.unlock();
         updateLastIntegrityTime(table);
         m_logFunction(LOG_DEBUG, "Initialized integrity check timestamp for " + table);
+        /* unique_lock owns_ is false after explicit unlock() above; destructor will not call
+         * unlock() again. Coverity's built-in model does not track the owns_ flag correctly
+         * when updateLastIntegrityTime re-acquires the same mutex. */
+        // coverity[double_unlock]
         return false;
     }
 
@@ -1876,7 +2154,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
                 return;
             }
         }
@@ -1925,19 +2203,24 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
     try
     {
         m_logFunction(LOG_DEBUG, "Synchronization needed for " + table);
-        bool success = coordinateModules(table);
+        CoordinationResult result = coordinateModules(table);
 
-        if (success)
+        if (result == CoordinationResult::Success)
         {
             m_logFunction(LOG_INFO, "Successfully coordinated " + table);
             resetSyncFlag(table);
+            return true;
+        }
+        else if (result == CoordinationResult::Deferred)
+        {
+            m_logFunction(LOG_DEBUG, "Coordination of " + table + " deferred, sync flag retained for retry");
+            return false;
         }
         else
         {
-            m_logFunction(LOG_WARNING, "Failed to coordinate " + table + ", will retry in next cycle");
+            m_logFunction(LOG_INFO, "Failed to coordinate " + table + ", will retry in next cycle");
+            return false;
         }
-
-        return success;
     }
     catch (const std::exception& e)
     {
@@ -1965,7 +2248,7 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
 
         if (!m_spSyncProtocol)
         {
-            m_logFunction(LOG_WARNING, "Sync protocol not available, skipping integrity check");
+            m_logFunction(LOG_INFO, "Sync protocol not available, skipping integrity check");
             return false;
         }
 
@@ -1979,22 +2262,23 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         }
 
         // Perform integrity check - no globalVersion needed for CHECK modes
-        bool success = m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
+        SyncModuleResult syncResult = m_spSyncProtocol->synchronizeMetadataOrGroups(TABLE_CHECK_MODE_MAP.at(table), indicesToCheck);
 
         // Update the last sync time regardless of the synchronization result
         // This ensures we always wait for integrity_interval before trying again
         updateLastIntegrityTime(table);
 
-        if (success)
+        if (syncResult.success)
         {
             m_logFunction(LOG_INFO, "Successfully completed integrity check for " + table);
         }
         else
         {
-            m_logFunction(LOG_WARNING, "Failed integrity check for " + table);
+            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed integrity check for " + table +
+                          (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
         }
 
-        return success;
+        return syncResult.success;
     }
     catch (const std::exception& e)
     {

@@ -212,7 +212,11 @@ namespace PackageLinuxHelper
             {
                 // timegm converts tm to UTC epoch (not affected by local timezone)
                 time_t epoch = timegm(&tm);
-                install_time = std::to_string(static_cast<uint32_t>(epoch));
+
+                if (epoch >= 0)
+                {
+                    install_time = std::to_string(static_cast<uint32_t>(epoch));
+                }
             }
         }
 

@@ -52,6 +52,127 @@ setBuildCextra()
     mv "$tmp_config_os" "$config_os"
 }
 
+UPGRADE_PRESERVE_DIR=""
+
+UPGRADE_PRESERVE_CP="cp -Rp"
+__cp_test_dir=$(mktemp -d 2>/dev/null)
+if [ -n "${__cp_test_dir}" ] && [ -d "${__cp_test_dir}" ]; then
+    : > "${__cp_test_dir}/src" 2>/dev/null
+    if cp -a "${__cp_test_dir}/src" "${__cp_test_dir}/dst" 2>/dev/null; then
+        UPGRADE_PRESERVE_CP="cp -a"
+    fi
+    rm -rf "${__cp_test_dir}"
+fi
+unset __cp_test_dir
+
+# Keep backup metadata for manual recovery, but restore without -p/-a so
+# source upgrades keep the ownership and modes assigned by the installer.
+UPGRADE_PRESERVE_RESTORE_CP="cp -R"
+
+PrepareUpgradePreserve()
+{
+    UPGRADE_PRESERVE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/wazuh-${INSTYPE}-upgrade-preserve.XXXXXX" 2>/dev/null) || return 1
+    [ -n "${UPGRADE_PRESERVE_DIR}" ] && [ -d "${UPGRADE_PRESERVE_DIR}" ] || return 1
+
+    if [ -d "${INSTALLDIR}/etc" ]; then
+        ${UPGRADE_PRESERVE_CP} "${INSTALLDIR}/etc" "${UPGRADE_PRESERVE_DIR}/" || return 1
+    fi
+
+    if [ "X${INSTYPE}" = "Xmanager" ] && [ -d "${INSTALLDIR}/data" ]; then
+        mkdir -p "${UPGRADE_PRESERVE_DIR}/data" || return 1
+
+        for DATA_ENTRY in "${INSTALLDIR}/data/"* "${INSTALLDIR}/data/."[!.]* "${INSTALLDIR}/data/"..?*; do
+            [ -e "${DATA_ENTRY}" ] || continue
+            DATA_NAME=$(basename "${DATA_ENTRY}")
+            [ "${DATA_NAME}" = "tzdb" ] && continue
+            ${UPGRADE_PRESERVE_CP} "${DATA_ENTRY}" "${UPGRADE_PRESERVE_DIR}/data/" || return 1
+        done
+    fi
+}
+
+RestoreUpgradePreserve()
+{
+    [ -n "${UPGRADE_PRESERVE_DIR}" ] || return 0
+
+    if [ -d "${UPGRADE_PRESERVE_DIR}/etc" ]; then
+        mkdir -p "${INSTALLDIR}/etc" || return 1
+        ${UPGRADE_PRESERVE_RESTORE_CP} "${UPGRADE_PRESERVE_DIR}/etc/." "${INSTALLDIR}/etc/" || return 1
+    fi
+
+    if [ "X${INSTYPE}" = "Xmanager" ] && [ -d "${UPGRADE_PRESERVE_DIR}/data" ]; then
+        mkdir -p "${INSTALLDIR}/data" || return 1
+
+        for DATA_ENTRY in "${UPGRADE_PRESERVE_DIR}/data/"* "${UPGRADE_PRESERVE_DIR}/data/."[!.]* "${UPGRADE_PRESERVE_DIR}/data/"..?*; do
+            [ -e "${DATA_ENTRY}" ] || continue
+            ${UPGRADE_PRESERVE_RESTORE_CP} "${DATA_ENTRY}" "${INSTALLDIR}/data/" || return 1
+        done
+    fi
+
+    rm -rf "${UPGRADE_PRESERVE_DIR}" || return 1
+    UPGRADE_PRESERVE_DIR=""
+}
+
+CleanupUpgradePreserve()
+{
+    if [ -n "${UPGRADE_PRESERVE_DIR}" ] && [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
+        rm -rf "${UPGRADE_PRESERVE_DIR}"
+    fi
+}
+
+PrepareErrorExit()
+{
+    echo "ERROR: $1"
+    CleanupUpgradePreserve
+    exit 1
+}
+
+RestoreErrorExit()
+{
+    echo "ERROR: $1"
+    if [ -n "${UPGRADE_PRESERVE_DIR}" ] && [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
+        echo "Preserved files left at ${UPGRADE_PRESERVE_DIR} for manual recovery."
+    fi
+    exit 1
+}
+
+AttemptUpgradePreserveRestore()
+{
+    RESTORE_REASON=$1
+
+    [ -n "${UPGRADE_PRESERVE_DIR}" ] && [ -d "${UPGRADE_PRESERVE_DIR}" ] || return 0
+
+    echo ""
+    echo "${RESTORE_REASON}; attempting to restore preserved files..."
+    if RestoreUpgradePreserve; then
+        echo "Preserved files restored successfully."
+        return 0
+    fi
+
+    echo "ERROR: Could not restore preserved files automatically."
+    if [ -n "${UPGRADE_PRESERVE_DIR}" ] && [ -d "${UPGRADE_PRESERVE_DIR}" ]; then
+        echo "Manual recovery: contents are at ${UPGRADE_PRESERVE_DIR}"
+    fi
+    return 1
+}
+
+HandleUpgradeExit()
+{
+    EXIT_STATUS=$?
+    trap - 0
+
+    [ "${EXIT_STATUS}" = "0" ] && exit 0
+
+    AttemptUpgradePreserveRestore "ERROR: Upgrade failed"
+    exit "${EXIT_STATUS}"
+}
+
+HandleUpgradeInterrupt()
+{
+    trap - HUP INT TERM 0
+    AttemptUpgradePreserveRestore "WARNING: Upgrade interrupted"
+    exit 1
+}
+
 isPFFirewall()
 {
     UNAME=$(uname)
@@ -90,15 +211,10 @@ Install()
     elif [ "X$NUNAME" = "XBitrig" ]; then
           MAKEBIN=gmake
     fi
-    if grep -q "Alpine Linux" /etc/os-release 2>/dev/null; then
-        ALPINE_DEPS="EXTERNAL_SRC_ONLY=1"
-    fi
-
     # Legacy RHEL/CentOS versions cannot build all modules.
     OS_VERSION_FOR_SYSC="${DIST_NAME}"
     if ([ "X${OS_VERSION_FOR_SYSC}" = "Xrhel" ] || [ "X${OS_VERSION_FOR_SYSC}" = "Xcentos" ]) && [ ${DIST_VER} -le 5 ]; then
         AUDIT_FLAG="USE_AUDIT=no"
-        MSGPACK_FLAG="USE_MSGPACK_OPT=no"
         if [ ${DIST_VER} -lt 5 ]; then
             SYSC_FLAG="DISABLE_SYSC=yes"
         fi
@@ -115,14 +231,14 @@ Install()
     # "binary-install" reuses prebuilt artifacts from the workspace and skips compilation.
     if [ "X${USER_BINARYINSTALL}" = "X" ]; then
         # Download external libraries only when the folder is still empty.
-        [ -z "$(find external -mindepth 1 -maxdepth 1 -type d 2>/dev/null)" ] && ${MAKEBIN} deps ${ALPINE_DEPS} TARGET=${INSTYPE}
+        [ -z "$(find external -mindepth 1 -maxdepth 1 -type d 2>/dev/null)" ] && ${MAKEBIN} deps TARGET=${INSTYPE}
 
         if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
             CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
         fi
 
         # DATABASE=pgsql|mysql enables alert output through those backends.
-        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${MSGPACK_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
+        ${MAKEBIN} TARGET=${INSTYPE} INSTALLDIR=${INSTALLDIR} ${SYSC_FLAG} ${AUDIT_FLAG} ${CPYTHON_FLAGS} -j${THREADS} build
 
         if [ $? != 0 ]; then
             cd ../
@@ -136,8 +252,28 @@ Install()
         UpdateStopWAZUH
     fi
 
+    if [ "X${update_only}" = "Xyes" ] && { [ "X${INSTYPE}" = "Xmanager" ]; }; then
+        PrepareUpgradePreserve || PrepareErrorExit "Could not prepare ${INSTYPE} upgrade preserve backup."
+        trap 'HandleUpgradeInterrupt' HUP INT TERM
+        trap 'HandleUpgradeExit' 0
+    fi
+
     # Install selected components.
     InstallWazuh
+    INSTALL_STATUS=$?
+
+    if [ "${INSTALL_STATUS}" != "0" ]; then
+        if [ "X${update_only}" = "Xyes" ] && { [ "X${INSTYPE}" = "Xmanager" ]; }; then
+            trap - HUP INT TERM 0
+            AttemptUpgradePreserveRestore "ERROR: Upgrade failed"
+        fi
+        exit "${INSTALL_STATUS}"
+    fi
+
+    if [ "X${update_only}" = "Xyes" ] && { [ "X${INSTYPE}" = "Xmanager" ]; }; then
+        trap - HUP INT TERM 0
+        RestoreUpgradePreserve || RestoreErrorExit "Could not restore ${INSTYPE} upgrade preserve backup."
+    fi
 
     cd ../
 
@@ -768,6 +904,21 @@ validateUpgradeCompatibility()
     UPGRADE_BLOCKED="no"
     ERROR_MESSAGE=""
 
+    printUnsupportedManagerUpgrade()
+    {
+        DETECTED_VERSION=$(echo "${1:-unknown}" | sed 's/^v//')
+        cat <<EOF
+==============================================================
+ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+
+Detected installed version: ${DETECTED_VERSION}
+
+A clean installation of Wazuh manager 5.x is required.
+Refer to the 5.x migration guide for more information.
+==============================================================
+EOF
+    }
+
     if [ "$USER_INSTALL_TYPE" = "agent" ]; then
         # Agent upgrades are supported only from >= 4.14.0.
         if [ -n "$OLD_MAJOR" ] && [ -n "$OLD_MINOR" ]; then
@@ -780,18 +931,18 @@ Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
             fi
         fi
     else
-        # Manager upgrades from 4.x to 5.x are blocked.
+        # Manager upgrades from versions prior to 5.x are blocked.
         if [ -n "$OLD_MAJOR" ] && [ "$OLD_MAJOR" -lt 5 ]; then
             UPGRADE_BLOCKED="yes"
-            ERROR_MESSAGE="Current version: $USER_OLD_VERSION
-Target version:  5.0.0
-
-Upgrade to Wazuh 5.0.0 is not supported from version 4.x.
-A clean installation is required for managers."
         fi
     fi
 
     if [ "$UPGRADE_BLOCKED" = "yes" ]; then
+        if [ "$USER_INSTALL_TYPE" != "agent" ]; then
+            printUnsupportedManagerUpgrade "$USER_OLD_VERSION"
+            exit 1
+        fi
+
         echo ""
         echo "═════════════════════════════════════════════════════════════════"
         echo "  UPGRADE BLOCKED: Incompatible version detected"
