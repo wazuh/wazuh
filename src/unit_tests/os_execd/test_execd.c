@@ -404,18 +404,18 @@ static void run_ExecdStart_exit_status_case(void **state, int wpclose_return, co
 static void test_ExecdStart_ar_reports_failure(void **state) {
     /* wait()-encoded status for a normal exit with code 3: WEXITSTATUS(status) == 3 */
     run_ExecdStart_exit_status_case(state, 3 << 8,
-        "Active response command 'block-ip' reported failure (exit code 3).");
+        "Active response command '" AR_BINDIR "/block-ip' reported failure (exit code 3).");
 }
 
 static void test_ExecdStart_ar_terminated_by_signal(void **state) {
     /* wait()-encoded status for termination by SIGKILL (9): not WIFEXITED */
     run_ExecdStart_exit_status_case(state, 9,
-        "Active response command 'block-ip' terminated abnormally.");
+        "Active response command '" AR_BINDIR "/block-ip' terminated abnormally.");
 }
 
 static void test_ExecdStart_ar_wait_failed(void **state) {
     run_ExecdStart_exit_status_case(state, -1,
-        "Could not determine exit status of active response command 'block-ip'.");
+        "Could not determine exit status of active response command '" AR_BINDIR "/block-ip'.");
 }
 
 static void test_ExecdStart_timeout_not_repeated(void **state) {

@@ -318,7 +318,7 @@ static void test_WinExecdRun_ar_reports_failure(void **state) {
     will_return(wrap_fprintf, 0);
 
     /* On Windows, wpclose() returns the exit code directly; any nonzero value is a failure */
-    expect_string(__wrap__mwarn, formatted_msg, "Active response command 'block-ip' reported failure (exit code 3).");
+    expect_string(__wrap__mwarn, formatted_msg, "Active response command '" AR_BINDIR "/block-ip' reported failure (exit code 3).");
     will_return(__wrap_wpclose, 3);
 
     ExecdRun(message);

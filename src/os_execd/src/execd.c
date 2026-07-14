@@ -509,7 +509,7 @@ void ExecdRun(char *exec_msg, int *childcount)
         fprintf(wfd->file_in, "%s\n", cmd_parameters);
         fflush(wfd->file_in);
 
-        LogArExitStatus(name, wpclose(wfd));
+        LogArExitStatus(cmd[0], wpclose(wfd));
         os_free(cmd_copy);
 #ifndef WIN32
         (*childcount)++;
