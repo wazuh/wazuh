@@ -331,6 +331,11 @@ void AgentInfoImpl::setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, u
                   ", maxEps=" + std::to_string(maxEps));
 }
 
+void AgentInfoImpl::setIsShuttingDownFunction(std::function<bool()> isShuttingDown)
+{
+    m_isShuttingDown = std::move(isShuttingDown);
+}
+
 bool AgentInfoImpl::parseResponseBuffer(const uint8_t* data, size_t length)
 {
     if (m_spSyncProtocol && data)
@@ -752,7 +757,7 @@ bool AgentInfoImpl::updateChanges(const std::string& table, const nlohmann::json
 
         if (!m_dBSync)
         {
-            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
+            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "DBSync not available for table " + table);
             return false;
         }
 
@@ -1810,9 +1815,19 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
         // documents that have not yet arrived at the indexer.
         if (!pollFlushCompletion(pausedModules))
         {
-            m_logFunction(LOG_INFO,
-                          "One or more module flushes did not complete; aborting version sync to avoid "
-                          "indexer inconsistency — coordination will be retried in the next cycle");
+            if (isShutdownInProgress())
+            {
+                // No "next cycle": the module is stopping, so version sync is simply not handed over.
+                m_logFunction(LOG_INFO,
+                              "Module flush aborted: the module is stopping.");
+            }
+            else
+            {
+                m_logFunction(LOG_INFO,
+                              "One or more module flushes did not complete; aborting version sync to avoid "
+                              "indexer inconsistency — coordination will be retried in the next cycle");
+            }
+
             return CoordinationResult::Failed;
         }
 
@@ -1838,8 +1853,17 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
 
             if (!syncResult.success)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed to synchronize " + table +
-                              (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
+                if (isShutdownInProgress() || syncResult.stopped)
+                {
+                    // Not a real failure: the sync was aborted because the module is stopping.
+                    m_logFunction(LOG_DEBUG, "Synchronization of " + table + " aborted: the module is stopping.");
+                }
+                else
+                {
+                    m_logFunction(LOG_WARNING, "Failed to synchronize " + table +
+                                  (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
+                }
+
                 return CoordinationResult::Failed;
             }
 
@@ -1937,7 +1961,7 @@ void AgentInfoImpl::setSyncFlag(const std::string& table, bool value)
 
             if (!m_dBSync)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
+                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot set sync flag: DBSync not available");
                 return;
             }
         }
@@ -1974,7 +1998,7 @@ void AgentInfoImpl::loadSyncFlags()
 
             if (!m_dBSync)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
+                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot load sync flags: DBSync not available");
                 return;
             }
 
@@ -2154,7 +2178,7 @@ void AgentInfoImpl::updateLastIntegrityTime(const std::string& table)
 
             if (!m_dBSync)
             {
-                m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
+                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Cannot update last integrity time: DBSync not available");
                 return;
             }
         }
@@ -2216,6 +2240,12 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
             m_logFunction(LOG_DEBUG, "Coordination of " + table + " deferred, sync flag retained for retry");
             return false;
         }
+        else if (isShutdownInProgress())
+        {
+            // Not a real failure and there is no "next cycle": the module is stopping.
+            m_logFunction(LOG_INFO, "Coordination of " + table + " aborted: the module is stopping.");
+            return false;
+        }
         else
         {
             m_logFunction(LOG_INFO, "Failed to coordinate " + table + ", will retry in next cycle");
@@ -2272,9 +2302,14 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         {
             m_logFunction(LOG_INFO, "Successfully completed integrity check for " + table);
         }
+        else if (isShutdownInProgress() || syncResult.stopped)
+        {
+            // Not a real failure: the integrity check was aborted because the module is stopping.
+            m_logFunction(LOG_DEBUG, "Integrity check for " + table + " aborted: the module is stopping.");
+        }
         else
         {
-            m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Failed integrity check for " + table +
+            m_logFunction(LOG_WARNING, "Failed integrity check for " + table +
                           (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
         }
 

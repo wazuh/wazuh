@@ -112,7 +112,7 @@ extern "C" {
     {
         try
         {
-            if (!handle) return {false, {}};
+            if (!handle) return {false, {}, false};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
@@ -126,15 +126,17 @@ extern "C" {
 
             cResult.failure_reason[SYNC_FAILURE_REASON_MAX_LEN - 1] = '\0';
 
+            cResult.stopped = cppResult.stopped;
+
             return cResult;
         }
         catch (const std::exception& ex)
         {
-            return {false, {}};
+            return {false, {}, false};
         }
         catch (...)
         {
-            return {false, {}};
+            return {false, {}, false};
         }
     }
 
@@ -205,7 +207,7 @@ extern "C" {
     {
         try
         {
-            if (!handle || !indices || indices_count == 0) return {false, {}};
+            if (!handle || !indices || indices_count == 0) return {false, {}, false};
 
             // Convert C array of strings to C++ vector
             std::vector<std::string> indices_vec;
@@ -220,7 +222,7 @@ extern "C" {
                 }
             }
 
-            if (indices_vec.empty()) return {false, {}};
+            if (indices_vec.empty()) return {false, {}, false};
 
             auto* wrapper = reinterpret_cast<AgentSyncProtocolWrapper*>(handle);
 
@@ -236,15 +238,17 @@ extern "C" {
 
             cResult.failure_reason[SYNC_FAILURE_REASON_MAX_LEN - 1] = '\0';
 
+            cResult.stopped = cppResult.stopped;
+
             return cResult;
         }
         catch (const std::exception& ex)
         {
-            return {false, {}};
+            return {false, {}, false};
         }
         catch (...)
         {
-            return {false, {}};
+            return {false, {}, false};
         }
     }
 
