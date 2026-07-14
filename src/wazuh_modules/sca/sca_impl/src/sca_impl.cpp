@@ -567,7 +567,16 @@ bool SecurityConfigurationAssessment::syncModule(Mode mode)
     }
     else
     {
-        LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed" + (result.failureReason.empty() ? "." : ": " + result.failureReason));
+        if (result.stopped || !m_keepRunning.load())
+        {
+            // Not a real failure: the sync was aborted because the module is stopping.
+            // Report it as an expected event, not a WARNING.
+            LoggingHelper::getInstance().log(LOG_INFO, "SCA synchronization aborted: the module is stopping.");
+        }
+        else
+        {
+            LoggingHelper::getInstance().log(LOG_WARNING, "SCA synchronization failed" + (result.failureReason.empty() ? "." : ": " + result.failureReason));
+        }
     }
 
     return result.success;
@@ -807,6 +816,12 @@ int SecurityConfigurationAssessment::executeFlushSync()
     {
         LoggingHelper::getInstance().log(LOG_DEBUG, "SCA flush completed successfully");
         return 0;
+    }
+    else if (result.stopped || !m_keepRunning.load())
+    {
+        // Not a real failure: the flush sync was aborted because the module is stopping.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush aborted: the module is stopping.");
+        return -1;
     }
     else
     {

@@ -26,10 +26,13 @@ extern "C" {
 /// Returned by sync entry points to report both outcome and failure detail.
 /// @var success        true if synchronization completed successfully; false otherwise.
 /// @var failure_reason Human-readable reason string when available; may be empty if no specific reason was recorded.
+/// @var stopped        true if the operation was aborted because a stop/shutdown was requested; lets the
+///                     caller demote an expected shutdown-time failure from WARNING to INFO/DEBUG.
 typedef struct SyncModuleResult_t
 {
     bool success;
     char failure_reason[SYNC_FAILURE_REASON_MAX_LEN];
+    bool stopped;
 } SyncModuleResult_t;
 
 /// @brief Defines the type of modification operation.

@@ -1843,8 +1843,17 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
 
             if (!syncResult.success)
             {
-                m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Failed to synchronize " + table +
-                              (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
+                if (isShutdownInProgress() || syncResult.stopped)
+                {
+                    // Not a real failure: the sync was aborted because the module is stopping.
+                    m_logFunction(LOG_DEBUG, "Synchronization of " + table + " aborted: the module is stopping.");
+                }
+                else
+                {
+                    m_logFunction(LOG_WARNING, "Failed to synchronize " + table +
+                                  (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
+                }
+
                 return CoordinationResult::Failed;
             }
 
@@ -2277,9 +2286,14 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
         {
             m_logFunction(LOG_INFO, "Successfully completed integrity check for " + table);
         }
+        else if (isShutdownInProgress() || syncResult.stopped)
+        {
+            // Not a real failure: the integrity check was aborted because the module is stopping.
+            m_logFunction(LOG_DEBUG, "Integrity check for " + table + " aborted: the module is stopping.");
+        }
         else
         {
-            m_logFunction(isShutdownInProgress() ? LOG_DEBUG : LOG_WARNING, "Failed integrity check for " + table +
+            m_logFunction(LOG_WARNING, "Failed integrity check for " + table +
                           (syncResult.failureReason.empty() ? "." : ": " + syncResult.failureReason));
         }
 

@@ -32,4 +32,8 @@ struct SyncModuleResult
 {
     bool success{false};
     std::string failureReason;
+    /// @brief True when the operation was aborted because a stop/shutdown was requested.
+    /// Lets the calling module demote an expected shutdown-time failure from WARNING to
+    /// INFO/DEBUG.
+    bool stopped{false};
 };

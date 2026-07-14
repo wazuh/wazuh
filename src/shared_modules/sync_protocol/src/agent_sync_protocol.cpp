@@ -166,7 +166,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
 
     if (!m_transport->checkStatus())
     {
-        return {false, {}};
+        // Propagate the reason so the calling module emits a single, informative message at the
+        // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
+        // itself only logs the low-level detail at debug.
+        return {false, "Failed to open the local message queue.", shouldStop()};
     }
 
     // Guard against concurrent calls. The timer thread and the AsyncFlushController
@@ -316,8 +319,11 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     }
 
     std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+    // Capture the stop state before clearing it so the caller can demote an expected
+    // shutdown-time failure from WARNING to INFO/DEBUG.
+    const bool stopped = shouldStop();
     clearSyncState();
-    return {success, failureReason};
+    return {success, failureReason, stopped};
 }
 
 bool AgentSyncProtocol::requiresFullSync(const std::string& index,
@@ -396,7 +402,10 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
 
     if (!m_transport->checkStatus())
     {
-        return {false, {}};
+        // Propagate the reason so the calling module emits a single, informative message at the
+        // right level (WARNING on a real failure, INFO "aborted" during shutdown). The transport
+        // itself only logs the low-level detail at debug.
+        return {false, "Failed to open the local message queue.", shouldStop()};
     }
 
     clearSyncState();
@@ -432,8 +441,11 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     }
 
     std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
+    // Capture the stop state before clearing it so the caller can demote an expected
+    // shutdown-time failure from WARNING to INFO/DEBUG.
+    const bool stopped = shouldStop();
     clearSyncState();
-    return {success, failureReason};
+    return {success, failureReason, stopped};
 }
 
 bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,

@@ -1028,6 +1028,10 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
 
             if (sync_result.success) {
                 minfo("FIM synchronization requested by agent-info finished successfully.");
+            } else if (sync_result.stopped || fim_shutdown_process_on()) {
+                // Not a real failure: the sync was aborted because FIM is stopping.
+                // Report it as an expected event, not a WARNING.
+                minfo("FIM synchronization requested by agent-info aborted: FIM is stopping.");
             } else {
                 mwarn("FIM synchronization requested by agent-info failed%s%s",
                       sync_result.failure_reason[0] != '\0' ? ": " : "",
@@ -1069,6 +1073,10 @@ void * fim_run_integrity(__attribute__((unused)) void * args) {
                     first_sync_completed = true;
                     atomic_int_set(&syscheck.fim_first_sync_completed, 1);
                 }
+            } else if (sync_result.stopped || fim_shutdown_process_on()) {
+                // Not a real failure: the sync was aborted because FIM is stopping.
+                // Report it as an expected event, not a WARNING.
+                minfo("FIM synchronization aborted: FIM is stopping.");
             } else {
                 mwarn("FIM synchronization failed%s%s", sync_result.failure_reason[0] != '\0' ? ": " : "", sync_result.failure_reason);
             }

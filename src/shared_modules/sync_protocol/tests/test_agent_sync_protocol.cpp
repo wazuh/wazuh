@@ -204,7 +204,37 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleNoQueueAvailable)
                   );
 
     EXPECT_FALSE(result.success);
-    EXPECT_EQ(result.failureReason, "");
+    EXPECT_EQ(result.failureReason, "Failed to open the local message queue.");
+    // No stop was requested, so the failure must not be flagged as shutdown-induced.
+    EXPECT_FALSE(result.stopped);
+}
+
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleReportsStoppedWhenStopRequested)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions failingStartMqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return -1; }, // Fail to start queue
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
+
+    // Simulate a shutdown/stop being requested before the sync runs.
+    protocol->stop();
+
+    SyncModuleResult result = protocol->synchronizeModule(
+                      Mode::DELTA
+                  );
+
+    EXPECT_FALSE(result.success);
+    // The failure happened while a stop was in progress: the module can demote its log.
+    EXPECT_TRUE(result.stopped);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleFetchAndMarkForSyncThrowsException)
@@ -3220,7 +3250,7 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithFailedQueueStart)
                   );
 
     EXPECT_FALSE(result.success);
-    EXPECT_EQ(result.failureReason, "");
+    EXPECT_EQ(result.failureReason, "Failed to open the local message queue.");
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsStartAckTimeout)

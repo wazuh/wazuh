@@ -2285,8 +2285,18 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
         {
             overallSuccess = false;
             failureReason = result.failureReason;
-            m_logFunction(LOG_WARNING, "Syscollector synchronization failed" +
-                          (result.failureReason.empty() ? "." : ": " + result.failureReason));
+
+            if (result.stopped || m_stopping.load())
+            {
+                // Not a real failure: the sync was aborted because the module is stopping.
+                // Report it as an expected event, not a WARNING.
+                m_logFunction(LOG_INFO, "Syscollector synchronization aborted: the module is stopping.");
+            }
+            else
+            {
+                m_logFunction(LOG_WARNING, "Syscollector synchronization failed" +
+                              (result.failureReason.empty() ? "." : ": " + result.failureReason));
+            }
         }
     }
 
@@ -2328,8 +2338,16 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 failureReason = vdResult.failureReason;
             }
 
-            m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed" +
-                          (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason));
+            if (vdResult.stopped || m_stopping.load())
+            {
+                // Not a real failure: the VD sync was aborted because the module is stopping
+                m_logFunction(LOG_INFO, "Syscollector VD synchronization aborted: the module is stopping.");
+            }
+            else
+            {
+                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed" +
+                              (vdResult.failureReason.empty() ? "." : ": " + vdResult.failureReason));
+            }
         }
     }
 
