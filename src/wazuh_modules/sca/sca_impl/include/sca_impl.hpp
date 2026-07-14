@@ -254,6 +254,11 @@ class SecurityConfigurationAssessment
         /// @return true if DataClean was sent and handled successfully
         bool handleAllPoliciesRemoved();
 
+        /// @brief Handle report events when internal limit changed
+        /// @param demotedIds Check ids demoted by the limit change
+        /// @param promotedIds Check ids promoted by the limit change
+        void handleLimitEvents(const std::vector<std::string>& demotedIds, const std::vector<std::string>& promotedIds);
+
         /// @brief SCA module name
         std::string m_name = "SCA";
 
