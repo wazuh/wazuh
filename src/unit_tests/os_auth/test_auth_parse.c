@@ -24,7 +24,8 @@ typedef struct _mocked_log {
     char* merror;
     char* mwarn;
     char* minfo;
-    char* mdebug;
+    char* mdebug1;
+    char* mdebug1_2;
 } mocked_log;
 
 //Sets all the expected log messages
@@ -36,10 +37,13 @@ void set_expected_log (mocked_log* log) {
             expect_string(__wrap__mwarn, formatted_msg, log->mwarn);
     }
     if (log->minfo) {
-            expect_string(__wrap__mdebug1, formatted_msg, log->minfo);
+            expect_string(__wrap__minfo, formatted_msg, log->minfo);
     }
-    if (log->mdebug) {
-            expect_string(__wrap__mdebug1, formatted_msg, log->mdebug);
+    if (log->mdebug1) {
+            expect_string(__wrap__mdebug1, formatted_msg, log->mdebug1);
+    }
+    if (log->mdebug1_2) {
+            expect_string(__wrap__mdebug1, formatted_msg, log->mdebug1_2);
     }
 }
 
@@ -68,35 +72,35 @@ typedef struct _parse_evaluator {
 } parse_evaluator;
 
 parse_evaluator parse_values_default_cfg [] = {
-    { "OSSEC A:'agent1'", "192.0.0.1", NULL,                                                      {"192.0.0.1", "agent1", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent1) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent2' G:'Group1'", "192.0.0.1", NULL,                                           {"192.0.0.1", "agent2", "Group1", NULL},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent2) from: 192.0.0.1", "Group(s) is: Group1"} },
-    { "OSSEC A:'agent3' G:'Group1,Group2'", "192.0.0.1", NULL,                                    {"192.0.0.1", "agent3", "Group1,Group2", NULL},               {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC A:'agent4' G:'Group1,Group2,Group1'", "192.0.0.1", NULL,                             {"192.0.0.1", "agent4", "Group1,Group2", NULL},               {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent4) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC PASS: pass123 OSSEC A:'agent5'", "192.0.0.1", "pass123",                             {"192.0.0.1", "agent5", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent6' IP:'192.0.0.2'", "192.0.0.1", NULL,                                       {"192.0.0.2", "agent6", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent6) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent7' K:'07f05add1049244e7e71ad0f54f24d8094cd8f8b'", "192.0.0.1", NULL,         {"192.0.0.1", "agent7", NULL, "07f05add1049244e7e71ad0f54f24d8094cd8f8b"},     {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent7) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent8' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,                            {"192.0.0.3", "agent8", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent8) from: 192.0.0.1", NULL} },
-    { "OSSEC PASS: pass123 OSSEC A:'agent9' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", "pass123",   {"192.0.0.3", "agent9", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent9) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent10' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,         {"192.0.0.3", "agent10", "Group1,Group2", "ABC123"},          {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent10) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC A:'agent11' V:'v4.5.0'", "192.0.0.1", NULL,                                          {"192.0.0.1", "agent11", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent11) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent1'", "192.0.0.1", NULL,                                                      {"192.0.0.1", "agent1", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent1) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent2' G:'Group1'", "192.0.0.1", NULL,                                           {"192.0.0.1", "agent2", "Group1", NULL},                      {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent2) from: 192.0.0.1", "Group(s) is: Group1"} },
+    { "OSSEC A:'agent3' G:'Group1,Group2'", "192.0.0.1", NULL,                                    {"192.0.0.1", "agent3", "Group1,Group2", NULL},               {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent4' G:'Group1,Group2,Group1'", "192.0.0.1", NULL,                             {"192.0.0.1", "agent4", "Group1,Group2", NULL},               {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent4) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC PASS: pass123 OSSEC A:'agent5'", "192.0.0.1", "pass123",                             {"192.0.0.1", "agent5", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent5) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent6' IP:'192.0.0.2'", "192.0.0.1", NULL,                                       {"192.0.0.2", "agent6", NULL, NULL},                          {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent6) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent7' K:'07f05add1049244e7e71ad0f54f24d8094cd8f8b'", "192.0.0.1", NULL,         {"192.0.0.1", "agent7", NULL, "07f05add1049244e7e71ad0f54f24d8094cd8f8b"},     {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent7) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent8' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,                            {"192.0.0.3", "agent8", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent8) from: 192.0.0.1", NULL} },
+    { "OSSEC PASS: pass123 OSSEC A:'agent9' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", "pass123",   {"192.0.0.3", "agent9", NULL, "ABC123"},                      {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent9) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent10' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123'", "192.0.0.1", NULL,         {"192.0.0.3", "agent10", "Group1,Group2", "ABC123"},          {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent10) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent11' V:'v4.5.0'", "192.0.0.1", NULL,                                          {"192.0.0.1", "agent11", NULL, NULL},                         {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent11) from: 192.0.0.1", NULL} },
 
-    { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
-    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {"Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL, NULL} },
-    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL} },
-    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {"Invalid agent name:  from 192.0.0.1", NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
-    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent3' G:'Group1,Group2", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated group field"}, {"Unterminated group field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3 K:'ABC123'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated IP field"}, {"Unterminated IP field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {"Unterminated key field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
-    { "OSSEC A:'agent3' V:'v4.5.0", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated version field"},    {"Unterminated version field", NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
-    { "OSSEC A:'agent4' V:'v5.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {"Incompatible version for new agent from: 192.0.0.1", NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent0'", "192.0.0.1", "pass123",                       {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {NULL, NULL, "Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL} },
+    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", "pass123",   {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid password"},              {NULL, NULL, "Invalid password provided by 192.0.0.1. Closing connection.", NULL, NULL} },
+    { "OSSEC PASS: pass124 OSSEC A:'agent0'", "192.0.0.1", NULL,        {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid request for new agent"}, {"Invalid request for new agent from: 192.0.0.1", NULL, NULL, NULL, NULL} },
+    { "OSSEC A:''", "192.0.0.1", NULL,                                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: "},          {"Invalid agent name:  from 192.0.0.1", NULL, NULL, "Received request for a new agent () from: 192.0.0.1", NULL} },
+    { "OSSEC A:'inv;agent'", "192.0.0.1", NULL,                         {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Invalid agent name: inv;agent"}, {"Invalid agent name: inv;agent from 192.0.0.1", NULL, NULL, "Received request for a new agent (inv;agent) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent3' G:'Group1,Group2", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated group field"}, {"Unterminated group field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3 K:'ABC123'", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated IP field"}, {"Unterminated IP field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent3' G:'Group1,Group2' IP:'192.0.0.3' K:'ABC123", "192.0.0.1", NULL,           {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated key field"}, {"Unterminated key field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", "Group(s) is: Group1,Group2"} },
+    { "OSSEC A:'agent3' V:'v4.5.0", "192.0.0.1", NULL,                  {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Unterminated version field"},    {"Unterminated version field", NULL, NULL, "Received request for a new agent (agent3) from: 192.0.0.1", NULL} },
+    { "OSSEC A:'agent4' V:'v5.6.0'", "192.0.0.1", NULL,                 {NULL, NULL, NULL, NULL}, {OS_INVALID,"ERROR: Agent version must be lower or equal to manager version"},          {"Incompatible version for new agent from: 192.0.0.1", NULL, NULL, "Received request for a new agent (agent4) from: 192.0.0.1", NULL} },
 
     {0}
 };
 
 parse_evaluator parse_values_without_use_src_ip_cfg [] = {
-    {"OSSEC A:'agent1'", "192.0.0.1", NULL,                             {"any", "agent1", NULL, NULL},                    {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent1) from: 192.0.0.1", NULL} },
-    {"OSSEC A:'agent2' IP:'192.0.0.2'", "192.0.0.1", NULL,              {"192.0.0.2", "agent2", NULL, NULL},              {OS_SUCCESS,""}, {NULL, NULL, "Received request for a new agent (agent2) from: 192.0.0.1", NULL} },
+    {"OSSEC A:'agent1'", "192.0.0.1", NULL,                             {"any", "agent1", NULL, NULL},                    {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent1) from: 192.0.0.1", NULL} },
+    {"OSSEC A:'agent2' IP:'192.0.0.2'", "192.0.0.1", NULL,              {"192.0.0.2", "agent2", NULL, NULL},              {OS_SUCCESS,""}, {NULL, NULL, NULL, "Received request for a new agent (agent2) from: 192.0.0.1", NULL} },
 
     {0}
 };
