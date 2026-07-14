@@ -154,8 +154,8 @@ static int test_teardown_empty_hash_table(void ** state) {
 
 void test_rem_create_state_json(void ** state) {
     will_return(__wrap_time, 123456789);
-    will_return(__wrap_rem_get_qsize, 789);
-    will_return(__wrap_rem_get_tsize, 100000);
+    will_return(__wrap_rem_get_input_bytes_used, 789);
+    will_return(__wrap_rem_get_input_max_bytes, 100000);
 
     cJSON* state_json = rem_create_state_json();
 
