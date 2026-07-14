@@ -256,13 +256,13 @@ int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2)
     //Policy Monitoring Module
     if (!strcmp(node->element, WM_SCA_CONTEXT.name)) {
 #ifdef CLIENT
-        if (wm_sca_read(xml,children, cur_wmodule) < 0) {
+        if (wm_sca_read(xml,children, cur_wmodule, 0) < 0) {
             OS_ClearNode(children);
             return OS_INVALID;
         }
 #else
         if (agent_cfg) {
-            if (wm_sca_read(xml,children, cur_wmodule) < 0) {
+            if (wm_sca_read(xml,children, cur_wmodule, 1) < 0) {
                 OS_ClearNode(children);
                 return OS_INVALID;
             }

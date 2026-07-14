@@ -124,11 +124,6 @@ static void test_Test_WModule_sca_valid_content_is_accepted(void **state) {
         fail();
     }
 
-    /* wm_sca_read() always scans the default ruleset folder, which does not
-     * exist relative to the test binary's working directory. */
-    expect_any(__wrap__mtinfo, tag);
-    expect_any(__wrap__mtinfo, formatted_msg);
-
     assert_int_equal(Test_WModule(TEST_CONF_PATH), 0);
 }
 
@@ -140,9 +135,6 @@ static void test_Test_WModule_sca_invalid_content_is_reported(void **state) {
                     "</agent_config>") != 0) {
         fail();
     }
-
-    expect_any(__wrap__mtinfo, tag);
-    expect_any(__wrap__mtinfo, formatted_msg);
 
     expect_any(__wrap__mterror, tag);
     expect_string(__wrap__mterror, formatted_msg, "Invalid content for tag 'enabled'");
