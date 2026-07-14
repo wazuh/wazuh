@@ -55,7 +55,7 @@ original_payload = {
 
 @pytest.fixture(autouse=True)
 def clear_generate_keypair_cache():
-    authentication.generate_keypair.cache_clear()
+    authentication.clear_keypair()
 
 def test_check_user_master():
     result = authentication.check_user_master('test_user', 'test_pass')
@@ -95,7 +95,7 @@ def test_generate_keypair(mock_open, mock_chown, mock_chmod, mock_change_keypair
              call(authentication._public_key_path, 0o640)]
     mock_chmod.assert_has_calls(calls)
 
-    authentication.generate_keypair.cache_clear()
+    authentication.clear_keypair()
 
     with patch('os.path.exists', return_value=True):
         authentication.generate_keypair()
@@ -213,7 +213,7 @@ def test_check_token(mock_tokenmanager):
 @patch('api.authentication.raise_if_exc', side_effect=None)
 async def test_decode_token(mock_raise_if_exc, mock_distribute_function, mock_dapi, mock_generate_keypair,
                       mock_decode):
-    
+
     mock_decode.return_value = deepcopy(original_payload)
     mock_raise_if_exc.side_effect = [WazuhResult({'valid': True, 'policies': {'value': 'test'}}),
                                      WazuhResult(security_conf)]

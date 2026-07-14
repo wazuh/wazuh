@@ -386,6 +386,8 @@ typedef struct _config {
 
     char *scan_day;                                    /* run syscheck on this day */
     char *scan_time;                                   /* run syscheck at this time */
+    char *scan_day_str;                                /* original scan_day string from config */
+    char *scan_time_str;                               /* original scan_time string from config */
 
     unsigned int file_limit_enabled;                   /* Enable FIM file entry max limits */
     int file_entry_limit;                              /* maximum number of files to monitor */
