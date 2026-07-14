@@ -787,7 +787,7 @@ namespace Utils
                     throw std::runtime_error("Failed to repair RocksDB database. Reason: " +
                                              std::string {repairStatus.getState()});
                 }
-                LOG_WARN(m_logFn, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
+                LOGFN_WARN(m_logFn, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
             }
             else
             {

@@ -62,12 +62,12 @@ public:
         responseSocketClient->connect(
             [logFn = m_logFn](const char*, uint32_t, const char*, uint32_t)
             {
-                LOG_DEBUG2(logFn, "OnRead to %s", ARQUEUE_PATH);
+                LOGFN_DEBUG2(logFn, "OnRead to %s", ARQUEUE_PATH);
                 // Not used
             },
             [logFn = m_logFn]()
             {
-                LOG_DEBUG2(logFn, "Connected to %s", ARQUEUE_PATH);
+                LOGFN_DEBUG2(logFn, "Connected to %s", ARQUEUE_PATH);
                 // Not used
             },
             SOCK_DGRAM);
@@ -76,10 +76,10 @@ public:
         m_responseDispatcher = std::make_unique<ResponseQueue>(
             [responseSocketClient, logFn = m_logFn](const ResponseMessage& data)
             {
-                LOG_DEBUG2(logFn,
-                           "ResponseDispatcher: Sending response to agent '%s', module '%s'",
-                           data.agentId.c_str(),
-                           data.moduleName.c_str());
+                LOGFN_DEBUG2(logFn,
+                             "ResponseDispatcher: Sending response to agent '%s', module '%s'",
+                             data.agentId.c_str(),
+                             data.moduleName.c_str());
 
                 // Send via ARQUEUE for all agents
                 thread_local std::vector<uint8_t> messageVector;

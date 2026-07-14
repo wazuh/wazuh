@@ -190,12 +190,12 @@ public:
         {
             username = "wazuh-manager";
             password = "wazuh-manager";
-            LOG_WARN(m_logFn, "No username and password found in the keystore, using default values.");
+            LOGFN_WARN(m_logFn, "No username and password found in the keystore, using default values.");
         }
         if (username.empty())
         {
             username = "wazuh-manager";
-            LOG_WARN(m_logFn, "No username found in the keystore, using default value.");
+            LOGFN_WARN(m_logFn, "No username found in the keystore, using default value.");
         }
         m_secureCommunication = SecureCommunication::builder();
         m_secureCommunication.basicAuth(username + ":" + password)
@@ -232,7 +232,7 @@ public:
                 if (auto parseResult = parser.parse(data.m_response).get(parsedResponse);
                     parseResult != simdjson::SUCCESS)
                 {
-                    LOG_DEBUG2(m_logFn, "Failed to parse the indexer response %s", data.m_response.c_str());
+                    LOGFN_DEBUG2(m_logFn, "Failed to parse the indexer response %s", data.m_response.c_str());
                     return;
                 }
 
@@ -254,10 +254,10 @@ public:
                 const size_t itemsSize = itemsArray.size();
                 if (data.m_boundaries.size() != itemsSize)
                 {
-                    LOG_WARN(m_logFn,
-                             "Mismatch between the number of events (%zu) and response items (%zu)",
-                             data.m_boundaries.size(),
-                             itemsSize);
+                    LOGFN_WARN(m_logFn,
+                               "Mismatch between the number of events (%zu) and response items (%zu)",
+                               data.m_boundaries.size(),
+                               itemsSize);
                     return;
                 }
 
@@ -339,30 +339,30 @@ public:
                     // Build error message with caused_by info if available
                     if (!causedByReason.empty() && !causedByType.empty())
                     {
-                        LOG_WARN(m_logFn,
-                                 "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
-                                 "Associated event: %.*s",
-                                 static_cast<int>(errorType.size()),
-                                 errorType.data(),
-                                 static_cast<int>(errorReason.size()),
-                                 errorReason.data(),
-                                 static_cast<int>(causedByType.size()),
-                                 causedByType.data(),
-                                 static_cast<int>(causedByReason.size()),
-                                 causedByReason.data(),
-                                 static_cast<int>(payload.size()),
-                                 payload.data());
+                        LOGFN_WARN(m_logFn,
+                                   "Error indexing document (type %.*s - reason: '%.*s' - caused by: %.*s - '%.*s') - "
+                                   "Associated event: %.*s",
+                                   static_cast<int>(errorType.size()),
+                                   errorType.data(),
+                                   static_cast<int>(errorReason.size()),
+                                   errorReason.data(),
+                                   static_cast<int>(causedByType.size()),
+                                   causedByType.data(),
+                                   static_cast<int>(causedByReason.size()),
+                                   causedByReason.data(),
+                                   static_cast<int>(payload.size()),
+                                   payload.data());
                     }
                     else
                     {
-                        LOG_WARN(m_logFn,
-                                 "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
-                                 static_cast<int>(errorType.size()),
-                                 errorType.data(),
-                                 static_cast<int>(errorReason.size()),
-                                 errorReason.data(),
-                                 static_cast<int>(payload.size()),
-                                 payload.data());
+                        LOGFN_WARN(m_logFn,
+                                   "Error indexing document (type %.*s - reason: '%.*s') - Associated event: %.*s",
+                                   static_cast<int>(errorType.size()),
+                                   errorType.data(),
+                                   static_cast<int>(errorReason.size()),
+                                   errorReason.data(),
+                                   static_cast<int>(payload.size()),
+                                   payload.data());
                     }
 
                     ++itemIndex;
@@ -374,7 +374,7 @@ public:
             {
                 if (m_stopping.load())
                 {
-                    LOG_DEBUG2(m_logFn, "IndexerConnector is stopping, event processing will be skipped.");
+                    LOGFN_DEBUG2(m_logFn, "IndexerConnector is stopping, event processing will be skipped.");
                     throw IndexerConnectorException("IndexerConnector is stopping, event processing will be skipped.");
                 }
 
@@ -395,7 +395,7 @@ public:
                 {
                     if (m_queue->bulkMaxBytes() != m_bulkMaxBytes && m_successCount == MaxSuccessCount)
                     {
-                        LOG_DEBUG2(m_logFn, "Resetting bulk max bytes to %zu.", m_bulkMaxBytes);
+                        LOGFN_DEBUG2(m_logFn, "Resetting bulk max bytes to %zu.", m_bulkMaxBytes);
                         m_queue->bulkMaxBytes(m_bulkMaxBytes);
                         m_error413Logged = false;
                     }
@@ -415,7 +415,7 @@ public:
                     if (statusCode == HTTP_CONTENT_LENGTH)
                     {
                         constexpr size_t MINIMAL_BULK_BYTES {4096};
-                        LOG_DEBUG2(m_logFn, "Received 413 error (Payload Too Large). Reducing bulk threshold.");
+                        LOGFN_DEBUG2(m_logFn, "Received 413 error (Payload Too Large). Reducing bulk threshold.");
                         const auto currentBulkMax = m_queue->bulkMaxBytes();
                         const auto halved = currentBulkMax / 2;
 
@@ -428,19 +428,19 @@ public:
                             if (!m_error413Logged)
                             {
                                 m_error413Logged = true;
-                                LOG_ERROR(m_logFn,
-                                          "Bulk threshold too small to halve further (%zu bytes). "
-                                          "Review 'http.max_content_length' in wazuh-indexer settings. "
-                                          "Current payload size: %zu bytes. Discarding this batch.",
-                                          currentBulkMax,
-                                          bulkData.size());
+                                LOGFN_ERROR(m_logFn,
+                                            "Bulk threshold too small to halve further (%zu bytes). "
+                                            "Review 'http.max_content_length' in wazuh-indexer settings. "
+                                            "Current payload size: %zu bytes. Discarding this batch.",
+                                            currentBulkMax,
+                                            bulkData.size());
                             }
                             // Do not throw, avoid infinite retry loop. Drop this batch and continue with the next.
                             return;
                         }
                         else
                         {
-                            LOG_DEBUG2(m_logFn, "Reducing bulk max bytes from %zu to %zu.", currentBulkMax, halved);
+                            LOGFN_DEBUG2(m_logFn, "Reducing bulk max bytes from %zu to %zu.", currentBulkMax, halved);
                             this->m_queue->bulkMaxBytes(halved);
                             m_successCount = 0;
                             throw IndexerConnectorException("Bulk payload too large, reducing threshold.");
@@ -448,24 +448,24 @@ public:
                     }
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
-                        LOG_DEBUG2(m_logFn, "Document version conflict, retrying in 1 second.");
+                        LOGFN_DEBUG2(m_logFn, "Document version conflict, retrying in 1 second.");
                         throw IndexerConnectorException(error);
                     }
                     else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                     {
-                        LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+                        LOGFN_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
                         throw IndexerConnectorException(error);
                     }
                     else
                     {
-                        LOG_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
+                        LOGFN_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
                     }
                 };
 
                 std::string url;
                 url = m_selector->getNext();
                 url += "/_bulk";
-                LOG_DEBUG2(m_logFn, "Bulk data: %s", bulkData.c_str());
+                LOGFN_DEBUG2(m_logFn, "Bulk data: %s", bulkData.c_str());
 
                 m_httpRequest->post(RequestParameters {.url = HttpURL(url),
                                                        .data = bulkData,
@@ -493,18 +493,19 @@ public:
         // Validate input parameters
         if (index.empty())
         {
-            LOG_ERROR(m_logFn, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
+            LOGFN_ERROR(
+                m_logFn, "Index name cannot be empty for document: %.*s", static_cast<int>(id.size()), id.data());
             throw IndexerConnectorException("Index name cannot be empty");
         }
 
         if (data.empty())
         {
-            LOG_WARN(m_logFn,
-                     "Empty data provided for document %.*s in index %.*s",
-                     static_cast<int>(id.size()),
-                     id.data(),
-                     static_cast<int>(index.size()),
-                     index.data());
+            LOGFN_WARN(m_logFn,
+                       "Empty data provided for document %.*s in index %.*s",
+                       static_cast<int>(id.size()),
+                       id.data(),
+                       static_cast<int>(index.size()),
+                       index.data());
         }
 
         std::string bulkData;
@@ -522,19 +523,19 @@ public:
             }
             else
             {
-                LOG_ERROR(m_logFn, "Id must be provided if version value is provided");
+                LOGFN_ERROR(m_logFn, "Id must be provided if version value is provided");
                 throw IndexerConnectorException("Id must be provided if version value is provided");
             }
 
             bulkData.append(R"(","version":")");
             bulkData.append(version);
             bulkData.append(R"(","version_type":"external_gte)");
-            LOG_DEBUG2(m_logFn,
-                       "Using external version %.*s for document %.*s",
-                       static_cast<int>(version.size()),
-                       version.data(),
-                       static_cast<int>(id.size()),
-                       id.data());
+            LOGFN_DEBUG2(m_logFn,
+                         "Using external version %.*s for document %.*s",
+                         static_cast<int>(version.size()),
+                         version.data(),
+                         static_cast<int>(id.size()),
+                         id.data());
         }
         else
         {
@@ -543,10 +544,10 @@ public:
                 bulkData.append(R"(","_id":")");
                 appendEscapedId(bulkData, id);
             }
-            LOG_DEBUG2(m_logFn,
-                       "No version specified for document %.*s, using default versioning",
-                       static_cast<int>(id.size()),
-                       id.data());
+            LOGFN_DEBUG2(m_logFn,
+                         "No version specified for document %.*s, using default versioning",
+                         static_cast<int>(id.size()),
+                         id.data());
         }
         bulkData.append(R"("}})");
         bulkData.append("\n");
@@ -677,13 +678,13 @@ public:
                 creationTime = jsonResponse["creation_time"].get<uint64_t>();
                 success = true;
 
-                LOG_DEBUG2(
+                LOGFN_DEBUG2(
                     m_logFn, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
             }
             catch (const std::exception& e)
             {
                 errorMessage = std::string("Failed to parse PIT response: ") + e.what();
-                LOG_DEBUG1(m_logFn, "%s", errorMessage.c_str());
+                LOGFN_DEBUG1(m_logFn, "%s", errorMessage.c_str());
             }
         };
 
@@ -692,7 +693,7 @@ public:
         {
             errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode) +
                            ", Response: " + responseBody;
-            LOG_DEBUG1(m_logFn, "%s", errorMessage.c_str());
+            LOGFN_DEBUG1(m_logFn, "%s", errorMessage.c_str());
         };
 
         // Execute the POST request synchronously
@@ -730,7 +731,7 @@ public:
 
             const auto onSuccess = [this](const std::string& response)
             {
-                LOG_DEBUG2(m_logFn, "PIT successfully deleted. Response: %s", response.c_str());
+                LOGFN_DEBUG2(m_logFn, "PIT successfully deleted. Response: %s", response.c_str());
             };
 
             const auto onError =
