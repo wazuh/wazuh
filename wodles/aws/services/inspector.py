@@ -205,3 +205,4 @@ class AWSInspector(aws_service.AWSService):
     def check_region(region: str) -> None:
         if region not in INSPECTOR_V2_REGIONS:
             raise ValueError(f"Unsupported region '{region}'")
+
