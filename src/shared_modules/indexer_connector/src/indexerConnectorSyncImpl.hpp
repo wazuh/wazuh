@@ -181,7 +181,7 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
         // Errors were reported, validate each item
         if (!responseJson.contains("items") || !responseJson["items"].is_array())
         {
-            logError(tag, "Bulk response has errors but missing 'items' array");
+            logWarn(tag, "Bulk response has errors but missing 'items' array");
             return false;
         }
 
@@ -208,7 +208,7 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
             // Check status code
             if (!result.contains("status"))
             {
-                logError(tag, "Item missing status field");
+                logDebug1(tag, "Item missing status field");
                 realFailureCount++;
                 continue;
             }
@@ -274,30 +274,40 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
                 }
             }
 
-            logError(
+            logWarn(
                 tag, "Indexing failure for %s operation (status %d): %s", operation.c_str(), status, errorMsg.c_str());
             realFailureCount++;
         }
 
-        // Log summary
-        logInfo(tag,
-                "Bulk operation summary: %zu total, %zu success, %zu acceptable version conflicts, %zu failures",
-                totalItems,
-                successCount,
-                versionConflictAcceptedCount,
-                realFailureCount);
+        if (realFailureCount > 0)
+        {
+            logWarn(tag,
+                    "Bulk operation summary: %zu total, %zu success, %zu acceptable version conflicts, %zu failures",
+                    totalItems,
+                    successCount,
+                    versionConflictAcceptedCount,
+                    realFailureCount);
+        }
+        else
+        {
+            logDebug2(tag,
+                      "Bulk operation summary: %zu total, %zu success, %zu acceptable version conflicts",
+                      totalItems,
+                      successCount,
+                      versionConflictAcceptedCount);
+        }
 
         // Return success only if no real failures occurred
         return realFailureCount == 0;
     }
     catch (const nlohmann::json::exception& e)
     {
-        logError(tag, "Failed to parse bulk response: %s", e.what());
+        logWarn(tag, "Failed to parse bulk response: %s", e.what());
         return false;
     }
     catch (const std::exception& e)
     {
-        logError(tag, "Error validating bulk response: %s", e.what());
+        logWarn(tag, "Error validating bulk response: %s", e.what());
         return false;
     }
 }
@@ -366,7 +376,7 @@ class IndexerConnectorSyncImpl final
             }
             else
             {
-                LOGFN_ERROR(m_logFn, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
+                LOGFN_WARN(m_logFn, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
                 m_bulkData.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException(error);
@@ -398,7 +408,6 @@ class IndexerConnectorSyncImpl final
             // Validate bulk response at document level
             if (!validateBulkResponse(response, m_logFn.c_str()))
             {
-                LOGFN_ERROR(m_logFn, "Bulk operation had indexing failures");
                 m_bulkData.clear();
                 m_boundaries.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
@@ -413,17 +422,16 @@ class IndexerConnectorSyncImpl final
                                                                       const long statusCode,
                                                                       const std::string& responseBody) -> void
         {
-            LOGFN_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
                 LOGFN_DEBUG2(m_logFn, "Received 413 error (Payload Too Large). Splitting bulk data.");
                 if (const size_t currentOperations = m_boundaries.size(); currentOperations <= 1)
                 {
-                    LOGFN_ERROR(m_logFn,
-                                "Unable to send data even with single operation. "
-                                "Consider increasing http.max_content_length in OpenSearch settings. "
-                                "Current data size: %zu bytes.",
-                                m_bulkData.size());
+                    LOGFN_WARN(m_logFn,
+                               "Unable to send data even with single operation. "
+                               "Consider increasing http.max_content_length in OpenSearch settings. "
+                               "Current data size: %zu bytes.",
+                               m_bulkData.size());
                     m_bulkData.clear();
                     m_boundaries.clear();
                     throw IndexerConnectorException("Single operation exceeds server payload limits");
@@ -447,7 +455,7 @@ class IndexerConnectorSyncImpl final
             }
             else
             {
-                LOGFN_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
+                LOGFN_WARN(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
                 m_bulkData.clear();
                 m_boundaries.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
@@ -524,7 +532,7 @@ class IndexerConnectorSyncImpl final
             }
             catch (const IndexerConnectorException& e)
             {
-                LOGFN_ERROR(m_logFn, "Failed to process first half: %s", e.what());
+                LOGFN_DEBUG1(m_logFn, "Failed to process first half: %s", e.what());
                 allProcessed = false;
                 throw;
             }
@@ -537,7 +545,7 @@ class IndexerConnectorSyncImpl final
             }
             catch (const IndexerConnectorException& e)
             {
-                LOGFN_ERROR(m_logFn, "Failed to process second half: %s", e.what());
+                LOGFN_DEBUG1(m_logFn, "Failed to process second half: %s", e.what());
                 allProcessed = false;
                 throw;
             }
@@ -566,14 +574,12 @@ class IndexerConnectorSyncImpl final
             // Validate bulk response at document level
             if (!validateBulkResponse(response, m_logFn.c_str()))
             {
-                LOGFN_ERROR(m_logFn, "Bulk chunk operation had indexing failures");
                 throw IndexerConnectorException("Bulk chunk operation had indexing failures");
             }
         };
         const auto onError = [this, &needToRetry, &retryDelaySeconds, boundaries](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
-            LOGFN_ERROR(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
             if (statusCode == HTTP_CONTENT_LENGTH)
             {
                 if (boundaries.size() > 1)
@@ -592,7 +598,7 @@ class IndexerConnectorSyncImpl final
                     processBulkChunk(secondHalf, secondBoundaries);
                     return;
                 }
-                LOGFN_ERROR(m_logFn, "Single operation too large for server limits");
+                LOGFN_WARN(m_logFn, "Single operation too large for server limits");
                 throw IndexerConnectorException("Single operation exceeds server limits");
             }
             else if (statusCode == HTTP_VERSION_CONFLICT)
@@ -609,6 +615,7 @@ class IndexerConnectorSyncImpl final
             }
             else
             {
+                LOGFN_WARN(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
                 throw IndexerConnectorException(error);
             }
         };
@@ -776,7 +783,7 @@ public:
                         }
                         catch (const IndexerConnectorException& e)
                         {
-                            LOGFN_ERROR(m_logFn, "Error processing bulk: %s", e.what());
+                            LOGFN_WARN(m_logFn, "Error processing bulk: %s", e.what());
                         }
                         catch (const std::exception& e)
                         {
@@ -876,13 +883,13 @@ public:
                 if (responseJson.contains("failures") && !responseJson["failures"].empty())
                 {
                     auto failures = responseJson["failures"];
-                    LOGFN_ERROR(m_logFn, "Update by query completed with %zu failures", failures.size());
+                    LOGFN_WARN(m_logFn, "Update by query completed with %zu failures", failures.size());
 
                     // Log first few failures for debugging
                     size_t logCount = std::min<size_t>(failures.size(), 3);
                     for (size_t i = 0; i < logCount; ++i)
                     {
-                        LOGFN_ERROR(m_logFn, "Failure %zu: %s", i + 1, failures[i].dump().c_str());
+                        LOGFN_DEBUG1(m_logFn, "Failure %zu: %s", i + 1, failures[i].dump().c_str());
                     }
                 }
 
@@ -940,7 +947,7 @@ public:
             }
             else
             {
-                LOGFN_ERROR(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                LOGFN_WARN(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
                 m_notify.clear();
                 throw IndexerConnectorException(error);
             }
@@ -1001,11 +1008,11 @@ public:
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOGFN_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
+                LOGFN_DEBUG1(m_logFn, "Search query rate-limited (429), retrying in %zu second(s).", retryDelaySeconds);
             }
             else
             {
-                LOGFN_ERROR(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
+                LOGFN_WARN(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
                 throw IndexerConnectorException("Search query failed: " + error);
             }
         };
@@ -1303,10 +1310,11 @@ public:
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 needToRetry = true;
-                LOG_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
+                LOGFN_DEBUG2(m_logFn, "Too many requests, retrying in %zu second(s).", retryDelaySeconds);
             }
             else
             {
+                LOGFN_WARN(m_logFn, "Search request failed: %s, status code: %ld", error.c_str(), statusCode);
                 throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) +
                                                 ": " + error);
             }

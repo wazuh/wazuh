@@ -428,12 +428,12 @@ public:
                             if (!m_error413Logged)
                             {
                                 m_error413Logged = true;
-                                LOGFN_ERROR(m_logFn,
-                                            "Bulk threshold too small to halve further (%zu bytes). "
-                                            "Review 'http.max_content_length' in wazuh-indexer settings. "
-                                            "Current payload size: %zu bytes. Discarding this batch.",
-                                            currentBulkMax,
-                                            bulkData.size());
+                                LOGFN_WARN(m_logFn,
+                                           "Bulk threshold too small to halve further (%zu bytes). "
+                                           "Review 'http.max_content_length' in wazuh-indexer settings. "
+                                           "Current payload size: %zu bytes. Discarding this batch.",
+                                           currentBulkMax,
+                                           bulkData.size());
                             }
                             // Do not throw, avoid infinite retry loop. Drop this batch and continue with the next.
                             return;
@@ -458,7 +458,7 @@ public:
                     }
                     else
                     {
-                        LOGFN_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
+                        LOGFN_WARN(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
                     }
                 };
 
