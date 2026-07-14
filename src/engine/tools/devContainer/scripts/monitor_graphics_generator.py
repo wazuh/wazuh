@@ -673,22 +673,40 @@ def generate_charts(
                 out,
             )
 
-        # Router queue: size + usage percent — stacked panels
+        # Router queue (events): size + usage percent — stacked panels.
+        # router.queue.size / router.queue.usage.percent are the event-count
+        # view of the router's internal queue (see orchestrator.cpp), NOT bytes.
         if any("router_queue_size" in df.columns for df in analysisd_dfs.values()):
             plot_stacked_timeseries(
                 analysisd_dfs,
-                "router_queue_size", "router_queue_size_usage_percent",
+                "router_queue_size", "router_queue_usage_percent",
+                "Router Queue Size (events)", "Router Queue Size Usage %",
+                "Events", "%",
+                "Analysisd — Router Queue (events)",
+                os.path.join(out_dir, f"analysisd_router_queue_events.{fmt}"),
+            )
+
+        # Router queue (bytes): size + usage percent — stacked panels.
+        # router.queue.bytes.used / router.queue.bytes.usage.percent are the
+        # byte-based view of the same queue, tracked independently of the
+        # event-count view above.
+        if any("router_queue_bytes_used" in df.columns for df in analysisd_dfs.values()):
+            plot_stacked_timeseries(
+                analysisd_dfs,
+                "router_queue_bytes_used", "router_queue_bytes_usage_percent",
                 "Router Queue Size (bytes)", "Router Queue Size Usage %",
                 "Bytes", "%",
                 "Analysisd — Router Queue (bytes)",
-                os.path.join(out_dir, f"analysisd_router_queue.{fmt}"),
+                os.path.join(out_dir, f"analysisd_router_queue_bytes.{fmt}"),
             )
 
-        # Indexer queue: size + usage percent — stacked panels
+        # Indexer queue: size + usage percent — stacked panels.
+        # indexer.queue.size is only ever tracked in bytes (no event-count
+        # variant exists for the indexer connector's egress queue).
         if any("indexer_queue_size" in df.columns for df in analysisd_dfs.values()):
             plot_stacked_timeseries(
                 analysisd_dfs,
-                "indexer_queue_size", "indexer_queue_size_usage_percent",
+                "indexer_queue_size", "indexer_queue_usage_percent",
                 "Indexer Queue Size (bytes)", "Indexer Queue Size Usage %",
                 "Bytes", "%",
                 "Analysisd — Indexer Queue (bytes)",
