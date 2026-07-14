@@ -423,6 +423,23 @@ bool validate_and_persist_fim_event(
         char* errorMessage = NULL;
 
         if (!schema_validator_validate(index, msg, &errorMessage)) {
+            // A schema-validation failure observed while the agent is shutting down is not
+            // trustworthy: HandleSIG() calls exit(), which tears down the schema validator's
+            // process-static state (e.g. the ISO8601 regex) while this scan thread may still be
+            // validating events, so a perfectly valid event can be reported as invalid. Do not
+            // surface it as an error and do not act on the untrustworthy result (no deletion, no
+            // persistence): the agent is stopping and the event is re-evaluated on the next start.
+            // See issue #37654.
+            if (fim_shutdown_process_on()) {
+                mdebug1("Ignoring schema validation failure for %s during shutdown%s%s",
+                        item_description,
+                        (errorMessage && errorMessage[0]) ? ": " : "",
+                        (errorMessage && errorMessage[0]) ? errorMessage : "");
+                os_free(errorMessage);
+                os_free(msg);
+                return true;
+            }
+
             // Validation failed - log errors
             if (errorMessage) {
                 merror("Schema validation failed for %s (index: %s). Errors: %s",
