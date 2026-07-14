@@ -17,7 +17,7 @@ from wazuh.core import common
 from wazuh.core.configuration import get_ossec_conf
 from wazuh.core.exception import WazuhIndexerError, IndexerUnavailableError
 from wazuh.core.indexer.credential_manager import KeystoreClient
-from wazuh.core.indexer.max_version_components import MaxVersionIndex
+from wazuh.core.indexer.states_components import StatesIndex
 from wazuh.core.indexer.metrics import MetricsIndex
 
 MAX_RETRIES = 3
@@ -216,7 +216,7 @@ class Indexer:
         The list of configured hosts.
     ports : List[int]
         The list of configured ports.
-    max_version_components : MaxVersionIndex
+    states : StatesIndex
         Component to manage index versioning.
     metrics : MetricsIndex
         Component to handle metrics snapshot bulk indexing.
@@ -248,7 +248,7 @@ class Indexer:
         self.ssl_context = ssl_context
 
         self._client = self._get_opensearch_client()
-        self.max_version_components = MaxVersionIndex(client=self._client)
+        self.states = StatesIndex(client=self._client)
         self.metrics = MetricsIndex(client=self._client)
 
     def _get_opensearch_client(self) -> AsyncOpenSearch:

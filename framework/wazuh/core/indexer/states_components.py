@@ -6,9 +6,9 @@ from opensearchpy import AsyncOpenSearch
 from wazuh.core.indexer.base import IndexerKey
 
 
-class MaxVersionIndex:
+class StatesIndex:
     """
-    Indexer client for disconnected agents operations.
+    Indexer client for agent state operations.
     """
 
     STATE_INDEX_PATTERN = "wazuh-states-*"
@@ -41,7 +41,7 @@ class MaxVersionIndex:
 
     def __init__(self, client: AsyncOpenSearch) -> None:
         """
-        Initialize the MaxVersionIndex.
+        Initialize the StatesIndex.
 
         Parameters
         ----------
@@ -104,7 +104,6 @@ class MaxVersionIndex:
         self,
         agent_id: str,
         groups: List[str],
-        global_version: int,
         refresh: bool = True,
     ) -> Dict[str, dict]:
         """
@@ -116,8 +115,6 @@ class MaxVersionIndex:
             Agent identifier to match documents.
         groups : List[str]
             New list of groups to set on the agent document.
-        global_version : int
-            Global document version used to compare and set ``state.document_version``.
         refresh : bool, optional
             Whether to refresh the index after the update (default True).
 
@@ -131,6 +128,10 @@ class MaxVersionIndex:
         The method performs an ``update_by_query`` for each index defined in
         ``MODULE_INDICES_MAP``. Documents that already have the same groups will
         be skipped by setting the operation to ``noop`` in the painless script.
+
+        This method is used for disconnected agents only. It updates the groups
+        metadata without modifying state fields. The agent performs the full
+        synchronization flow when it reconnects.
         """
 
         body = {
@@ -138,17 +139,6 @@ class MaxVersionIndex:
                 "bool": {
                     "must": [
                         {"term": {"wazuh.agent.id": agent_id}}
-                    ],
-                    "filter": [
-                        {
-                            "bool": {
-                                "should": [
-                                    {"bool": {"must_not": {"exists": {"field": "state.document_version"}}}},
-                                    {"range": {"state.document_version": {"lte": global_version}}}
-                                ],
-                                "minimum_should_match": 1
-                            }
-                        }
                     ]
                 }
             },
@@ -166,12 +156,10 @@ class MaxVersionIndex:
                     ctx._source.wazuh.agent.groups = params.groups;
 
                     if (ctx._source.state == null) { ctx._source.state = [:]; }
-                    ctx._source.state.document_version = params.globalVersion;
                     ctx._source.state.modified_at = params.timestamp;
                 """,
                 "params": {
                     "groups": groups,
-                    "globalVersion": global_version,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             },
@@ -215,7 +203,6 @@ class MaxVersionIndex:
         self,
         agent_id: str,
         cluster_name: str,
-        global_version: int,
         refresh: bool = True,
     ) -> Dict[str, dict]:
         """
@@ -227,8 +214,6 @@ class MaxVersionIndex:
             Agent identifier to match documents.
         cluster_name : str
             Cluster name to set on the agent document (``wazuh.cluster.name``).
-        global_version : int
-            Global document version to compare and set ``state.document_version``.
         refresh : bool, optional
             Whether to refresh the index after the update (default True).
 
@@ -242,29 +227,16 @@ class MaxVersionIndex:
         Mirrors ``update_agent_groups`` behavior but targets the
         ``wazuh.cluster.name`` field. Documents with the same cluster name are
         skipped by the painless script using a ``noop`` operation.
+
+        This method is used for disconnected agents only. It updates the cluster
+        name metadata without modifying state fields. The agent performs the full
+        synchronization flow when it reconnects.
         """
         body = {
             "query": {
                 "bool": {
                     "must": [
                         {"term": {"wazuh.agent.id": agent_id}}
-                    ],
-                    "filter": [
-                        {
-                            "bool": {
-                                "should": [
-                                    {
-                                        "bool": {
-                                            "must_not": {
-                                                "exists": {"field": "state.document_version"}
-                                            }
-                                        }
-                                    },
-                                    {"range": {"state.document_version": {"lte": global_version}}}
-                                ],
-                                "minimum_should_match": 1
-                            }
-                        }
                     ]
                 }
             },
@@ -281,12 +253,10 @@ class MaxVersionIndex:
                     }
                     ctx._source.wazuh.cluster.name = params.clusterName;
                     if (ctx._source.state == null) { ctx._source.state = [:]; }
-                    ctx._source.state.document_version = params.newVersion;
                     ctx._source.state.modified_at = params.timestamp;
                 """,
                 "params": {
                     "clusterName": cluster_name,
-                    "newVersion": global_version,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 },
             },
