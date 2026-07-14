@@ -149,9 +149,8 @@ public:
         }
 
         auto pos = keyPos + KEY.size();
-        while (pos < response.size() &&
-               (response[pos] == ':' || response[pos] == ' ' || response[pos] == '\t' || response[pos] == '\n' ||
-                response[pos] == '\r'))
+        while (pos < response.size() && (response[pos] == ':' || response[pos] == ' ' || response[pos] == '\t' ||
+                                         response[pos] == '\n' || response[pos] == '\r'))
         {
             ++pos;
         }

@@ -2991,8 +2991,9 @@ INSTANTIATE_TEST_SUITE_P(
         // Only duplicates
         std::make_tuple(R"({"a": 3, "a": 2})", size_t(1), R"({"a":3})"),
         // Duplicate with complex values
-        std::make_tuple(
-            R"({"check": "$event == 2", "check": "$event.id == 2"})", size_t(1), R"({"check":"$event == 2"})"),
+        std::make_tuple(R"({"check": "$event == 2", "check": "$event.id == 2"})",
+                        size_t(1),
+                        R"({"check":"$event == 2"})"),
         // Duplicate with same values
         std::make_tuple(R"({"level": "5", "level": "5"})", size_t(1), R"({"level":"5"})"),
         // Duplicate with object values

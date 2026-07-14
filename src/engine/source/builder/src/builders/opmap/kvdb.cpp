@@ -937,8 +937,8 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     };
 
     // Return Op
-    return
-        [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](base::Event event) -> TransformResult
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
+               base::Event event) -> TransformResult
     {
         // Get mask in hex
         uint64_t mask {};

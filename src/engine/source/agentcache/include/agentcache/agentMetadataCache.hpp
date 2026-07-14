@@ -193,7 +193,9 @@ public:
         const auto ttlNs = std::chrono::duration_cast<std::chrono::steady_clock::duration>(m_ttl).count();
 
         const auto isStale = [nowNs, ttlNs](const CacheEntry& entry)
-        { return (nowNs - entry.lastUsed.load(std::memory_order_relaxed)) > ttlNs; };
+        {
+            return (nowNs - entry.lastUsed.load(std::memory_order_relaxed)) > ttlNs;
+        };
 
         // Phase 1: collect stale candidates under a shared lock (no mutation).
         std::vector<std::string> staleAgents;

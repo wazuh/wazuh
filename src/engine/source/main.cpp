@@ -8,8 +8,8 @@
 #include <thread>
 #include <vector>
 
-#include <api/handlers.hpp>
 #include <agentcache/agentMetadataCache.hpp>
+#include <api/handlers.hpp>
 #include <api/status/handlers.hpp>
 #include <base/eventParser.hpp>
 #include <base/json.hpp>

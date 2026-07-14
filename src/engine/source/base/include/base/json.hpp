@@ -193,7 +193,7 @@ private:
     // the buffer the allocator lives in. Both pointers are null for standard documents.
     std::unique_ptr<uint8_t[]> m_compactBuffer; ///< Initial memory block of a compact document (null otherwise).
     std::unique_ptr<rapidjson::MemoryPoolAllocator<>>
-        m_ownAllocator;           ///< Heap-stable small-chunk allocator of a compact document (null otherwise).
+        m_ownAllocator; ///< Heap-stable small-chunk allocator of a compact document (null otherwise).
     rapidjson::Document m_document;
 
     /// Tag to select the compact-document constructor.
