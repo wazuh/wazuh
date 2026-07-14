@@ -93,4 +93,5 @@ subjects:
 #
 # 4. Set <node_name> in ossec.conf to this node's registered name
 #    (kubectl get nodes). The module only watches pods with
-#    spec.nodeName equal to it.
+#    spec.nodeName equal to it; if the tag is omitted it defaults to
+#    "container-node-1", which must then be the node's actual name.
