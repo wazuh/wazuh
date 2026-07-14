@@ -1815,9 +1815,19 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
         // documents that have not yet arrived at the indexer.
         if (!pollFlushCompletion(pausedModules))
         {
-            m_logFunction(LOG_INFO,
-                          "One or more module flushes did not complete; aborting version sync to avoid "
-                          "indexer inconsistency — coordination will be retried in the next cycle");
+            if (isShutdownInProgress())
+            {
+                // No "next cycle": the module is stopping, so version sync is simply not handed over.
+                m_logFunction(LOG_INFO,
+                              "Module flush aborted: the module is stopping.");
+            }
+            else
+            {
+                m_logFunction(LOG_INFO,
+                              "One or more module flushes did not complete; aborting version sync to avoid "
+                              "indexer inconsistency — coordination will be retried in the next cycle");
+            }
+
             return CoordinationResult::Failed;
         }
 
@@ -2228,6 +2238,12 @@ bool AgentInfoImpl::performDeltaSync(const std::string& table)
         else if (result == CoordinationResult::Deferred)
         {
             m_logFunction(LOG_DEBUG, "Coordination of " + table + " deferred, sync flag retained for retry");
+            return false;
+        }
+        else if (isShutdownInProgress())
+        {
+            // Not a real failure and there is no "next cycle": the module is stopping.
+            m_logFunction(LOG_INFO, "Coordination of " + table + " aborted: the module is stopping.");
             return false;
         }
         else
