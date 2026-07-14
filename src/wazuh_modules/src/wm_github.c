@@ -115,6 +115,8 @@ void * wm_github_main(wm_github* github_config) {
                 break;
             #endif
         }
+
+        mtinfo(WM_GITHUB_LOGTAG, "Module GitHub finished.");
     } else {
         mtinfo(WM_GITHUB_LOGTAG, "Module GitHub disabled.");
     }
@@ -127,7 +129,6 @@ void * wm_github_main(wm_github* github_config) {
 }
 
 void wm_github_destroy(wm_github* github_config) {
-    mtinfo(WM_GITHUB_LOGTAG, "Module GitHub finished.");
     wm_github_auth_destroy(github_config->auth);
     wm_github_fail_destroy(github_config->fails);
     os_free(github_config->event_type);
