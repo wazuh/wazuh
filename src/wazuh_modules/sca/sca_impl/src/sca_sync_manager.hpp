@@ -27,7 +27,7 @@ class SCASyncManager
 
         explicit SCASyncManager(std::shared_ptr<IDBSync> dbSync);
 
-        void initialize();
+        LimitResult initialize();
         LimitResult updateSyncLimit(uint64_t syncLimit);
 
         // Precompute the first N check ids (ORDER BY rowid LIMIT N) once per batch so
@@ -39,7 +39,7 @@ class SCASyncManager
         bool shouldSyncModify(const nlohmann::json& checkData);
         DeleteResult handleDelete(const nlohmann::json& checkData);
         void applyDeferredUpdates();
-        void reconcile();
+        LimitResult reconcile();
 
     private:
         struct PendingUpdate

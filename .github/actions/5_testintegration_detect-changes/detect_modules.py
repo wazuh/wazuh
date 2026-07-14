@@ -103,8 +103,13 @@ def main() -> int:
         _emit(github_output, none_matrix, False)
         return 0
 
+    # Three-dot diff: compare HEAD against the merge base of base and head,
+    # matching GitHub's own "Files changed" semantics. A two-dot diff
+    # (base_sha head_sha) would also surface every commit that landed on the
+    # base branch after this branch forked (when the branch is behind base),
+    # inflating the changed-file set and triggering unrelated test modules.
     diff = subprocess.run(
-        ["git", "diff", "--name-only", base_sha, head_sha],
+        ["git", "diff", "--name-only", f"{base_sha}...{head_sha}"],
         capture_output=True,
         text=True,
         check=True,

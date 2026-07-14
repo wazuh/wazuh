@@ -42,11 +42,12 @@ SCASyncManager::SCASyncManager(std::shared_ptr<IDBSync> dbSync)
 {
 }
 
-void SCASyncManager::initialize()
+SCASyncManager::LimitResult SCASyncManager::initialize()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    enforceLimitLocked();
+    const auto result = enforceLimitLocked();
     m_initialized = true;
+    return result;
 }
 
 SCASyncManager::LimitResult SCASyncManager::updateSyncLimit(uint64_t syncLimit)
@@ -441,6 +442,7 @@ SCASyncManager::LimitResult SCASyncManager::enforceLimitLocked()
         {
             m_syncedIds.insert(checkId);
             ++m_syncedCount;
+
         }
 
         int currentSync = 0;
@@ -528,10 +530,10 @@ void SCASyncManager::applyDeferredUpdates()
     }
 }
 
-void SCASyncManager::reconcile()
+SCASyncManager::LimitResult SCASyncManager::reconcile()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    enforceLimitLocked();
+    return enforceLimitLocked();
 }
 
 std::vector<nlohmann::json> SCASyncManager::selectChecks(const std::string& filter, uint32_t limit) const

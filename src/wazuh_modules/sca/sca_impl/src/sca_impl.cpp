@@ -131,12 +131,13 @@ void SecurityConfigurationAssessment::Run()
 
     LoggingHelper::getInstance().log(LOG_DEBUG, "SCA module running.");
 
+    refreshFirstSyncCompletedState();
+
     if (m_syncManager)
     {
-        m_syncManager->initialize();
+        const auto limitResult = m_syncManager->initialize();
+        handleLimitEvents(limitResult.demotedIds, limitResult.promotedIds);
     }
-
-    refreshFirstSyncCompletedState();
 
     // Reset the in-memory scan-completed flag only when the first sync has not yet happened.
     // Once first_sync_completed is set this flag is never polled again, so resetting it
@@ -236,7 +237,8 @@ void SecurityConfigurationAssessment::Run()
 
         if (m_syncManager)
         {
-            m_syncManager->reconcile();
+            const auto limitResult = m_syncManager->reconcile();
+            handleLimitEvents(limitResult.demotedIds, limitResult.promotedIds);
         }
 
         // Check for policies removed at runtime (e.g., config change during scan loop).
@@ -440,7 +442,7 @@ std::string SecurityConfigurationAssessment::calculateSyncedChecksChecksum()
         return {};
     }
 
-    std::string concatenatedChecksums = m_dBSync->getConcatenatedChecksums("sca_check", "WHERE sync = 1");
+    std::string concatenatedChecksums = m_dBSync->getConcatenatedChecksums("sca_check", "WHERE sync = 1 AND result != 'Not run'");
 
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(concatenatedChecksums.c_str(), concatenatedChecksums.length());
@@ -1594,6 +1596,32 @@ bool SecurityConfigurationAssessment::handleAllPoliciesRemoved()
         LoggingHelper::getInstance().log(LOG_DEBUG,
                                          "DataClean notification aborted due to module shutdown");
         return false;
+    }
+}
+
+void SecurityConfigurationAssessment::handleLimitEvents(const std::vector<std::string>& demotedIds,
+                                                        const std::vector<std::string>& promotedIds)
+{
+    if (demotedIds.empty() && promotedIds.empty())
+    {
+        return;
+    }
+
+    const SCAEventHandler eventHandler(
+        m_dBSync,
+        m_pushStatelessMessage,
+        m_pushStatefulMessage,
+        m_syncManager,
+        m_firstSyncCompleted.load());
+
+    if (!demotedIds.empty())
+    {
+        eventHandler.ReportDemotedChecks(demotedIds);
+    }
+
+    if (!promotedIds.empty())
+    {
+        eventHandler.ReportPromotedChecks(promotedIds);
     }
 }
 
