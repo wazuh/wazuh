@@ -7,6 +7,7 @@ This module contains all necessary components (fixtures, classes, methods) to co
 """
 
 import os
+import time
 import pytest
 import boto3
 from botocore.exceptions import ClientError
@@ -546,6 +547,37 @@ def create_test_log_stream(metadata: dict, log_groups_manager) -> None:
         raise
 
 
+def _wait_for_log_events(logs_client, log_group, log_stream, expected_events, timeout=60, interval=3):
+    """Wait until the uploaded events are queryable through the CloudWatch Logs API.
+
+    PutLogEvents is eventually consistent: the events are not immediately returned by
+    filter_log_events. The AWS module queries CloudWatch only once at startup, so if the
+    events have not propagated yet it reads 0 of them and the test times out waiting for
+    the expected message. Poll until the expected number of events is visible (or until
+    the timeout elapses) so the module always sees the data.
+
+    Args:
+        logs_client: boto3 CloudWatch Logs client.
+        log_group (str): Log group to query.
+        log_stream (str): Log stream to query.
+        expected_events (int): Minimum number of events that must be visible.
+        timeout (int): Maximum time to wait, in seconds.
+        interval (int): Delay between polls, in seconds.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            response = logs_client.filter_log_events(logGroupName=log_group, logStreamNames=[log_stream])
+            if len(response.get('events', [])) >= expected_events:
+                return
+        except ClientError as error:
+            logger.debug(f"filter_log_events not ready yet for '{log_group}': {error}")
+        time.sleep(interval)
+
+    logger.warning(f"Timed out ({timeout}s) waiting for {expected_events} events to become queryable in "
+                   f"'{log_group}/{log_stream}'")
+
+
 @pytest.fixture
 def manage_log_group_events(metadata: dict, logs_clients):
     """Upload events to a log stream inside a log group and delete the log stream after the test ends.
@@ -580,6 +612,9 @@ def manage_log_group_events(metadata: dict, logs_clients):
                         events_number=event_number,
                         client=logs_client
                     )
+                    # Wait for the events to be queryable before the module runs, otherwise
+                    # CloudWatch eventual consistency can make the module read 0 events (flaky).
+                    _wait_for_log_events(logs_client, log_group, log_stream_name, event_number)
 
     except ClientError as error:
         logger.error({
