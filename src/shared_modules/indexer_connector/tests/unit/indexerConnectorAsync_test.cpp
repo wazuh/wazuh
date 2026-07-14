@@ -1,3 +1,4 @@
+#include "exponentialBackoff.hpp"
 #include "indexerConnectorAsyncImpl.hpp"
 #include "mocks/MockHTTPRequest.hpp"
 #include "mocks/MockServerSelector.hpp"
@@ -25,11 +26,100 @@ using ::testing::StrictMock;
 // Define different connector types with GMock for async testing
 using IndexerConnectorAsyncImplTest = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest>;
 using IndexerConnectorAsyncImplSmallBulk = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 5, 5, 0>;
+using IndexerConnectorAsyncImplRetryableBulk =
+    IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 350, 1, 0>;
 using IndexerConnectorAsyncImplSmallBulkPair = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 2, 5, 0>;
 using IndexerConnectorAsyncImplSmallBulkNoFlushInterval =
     IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 5, 0, 0>;
 // Large template bulk (25000) with a 5-second flush timer and no retry delay.
 using IndexerConnectorAsyncImplLargeBulk = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 25000, 5, 0>;
+
+class IndexerExponentialBackoffTest : public ::testing::Test
+{
+protected:
+    static constexpr std::chrono::milliseconds BASE_DELAY {10};
+    static constexpr std::chrono::milliseconds MAX_DELAY {40};
+
+    static void expectDelayInRange(std::chrono::milliseconds delay,
+                                   std::chrono::milliseconds minDelay,
+                                   std::chrono::milliseconds maxDelay)
+    {
+        EXPECT_GE(delay, minDelay);
+        EXPECT_LE(delay, maxDelay);
+    }
+};
+
+TEST_F(IndexerExponentialBackoffTest, AppliesExponentialCapsAndReset)
+{
+    IndexerExponentialBackoff backoff(BASE_DELAY, MAX_DELAY);
+
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, std::chrono::milliseconds {10});
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {10}, std::chrono::milliseconds {20});
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {20}, std::chrono::milliseconds {40});
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {20}, std::chrono::milliseconds {40});
+
+    backoff.reset();
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, BASE_DELAY);
+}
+
+TEST_F(IndexerExponentialBackoffTest, ConsecutiveFailuresDoNotExceedMaxDelay)
+{
+    IndexerExponentialBackoff backoff(BASE_DELAY, MAX_DELAY);
+
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, BASE_DELAY);
+    expectDelayInRange(backoff.nextDelay(), BASE_DELAY, BASE_DELAY * 2);
+
+    for (size_t attempt = 0; attempt < 18; ++attempt)
+    {
+        expectDelayInRange(backoff.nextDelay(), MAX_DELAY / 2, MAX_DELAY);
+    }
+}
+
+TEST_F(IndexerExponentialBackoffTest, MaxDelayUsesPreviousExponentialStepAsLowerBound)
+{
+    constexpr std::chrono::milliseconds baseDelay {1000};
+    constexpr std::chrono::milliseconds maxDelay {15000};
+    IndexerExponentialBackoff backoff(baseDelay, maxDelay);
+
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, std::chrono::milliseconds {1000});
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {1000}, std::chrono::milliseconds {2000});
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {2000}, std::chrono::milliseconds {4000});
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {4000}, std::chrono::milliseconds {8000});
+
+    for (size_t attempt = 0; attempt < 7; ++attempt)
+    {
+        expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {8000}, maxDelay);
+    }
+}
+
+TEST_F(IndexerExponentialBackoffTest, ZeroBaseDelayReturnsZero)
+{
+    IndexerExponentialBackoff backoff(std::chrono::milliseconds {0});
+
+    EXPECT_EQ(backoff.nextDelay(), std::chrono::milliseconds {0});
+    EXPECT_EQ(backoff.nextDelay(), std::chrono::milliseconds {0});
+}
+
+TEST_F(IndexerExponentialBackoffTest, NegativeBaseDelayIsClampedToZero)
+{
+    IndexerExponentialBackoff backoff(std::chrono::milliseconds {-10});
+
+    EXPECT_EQ(backoff.nextDelay(), std::chrono::milliseconds {0});
+    EXPECT_EQ(backoff.nextDelay(), std::chrono::milliseconds {0});
+}
+
+TEST_F(IndexerExponentialBackoffTest, MaxDelayBelowBaseDelayUsesBaseAsCap)
+{
+    constexpr std::chrono::milliseconds baseDelay {50};
+    IndexerExponentialBackoff backoff(baseDelay, std::chrono::milliseconds {10});
+
+    expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, baseDelay);
+
+    for (size_t attempt = 0; attempt < 7; ++attempt)
+    {
+        expectDelayInRange(backoff.nextDelay(), std::chrono::milliseconds {0}, baseDelay);
+    }
+}
 
 // Test fixture using GMock for async implementation
 class IndexerConnectorAsyncTest : public ::testing::Test
@@ -811,6 +901,108 @@ TEST_F(IndexerConnectorAsyncTest, HandleError429TooManyRequests)
     EXPECT_GE(callCount, 2);
 }
 
+TEST_F(IndexerConnectorAsyncTest, RetriesBulkResponseWithClusterBlockException)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> retryCompletedPromise;
+    std::future<void> retryCompletedFuture = retryCompletedPromise.get_future();
+    std::atomic<int> errorCallCount {0};
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillRepeatedly(Invoke(
+            [this, &retryCompletedPromise, &errorCallCount](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            {
+                this->callCount++;
+
+                std::string data;
+                if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string>>(requestParams).data;
+                }
+                else if (std::holds_alternative<TRequestParameters<std::string_view>>(requestParams))
+                {
+                    data = std::get<TRequestParameters<std::string_view>>(requestParams).data;
+                }
+                else
+                {
+                    data = std::get<TRequestParameters<nlohmann::json>>(requestParams).data.dump();
+                }
+                this->receivedData.push_back(data);
+
+                if (errorCallCount.load() == 0)
+                {
+                    errorCallCount++;
+                    std::string clusterBlockResponse = R"({
+                        "took": 1,
+                        "errors": true,
+                        "items": [
+                            {
+                                "create": {
+                                    "_index": ".ds-wazuh-events-v5-system-activity-000001",
+                                    "status": 403,
+                                    "error": {
+                                        "type": "cluster_block_exception",
+                                        "reason": "index [.ds-wazuh-events-v5-system-activity-000001] blocked by: [FORBIDDEN/8/index write (api)];"
+                                    }
+                                }
+                            },
+                            {"create": {"_index": "test-index", "status": 201}},
+                            {"create": {"_index": "test-index", "status": 201}},
+                            {"create": {"_index": "test-index", "status": 201}},
+                            {"create": {"_index": "test-index", "status": 201}}
+                        ]
+                    })";
+
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(clusterBlockResponse);
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(std::move(clusterBlockResponse));
+                    }
+                }
+                else
+                {
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams)
+                            .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                    }
+                    retryCompletedPromise.set_value();
+                }
+            }));
+
+    IndexerConnectorAsyncImplRetryableBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    for (int i = 0; i < 5; ++i)
+    {
+        const std::string data = R"({"field":"value)" + std::to_string(i) + R"("})";
+        connector.bulkIndexDataStream("wazuh-events-v5-system-activity", data);
+    }
+
+    auto status = retryCompletedFuture.wait_for(std::chrono::seconds(10));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for cluster block retry";
+    EXPECT_EQ(callCount, 2);
+    EXPECT_EQ(errorCallCount.load(), 1);
+    ASSERT_GE(receivedData.size(), 2);
+    EXPECT_NE(receivedData[1].find("value0"), std::string::npos);
+    for (int i = 1; i < 5; ++i)
+    {
+        EXPECT_EQ(receivedData[1].find("value" + std::to_string(i)), std::string::npos);
+    }
+}
+
 TEST_F(IndexerConnectorAsyncTest, HandleError500InternalServerError)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -870,22 +1062,24 @@ TEST_F(IndexerConnectorAsyncTest, HandleError500InternalServerError)
     EXPECT_GT(callCount, 0);
 }
 
-// Test for generic error handling (non-specific status codes)
-TEST_F(IndexerConnectorAsyncTest, HandleGenericError)
+// Test for retryable 502 Bad Gateway handling
+TEST_F(IndexerConnectorAsyncTest, HandleBadGatewayWithRetry)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
-    std::promise<void> errorHandledPromise;
-    std::future<void> errorHandledFuture = errorHandledPromise.get_future();
+    std::promise<void> retryCompletedPromise;
+    std::future<void> retryCompletedFuture = retryCompletedPromise.get_future();
+    std::atomic<int> errorCallCount {0};
+    std::atomic<bool> retryCompleted {false};
 
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .WillRepeatedly(Invoke(
-            [this, &errorHandledPromise](RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
+            [this, &retryCompletedPromise, &errorCallCount, &retryCompleted](
+                RequestParamsVariant requestParams, auto postParams, ConfigurationParameters)
             {
                 this->callCount++;
 
-                // Extract data from variant
                 std::string data;
                 if (std::holds_alternative<TRequestParameters<std::string>>(requestParams))
                 {
@@ -901,21 +1095,40 @@ TEST_F(IndexerConnectorAsyncTest, HandleGenericError)
                 }
                 this->receivedData.push_back(data);
 
-                // Test with a generic error status code (502 Bad Gateway)
+                if (errorCallCount.load() == 0)
+                {
+                    errorCallCount++;
+                    if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                    {
+                        std::get<TPostRequestParameters<const std::string&>>(postParams)
+                            .onError("Bad Gateway", 502, "");
+                    }
+                    else
+                    {
+                        std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Bad Gateway", 502, "");
+                    }
+                    return;
+                }
+
                 if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
                 {
-                    std::get<TPostRequestParameters<const std::string&>>(postParams).onError("Bad Gateway", 502, "");
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
                 else
                 {
-                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Bad Gateway", 502, "");
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
                 }
-                errorHandledPromise.set_value();
+
+                if (!retryCompleted.exchange(true))
+                {
+                    retryCompletedPromise.set_value();
+                }
             }));
 
     IndexerConnectorAsyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    // Add data to trigger processing
     for (int i = 0; i < 5; ++i)
     {
         std::string id = "id" + std::to_string(i);
@@ -923,10 +1136,10 @@ TEST_F(IndexerConnectorAsyncTest, HandleGenericError)
         connector.bulkIndex(id, "index1", data);
     }
 
-    // Wait for error handling to complete
-    auto status = errorHandledFuture.wait_for(std::chrono::seconds(10));
-    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for generic error handling";
-    EXPECT_GE(callCount, 1);
+    auto status = retryCompletedFuture.wait_for(std::chrono::seconds(10));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for bad gateway retry";
+    EXPECT_GE(callCount, 2);
+    EXPECT_EQ(errorCallCount.load(), 1);
 }
 
 // Test async queue processing with small bulk size

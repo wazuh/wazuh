@@ -1082,6 +1082,65 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError429TooManyRequestsWithRetr
     EXPECT_EQ(callCount, 2) << "Should have made exactly 2 calls (1 initial + 1 retry)";
 }
 
+// Test processBulkChunk error handling - 503 Service Unavailable with retry
+TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError503ServiceUnavailableWithRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> retryCompletedPromise;
+    std::future<void> retryCompletedFuture = retryCompletedPromise.get_future();
+
+    int callCount = 0;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [&callCount](RequestParamsVariant /*requestParams*/,
+                         auto postParams,
+                         const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Service unavailable", 503, "");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Service unavailable", 503, "");
+                }
+            }))
+        .WillOnce(Invoke(
+            [&callCount, &retryCompletedPromise](RequestParamsVariant /*requestParams*/,
+                                                 auto postParams,
+                                                 const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+                retryCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("test_id", "test_index", R"({"field":"value"})");
+    connector.flush();
+
+    auto status = retryCompletedFuture.wait_for(std::chrono::seconds(10));
+    ASSERT_EQ(status, std::future_status::ready) << "Timeout waiting for service unavailable retry";
+
+    EXPECT_EQ(callCount, 2) << "Should have made exactly 2 calls (1 initial + 1 retry)";
+}
+
 // Test processBulkChunk error handling - Generic server error should throw exception
 TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkGenericServerErrorThrowsException)
 {

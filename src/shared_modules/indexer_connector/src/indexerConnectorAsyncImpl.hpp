@@ -52,9 +52,10 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
     }
 }
 
-constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_VERSION_CONFLICT {409};
+constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
+constexpr auto HTTP_CONNECTION_ERROR {-1};
 
 // Overhead is the fixed JSON scaffolding for one bulk item:
 // {"index":{"_index":"<index>","id":"<id>"}}
@@ -102,9 +103,12 @@ template<typename TSelector,
          size_t BulkMaxBytes = (size_t {0x1} << 22),
          size_t FlushInterval = 20,
          size_t RetryDelay = 1,
-         size_t MaxSuccessCount = 5>
+         size_t MaxSuccessCount = 5,
+         size_t MaxRetryDelay = 15>
 class IndexerConnectorAsyncImpl final
 {
+    static_assert(RetryDelay > 0, "RetryDelay must be greater than 0");
+
     SecureCommunication m_secureCommunication;
     std::unique_ptr<TSelector> m_selector;
     THttpRequest* m_httpRequest;
@@ -119,6 +123,7 @@ class IndexerConnectorAsyncImpl final
     size_t m_bulkMaxBytes {BulkMaxBytes};
     size_t m_loggerQueueSize {DEFAULT_LOGGER_QUEUE_SIZE};
     size_t m_loggerThreads {DEFAULT_LOGGER_THREADS};
+    size_t m_maxRetryDelay {MaxRetryDelay};
     std::unique_ptr<IndexerBulkQueue> m_queue;
 
 public:
@@ -259,6 +264,11 @@ public:
         m_bulkMaxBytes = config.contains("bulk_max_bytes") && config.at("bulk_max_bytes").is_number_integer()
                              ? config.at("bulk_max_bytes").get<size_t>()
                              : BulkMaxBytes;
+
+        m_maxRetryDelay =
+            config.contains("max_retry_delay_seconds") && config.at("max_retry_delay_seconds").is_number_integer()
+                ? config.at("max_retry_delay_seconds").get<size_t>()
+                : MaxRetryDelay;
 
         // Error-logger sizing: bounded queue (elements) and thread count. Only responses whose
         // bulk reported errors are enqueued (see onSuccess), so small defaults suffice.
@@ -525,17 +535,25 @@ public:
                     }
                     else if (statusCode == HTTP_VERSION_CONFLICT)
                     {
-                        LOGFN_DEBUG2(m_logFn, "Document version conflict, retrying in 1 second.");
+                        LOGFN_DEBUG2(m_logFn, "Document version conflict, retrying with exponential backoff.");
                         throw IndexerConnectorException(error);
                     }
                     else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                     {
-                        LOGFN_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+                        LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
+                        throw IndexerConnectorException(error);
+                    }
+                    else if (statusCode == HTTP_CONNECTION_ERROR)
+                    {
+                        LOGFN_DEBUG2(m_logFn, "Connection error (%s), retrying with exponential backoff.", error.c_str());
                         throw IndexerConnectorException(error);
                     }
                     else
                     {
-                        LOGFN_WARN(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
+                        LOGFN_WARN(m_logFn,
+                                 "%s, status code: %ld. Discarding event(s) in this batch.",
+                                 error.c_str(),
+                                 statusCode);
                     }
                 };
 
@@ -553,7 +571,8 @@ public:
             m_maxQueueBytes,
             m_bulkMaxBytes,
             m_flushInterval,
-            RetryDelay);
+            RetryDelay,
+            m_maxRetryDelay);
     }
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)

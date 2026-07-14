@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "commonDefs.h"
+#include "exponentialBackoff.hpp"
 #include "loggerHelper.h"
 
 /**
@@ -42,15 +43,20 @@ public:
      * @param maxBytes   Maximum bytes before push() starts discarding (0 = unlimited).
      * @param bulkMaxBytes  Target byte threshold per batch before dispatch.
      * @param flushIntervalSec  Max seconds to wait before flushing a partial batch.
-     * @param retryDelaySec     Seconds to sleep after a failed processor call.
+     * @param retryDelaySec     Base delay in seconds for exponential backoff after failed processor calls.
+     * @param maxRetryDelaySec  Maximum delay in seconds for exponential backoff.
      */
-    IndexerBulkQueue(
-        Processor processor, size_t maxBytes, size_t bulkMaxBytes, size_t flushIntervalSec, size_t retryDelaySec)
+    IndexerBulkQueue(Processor processor,
+                     size_t maxBytes,
+                     size_t bulkMaxBytes,
+                     size_t flushIntervalSec,
+                     size_t retryDelaySec,
+                     size_t maxRetryDelaySec)
         : m_processor(std::move(processor))
         , m_maxBytes(maxBytes)
         , m_bulkMaxBytes(bulkMaxBytes)
         , m_flushInterval(flushIntervalSec)
-        , m_retryDelay(retryDelaySec)
+        , m_retryBackoff(std::chrono::seconds(retryDelaySec), std::chrono::seconds(maxRetryDelaySec))
     {
         m_worker = std::thread(&IndexerBulkQueue::dispatch, this);
     }
@@ -202,6 +208,9 @@ private:
             try
             {
                 m_processor(batch);
+                // If m_processor throws, this reset is skipped, so the backoff keeps escalating
+                // across consecutive failures instead of restarting from the base delay each time.
+                m_retryBackoff.reset();
             }
             catch (const std::exception& ex)
             {
@@ -224,9 +233,13 @@ private:
 
                 if (shouldRetry)
                 {
-                    logWarn(LOGGER_DEFAULT_TAG, "IndexerBulkQueue dispatch error: %s", ex.what());
+                    const auto retryDelay = m_retryBackoff.nextDelay();
+                    logDebug1(LOGGER_DEFAULT_TAG,
+                            "IndexerBulkQueue dispatch error: %s. Retrying in %lld ms.",
+                            ex.what(),
+                            static_cast<long long>(retryDelay.count()));
                     std::unique_lock<std::mutex> lock(m_mutex);
-                    m_cv.wait_for(lock, std::chrono::seconds(m_retryDelay), [this]() { return !m_running; });
+                    m_cv.wait_for(lock, retryDelay, [this]() { return !m_running; });
                 }
             }
         }
@@ -274,7 +287,7 @@ private:
     const size_t m_maxBytes;
     std::atomic<size_t> m_bulkMaxBytes;
     const size_t m_flushInterval;
-    const size_t m_retryDelay;
+    IndexerExponentialBackoff m_retryBackoff;
 
     // Threading
     mutable std::mutex m_mutex;
