@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "remoted.h"
+#include <openssl/crypto.h>
 #include <unistd.h>
 
 /* Prototypes */
@@ -49,6 +50,10 @@ int main(int argc, char **argv)
 
     /* Set the name */
     OS_SetName(ARGV0);
+
+    if (OPENSSL_init_crypto(OPENSSL_INIT_NO_ATEXIT, NULL) != 1) {
+        merror_exit("Could not initialize OpenSSL");
+    }
 
     // Define current working directory
     char * home_path = w_homedir(argv[0]);

@@ -9,13 +9,8 @@
 #include <strings.h> // strncasecmp
 
 /* ------------------------------- Global state ------------------------------- */
-/* Thread-safe, one-time libcurl initialization using pthread_once. */
+/* Thread-safe, one-time libcurl initialization using atomics. */
 static _Atomic int g_curl_state = UHTTP_UNINIT;
-
-static void uhttp_atexit_cleanup(void)
-{
-    curl_global_cleanup();
-}
 
 /**
  * @brief Initialize libcurl globally (idempotent, thread-safe).
@@ -34,7 +29,6 @@ int uhttp_global_init(void)
         CURLcode rc = curl_global_init(CURL_GLOBAL_DEFAULT);
         if (rc == CURLE_OK)
         {
-            atexit(uhttp_atexit_cleanup); // Cleanup only once per process
             atomic_store_explicit(&g_curl_state, UHTTP_INITED, memory_order_release);
             return 0;
         }
@@ -57,13 +51,15 @@ int uhttp_global_init(void)
     }
 }
 
-/**
- * @brief No-op; global cleanup is registered via atexit().
- * Provided for API symmetry only.
- */
 void uhttp_global_cleanup(void)
 {
-    /* no-op */
+    int expected = UHTTP_INITED;
+
+    if (atomic_compare_exchange_strong_explicit(
+            &g_curl_state, &expected, UHTTP_UNINIT, memory_order_acq_rel, memory_order_acquire))
+    {
+        curl_global_cleanup();
+    }
 }
 
 /* ---------------------------- Per-client state ---------------------------- */
