@@ -87,8 +87,8 @@ class AgentInfoImpl
 
         /// @brief Set the predicate used to detect that a shutdown is in progress.
         /// It complements the module's own stop flag so that failures caused by the global agent
-        /// shutdown (which happens before this module receives its own stop) are logged at DEBUG
-        /// instead of WARNING.
+        /// shutdown (which happens before this module receives its own stop) are logged at a lower
+        /// level (DEBUG or INFO, depending on the message) instead of WARNING.
         /// @param isShuttingDown Predicate returning true while a shutdown is requested
         void setIsShuttingDownFunction(std::function<bool()> isShuttingDown);
 

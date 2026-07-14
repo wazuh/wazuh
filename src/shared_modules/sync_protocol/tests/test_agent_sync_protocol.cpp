@@ -237,6 +237,39 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleReportsStoppedWhenStopRequested)
     EXPECT_TRUE(result.stopped);
 }
 
+// Exercises the C interface (asp_sync_module -> SyncModuleResult_t.stopped): this is the path
+// FIM depends on to distinguish a shutdown-aborted sync from a genuine failure.
+TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
+{
+    // A queue that always fails to open, so synchronizeModule() returns at the checkStatus early
+    // out (no persistent-queue data needed).
+    MQ_Functions failingStartMq
+    {
+        [](const char*, short, short) { return -1; },
+        [](int, const void*, size_t, const char*, char) { return 0; }
+    };
+
+    auto* handle = asp_create("test_module",
+                              ":memory:",
+                              &failingStartMq,
+                              +[](modules_log_level_t, const char*) {},
+                              syncEndDelay, max_timeout, retries, maxEps);
+    ASSERT_NE(handle, nullptr);
+
+    // No stop requested: a real failure must not be flagged as shutdown-induced.
+    SyncModuleResult_t noStop = asp_sync_module(handle, MODE_DELTA);
+    EXPECT_FALSE(noStop.success);
+    EXPECT_FALSE(noStop.stopped);
+
+    // Stop requested: the C result must propagate stopped = true.
+    asp_stop(handle);
+    SyncModuleResult_t afterStop = asp_sync_module(handle, MODE_DELTA);
+    EXPECT_FALSE(afterStop.success);
+    EXPECT_TRUE(afterStop.stopped);
+
+    asp_destroy(handle);
+}
+
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleFetchAndMarkForSyncThrowsException)
 {
     mockQueue = std::make_shared<MockPersistentQueue>();
@@ -896,7 +929,11 @@ TEST_F(AgentSyncProtocolTest, SendEndAbortedOnStopDuringSyncEndDelay)
                << "cv.wait_for may not be interruptible";
     }
 
-    EXPECT_FALSE(syncFuture.get().success);
+    const SyncModuleResult endResult = syncFuture.get();
+    EXPECT_FALSE(endResult.success);
+    // stop() was requested during the sync-end wait, so the final return must flag the failure
+    // as shutdown-induced (exercises the end-of-sync `stopped = shouldStop()` capture path).
+    EXPECT_TRUE(endResult.stopped);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndFailDueToManager)
@@ -3251,6 +3288,8 @@ TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsWithFailedQueueStart)
 
     EXPECT_FALSE(result.success);
     EXPECT_EQ(result.failureReason, "Failed to open the local message queue.");
+    // No stop was requested, so the failure must not be flagged as shutdown-induced.
+    EXPECT_FALSE(result.stopped);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeMetadataOrGroupsStartAckTimeout)

@@ -319,8 +319,9 @@ SyncModuleResult AgentSyncProtocol::synchronizeModule(Mode mode, Option option)
     }
 
     std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
-    // Capture the stop state before clearing it so the caller can demote an expected
+    // Report whether a stop was requested so the caller can demote an expected
     // shutdown-time failure from WARNING to INFO/DEBUG.
+    // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
     const bool stopped = shouldStop();
     clearSyncState();
     return {success, failureReason, stopped};
@@ -441,8 +442,9 @@ SyncModuleResult AgentSyncProtocol::synchronizeMetadataOrGroups(Mode mode,
     }
 
     std::string failureReason = determineSyncFailureReasonBasedOnSyncResult(m_syncState.lastSyncResult);
-    // Capture the stop state before clearing it so the caller can demote an expected
+    // Report whether a stop was requested so the caller can demote an expected
     // shutdown-time failure from WARNING to INFO/DEBUG.
+    // (shouldStop() reads m_stopRequested, which clearSyncState() does not touch.)
     const bool stopped = shouldStop();
     clearSyncState();
     return {success, failureReason, stopped};

@@ -52,7 +52,8 @@ EXPORTED void agent_info_set_query_module_function(query_module_callback_t query
  * @brief Set the predicate used to detect that a shutdown is in progress
  *
  * The implementation uses it to log expected shutdown-time synchronization/coordination
- * failures at DEBUG instead of WARNING/ERROR.
+ * failures at a lower level (DEBUG or INFO, depending on the message) instead of
+ * WARNING/ERROR.
  *
  * @param is_shutting_down_callback Predicate returning true while a shutdown is requested
  */

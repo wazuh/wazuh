@@ -502,9 +502,14 @@ size_t wm_fim_query_json(const char* command, char** response) {
         // This is a transport helper: the connection failure is returned to the caller as a
         // structured JSON error (see the switch below), and the caller (agent-info) is the one
         // that contextualizes it (e.g. FIM unavailable during shutdown -> ECONNREFUSED/errno 111).
-        // Keep this at debug so an expected condition -such as syscheck being stopped first during
-        // shutdown- does not surface as a spurious ERROR.
-        mdebug1("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
+        // During shutdown syscheck is stopped first, so this is expected and kept at debug to avoid
+        // a spurious ERROR; during normal operation a dead syscheck is a genuine fault worth ERROR.
+        if (wm_shutdown_requested) {
+            mdebug1("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
+        } else {
+            merror("WM_FIM_QUERY_JSON: Failed to connect to socket, errno=%d", errno);
+        }
+
         switch (errno) {
             case ECONNREFUSED:
                 snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Syscheck module refused connection. The component might be disabled\"}",
@@ -527,9 +532,13 @@ size_t wm_fim_query_json(const char* command, char** response) {
 
     // Send the JSON query to syscheck
     if (OS_SendSecureTCP(sock, strlen(json_string), json_string) < 0) {
-        // Transport-level failure returned to the caller as a JSON error; keep at debug to avoid
-        // spurious ERROR noise on expected shutdown races.
-        mdebug1("WM_FIM_QUERY_JSON: Failed to send command");
+        // Transport-level failure returned to the caller as a JSON error; debug during shutdown
+        // (expected race), ERROR otherwise (genuine fault).
+        if (wm_shutdown_requested) {
+            mdebug1("WM_FIM_QUERY_JSON: Failed to send command");
+        } else {
+            merror("WM_FIM_QUERY_JSON: Failed to send command");
+        }
         close(sock);
         snprintf(error_msg, sizeof(error_msg), "{\"error\":%d,\"message\":\"Could not send query to syscheck\"}",
                  MQ_ERR_INTERNAL);
