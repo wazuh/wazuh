@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v4.14.8]
 
+### Manager
+
+#### Fixed
+
+- Fixed AES connection getting reset to blowfish on keystore rebuild. ([#37524](https://github.com/wazuh/wazuh/pull/37524))
+
 ### Ruleset
 
 #### Fixed
