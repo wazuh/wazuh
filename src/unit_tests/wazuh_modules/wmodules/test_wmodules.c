@@ -23,16 +23,29 @@ static size_t echo(void * module, char * query, char ** output) {
     return strlen(query);
 }
 
+// Sync callback that always fails, to exercise the modulesSync() failure path.
+static int sync_fail(const char * args, size_t length) {
+    (void)args;
+    (void)length;
+    return -1;
+}
+
 static int setup_modules(void ** state) {
     static wm_context CONTEXTS[] = {
         { .name = "A", .query = echo },
         { .name = "B", .query = NULL },
+        { .name = "sca", .sync = sync_fail },
     };
 
     wmodules = calloc(1, sizeof(wmodule));
     wmodules->context = &CONTEXTS[0];
     wmodules->next = calloc(1, sizeof(wmodule));
     wmodules->next->context = &CONTEXTS[1];
+    wmodules->next->next = calloc(1, sizeof(wmodule));
+    wmodules->next->next->context = &CONTEXTS[2];
+    wmodules->next->next->tag = "sca";
+
+    wm_shutdown_requested = 0;
 
     *state = NULL;
     return 0;
@@ -40,8 +53,11 @@ static int setup_modules(void ** state) {
 
 static int teardown_modules(void ** state) {
     free(*state);
+    free(wmodules->next->next);
     free(wmodules->next);
     free(wmodules);
+
+    wm_shutdown_requested = 0;
 
     return 0;
 }
@@ -107,6 +123,39 @@ static void test_module_query_echo(void ** state) {
     assert_int_equal(n, 4);
 }
 
+// A sync command that keeps failing while the agent is running is a real error: after exhausting
+// the retries, modulesSync() must log it at ERROR level.
+static void test_modules_sync_failure_while_running(void ** state) {
+    (void)state;
+    char input[] = "sca_sync payload";
+
+    // One "not ready" debug per retry (WM_MAX_ATTEMPTS attempts after the first one).
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 1");
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 2");
+    expect_string(__wrap__mdebug1, formatted_msg, "WModules is not ready. Retry 3");
+    expect_string(__wrap__merror, formatted_msg, "At modulesSync(): Unable to sync module 'sca': (-1)");
+
+    int ret = modulesSync(input, sizeof(input));
+
+    assert_int_equal(ret, -1);
+}
+
+// The same failure during agent shutdown is expected (the module was already stopped on purpose):
+// modulesSync() must not retry and must report it at DEBUG level, not ERROR.
+static void test_modules_sync_failure_during_shutdown(void ** state) {
+    (void)state;
+    char input[] = "sca_sync payload";
+
+    wm_shutdown_requested = 1;
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "At modulesSync(): skipping sync for module 'sca' (-1): the agent is shutting down.");
+
+    int ret = modulesSync(input, sizeof(input));
+
+    assert_int_equal(ret, -1);
+}
+
 int main() {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_find_module_found, setup_modules, teardown_modules),
@@ -115,6 +164,8 @@ int main() {
         cmocka_unit_test_setup_teardown(test_module_query_no_module, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_module_query_no_queries, setup_modules, teardown_modules),
         cmocka_unit_test_setup_teardown(test_module_query_echo, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_modules_sync_failure_while_running, setup_modules, teardown_modules),
+        cmocka_unit_test_setup_teardown(test_modules_sync_failure_during_shutdown, setup_modules, teardown_modules),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
