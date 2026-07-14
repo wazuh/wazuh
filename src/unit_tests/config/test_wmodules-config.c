@@ -89,11 +89,6 @@ static void test_Test_WModule_github_no_warning(void **state) {
         fail();
     }
 
-    /* wm_free() destroys the successfully parsed github module, which logs
-     * an informational message unrelated to what this test checks. */
-    expect_any(__wrap__mtinfo, tag);
-    expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub finished.");
-
     assert_int_equal(Test_WModule(TEST_CONF_PATH), 0);
 }
 
@@ -112,11 +107,6 @@ static void test_Test_WModule_github_invalid_content_is_reported(void **state) {
     expect_string(__wrap__merror, formatted_msg, "Invalid content for tag 'enabled' at module 'github'.");
     expect_string(__wrap__merror, formatted_msg, "(1202): Configuration error at 'test_wmodules-config.conf'.");
     expect_string(__wrap__merror, formatted_msg, "(1207): WModule remote configuration in 'test_wmodules-config.conf' is corrupted.");
-
-    /* module->data was already allocated before the invalid tag was hit, so
-     * wm_free() still destroys a (partially initialized) github module. */
-    expect_any(__wrap__mtinfo, tag);
-    expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub finished.");
 
     assert_int_equal(Test_WModule(TEST_CONF_PATH), -1);
 }

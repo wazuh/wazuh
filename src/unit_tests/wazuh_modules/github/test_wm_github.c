@@ -63,8 +63,6 @@ static int setup_conf(void **state) {
 static int teardown_conf(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     test_mode = 0;
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:github");
-    expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub finished.");
     wm_github_destroy(data->github_config);
     os_free(data->root_c);
     os_free(data);
@@ -113,6 +111,9 @@ void test_github_main_enable(void **state) {
 
     expect_value_count(__wrap_sleep, __seconds, 1, 2);
     will_return_count(__wrap_sleep, 0, 2);
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:github");
+    expect_string(__wrap__mtinfo, formatted_msg, "Module GitHub finished.");
 
     wm_github_main(data->github_config);
 }
