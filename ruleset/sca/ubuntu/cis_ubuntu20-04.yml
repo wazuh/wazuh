@@ -5006,9 +5006,9 @@ checks:
     rules:
       - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shells- -> r:0 root 0 root && r:644|640|604|600|400|500'
 
-  # 6.1.10 Ensure permissions on /etc/opasswd are configured. (Automated)
+  # 6.1.10 Ensure permissions on /etc/security/opasswd are configured. (Automated)
   - id: 19205
-    title: "Ensure permissions on /etc/opasswd are configured."
+    title: "Ensure permissions on /etc/security/opasswd are configured."
     description: "/etc/security/opasswd and it's backup /etc/security/opasswd.old hold user's previous passwords if pam_unix or pam_pwhistory is in use on the system."
     rationale: "It is critical to ensure that /etc/security/opasswd is protected from unauthorized access. Although it is protected by default, the file permissions could be changed either inadvertently or through malicious actions."
     remediation: 'Run the following commands to remove excess permissions, set owner, and set group on /etc/security/opasswd and /etc/security/opasswd.old is they exist: # [ -e "/etc/security/opasswd" ] && chmod u-x,go-rwx /etc/security/opasswd # [ -e "/etc/security/opasswd" ] && chown root:root /etc/security/opasswd # [ -e "/etc/security/opasswd.old" ] && chmod u-x,go-rwx /etc/security/opasswd.old # [ -e "/etc/security/opasswd.old" ] && chown root:root /etc/security/opasswd.old.'
@@ -5028,7 +5028,8 @@ checks:
       - soc_2: ["CC5.2", "CC6.1"]
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/security/opasswds -> r:0 root 0 root && r:644|640|604|600|400|500'
+      - 'c:sh -c "[ ! -e /etc/security/opasswd ] || stat -Lc ''%n %a %u %U %g %G'' /etc/security/opasswd" -> r:^$|0 root 0 root && r:^$|600|400|500'
+      - 'c:sh -c "[ ! -e /etc/security/opasswd.old ] || stat -Lc ''%n %a %u %U %g %G'' /etc/security/opasswd.old" -> r:^$|0 root 0 root && r:^$|600|400|500'
 
   # 6.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 6.1.12 Ensure no unowned or ungrouped files or directories exist. (Automated) - Not Implemented
