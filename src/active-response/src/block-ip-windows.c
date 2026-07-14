@@ -27,7 +27,7 @@
 
 firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const char *argv0);
 firewall_result_t try_route_windows(const char *srcip, int action, int ip_version, const char *argv0);
-static bool firewall_is_effectively_on(const char *argv0);
+static bool firewall_is_effectively_on(const char *netsh_path, const char *argv0);
 
 int main(int argc, char **argv) {
     // This must always be the first instruction on Windows
@@ -80,8 +80,10 @@ int main(int argc, char **argv) {
         {NULL, NULL, false}  // Sentinel
     };
 
+    int ip_version = (strchr(srcip, ':') != NULL) ? 6 : 4;
+
     // Execute firewall chain with fallback
-    int result = execute_firewall_chain(methods, srcip, action, 0, argv[0]);
+    int result = execute_firewall_chain(methods, srcip, action, ip_version, argv[0]);
 
     cJSON_Delete(input_json);
     return result;
@@ -98,20 +100,11 @@ int main(int argc, char **argv) {
 // On any failure to determine the state (or when the "ON" token is not recognized, e.g.
 // on a localized Windows) we return false, so try_netsh conservatively defers to the
 // route fallback rather than adding a rule that might never be enforced.
-static bool firewall_is_effectively_on(const char *argv0) {
-    char *netsh_path = NULL;
-
-    if (get_binary_path("netsh.exe", &netsh_path) < 0) {
-        write_debug_file(argv0, "Unable to locate netsh.exe to query firewall state - assuming disabled");
-        os_free(netsh_path);
-        return false;
-    }
-
-    char *exec_cmd[] = {netsh_path, "advfirewall", "show", "allprofiles", "state", NULL};
+static bool firewall_is_effectively_on(const char *netsh_path, const char *argv0) {
+    char *exec_cmd[] = {(char *)netsh_path, "advfirewall", "show", "allprofiles", "state", NULL};
     wfd_t *wfd = wpopenv(netsh_path, exec_cmd, W_BIND_STDOUT);
     if (!wfd) {
         write_debug_file(argv0, "Unable to query firewall state via netsh - assuming disabled");
-        os_free(netsh_path);
         return false;
     }
 
@@ -135,7 +128,6 @@ static bool firewall_is_effectively_on(const char *argv0) {
     }
 
     wpclose(wfd);
-    os_free(netsh_path);
     return any_on;
 }
 
@@ -144,7 +136,6 @@ static bool firewall_is_effectively_on(const char *argv0) {
 // ============================================================================
 
 firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;  // netsh handles both IPv4 and IPv6
     static const char rule_name[] = "name=\"WAZUH ACTIVE RESPONSE BLOCKED IP\"";
     char log_msg[OS_MAXSTR];
     char *netsh_path = NULL;
@@ -160,7 +151,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
     // local EnableFirewall value is absent). This is ENABLE-only: on DISABLE we must
     // always try to remove the rule, which may have been added while the firewall was
     // enabled.
-    if (action == ENABLE_COMMAND && !firewall_is_effectively_on(argv0)) {
+    if (action == ENABLE_COMMAND && !firewall_is_effectively_on(netsh_path, argv0)) {
         log_firewall_action(argv0, LOG_LEVEL_WARNING, "netsh", "check",
                           "Windows Firewall is effectively disabled - deferring to route fallback");
         os_free(netsh_path);
@@ -168,7 +159,7 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
     }
 
     // Single-host prefix for netsh remoteip: /32 for IPv4, /128 for IPv6.
-    const char *host_prefix = (strchr(srcip, ':') != NULL) ? "128" : "32";
+    const char *host_prefix = (ip_version == 6) ? "128" : "32";
 
     // Build netsh command
     wfd_t *wfd = NULL;
@@ -287,7 +278,6 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
 // ============================================================================
 
 firewall_result_t try_route_windows(const char *srcip, int action, int ip_version, const char *argv0) {
-    (void)ip_version;
     char log_msg[OS_MAXSTR];
     char *route_path = NULL;
 
@@ -301,7 +291,7 @@ firewall_result_t try_route_windows(const char *srcip, int action, int ip_versio
     // netsh (Windows Firewall) remains the only comprehensive blocking mechanism.
 
     // The IPv4 mask below only applies to IPv4 targets; netsh already covers IPv6.
-    if (strchr(srcip, ':') != NULL) {
+    if (ip_version == 6) {
         log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "check",
                           "route fallback supports IPv4 only - skipping IPv6 target");
         return FIREWALL_NOT_AVAILABLE;
