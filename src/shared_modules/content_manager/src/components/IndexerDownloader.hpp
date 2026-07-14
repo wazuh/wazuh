@@ -53,10 +53,11 @@
  *   "index":               ".wazuh-threatintel-vulnerabilities", // Indexer CVE index name
  *   "consumerStatusIndex": ".wazuh-cti-consumers",    // Consumer status index (optional)
  *   "consumerStatusId":    "cti:catalog:consumer:vulnerabilities", // Consumer status document id (optional)
- *   "pageSize":            250,                       // Documents per page (optional, default 250)
+ *   "pageSize":            100,                       // Documents per page (optional, default 100)
  *   "numSlices":           2,                         // Parallel PIT slices (optional, default 2)
  *   <standard IndexerConnector SSL/auth config>
  * }
+ *
  */
 class IndexerDownloader final : public AbstractHandler<std::shared_ptr<UpdaterContext>>
 {
@@ -573,6 +574,75 @@ private:
         }
     }
 
+    bool waitUntilGlobalMapsIndexed(UpdaterContext& context) const
+    {
+        static constexpr auto POLL_INTERVAL {std::chrono::seconds {30}};
+        static const nlohmann::json GLOBAL_MAP_IDS =
+            nlohmann::json::array({"FEED-GLOBAL", "OSCPE-GLOBAL", "CNA-MAPPING-GLOBAL"});
+
+        const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
+        IndexerConnectorSync syncConnector(m_config.at("indexer"), LoggingContext {WM_CONTENTUPDATER, {}});
+
+        const auto pollSeconds =
+            static_cast<size_t>(std::chrono::duration_cast<std::chrono::seconds>(POLL_INTERVAL).count());
+        size_t queryFailures = 0;
+
+        while (true)
+        {
+            if (context.spUpdaterBaseContext->spStopCondition->check())
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested while waiting for global-map documents.");
+                return false;
+            }
+
+            try
+            {
+                const auto query = nlohmann::json {{"ids", {{"values", GLOBAL_MAP_IDS}}}};
+                const auto searchQuery =
+                    nlohmann::json {{"size", GLOBAL_MAP_IDS.size()}, {"query", query}, {"_source", false}};
+
+                const auto searchResult = syncConnector.executeSearchQuery(indexName, searchQuery);
+                const auto hitCount =
+                    searchResult.value("hits", nlohmann::json::object()).value("hits", nlohmann::json::array()).size();
+                queryFailures = 0;
+
+                if (hitCount >= GLOBAL_MAP_IDS.size())
+                {
+                    logInfo(WM_CONTENTUPDATER,
+                            "IndexerDownloader: Global-map documents present in '%s'. Starting initial load.",
+                            indexName.c_str());
+                    return true;
+                }
+
+                logInfo(WM_CONTENTUPDATER,
+                        "IndexerDownloader: Global-map documents not yet indexed in '%s' (%zu/%zu found). Waiting "
+                        "%zus before retrying.",
+                        indexName.c_str(),
+                        hitCount,
+                        GLOBAL_MAP_IDS.size(),
+                        pollSeconds);
+            }
+            catch (const std::exception& e)
+            {
+                ++queryFailures;
+                logDebug2(WM_CONTENTUPDATER,
+                          "IndexerDownloader: Failed to probe global-map documents in '%s' (%s). Waiting %zus "
+                          "before retrying (attempt %zu).",
+                          indexName.c_str(),
+                          e.what(),
+                          pollSeconds,
+                          queryFailures);
+            }
+
+            if (context.spUpdaterBaseContext->spStopCondition->waitFor(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(POLL_INTERVAL)))
+            {
+                logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested while waiting for global-map documents.");
+                return false;
+            }
+        }
+    }
+
     /**
      * @brief Persists the cursor to RocksDB after each page so that a restart can resume
      *        from the last successfully processed page instead of from the beginning.
@@ -627,6 +697,29 @@ private:
     }
 
     /**
+     * @brief Reads the configured page size, falling back to the default when missing or zero.
+     *
+     * A page size of 0 would make every search return an empty page: the load would see
+     * "0 documents" and retry on the not-ready loop forever. Guarded here because this is a
+     * shared component — not every caller sanitizes its config the way the VD facade does.
+     */
+    size_t getConfiguredPageSize() const
+    {
+        constexpr size_t DEFAULT_PAGE_SIZE {100};
+        const size_t pageSize = m_config.at("indexer").value("pageSize", 0u);
+        if (pageSize == 0)
+        {
+            if (m_config.at("indexer").contains("pageSize"))
+            {
+                logWarn(
+                    WM_CONTENTUPDATER, "IndexerDownloader: invalid pageSize 0 — using default %zu.", DEFAULT_PAGE_SIZE);
+            }
+            return DEFAULT_PAGE_SIZE;
+        }
+        return pageSize;
+    }
+
+    /**
      * @brief Returns the last cursor persisted in RocksDB, or empty string on first run.
      */
     std::string getStoredCursor(const UpdaterContext& context) const
@@ -661,8 +754,10 @@ private:
      * @param context  Updater context (contains the callback).
      * @param hits     Array of Indexer hit objects from a search response.
      * @param cursor   String representation of the highest offset seen in this page.
+     * @return true if this call caused (or coincided with) a durable flush of the feed
+     *         database, i.e. it is now safe to persist a cursor up to and including this page.
      */
-    void processPage(UpdaterContext& context, const nlohmann::json& hits, const std::string& cursor) const
+    bool processPage(UpdaterContext& context, const nlohmann::json& hits, const std::string& cursor) const
     {
         nlohmann::json message;
         message["type"] = "indexer";
@@ -671,7 +766,7 @@ private:
 
         for (const auto& hit : hits)
         {
-            const auto& source = hit.value("_source", hit);
+            const auto& source = hit.contains("_source") ? hit.at("_source") : hit;
             const auto docType = source.value("type", std::string {});
 
             // TCPE and TVENDORS are Indexer-only types not consumed by VD scan — skip silently.
@@ -687,7 +782,10 @@ private:
             // "FEED-GLOBAL", "TID-xxx"). EventDecoder identifies the resource type
             // by key prefix (startsWith "CVE-", "TID-", "FEED-GLOBAL", etc.).
             resource["resource"] = hit.value("_id", std::string {});
-            resource["payload"] = source.value("document", nlohmann::json::object());
+
+            static const nlohmann::json EMPTY_DOCUMENT = nlohmann::json::object();
+            const auto& document = source.contains("document") ? source.at("document") : EMPTY_DOCUMENT;
+            resource["payload"] = document.dump();
 
             if (docType == "CVE")
             {
@@ -713,6 +811,8 @@ private:
         {
             throw std::runtime_error("IndexerDownloader: fileProcessingCallback returned failure");
         }
+
+        return std::get<1>(result) == "flushed";
     }
 
     /**
@@ -735,7 +835,7 @@ private:
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 250u);
+        const size_t pageSize = getConfiguredPageSize();
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -767,14 +867,17 @@ private:
             });
 
         std::string currentCursor = startCursor;
+        std::string lastFlushedCursor = startCursor;
         std::optional<nlohmann::json> searchAfter = std::nullopt;
         size_t totalProcessed = 0;
+        bool stopRequested = false;
 
         while (true)
         {
             if (context.spUpdaterBaseContext->spStopCondition->check())
             {
                 logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested during PIT fetch — aborting.");
+                stopRequested = true;
                 break;
             }
 
@@ -792,9 +895,14 @@ private:
                 currentCursor = std::to_string(lastHit.at("_source").at("offset").get<uint64_t>());
             }
 
-            processPage(context, hitArray, currentCursor);
+            const bool flushed = processPage(context, hitArray, currentCursor);
             totalProcessed += hitArray.size();
-            persistCursor(context, currentCursor);
+
+            if (flushed)
+            {
+                lastFlushedCursor = currentCursor;
+                persistCursor(context, lastFlushedCursor);
+            }
 
             if (hitArray.size() < pageSize)
             {
@@ -804,7 +912,7 @@ private:
             searchAfter = lastHit.at("sort");
         }
 
-        context.data["cursor"] = currentCursor;
+        context.data["cursor"] = stopRequested ? lastFlushedCursor : currentCursor;
         return totalProcessed;
     }
 
@@ -815,7 +923,9 @@ private:
      * (hash-modulo on _id). Each slice paginates independently with search_after.
      * The callback is serialized via m_callbackMutex.
      *
-     * Cursor is only persisted after all slices complete (crash = full restart).
+     * Cursor is only persisted after all slices complete naturally (crash or graceful stop
+     * mid-download = full restart on the next cycle, since a partial per-slice offset is
+     * not a safe resume point — see the `interrupted` handling below).
      *
      * @param context    Updater context.
      * @param query      Elasticsearch query object.
@@ -833,7 +943,7 @@ private:
         static constexpr std::string_view PIT_KEEP_ALIVE {"5m"};
 
         const auto& indexName = m_config.at("indexer").at("index").get_ref<const std::string&>();
-        const size_t pageSize = m_config.at("indexer").value("pageSize", 250u);
+        const size_t pageSize = getConfiguredPageSize();
 
         const nlohmann::json sort =
             nlohmann::json::array({nlohmann::json {{"offset", "asc"}}, nlohmann::json {{"_id", "asc"}}});
@@ -870,6 +980,7 @@ private:
         std::vector<std::thread> threads;
         std::vector<std::string> errors;
         std::mutex errorsMutex;
+        std::atomic<bool> interrupted {false};
 
         logInfo(WM_CONTENTUPDATER,
                 "IndexerDownloader: Starting sliced PIT download with %zu slices, pageSize=%zu",
@@ -894,6 +1005,7 @@ private:
                     if (context.spUpdaterBaseContext->spStopCondition->check())
                     {
                         logInfo(WM_CONTENTUPDATER, "IndexerDownloader: Stop requested — slice %zu aborting.", sliceId);
+                        interrupted.store(true);
                         break;
                     }
 
@@ -992,6 +1104,15 @@ private:
         {
             throw std::runtime_error("IndexerDownloader: " + std::to_string(errors.size()) +
                                      " slice(s) failed: " + errors.front());
+        }
+
+        if (interrupted.load())
+        {
+            logInfo(WM_CONTENTUPDATER,
+                    "IndexerDownloader: Initial load interrupted by stop request — cursor not persisted, %zu "
+                    "documents processed this cycle will be re-fetched on the next initial load.",
+                    totalProcessed.load());
+            return totalProcessed.load();
         }
 
         // Persist cursor only after all slices complete
@@ -1187,6 +1308,11 @@ public:
 
             const bool forceInitialLoad = lastCursor.empty();
             if (!waitUntilConsumerReady(*context))
+            {
+                break;
+            }
+
+            if (forceInitialLoad && !waitUntilGlobalMapsIndexed(*context))
             {
                 break;
             }

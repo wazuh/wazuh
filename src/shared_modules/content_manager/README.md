@@ -63,7 +63,7 @@ After all pages are processed, the downloader signals completion via `indexer_co
             "index": ".wazuh-threatintel-vulnerabilities",
             "consumerStatusIndex": ".wazuh-cti-consumers",
             "consumerStatusId": "cti:catalog:consumer:vulnerabilities",
-            "pageSize": 250,
+            "pageSize": 100,
             "numSlices": 2
         }
     }

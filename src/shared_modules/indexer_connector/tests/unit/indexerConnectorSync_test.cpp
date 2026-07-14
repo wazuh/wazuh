@@ -2239,6 +2239,61 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryError)
     EXPECT_THROW(connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery), IndexerConnectorException);
 }
 
+TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryError429TooManyRequestsWithRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    int callCount = 0;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [&callCount](RequestParamsVariant /*requestParams*/,
+                         auto postParams,
+                         const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Too many requests", 429, "");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too many requests", 429, "");
+                }
+            }))
+        .WillOnce(Invoke(
+            [&callCount](RequestParamsVariant /*requestParams*/,
+                         auto postParams,
+                         const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                nlohmann::json response;
+                response["hits"]["total"]["value"] = 0;
+                response["hits"]["hits"] = nlohmann::json::array();
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response.dump());
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(response.dump());
+                }
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    nlohmann::json searchQuery;
+    searchQuery["query"]["term"]["wazuh.agent.id"] = "001";
+
+    const auto result = connector.executeSearchQuery("wazuh-states-vulnerabilities", searchQuery);
+
+    EXPECT_EQ(callCount, 2) << "Should have made exactly 2 calls (1 initial 429 + 1 successful retry)";
+    EXPECT_EQ(result["hits"]["total"]["value"], 0);
+}
+
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryEmptyResults)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
@@ -3886,6 +3941,59 @@ TEST_F(IndexerConnectorSyncTest, SearchWithPitServerErrorThrows)
     nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
 
     EXPECT_THROW(connector.search(pit, 10, query, sort), IndexerConnectorException);
+}
+
+TEST_F(IndexerConnectorSyncTest, SearchWithPitError429TooManyRequestsWithRetry)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    int callCount = 0;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(2)
+        .WillOnce(Invoke(
+            [&callCount](RequestParamsVariant /*requestParams*/,
+                         auto postParams,
+                         const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onError("Too many requests", 429, "");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onError("Too many requests", 429, "");
+                }
+            }))
+        .WillOnce(Invoke(
+            [&callCount](RequestParamsVariant /*requestParams*/,
+                         auto postParams,
+                         const ConfigurationParameters& /*configParams*/)
+            {
+                callCount++;
+                std::string response = R"({"hits":{"total":{"value":1},"hits":[{"_id":"doc1","sort":[1,"doc1"]}]}})";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                }
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    PointInTime pit("pit_429", 100, "5m");
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    nlohmann::json sort = nlohmann::json::array({{{"_shard_doc", "asc"}}});
+
+    auto hits = connector.search(pit, 10, query, sort);
+
+    EXPECT_EQ(callCount, 2) << "Should have made exactly 2 calls (1 initial 429 + 1 successful retry)";
+    EXPECT_EQ(hits["hits"].size(), 1);
 }
 
 TEST_F(IndexerConnectorSyncTest, SearchWithPitMissingHitsThrows)
