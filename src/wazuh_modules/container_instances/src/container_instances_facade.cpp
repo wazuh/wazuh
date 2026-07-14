@@ -37,16 +37,11 @@ namespace wazuh::container_instances
             {
                 config.type = ConnectorType::kubernetes;
                 const auto& block = configuration.value("kubernetes", nlohmann::json::object());
-                KubernetesConfig kubernetes;
-                kubernetes.kubeconfigPath = block.value("kubeconfig", "");
-                kubernetes.nodeName = block.value("node_name", "");
+                KubernetesConfig kubernetes; // Defaults from KubernetesConfig apply when tags are absent.
+                kubernetes.kubeconfigPath = block.value("kubeconfig", kubernetes.kubeconfigPath);
+                kubernetes.nodeName = block.value("node_name", kubernetes.nodeName);
                 kubernetes.ownershipPollInterval = std::chrono::seconds {block.value("ownership_poll_interval", 120)};
                 kubernetes.insecureSkipTlsVerify = block.value("insecure_skip_tls_verify", false);
-                if (kubernetes.kubeconfigPath.empty() || kubernetes.nodeName.empty())
-                {
-                    throw std::runtime_error(
-                        "container_instances: type=kubernetes requires <kubeconfig> and <node_name>");
-                }
                 config.kubernetes = std::move(kubernetes);
             }
             else if (type == "docker")

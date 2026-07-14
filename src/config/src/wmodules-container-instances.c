@@ -13,7 +13,6 @@
 #include "wmodules.h"
 
 static const char* CI_XML_ENABLED = "enabled";
-static const char* CI_XML_TYPE = "type";
 static const char* CI_XML_KUBERNETES = "kubernetes";
 static const char* CI_XML_DOCKER = "docker";
 static const char* CI_XML_KUBECONFIG = "kubeconfig";
@@ -164,25 +163,14 @@ int wm_container_instances_read(const OS_XML* xml, xml_node** nodes, wmodule* mo
             }
             config->enabled = (unsigned int)value;
         }
-        else if (strcmp(nodes[i]->element, CI_XML_TYPE) == 0)
-        {
-            if (nodes[i]->content &&
-                (strcmp(nodes[i]->content, "kubernetes") == 0 || strcmp(nodes[i]->content, "docker") == 0))
-            {
-                os_free(config->type);
-                os_strdup(nodes[i]->content, config->type);
-            }
-            else
-            {
-                wm_container_instances_invalidate(config, "<type> must be 'kubernetes' or 'docker'");
-            }
-        }
         else if (strcmp(nodes[i]->element, CI_XML_KUBERNETES) == 0)
         {
+            config->kubernetes_present = 1;
             wm_container_instances_parse_kubernetes(xml, nodes[i], config);
         }
         else if (strcmp(nodes[i]->element, CI_XML_DOCKER) == 0)
         {
+            config->docker_present = 1;
             wm_container_instances_parse_docker(xml, nodes[i], config);
         }
         else
@@ -191,16 +179,29 @@ int wm_container_instances_read(const OS_XML* xml, xml_node** nodes, wmodule* mo
         }
     }
 
+    /* The active connector is selected by which section is present: exactly one. */
     if (config->enabled)
     {
-        if (!config->type)
+        if (config->kubernetes_present && config->docker_present)
         {
-            wm_container_instances_invalidate(config, "<type> is required");
+            wm_container_instances_invalidate(config,
+                                              "<kubernetes> and <docker> are mutually exclusive; configure one");
         }
-        else if (strcmp(config->type, "kubernetes") == 0 &&
-                 (!config->kubernetes.kubeconfig || !config->kubernetes.node_name))
+        else if (!config->kubernetes_present && !config->docker_present)
         {
-            wm_container_instances_invalidate(config, "type=kubernetes requires <kubeconfig> and <node_name>");
+            wm_container_instances_invalidate(config, "a <kubernetes> or <docker> section is required");
+        }
+    }
+
+    if (config->kubernetes_present)
+    {
+        if (!config->kubernetes.kubeconfig)
+        {
+            os_strdup(WM_CONTAINER_INSTANCES_DEF_KUBECONFIG, config->kubernetes.kubeconfig);
+        }
+        if (!config->kubernetes.node_name)
+        {
+            os_strdup(WM_CONTAINER_INSTANCES_DEF_NODE_NAME, config->kubernetes.node_name);
         }
     }
 

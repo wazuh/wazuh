@@ -37,14 +37,19 @@ const wm_context WM_CONTAINER_INSTANCES_CONTEXT = {
 static cJSON* wm_container_instances_build_config(const wm_container_instances_t* data)
 {
     cJSON* config = cJSON_CreateObject();
-    cJSON_AddStringToObject(config, "type", data->type ? data->type : "");
+    cJSON_AddStringToObject(config, "type", data->kubernetes_present ? "kubernetes" : "docker");
 
-    if (data->type && strcmp(data->type, "kubernetes") == 0)
+    if (data->kubernetes_present)
     {
         cJSON* kubernetes = cJSON_CreateObject();
-        cJSON_AddStringToObject(
-            kubernetes, "kubeconfig", data->kubernetes.kubeconfig ? data->kubernetes.kubeconfig : "");
-        cJSON_AddStringToObject(kubernetes, "node_name", data->kubernetes.node_name ? data->kubernetes.node_name : "");
+        cJSON_AddStringToObject(kubernetes,
+                                "kubeconfig",
+                                data->kubernetes.kubeconfig ? data->kubernetes.kubeconfig
+                                                            : WM_CONTAINER_INSTANCES_DEF_KUBECONFIG);
+        cJSON_AddStringToObject(kubernetes,
+                                "node_name",
+                                data->kubernetes.node_name ? data->kubernetes.node_name
+                                                           : WM_CONTAINER_INSTANCES_DEF_NODE_NAME);
         cJSON_AddNumberToObject(kubernetes, "ownership_poll_interval", data->kubernetes.ownership_poll_interval);
         cJSON_AddBoolToObject(kubernetes, "insecure_skip_tls_verify", data->kubernetes.insecure_skip_tls_verify);
         cJSON_AddItemToObject(config, "kubernetes", kubernetes);
@@ -105,7 +110,6 @@ void wm_container_instances_destroy(wm_container_instances_t* data)
 {
     if (data)
     {
-        os_free(data->type);
         os_free(data->kubernetes.kubeconfig);
         os_free(data->kubernetes.node_name);
         os_free(data->docker_socket_path);
@@ -119,11 +123,7 @@ cJSON* wm_container_instances_dump(const wm_container_instances_t* data)
     cJSON* wm = cJSON_CreateObject();
 
     cJSON_AddStringToObject(wm, "enabled", data->enabled ? "yes" : "no");
-    if (data->type)
-    {
-        cJSON_AddStringToObject(wm, "type", data->type);
-    }
-    if (data->type && strcmp(data->type, "kubernetes") == 0)
+    if (data->kubernetes_present)
     {
         cJSON* kubernetes = cJSON_CreateObject();
         if (data->kubernetes.kubeconfig)
@@ -139,7 +139,7 @@ cJSON* wm_container_instances_dump(const wm_container_instances_t* data)
             kubernetes, "insecure_skip_tls_verify", data->kubernetes.insecure_skip_tls_verify ? "yes" : "no");
         cJSON_AddItemToObject(wm, "kubernetes", kubernetes);
     }
-    else if (data->type)
+    else if (data->docker_present)
     {
         cJSON* docker = cJSON_CreateObject();
         cJSON_AddStringToObject(docker,

@@ -17,6 +17,8 @@
 #define WM_CONTAINER_INSTANCES_DEF_POLL_INTERVAL 120
 #define WM_CONTAINER_INSTANCES_MIN_POLL_INTERVAL 30
 #define WM_CONTAINER_INSTANCES_DEF_DOCKER_SOCKET "/var/run/docker.sock"
+#define WM_CONTAINER_INSTANCES_DEF_KUBECONFIG    "/etc/wazuh-agent/container_instances/kubeconfig"
+#define WM_CONTAINER_INSTANCES_DEF_NODE_NAME     "container-node-1"
 
 typedef struct wm_container_instances_kubernetes_t
 {
@@ -29,7 +31,9 @@ typedef struct wm_container_instances_kubernetes_t
 typedef struct wm_container_instances_t
 {
     unsigned int enabled : 1;
-    char* type; /* "kubernetes" | "docker" */
+    /* The active connector is the one whose section is present (exactly one). */
+    unsigned int kubernetes_present : 1;
+    unsigned int docker_present : 1;
     wm_container_instances_kubernetes_t kubernetes;
     char* docker_socket_path;
 } wm_container_instances_t;

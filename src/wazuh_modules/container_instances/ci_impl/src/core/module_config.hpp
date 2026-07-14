@@ -16,8 +16,8 @@ namespace wazuh::container_instances
 
     struct KubernetesConfig
     {
-        std::string kubeconfigPath;
-        std::string nodeName;
+        std::string kubeconfigPath {"/etc/wazuh-agent/container_instances/kubeconfig"};
+        std::string nodeName {"container-node-1"};
         std::chrono::seconds ownershipPollInterval {120};
         bool insecureSkipTlsVerify {false};
     };
