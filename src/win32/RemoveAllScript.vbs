@@ -70,31 +70,15 @@ public function removeAll()
        Dim filesToKeep: filesToKeep = Array("ossec.conf.save", "client.keys.save", _
                                             "local_internal_options.conf.save", "installer.log.save")
 
-      ' Construct a simple dictionary to check out later whether a file is in
-      ' the list or not
-      Dim dicFiles: Set dicFiles = CreateObject("Scripting.Dictionary")
-      dicFiles.CompareMode = vbTextCompare
-      For Each x in filesToKeep
-         dicFiles.add x, x
-      Next
-
       ' Everything in the application's root folder will be deleted.
       ' *BUT*, the subfolders, and the files inside, specified here *will not* be deleted
       Dim subfoldersToKeep: subfoldersToKeep = Array("backup", "upgrade")
-
-      ' Construct a simple dictionary to check out later whether a subfolders is in
-      ' the list or not
-      Dim dicFolders: Set dicFolders = CreateObject("Scripting.Dictionary")
-      dicFolders.CompareMode = vbTextCompare
-      For Each x in subfoldersToKeep
-         dicFolders.add x, x
-      Next
 
       ' Delete the files in the root folder
       For Each f In folder.Files
          name = f.name
          ' Delete the file only if it is not in the list
-         If Not dicFiles.Exists(name) Then
+         If Not isNameInList(name, filesToKeep) Then
             On Error Resume Next
             f.Delete True
          End If
@@ -104,7 +88,7 @@ public function removeAll()
       For Each f In folder.SubFolders
          name = f.name
          ' Delete the file only if it is not in the list
-         If Not dicFolders.Exists(name) Then
+         If Not isNameInList(name, subfoldersToKeep) Then
             On Error Resume Next
             f.Delete True
          End If
@@ -115,3 +99,19 @@ public function removeAll()
    removeAll = 0
 
 End Function   'removeAll
+
+
+' Case-insensitive name lookup over a small array. Deliberately avoids
+' Scripting.Dictionary: the June 2026 Windows cumulative updates
+' (KB5094123 / KB5094128 and siblings) make Dictionary.Add raise a spurious
+' error 457 (0x800A01C9), which aborted the whole uninstall.
+private function isNameInList(strName, arrNames)
+   Dim item
+   isNameInList = False
+   For Each item In arrNames
+      If LCase(strName) = LCase(item) Then
+         isNameInList = True
+         Exit Function
+      End If
+   Next
+End Function
