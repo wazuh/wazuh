@@ -1326,6 +1326,17 @@ def test_agent_get_agent_config_exceptions(socket_mock, send_mock, agent_list):
         assert error == WazuhError(1740)
 
 
+@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
+@patch('socket.socket.connect')
+def test_agent_get_agent_config_manager_forbidden(socket_mock, send_mock):
+    """Test `get_agent_config` function from agent module raises WazuhError(1703) for agent id '000'."""
+    try:
+        get_agent_config(agent_list=['000'], component='auth', config='auth')
+        pytest.fail('An exception should be raised.')
+    except WazuhError as error:
+        assert error == WazuhError(1703)
+
+
 @pytest.mark.parametrize('agent_list', [
     full_agent_list[1:]
 ])
