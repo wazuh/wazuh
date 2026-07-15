@@ -1151,6 +1151,8 @@ class Agent:
 
         Raises
         ------
+        WazuhError(1703)
+            Action not available for manager (000).
         WazuhError(1735)
             The agent version is older than the minimum required version.
 
@@ -1159,6 +1161,9 @@ class Agent:
         dict
             Agent's active configuration.
         """
+        if self.id == '000':
+            raise WazuhError(1703)
+
         if WazuhVersion(agent_version) < WazuhVersion(common.ACTIVE_CONFIG_VERSION):
             raise WazuhInternalError(1735, extra_message=f"Minimum required version is {common.ACTIVE_CONFIG_VERSION}")
 
