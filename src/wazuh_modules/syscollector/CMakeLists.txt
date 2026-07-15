@@ -83,6 +83,13 @@ endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 target_link_libraries(syscollector PRIVATE wazuhext sysinfo agent_sync_protocol
                                            dbsync schema_validator)
 
+# #37532: container-baseline module (host-side process/network baseline for
+# containers). Linux-only, same constraint as container_connector/eBPF.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  include_directories(${SRC_FOLDER}/wazuh_modules/container_baseline/include/)
+  target_link_libraries(syscollector PRIVATE container_baseline)
+endif()
+
 if(UNIT_TEST AND ("${TARGET}" STREQUAL "agent" OR "${TARGET}" STREQUAL
                                                   "winagent"))
   enable_testing()
