@@ -863,7 +863,12 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) shared_modules/http-request/* shared_modules/http-request/.??* $(INDEXER_PLUGINS_DIR) $(WCS_FLAT_DIR)
+# EXTERNAL_RES/EXTERNAL_DIR are filtered by TARGET, so removing only those
+# paths leaves other targets' fetched deps behind. Wipe everything under
+# external/ instead, except the two files tracked by git (CMakeLists.txt
+# and .gitignore), regardless of which TARGET this is invoked with.
+	find external -mindepth 1 -maxdepth 1 ! -name 'CMakeLists.txt' ! -name '.gitignore' -exec rm -rf {} +
+	rm -rf shared_modules/http-request/* shared_modules/http-request/.??* $(WCS_FLAT_DIR)
 
 clean-internals:
 # Wazuh binaries and libraries
