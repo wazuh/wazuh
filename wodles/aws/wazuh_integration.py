@@ -76,7 +76,11 @@ class WazuhIntegration:
                                       )
 
         self.discard_field = discard_field
-        self.discard_regex = re.compile(fr'{discard_regex}')
+        # When no discard regex is configured, compile a pattern that never matches
+        # so no event is filtered. Interpolating a None value with fr'{discard_regex}'
+        # compiles the literal 'None', which silently discards any event whose text
+        # begins with "None".
+        self.discard_regex = re.compile(discard_regex if discard_regex is not None else r'(?!)')
         # to fetch logs using this date if no only_logs_after value was provided on the first execution
         self.default_date = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc)
 
