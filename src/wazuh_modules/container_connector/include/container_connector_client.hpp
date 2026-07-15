@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 #ifdef _WIN32
 #  ifdef WIN_EXPORT
@@ -32,6 +33,18 @@ struct EXPORTED LookupResult
     std::string meta_json;
 };
 
+/// @brief Lightweight reference to a tracked container, as returned by ListContainers().
+///
+/// Deliberately thin (no pod/labels/etc.) — callers that need full metadata do a
+/// follow-up LookupByContainerId(). This keeps the enumeration response small when
+/// the node is running hundreds of containers.
+struct EXPORTED ContainerRef
+{
+    std::string runtime;       ///< "kubernetes" or "docker".
+    std::string container_id;
+    uint64_t    cgroup_id{0};  ///< 0 => not yet resolved.
+};
+
 /// @brief Synchronous Unix-domain-socket client for the container-connector IPC.
 ///
 /// Designed for hot-path lookups from the syscheckd eBPF whodata pipeline:
@@ -51,6 +64,14 @@ public:
 
     LookupResult LookupByCgroupId(uint64_t cgroup_id);
     LookupResult LookupByContainerId(const std::string& container_id);
+
+    /// Enumerate every container currently tracked by the connector (both runtimes).
+    /// Used by consumers that need to discover baseline targets rather than resolve
+    /// one known identifier — e.g. "scan every already-running container at startup".
+    /// Returns an empty vector on any failure (connector unavailable, malformed
+    /// response); callers cannot distinguish "no containers" from "lookup failed"
+    /// from the return value alone, same failure-degrades-to-empty policy as Lookup().
+    std::vector<ContainerRef> ListContainers();
 
     /// Debug helper: returns the total number of containers cached, or -1 on error.
     long long Size();

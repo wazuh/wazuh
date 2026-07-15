@@ -157,6 +157,17 @@ std::shared_ptr<const ContainerInPod> MetadataCache::LookupByPodContainer(const 
     return (it == by_pod_container_.end()) ? nullptr : it->second;
 }
 
+std::vector<std::shared_ptr<const ContainerInPod>> MetadataCache::ListAll() const
+{
+    std::shared_lock<std::shared_mutex> lk(mutex_);
+    std::vector<std::shared_ptr<const ContainerInPod>> out;
+    out.reserve(by_container_id_.size());
+    for (const auto& [container_id, sp] : by_container_id_) {
+        out.push_back(sp);
+    }
+    return out;
+}
+
 size_t MetadataCache::Size() const
 {
     std::shared_lock<std::shared_mutex> lk(mutex_);

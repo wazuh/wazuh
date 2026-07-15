@@ -145,6 +145,42 @@ LookupResult ContainerConnectorClient::LookupByContainerId(const std::string& co
     return Lookup(req.dump());
 }
 
+std::vector<ContainerRef> ContainerConnectorClient::ListContainers()
+{
+    std::vector<ContainerRef> out;
+
+    const auto response = RoundTrip(R"({"op":"list_containers"})");
+    if (response.empty()) return out;
+
+    auto j = nlohmann::json::parse(response, nullptr, false);
+    if (j.is_discarded() || !j.is_object()) return out;
+
+    const auto ok_it = j.find("ok");
+    if (ok_it == j.end() || !ok_it->is_boolean() || !ok_it->get<bool>()) return out;
+
+    const auto items_it = j.find("containers");
+    if (items_it == j.end() || !items_it->is_array()) return out;
+
+    out.reserve(items_it->size());
+    for (const auto& item : *items_it) {
+        if (!item.is_object()) continue;
+        ContainerRef ref;
+        if (const auto it = item.find("runtime"); it != item.end() && it->is_string()) {
+            ref.runtime = it->get<std::string>();
+        }
+        if (const auto it = item.find("container_id"); it != item.end() && it->is_string()) {
+            ref.container_id = it->get<std::string>();
+        }
+        if (const auto it = item.find("cgroup_id"); it != item.end() && it->is_number_integer()) {
+            ref.cgroup_id = it->get<uint64_t>();
+        }
+        if (!ref.container_id.empty()) {
+            out.push_back(std::move(ref));
+        }
+    }
+    return out;
+}
+
 long long ContainerConnectorClient::Size()
 {
     const auto response = RoundTrip(R"({"op":"size"})");

@@ -100,6 +100,7 @@ else()
   add_subdirectory(syscollector)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_subdirectory(container_connector)
+    add_subdirectory(container_baseline)
   endif()
 endif()
 
@@ -170,7 +171,7 @@ else()
            dbsync
            schema_validator)
   if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_link_libraries(wazuh_modulesd_lib PUBLIC container_connector)
+    target_link_libraries(wazuh_modulesd_lib PUBLIC container_connector container_baseline)
   endif()
 endif()
 
