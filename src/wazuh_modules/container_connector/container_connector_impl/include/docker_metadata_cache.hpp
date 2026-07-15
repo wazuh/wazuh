@@ -45,6 +45,9 @@ public:
     std::shared_ptr<const DockerContainerInfo> LookupByCgroupId(uint64_t cgroup_id) const;
     std::shared_ptr<const DockerContainerInfo> LookupByContainerId(const std::string& id) const;
 
+    /// Snapshot of every container currently tracked. See MetadataCache::ListAll().
+    std::vector<std::shared_ptr<const DockerContainerInfo>> ListAll() const;
+
     size_t Size() const;
 
 private:

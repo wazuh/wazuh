@@ -98,6 +98,17 @@ std::shared_ptr<const DockerContainerInfo> DockerMetadataCache::LookupByContaine
     return (it != by_container_id_.end()) ? it->second : nullptr;
 }
 
+std::vector<std::shared_ptr<const DockerContainerInfo>> DockerMetadataCache::ListAll() const
+{
+    std::shared_lock<std::shared_mutex> lk(mutex_);
+    std::vector<std::shared_ptr<const DockerContainerInfo>> out;
+    out.reserve(by_container_id_.size());
+    for (const auto& [id, sp] : by_container_id_) {
+        out.push_back(sp);
+    }
+    return out;
+}
+
 size_t DockerMetadataCache::Size() const
 {
     std::shared_lock<std::shared_mutex> lk(mutex_);

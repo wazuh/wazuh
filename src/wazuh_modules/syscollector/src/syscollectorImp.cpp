@@ -22,6 +22,9 @@
 #include <thread>
 
 #include "syscollectorTablesDef.hpp"
+#if defined(__linux__)
+#include "container_baseline.h"
+#endif
 #include "agent_sync_protocol.hpp"
 #include "logging_helper.h"
 #include "module_query_errors.h"
@@ -1814,6 +1817,37 @@ void Syscollector::scanBrowserExtensions()
     }
 }
 
+#if defined(__linux__)
+void Syscollector::ContainerBaselineSink(const char* id, int operation, const char* index, const char* json,
+                                         uint64_t version, void* userData)
+{
+    auto* self = static_cast<Syscollector*>(userData);
+    self->persistDifference(id, static_cast<Operation>(operation), index, json, version);
+}
+#endif
+
+void Syscollector::scanContainerBaseline()
+{
+#if defined(__linux__)
+    m_logFunction(LOG_DEBUG_VERBOSE, "Starting container baseline scan");
+
+    // No DBSync/notifyChange here: this row's JSON shape is a draft (see the
+    // header comment on this method) and is pushed straight to the sync
+    // protocol instead of going through the normal insertData/checksum-diff
+    // pipeline the other scan* methods use.
+    const int baselined =
+        cbaseline_run_syscollector(CB_DEFAULT_CONNECTOR_SOCKET_PATH, &Syscollector::ContainerBaselineSink, this);
+
+    m_logFunction(LOG_DEBUG_VERBOSE,
+                 "Container baseline scan finished (" + std::to_string(baselined) + " container(s)).");
+#else
+    // Container baseline acquisition (#37532) only runs on Linux — the same
+    // Linux-only constraint as container_connector and the eBPF module it
+    // depends on.
+    m_logFunction(LOG_DEBUG_VERBOSE, "Container baseline scan skipped (Linux-only feature).");
+#endif
+}
+
 void Syscollector::scan()
 {
     if (m_stopping.load())
@@ -1862,6 +1896,17 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanUsers);
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
+
+    // Container baseline (#37532) is a one-time seed, not a recurring scan: it
+    // exists to backfill state for containers that were already running when
+    // the agent started, which is only meaningful once. Re-baselining specific
+    // containers as they appear/restart (spike Angle 6) is a scheduling
+    // problem deferred to a follow-up — this call only covers agent-startup.
+    if (isFirstScan)
+    {
+        m_logFunction(LOG_DEBUG, "Initial scanContainerBaseline.");
+        TRY_CATCH_TASK(scanContainerBaseline);
+    }
 
     // Update sync=1 flag for all items that passed document limit check (unlimited items)
     // This must be done BEFORE processVDDataContext so that DataContext queries

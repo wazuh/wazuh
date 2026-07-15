@@ -346,6 +346,32 @@ std::string IpcServer::ProcessRequest(const std::string& request_line)
         return R"({"ok":false})";
     }
 
+    if (op == "list_containers") {
+        nlohmann::json items = nlohmann::json::array();
+        if (cache_) {
+            for (const auto& c : cache_->ListAll()) {
+                if (!c) continue;
+                items.push_back({
+                    {"runtime",      "kubernetes"},
+                    {"container_id", c->container_id},
+                    {"cgroup_id",    c->cgroup_id},
+                });
+            }
+        }
+        if (docker_cache_) {
+            for (const auto& c : docker_cache_->ListAll()) {
+                if (!c) continue;
+                items.push_back({
+                    {"runtime",      "docker"},
+                    {"container_id", c->container_id},
+                    {"cgroup_id",    c->cgroup_id},
+                });
+            }
+        }
+        nlohmann::json resp = {{"ok", true}, {"containers", std::move(items)}};
+        return resp.dump();
+    }
+
     if (op == "lookup_container_id") {
         const auto v = req.find("id");
         if (v == req.end() || !v->is_string()) {

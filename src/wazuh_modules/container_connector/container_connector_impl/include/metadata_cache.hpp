@@ -51,6 +51,11 @@ public:
     std::shared_ptr<const ContainerInPod> LookupByPodContainer(const std::string& pod_uid,
                                                                const std::string& container_name) const;
 
+    /// Snapshot of every container currently tracked. Used by consumers that need
+    /// to enumerate targets (e.g. the baseline-acquisition module picking up every
+    /// already-running container at agent start) rather than resolve one identifier.
+    std::vector<std::shared_ptr<const ContainerInPod>> ListAll() const;
+
     size_t Size() const;
 
 private:

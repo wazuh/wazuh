@@ -17,16 +17,19 @@ include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/shared/include/)
 # T-K5b: container-connector client for K8s pod metadata lookups.
 include_directories(${SRC_FOLDER}/wazuh_modules/container_connector/include/)
+# #37532: container-baseline module (host-side FIM baseline for containers).
+include_directories(${SRC_FOLDER}/wazuh_modules/container_baseline/include/)
 
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_library(fimebpf SHARED src/ebpf_whodata.cpp)
+add_library(fimebpf SHARED src/ebpf_whodata.cpp src/container_baseline_fim.cpp)
 
-# Link against wazuh + the K8s container-connector client (T-K5b).
-target_link_libraries(fimebpf PRIVATE wazuh container_connector)
+# Link against wazuh + the K8s container-connector client (T-K5b) + the
+# container-baseline module (#37532).
+target_link_libraries(fimebpf PRIVATE wazuh container_connector container_baseline)
 
 # Set additional compile flags for the loader (if needed)
 target_compile_options(fimebpf PRIVATE -Wall -Wextra)

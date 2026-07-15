@@ -22,6 +22,7 @@ class DockerMetadataCache;
 ///   { "op": "size" }
 ///   { "op": "lookup_cgroup_id",    "cgroup_id": <uint64> }
 ///   { "op": "lookup_container_id", "id": "<string>" }
+///   { "op": "list_containers" }
 ///
 /// Lookup ops check the Kubernetes cache first, then the Docker cache.
 /// The response includes a "runtime" field ("kubernetes" or "docker") and
