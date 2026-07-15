@@ -17,12 +17,16 @@
 /**
  * Windows-specific block-ip implementation
  *
- * Method chain (first success wins): netsh (Windows Firewall) -> route (null-route).
+ * ENABLE: method chain (first success wins) netsh (Windows Firewall) -> route (null-route).
  * netsh provides true bidirectional (inbound + outbound) blocking, but its rules are only
- * enforced while a firewall profile is enabled. On ENABLE, try_netsh checks the EFFECTIVE
- * firewall state; when the firewall is off it defers to the route fallback, which
- * null-routes the target to loopback (dropping the attacker's reverse path). netsh.exe
- * being unavailable also falls through to route.
+ * enforced while a firewall profile is enabled. try_netsh checks the EFFECTIVE firewall
+ * state; when the firewall is off it defers to the route fallback, which null-routes the
+ * target to loopback (dropping the attacker's reverse path). netsh.exe being unavailable
+ * also falls through to route.
+ *
+ * DISABLE: not a fallback chain - the netsh rule AND any null-route are removed
+ * unconditionally (best-effort), since either may exist depending on how the block was
+ * applied.
  */
 
 firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const char *argv0);
@@ -73,17 +77,42 @@ int main(int argc, char **argv) {
         }
     }
 
-    // Define Windows method chain
-    const firewall_method_t methods[] = {
-        {"netsh", try_netsh, false},
-        {"route", try_route_windows, false},
-        {NULL, NULL, false}  // Sentinel
-    };
-
     int ip_version = (strchr(srcip, ':') != NULL) ? 6 : 4;
 
-    // Execute firewall chain with fallback
-    int result = execute_firewall_chain(methods, srcip, action, ip_version, argv[0]);
+    int result;
+    if (action == DISABLE_COMMAND) {
+        // Removal is NOT a fallback chain: the block may have been applied by netsh
+        // (firewall enabled) OR by the null-route (firewall off) - or, across re-blocks with
+        // a firewall state change, BOTH - so we unconditionally attempt to remove BOTH.
+        // Each is best-effort: a missing rule/route is the expected case (not a failure), so
+        // cleanup never depends on netsh's (undocumented) exit code for "no rule matched".
+        // The unblock counts as successful if EITHER removal actually took effect.
+        firewall_result_t netsh_res = try_netsh(srcip, DISABLE_COMMAND, ip_version, argv[0]);
+        firewall_result_t route_res = try_route_windows(srcip, DISABLE_COMMAND, ip_version, argv[0]);
+        if (netsh_res == FIREWALL_SUCCESS || route_res == FIREWALL_SUCCESS) {
+            char unblock_msg[OS_MAXSTR];
+            memset(unblock_msg, '\0', OS_MAXSTR);
+            snprintf(unblock_msg, OS_MAXSTR - 1, "IP %s successfully unblocked", srcip);
+            log_firewall_action(argv[0], LOG_LEVEL_INFO, "block-ip", "unblock", unblock_msg);
+        } else {
+            // Neither a rule nor a route was actually removed. Usually benign (the IP was
+            // not blocked, or was blocked by the artifact that is now gone), but surface it
+            // so a genuine removal failure is not silent.
+            log_firewall_action(argv[0], LOG_LEVEL_WARNING, "block-ip", "unblock",
+                              "Nothing was removed (no matching firewall rule or null-route) - "
+                              "the IP may already be unblocked, or removal failed");
+        }
+        write_debug_file(argv[0], "Ended");
+        result = OS_SUCCESS;
+    } else {
+        // ENABLE: netsh -> route fallback (first success wins).
+        const firewall_method_t methods[] = {
+            {"netsh", try_netsh, false},
+            {"route", try_route_windows, false},
+            {NULL, NULL, false}  // Sentinel
+        };
+        result = execute_firewall_chain(methods, srcip, action, ip_version, argv[0]);
+    }
 
     cJSON_Delete(input_json);
     return result;
@@ -250,7 +279,10 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
         }
 
     } else {
-        // DELETE: netsh advfirewall firewall delete rule name="..." remoteip=<IP>/32
+        // DELETE (best-effort): the rule may not exist - e.g. the block was applied via the
+        // route fallback while the firewall was off - so a non-zero "no rule matched" exit
+        // is expected and is NOT treated as a failure. The caller removes the null-route
+        // unconditionally, independently of this result.
         char remote_ip_arg_del[OS_MAXSTR];
         memset(remote_ip_arg_del, '\0', OS_MAXSTR);
         snprintf(remote_ip_arg_del, OS_MAXSTR - 1, "remoteip=%s/%s", srcip, host_prefix);
@@ -266,23 +298,24 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
             NULL
         };
 
+        firewall_result_t del_res = FIREWALL_EXECUTION_FAILED;
         wfd = wpopenv(netsh_path, exec_cmd, W_BIND_STDERR);
-        if (!wfd) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "Unable to execute netsh delete rule");
-            write_debug_file(argv0, log_msg);
-            os_free(netsh_path);
-            return FIREWALL_EXECUTION_FAILED;
+        if (wfd) {
+            int result_del = wpclose(wfd);
+            if (result_del == 0) {
+                del_res = FIREWALL_SUCCESS;  // a matching rule was actually removed
+            } else {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR - 1,
+                         "netsh delete rule returned %d (no matching rule is expected if the block used the route fallback)",
+                         result_del);
+                write_debug_file(argv0, log_msg);
+            }
+        } else {
+            write_debug_file(argv0, "Unable to execute netsh delete rule");
         }
-
-        int result_del = wpclose(wfd);
-        if (result_del != 0) {
-            memset(log_msg, '\0', OS_MAXSTR);
-            snprintf(log_msg, OS_MAXSTR - 1, "netsh delete rule failed with exit code %d", result_del);
-            write_debug_file(argv0, log_msg);
-            os_free(netsh_path);
-            return FIREWALL_EXECUTION_FAILED;
-        }
+        os_free(netsh_path);
+        return del_res;
     }
 
     os_free(netsh_path);
@@ -323,29 +356,43 @@ firewall_result_t try_route_windows(const char *srcip, int action, int ip_versio
                           "Applying best-effort null-route (firewall off or netsh unavailable): "
                           "blocks routed/remote attackers but NOT same-subnet hosts - enable "
                           "Windows Firewall for comprehensive blocking");
-    }
 
-    char **exec_cmd = NULL;
-    // Null-route to the loopback so outbound packets to the target are discarded.
-    char *add_cmd[] = {route_path, "-p", "ADD", (char *)srcip,
-                       "MASK", "255.255.255.255", "127.0.0.1", NULL};
-    char *del_cmd[] = {route_path, "DELETE", (char *)srcip, NULL};
-    exec_cmd = (action == ENABLE_COMMAND) ? add_cmd : del_cmd;
-
-    wfd_t *wfd = wpopenv(route_path, exec_cmd, W_BIND_STDERR);
-    if (!wfd) {
+        // Null-route to the loopback so packets to the target are discarded.
+        char *add_cmd[] = {route_path, "-p", "ADD", (char *)srcip,
+                           "MASK", "255.255.255.255", "127.0.0.1", NULL};
+        wfd_t *wfd = wpopenv(route_path, add_cmd, W_BIND_STDERR);
+        if (!wfd) {
+            os_free(route_path);
+            return FIREWALL_EXECUTION_FAILED;
+        }
+        int rc = wpclose(wfd);
+        if (rc != 0) {
+            memset(log_msg, '\0', OS_MAXSTR);
+            snprintf(log_msg, OS_MAXSTR - 1, "route add failed with exit code %d", rc);
+            write_debug_file(argv0, log_msg);
+            os_free(route_path);
+            return FIREWALL_EXECUTION_FAILED;
+        }
+    } else {
+        // DELETE (best-effort): a null-route may not exist - e.g. the block was applied via
+        // netsh while the firewall was on - so a non-zero "element not found" is expected
+        // and is NOT treated as a failure.
+        char *del_cmd[] = {route_path, "DELETE", (char *)srcip, NULL};
+        wfd_t *wfd = wpopenv(route_path, del_cmd, W_BIND_STDERR);
+        firewall_result_t del_res = FIREWALL_EXECUTION_FAILED;
+        if (wfd) {
+            int rc = wpclose(wfd);
+            if (rc == 0) {
+                del_res = FIREWALL_SUCCESS;  // a route was actually removed
+            } else {
+                memset(log_msg, '\0', OS_MAXSTR);
+                snprintf(log_msg, OS_MAXSTR - 1,
+                         "route delete returned %d (no route is expected if the block used netsh)", rc);
+                write_debug_file(argv0, log_msg);
+            }
+        }
         os_free(route_path);
-        return FIREWALL_EXECUTION_FAILED;
-    }
-
-    int rc = wpclose(wfd);
-    if (rc != 0) {
-        memset(log_msg, '\0', OS_MAXSTR);
-        snprintf(log_msg, OS_MAXSTR - 1, "route %s failed with exit code %d",
-                 action == ENABLE_COMMAND ? "add" : "delete", rc);
-        write_debug_file(argv0, log_msg);
-        os_free(route_path);
-        return FIREWALL_EXECUTION_FAILED;
+        return del_res;
     }
 
     os_free(route_path);
