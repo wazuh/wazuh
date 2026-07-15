@@ -362,6 +362,18 @@ def test_upload_file_ko(*_):
         os.remove(bkp)
 
 
+@patch('wazuh.decoder.upload_file')
+@patch('wazuh.decoder.safe_move')
+def test_upload_decoder_file_path_traversal(mock_safe_move, mock_upload_file):
+    """Test that a filename with path traversal sequences is rejected and the file is not written
+    outside the decoders directory."""
+    result = decoder.upload_decoder_file(filename='../../../../../../tmp/poc_decoder_traversal', content='test')
+    assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+    assert result.render()['data']['failed_items'][0]['error']['code'] == 1508, \
+        'Error code not expected.'
+    mock_upload_file.assert_not_called()
+
+
 @pytest.mark.parametrize('filename, relative_dirname', [
     ('test1_decoders.xml', None),
     ('test3_decoders.xml', None),

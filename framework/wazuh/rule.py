@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from os import remove
-from os.path import exists, join, normpath, commonpath
+from os.path import exists, join, normpath, commonpath, realpath
 from typing import Union, Tuple
 from xml.parsers.expat import ExpatError
 
@@ -476,6 +476,10 @@ def upload_rule_file(filename: str, content: str, relative_dirname: str = None,
         full_path = join(common.WAZUH_PATH, relative_dirname, filename)
         if wazuh_error:
             raise wazuh_error
+        # If filename resolves outside the validated rules directory (path traversal).
+        base_path = join(common.WAZUH_PATH, relative_dirname)
+        if commonpath([realpath(full_path), realpath(base_path)]) != realpath(base_path):
+            raise WazuhError(1212)
         if len(content) == 0:
             raise WazuhError(1112)
 
