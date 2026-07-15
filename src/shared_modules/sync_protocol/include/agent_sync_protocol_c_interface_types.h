@@ -15,6 +15,14 @@
 
 #define SYNC_FAILURE_REASON_MAX_LEN 2048
 
+/// @brief Consecutive failed synchronizations tolerated before a module escalates a
+/// manager-not-ready failure from INFO to WARNING.
+///
+/// The first failures are expected while the manager is still not ready for this agent (mostly right
+/// after an agent restart) and clear on the next cycle. Beyond this many in a row the condition is not
+/// clearing on its own (for example the manager has no indexer available), so it must stay visible.
+#define SYNC_MANAGER_NOT_READY_TOLERANCE 3U
+
 #include "logging_helper.h"
 
 #ifdef __cplusplus
@@ -28,11 +36,18 @@ extern "C" {
 /// @var failure_reason Human-readable reason string when available; may be empty if no specific reason was recorded.
 /// @var stopped        true if the operation was aborted because a stop/shutdown was requested; lets the
 ///                     caller demote an expected shutdown-time failure from WARNING to INFO/DEBUG.
+/// @var manager_not_ready true if the manager did not answer the handshake, or answered that it cannot
+///                     serve this agent yet (Offline). Describes what happened, not whether it is
+///                     harmless: use it together with consecutive_failures to decide the log level.
+/// @var consecutive_failures number of consecutive failed synchronizations for this module, including
+///                     this one; reset to zero on the first success.
 typedef struct SyncModuleResult_t
 {
     bool success;
     char failure_reason[SYNC_FAILURE_REASON_MAX_LEN];
     bool stopped;
+    bool manager_not_ready;
+    unsigned int consecutive_failures;
 } SyncModuleResult_t;
 
 /// @brief Defines the type of modification operation.

@@ -237,6 +237,32 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleReportsStoppedWhenStopRequested)
     EXPECT_TRUE(result.stopped);
 }
 
+// A local queue-open failure is not a "manager not ready yet" condition, so it must not be reported as
+// manager-not-ready: the calling module keeps it at WARNING.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDoesNotReportTransientOnQueueFailure)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions failingStartMqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return -1; }, // Fail to start queue
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
+
+    SyncModuleResult result = protocol->synchronizeModule(
+                      Mode::DELTA
+                  );
+
+    EXPECT_FALSE(result.success);
+    EXPECT_FALSE(result.managerNotReady);
+}
+
 // Exercises the C interface (asp_sync_module -> SyncModuleResult_t.stopped): this is the path
 // FIM depends on to distinguish a shutdown-aborted sync from a genuine failure.
 TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
@@ -452,9 +478,61 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
 
     EXPECT_FALSE(result.success);  // Should fail due to timeout
     EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to Start message.");
+    // The manager did not answer the handshake.
+    EXPECT_TRUE(result.managerNotReady);
+    // First failure of the streak: the module reports it at INFO and retries.
+    EXPECT_EQ(result.consecutiveFailures, 1u);
 
     // In-memory data should be kept for potential retry, so we can add more data
     EXPECT_NO_THROW(protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2));
+}
+
+// The consecutive-failure streak is what tells a brief post-restart hiccup apart from a lasting
+// condition (for example the manager having no indexer available, which also answers "not ready").
+// Without it the modules would demote a permanent sync outage to INFO forever.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleCountsConsecutiveFailures)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    // The queue opens fine and messages are sent, but no StartAck is ever parsed, so every attempt
+    // ends in a Start timeout: the manager is never ready. A queue-open failure would not do, since
+    // it returns before the streak is tracked.
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    .Times(0);
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(0);
+
+    unsigned int previous = 0;
+
+    for (unsigned int attempt = 1; attempt <= SYNC_MANAGER_NOT_READY_TOLERANCE + 1; ++attempt)
+    {
+        // There must be something to synchronize on every attempt, otherwise the sync short-circuits
+        // as a success and never reaches the handshake.
+        protocol->clearInMemoryData();
+        protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
+
+        SyncModuleResult result = protocol->synchronizeModule(Mode::FULL);
+        EXPECT_FALSE(result.success);
+        EXPECT_TRUE(result.managerNotReady);
+        // The count grows while the condition does not clear, so the module escalates to WARNING once
+        // it goes past SYNC_MANAGER_NOT_READY_TOLERANCE.
+        EXPECT_EQ(result.consecutiveFailures, attempt);
+        previous = result.consecutiveFailures;
+    }
+
+    EXPECT_GT(previous, SYNC_MANAGER_NOT_READY_TOLERANCE);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleInvalidModeValidation)
@@ -1230,6 +1308,9 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
                       );
         EXPECT_FALSE(result.success);
         EXPECT_EQ(result.failureReason, "Failed to communicate with the manager.");
+        // Failing to resend data in an established session is a real send failure, not the
+        // "manager is not ready yet" case: it must not be reported as such.
+        EXPECT_FALSE(result.managerNotReady);
     });
 
     // Wait for start

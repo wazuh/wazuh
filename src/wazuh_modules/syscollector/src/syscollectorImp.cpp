@@ -2292,6 +2292,19 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // Report it as an expected event, not a WARNING.
                 m_logFunction(LOG_INFO, "Syscollector synchronization aborted: the module is stopping.");
             }
+            else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // The manager is not ready for this agent yet, mostly right after a restart, and the
+                // sync has not failed enough times in a row to suspect it will not clear.
+                m_logFunction(LOG_INFO, "Syscollector synchronization deferred: " + result.failureReason +
+                              " Will retry next cycle.");
+            }
+            else if (result.managerNotReady)
+            {
+                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                m_logFunction(LOG_WARNING, "Syscollector synchronization failed " +
+                              std::to_string(result.consecutiveFailures) + " times in a row: " + result.failureReason);
+            }
             else
             {
                 m_logFunction(LOG_WARNING, "Syscollector synchronization failed" +
@@ -2342,6 +2355,19 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
             {
                 // Not a real failure: the VD sync was aborted because the module is stopping
                 m_logFunction(LOG_INFO, "Syscollector VD synchronization aborted: the module is stopping.");
+            }
+            else if (vdResult.managerNotReady && vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // The manager is not ready for this agent yet, mostly right after a restart, and the
+                // sync has not failed enough times in a row to suspect it will not clear.
+                m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason +
+                              " Will retry next cycle.");
+            }
+            else if (vdResult.managerNotReady)
+            {
+                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed " +
+                              std::to_string(vdResult.consecutiveFailures) + " times in a row: " + vdResult.failureReason);
             }
             else
             {
