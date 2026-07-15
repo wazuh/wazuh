@@ -136,15 +136,17 @@ if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
            wazuh
            schema_validator)
 
-  # Link jemalloc for server builds (unless explicitly disabled)
+  # Locate jemalloc for server builds (unless explicitly disabled). Linked
+  # onto the modulesd executable target below, not onto wazuh_modulesd_lib
+  # itself — this is a static library, so a PUBLIC/PRIVATE dependency here
+  # would still be forwarded to the final link command of every daemon
+  # that pulls in wazuh_modulesd_lib transitively via `config` (remoted,
+  # monitord, wazuh_db, authd), none of which are meant to use jemalloc.
   if(NOT DEFINED DISABLE_JEMALLOC OR NOT DISABLE_JEMALLOC)
     find_library(
       JEMALLOC_LIB jemalloc
       PATHS ${SRC_FOLDER}/external/jemalloc/lib
       NO_DEFAULT_PATH)
-    if(JEMALLOC_LIB)
-      target_link_libraries(wazuh_modulesd_lib PUBLIC ${JEMALLOC_LIB})
-    endif()
   endif()
 else()
   # Agent build
@@ -200,6 +202,9 @@ elseif(NOT UNIT_TEST)
                                  ${SRC_FOLDER}/build/bin)
   target_link_libraries(${WAZUH_MODULESD_DAEMON_NAME}
                         PRIVATE wazuh_modulesd_lib)
+  if(JEMALLOC_LIB)
+    target_link_libraries(${WAZUH_MODULESD_DAEMON_NAME} PRIVATE ${JEMALLOC_LIB})
+  endif()
 
   wazuh_set_runtime_rpath(${WAZUH_MODULESD_DAEMON_NAME})
 endif()
