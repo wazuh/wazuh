@@ -85,9 +85,15 @@ socket fan-out) to give the O5 evaluation measurements. Team practice saved to p
 memory.</li>
 <li><strong>2026-07-15 — pack committed to a wazuh branch.</strong> jr0me asked to commit
 everything so far into the repo: branch <code>spike/37396-ebpf-module</code>, path
-<code>docs/spikes/37396-ebpf-module/</code> (this entire HTML pack). Not pushed (D7 — GitHub is
-jr0me's). Working model: the sibling dir <code>~/Dev/jr0me/wazuh-37396-evidence/</code> remains
-the live working copy; the branch gets refreshed by re-copy + commit at checkpoints.</li></ul>
+<code>docs/spikes/37396-ebpf-module/</code> (this entire HTML pack), commit 6d9229d070. Not
+pushed (D7 — GitHub is jr0me's).</li>
+<li><strong>2026-07-15 — checkout stays on the spike branch; IN-TREE copy is now the live
+one.</strong> jr0me: "just stay in the spike branch." The re-copy model is dead: from now on
+the pack is edited directly at <code>docs/spikes/37396-ebpf-module/</code> and checkpointed
+with plain commits on this branch. The old sibling dir
+<code>~/Dev/jr0me/wazuh-37396-evidence/</code> is retired (left in place untouched, fully
+contained in commit 6d9229d070; delete whenever jr0me confirms). The in-tree PoC (D4-rev) will
+live on this same branch.</li></ul>
   <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 20 / 20</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
 <footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
   investigation record on 2026-07-14.</footer>
