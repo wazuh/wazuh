@@ -3,7 +3,7 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 from os import remove
-from os.path import join, split, exists, isfile, dirname as path_dirname
+from os.path import join, split, exists, isfile, dirname as path_dirname, realpath, commonpath
 
 from wazuh.core import common
 from wazuh.core.cdb_list import iterate_lists, get_list_from_file, REQUIRED_FIELDS, SORT_FIELDS, delete_list, \
@@ -140,6 +140,9 @@ def upload_list_file(filename: str = None, content: str = None, overwrite: bool 
         # If file already exists and overwrite is False, raise exception.
         if not overwrite and exists(full_path):
             raise WazuhError(1905)
+        # If filename resolves outside the lists directory (path traversal).
+        elif commonpath([realpath(full_path), realpath(common.USER_LISTS_PATH)]) != realpath(common.USER_LISTS_PATH):
+            raise WazuhError(1805)
         # If file with same name already exists in subdirectory.
         elif get_filenames_paths([filename])[0] != full_path:
             raise WazuhError(1805)
