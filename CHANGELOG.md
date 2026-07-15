@@ -9,6 +9,12 @@ All notable changes to this project will be documented in this file.
 
 - Fixed AES connection getting reset to blowfish on keystore rebuild. ([#37524](https://github.com/wazuh/wazuh/pull/37524))
 
+### Agent
+
+#### Fixed
+
+- Fixed Windows agent uninstallation failing with error 1603 on systems with the June 2026 Windows cumulative updates installed. ([#37719](https://github.com/wazuh/wazuh/pull/37719))
+
 ### Ruleset
 
 #### Fixed
