@@ -12,6 +12,8 @@
 
 #include "shared.h"
 #include "os_win.h"
+#include "os_net.h"
+#include "agentd.h"
 #include <winsvc.h>
 #include "syscheckd/src/db/include/db.h"
 #ifndef ARGV0
@@ -299,14 +301,34 @@ VOID WINAPI OssecServiceCtrlHandler(DWORD dwOpcode)
                     buffer_stop();
 
                     if (WaitForSingleObject(g_dispatch_buffer_thread, 2000) == WAIT_TIMEOUT) {
-                        /* Thread is blocked in send_msg (e.g. stalled socket with no
-                         * SO_SNDTIMEO). TerminateThread is a hard kill, but we are in
-                         * the shutdown path and must guarantee the thread is dead before
-                         * HC_SHUTDOWN is sent by the atexit handler. */
-                        mdebug1("dispatch_buffer thread did not stop within timeout; terminating forcefully.");
-                        TerminateThread(g_dispatch_buffer_thread, 0);
+                        /* Thread is blocked inside a send() on a stalled socket. Killing it
+                         * with TerminateThread would not release send_mutex (Windows never
+                         * runs cleanup on a forced kill), permanently deadlocking the atexit
+                         * HC_SHUTDOWN send that also locks it. Close the socket instead so the
+                         * blocked send fails fast, send_msg() releases the mutex through its
+                         * normal return path, and the thread observes the stop flag and exits
+                         * on its own. */
+                        plain_mdebug1("dispatch_buffer thread did not stop within timeout; closing socket to unblock it.");
+                        if (agt->sock >= 0) {
+                            OS_CloseSocket(agt->sock);
+                            agt->sock = -1;
+                        }
+
+                        /* Give the thread a second, bounded window to actually exit now
+                         * that the socket is down. Do NOT wait INFINITE here: if something
+                         * other than the socket send is holding it up, we still want the
+                         * service to report SERVICE_STOPPED within a bounded time rather
+                         * than hang. If it still hasn't exited, leave it running rather
+                         * than calling TerminateThread — the OS tears down all threads
+                         * together when the process actually exits, which is safe, unlike
+                         * killing this one thread alone while the rest of the process
+                         * (including the atexit handler) keeps running against state it
+                         * may still hold. */
+                        if (WaitForSingleObject(g_dispatch_buffer_thread, 3000) == WAIT_TIMEOUT) {
+                            plain_mdebug1("dispatch_buffer thread still did not stop; continuing shutdown without terminating it.");
+                        }
                     }
-                    
+
                     CloseHandle(g_dispatch_buffer_thread);
                     g_dispatch_buffer_thread = NULL;
                 }
