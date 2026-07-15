@@ -205,7 +205,7 @@ namespace Utils
                 }
                 catch (const std::exception& ex)
                 {
-                    LOG_DEBUG1(m_logFn, "Dispatch handler error, %s", ex.what());
+                    LOGFN_DEBUG1(m_logFn, "Dispatch handler error, %s", ex.what());
                 }
             }
         }

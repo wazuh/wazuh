@@ -982,10 +982,10 @@ private:
         std::mutex errorsMutex;
         std::atomic<bool> interrupted {false};
 
-        logInfo(WM_CONTENTUPDATER,
-                "IndexerDownloader: Starting sliced PIT download with %zu slices, pageSize=%zu",
-                numSlices,
-                pageSize);
+        logDebug1(WM_CONTENTUPDATER,
+                  "IndexerDownloader: Starting sliced PIT download with %zu slices, pageSize=%zu",
+                  numSlices,
+                  pageSize);
 
         auto sliceWorker = [&](size_t sliceId)
         {

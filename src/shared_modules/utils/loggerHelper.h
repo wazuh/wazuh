@@ -38,6 +38,14 @@ auto constexpr LOGGER_DEFAULT_TAG {"logger-helper"};
 #define logDebug2(X, Y, ...) Log::Logger::debugVerbose(X, LogEndl, Y, ##__VA_ARGS__)
 #define logError(X, Y, ...)  Log::Logger::error(X, LogEndl, Y, ##__VA_ARGS__)
 constexpr auto MAXLEN {65536};
+// clang-format off
+// Macros for Log::LogFn instances. Debug variants skip argument evaluation when debug is inactive.
+#define LOGFN_INFO(fn, fmt, ...)   do { if (Log::isInfoEnabled())   { (fn).info(  {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } } while (0)
+#define LOGFN_WARN(fn, fmt, ...)   do { if (Log::isWarnEnabled())   { (fn).warn(  {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } } while (0)
+#define LOGFN_DEBUG1(fn, fmt, ...) do { if (Log::isDebugEnabled())  { (fn).debug1({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } } while (0)
+#define LOGFN_DEBUG2(fn, fmt, ...) do { if (Log::isDebug2Enabled()) { (fn).debug2({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } } while (0)
+#define LOGFN_ERROR(fn, fmt, ...)  do { if (Log::isErrorEnabled())  { (fn).error( {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__); } } while (0)
+// clang-format on
 
 namespace Log
 {
@@ -58,7 +66,38 @@ namespace Log
 
     extern std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
         GLOBAL_LOG_FUNCTION;
+
+    // Minimum level for LOGFN_* filtering. inline so each DSO gets its own copy.
+    inline int GLOBAL_LOG_LEVEL {LOGLEVEL_DEBUG};
 #pragma GCC visibility pop
+
+    inline bool isLevelEnabled(int level) noexcept
+    {
+        return GLOBAL_LOG_FUNCTION && level >= GLOBAL_LOG_LEVEL;
+    }
+
+    // Per-level helpers used by LOGFN_* macros. Defined inside the namespace so that
+    // LOGLEVEL_* identifiers resolve correctly whether or not defs.h is included.
+    inline bool isInfoEnabled() noexcept
+    {
+        return isLevelEnabled(LOGLEVEL_INFO);
+    }
+    inline bool isWarnEnabled() noexcept
+    {
+        return isLevelEnabled(LOGLEVEL_WARNING);
+    }
+    inline bool isDebugEnabled() noexcept
+    {
+        return isLevelEnabled(LOGLEVEL_DEBUG);
+    }
+    inline bool isDebug2Enabled() noexcept
+    {
+        return isLevelEnabled(LOGLEVEL_DEBUG_VERBOSE);
+    }
+    inline bool isErrorEnabled() noexcept
+    {
+        return isLevelEnabled(LOGLEVEL_ERROR);
+    }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -76,6 +115,12 @@ namespace Log
         {
             GLOBAL_LOG_FUNCTION = logFunction;
         }
+    }
+
+    /** Sets the minimum log level. LOGFN_* macros skip messages below this level. */
+    static void setLogLevel(int level)
+    {
+        GLOBAL_LOG_LEVEL = level;
     }
 
     /**
@@ -229,149 +274,114 @@ namespace Log
             }
         }
     };
-} // namespace Log
-
-/**
- * @brief Pre-bound log wrapper — stores a tag and calls GLOBAL_LOG_FUNCTION with it.
- *
- * Each component receives a LogFn from its caller and calls compose("myname") to
- * build its own LogFn. The tag shown in every log line is always
- * "<process>(<current-library>)" — only the library currently executing, not the
- * full call chain.
- *
- * Use the LOG_WARN / LOG_INFO / LOG_DEBUG1 / LOG_DEBUG2 / LOG_ERROR macros so that
- * __FILE__ / __LINE__ / __func__ are captured at the actual call site.
- */
-struct LogFn
-{
-    std::string m_tag;
-
-    LogFn() : m_tag(LOGGER_DEFAULT_TAG) {}
-    LogFn(std::string_view tag) : m_tag(tag) {}  // NOLINT(google-explicit-constructor)
-    LogFn(std::string tag) : m_tag(std::move(tag)) {}  // NOLINT(google-explicit-constructor)
-    LogFn(const char* tag) : m_tag(tag ? tag : LOGGER_DEFAULT_TAG) {}  // NOLINT(google-explicit-constructor)
-
-    /**
-     * Returns a new LogFn for @p component within the same process.
-     * Replaces the library part of the tag — does NOT accumulate a chain.
-     *   LogFn{"proc"}.compose("rocksdb")          → "proc(rocksdb)"
-     *   LogFn{"proc(keystore)"}.compose("rocksdb") → "proc(rocksdb)"
-     */
-    LogFn compose(std::string_view component) const
+    // Pre-bound log wrapper. Holds a tag string and dispatches through GLOBAL_LOG_FUNCTION.
+    // Use via LOGFN_* macros so that source location is captured at the call site.
+    struct LogFn
     {
-        const auto open = m_tag.find('(');
-        const auto base = (open != std::string::npos) ? m_tag.substr(0, open) : m_tag;
-        if (base.empty())
-            return LogFn {std::string(component)};
-        return LogFn {base + "(" + std::string(component) + ")"};
-    }
+        std::string m_tag;
 
-    const char* c_str() const { return m_tag.c_str(); }
-
-    void info(Log::SourceFile src, const char* fmt, ...) const
-    {
-        if (Log::GLOBAL_LOG_FUNCTION)
+        LogFn()
+            : m_tag(LOGGER_DEFAULT_TAG)
         {
-            std::va_list args;
-            va_start(args, fmt);
-            Log::GLOBAL_LOG_FUNCTION(Log::LOGLEVEL_INFO, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
-            va_end(args);
         }
-    }
-
-    void warn(Log::SourceFile src, const char* fmt, ...) const
-    {
-        if (Log::GLOBAL_LOG_FUNCTION)
+        LogFn(std::string_view tag)
+            : m_tag(tag)
         {
-            std::va_list args;
-            va_start(args, fmt);
-            Log::GLOBAL_LOG_FUNCTION(Log::LOGLEVEL_WARNING, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
-            va_end(args);
-        }
-    }
-
-    void debug1(Log::SourceFile src, const char* fmt, ...) const
-    {
-        if (Log::GLOBAL_LOG_FUNCTION)
+        } // NOLINT(google-explicit-constructor)
+        LogFn(std::string tag)
+            : m_tag(std::move(tag))
         {
-            std::va_list args;
-            va_start(args, fmt);
-            Log::GLOBAL_LOG_FUNCTION(Log::LOGLEVEL_DEBUG, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
-            va_end(args);
-        }
-    }
-
-    void debug2(Log::SourceFile src, const char* fmt, ...) const
-    {
-        if (Log::GLOBAL_LOG_FUNCTION)
+        } // NOLINT(google-explicit-constructor)
+        LogFn(const char* tag)
+            : m_tag(tag ? tag : LOGGER_DEFAULT_TAG)
         {
-            std::va_list args;
-            va_start(args, fmt);
-            Log::GLOBAL_LOG_FUNCTION(
-                Log::LOGLEVEL_DEBUG_VERBOSE, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
-            va_end(args);
-        }
-    }
+        } // NOLINT(google-explicit-constructor)
 
-    void error(Log::SourceFile src, const char* fmt, ...) const
-    {
-        if (Log::GLOBAL_LOG_FUNCTION)
+        // Returns a new LogFn with the library part of the tag replaced by component.
+        LogFn compose(std::string_view component) const
         {
-            std::va_list args;
-            va_start(args, fmt);
-            Log::GLOBAL_LOG_FUNCTION(Log::LOGLEVEL_ERROR, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
-            va_end(args);
+            const auto open = m_tag.find('(');
+            const auto base = (open != std::string::npos) ? m_tag.substr(0, open) : m_tag;
+            if (base.empty())
+                return LogFn {std::string(component)};
+            return LogFn {base + "(" + std::string(component) + ")"};
         }
-    }
-};
 
-// clang-format off
-#define LOG_INFO(fn, fmt, ...)   (fn).info( {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
-#define LOG_WARN(fn, fmt, ...)   (fn).warn( {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
-#define LOG_DEBUG1(fn, fmt, ...) (fn).debug1({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
-#define LOG_DEBUG2(fn, fmt, ...) (fn).debug2({__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
-#define LOG_ERROR(fn, fmt, ...)  (fn).error( {__FILE__, __LINE__, __func__}, fmt, ##__VA_ARGS__)
-// clang-format on
+        const char* c_str() const
+        {
+            return m_tag.c_str();
+        }
 
-namespace Log
-{
-    /**
-     * @brief Returns the thread-local LogFn for the current module/process context.
-     *
-     * Each module thread sets this once via setModuleLogFn() so that shared
-     * libraries can read the right base tag without being explicitly passed one.
-     */
+        void info(SourceFile src, const char* fmt, ...) const
+        {
+            if (GLOBAL_LOG_FUNCTION)
+            {
+                std::va_list args;
+                va_start(args, fmt);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_INFO, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+                va_end(args);
+            }
+        }
+
+        void warn(SourceFile src, const char* fmt, ...) const
+        {
+            if (GLOBAL_LOG_FUNCTION)
+            {
+                std::va_list args;
+                va_start(args, fmt);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_WARNING, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+                va_end(args);
+            }
+        }
+
+        void debug1(SourceFile src, const char* fmt, ...) const
+        {
+            if (GLOBAL_LOG_FUNCTION)
+            {
+                std::va_list args;
+                va_start(args, fmt);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_DEBUG, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+                va_end(args);
+            }
+        }
+
+        void debug2(SourceFile src, const char* fmt, ...) const
+        {
+            if (GLOBAL_LOG_FUNCTION)
+            {
+                std::va_list args;
+                va_start(args, fmt);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_DEBUG_VERBOSE, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+                va_end(args);
+            }
+        }
+
+        void error(SourceFile src, const char* fmt, ...) const
+        {
+            if (GLOBAL_LOG_FUNCTION)
+            {
+                std::va_list args;
+                va_start(args, fmt);
+                GLOBAL_LOG_FUNCTION(LOGLEVEL_ERROR, m_tag.c_str(), src.file, src.line, src.func, fmt, args);
+                va_end(args);
+            }
+        }
+    }; // struct LogFn
+
+    // Returns the thread-local LogFn for the current module context.
     inline LogFn& currentModuleLogFn()
     {
         thread_local LogFn tl_logFn;
         return tl_logFn;
     }
 
-    /**
-     * @brief Sets the module log context for the calling thread.
-     *
-     * Call this once per module thread before creating any shared-library objects.
-     * Example: Log::setModuleLogFn(LogFn{WM_INVENTORY_SYNC_LOGTAG});
-     */
-    inline void setModuleLogFn(LogFn fn) { currentModuleLogFn() = std::move(fn); }
+    // Sets the module LogFn for the calling thread.
+    inline void setModuleLogFn(LogFn fn)
+    {
+        currentModuleLogFn() = std::move(fn);
+    }
 
-    /**
-     * @brief RAII guard that temporarily installs a module LogFn on the calling thread.
-     *
-     * Saves the current thread-local LogFn on construction, installs the provided one,
-     * and restores the saved value on destruction. Use before constructing objects that
-     * call makeLibLogFn() so they inherit the correct caller context rather than the
-     * default "logger-helper" fallback.
-     *
-     * The guard must not outlive the thread that created it — do not store it on the heap
-     * or pass it to another thread.
-     *
-     * Example:
-     *   {
-     *       const Log::ScopedModuleLogFn guard {LogFn {callerName}};
-     *       m_queue = std::make_unique<RocksDBQueue>(...);  // picks up callerName
-     *   }  // previous context restored here
-     */
+    // RAII guard that installs a LogFn on the calling thread and restores the previous one on destruction.
     class ScopedModuleLogFn
     {
         LogFn m_saved;
@@ -382,26 +392,21 @@ namespace Log
         {
             setModuleLogFn(std::move(fn));
         }
-        ~ScopedModuleLogFn() { setModuleLogFn(std::move(m_saved)); }
+        ~ScopedModuleLogFn()
+        {
+            setModuleLogFn(std::move(m_saved));
+        }
         ScopedModuleLogFn(const ScopedModuleLogFn&) = delete;
         ScopedModuleLogFn& operator=(const ScopedModuleLogFn&) = delete;
     };
+    // Returns a LogFn with the library name composed onto the calling thread's module LogFn.
+    inline LogFn makeLibLogFn(std::string_view libName)
+    {
+        return currentModuleLogFn().compose(libName);
+    }
 } // namespace Log
 
-/**
- * @brief Creates a LogFn for a shared library by composing the library name
- *        onto the current thread's module LogFn.
- *
- * Result: "<process>:<module>(<libName>)"  e.g. "wazuh-manager-modulesd:inventory-sync(rocksdb)"
- *         or "<process>(<libName>)"         e.g. "wazuh-manager-analysisd(indexer-connector)"
- *
- * The base context must have been set with Log::setModuleLogFn() on this thread before calling
- * this function. If it has not been set, the thread-local defaults to LogFn{"logger-helper"} and
- * the result will be "logger-helper(<libName>)" — a valid fallback, but without module context.
- */
-inline LogFn makeLibLogFn(std::string_view libName)
-{
-    return Log::currentModuleLogFn().compose(libName);
-}
+using LogFn = Log::LogFn;
+using Log::makeLibLogFn;
 
 #endif // LOGGER_HELPER_H
