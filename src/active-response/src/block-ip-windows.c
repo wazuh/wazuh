@@ -27,7 +27,7 @@
 
 firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const char *argv0);
 firewall_result_t try_route_windows(const char *srcip, int action, int ip_version, const char *argv0);
-static bool firewall_is_effectively_on(const char *netsh_path, const char *argv0);
+static bool firewall_is_effectively_on(const char *argv0);
 
 int main(int argc, char **argv) {
     // This must always be the first instruction on Windows
@@ -93,41 +93,57 @@ int main(int argc, char **argv) {
 // WINDOWS: effective firewall-state detection
 // ============================================================================
 
-// Returns true if ANY firewall profile is effectively enabled (enforcing), read from
-// `netsh advfirewall show allprofiles state`. This reports the effective state and, in
-// particular, correctly returns ON when the local EnableFirewall value is ABSENT (the
-// Windows default).
-// On any failure to determine the state (or when the "ON" token is not recognized, e.g.
-// on a localized Windows) we return false, so try_netsh conservatively defers to the
-// route fallback rather than adding a rule that might never be enforced.
-static bool firewall_is_effectively_on(const char *netsh_path, const char *argv0) {
-    char *exec_cmd[] = {(char *)netsh_path, "advfirewall", "show", "allprofiles", "state", NULL};
-    wfd_t *wfd = wpopenv(netsh_path, exec_cmd, W_BIND_STDOUT);
-    if (!wfd) {
-        write_debug_file(argv0, "Unable to query firewall state via netsh - assuming disabled");
-        return false;
+// Reads the EnableFirewall DWORD under HKLM\<subkey>. Returns 1 (enabled), 0 (disabled),
+// or -1 (key/value absent). Forces the 64-bit view (KEY_WOW64_64KEY) because block-ip may
+// run as a 32-bit process and these keys live in the native hive.
+static int read_enable_firewall(const char *subkey) {
+    HKEY hkey;
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ | KEY_WOW64_64KEY, &hkey) != ERROR_SUCCESS) {
+        return -1;
     }
 
-    char output_buf[OS_MAXSTR];
+    DWORD value = 0;
+    DWORD size = sizeof(value);
+    DWORD type = 0;
+    LONG rc = RegQueryValueEx(hkey, "EnableFirewall", NULL, &type, (LPBYTE)&value, &size);
+    RegCloseKey(hkey);
+
+    if (rc != ERROR_SUCCESS || type != REG_DWORD) {
+        return -1;
+    }
+    return value != 0 ? 1 : 0;
+}
+
+// Returns true if ANY firewall profile is effectively enabled (enforcing). Reads the
+// EnableFirewall DWORD directly from the registry.
+// Per profile: the GPO policy value wins if present, else the local SharedAccess value,
+// else it defaults to ENABLED (the Windows default). Defaulting an ABSENT value to enabled
+// is the fix for the #37388 misfire (the old check treated absent as "disabled").
+static bool firewall_is_effectively_on(const char *argv0) {
+    static const char *profiles[] = {"DomainProfile", "StandardProfile", "PublicProfile"};
+    char gpo_key[OS_MAXSTR];
+    char local_key[OS_MAXSTR];
     bool any_on = false;
 
-    while (fgets(output_buf, OS_MAXSTR, wfd->file_out)) {
-        char *p = strstr(output_buf, "State");
-        if (!p) {
-            continue;
-        }
-        p += 5;  // strlen("State")
-        while (*p == ' ' || *p == '\t') {
-            p++;
-        }
-        if ((p[0] == 'O' || p[0] == 'o') && (p[1] == 'N' || p[1] == 'n') &&
-            (p[2] == '\0' || p[2] == '\r' || p[2] == '\n' || p[2] == ' ' || p[2] == '\t')) {
+    for (int i = 0; i < 3; i++) {
+        snprintf(gpo_key, OS_MAXSTR - 1,
+                 "SOFTWARE\\Policies\\Microsoft\\WindowsFirewall\\%s", profiles[i]);
+        snprintf(local_key, OS_MAXSTR - 1,
+                 "SYSTEM\\CurrentControlSet\\Services\\SharedAccess\\Parameters\\FirewallPolicy\\%s",
+                 profiles[i]);
+
+        int gpo = read_enable_firewall(gpo_key);
+        int state = (gpo != -1) ? gpo : read_enable_firewall(local_key);
+        bool enabled = (state == -1) ? true : (state == 1);  // both absent -> Windows default ON
+        if (enabled) {
             any_on = true;
             break;
         }
     }
 
-    wpclose(wfd);
+    if (!any_on) {
+        write_debug_file(argv0, "No firewall profile is effectively enabled (registry check)");
+    }
     return any_on;
 }
 
@@ -147,11 +163,11 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
 
     // A netsh block rule is only enforced while a firewall profile is enabled. On ENABLE,
     // if the firewall is effectively OFF, defer to the route fallback instead of adding a
-    // dormant rule. We read the EFFECTIVE state via netsh (which reports ON even when the
-    // local EnableFirewall value is absent). This is ENABLE-only: on DISABLE we must
-    // always try to remove the rule, which may have been added while the firewall was
-    // enabled.
-    if (action == ENABLE_COMMAND && !firewall_is_effectively_on(netsh_path, argv0)) {
+    // dormant rule. The effective state is read from the registry (see
+    // firewall_is_effectively_on), which is locale-independent. This is ENABLE-only: on
+    // DISABLE we must always try to remove the rule, which may have been added while the
+    // firewall was enabled.
+    if (action == ENABLE_COMMAND && !firewall_is_effectively_on(argv0)) {
         log_firewall_action(argv0, LOG_LEVEL_WARNING, "netsh", "check",
                           "Windows Firewall is effectively disabled - deferring to route fallback");
         os_free(netsh_path);
