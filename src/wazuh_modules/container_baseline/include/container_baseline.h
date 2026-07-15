@@ -1,0 +1,100 @@
+/*
+ * Wazuh container-baseline module — C API exported by libcontainer_baseline.so
+ * Copyright (C) 2015, Wazuh Inc.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ *
+ * Baseline acquisition for containerised workloads (spike #37532): a one-time
+ * host-side scan that seeds the initial FIM (file) and Syscollector
+ * (process/network) state for a container, so the eBPF-driven change stream
+ * (#37396) has a known prior state to diff against instead of only reporting
+ * activity after the fact.
+ *
+ * This C API is the bridge consumed by both FIM (syscheckd, C) and
+ * Syscollector (C++, via the same extern "C" surface) — all scanning logic
+ * lives in the C++ impl; this header only exposes the two entry points and
+ * the row-sink callback shape. Callers own persistence: this module produces
+ * rows and hands them to `sink`, which the caller forwards to its own
+ * AgentSyncProtocol handle (syscheck.sync_handle / Syscollector's own handle).
+ * This module never touches sync_protocol directly, so it has no opinion on
+ * how/when the caller batches, retries, or rate-limits the actual sync call.
+ */
+
+#ifndef _CONTAINER_BASELINE_H
+#define _CONTAINER_BASELINE_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef _WIN32
+#  ifdef WIN_EXPORT
+#    define EXPORTED __declspec(dllexport)
+#  else
+#    define EXPORTED __declspec(dllimport)
+#  endif
+#elif __GNUC__ >= 4
+#  define EXPORTED __attribute__((visibility("default")))
+#else
+#  define EXPORTED
+#endif
+
+/* Default IPC socket path of the container-connector module. Callers that
+ * don't have a config-supplied override (e.g. the FIM/Syscollector wiring in
+ * this branch) can use this literal directly instead of duplicating it. */
+#define CB_DEFAULT_CONNECTOR_SOCKET_PATH "/var/ossec/queue/sockets/container_connector"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* One `<directories type="kubernetes">` entry to walk, translated by the
+ * caller from its own config representation (e.g. k8s_monitored_path_t). */
+typedef struct cb_monitored_path_t {
+    const char* internal_path;     /* In-container absolute path, e.g. "/etc". */
+    int         recursion_level;   /* 0 = entry only, N = N levels deep, -1 = unlimited. */
+    size_t      max_files;         /* Hard cap on rows for this path; 0 = unlimited. */
+    size_t      max_hash_bytes;    /* Per-file hashing cutoff; 0 = unlimited. */
+} cb_monitored_path_t;
+
+/* Invoked once per baseline row produced. `operation` mirrors sync_protocol's
+ * Operation_t (0 = CREATE); baseline rows are always creates. `version` is the
+ * row's initial sync-protocol version (always 1 for a freshly-baselined row). */
+typedef void (*cb_row_sink_t)(const char* id,
+                              int         operation,
+                              const char* index,
+                              const char* json,
+                              uint64_t    version,
+                              void*       user_data);
+
+/* Baseline every container currently known to the container-connector module
+ * (queried via its IPC socket at `connector_socket_path`) against the given
+ * set of monitored paths, emitting one row per file found through `sink`.
+ *
+ * Returns the number of containers that had at least one live, addressable
+ * PID (and were therefore actually scanned) — containers known to the
+ * connector but with no resolvable PID (e.g. already exited) are silently
+ * skipped and are not counted.
+ */
+EXPORTED int cbaseline_run_fim(const char*                 connector_socket_path,
+                               const cb_monitored_path_t*  paths,
+                               int                         path_count,
+                               cb_row_sink_t               sink,
+                               void*                       user_data);
+
+/* Baseline process + network inventory for every container currently known to
+ * the container-connector module. See baseline_rows.hpp (C++ impl) for the
+ * draft-ECS-schema caveat on the JSON shape emitted for these rows — it is not
+ * yet aligned with Syscollector::ecsData()'s field contract.
+ */
+EXPORTED int cbaseline_run_syscollector(const char*   connector_socket_path,
+                                        cb_row_sink_t  sink,
+                                        void*          user_data);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* _CONTAINER_BASELINE_H */

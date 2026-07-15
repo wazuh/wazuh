@@ -105,6 +105,10 @@ else()
   add_subdirectory(agent_info)
   add_subdirectory(sca)
   add_subdirectory(syscollector)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_subdirectory(container_connector)
+    add_subdirectory(container_baseline)
+  endif()
 endif()
 
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
@@ -159,6 +163,9 @@ else()
            agent_sync_protocol
            dbsync
            schema_validator)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(wazuh_modulesd_lib PUBLIC container_connector container_baseline)
+  endif()
 endif()
 
 if(UNIX)
