@@ -3,6 +3,12 @@ All notable changes to this project will be documented in this file.
 
 ## [v5.1.0]
 
+### Agent
+
+#### Fixed
+
+- Restored the 5.x package file-check baselines on `main` that were reverted to 4.x values by the 4.14.7 merge. ([#37704](https://github.com/wazuh/wazuh/issues/37704))
+
 ## [v5.0.1]
 
 ## [v5.0.0]
