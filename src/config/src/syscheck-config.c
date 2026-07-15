@@ -86,6 +86,14 @@ int initialize_syscheck_configuration(syscheck_config *syscheck) {
     }
 
     OSList_SetFreeDataPointer(syscheck->directories, (void (*)(void *))free_directory);
+
+#ifndef WIN32
+    syscheck->k8s_directories                 = OSList_Create();
+    if (syscheck->k8s_directories == NULL) {
+        return (OS_INVALID);
+    }
+    OSList_SetFreeDataPointer(syscheck->k8s_directories, (void (*)(void *))free_k8s_monitored_path);
+#endif
     syscheck->wildcards                       = NULL;
     syscheck->enable_synchronization          = 1;
     syscheck->restart_audit                   = 1;
@@ -785,6 +793,11 @@ char **expand_wildcards(const char *path) {
 }
 
 
+#ifndef WIN32
+/* Forward declaration for the K8s-flavored directory parser. */
+static int read_k8s_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs, char **g_values);
+#endif
+
 /* Read directories attributes */
 static int read_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs, char **g_values)
 {
@@ -1249,6 +1262,194 @@ out_free:
 
     return 1;
 }
+
+#ifndef WIN32
+/* Read attributes for a <directories type="kubernetes"> entry and append one
+ * k8s_monitored_path_t per CSV-separated path. Supports the same CHECK_* options
+ * + recursion_level + tags + restrict + diff_size_limit + whodata + report_changes
+ * as the host directories parser. Host-only attributes (follow_symbolic_link,
+ * realtime) are explicitly rejected so the user gets a clear error instead of
+ * silent behaviour. */
+static int read_k8s_attr(syscheck_config *syscheck, const char *dirs, char **g_attrs, char **g_values)
+{
+    const char *xml_check_all          = "check_all";
+    const char *xml_check_sum          = "check_sum";
+    const char *xml_check_sha1sum      = "check_sha1sum";
+    const char *xml_check_md5sum       = "check_md5sum";
+    const char *xml_check_sha256sum    = "check_sha256sum";
+    const char *xml_check_size         = "check_size";
+    const char *xml_check_owner        = "check_owner";
+    const char *xml_check_group        = "check_group";
+    const char *xml_check_perm         = "check_perm";
+    const char *xml_check_mtime        = "check_mtime";
+    const char *xml_check_inode        = "check_inode";
+    const char *xml_whodata            = "whodata";
+    const char *xml_report_changes     = "report_changes";
+    const char *xml_recursion_level    = "recursion_level";
+    const char *xml_tag                = "tags";
+    const char *xml_diff_size_limit    = "diff_size_limit";
+    const char *xml_restrict           = "restrict";
+    const char *xml_type               = "type";
+
+    int   opts            = 0;
+    int   recursion_limit = syscheck->max_depth;
+    int   tmp_diff_size   = -1;
+    char *restrictfile    = NULL;
+    char *tag             = NULL;
+
+    fim_set_check_all(&opts);  /* same defaults as host */
+    opts |= SCHEDULED_ACTIVE;
+
+    char **attrs  = g_attrs;
+    char **values = g_values;
+
+    while (attrs && values && *attrs && *values) {
+        if (strcmp(*attrs, xml_type) == 0) {
+            /* Already validated by Read_Syscheck; ignore here. */
+        } else if (strcmp(*attrs, xml_check_all) == 0) {
+            if (strcmp(*values, "yes") == 0) fim_set_check_all(&opts);
+            else if (strcmp(*values, "no") == 0)
+                opts &= ~(CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM |
+                          CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME |
+                          CHECK_INODE | CHECK_DEVICE);
+            else { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_check_sum) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM);
+            else if (strcmp(*values, "no")  == 0) opts &= ~(CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM);
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_check_md5sum) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= CHECK_MD5SUM;
+            else if (strcmp(*values, "no")  == 0) opts &= ~CHECK_MD5SUM;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_check_sha1sum) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= CHECK_SHA1SUM;
+            else if (strcmp(*values, "no")  == 0) opts &= ~CHECK_SHA1SUM;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_check_sha256sum) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= CHECK_SHA256SUM;
+            else if (strcmp(*values, "no")  == 0) opts &= ~CHECK_SHA256SUM;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_check_size) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= CHECK_SIZE;
+            else if (strcmp(*values, "no")  == 0) opts &= ~CHECK_SIZE;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_check_owner) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= CHECK_OWNER;
+            else if (strcmp(*values, "no")  == 0) opts &= ~CHECK_OWNER;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_check_group) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= CHECK_GROUP;
+            else if (strcmp(*values, "no")  == 0) opts &= ~CHECK_GROUP;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_check_perm) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= CHECK_PERM;
+            else if (strcmp(*values, "no")  == 0) opts &= ~CHECK_PERM;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_check_mtime) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= CHECK_MTIME;
+            else if (strcmp(*values, "no")  == 0) opts &= ~CHECK_MTIME;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_check_inode) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= CHECK_INODE;
+            else if (strcmp(*values, "no")  == 0) opts &= ~CHECK_INODE;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_whodata) == 0) {
+            if      (strcmp(*values, "yes") == 0) { opts &= ~SCHEDULED_ACTIVE; opts |= WHODATA_ACTIVE; }
+            else if (strcmp(*values, "no")  == 0)   opts &= ~WHODATA_ACTIVE;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_report_changes) == 0) {
+            if      (strcmp(*values, "yes") == 0) opts |= CHECK_SEECHANGES;
+            else if (strcmp(*values, "no")  == 0) opts &= ~CHECK_SEECHANGES;
+            else    { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+        } else if (strcmp(*attrs, xml_recursion_level) == 0) {
+            if (!OS_StrIsNum(*values)) { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+            int rl = atoi(*values);
+            if (rl < 0 || rl > MAX_DEPTH_ALLOWED) {
+                mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+                goto fail;
+            }
+            recursion_limit = rl;
+        } else if (strcmp(*attrs, xml_diff_size_limit) == 0) {
+            int parsed = read_data_unit(*values);
+            if (parsed == -1) { mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs); goto fail; }
+            tmp_diff_size = parsed < 1 ? 1 : parsed;
+        } else if (strcmp(*attrs, xml_tag) == 0) {
+            os_free(tag);
+            os_strdup(*values, tag);
+        } else if (strcmp(*attrs, xml_restrict) == 0) {
+            os_free(restrictfile);
+            os_strdup(*values, restrictfile);
+        } else {
+            mwarn(FIM_INVALID_OPTION_SKIP, *values, *attrs, dirs);
+            goto fail;
+        }
+        attrs++;
+        values++;
+    }
+
+    /* Split the CSV paths and append one entry per path. */
+    char **path_list = OS_StrBreak(',', dirs, MAX_DIR_SIZE + 1);
+    if (path_list == NULL) {
+        goto fail;
+    }
+
+    int added = 0;
+    for (int i = 0; path_list[i] != NULL; i++) {
+        char *clean = w_strtrim(path_list[i]);
+        if (clean == NULL || clean[0] != '/') {
+            mwarn("Ignoring invalid <directories type=\"kubernetes\"> path '%s' — must be an absolute container-internal path.",
+                  clean ? clean : "");
+            continue;
+        }
+
+        k8s_monitored_path_t *entry = NULL;
+        os_calloc(1, sizeof(k8s_monitored_path_t), entry);
+        os_strdup(clean, entry->internal_path);
+        entry->options          = opts;
+        entry->recursion_level  = recursion_limit;
+        entry->diff_size_limit  = (tmp_diff_size >= 0) ? tmp_diff_size : syscheck->file_size_limit;
+        if (tag) os_strdup(tag, entry->tag);
+        if (restrictfile) {
+            os_calloc(1, sizeof(OSMatch), entry->filerestrict);
+            if (!OSMatch_Compile(restrictfile, entry->filerestrict, 0)) {
+                merror(REGEX_COMPILE, restrictfile, entry->filerestrict->error);
+                OSMatch_FreePattern(entry->filerestrict);
+                free(entry->filerestrict);
+                entry->filerestrict = NULL;
+            }
+        }
+        OSList_AddData(syscheck->k8s_directories, entry);
+        added++;
+    }
+
+    /* If at least one entry was added with whodata, force the global whodata
+     * flags so the eBPF pipeline runs. K8s container monitoring requires eBPF
+     * by design — Linux audit (the other whodata provider) cannot resolve
+     * cgroup_id, so audit cannot be used here. Forcing avoids a confusing
+     * silent-no-op when the user declared K8s monitoring but forgot to enable
+     * eBPF as the global provider. */
+    if (added > 0 && (opts & WHODATA_ACTIVE)) {
+        syscheck->enable_whodata = 1;
+        if (syscheck->whodata_provider != EBPF_PROVIDER) {
+            mwarn("Forcing whodata provider to eBPF because <directories type=\"kubernetes\"> entries with whodata=\"yes\" were declared (audit provider cannot resolve container cgroup_id).");
+            syscheck->whodata_provider = EBPF_PROVIDER;
+        }
+    }
+
+    /* Free the split array (the strings are dup'd into entries). */
+    for (int i = 0; path_list[i] != NULL; i++) free(path_list[i]);
+    free(path_list);
+
+    os_free(tag);
+    os_free(restrictfile);
+    return 1;
+
+fail:
+    os_free(tag);
+    os_free(restrictfile);
+    return 0;
+}
+#endif
 
 static void parse_synchronization(syscheck_config * syscheck, XML_NODE node) {
      const char *xml_enabled = "enabled";
@@ -1721,6 +1922,31 @@ int Read_Syscheck(const OS_XML *xml, XML_NODE node, void *configp, __attribute__
             fim_adjust_path(&(node[i]->content));
 #endif
             strncpy(dirs, node[i]->content, sizeof(dirs) - 1);
+
+#ifndef WIN32
+            /* Detect <directories type="kubernetes"> and route to the K8s parser.
+             * Host directories continue through read_attr unchanged. */
+            int is_k8s = 0;
+            if (node[i]->attributes && node[i]->values) {
+                for (int a = 0; node[i]->attributes[a] && node[i]->values[a]; a++) {
+                    if (strcmp(node[i]->attributes[a], "type") == 0 &&
+                        strcmp(node[i]->values[a],     "kubernetes") == 0) {
+                        is_k8s = 1;
+                        break;
+                    }
+                }
+            }
+            if (is_k8s) {
+                if (!read_k8s_attr(syscheck,
+                                   dirs,
+                                   node[i]->attributes,
+                                   node[i]->values)) {
+                    return (OS_INVALID);
+                }
+                continue;
+            }
+#endif
+
             if (!read_attr(syscheck,
                            dirs,
                            node[i]->attributes,
@@ -2279,6 +2505,53 @@ void free_directory(directory_t *dir) {
     free(dir);
 }
 
+#ifndef WIN32
+void free_k8s_monitored_path(k8s_monitored_path_t *p) {
+    if (p == NULL) {
+        return;
+    }
+    os_free(p->internal_path);
+    os_free(p->tag);
+    if (p->filerestrict) {
+        OSMatch_FreePattern(p->filerestrict);
+        free(p->filerestrict);
+    }
+    free(p);
+}
+
+k8s_monitored_path_t *fim_match_k8s_path(const syscheck_config *cfg, const char *internal_path) {
+    if (cfg == NULL || cfg->k8s_directories == NULL || internal_path == NULL || internal_path[0] != '/') {
+        return NULL;
+    }
+
+    const size_t ip_len = strlen(internal_path);
+    k8s_monitored_path_t *best = NULL;
+    size_t                best_len = 0;
+
+    OSListNode *node_it;
+    OSList_foreach(node_it, (OSList *)cfg->k8s_directories) {
+        k8s_monitored_path_t *p = (k8s_monitored_path_t *)node_it->data;
+        if (p == NULL || p->internal_path == NULL) continue;
+
+        const size_t plen = strlen(p->internal_path);
+        if (plen == 0 || plen > ip_len) continue;
+        if (strncmp(internal_path, p->internal_path, plen) != 0) continue;
+        /* Boundary check: either exact match, declared path ends in '/', or next
+         * char in internal_path is '/'. Prevents "/etc/nginx" from matching
+         * "/etc/nginxd". */
+        if (internal_path[plen] != '\0' && internal_path[plen] != '/' &&
+            !(plen > 0 && p->internal_path[plen - 1] == '/')) {
+            continue;
+        }
+        if (plen > best_len) {
+            best = p;
+            best_len = plen;
+        }
+    }
+    return best;
+}
+#endif
+
 void Free_Syscheck(syscheck_config * config) {
     if (config) {
         int i;
@@ -2322,6 +2595,12 @@ void Free_Syscheck(syscheck_config * config) {
             OSList_Destroy(config->wildcards);
             config->wildcards = NULL;
         }
+#ifndef WIN32
+        if (config->k8s_directories) {
+            OSList_Destroy(config->k8s_directories);
+            config->k8s_directories = NULL;
+        }
+#endif
 
 #ifdef WIN32
         if (config->key_ignore) {

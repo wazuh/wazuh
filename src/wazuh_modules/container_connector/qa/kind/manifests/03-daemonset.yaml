@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: wazuh-agent
+  namespace: wazuh
+spec:
+  selector:
+    matchLabels:
+      app: wazuh-agent
+  template:
+    metadata:
+      labels:
+        app: wazuh-agent
+    spec:
+      serviceAccountName: wazuh-agent
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: wazuh-agent
+          image: wazuh-agent-k8s:dev
+          imagePullPolicy: Never
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: MANAGER_IP
+              value: "__MANAGER_IP__"
+          volumeMounts:
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+            - name: varlogcontainers
+              mountPath: /var/log/containers
+              readOnly: true
+            - name: hoststate
+              mountPath: /hoststate
+            - name: agent-config
+              mountPath: /config
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+      volumes:
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: varlogcontainers
+          hostPath:
+            path: /var/log/containers
+        - name: hoststate
+          hostPath:
+            path: /var/lib/wazuh-spike/state
+            type: DirectoryOrCreate
+        - name: agent-config
+          configMap:
+            name: wazuh-agent-config

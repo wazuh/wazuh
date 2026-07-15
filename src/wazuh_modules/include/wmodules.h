@@ -39,6 +39,7 @@
 #define MS_GRAPH_WM_NAME "ms-graph"
 #define AGENT_INFO_WM_NAME   "agent-info"
 #define SYSCOLLECTOR_WM_NAME "syscollector"
+#define CONTAINER_CONNECTOR_WM_NAME "container-connector"
 #define FIM_NAME "fim"                      // FIM module name. It is not a wm:module, but we define the name for query it.
 
 #define WM_DEF_TIMEOUT      1800            // Default runtime limit (30 minutes)
@@ -80,6 +81,9 @@ typedef enum crypto_type {
 #include "wm_vulnerability_scanner.h"
 #include "wm_ms_graph.h"
 #include "wm_inventory_sync.h"
+#ifndef WIN32
+#include "wm_container_connector.h"
+#endif
 
 extern wmodule *wmodules;       // Loaded modules.
 extern int wm_task_nice;        // Nice value for tasks.

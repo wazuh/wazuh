@@ -56,6 +56,16 @@ int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
 
+#ifndef WIN32
+/**
+ * @brief Read the configuration for the container-connector module (Kubernetes).
+ * @param xml XML object
+ * @param node XML node to analyze
+ * @param d1 wmodule** list head
+ */
+int Read_ContainerConnector(const OS_XML *xml, xml_node *node, void *d1);
+#endif
+
 /**
  * @brief Read the configuration for client section with centralized configuration
  * @param node XML node to analyze

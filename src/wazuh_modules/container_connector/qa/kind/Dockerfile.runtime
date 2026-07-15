@@ -1,0 +1,17 @@
+# Thin runtime image for the spike DaemonSet: a prebuilt /var/ossec tree
+# (tarred out of the wazuh-testenv build container, same ubuntu:22.04 base)
+# plus the entrypoint. Build context must contain agent-root.tgz.
+FROM ubuntu:22.04
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       libstdc++6 zlib1g procps curl ca-certificates python3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r wazuh && useradd -r -g wazuh -d /var/ossec -s /sbin/nologin wazuh
+
+ADD agent-root.tgz /
+
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]

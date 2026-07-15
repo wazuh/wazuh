@@ -42,6 +42,99 @@ STATIC int w_logcollector_get_macos_log_type(const char * content);
  */
 w_exp_type_t w_check_regex_type(xml_node * node, const char * element);
 
+/* Returns true if a <location> value selects the Kubernetes log source.
+ * Accepts both Mode A ("kubernetes") and Mode B ("kubernetes:<path>"). */
+static int w_is_k8s_location_value(const char *value)
+{
+    if (value == NULL) return 0;
+    if (strcmp(value, "kubernetes") == 0) return 1;
+    if (strncmp(value, "kubernetes:", 11) == 0 && value[11] == '/') return 1;
+    return 0;
+}
+
+/* Parses a "kubernetes" or "kubernetes:/abs/path" location value into the
+ * given config. Returns 0 on success, -1 on invalid format. */
+static int w_parse_k8s_location(const char *value, w_k8s_log_config_t *cfg)
+{
+    if (strcmp(value, "kubernetes") == 0) {
+        cfg->container_path = NULL;  /* Mode A: stdout/stderr. */
+        return 0;
+    }
+    if (strncmp(value, "kubernetes:", 11) == 0 && value[11] == '/') {
+        os_strdup(value + 11, cfg->container_path);
+        return 0;
+    }
+    return -1;
+}
+
+/* Parses one <filter field="X">value</filter> node into the K8s config.
+ * Recognised fields: container_name, image_name, namespace, pod_name, label.
+ * Returns 0 on success, -1 on invalid input (caller decides whether to fail). */
+static int w_parse_k8s_filter(const xml_node *fn, w_k8s_log_config_t *cfg)
+{
+    if (!fn || !fn->attributes || !fn->values || !fn->content) {
+        merror("<filter> in <localfile> with <location>kubernetes</location> requires field=\"...\" and a value.");
+        return -1;
+    }
+
+    const char *field = NULL;
+    for (int j = 0; fn->attributes[j] && fn->values[j]; j++) {
+        if (strcmp(fn->attributes[j], "field") == 0) {
+            field = fn->values[j];
+            break;
+        }
+    }
+    if (field == NULL) {
+        merror("<filter> in <localfile> kubernetes mode needs a field=\"...\" attribute.");
+        return -1;
+    }
+
+    if (strcmp(field, "container_name") == 0) {
+        if (cfg->container_name_match) { OSMatch_FreePattern(cfg->container_name_match); free(cfg->container_name_match); }
+        os_calloc(1, sizeof(OSMatch), cfg->container_name_match);
+        if (!OSMatch_Compile(fn->content, cfg->container_name_match, 0)) {
+            merror(REGEX_COMPILE, fn->content, cfg->container_name_match->error);
+            OSMatch_FreePattern(cfg->container_name_match);
+            free(cfg->container_name_match);
+            cfg->container_name_match = NULL;
+            return -1;
+        }
+    } else if (strcmp(field, "image_name") == 0) {
+        if (cfg->image_name_match) { OSMatch_FreePattern(cfg->image_name_match); free(cfg->image_name_match); }
+        os_calloc(1, sizeof(OSMatch), cfg->image_name_match);
+        if (!OSMatch_Compile(fn->content, cfg->image_name_match, 0)) {
+            merror(REGEX_COMPILE, fn->content, cfg->image_name_match->error);
+            OSMatch_FreePattern(cfg->image_name_match);
+            free(cfg->image_name_match);
+            cfg->image_name_match = NULL;
+            return -1;
+        }
+    } else if (strcmp(field, "namespace") == 0) {
+        os_free(cfg->namespace_);
+        os_strdup(fn->content, cfg->namespace_);
+    } else if (strcmp(field, "pod_name") == 0) {
+        os_free(cfg->pod_name);
+        os_strdup(fn->content, cfg->pod_name);
+    } else if (strcmp(field, "label") == 0) {
+        /* Expect "key=value". Append to NULL-terminated array. */
+        if (strchr(fn->content, '=') == NULL) {
+            merror("<filter field=\"label\"> must be of the form \"key=value\" (got '%s').", fn->content);
+            return -1;
+        }
+        size_t count = 0;
+        if (cfg->labels) while (cfg->labels[count]) count++;
+        os_realloc(cfg->labels, (count + 2) * sizeof(char *), cfg->labels);
+        cfg->labels[count] = NULL;
+        cfg->labels[count + 1] = NULL;
+        os_strdup(fn->content, cfg->labels[count]);
+    } else {
+        merror("<filter field=\"%s\"> not recognised for kubernetes <localfile>. "
+               "Valid fields: container_name, image_name, namespace, pod_name, label.", field);
+        return -1;
+    }
+    return 0;
+}
+
 int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     unsigned int pl = 0;
@@ -117,6 +210,18 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
     logf[pl].reconnect_time = DEFAULT_EVENTCHANNEL_REC_TIME;
     logf[pl].regex_ignore = NULL;
     logf[pl].regex_restrict = NULL;
+
+    /* Pre-scan: detect Kubernetes mode before the main parsing loop so that
+     * <filter field="...">value</filter> nodes appearing in any order are
+     * routed to the K8s filter set instead of the default journald one. */
+    for (unsigned int j = 0; node[j]; j++) {
+        if (node[j]->element && node[j]->content &&
+            strcmp(node[j]->element, xml_localfile_location) == 0 &&
+            w_is_k8s_location_value(node[j]->content)) {
+            os_calloc(1, sizeof(w_k8s_log_config_t), logf[pl].k8s_log);
+            break;
+        }
+    }
 
     /* Search for entries related to files */
     i = 0;
@@ -319,6 +424,20 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 logf[pl].ign = atoi(node[i]->content);
             }
         } else if (strcmp(node[i]->element, xml_localfile_location) == 0) {
+            /* Kubernetes mode: parse the path-prefix value and skip the host
+             * file checks. We still set `file` to the original location string
+             * so downstream code that uses it as a key/label has something
+             * meaningful. */
+            if (logf[pl].k8s_log != NULL) {
+                if (w_parse_k8s_location(node[i]->content, logf[pl].k8s_log) < 0) {
+                    merror("Invalid kubernetes <location> value: '%s'. Expected 'kubernetes' or 'kubernetes:/abs/path'.",
+                           node[i]->content);
+                    return OS_INVALID;
+                }
+                os_strdup(node[i]->content, logf[pl].file);
+                i++;
+                continue;
+            }
 #ifdef WIN32
             /* Expand variables on Windows */
             if (strchr(node[i]->content, '%')) {
@@ -406,6 +525,10 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
                 }
 #endif
             } else if (strcmp(logf[pl].logformat, JOURNALD_LOG) == 0) {
+            } else if (strcmp(logf[pl].logformat, "container") == 0) {
+                /* K8s mode stdout/stderr — payload is the containerd CRI log
+                 * shape ("<ts> <stream> <P|F> <line>"). Parsing happens in the
+                 * logcollector reader; no per-config compile work needed here. */
             } else {
                 merror(XML_VALUEERR, node[i]->element, node[i]->content);
                 return (OS_INVALID);
@@ -547,6 +670,17 @@ int Read_Localfile(XML_NODE node, void *d1, __attribute__((unused)) void *d2)
             }
             OSList_InsertData(logf[pl].regex_restrict, NULL, expression_restrict);
         } else if (strcasecmp(node[i]->element, xml_localfile_filter) == 0) {
+            /* In Kubernetes mode <filter> targets the K8s filter set (container_name,
+             * image_name, namespace, pod_name, label). Otherwise fall through to the
+             * journald filter handler. */
+            if (logf[pl].k8s_log != NULL) {
+                if (w_parse_k8s_filter(node[i], logf[pl].k8s_log) < 0) {
+                    return OS_INVALID;
+                }
+                i++;
+                continue;
+            }
+
             if (init_w_journal_log_config_t(&(logf[pl].journal_log))) {
                 os_calloc(2, sizeof(w_journal_filter_t *), logf[pl].journal_log->filters);
             }
@@ -912,6 +1046,24 @@ void Free_Logreader(logreader * logf) {
         w_multiline_log_config_free(&(logf->multiline));
         w_macos_log_config_free(&(logf->macos_log));
         w_journal_log_config_free(&(logf->journal_log));
+        if (logf->k8s_log) {
+            os_free(logf->k8s_log->container_path);
+            if (logf->k8s_log->container_name_match) {
+                OSMatch_FreePattern(logf->k8s_log->container_name_match);
+                free(logf->k8s_log->container_name_match);
+            }
+            if (logf->k8s_log->image_name_match) {
+                OSMatch_FreePattern(logf->k8s_log->image_name_match);
+                free(logf->k8s_log->image_name_match);
+            }
+            os_free(logf->k8s_log->namespace_);
+            os_free(logf->k8s_log->pod_name);
+            if (logf->k8s_log->labels) {
+                for (i = 0; logf->k8s_log->labels[i]; i++) free(logf->k8s_log->labels[i]);
+                free(logf->k8s_log->labels);
+            }
+            os_free(logf->k8s_log);
+        }
         os_free(logf->djb_program_name);
         os_free(logf->channel_str);
         os_free(logf->alias);

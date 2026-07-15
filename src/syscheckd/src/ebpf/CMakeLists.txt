@@ -12,8 +12,11 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../db/include/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../ebpf/include/)
 include_directories(${SRC_FOLDER}/external/libpcre2/include/)
+include_directories(${SRC_FOLDER}/external/nlohmann/)
 include_directories(${SRC_FOLDER}/shared/os_regex/)
 include_directories(${SRC_FOLDER}/shared/include/)
+# T-K5b: container-connector client for K8s pod metadata lookups.
+include_directories(${SRC_FOLDER}/wazuh_modules/container_connector/include/)
 
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
@@ -22,8 +25,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_library(fimebpf SHARED src/ebpf_whodata.cpp)
 
-# Link against wazuh
-target_link_libraries(fimebpf PRIVATE wazuh)
+# Link against wazuh + the K8s container-connector client (T-K5b).
+target_link_libraries(fimebpf PRIVATE wazuh container_connector)
 
 # Set additional compile flags for the loader (if needed)
 target_compile_options(fimebpf PRIVATE -Wall -Wextra)

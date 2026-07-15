@@ -110,6 +110,14 @@ void free_whodata_event(whodata_evt *w_evt) {
     if (w_evt->inode) free(w_evt->inode);
     if (w_evt->dev) free(w_evt->dev);
     if (w_evt->user_id) free(w_evt->user_id);
+    /* K8s container context — only populated on container events. */
+    if (w_evt->container_id) free(w_evt->container_id);
+    if (w_evt->pod_uid) free(w_evt->pod_uid);
+    if (w_evt->pod_name) free(w_evt->pod_name);
+    if (w_evt->k8s_namespace) free(w_evt->k8s_namespace);
+    if (w_evt->container_name) free(w_evt->container_name);
+    if (w_evt->image) free(w_evt->image);
+    if (w_evt->host_path) free(w_evt->host_path);
 #else
     if (w_evt->user_id) LocalFree(w_evt->user_id);
 #endif

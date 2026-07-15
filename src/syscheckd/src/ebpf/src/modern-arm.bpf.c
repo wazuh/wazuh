@@ -41,6 +41,9 @@ struct file_event {
     __u32 gid;
     __u64 inode;
     __u64 dev;
+    __u64 cgroup_id;       /* bpf_get_current_cgroup_id() — maps event to a container in user space */
+    __u32 mnt_ns_inum;     /* current task mount namespace inum */
+    __u32 pid_ns_inum;     /* current task pid namespace inum */
     char comm[TASK_COMM_LEN];
     char filename[MAX_PATH_LEN];
     char cwd[MAX_PATH_LEN];
@@ -238,6 +241,11 @@ statfunc void submit_event(const char *filename,
     __u64 uid_gid = bpf_get_current_uid_gid();
     evt->uid = uid_gid >> 32;
     evt->gid = uid_gid;
+
+    /* Container / namespace metadata — resolved to container metadata in user space */
+    evt->cgroup_id   = bpf_get_current_cgroup_id();
+    evt->mnt_ns_inum = BPF_CORE_READ(current_task, nsproxy, mnt_ns, ns.inum);
+    evt->pid_ns_inum = BPF_CORE_READ(current_task, nsproxy, pid_ns_for_children, ns.inum);
 
     /* Command name of the current task */
     bpf_probe_read_kernel_str(evt->comm, TASK_COMM_LEN, (const char *)BPF_CORE_READ(current_task, comm));

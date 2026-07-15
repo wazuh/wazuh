@@ -1330,3 +1330,95 @@ void fim_file_scan() {
     // Cleanup pending sync updates list
     OSList_Destroy(pending_sync_updates);
 }
+
+#ifndef WIN32
+/* T-K5b.5: lightweight in-memory tracker of K8s synthetic paths already
+ * reported. The first time a path is seen the K8s event is tagged "added";
+ * subsequent events on the same synthetic path are "modified". The tracker
+ * is intentionally NOT persisted across agent restarts — K8s containers are
+ * ephemeral and the consumer does not maintain stateful sync with the
+ * manager anyway (per the K8s module spec). Worst case after a restart is a
+ * spurious round of "added" events for files still present, which is the
+ * most informative default. */
+static pthread_mutex_t  k8s_seen_mutex = PTHREAD_MUTEX_INITIALIZER;
+static OSHash          *k8s_seen_paths = NULL;
+
+static const char *k8s_event_type_for(const char *synthetic_path)
+{
+    pthread_mutex_lock(&k8s_seen_mutex);
+    if (k8s_seen_paths == NULL) {
+        k8s_seen_paths = OSHash_Create();
+    }
+    if (k8s_seen_paths == NULL) {
+        pthread_mutex_unlock(&k8s_seen_mutex);
+        return "modified";
+    }
+
+    const char *type;
+    if (OSHash_Get(k8s_seen_paths, synthetic_path) != NULL) {
+        type = "modified";
+    } else {
+        /* Insert a non-NULL marker (the key itself; OSHash does not own it
+         * after Add, so we strdup it). */
+        char *marker = NULL;
+        os_strdup(synthetic_path, marker);
+        if (OSHash_Add(k8s_seen_paths, synthetic_path, marker) != 2) {
+            os_free(marker);
+        }
+        type = "added";
+    }
+    pthread_mutex_unlock(&k8s_seen_mutex);
+    return type;
+}
+
+void fim_handle_k8s_event(whodata_evt *w_evt)
+{
+    if (w_evt == NULL || w_evt->path == NULL) {
+        return;
+    }
+
+    cJSON *root = cJSON_CreateObject();
+    if (root == NULL) {
+        return;
+    }
+    cJSON_AddStringToObject(root, "collector", "file");
+    cJSON_AddStringToObject(root, "module",    "fim");
+
+    cJSON *data = cJSON_AddObjectToObject(root, "data");
+
+    cJSON *event = cJSON_AddObjectToObject(data, "event");
+    char iso_time[32] = {0};
+    get_iso8601_utc_time(iso_time, sizeof(iso_time));
+    cJSON_AddStringToObject(event, "created", iso_time);
+    cJSON_AddStringToObject(event, "type", k8s_event_type_for(w_evt->path));
+
+    cJSON *file = cJSON_AddObjectToObject(data, "file");
+    cJSON_AddStringToObject(file, "path", w_evt->path);
+    cJSON_AddStringToObject(file, "mode", "whodata");
+
+    /* Kubernetes context block — the consumer relies on this to identify
+     * which pod/container the event belongs to. */
+    cJSON *k8s = cJSON_AddObjectToObject(file, "kubernetes");
+    if (w_evt->k8s_namespace)  cJSON_AddStringToObject(k8s, "namespace",      w_evt->k8s_namespace);
+    if (w_evt->pod_name)       cJSON_AddStringToObject(k8s, "pod_name",       w_evt->pod_name);
+    if (w_evt->pod_uid)        cJSON_AddStringToObject(k8s, "pod_uid",        w_evt->pod_uid);
+    if (w_evt->container_name) cJSON_AddStringToObject(k8s, "container_name", w_evt->container_name);
+    if (w_evt->container_id)   cJSON_AddStringToObject(k8s, "container_id",   w_evt->container_id);
+    if (w_evt->image)          cJSON_AddStringToObject(k8s, "image",          w_evt->image);
+    if (w_evt->host_path)      cJSON_AddStringToObject(k8s, "host_path",      w_evt->host_path);
+
+    /* Audit / process context from the eBPF event. */
+    cJSON *audit = cJSON_AddObjectToObject(file, "audit");
+    if (w_evt->process_name) cJSON_AddStringToObject(audit, "process_name", w_evt->process_name);
+    if (w_evt->user_id)      cJSON_AddStringToObject(audit, "user_id",      w_evt->user_id);
+    if (w_evt->user_name)    cJSON_AddStringToObject(audit, "user_name",    w_evt->user_name);
+    if (w_evt->group_id)     cJSON_AddStringToObject(audit, "group_id",     w_evt->group_id);
+    if (w_evt->group_name)   cJSON_AddStringToObject(audit, "group_name",   w_evt->group_name);
+    cJSON_AddNumberToObject(audit, "process_id", w_evt->process_id);
+    cJSON_AddNumberToObject(audit, "ppid",       w_evt->ppid);
+    if (w_evt->parent_name)  cJSON_AddStringToObject(audit, "parent_name", w_evt->parent_name);
+
+    send_syscheck_msg(root);
+    cJSON_Delete(root);
+}
+#endif

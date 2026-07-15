@@ -167,6 +167,18 @@ void create_unix_who_data_events(void * data, void * ctx)
 void fim_whodata_event(whodata_evt * w_evt) {
     struct stat file_stat;
 
+#ifndef WIN32
+    /* T-K5b.4: events that carry K8s container context never traverse the host
+     * filesystem (the path is a synthetic k8s:// identity, not a real file in
+     * this mount namespace). Route them to the dedicated handler that emits a
+     * stateless alert and stops there — by explicit requirement of the K8s
+     * module spec we do NOT push stateful sync to the manager. */
+    if (w_evt->container_id != NULL && w_evt->container_id[0] != '\0') {
+        fim_handle_k8s_event(w_evt);
+        return;
+    }
+#endif
+
     // If the file exists, generate add or modify events.
     if(w_lstat(w_evt->path, &file_stat) >= 0) {
         event_data_t evt_data = { .mode = FIM_WHODATA, .w_evt = w_evt, .report_event = true };

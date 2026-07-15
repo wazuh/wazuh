@@ -59,7 +59,8 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/agent
   ${SRC_FOLDER}/wazuh_modules/src/agent_upgrade/manager
-  ${SRC_FOLDER}/wazuh_modules/src/task_manager)
+  ${SRC_FOLDER}/wazuh_modules/src/task_manager
+  ${SRC_FOLDER}/wazuh_modules/container_connector/include)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -98,6 +99,9 @@ else()
   add_subdirectory(agent_info)
   add_subdirectory(sca)
   add_subdirectory(syscollector)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    add_subdirectory(container_connector)
+  endif()
 endif()
 
 if(NOT "${TARGET}" STREQUAL "winagent" AND NOT "${TARGET}" STREQUAL "agent")
@@ -166,6 +170,9 @@ else()
            agent_sync_protocol
            dbsync
            schema_validator)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(wazuh_modulesd_lib PUBLIC container_connector)
+  endif()
 endif()
 
 if(UNIX)

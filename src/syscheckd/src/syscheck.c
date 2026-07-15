@@ -824,6 +824,26 @@ void check_ebpf_availability() {
     minfo(FIM_EBPF_INIT);
     fimebpf_initialize(fim_configuration_directory_ebpf, get_user, get_group, fim_whodata_event,
                        free_whodata_event, loggingFunction, abspath, fim_shutdown_process_on, syscheck.queue_size);
+
+    /* Diagnostic: always log the state of the K8s declarations so we can tell
+     * apart "no <directories type=\"kubernetes\"> in config" from "list not
+     * initialised" or "init succeeded but list still empty". */
+    if (syscheck.k8s_directories == NULL) {
+        minfo("K8s monitoring: list pointer is NULL (initialize_syscheck_configuration did not set it up).");
+    } else {
+        int k8s_count = 0;
+        OSListNode *it;
+        OSList_foreach(it, syscheck.k8s_directories) {
+            (void)it;
+            k8s_count++;
+        }
+        minfo("K8s monitoring: %d <directories type=\"kubernetes\"> entries parsed.", k8s_count);
+
+        if (k8s_count > 0) {
+            fimebpf_enable_k8s_container_support();
+        }
+    }
+
     if (ebpf_whodata_healthcheck()) {
         mwarn(FIM_ERROR_EBPF_HEALTHCHECK);
 
