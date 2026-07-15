@@ -479,10 +479,10 @@ public:
                     else if (!m_loggerDropLogged)
                     {
                         m_loggerDropLogged = true;
-                        LOG_WARN(m_logFn,
-                                 "Indexer error-logger queue is full (%zu elements): bulk error details dropped. "
-                                 "Increase 'logger_queue_size' to keep them.",
-                                 m_loggerQueueSize);
+                        LOGFN_WARN(m_logFn,
+                                   "Indexer error-logger queue is full (%zu elements): bulk error details dropped. "
+                                   "Increase 'logger_queue_size' to keep them.",
+                                   m_loggerQueueSize);
                     }
                 };
 
