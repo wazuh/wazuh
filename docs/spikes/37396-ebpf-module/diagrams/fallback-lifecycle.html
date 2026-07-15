@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Provider decision &amp; fallback ladder — Spike #37396</title>
+  <!-- Local file: the CDN is reachable when opened in a browser. -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose',
+      flowchart: { htmlLabels: true } });
+  </script>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+           max-width: 1250px; margin: 2rem auto; padding: 0 1.25rem 4rem; line-height: 1.55; }
+    h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+    .meta { color: #777; font-size: .85rem; margin: 0 0 1.5rem; }
+    nav { font-size: .9rem; margin-bottom: 1rem; }
+    a { color: #4a90d9; }
+    .panel { background: #fff; border: 1px solid #8883; border-radius: 12px;
+             padding: 1rem; margin: 1rem 0; overflow-x: auto; }
+    .mermaid { margin: 0; }
+    .sources { font-size: .85rem; color: #777; border-top: 1px solid #8884; margin-top: 2rem; padding-top: .75rem; }
+    code { background: #8881; padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+    p.note { font-size: .92rem; color: #555; }
+    @media (prefers-color-scheme: dark) { p.note { color: #aaa; } }
+  </style>
+</head>
+<body>
+  <nav><a href="../index.html">&larr; dashboard</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="event-sequence.html">&larr; Diagram: event sequence</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 11 / 20</span><span style="min-width:0;text-align:right;"><a href="../evidence/module-framework.html">Module framework &rarr;</a></span></div>
+  <h1>Today's fallback ladder: config &rarr; healthcheck &rarr; program selection</h1>
+  <p class="meta">Issue #37396 · flow / decision diagram (current code)</p>
+  <p class="note">Why this matters for the spike: the issue's "graceful degradation" and
+  "LSM vs kprobe fallback" questions already have in-tree precedent for <em>file</em> events —
+  a runtime ladder ending in a switch to a completely different backend (Linux Audit). For the
+  new module the audit escape hatch does not exist for exec/network events, so the ladder's
+  bottom rung must be redesigned (that's angle 5 + 8/10 of the issue).</p>
+
+  <div class="panel">
+  <pre class="mermaid">
+flowchart TB
+  A["ossec.conf whodata provider setting"] -->|"absent or 'audit' (default)<br/>syscheck-config.c:93"| AUD["AUDIT_PROVIDER<br/>Linux Audit whodata backend<br/>whodata/syscheck_audit.c"]
+  A -->|"'ebpf'<br/>syscheck-config.c:2070-2080"| G{"Linux build with ENABLE_AUDIT?<br/>main.c:313-320"}
+  G -->|no| ERR["error 6966<br/>FIM_ERROR_EBPF_NOT_SUPPORTED"]
+  G -->|yes| HC{"healthcheck passes?<br/>ebpf_whodata.cpp:715-798"}
+  HC -->|"kernel below 5.8 (:360, msg 6980)<br/>libbpf load fails<br/>object load fails<br/>ringbuf creation fails<br/>event round-trip fails"| FB["mwarn 6959 →<br/>whodata_provider = AUDIT_PROVIDER<br/>syscheck.c:827-831"]
+  FB --> AUD
+  HC -->|yes| LSM{"'bpf' in /sys/kernel/security/lsm?<br/>is_bpf_lsm_active() :64-81"}
+  LSM -->|"yes → LSM program set<br/>(msg 6051/6052)"| DP{"lsm _dpath variants load?<br/>(bpf_d_path allowlist)"}
+  LSM -->|"no → kprobe program set<br/>select_programs() :482-525"| KP["attach 4 kprobes<br/>vfs_open, security_inode_setattr,<br/>vfs_unlink, vfs_rename"]
+  DP -->|yes| LSMA["attach lsm _dpath programs<br/>file_open, path_unlink, path_rename"]
+  DP -->|"no (e.g. Amazon Linux 2/2023)<br/>reopen + retry once :552-580, msg 6053"| WALK["attach lsm _walk variants<br/>(manual dentry walk)"]
+  KP --> RUN["poll ring buffer → BoundedQueue → FIM<br/>run_check.c:688 thread"]
+  LSMA --> RUN
+  WALK --> RUN
+  RUN --> STOP["stop: m_fim_shutdown_process_on()<br/>checked in loops; w_bpf_deinit()"]
+
+  style AUD fill:#ffe9d6,stroke:#d98e4a
+  style ERR fill:#ffdddd,stroke:#c0392b
+  style RUN fill:#e2f5e6,stroke:#2e8b57
+  </pre>
+  </div>
+
+  <p class="sources">Derived from: <code>src/config/src/syscheck-config.c:93, 2070-2080</code>,
+  <code>src/syscheckd/src/main.c:313-320</code> (verified), <code>src/syscheckd/src/syscheck.c:823-833</code> (verified),
+  <code>src/syscheckd/src/ebpf/src/ebpf_whodata.cpp:64-81, 360, 482-525, 552-580, 715-798</code>,
+  <code>src/syscheckd/src/run_check.c:685-692</code> (verified). Message IDs from
+  <code>src/shared/include/error_messages/*.h</code> (6051-6053, 6959, 6966, 6980).</p>
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="event-sequence.html">&larr; Diagram: event sequence</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 11 / 20</span><span style="min-width:0;text-align:right;"><a href="../evidence/module-framework.html">Module framework &rarr;</a></span></div>
+</body>
+</html>

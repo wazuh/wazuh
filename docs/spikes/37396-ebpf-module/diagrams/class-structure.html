@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Engine structure &amp; data contracts — Spike #37396</title>
+  <!-- Local file: the CDN is reachable when opened in a browser. -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+  </script>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+           max-width: 1250px; margin: 2rem auto; padding: 0 1.25rem 4rem; line-height: 1.55; }
+    h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+    .meta { color: #777; font-size: .85rem; margin: 0 0 1.5rem; }
+    nav { font-size: .9rem; margin-bottom: 1rem; }
+    a { color: #4a90d9; }
+    .panel { background: #fff; border: 1px solid #8883; border-radius: 12px;
+             padding: 1rem; margin: 1rem 0; overflow-x: auto; }
+    .mermaid { margin: 0; }
+    .sources { font-size: .85rem; color: #777; border-top: 1px solid #8884; margin-top: 2rem; padding-top: .75rem; }
+    code { background: #8881; padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+    p.note { font-size: .92rem; color: #555; }
+    @media (prefers-color-scheme: dark) { p.note { color: #aaa; } }
+  </style>
+</head>
+<body>
+  <nav><a href="../index.html">&larr; dashboard</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="context-architecture.html">&larr; Diagram: today vs target</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 9 / 20</span><span style="min-width:0;text-align:right;"><a href="event-sequence.html">Diagram: event sequence &rarr;</a></span></div>
+  <h1>The engine's classes and the three data shapes an event passes through</h1>
+  <p class="meta">Issue #37396 · class diagram (current code)</p>
+  <p class="note">Reading order: a kernel event is born as <code>file_event</code> (fixed-size C
+  struct, defined twice — kernel and userspace copies must stay in lockstep), becomes a
+  <code>dynamic_file_event</code> (std::string form) in the bounded queue, and dies as FIM's
+  <code>whodata_evt</code>. The <code>fimebpf</code> singleton holding 9 FIM callbacks is the
+  coupling the spike must cut.</p>
+
+  <div class="panel">
+  <pre class="mermaid">
+classDiagram
+  direction LR
+
+  class file_event {
+    <<C struct — defined TWICE>>
+    modern.bpf.c 38-50 and bpf_helpers.h 28-41
+    +u32 pid, ppid, uid, gid
+    +u64 inode, dev
+    +char comm[], filename[]
+    +char cwd[], parent_cwd[], parent_comm[]
+    note: NO cgroup id, NO namespace inodes
+  }
+
+  class dynamic_file_event {
+    <<queued form>>
+    bpf_helpers.h 43-56
+    +std::string filename, cwd, parent_cwd
+    +std::string comm, parent_comm
+    +pid, ppid, uid, gid, inode, dev
+  }
+
+  class BoundedQueue~T~ {
+    <<thread-safe MPSC buffer>>
+    bounded_queue.hpp
+    +push(T) bool  — drops when full
+    +pop(T&, timeout) bool
+    -m_maxSize = syscheck.queue_size
+  }
+
+  class fimebpf {
+    <<singleton — the FIM coupling>>
+    ebpf_whodata.hpp 40-59
+    +m_fim_configuration_directory
+    +m_get_user  +m_get_group
+    +m_fim_whodata_event  +m_free_whodata_event
+    +m_loggingFunction  +m_abspath
+    +m_fim_shutdown_process_on
+    +m_queue_size
+    +initialize(9 FIM fn ptrs)
+  }
+
+  class w_bpf_helpers_t {
+    <<libbpf dispatch table>>
+    bpf_helpers.h
+    dlopen-resolved libbpf fn pointers
+    bpf_object__open_file, load, attach
+    ring_buffer__new, poll, consume
+  }
+
+  class whodata_evt {
+    <<FIM-owned output struct>>
+    syscheck-config.h 228-252
+    +user_id, user_name, group_id, group_name
+    +process_name, path, effective_uid
+    +inode, dev, ppid, process_id
+    +cwd, parent_cwd, parent_name
+  }
+
+  class ebpf_whodata_loop {
+    <<free functions, ebpf_whodata.cpp>>
+    +init_bpfobj() — open lib/modern.bpf.o
+    +select_programs() — LSM vs kprobe
+    +handle_event(ctx, data, sz) — rb callback
+    +ebpf_pop_events() — drain thread
+    +ebpf_whodata_healthcheck()
+  }
+
+  file_event --> dynamic_file_event : handle_event() converts (cpp 121-134)
+  dynamic_file_event --> BoundedQueue~T~ : push, drop if full (cpp 136+)
+  BoundedQueue~T~ --> whodata_evt : drain builds (cpp 670-691)
+  whodata_evt --> fimebpf : m_fim_whodata_event then m_free_whodata_event
+  ebpf_whodata_loop ..> fimebpf : reads callbacks
+  ebpf_whodata_loop ..> w_bpf_helpers_t : all BPF ops
+  fimebpf ..> file_event : filter via FIM directory_t WHODATA_ACTIVE (cpp 117-119)
+  </pre>
+  </div>
+
+  <p class="sources">Derived from: <code>src/syscheckd/src/ebpf/src/modern.bpf.c:38-50</code>,
+  <code>src/syscheckd/src/ebpf/include/bpf_helpers.h:28-56</code>,
+  <code>include/bounded_queue.hpp</code>, <code>include/ebpf_whodata.hpp:40-59</code>,
+  <code>src/ebpf_whodata.cpp:117-134, 553, 670-709</code> (filter verified by hand),
+  <code>src/config/include/syscheck-config.h:228-252</code>.</p>
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="context-architecture.html">&larr; Diagram: today vs target</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 9 / 20</span><span style="min-width:0;text-align:right;"><a href="event-sequence.html">Diagram: event sequence &rarr;</a></span></div>
+</body>
+</html>

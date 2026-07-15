@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Requirements — spike #37396</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="index.html">&larr; dashboard</a> · <a href="tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="evidence/siblings.html">&larr; Sibling spikes</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 5 / 20</span><span style="min-width:0;text-align:right;"><a href="evidence/docs-whodata.html">eBPF in Wazuh today (docs) &rarr;</a></span></div>
+<h1>Requirements — spike #37396</h1>
+<p>Everything below is extracted from the issue body (<a href="https://github.com/wazuh/wazuh/issues/37396">https://github.com/wazuh/wazuh/issues/37396</a>) unless another source is cited. Checkboxes = to be verified against any eventual plan.</p>
+<h2>Header facts</h2>
+<div class="tablewrap"><table><thead><tr><th>Field</th><th>Value</th></tr></thead><tbody><tr><td>Wazuh version</td><td>5.1.0 (matches <code>VERSION.json</code> on main: 5.1.0-alpha0)</td></tr><tr><td>Component</td><td>eBPF Module (new)</td></tr><tr><td>Install type</td><td>Agent</td></tr><tr><td>Platform</td><td>Linux</td></tr><tr><td>Parent</td><td>#37203 "Container runtime security", NFR4</td></tr><tr><td>Labels</td><td>module/agent, type/research, level/task</td></tr><tr><td>State</td><td>Open, no comments, no milestone (checked 2026-07-13)</td></tr></tbody></table></div>
+<h2>The ask (two tightly-coupled halves)</h2>
+<ol><li><strong>Module design</strong> — boundaries, consumer-facing interface (subscription/event contract), process/threading + lifecycle model, correlation keys carried by raw events.</li><li><strong>Kernel / runtime compatibility</strong> — which kernels, eBPF features, container runtimes and cgroup layouts are supported; fallback story for older kernels. Lives in this spike because the event contract and degradation behavior can only be designed against a concrete compatibility floor.</li></ol>
+<p>Target topology (from issue Background):</p>
+<ul><li><strong>eBPF Module</strong> — sole source of low-level runtime events (file, process-exec, network). Owns BPF programs, lifecycle, ring buffer, event delivery.</li><li><strong>FIM &amp; IT Hygiene</strong> — consumers; subscribe to raw events/state; independently query the Container Instances Security Module for enrichment.</li><li><strong>Container Instances Security Module</strong> — passive enrichment source, NOT a producer.</li></ul>
+<h2>Scope</h2>
+<h3>In scope (design)</h3>
+<ul><li>[ ] Module architecture: in-process library vs separate process/daemon</li><li>[ ] Public event contract</li><li>[ ] Subscription/filtering API</li><li>[ ] Program lifecycle (load/attach/detach on config change)</li><li>[ ] Fan-out to multiple consumers</li><li>[ ] Backpressure/overflow policy</li><li>[ ] Set of correlation identifiers emitted per event</li></ul>
+<h3>In scope (compatibility)</h3>
+<ul><li>[ ] Minimum kernel version + required eBPF features across Tier 1/2 Linux agents</li><li>[ ] Attach-mechanism decision (LSM vs kprobe/tracepoint) + older-kernel fallback</li><li>[ ] Hooks/helpers needed for file + process-exec + network events</li><li>[ ] Container-runtime compatibility (containerd, CRI-O, Docker)</li><li>[ ] cgroup v1/v2 behavior</li><li>[ ] Host-process capability requirements (agent = host systemd service, NOT a DaemonSet)</li><li>[ ] Performance budget</li></ul>
+<h3>Out of scope</h3>
+<ul><li>Container→pod/container metadata resolution algorithm and path resolution (→ Container Instances Security Module spike and FIM integration spike)</li></ul>
+<h2>Constraints</h2>
+<ul><li><strong>No external dependencies</strong> (feature-wide): C/C++ on the stack Wazuh already ships; BPF loading via what Wazuh already uses ("libbpf/CO-RE if already vendored — confirm current state in-tree"); no new runtime SDKs.</li><li><strong>Consumer-agnostic</strong>: FIM/IT Hygiene must not need eBPF-specific code beyond subscribing; adding a third consumer must not touch the engine.</li><li>Events carry enough raw identity for correlation <strong>without</strong> the eBPF Module depending on the Container Instances Security Module (preserves NFR4 decoupling).</li><li>Serialization: protobuf explicitly disallowed — hand-rolled/flat layout (issue, angle 3).</li></ul>
+<h2>Deliverables</h2>
+<h3>Module design</h3>
+<ul><li>[ ] Module architecture decision record (in-process vs separate process, threading, capability confinement, mapping to agent module framework) with rationale</li><li>[ ] Coupling extraction map (current eBPF touch-points → target boundary; concrete refactor list)</li><li>[ ] Event contract specification (schema incl. correlation keys for file/exec/network, versioning, serialization, subscription/filter API)</li><li>[ ] Backpressure &amp; degradation policy (ring buffer sizing, drop policy, drop surfacing, slow-consumer isolation, missing-feature behavior)</li><li>[ ] Extensibility proof (3rd-consumer sketch + host/no-container path)</li><li>[ ] Prototype: multi-consumer fan-out demonstrating decoupling</li></ul>
+<h3>Kernel / runtime compatibility</h3>
+<ul><li>[ ] Compatibility matrix — rows (distro, kernel, runtime, cgroup mode, cgroup driver) × columns (LSM attaches?, kprobe/tracepoint attaches?, ringbuf works?, bpf_d_path correct?, bpf_get_current_cgroup_id correct?, file/exec/network events?, perf category)</li><li>[ ] Min-kernel decision record (per event class, with product sign-off)</li><li>[ ] Host-capability requirements + SELinux/AppArmor policy delta for the package</li><li>[ ] Performance numbers (sustained events/sec ×3 classes, p99 BPF runtime, drop rate at saturation)</li></ul>
+<h2>Acceptance criteria</h2>
+<ul><li>[ ] Event contract reviewed &amp; accepted by BOTH the FIM and IT Hygiene integration spike owners, covering file + process-exec + network events</li><li>[ ] Architecture decision and min-kernel decision committed as ADRs in the repo</li><li>[ ] Compatibility matrix signed off by platform/QA; kernel floor per event class feeds objective restriction #4 ("supported agent platforms to be defined")</li><li>[ ] Coupling extraction map cross-referenced by the implementation tickets</li><li>[ ] Prototype: two independent consumers, distinct filters, one event stream, each receiving correlation keys, no consumer can stall the other, on ≥1 LSM-capable kernel AND ≥1 kprobe/tracepoint-fallback kernel</li><li>[ ] Correlation-key set aligned with the Container Instances Security Module spike findings (PID/cgroup/namespace/container id)</li></ul>
+<h2>Reference kernel floor data quoted by the issue (angle 8)</h2>
+<p>RHEL 8 → 4.18 · Ubuntu 20.04 → 5.4 · Debian 11 → 5.10 · RHEL 9 → 5.14 · Ubuntu 22.04 → 5.15 · Ubuntu 24.04 → 6.8 (source: issue text).</p>
+<p><strong>Cross-check done (2026-07-13):</strong> the real internal Tier 1/2/3 table was provided by jr0me — see evidence/tier-matrix.html. The issue's list is a SUBSET; actual Tier 2 also includes RHEL/CentOS/Oracle 7 (3.10 — below any eBPF floor), Amazon Linux 2 (4.14/5.10), Debian 10 (4.19), Debian 12/13, RHEL 10 family, Fedora 42-44, Leap/SLES 15/16; Tier 1 Linux = Amazon Linux 2023 (6.1/6.12) + Ubuntu 26.04 (7.0), both fully modern. The compatibility-matrix deliverable must cover the tier table, not just the issue's examples.</p>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="evidence/siblings.html">&larr; Sibling spikes</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 5 / 20</span><span style="min-width:0;text-align:right;"><a href="evidence/docs-whodata.html">eBPF in Wazuh today (docs) &rarr;</a></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>

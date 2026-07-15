@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evidence — the 5.x agent module framework</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="../index.html">&larr; dashboard</a> · <a href="../tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="../diagrams/fallback-lifecycle.html">&larr; Diagram: fallback ladder</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 12 / 20</span><span style="min-width:0;text-align:right;"><a href="kernel-features.html">Kernel feature floors &rarr;</a></span></div>
+<h1>Evidence — what "a module" means structurally in the 5.x agent</h1>
+<p>Source: repo audit on branch <code>main</code> (5.1.0-alpha0), 2026-07-13.</p>
+<p><strong>Headline:</strong> "module" is not one thing in 5.x. Three coexisting layers: (a) the classic C <strong>wmodules</strong> framework hosted by <code>wazuh-modulesd</code> (linked list of <code>wm_context</code>, one thread per module); (b) newer <strong>C++ engines</strong> (Syscollector, SCA, Inventory-Sync, Vulnerability-Scanner) shipped as <code>.so</code> and driven by thin C <code>wm_*</code> wrappers inside that framework; (c) <strong>FIM (<code>wazuh-syscheckd</code>) is still its own daemon</strong>, not a wmodule. There is no <code>src/modules/</code> dir.</p>
+<h2>1. Agent process topology</h2>
+<p><code>src/init/wazuh-client.sh:20</code>: <code>DAEMONS=&quot;wazuh-modulesd wazuh-logcollector wazuh-syscheckd wazuh-agentd wazuh-execd&quot;</code></p>
+<div class="tablewrap"><table><thead><tr><th>Daemon</th><th>main()</th><th>Role</th></tr></thead><tbody><tr><td>wazuh-agentd</td><td><code>src/client-agent/src/main.c:45</code></td><td>comms: drains local queue → manager</td></tr><tr><td>wazuh-modulesd</td><td><code>src/wazuh_modules/src/main.c:33</code></td><td>hosts the modules</td></tr><tr><td>wazuh-syscheckd</td><td><code>src/syscheckd/src/main.c:67</code></td><td>FIM, standalone daemon</td></tr><tr><td>wazuh-logcollector</td><td><code>src/logcollector/src/main.c:50</code></td><td>log ingestion</td></tr><tr><td>wazuh-execd</td><td><code>src/os_execd/src/main.c:45</code></td><td>active response</td></tr></tbody></table></div>
+<h2>2. The wmodules framework</h2>
+<ul><li>Interface <code>wm_context</code> — <code>src/wazuh_modules/include/wmodules_def.h:35-43</code>: <code>{name, start, destroy, dump, sync, stop, query}</code>.</li><li>Modules = singly-linked list of <code>wmodule</code> (<code>wmodules_def.h:47-53</code>); head <code>extern wmodule *wmodules</code> (<code>wmodules.h:84</code>, defined <code>wmodules.c:25</code>).</li><li><strong>No static registry</strong>: appended during config parsing via <code>wm_add()</code> (<code>wmodules.c:160</code>); <code>wm_config()</code> (<code>wmodules.c:97</code>) → <code>ReadConfig(CWMODULE,…)</code> (:120) + always-on modules added unconditionally (:131-153: router, content_manager, inventory_sync, database, control) + <code>default_modules[]</code> factory (:64-73: agent_upgrade; task_manager on manager / agent_info on agent via <code>#ifndef CLIENT</code>).</li><li><strong>One thread per module</strong>: <code>src/wazuh_modules/src/main.c:133-141</code> walks the list, <code>CreateThreadJoinable(&amp;cur_module-&gt;thread, cur_module-&gt;context-&gt;start, cur_module-&gt;data)</code>. <code>control</code> module starts first before a startup gate (:119-129).</li><li><strong>Stop</strong>: SIGTERM handler calls each <code>context-&gt;stop(data)</code> then <code>pthread_timedjoin_np</code> with a 30 s budget (<code>main.c:280-307</code>).</li><li><strong>Config dispatch</strong>: <code>Read_WModule</code> (<code>src/config/src/wmodules-config.c:30</code>) switches on <code>&lt;wodle name=&quot;…&quot;&gt;</code>; dedicated readers (e.g. <code>Read_SCA</code> :177) wired to XML elements in <code>src/config/src/config.c:111-219</code>.</li></ul>
+<h2>3. The 5.x C++ module shape (bridge pattern)</h2>
+<p>Registered as CMake subprojects building shared libs — <code>src/wazuh_modules/CMakeLists.txt:94-100</code> (<code>inventory_sync</code>, <code>vulnerability_scanner</code>, <code>sca</code>, <code>syscollector</code>).</p>
+<p>Pattern per module: <strong>C++ engine class</strong> + <strong>C ABI shim</strong> (<code>extern &quot;C&quot;</code>) + <strong>thin C <code>wm_*</code> wrapper</strong> that fills a <code>wm_context</code> and dlopens the engine:</p>
+<div class="tablewrap"><table><thead><tr><th>Module</th><th>C++ engine</th><th>C wrapper / context</th></tr></thead><tbody><tr><td>Syscollector (IT Hygiene)</td><td><code>syscollector/src/syscollectorImp.cpp</code>, <code>class Syscollector</code> (<code>include/syscollector.hpp:42</code>)</td><td><code>src/wm_syscollector.c</code> — <code>WM_SYS_CONTEXT</code> :67</td></tr><tr><td>SCA</td><td><code>sca/sca_impl/</code> + <code>src/sca.cpp</code>, <code>class SCA</code> (<code>include/sca.hpp:31</code>)</td><td><code>src/wm_sca.c</code> — <code>WM_SCA_CONTEXT</code> :101</td></tr><tr><td>Inventory-Sync (manager)</td><td><code>inventory_sync/src/inventorySync.cpp</code></td><td><code>src/wm_inventory_sync.c</code></td></tr><tr><td>Vulnerability-Scanner (manager)</td><td><code>vulnerability_scanner/</code></td><td><code>src/wm_vulnerability_scanner.c</code></td></tr></tbody></table></div>
+<ul><li>Runtime loading: <code>so_get_module_handle(&quot;syscollector&quot;)</code> + <code>so_get_function_sym(…,&quot;syscollector_init&quot;)</code> (<code>wm_syscollector.c:474-486</code>); dlopen/dlsym wrappers at <code>src/shared/src/sym_load.c:28,:73</code>. <code>wm_sca.c:443-469</code> identical.</li><li><strong>No shared <code>IModule</code> interface</strong> at the wmodule level — the only common contract is <code>wm_context</code>. (Interfaces exist lower down, e.g. <code>IAgentSyncProtocol</code>.)</li><li><strong>dbsync</strong> <code>src/shared_modules/dbsync/</code> (built <code>CMakeLists.txt:250</code>): local SQLite mirror of collected state, emits row-level diffs (<code>include/dbsync.h</code>).</li><li><strong>agent_sync_protocol</strong> <code>src/shared_modules/sync_protocol/</code> (built :251): reliable Start→Data→End sync of those deltas to the manager over FlatBuffers; <code>iagent_sync_protocol.hpp:19</code> (<code>persistDifference</code>, <code>synchronizeModule</code>, …); driven via <code>MQ_Functions</code> (<code>wm_syscollector.c:513</code>, <code>wm_sca.c:461</code>).</li></ul>
+<h2>4. FIM in 5.x</h2>
+<p>Own daemon (<code>src/syscheckd/src/main.c:67</code>), NOT hosted by modulesd. modulesd can query it over a socket: <code>FIM_NAME &quot;fim&quot;</code> at <code>src/wazuh_modules/include/wmodules.h:42</code> with comment "It is not a wm:module, but we define the name for query it"; <code>wm_fim_query_json</code> (<code>wmodules.h:237</code>). Structure: <code>syscheck.c</code>, <code>run_check.c</code>, <code>run_realtime.c</code>, <code>syscom.c</code>, <code>file/</code>, <code>registry/</code>, <code>db/</code>, whodata backends <code>whodata/</code> (audit, Windows) and <code>ebpf/</code> (see ebpf-engine-audit.html).</p>
+<h2>5. Event delivery paths (two coexist)</h2>
+<ul><li><strong>Legacy datagram stream</strong>: module → <code>wm_sendmsg</code> (<code>wmodules.c:597</code>) → <code>SendMSG</code> → Unix socket <code>queue/sockets/queue</code> (<code>src/shared/include/defs.h:121</code> <code>DEFAULTQUEUE</code>) → <code>wazuh-agentd</code> (<code>src/client-agent/src/agentd.c:84</code> <code>StartMQ(DEFAULTQUEUE, READ, 0)</code>; <code>src/client-agent/src/event-forward.c:20-49</code> <code>EventForward()</code> recv→send_msg) → manager (remoted). Syscollector uses <code>wm_sendmsg_ex(… WM_SYS_LOCATION …)</code> (<code>wm_syscollector.c:271</code>).</li><li><strong>Stateful sync</strong>: dbsync deltas → agent_sync_protocol (<code>persistDifference</code> → <code>synchronizeModule</code>, <code>iagent_sync_protocol.hpp:29,53</code>) → manager inventory-sync service.</li></ul>
+<h2>6. Config end-to-end (Syscollector example)</h2>
+<ol><li>XML element dispatch: <code>src/config/src/config.c:111-113</code> → <code>Read_WModule</code>.</li><li>Name match: <code>wmodules-config.c:88-90</code> — <code>strcmp(node-&gt;values[0], WM_SYS_CONTEXT.name)</code> → <code>wm_syscollector_read</code>.</li><li>Parser builds module: <code>src/config/src/wmodules-syscollector.c:97</code> — allocates <code>wm_sys_t</code>, sets <code>module-&gt;context = &amp;WM_SYS_CONTEXT</code> (~:133), <code>module-&gt;data</code>.</li><li>Context defines entry: <code>wm_syscollector.c:67-76</code> (<code>.start = wm_sys_main</code>, …).</li><li>modulesd spawns thread on <code>wm_sys_main</code> → dlopen <code>libsyscollector</code> → <code>syscollector_init/start</code> (<code>wm_syscollector.c:645-746</code>).</li></ol>
+<h2>7. Recipe: adding a NEW module today</h2>
+<ol><li>Wrapper <code>src/wazuh_modules/src/wm_&lt;name&gt;.c/.h</code> with <code>WM_&lt;NAME&gt;_CONTEXT</code> (pattern <code>wm_syscollector.c:67</code>); sources are glob'd (<code>src/wazuh_modules/CMakeLists.txt:107,112</code>).</li><li>Header include block: <code>src/wazuh_modules/include/wmodules.h:61-82</code>.</li><li>Config reader: branch in <code>Read_WModule</code> (<code>wmodules-config.c:88+</code>) or dedicated <code>Read_&lt;Name&gt;</code> wired in <code>config.c:111-226</code>.</li><li>Always-on (no XML gate): call in <code>wm_config()</code> (<code>wmodules.c:131-145</code>) or <code>default_modules[]</code> (:64-73).</li><li>C++ engine: <code>src/wazuh_modules/&lt;name&gt;/</code> + <code>add_subdirectory</code> at <code>src/wazuh_modules/CMakeLists.txt:94-100</code>; load via <code>so_get_module_handle(&quot;&lt;name&gt;&quot;)</code>.</li><li>BPF-object precedent for compiling <code>.bpf.c</code>: <code>src/syscheckd/src/ebpf/CMakeLists.txt</code> + <code>src/external/CMakeLists.txt:1035-1048</code>.</li></ol>
+<h2>8. ADRs / design docs</h2>
+<ul><li><strong>No ADR convention exists</strong> (repo-wide search for adr/decision-record: nothing). #37396's "ADRs committed in the repo" would ESTABLISH the convention.</li><li>What exists: mdBook under <code>docs/</code> (<code>docs/book.toml</code>, <code>docs/SUMMARY.md</code>); <code>docs/ref/architecture.md</code> (5.0 Engine replaces analysisd; Unix-socket IPC under <code>queue/sockets/</code>); per-module design docs at <code>docs/ref/modules/&lt;module&gt;/architecture.md</code> (fim, syscollector, sca, inventory-sync; index <code>docs/ref/modules/README.md</code>); <code>docs/dev/</code> build/run docs. Natural home for the new module's docs: <code>docs/ref/modules/ebpf/</code> (or a new <code>docs/adr/</code>).</li></ul>
+<h2>5.x vs older Wazuh (flags for the newcomer)</h2>
+<ul><li>No <code>src/modules/</code>; code split across <code>src/wazuh_modules/</code>, <code>src/shared_modules/</code>, <code>src/syscheckd/</code>. Server-side Engine replaces analysisd.</li><li>FIM not merged into modulesd; separate daemon + socket query.</li><li>Big collectors are C++ engines behind C wrappers (5.x shape).</li><li>Two delivery mechanisms coexist (datagram queue vs dbsync+sync_protocol).</li><li>eBPF exists in-tree but only as FIM's whodata backend.</li></ul>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="../diagrams/fallback-lifecycle.html">&larr; Diagram: fallback ladder</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 12 / 20</span><span style="min-width:0;text-align:right;"><a href="kernel-features.html">Kernel feature floors &rarr;</a></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>

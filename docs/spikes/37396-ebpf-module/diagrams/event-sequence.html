@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Runtime event flow — Spike #37396</title>
+  <!-- Local file: the CDN is reachable when opened in a browser. -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+  </script>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+           max-width: 1250px; margin: 2rem auto; padding: 0 1.25rem 4rem; line-height: 1.55; }
+    h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+    .meta { color: #777; font-size: .85rem; margin: 0 0 1.5rem; }
+    nav { font-size: .9rem; margin-bottom: 1rem; }
+    a { color: #4a90d9; }
+    .panel { background: #fff; border: 1px solid #8883; border-radius: 12px;
+             padding: 1rem; margin: 1rem 0; overflow-x: auto; }
+    .mermaid { margin: 0; }
+    .sources { font-size: .85rem; color: #777; border-top: 1px solid #8884; margin-top: 2rem; padding-top: .75rem; }
+    code { background: #8881; padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+    p.note { font-size: .92rem; color: #555; }
+    @media (prefers-color-scheme: dark) { p.note { color: #aaa; } }
+  </style>
+</head>
+<body>
+  <nav><a href="../index.html">&larr; dashboard</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="class-structure.html">&larr; Diagram: classes & data</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 10 / 20</span><span style="min-width:0;text-align:right;"><a href="fallback-lifecycle.html">Diagram: fallback ladder &rarr;</a></span></div>
+  <h1>How one file event travels from the kernel to FIM today</h1>
+  <p class="meta">Issue #37396 · sequence diagram (current code, startup + steady state)</p>
+  <p class="note">Two decoupled threads inside the engine: the ring-buffer poll thread converts
+  and enqueues; a drain thread dequeues and calls into FIM. The bounded queue between them is
+  today's only backpressure mechanism (drops when full — logged once).</p>
+
+  <div class="panel">
+  <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  participant M as syscheckd main()<br/>main.c:313-320
+  participant SC as check_ebpf_availability()<br/>syscheck.c:823-833
+  participant E as engine (libfimebpf)<br/>ebpf_whodata.cpp
+  participant L as libbpf (dlopened)
+  participant K as kernel<br/>modern.bpf.o programs
+  participant Q as BoundedQueue
+  participant F as FIM<br/>fim_whodata_event()
+
+  rect rgb(240, 246, 255)
+  note over M,F: startup (provider = ebpf)
+  M->>SC: whodata enabled, EBPF_PROVIDER
+  SC->>E: fimebpf_initialize(9 FIM callbacks, queue_size)
+  SC->>E: ebpf_whodata_healthcheck()
+  E->>L: dlopen libbpf.so, resolve symbols
+  E->>L: bpf_object__open_file("lib/modern.bpf.o")  (:553)
+  E->>E: select_programs() — LSM in /sys/kernel/security/lsm?  (:482-525)
+  E->>L: load (on dpath-variant failure: reopen, retry _walk  :552-580)
+  E->>K: attach kprobes or LSM programs
+  E->>K: healthcheck round-trip: create/modify/metadata/delete on tmp/ebpf_hc  (:715-798)
+  alt healthcheck fails
+    SC->>SC: whodata_provider = AUDIT_PROVIDER  (syscheck.c:830)
+    note over SC: engine never starts; audit backend used instead
+  end
+  M->>E: run_check.c:688 w_create_thread(ebpf_whodata)
+  end
+
+  rect rgb(240, 255, 242)
+  note over K,F: steady state (two engine threads)
+  K-->>E: ring_buffer poll → handle_event(file_event)
+  E->>F: confFn(filename) — FIM directory lookup  (:117)
+  alt path monitored with whodata (WHODATA_ACTIVE)
+    E->>Q: push(dynamic_file_event)  (drop + one-time log if full)
+    Q-->>E: drain thread pops (ebpf_pop_events)
+    E->>E: build whodata_evt; resolve user/group via FIM get_user/get_group  (:670-691)
+    E->>F: m_fim_whodata_event(w_evt) → m_free_whodata_event
+    F->>F: FIM processing → event to queue/sockets/queue → agentd → manager
+  else not monitored
+    E->>E: event dropped in engine
+  end
+  end
+  </pre>
+  </div>
+
+  <p class="sources">Derived from: <code>src/syscheckd/src/main.c:313-320</code>,
+  <code>src/syscheckd/src/syscheck.c:823-833</code> (verified),
+  <code>src/syscheckd/src/run_check.c:685-692</code> (verified),
+  <code>src/syscheckd/src/ebpf/src/ebpf_whodata.cpp:64-81, 103-140 (verified), 482-525, 552-580, 553, 670-709, 715-798</code>,
+  <code>src/client-agent/src/event-forward.c:20-49</code>.</p>
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="class-structure.html">&larr; Diagram: classes & data</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 10 / 20</span><span style="min-width:0;text-align:right;"><a href="fallback-lifecycle.html">Diagram: fallback ladder &rarr;</a></span></div>
+</body>
+</html>

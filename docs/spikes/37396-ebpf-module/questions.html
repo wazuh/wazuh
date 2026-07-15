@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Decisions &amp; open questions — spike #37396</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="index.html">&larr; dashboard</a> · <a href="tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="glossary.html">&larr; Glossary</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 17 / 20</span><span style="min-width:0;text-align:right;"><a href="plan.html">Execution plan &rarr;</a></span></div>
+<h1>Decisions &amp; open questions — spike #37396</h1>
+<p>Format: <strong>Decided</strong> entries carry the answer + rationale + who/when. <strong>Open</strong> entries carry the question, why it matters, and (when we have one) a recommendation. Facts are never questions — they get looked up and land in evidence/ instead.</p>
+<h2>Decided</h2>
+<ul><li><strong>D1 (was Q1). Execution scope = design-first + mini-lab.</strong> (jr0me, 2026-07-13, grilling) Phase 1: event contract draft + architecture ADR + coupling/refactor map + desk compat, so the contract circulates to #37533/#37534 early (critical path). Phase 2: targeted mini-lab on 2-3 representative kernels (one Band 1, one Band 2) to validate the floor and run the prototype. Full distro×runtime matrix deferred to a follow-up phase, possibly with QA. Rationale: contract review is the acceptance bottleneck; desk bands answer the floor directionally; probes become confirmatory and narrow after design decisions; real kernels need VMs/cloud (Docker on the Mac shares the host kernel — proves nothing).</li><li><strong>D2 (was Q2). Kernel floor = argue ≥5.8, BUT the &lt;5.8 story must still be addressed in full.</strong> (jr0me, 2026-07-13, grilling) The ADR recommends: eBPF Module requires ring-buffer kernels (≥5.8 = all Band 2); one delivery stack; LSM-preferred + kprobe fallback within the floor; Band 1 keeps today's behavior (audit whodata for FIM, no new container/exec/network features); Band 0 + Tier 3 excluded. <strong>Caveat (explicit):</strong> every issue bullet about older kernels still gets investigated and answered — the perf-event-array/kprobe-only/BTF-workaround alternative is characterized (desk + one Band 1 kernel probe in the mini-lab, SP-9), its event quality and maintenance burden documented (A10.1/A10.2), and the min-kernel ADR carries the rejected-alternative analysis as its rationale. Nothing is skipped; it is answered rather than built.</li><li><strong>D3 (was Q3). Module boundary — ⚠ REOPENED 2026-07-15; no decision stands.</strong>
+<em>Original call (2026-07-13, grilling — judged rushed by jr0me):</em> modulesd-hosted C++ module
+with a socket-only subscription API; library-per-consumer rejected on the assumption it must
+duplicate identical BPF programs/ring buffers.
+<em>Challenge (teammate via jr0me, 2026-07-15):</em> make the engine a <strong>component (shared
+library)</strong> FIM/Syscollector instantiate independently — valid iff instances don't
+conflict at kernel level. Verified kernel facts: separate loads create fully independent
+programs/maps/ring buffers (no conflict; hooks accept multiple attached programs; kernel
+auto-detaches on fd close); and a ring buffer has a <strong>single consumer cursor</strong>, so
+two processes can never read one ring buffer — per-consumer instances and one-owner-fan-out are
+the only two possible shapes. Decisive v1 observation: FIM (file) and IT Hygiene (exec+network)
+need <strong>disjoint event classes</strong>, so per-consumer instances duplicate almost nothing
+today; the component model also gets slow-consumer isolation by construction and matches the
+<code>shared_modules</code> precedent (dbsync, agent_sync_protocol). Costs: hot-path cost
+multiplies if future consumers overlap classes; possible LSM/kprobe mode divergence between
+instances on one box; N lifecycles/healthchecks; tension with NFR4's literal "sole source" and
+AC-5's "one event stream" wording (needs issue-owner buy-in to reframe).
+<em>Status (jr0me):</em> "I cannot make this decision now, the previous call seems rushed;
+modify D3 to evaluate all options with pros/cons." → The architecture ADR (P1.3) is now a full
+multi-option evaluation: (a) component/shared library with per-consumer instances,
+(b) modulesd-hosted module + socket fan-out, (c) dedicated daemon (wazuh-ebpfd). Decision
+fulcrum: the class-overlap question + NFR4 wording alignment. Tracked as open item O5.</li><li><strong>D4 (was Q4). Prototype = IN-TREE, on a wazuh branch — revised 2026-07-15.</strong>
+<em>Original call (2026-07-13):</em> standalone repo (<code>~/Dev/jr0me/wazuh-37396-poc</code>).
+<em>Revision (jr0me, 2026-07-15):</em> "we usually prototype directly on wazuh" — the PoC lives
+in the wazuh tree on a local branch (naming per convention, e.g.
+<code>enhancement/37396-ebpf-module-poc</code>; local-only per D7). Upside: reuses the vendored
+libbpf-bootstrap toolchain + CMake wiring that already builds <code>modern.bpf.o</code>, same
+compiler/deps as production. Substance unchanged: BPF programs extended with correlation keys →
+per-shape delivery → 2 mock consumers with distinct filters, speaking the DRAFT contract core
+(P1.2). Boundary rules: a self-contained directory with its own build target, NOT wired into
+any agent daemon or release packaging — in-tree ≠ integrated; daemon integration remains
+follow-up-ticket work. Bonus enabled by O5: the in-tree PoC can cheaply demonstrate BOTH
+boundary shapes (direct library instantiation vs socket fan-out) to feed the P1.3 evaluation
+with measurements instead of estimates. Runs on the D6 mini-lab VMs.</li><li><strong>D5 (was Q5). ADRs drafted in the evidence pack; committed repo location deferred to PR time with the team.</strong> (jr0me, 2026-07-13, grilling) Both ADRs (module architecture, minimum kernel) get written now as full ADR-formatted docs in the evidence dir; whether they land in <code>docs/ref/modules/ebpf/</code> (our suggestion) or a new <code>docs/adr/</code> tree is decided with the team when the PR is opened. Consequence: AC-2 remains open until that placement decision.</li><li><strong>D6 (was Q6). Mini-lab = x86 laptop primary + Mac aarch64 spot-check.</strong> (jr0me, 2026-07-14, grilling) jr0me's x86 laptop hosts the three probe VMs — AlmaLinux 9 (LSM mode), stock Ubuntu 24.04 (kprobe mode), AlmaLinux 8 @4.18 (Band 1 characterization) — as REAL VMs with distro kernels (KVM if the laptop runs Linux, VirtualBox/Hyper-V if Windows; WSL2/Docker invalid — shared kernel). Docker/containerd inside one VM so the PoC demonstrates correlation keys from a real container. This Mac contributes ONE Lima aarch64 VM later solely to close the aarch64/modern-arm.bpf.o question. x86_64 results fully representative; laptop OS/tooling to be pinned when phase 2 starts (doesn't block phase 1).</li><li><strong>D7 (was Q7). Publication = fully local; jr0me handles all GitHub communication himself.</strong> (jr0me, 2026-07-14, grilling) Nothing gets posted by the assistant. We produce paste-ready artifacts (contract draft, ADR drafts, comment drafts pinging the #37382/#37533/#37534 owners) in the evidence pack; jr0me posts and coordinates out-of-band. Consequence: AC-1 and AC-6 progress depends on that coordination; tracker rows note it.</li></ul>
+<h2>Open — after the grill (2026-07-14)</h2>
+<ul><li><strong>O1. Product sign-off on the ≥5.8 floor</strong> — external gate on D2's recommendation; happens when jr0me circulates the min-kernel ADR draft (feeds AC-3 / D-C2).</li><li><strong>O2. ADR committed location</strong> — deferred to PR time with the team per D5 (gates AC-2).</li><li><strong>O3. x86 laptop OS/tooling</strong> (KVM vs VirtualBox/Hyper-V) — pin when phase 2 starts; does not block phase 1.</li><li><strong>O4. Primary correlation key choice</strong> — design-emergent during contract drafting; settled jointly with #37382 (AC-6); our draft carries a recommendation + the edge-case list (hostPID/hostNetwork, cgroupns=host, Kata, pause sandbox).</li><li><strong>O5. Module boundary (D3 reopened 2026-07-15)</strong> — component/shared-library vs modulesd-hosted module vs dedicated daemon; full pros/cons evaluation in the architecture ADR (P1.3), no pre-decision; fulcrum = will future consumers share an event class (ask #37533/#37534/owner), plus NFR4/AC-5 wording alignment. Also swings A3.3 (wire format vs library API) and the shape of D-M4 (fan-out/slow-consumer machinery may evaporate under the component model).</li></ul>
+<h2>Parked / watch</h2>
+<ul><li>Sibling-spike alignment: RESOLVED to concrete issues (evidence/siblings.html): #37382 = Container Instances Security Module spike (correlation-key alignment partner), #37533 = FIM integration (contract reviewer 1; asks whether event paths are in-container or host overlay), #37534 = IT Hygiene integration (contract reviewer 2; drives exec+network classes), #37532 = baseline acquisition (consumes drop/overflow signal; asks for enumerate-on-attach).</li><li>"IT Hygiene coverage TBD" (parent, Description): the exact inventory sources IT Hygiene will drive from eBPF are decided by its integration spike (#37534), but our event contract must not preclude process-exec + network classes.</li></ul>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="glossary.html">&larr; Glossary</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 17 / 20</span><span style="min-width:0;text-align:right;"><a href="plan.html">Execution plan &rarr;</a></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>

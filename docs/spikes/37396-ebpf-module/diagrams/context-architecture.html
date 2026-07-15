@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Context: today vs target — Spike #37396</title>
+  <!-- Local file: the CDN is reachable when opened in a browser. -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose',
+      flowchart: { htmlLabels: true, curve: 'basis' } });
+  </script>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+           max-width: 1250px; margin: 2rem auto; padding: 0 1.25rem 4rem; line-height: 1.55; }
+    h1 { font-size: 1.4rem; margin-bottom: .25rem; }
+    h2 { font-size: 1.05rem; margin-top: 2rem; }
+    .meta { color: #777; font-size: .85rem; margin: 0 0 1.5rem; }
+    nav { font-size: .9rem; margin-bottom: 1rem; }
+    a { color: #4a90d9; }
+    .panel { background: #fff; border: 1px solid #8883; border-radius: 12px;
+             padding: 1rem; margin: 1rem 0; overflow-x: auto; }
+    .mermaid { margin: 0; }
+    .sources { font-size: .85rem; color: #777; border-top: 1px solid #8884; margin-top: 2rem; padding-top: .75rem; }
+    code { background: #8881; padding: .1em .35em; border-radius: 4px; font-size: .9em; }
+    p.note { font-size: .92rem; color: #555; }
+    @media (prefers-color-scheme: dark) { p.note { color: #aaa; } }
+  </style>
+</head>
+<body>
+  <nav><a href="../index.html">&larr; dashboard</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="../evidence/ebpf-engine-audit.html">&larr; Engine audit (code)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 8 / 20</span><span style="min-width:0;text-align:right;"><a href="class-structure.html">Diagram: classes & data &rarr;</a></span></div>
+  <h1>Where the eBPF engine sits — today vs target</h1>
+  <p class="meta">Issue #37396 · context / architecture diagram</p>
+
+  <h2>Today (main @ 5.1.0-alpha0): the engine is inside FIM</h2>
+  <p class="note">One consumer. The engine filters events using FIM's own directory config, emits
+  FIM's <code>whodata_evt</code>, and is initialized with 9 FIM callbacks. File events only; no
+  cgroup/namespace data collected.</p>
+  <div class="panel">
+  <pre class="mermaid">
+flowchart LR
+  subgraph KERNEL["Linux kernel"]
+    HOOKS["4 kprobes: vfs_open, security_inode_setattr,<br/>vfs_unlink, vfs_rename<br/>3 LSM hooks: file_open, path_unlink, path_rename<br/>(each in dpath / walk variant)"]
+    RB[("ring buffer 'rb'<br/>8 MiB RINGBUF")]
+    HOOKS --> RB
+  end
+  subgraph SYSD["wazuh-syscheckd (FIM daemon)"]
+    ENG["eBPF engine<br/>libfimebpf.so<br/>src/syscheckd/src/ebpf/"]
+    Q["BoundedQueue<br/>(size = syscheck.queue_size)"]
+    FIM["FIM whodata handling<br/>fim_whodata_event()"]
+    ENG --> Q --> FIM
+  end
+  RB -->|"struct file_event"| ENG
+  FIM -. "9 callbacks + directory config<br/>filter inside the engine" .-> ENG
+  FIM --> SOCK["queue/sockets/queue<br/>(datagram socket)"]
+  SOCK --> AGD["wazuh-agentd"] --> MGR["Wazuh manager"]
+  AUD["Linux Audit backend<br/>(whodata fallback)"] -.->|"healthcheck failure<br/>switches provider"| FIM
+  </pre>
+  </div>
+
+  <h2>Target (per parent #37203 NFR4, designed by this spike)</h2>
+  <p class="note">The engine becomes the sole producer, consumer-agnostic. Events carry raw
+  correlation keys; consumers enrich by querying the Container module. The engine never depends
+  on the Container module; three sibling spikes consume/review its contract.</p>
+  <div class="panel">
+  <pre class="mermaid">
+flowchart LR
+  subgraph KERNEL2["Linux kernel"]
+    H2["file hooks (FIM)<br/>process-exec hooks (IT Hygiene)<br/>network hooks (IT Hygiene)"]
+    RB2[("ring buffer")]
+    H2 --> RB2
+  end
+  subgraph EBPFM["eBPF Module — standalone telemetry provider (#37396)"]
+    LC["program lifecycle<br/>load / attach / detach / reload"]
+    FAN["fan-out + per-consumer filters<br/>backpressure & drop accounting"]
+  end
+  RB2 --> FAN
+  FAN -->|"raw events + correlation keys:<br/>PID, cgroup id, ns inodes,<br/>container id where derivable"| FIMC["FIM<br/>(contract reviewer: #37533)"]
+  FAN -->|"exec + network classes"| ITH["IT Hygiene / Syscollector<br/>(contract reviewer: #37534)"]
+  FAN -.->|"extensibility proof:<br/>3rd consumer, no engine change"| FUT["future module"]
+  FIMC -->|"query: cgroup id → container/pod/image"| CIS["Container Instances Security Module<br/>passive enricher, never sees the stream<br/>(#37382)"]
+  ITH -->|query| CIS
+  FIMC --> SYNC["existing state sync<br/>(agent_sync_protocol → manager)"]
+  ITH --> SYNC
+  BASE["Baseline acquisition (#37532)"] -.->|"consumes drop/overflow signal;<br/>wants enumerate-on-attach"| FAN
+  </pre>
+  </div>
+
+  <p class="sources">Derived from: today — <code>src/syscheckd/src/ebpf/src/modern.bpf.c:370-949</code> (SEC list, verified),
+  <code>modern.bpf.c:64-67</code> (RINGBUF 1&lt;&lt;23), <code>ebpf_whodata.cpp:117-119,670-709</code> (filter, whodata_evt, callbacks),
+  <code>src/syscheckd/src/syscheck.c:823-833</code> (audit fallback), <code>src/client-agent/src/event-forward.c:20-49</code> +
+  <code>src/shared/include/defs.h:121</code> (queue → agentd → manager). Target — issue #37396 Background/Scope;
+  parent #37203 Description, NFR4, IR1-2; sibling demands per <code>evidence/siblings.html</code> (#37382, #37532, #37533, #37534).</p>
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="../evidence/ebpf-engine-audit.html">&larr; Engine audit (code)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 8 / 20</span><span style="min-width:0;text-align:right;"><a href="class-structure.html">Diagram: classes & data &rarr;</a></span></div>
+</body>
+</html>

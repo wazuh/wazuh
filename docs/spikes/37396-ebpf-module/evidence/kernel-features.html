@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evidence — kernel feature floors (verified)</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="../index.html">&larr; dashboard</a> · <a href="../tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="module-framework.html">&larr; Module framework</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 13 / 20</span><span style="min-width:0;text-align:right;"><a href="tier-matrix.html">Tier matrix & bands &rarr;</a></span></div>
+<h1>Evidence — kernel feature floors relevant to the spike (verified)</h1>
+<p>Verified 2026-07-13 against the BCC kernel feature table (<a href="https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md">https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md</a>) and man7 capabilities(7) (<a href="https://man7.org/linux/man-pages/man7/capabilities.7.html">https://man7.org/linux/man-pages/man7/capabilities.7.html</a>). Kernel commit hashes as given by the BCC table.</p>
+<div class="tablewrap"><table><thead><tr><th>Feature</th><th>Min kernel</th><th>Source note</th></tr></thead><tbody><tr><td>kprobe BPF programs</td><td>4.1</td><td>BCC: "Kprobe</td><td>4.1</td><td>2541517c32be"</td></tr><tr><td>Tracepoint BPF programs</td><td>4.7</td><td>BCC: "Tracepoint</td><td>4.7</td><td>98b5c2c65c29"</td></tr><tr><td>BTF (BPF Type Format)</td><td>4.18</td><td>BCC: "BPF Type Format (BTF)</td><td>4.18</td><td>69b693f0aefa" — but distros must enable CONFIG_DEBUG_INFO_BTF; availability per distro must be probed, not assumed</td></tr><tr><td><code>bpf_get_current_cgroup_id()</code></td><td>4.18</td><td>BCC helper table</td></tr><tr><td>fentry/fexit (BTF/BPF trampoline)</td><td>5.5</td><td>BCC: "Tracing (BTF/BPF trampoline)</td><td>5.5</td><td>f1b9509c2fb0"</td></tr><tr><td><code>bpf_probe_read_{kernel,user}_str()</code></td><td>5.5</td><td>BCC helper table</td></tr><tr><td>BPF LSM programs (<code>lsm/…</code>)</td><td>5.7</td><td>BCC: "LSM</td><td>5.7</td><td>fc611f47f218" — ALSO requires <code>bpf</code> in the boot-time LSM list (<code>/sys/kernel/security/lsm</code>), which the in-tree engine checks at runtime (<code>ebpf_whodata.cpp:64-81</code>)</td></tr><tr><td>Ring buffer (<code>BPF_MAP_TYPE_RINGBUF</code>, <code>bpf_ringbuf_output/reserve</code>)</td><td>5.8</td><td>BCC: "ring buffer</td><td>5.8</td><td>457f44363a88"; helpers 5.8</td></tr><tr><td>CAP_BPF, CAP_PERFMON</td><td>5.8</td><td>capabilities(7): "CAP_BPF (since Linux 5.8) … added in Linux 5.8 to separate out BPF functionality from the overloaded CAP_SYS_ADMIN"; same for CAP_PERFMON (perf_event_open + BPF ops with perf implications). Pre-5.8: CAP_SYS_ADMIN required</td></tr><tr><td><code>bpf_d_path()</code></td><td>5.10</td><td>BCC helper table: "BPF_FUNC_d_path()</td><td>5.10". Callable only from an allowlist of hook types (LSM/tracing), NOT kprobes — consistent with in-tree usage (only the <code>lsm/*_dpath</code> variants call it: modern.bpf.c:734,:807,:935)</td></tr></tbody></table></div>
+<h2>Mapped against the issue's distro floor list (issue body, angle 8)</h2>
+<div class="tablewrap"><table><thead><tr><th>Distro</th><th>Kernel</th><th>kprobe</th><th>tracepoint</th><th>LSM-BPF</th><th>ringbuf</th><th>bpf_d_path</th><th>fentry</th></tr></thead><tbody><tr><td>RHEL 8</td><td>4.18</td><td>✔</td><td>✔</td><td>✘</td><td>✘</td><td>✘</td><td>✘</td></tr><tr><td>Ubuntu 20.04</td><td>5.4</td><td>✔</td><td>✔</td><td>✘</td><td>✘</td><td>✘</td><td>✘</td></tr><tr><td>Debian 11</td><td>5.10</td><td>✔</td><td>✔</td><td>✔*</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td>RHEL 9</td><td>5.14</td><td>✔</td><td>✔</td><td>✔*</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td>Ubuntu 22.04</td><td>5.15</td><td>✔</td><td>✔</td><td>✔*</td><td>✔</td><td>✔</td><td>✔</td></tr><tr><td>Ubuntu 24.04</td><td>6.8</td><td>✔</td><td>✔</td><td>✔*</td><td>✔</td><td>✔</td><td>✔</td></tr></tbody></table></div>
+<p>\* Version-capable but gated on the distro's boot-time <code>lsm=</code> list including <code>bpf</code> (often NOT default → package would need to document/require a boot-arg change), and on CONFIG_DEBUG_INFO_BTF / CONFIG_BPF_LSM being enabled. RHEL famously backports features into its 4.18/5.14 kernels — the *empirical probe* (issue starting point 7) exists precisely because version numbers under-report RHEL capabilities. These rows are derivations from upstream mainline versions, NOT probe results.</p>
+<h2>Direct consequences for the spike</h2>
+<ol><li>Today's engine floor (ring buffer ⇒ <strong>5.8</strong>, enforced at <code>ebpf_whodata.cpp:360</code>) already excludes RHEL 8 (4.18) and Ubuntu 20.04 (5.4) — currently those fall back to <strong>audit</strong>, a fallback that exists for file events only. There is no audit-equivalent for process-exec and network classes, so "what do old kernels get?" is a real product decision (issue angle 8).</li><li>Supporting &lt;5.8 within eBPF would require a perf-event-array path (not just kprobe-vs-LSM), which does not exist in-tree.</li><li><code>bpf_d_path</code>'s hook allowlist couples the "nice path resolution" to the LSM/fentry attach path — on kprobe-only kernels the engine already falls back to manual dentry-walk (<code>_walk</code> variants), with the correctness caveats the issue asks to quantify (angle 10).</li></ol>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="module-framework.html">&larr; Module framework</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 13 / 20</span><span style="min-width:0;text-align:right;"><a href="tier-matrix.html">Tier matrix & bands &rarr;</a></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>

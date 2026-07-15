@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tracker — Spike #37396</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b; --muted:#6b7280;
+      --purple:#7c5cd6; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 1150px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.55;
+           font-size: 15px; }
+    nav { font-size: .9rem; margin-bottom: 1rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.5rem; margin: 0 0 .3rem; }
+    h2 { font-size: 1.1rem; margin: 2.2rem 0 .6rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); }
+    h2 .count { font-weight: 400; font-size: .8rem; color: var(--muted); margin-left: .5rem; }
+    p.sub { color: var(--muted); margin: 0 0 1rem; font-size: .92rem; }
+    #stats { position: sticky; top: 0; z-index: 40; background: Canvas; display: flex;
+             flex-wrap: wrap; gap: .5rem; padding: .7rem 0; border-bottom: 1px solid var(--border); }
+    .stat { font-size: .8rem; padding: .2rem .7rem; border-radius: 999px; border: 1px solid var(--border); font-weight: 600; }
+    table { border-collapse: collapse; width: 100%; font-size: .87rem; margin: .6rem 0 1.4rem; }
+    th, td { border: 1px solid var(--border); padding: .42rem .6rem; text-align: left; vertical-align: top; }
+    th { background: #8881; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; }
+    td.id { white-space: nowrap; font-family: ui-monospace, Menlo, monospace; font-size: .8rem; }
+    code { background: #88808018; padding: .08em .35em; border-radius: 4px; font-size: .88em;
+           font-family: ui-monospace, Menlo, monospace; }
+    .badge { display: inline-block; font-size: .72rem; font-weight: 700; padding: .12rem .55rem;
+             border-radius: 999px; white-space: nowrap; }
+    .st-OPEN     { background: #c0392b1c; color: var(--bad); }
+    .st-PARTIAL  { background: #c77c111c; color: var(--warn); }
+    .st-DONE     { background: #2e8b571c; color: var(--ok); }
+    .st-DECISION { background: #7c5cd61c; color: var(--purple); }
+    .st-GUARD    { background: #3d7dd61c; color: var(--accent); }
+    .st-CTX      { background: #8882; color: var(--muted); }
+    footer { margin-top: 2.5rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+  </style>
+</head>
+<body>
+  <nav><a href="index.html">&larr; dashboard</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="plan.html">&larr; Execution plan</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 19 / 20</span><span style="min-width:0;text-align:right;"><a href="notes.html">Investigation log &rarr;</a></span></div>
+  <h1>Tracker — every bullet in issue #37396, accounted for</h1>
+  <p class="sub">One row per item (sub-bullets split out). This page IS the tracker — the
+    single artifact; the stats bar self-counts from the rows.
+    Legend: <span class="badge st-OPEN">OPEN</span>
+    not started · <span class="badge st-PARTIAL">PARTIAL</span> evidence gathered / in progress ·
+    <span class="badge st-DONE">DONE</span> answered for spike purposes ·
+    <span class="badge st-DECISION">DECISION</span> blocked on a recorded question (questions.html) ·
+    <span class="badge st-GUARD">GUARD</span> constraint every proposal must honor ·
+    <span class="badge st-CTX">CTX</span> background invariant, understood &amp; cited.
+    Last sweep: 2026-07-14 (post-grill: D1-D7 recorded in questions.html; phases in plan.html).</p>
+
+  <div id="stats"></div>
+
+  <h2>Background invariants<span class="count"></span></h2>
+  <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
+    <tr data-status="CTX"><td class="id">INV-1</td><td>eBPF Module = sole source of runtime events; owns programs, lifecycle, ring buffer, delivery</td><td><span class="badge st-CTX">CTX</span></td><td>evidence/parent-37203.html (IR2)</td></tr>
+    <tr data-status="CTX"><td class="id">INV-2</td><td>FIM &amp; IT Hygiene = consumers; subscribe raw; enrich via Container module independently</td><td><span class="badge st-CTX">CTX</span></td><td>parent-37203.html; siblings.html</td></tr>
+    <tr data-status="GUARD"><td class="id">INV-3</td><td>Container module = passive enricher, never a producer; engine must never depend on it</td><td><span class="badge st-GUARD">GUARD</span></td><td>parent-37203.html (IR1)</td></tr>
+    <tr data-status="CTX"><td class="id">INV-4</td><td>Compatibility covers ALL event classes: file + process-exec + network</td><td><span class="badge st-CTX">CTX</span></td><td>issue Background; #37534</td></tr>
+    <tr data-status="CTX"><td class="id">INV-5</td><td>Agent = host systemd package, not a DaemonSet — privilege analysis is host-process</td><td><span class="badge st-CTX">CTX</span></td><td>issue Background</td></tr>
+  </tbody></table>
+
+  <h2>Scope — in scope (design)<span class="count"></span></h2>
+  <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
+    <tr data-status="DECISION"><td class="id">SD-1</td><td>Module architecture: in-process library vs separate process/daemon</td><td><span class="badge st-DECISION">DECISION</span></td><td>D3 REOPENED 2026-07-15 (teammate's component/shared-library challenge) → O5; full multi-option evaluation in P1.3 ADR</td></tr>
+    <tr data-status="OPEN"><td class="id">SD-2</td><td>Public event contract</td><td><span class="badge st-OPEN">OPEN</span></td><td>inputs: sibling demands; current file_event fields (audit §3)</td></tr>
+    <tr data-status="OPEN"><td class="id">SD-3</td><td>Subscription/filtering API</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="PARTIAL"><td class="id">SD-4</td><td>Program lifecycle: load/attach/detach on config change</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>current lifecycle documented (audit §6, fallback diagram); reload-without-drops open</td></tr>
+    <tr data-status="OPEN"><td class="id">SD-5</td><td>Fan-out to multiple consumers</td><td><span class="badge st-OPEN">OPEN</span></td><td>single consumer today (audit §3)</td></tr>
+    <tr data-status="PARTIAL"><td class="id">SD-6</td><td>Backpressure/overflow policy</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>today: 8 MiB ringbuf + queue drop, logged once; #37532 wants the signal</td></tr>
+    <tr data-status="PARTIAL"><td class="id">SD-7</td><td>Correlation identifiers emitted per event</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>requirements collected (#37382, FR6, helper floors); choice open</td></tr>
+  </tbody></table>
+
+  <h2>Scope — in scope (compatibility)<span class="count"></span></h2>
+  <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
+    <tr data-status="PARTIAL"><td class="id">SC-1</td><td>Min kernel + required features across Tier 1/2</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>tier table + bands (tier-matrix.html); probes + policy = Q2</td></tr>
+    <tr data-status="PARTIAL"><td class="id">SC-2</td><td>Attach decision (LSM vs kprobe/tracepoint) + fallback</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>in-tree dual path + dpath/walk retry (audit §4,§6); decision open</td></tr>
+    <tr data-status="PARTIAL"><td class="id">SC-3</td><td>Hooks/helpers for file + exec + network</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>file known in-tree; exec/net candidates only; floors verified</td></tr>
+    <tr data-status="OPEN"><td class="id">SC-4</td><td>Runtime compatibility: containerd, CRI-O, Docker</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="OPEN"><td class="id">SC-5</td><td>cgroup v1/v2 behavior</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="OPEN"><td class="id">SC-6</td><td>Host-process capability requirements</td><td><span class="badge st-OPEN">OPEN</span></td><td>crumb: chcon textrel_shlib_t in installer (audit §5)</td></tr>
+    <tr data-status="OPEN"><td class="id">SC-7</td><td>Performance budget</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+  </tbody></table>
+
+  <h2>Out of scope + constraints<span class="count"></span></h2>
+  <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
+    <tr data-status="GUARD"><td class="id">OOS-1</td><td>Container→pod metadata resolution + path resolution stay in #37382/#37533</td><td><span class="badge st-GUARD">GUARD</span></td><td>scope-creep tripwire</td></tr>
+    <tr data-status="GUARD"><td class="id">CON-1</td><td>No external deps; C/C++; BPF loading via what's vendored</td><td><span class="badge st-GUARD">GUARD</span></td><td>in-tree CONFIRMED: libbpf-bootstrap, prebuilt .bpf.o (audit §2,§5)</td></tr>
+    <tr data-status="GUARD"><td class="id">CON-2</td><td>Consumer-agnostic; 3rd consumer never touches engine</td><td><span class="badge st-GUARD">GUARD</span></td><td>violated today at 3 seams (audit §3) — extraction target</td></tr>
+    <tr data-status="GUARD"><td class="id">CON-3</td><td>Raw identity on events; engine never depends on Container module</td><td><span class="badge st-GUARD">GUARD</span></td><td>correlation-key work = SD-7</td></tr>
+  </tbody></table>
+
+  <h2>Angles — module design<span class="count"></span></h2>
+  <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
+    <tr data-status="DECISION"><td class="id">A1.1</td><td>Boundary shapes: in-process lib vs thread pool vs separate process+socket</td><td><span class="badge st-DECISION">DECISION</span></td><td>D3 reopened → O5; all three shapes evaluated with pros/cons in P1.3 (kernel facts verified: instances independent; ringbuf = single consumer cursor)</td></tr>
+    <tr data-status="OPEN"><td class="id">A1.2</td><td>Trade-offs: privilege isolation, crash isolation, IPC cost, restart independence</td><td><span class="badge st-OPEN">OPEN</span></td><td>caps floors verified; analysis pending</td></tr>
+    <tr data-status="DONE"><td class="id">A1.3</td><td>Mapping onto the agent module framework; what "a module" is in 5.x</td><td><span class="badge st-DONE">DONE</span></td><td>module-framework.html (3 shapes; FIM not a wmodule)</td></tr>
+    <tr data-status="DONE"><td class="id">A2.1</td><td>Where eBPF lives; who reaches in; files/interfaces to cut</td><td><span class="badge st-DONE">DONE</span></td><td>ebpf-engine-audit.html §1,§3; code-map.html</td></tr>
+    <tr data-status="DONE"><td class="id">A2.2</td><td>What is FIM-specific to generalize</td><td><span class="badge st-DONE">DONE</span></td><td>audit §3: 3 seams + paths + user/group resolution</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A3.1</td><td>Raw event schema incl. correlation keys (cgroup id, ns inodes, container id?)</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>file_event has NO keys today; sibling demands recorded; schema undrafted</td></tr>
+    <tr data-status="OPEN"><td class="id">A3.2</td><td>Contract versioning (independent shipping)</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A3.3</td><td>Serialization: in-process struct vs wire format; protobuf DISALLOWED</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>constraint recorded; depends on Q3</td></tr>
+    <tr data-status="OPEN"><td class="id">A4.1</td><td>Registration: event types, path prefixes, per-cgroup scope</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="OPEN"><td class="id">A4.2</td><td>Kernel-side filtering vs user-space fan-out; what goes into maps</td><td><span class="badge st-OPEN">OPEN</span></td><td>today all filtering is user-space FIM config</td></tr>
+    <tr data-status="OPEN"><td class="id">A4.3</td><td>Many consumers, different filters: demux vs per-consumer programs</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A5.1</td><td>Load/attach/detach; re-attach on config change w/o dropping others' events</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>single-consumer lifecycle documented; multi-consumer reload open</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A5.2</td><td>Capability acquisition + graceful degradation (disable, log, don't crash)</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>precedent: healthcheck→audit ladder; audit hatch is file-only → redesign</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A6.1</td><td>Ringbuf sizing, drop policy, drop surfacing to consumers/telemetry</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>today 8 MiB, drop logged once, nothing surfaced; #37532 consumes signal</td></tr>
+    <tr data-status="OPEN"><td class="id">A6.2</td><td>Slow-consumer isolation</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="OPEN"><td class="id">A7.1</td><td>3rd-consumer sketch proving the contract generic</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="OPEN"><td class="id">A7.2</td><td>Host/no-container path (empty correlation keys)</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+  </tbody></table>
+
+  <h2>Angles — kernel / runtime compatibility<span class="count"></span></h2>
+  <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
+    <tr data-status="PARTIAL"><td class="id">A8.1</td><td>Capabilities the event set requires; single attach or fallback</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>per-class floors verified; decision = Q2</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A8.2</td><td>Tier list + kernels; policy: LCD vs higher floor + exclusions</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>decided D2 (≥5.8 + full sub-5.8 characterization); sign-off = O1</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A9.1</td><td>File class: LSM (file_open, path_*) vs kprobe/vfs_* / tracepoints; bpf_d_path</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>in-tree does both (audit §4); quality comparison = A10.1</td></tr>
+    <tr data-status="OPEN"><td class="id">A9.2</td><td>Exec class: sched_process_exec tracepoint vs kprobes; argv/exe resolution</td><td><span class="badge st-OPEN">OPEN</span></td><td>desk candidates only</td></tr>
+    <tr data-status="OPEN"><td class="id">A9.3</td><td>Network class: kprobe/fentry socket hooks vs tracepoint/sock; cgroup-socket assoc.</td><td><span class="badge st-OPEN">OPEN</span></td><td>desk candidates only</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A9.4</td><td>Cross-cutting: CO-RE/BTF, RINGBUF vs perf-array, cgroup-id + ns helpers — since when, what each buys</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>floors verified (kernel-features.html); per-distro configs = probes</td></tr>
+    <tr data-status="OPEN"><td class="id">A10.1</td><td>LSM vs kprobe fallback: event QUALITY comparison</td><td><span class="badge st-OPEN">OPEN</span></td><td>precedent exists, never compared</td></tr>
+    <tr data-status="OPEN"><td class="id">A10.2</td><td>Maintenance burden of two attach paths, quantified</td><td><span class="badge st-OPEN">OPEN</span></td><td>data point: 10 programs for 1 class today</td></tr>
+    <tr data-status="CTX"><td class="id">A11.1</td><td>Runtimes: containerd, CRI-O, Docker (incl. standalone)</td><td><span class="badge st-CTX">CTX</span></td><td>issue angle 11; parent FR2-5</td></tr>
+    <tr data-status="OPEN"><td class="id">A11.2</td><td>Hooks fire identically across runtimes? keys populated uniformly?</td><td><span class="badge st-OPEN">OPEN</span></td><td>probe work (SP-8)</td></tr>
+    <tr data-status="OPEN"><td class="id">A12.1</td><td>cgroup v2 vs hybrid: cgroup-id behavior; equals user-space stat value?</td><td><span class="badge st-OPEN">OPEN</span></td><td>probe work</td></tr>
+    <tr data-status="OPEN"><td class="id">A12.2</td><td>cgroup driver systemd vs cgroupfs: semantics or only layout?</td><td><span class="badge st-OPEN">OPEN</span></td><td>probe work</td></tr>
+    <tr data-status="OPEN"><td class="id">A13.1</td><td>Capabilities to load/attach as systemd service (BPF/PERFMON/SYS_ADMIN/DAC_READ_SEARCH)</td><td><span class="badge st-OPEN">OPEN</span></td><td>floors known; empirical minimum = SP-10</td></tr>
+    <tr data-status="OPEN"><td class="id">A13.2</td><td>SELinux/AppArmor: blocked ops? minimal policy delta to ship/document</td><td><span class="badge st-OPEN">OPEN</span></td><td>crumb: chcon in installer</td></tr>
+    <tr data-status="OPEN"><td class="id">A14.1</td><td>Events/sec on a busy node, all 3 classes</td><td><span class="badge st-OPEN">OPEN</span></td><td>SP-11</td></tr>
+    <tr data-status="OPEN"><td class="id">A14.2</td><td>Absorbable per-event cost; kernel-side vs user-space filter placement</td><td><span class="badge st-OPEN">OPEN</span></td><td>SP-11</td></tr>
+  </tbody></table>
+
+  <h2>Starting points<span class="count"></span></h2>
+  <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
+    <tr data-status="DONE"><td class="id">SP-1</td><td>Audit in-tree eBPF + callers; coupling map</td><td><span class="badge st-DONE">DONE</span></td><td>ebpf-engine-audit.html; refactor-list remainder = D-M2</td></tr>
+    <tr data-status="OPEN"><td class="id">SP-2</td><td>Peer survey: Tetragon, Inspektor Gadget, Falco, Cilium/Hubble — patterns only</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="OPEN"><td class="id">SP-3</td><td>Draft contract as header/IDL; circulate with #37533/#37534 owners</td><td><span class="badge st-OPEN">OPEN</span></td><td>depends SD-2/A3</td></tr>
+    <tr data-status="OPEN"><td class="id">SP-4</td><td>Prototype: file_open program → ringbuf → dispatcher → 2 mock consumers</td><td><span class="badge st-OPEN">OPEN</span></td><td>per D4-rev (2026-07-15): in-tree PoC, self-contained dir + own target on a local wazuh branch; phase 2; can A/B both boundary shapes for O5</td></tr>
+    <tr data-status="PARTIAL"><td class="id">SP-5</td><td>Process/thread model + capability confinement; validate vs framework</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>framework done (A1.3); boundary under evaluation (O5, D3 reopened); detail = phase-1 ADR</td></tr>
+    <tr data-status="OPEN"><td class="id">SP-6</td><td>Test matrix: kind/minikube/kubeadm + Docker hosts across distros</td><td><span class="badge st-OPEN">OPEN</span></td><td>per D1: deferred to follow-up phase (w/ QA)</td></tr>
+    <tr data-status="OPEN"><td class="id">SP-7</td><td>Feature-probe per kernel (LSM, vfs kprobe, exec tracepoint, socket hook, ringbuf, d_path, cgroup-id)</td><td><span class="badge st-OPEN">OPEN</span></td><td>phase-2 mini-lab: 3 VMs on x86 laptop (D6) + Mac aarch64 spot-check</td></tr>
+    <tr data-status="OPEN"><td class="id">SP-8</td><td>Runtime semantics: trigger write/exec/connect per runtime; diff hook reports</td><td><span class="badge st-OPEN">OPEN</span></td><td>phase 2: Docker-in-VM key demo only; cross-runtime diff deferred</td></tr>
+    <tr data-status="OPEN"><td class="id">SP-9</td><td>Fallback assessment on RHEL 8 / Ubuntu 20.04</td><td><span class="badge st-OPEN">OPEN</span></td><td>phase-2 mini-lab: Alma 8 box — mandatory per D2 caveat</td></tr>
+    <tr data-status="OPEN"><td class="id">SP-10</td><td>Capability/SELinux/AppArmor validation as systemd service; strip caps to minimum</td><td><span class="badge st-OPEN">OPEN</span></td><td>phase-2 lite (SELinux Alma 9, AppArmor Ubuntu, caps strip); full pass later</td></tr>
+    <tr data-status="OPEN"><td class="id">SP-11</td><td>Performance baseline (bpf_stats_enabled, ringbuf fill, user CPU)</td><td><span class="badge st-OPEN">OPEN</span></td><td>per D1: deferred to follow-up phase</td></tr>
+  </tbody></table>
+
+  <h2>Deliverables<span class="count"></span></h2>
+  <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
+    <tr data-status="OPEN"><td class="id">D-M1</td><td>Architecture decision record (boundary, threading, caps, framework mapping)</td><td><span class="badge st-OPEN">OPEN</span></td><td>now a multi-option evaluation (D3 reopened → O5); drafted in evidence pack per D5; phase 1</td></tr>
+    <tr data-status="PARTIAL"><td class="id">D-M2</td><td>Coupling extraction map + concrete refactor list</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>seams+inventory+cleanup done; ordered list unwritten</td></tr>
+    <tr data-status="OPEN"><td class="id">D-M3</td><td>Event contract spec (schema, keys, versioning, serialization, subscribe/filter API)</td><td><span class="badge st-OPEN">OPEN</span></td><td>rolls up SD-2/3/7, A3, A4</td></tr>
+    <tr data-status="OPEN"><td class="id">D-M4</td><td>Backpressure &amp; degradation policy</td><td><span class="badge st-OPEN">OPEN</span></td><td>rolls up SD-6, A5.2, A6</td></tr>
+    <tr data-status="OPEN"><td class="id">D-M5</td><td>Extensibility proof (3rd consumer + host path)</td><td><span class="badge st-OPEN">OPEN</span></td><td>A7</td></tr>
+    <tr data-status="OPEN"><td class="id">D-M6</td><td>Prototype: multi-consumer fan-out</td><td><span class="badge st-OPEN">OPEN</span></td><td>SP-4; AC-5 needs 2 kernels</td></tr>
+    <tr data-status="PARTIAL"><td class="id">D-C1</td><td>Compatibility matrix (empirical columns)</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>desk bands done (tier-matrix.html); probes pending</td></tr>
+    <tr data-status="OPEN"><td class="id">D-C2</td><td>Min-kernel decision record per event class + product sign-off</td><td><span class="badge st-OPEN">OPEN</span></td><td>unblocked by D2 (rejected-LCD rationale mandatory); phase 1; sign-off = O1</td></tr>
+    <tr data-status="OPEN"><td class="id">D-C3</td><td>Host-capability requirements + SELinux/AppArmor delta</td><td><span class="badge st-OPEN">OPEN</span></td><td>A13, SP-10</td></tr>
+    <tr data-status="OPEN"><td class="id">D-C4</td><td>Performance numbers (events/sec, p99 runtime, drop rate)</td><td><span class="badge st-OPEN">OPEN</span></td><td>A14, SP-11</td></tr>
+  </tbody></table>
+
+  <h2>Acceptance criteria<span class="count"></span></h2>
+  <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
+    <tr data-status="OPEN"><td class="id">AC-1</td><td>Contract accepted by BOTH #37533 and #37534 owners (file+exec+network)</td><td><span class="badge st-OPEN">OPEN</span></td><td>needs D-M3</td></tr>
+    <tr data-status="OPEN"><td class="id">AC-2</td><td>Architecture + min-kernel decisions committed as ADRs</td><td><span class="badge st-OPEN">OPEN</span></td><td>no ADR convention in repo → Q5</td></tr>
+    <tr data-status="OPEN"><td class="id">AC-3</td><td>Matrix signed off by platform/QA; floor feeds #37203 restriction 4</td><td><span class="badge st-OPEN">OPEN</span></td><td>needs D-C1/D-C2</td></tr>
+    <tr data-status="OPEN"><td class="id">AC-4</td><td>Coupling map cross-referenced by implementation tickets</td><td><span class="badge st-OPEN">OPEN</span></td><td>needs D-M2 + tickets</td></tr>
+    <tr data-status="OPEN"><td class="id">AC-5</td><td>Prototype on ≥1 LSM kernel AND ≥1 fallback kernel; no mutual stalling</td><td><span class="badge st-OPEN">OPEN</span></td><td>needs D-M6 + lab (Q1)</td></tr>
+    <tr data-status="OPEN"><td class="id">AC-6</td><td>Correlation keys aligned with #37382 findings</td><td><span class="badge st-OPEN">OPEN</span></td><td>joint decision; #37382 also open</td></tr>
+  </tbody></table>
+
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="plan.html">&larr; Execution plan</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 19 / 20</span><span style="min-width:0;text-align:right;"><a href="notes.html">Investigation log &rarr;</a></span></div>
+<footer>Spike #37396 tracker · this page is the single tracker artifact ·
+  all grill decisions recorded as D1-D7 in <a href="questions.html">questions.html</a>;
+  execution phases in <a href="plan.html">plan.html</a>; remaining external gates O1 (floor
+  sign-off), O2 (ADR location), O4 (key alignment with #37382).</footer>
+
+  <script>
+    const order = ["DONE","PARTIAL","OPEN","DECISION","GUARD","CTX"];
+    const total = {};
+    document.querySelectorAll("h2").forEach(h => {
+      const tbl = h.nextElementSibling;
+      if (!tbl || tbl.tagName !== "TABLE") return;
+      const counts = {};
+      tbl.querySelectorAll("tr[data-status]").forEach(tr => {
+        const s = tr.dataset.status;
+        counts[s] = (counts[s]||0)+1; total[s] = (total[s]||0)+1;
+      });
+      const span = h.querySelector(".count");
+      if (span) span.textContent = "— " + order.filter(s=>counts[s]).map(s=>counts[s]+" "+s.toLowerCase()).join(" · ");
+    });
+    const stats = document.getElementById("stats");
+    const n = Object.values(total).reduce((a,b)=>a+b,0);
+    stats.innerHTML = '<span class="stat">' + n + ' items</span>' +
+      order.filter(s=>total[s]).map(s=>'<span class="stat st-'+s+'">'+total[s]+' '+s+'</span>').join("");
+  </script>
+</body>
+</html>

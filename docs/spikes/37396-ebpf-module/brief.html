@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Brief — what issue #37396 is about</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="index.html">&larr; dashboard</a> · <a href="tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="index.html">&larr; Dashboard</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 2 / 20</span><span style="min-width:0;text-align:right;"><a href="evidence/parent-37203.html">Parent objective #37203 &rarr;</a></span></div>
+<h1>Brief — what issue #37396 is actually about (no Wazuh knowledge assumed)</h1>
+<h2>The 30-second version</h2>
+<p>Wazuh is an open-source security platform: a central <strong>server</strong> collects security telemetry from <strong>agents</strong> installed on endpoints (servers, VMs, cloud nodes). On Linux, the agent can use <strong>eBPF</strong> — a kernel technology that runs small, safe programs inside the Linux kernel to observe events like "a file was opened", "a process started", "a network connection was made" — as a high-quality, low-overhead event source.</p>
+<p>Today, the agent's eBPF machinery is not a standalone component: it is embedded inside one consumer (File Integrity Monitoring). Wazuh is building container runtime security (parent objective #37203), and several features now need the same kernel event stream at once. This spike (#37396) researches how to <strong>pull the eBPF engine out into its own module</strong> — one owner of the kernel programs and the event pipe, with multiple subscriber modules — and, inseparably, <strong>what kernels/container runtimes that module can actually support</strong>, because you cannot design the module's interface and degradation behavior without knowing the compatibility floor.</p>
+<p>It is a *spike* (<code>type/research</code>): the deliverable is understanding — decision records, an event contract, a compatibility matrix, a prototype proving the design — not shipped product code.</p>
+<h2>The cast of characters</h2>
+<ul><li><strong>Wazuh agent</strong> — the program on each monitored machine. On Linux it runs as a systemd service on the host ("host package"). That detail matters: privilege analysis is about a host process, not a Kubernetes pod (issue: Background, last paragraph).</li><li><strong>FIM</strong> (File Integrity Monitoring, historically "syscheck") — the agent feature that detects file changes. Its "who-data" mode records *who* touched the file, and on modern Linux that is powered by eBPF. This is where the eBPF engine lives today. (Confirmed by code audit — see code-map.html.)</li><li><strong>IT Hygiene</strong> (historically "Syscollector" / inventory) — the agent feature that inventories the system: packages, processes, ports, network config. #37203 makes it a first-class eBPF consumer too (process-exec + network events), not just FIM.</li><li><strong>Container Instances Security Module</strong> — a *new* module (separate spike) that talks to Docker/Kubernetes APIs and knows which container/pod/label corresponds to which cgroup/PID. Deliberately passive: it enriches; it does not produce runtime events.</li><li><strong>eBPF Module</strong> — the thing this spike designs. Sole producer of low-level runtime events; owns BPF program lifecycle, the ring buffer (the kernel→userspace event queue), and delivery to subscribers.</li></ul>
+<h2>Anatomy: what "an eBPF program" actually is, and what the tree contains</h2>
+<p>eBPF is not just an API. It is three things bundled: a tiny <strong>virtual machine inside
+the kernel</strong> that executes sandboxed bytecode; a <strong>verifier</strong> that proves
+each piece of bytecode safe (bounded, memory-safe) before it may run; and an API surface (the
+<code>bpf()</code> syscall plus "helpers" — the short list of kernel functions the bytecode may
+call). The key inversion vs a normal API: you don't call the kernel and get data back — the
+<em>kernel calls your code</em>, inside itself, at the exact moment an event happens. That is
+why eBPF catches short-lived activity and can stamp correlation keys at event time.</p>
+<p>In eBPF-speak, a "program" is <strong>one small function attached to one hook</strong> —
+tens of lines of restricted C (no unbounded loops, tiny stack, whitelisted helpers only), not
+an application. FIM is therefore NOT an eBPF program and never could be; <strong>FIM
+<em>uses</em> eBPF</strong> through three distinct artifacts in the codebase:</p>
+<ul>
+<li><strong>The ten eBPF programs</strong> — <code>src/syscheckd/src/ebpf/src/modern.bpf.c</code>
+(one 984-line file): 4 kprobe programs + 6 LSM-hook programs (3 hooks × dpath/walk variants).
+Each fires in-kernel for microseconds: read pid/uid/path from kernel structs → copy a
+<code>file_event</code> into the ring buffer → done. Clang compiles the file to bytecode
+(<code>modern.bpf.o</code>) which ships with the agent as a <em>data file</em>, loaded into the
+kernel at runtime — it is not part of any executable.</li>
+<li><strong>The engine (userspace)</strong> — <code>ebpf_whodata.cpp</code> →
+<code>libfimebpf.so</code>, normal C++ linked into the FIM daemon: loads the bytecode via
+libbpf (the verifier checks each program), picks the LSM or kprobe set, attaches, then reads
+events off the ring buffer for the daemon's lifetime.</li>
+<li><strong>FIM proper</strong> — the big userspace daemon (<code>wazuh-syscheckd</code>) that
+consumes the events and applies file-integrity logic.</li>
+</ul>
+<p>Analogy: the BPF programs are <em>tripwire sensors screwed into the kernel's walls</em>; the
+engine is the <em>wiring and receiver box</em>; FIM is the <em>alarm control panel</em>. This
+spike turns the sensors + wiring into shared building infrastructure (the eBPF Module, with
+more sensor types: exec + network) instead of hardware the alarm panel privately owns — FIM
+then just subscribes like any other consumer.</p>
+<h2>Why now (the driver)</h2>
+<p>Parent #37203 wants container-aware security: when a file inside a container changes, FIM should say *which container/pod/image*. The chosen architecture (its NFR4 + implementation restrictions 1-2) is:</p>
+<pre><code>kernel events → eBPF Module → (raw events + correlation keys) → FIM / IT Hygiene
+                                                        ↓ (query, enrich)
+                                     Container Instances Security Module</code></pre>
+<p>The eBPF Module must emit events carrying <strong>correlation keys</strong> (PID, cgroup id, namespace inodes, container id where derivable) so consumers can ask the Container module "whose cgroup is this?" — while the eBPF Module itself stays ignorant of containers. That keeps the modules decoupled: the engine produces; the container module explains; FIM/IT Hygiene decide.</p>
+<h2>The two halves of the spike</h2>
+<ol><li><strong>Module design</strong> — is the module an in-process library, a thread pool, or a separate process? What exactly is the event schema and the subscribe/filter API? How does it load, attach, detach, and survive config reloads? What happens when the buffer overflows or one subscriber is slow? Prove extensibility: a third consumer must plug in without touching the engine; the same engine must serve plain hosts with no containers at all.</li><li><strong>Kernel/runtime compatibility</strong> — Wazuh supports old enterprise kernels (RHEL 8 = 4.18) through new ones (Ubuntu 24.04 = 6.8). Modern eBPF niceties (LSM hooks, <code>bpf_d_path</code>, ring buffer) don't exist on the old end. The spike must decide the minimum kernel per event class, the attach mechanism + fallback (LSM vs kprobe/tracepoint), how containerd/CRI-O/Docker and cgroup v1/v2 affect the correlation keys, what Linux capabilities the host service needs (CAP_BPF, CAP_PERFMON, …), and a performance budget.</li></ol>
+<p>They are one spike because the contract you can promise depends on the features you can rely on.</p>
+<h2>What "done" looks like</h2>
+<p>Event contract accepted by the FIM and IT Hygiene spike owners; architecture + min-kernel decisions committed as ADRs; compatibility matrix signed off by platform/QA; a working prototype of two independent subscribers with different filters over one stream — on one modern (LSM) and one old (kprobe/tracepoint) kernel; correlation keys aligned with the Container module spike. (Full checklists: requirements.html.)</p>
+<h2>Hard constraints to keep in mind</h2>
+<ul><li>No new external dependencies; C/C++ only; BPF loading via what's already vendored.</li><li>Protobuf is explicitly disallowed for the wire format.</li><li>Consumers must not contain eBPF-specific code beyond the subscription.</li><li>The engine must never depend on the Container module (direction of knowledge is one-way).</li></ul>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="index.html">&larr; Dashboard</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 2 / 20</span><span style="min-width:0;text-align:right;"><a href="evidence/parent-37203.html">Parent objective #37203 &rarr;</a></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>

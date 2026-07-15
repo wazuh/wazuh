@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Investigation log — spike #37396</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="index.html">&larr; dashboard</a> · <a href="tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 20 / 20</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
+<h1>Investigation log — spike #37396 (eBPF Module extraction)</h1>
+<p>Append-only. Newest at the bottom.</p>
+<h2>2026-07-13 — bootstrap</h2>
+<ul><li>Session started from a clean slate: no prior evidence dir, no memory pointer.</li><li><code>gh</code> switched to jr0me. Fetched issue #37396 (created 2026-07-03 by Nicogp, open, no comments, no milestone; labels: module/agent, type/research, level/task).</li><li>Fetched parent objective #37203 "Container runtime security" (open, level/objective, type/enhancement, no comments). #37396 implements its NFR4.</li><li>Repo check: <code>VERSION.json</code> on main = <code>5.1.0</code> stage <code>alpha0</code> — matches the issue header (Wazuh 5.1.0), so <strong>main is the authoritative branch</strong> for code evidence.</li><li>Evidence dir created at <code>~/Dev/jr0me/wazuh-37396-evidence/</code>.</li><li>Launched three background exploration agents:<ol><li><strong>eBPF code audit</strong> — where the engine lives in-tree, consumers, coupling, kernel features, build wiring, vendored deps.</li><li><strong>Agent module framework map</strong> — what "a module" means structurally in the 5.x agent (wmodules, modulesd, C++ modules, registration recipe, ADR locations).</li><li><strong>Siblings + public docs</strong> — sibling spikes of #37203, documentation.wazuh.com pages on FIM whodata/eBPF, doc-version lag vs 5.1.0.</li></ol></li><li>Wrote first drafts of <code>brief.html</code>, <code>requirements.html</code>, <code>glossary.html</code>, <code>questions.html</code>. Claims about *current in-tree state* are marked pending until the audit agents report.</li></ul>
+<h2>2026-07-13 — gathering round 1 complete (three agents + desk verification)</h2>
+<ul><li><strong>Sibling sweep</strong> (evidence/siblings.html): parent has exactly 5 sub-issues — 37382 (Container module: correlation/auth), 37396 (this), 37532 (baseline acquisition), 37533 (FIM integration), 37534 (IT Hygiene integration). Shorthand #37203-N mapped. Each sibling's demands on our event contract extracted (primary key choice w/ 37382; path semantics for 37533; exec+network classes for 37534; drop-signal + enumerate-on-attach for 37532).</li><li><strong>Docs sweep</strong> (evidence/docs-whodata.html): published docs = 4.14 (no 5.x docs). eBPF today = FIM whodata only; documented floor kernel ≥5.8; fallback to audit; 3 file hooks documented. Tier 1/2 terminology is internal (only #31714 references it publicly).</li><li><strong>Code audit</strong> (evidence/ebpf-engine-audit.html; spot-verified by hand): engine = <code>src/syscheckd/src/ebpf/</code> → <code>libfimebpf.so</code>, sole consumer FIM whodata. 10 SEC programs (4 kprobes + 3 LSM hooks × dpath/walk), RINGBUF 8 MiB, CO-RE via libbpf-bootstrap (prebuilt .bpf.o shipped from deps). Coupling seams: FIM config filter inside handle_event (ebpf_whodata.cpp:117-119), FIM whodata_evt output (:670-691), 9 FIM callbacks (:701-709). NO cgroup/ns keys, NO exec/network programs, NO tracepoints, NO multi-consumer anything, min-kernel 5.8 enforced (:360). Dead code: modern-arm.bpf.c; stale wrapper_bpf.h skeleton. In-tree fallback ladder already: healthcheck→audit; LSM detect; dpath→walk retry.</li><li><strong>Framework map</strong> (evidence/module-framework.html): agent = 5 daemons; modules = wm_context linked list in modulesd, thread each; 5.x C++ engines behind C wrappers (dlopen); FIM is its own daemon (NOT a wmodule; queried via socket). New-module recipe captured. NO ADR convention in repo — mdBook <code>docs/ref/modules/&lt;module&gt;/architecture.md</code> is the design-doc home.</li><li><strong>Kernel floors desk-verified</strong> (evidence/kernel-features.html) against BCC table + man7: kprobe 4.1 / tracepoint 4.7 / BTF+cgroup-id 4.18 / fentry+probe_read_str 5.5 / LSM 5.7 / ringbuf+CAP_BPF/PERFMON 5.8 / bpf_d_path 5.10 (LSM/tracing-only). Central tension named: engine floor 5.8 vs RHEL8/U20.04 below it, and audit fallback covers file events only.</li><li>Built 4 diagrams (context, class, sequence, fallback ladder) + polished <code>index.html</code> dashboard. Q5 (ADR location) downgraded to a recommendation; siblings resolved in questions.html. Memory pointer updated.</li><li><strong>Not yet covered</strong> (flagged in dashboard Status): peer-pattern survey, runtime semantics probes, capability/SELinux validation, performance, prototype. Nothing posted to GitHub.</li></ul>
+<h2>2026-07-13 — real tier matrix received from jr0me</h2>
+<ul><li>jr0me pasted the internal Tier 1/2/3 allocator table → evidence/tier-matrix.html (supersedes the issue's example distro list; docs-whodata.html finding 6 annotated).</li><li>Verified moving parts via web: AL2 kernels 4.14/5.10 (5.10 default AMI since 2026-01-20, extras 5.4/5.15, upstream EOL 2026-06-30 — already past); AL2023 = 6.1 or 6.12; Ubuntu 26.04 = Linux 7.0. Other kernels cited to distro docs; Fedora 44 unconfirmed.</li><li>Derived the three bands: Band 0 eBPF-impossible (RHEL/CentOS/Oracle7 @3.10 + Tier 3), Band 1 legacy-eBPF (AL2@4.14 — even lacks cgroup-id helper; RHEL8 family @4.18; Debian 10 @4.19; U20.04-GA @5.4; BTF patchy → CO-RE problem), Band 2 full-modern (ALL Tier 1 Linux + the rest). Key insight: Tier 1 Linux is entirely Band 2; the Band 1 tax buys the RHEL 8 clone family + aging/EOL editions.</li><li>New open verification item: aarch64 build path of the prebuilt modern.bpf.o (tier table is aarch64-pervasive; in-tree modern-arm.bpf.c is dead; deps bucket is per (os,arch)).</li><li>Updated: requirements.html (cross-check), glossary.html (tier row), questions.html (Q2 → band framing), dashboard compat section/table/callout/status/Q2.</li></ul>
+<h2>2026-07-13 — tracker established; moving to planning (grilling)</h2>
+<ul><li>jr0me: good to go on planning, wants EVERY bullet in the issue tracked persistently.</li><li>Created <strong>tracker.html</strong> (source of truth) + <strong>tracker.html</strong> (view, self-counting): 83 items — every scope bullet, constraint, angle sub-bullet, starting point, deliverable, acceptance criterion, plus background invariants. IDs: INV-*, SD-*, SC-*, OOS/CON-*, A1.1-A14.2, SP-1..11, D-M1..6, D-C1..4, AC-1..6. Rollup: 4 done · 17 partial · 47 open · 5 decision · 5 guard · 5 ctx. Linked from dashboard TOC + requirements callout.</li><li><strong>Discipline going forward: any work or decision must move its tracker row(s)</strong>; rollup and "Last sweep" date updated on every pass.</li><li>Next: /grilling to plan the execution (starting from Q1 scope, then Q2-Q5).</li></ul>
+<h2>2026-07-13/14 — grill session: D1-D7 decided, plan agreed</h2>
+<ul><li>One-at-a-time grill through the decision tree; all answers by jr0me, recorded in questions.html with rationale: D1 design-first + mini-lab · D2 floor ≥5.8 BUT every sub-5.8 bullet still answered with evidence · D3 modulesd-hosted module w/ socket-only flat-wire subscription API · D4 standalone PoC repo (~/Dev/jr0me/wazuh-37396-poc) · D5 ADRs drafted in evidence pack, location deferred to PR time · D6 mini-lab on jr0me's x86 laptop (Alma 9 LSM / Ubuntu 24.04 kprobe / Alma 8 Band 1, real VMs) + one Mac aarch64 Lima spot-check · D7 fully local, jr0me handles all GitHub posting/coordination himself.</li><li>Open after grill: O1 floor sign-off (external), O2 ADR location (PR time), O3 laptop OS/tooling (phase-2 start), O4 primary correlation key (joint with #37382).</li><li>Tracker swept: all 5 DECISION rows resolved → rollup now 4 done · 20 partial · 49 open · 0 decision · 5 guard · 5 ctx. SP notes rewritten to phases.</li><li><strong>plan.html written</strong>: P1 design (peers, contract v0, 2 ADR drafts, extraction map, policy, review pack) → P2 mini-lab (runbook, probes, PoC, Band 1 characterization, caps/SELinux lite, aarch64 spot-check, matrix v1) → P3 external (jr0me posts; sign-offs; full matrix/perf follow-up). Explicit not-in-plan list guards scope.</li><li>Awaiting jr0me's shared-understanding confirmation before starting phase 1 (grilling rule: do not enact until confirmed).</li></ul>
+<h2>2026-07-14 — format correction: HTML is the only format</h2>
+<ul><li>jr0me: "I see that you created markdown files, I explicitly asked for html." The original instruction (first message) was HTML deliverables; the wazuh-spike skill's markdown-as-source convention wrongly took precedence.</li><li>Action: every document converted to styled HTML (same design family as the dashboard), all cross-references rewritten, markdown files DELETED. From here on, every artifact in this evidence dir is authored directly in HTML: brief.html, requirements.html, glossary.html, questions.html (decision log), code-map.html, plan.html, notes.html (this log), tracker.html (already single-format), evidence/*.html.</li><li>Preference saved to persistent memory so future sessions don't repeat the mistake.</li></ul>
+<h2>2026-07-14/15 — onboarding Q&amp;A folded into the pack; D3 challenged and REOPENED</h2>
+<ul><li>Added while answering jr0me's questions: reading-order prev/next bars on all 20 pages;
+"how one module survives many kernels" callout + terms crash-course (Compatibility section);
+"anatomy: what an eBPF program actually is" section in the brief (with the real
+<code>SEC("kprobe/vfs_open")</code> program as the example); "in-tree" defined in both
+glossaries; privileges nuance verified in code (agentd drops to wazuh user via Privsep_SetUser,
+client-agent/src/main.c:54; modulesd/syscheckd/logcollector/execd only set group → run as
+root) and reflected in the crash-course row; P1.4 min-kernel ADR now explicitly answers "why
+no audit/scan fallback for exec+network classes".</li>
+<li><strong>D3 REOPENED (2026-07-15).</strong> Teammate (via jr0me) proposed the engine be a
+<em>component</em> (shared library, per-consumer instances) rather than a living module,
+conditional on no kernel-level conflicts. Verified: separate BPF loads are fully independent
+(programs/maps/ring buffers); hooks accept multiple programs; a ring buffer has a single
+consumer cursor so sharing one buffer across processes is impossible — per-consumer instances
+vs one-owner-fan-out are the only two shapes. v1 consumers need disjoint classes (FIM=file,
+ITH=exec+net) → duplication ≈ zero today; component model matches shared_modules precedent
+and gets slow-consumer isolation by construction; costs = overlap scaling, mode divergence,
+N lifecycles, NFR4/AC-5 wording tension. jr0me: "I cannot make this decision now, the previous
+call seems rushed; modify D3 to evaluate all options with pros/cons." → P1.3 rewritten as a
+full 3-option evaluation (component / modulesd module / dedicated daemon), P1.2 contract core
+made boundary-neutral (both delivery bindings sketched), O5 opened, tracker rows SD-1 + A1.1
+back to DECISION.</li>
+<li><strong>D4 REVISED (2026-07-15).</strong> jr0me: "we usually prototype directly on wazuh" —
+PoC moves from a standalone repo to IN-TREE on a local wazuh branch (self-contained dir + own
+build target; reuses vendored libbpf-bootstrap/CMake wiring; NOT wired into daemons or
+packaging; local-only per D7). Bonus: the in-tree PoC can A/B both boundary shapes (library vs
+socket fan-out) to give the O5 evaluation measurements. Team practice saved to persistent
+memory.</li>
+<li><strong>2026-07-15 — pack committed to a wazuh branch.</strong> jr0me asked to commit
+everything so far into the repo: branch <code>spike/37396-ebpf-module</code>, path
+<code>docs/spikes/37396-ebpf-module/</code> (this entire HTML pack). Not pushed (D7 — GitHub is
+jr0me's). Working model: the sibling dir <code>~/Dev/jr0me/wazuh-37396-evidence/</code> remains
+the live working copy; the branch gets refreshed by re-copy + commit at checkpoints.</li></ul>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 20 / 20</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>

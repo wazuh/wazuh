@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spike #37396 — eBPF Module extraction</title>
+  <!-- Local file: the CDN is reachable when opened in a browser. -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose',
+      flowchart: { htmlLabels: true, curve: 'basis' } });
+  </script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --accent: #3d7dd6;
+      --ok: #2e8b57;
+      --warn: #c77c11;
+      --bad: #c0392b;
+      --muted: #6b7280;
+      --border: #8884;
+      --card: #8880;
+      --chip-bg: #3d7dd614;
+    }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 1150px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.6;
+           font-size: 15.5px; }
+    header.hero { border-bottom: 1px solid var(--border); padding-bottom: 1.25rem; margin-bottom: .5rem; }
+    h1 { font-size: 1.7rem; margin: 0 0 .5rem; letter-spacing: -.01em; }
+    h2 { font-size: 1.25rem; margin: 2.6rem 0 .8rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.6rem 0 .5rem; }
+    p { margin: .6rem 0; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .88em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    .chips { display: flex; flex-wrap: wrap; gap: .45rem; margin: .6rem 0 0; }
+    .chip { font-size: .78rem; padding: .18rem .65rem; border-radius: 999px;
+            background: var(--chip-bg); color: var(--accent); border: 1px solid #3d7dd633;
+            font-weight: 600; }
+    .chip.neutral { background: #8881; color: inherit; border-color: var(--border); font-weight: 500; }
+    nav.toc { position: sticky; top: 0; z-index: 50; background: Canvas; padding: .65rem 0;
+              font-size: .84rem; border-bottom: 1px solid var(--border); margin-bottom: 1.2rem;
+              display: flex; gap: 1.05rem; flex-wrap: wrap; }
+    nav.toc a { color: inherit; opacity: .75; }
+    nav.toc a:hover { opacity: 1; }
+    .grid { display: grid; gap: .9rem; margin: 1rem 0; }
+    .grid.cols3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+    .grid.cols2 { grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+    .card { border: 1px solid var(--border); border-radius: 12px; padding: .9rem 1.05rem;
+            background: var(--card); }
+    .card h4 { margin: 0 0 .35rem; font-size: .95rem; }
+    .card p { margin: .25rem 0; font-size: .9rem; }
+    .card .src { font-size: .78rem; color: var(--muted); margin-top: .5rem; }
+    .panel { background: #fff; border: 1px solid var(--border); border-radius: 12px;
+             padding: 1rem; margin: 1.1rem 0; overflow-x: auto; }
+    .mermaid { margin: 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .89rem; margin: .8rem 0; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left; vertical-align: top; }
+    th { background: #8881; font-size: .82rem; text-transform: uppercase; letter-spacing: .03em; }
+    .tablewrap { overflow-x: auto; }
+    ul.checklist { list-style: none; padding-left: .2rem; }
+    ul.checklist li { margin: .42rem 0; padding-left: 1.7rem; position: relative; font-size: .93rem; }
+    ul.checklist li::before { content: "○"; position: absolute; left: 0; color: var(--muted); }
+    ul.checklist li.done::before { content: "●"; color: var(--ok); }
+    ul.checklist li.partial::before { content: "◐"; color: var(--warn); }
+    .callout { border-left: 4px solid var(--warn); background: #c77c1112; border-radius: 0 10px 10px 0;
+               padding: .7rem 1rem; margin: 1rem 0; font-size: .93rem; }
+    .callout.info { border-left-color: var(--accent); background: #3d7dd612; }
+    .callout.risk { border-left-color: var(--bad); background: #c0392b10; }
+    .status-ok { color: var(--ok); font-weight: 600; }
+    .status-warn { color: var(--warn); font-weight: 600; }
+    .status-bad { color: var(--bad); font-weight: 600; }
+    .seams { counter-reset: seam; }
+    .seam { border: 1px solid var(--border); border-radius: 12px; padding: .8rem 1rem .8rem 3rem;
+            margin: .7rem 0; position: relative; }
+    .seam::before { counter-increment: seam; content: counter(seam); position: absolute;
+                    left: .95rem; top: .85rem; width: 1.5rem; height: 1.5rem; border-radius: 50%;
+                    background: var(--accent); color: #fff; font-weight: 700; font-size: .85rem;
+                    display: flex; align-items: center; justify-content: center; }
+    .seam p { margin: .2rem 0; font-size: .92rem; }
+    details { border: 1px solid var(--border); border-radius: 10px; padding: .55rem .9rem; margin: .55rem 0; }
+    details summary { cursor: pointer; font-weight: 600; font-size: .95rem; }
+    .yes { color: var(--ok); } .no { color: var(--bad); } .cond { color: var(--warn); }
+    footer { margin-top: 3.5rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+    .filelist { font-size: .85rem; }
+    .filelist code { white-space: nowrap; }
+    @media (prefers-color-scheme: dark) {
+      .panel { background: #f4f4f2; }
+      .callout { background: #c77c1122; } .callout.info { background: #3d7dd622; } .callout.risk { background: #c0392b22; }
+    }
+  </style>
+</head>
+<body>
+
+<header class="hero">
+  <h1>Spike #37396 — extract the eBPF engine into a standalone runtime telemetry provider</h1>
+  <p style="margin:.2rem 0 0; color: var(--muted);">
+    An introduction for someone who has never touched this module, plus a dissection of what the
+    issue asks — every claim cited to code, issues, or docs.
+  </p>
+  <div class="chips">
+    <span class="chip">Wazuh 5.1.0</span>
+    <span class="chip">Agent · Linux</span>
+    <span class="chip">type/research (spike)</span>
+    <span class="chip neutral">Parent: #37203 "Container runtime security" (NFR4)</span>
+    <span class="chip neutral">State: OPEN, no comments (2026-07-13)</span>
+    <span class="chip neutral"><a href="https://github.com/wazuh/wazuh/issues/37396">issue ↗</a></span>
+    <span class="chip neutral"><a href="https://github.com/wazuh/wazuh/issues/37203">parent ↗</a></span>
+  </div>
+</header>
+
+<div class="callout info" style="margin-top:1rem">
+  <strong>Start here — this is the only page you need to open.</strong> Read it top to bottom:
+  the TL;DR and Introduction give you the world, "The ask, dissected" explains the issue, and
+  the deeper material (evidence, diagrams, full tables) is linked in place where it's relevant.
+  Only three other pages are "living" and worth revisiting directly:
+  <a href="tracker.html"><strong>tracker</strong></a> (all 83 issue items and their status),
+  <a href="plan.html"><strong>plan</strong></a> (what we're doing next, in phases), and
+  <a href="questions.html"><strong>decisions</strong></a> (what we agreed and why). Every
+  subpage has a "&larr; dashboard" link back here.
+  <br/><strong>Prefer a guided path?</strong> Every page now has a <em>reading order</em> bar
+  (top and bottom) with prev/next links that walk all 20 pages in a sensible order — this
+  dashboard is 1&nbsp;/&nbsp;20; <a href="brief.html">next is the Brief &rarr;</a>
+</div>
+
+<nav class="toc">
+  <a href="#tldr">TL;DR</a>
+  <a href="#intro">Introduction</a>
+  <a href="#context">Today vs target</a>
+  <a href="#dissection">The ask, dissected</a>
+  <a href="#current">What exists in-tree</a>
+  <a href="#compat">Compatibility</a>
+  <a href="#siblings">Sibling spikes</a>
+  <a href="#requirements">Deliverables</a>
+  <a href="tracker.html"><strong>Tracker ↗</strong></a>
+  <a href="#diagrams">Diagrams</a>
+  <a href="#questions">Open questions</a>
+  <a href="#glossary">Glossary</a>
+  <a href="#codemap">Code map</a>
+  <a href="#status">Status</a>
+</nav>
+
+<section id="tldr">
+  <h2>In one paragraph (no Wazuh assumed)</h2>
+  <p>
+    Wazuh is an open-source security platform: agents on endpoints send security telemetry to a
+    central server. On Linux, the agent already uses <strong>eBPF</strong> — small verified
+    programs running inside the kernel — to watch file activity, but that machinery is welded
+    into one feature (File Integrity Monitoring's "who changed this file" mode). Wazuh is now
+    building container runtime security (parent objective
+    <a href="https://github.com/wazuh/wazuh/issues/37203">#37203</a>), where several features
+    need the same kernel event stream at once: file changes for FIM, process starts and network
+    connections for the IT&nbsp;Hygiene inventory. This spike researches two inseparable things:
+    <strong>how to carve the eBPF engine out into its own module</strong> (one owner of the BPF
+    programs and the event pipe, many subscribers, each event carrying "correlation keys" so
+    consumers can map it to a container), and <strong>what kernels and container runtimes that
+    module can honestly support</strong> — because the interface you can promise depends on the
+    kernel features you can rely on, and Wazuh supports enterprise kernels as old as RHEL 8's
+    4.18. It is a research issue: the outputs are decision records, an event contract, a
+    compatibility matrix, and a proof-of-concept — not shipped product code.
+  </p>
+</section>
+
+<section id="intro">
+  <h2>Introduction — the world this issue lives in</h2>
+
+  <h3>The platform, in three sentences</h3>
+  <p>
+    A <strong>Wazuh agent</strong> is installed on each monitored machine (server, VM, cloud
+    node) and reports to a central <strong>Wazuh server</strong>, which analyzes events, stores
+    state in an <strong>indexer</strong> (OpenSearch), and renders a <strong>dashboard</strong>.
+    On Linux the agent is a set of cooperating daemons run as systemd services on the host — a
+    "host package", not a container — which matters later for privileges
+    (<a href="https://github.com/wazuh/wazuh/issues/37396">issue</a>, Background).
+    The agent code lives in this repo; branch <code>main</code> is 5.1.0-alpha0
+    (<code>VERSION.json</code>), exactly the version this issue targets.
+  </p>
+
+  <div class="grid cols3">
+    <div class="card">
+      <h4>eBPF (the technology)</h4>
+      <p>A Linux kernel facility that runs small, statically-verified programs inside the kernel,
+      attached to events: function entries (<em>kprobes</em>), stable trace points, or security
+      hooks (<em>LSM</em>). Programs push records to user space through a shared
+      <em>ring buffer</em>. No kernel module, no reboot.</p>
+      <p class="src">ebpf.io · docs.kernel.org/bpf</p>
+    </div>
+    <div class="card">
+      <h4>FIM — File Integrity Monitoring</h4>
+      <p>The agent feature (daemon <code>wazuh-syscheckd</code>, historically "syscheck") that
+      detects file changes. Its <strong>whodata</strong> mode adds <em>who</em> made the change —
+      backed on Linux by either the Linux Audit subsystem or, since 4.8/4.9, <strong>eBPF</strong>.
+      That eBPF backend is the engine this spike extracts.</p>
+      <p class="src">src/syscheckd/ · docs: FIM advanced settings</p>
+    </div>
+    <div class="card">
+      <h4>IT Hygiene — Syscollector</h4>
+      <p>The agent's inventory feature (5.x name "IT Hygiene", module name
+      <code>syscollector</code>): packages, processes, ports, network interfaces. The parent
+      objective promotes it to a <strong>second eBPF consumer</strong> — it wants process-exec
+      and network events, which the current engine does not produce at all.</p>
+      <p class="src">src/wazuh_modules/syscollector/ · #37203 FR7</p>
+    </div>
+    <div class="card">
+      <h4>The module framework</h4>
+      <p>Most agent features run as "modules" inside the <code>wazuh-modulesd</code> daemon: a
+      linked list of <code>wm_context</code> structs (name/start/stop/query…), one thread each.
+      5.x collectors (Syscollector, SCA) are C++ engines in shared libraries behind thin C
+      wrappers. FIM is the exception — still its own daemon.</p>
+      <p class="src">wmodules_def.h:35-43 · evidence/module-framework.html</p>
+    </div>
+    <div class="card">
+      <h4>Container Instances Security Module</h4>
+      <p>A <em>planned</em> module (sibling spike #37382) that talks to Kubernetes/Docker APIs
+      and answers "this cgroup id = that container/pod/image/labels". Deliberately
+      <strong>passive</strong>: consumers query it to enrich events; it never touches the event
+      stream and must never be a dependency of the eBPF Module.</p>
+      <p class="src">#37203 Description, IR1 · evidence/siblings.html</p>
+    </div>
+    <div class="card">
+      <h4>Correlation keys</h4>
+      <p>The raw identifiers an eBPF event must carry so a consumer can later ask "which
+      container did this?": PID, <strong>cgroup id</strong>, namespace inode numbers, container
+      id where derivable. The kernel knows these at event time; container names/images it does
+      not — that mapping is the Container module's job.</p>
+      <p class="src">#37203 FR6 · issue angle 3</p>
+    </div>
+  </div>
+
+  <h3>Why this spike exists</h3>
+  <p>
+    The parent objective's architecture (its NFR4 and implementation restrictions 1–2) splits
+    responsibilities: the <strong>eBPF Module produces</strong> raw runtime events; <strong>FIM
+    and IT Hygiene consume</strong> and independently enrich them via the Container module;
+    enriched state flows to the server over the existing state-sync infrastructure. Today's
+    reality is far from that: the engine is embedded in FIM, speaks FIM's structs, filters with
+    FIM's config, produces file events only, and collects zero container-correlation data. The
+    spike designs the extraction <em>and</em> pins down the compatibility floor it can promise —
+    in one issue, because the event contract, capabilities, and degradation behavior "can only be
+    designed against a concrete compatibility floor" (issue, Background).
+  </p>
+</section>
+
+<section id="context">
+  <h2>Where the engine sits — today vs target</h2>
+  <div class="panel">
+  <pre class="mermaid">
+flowchart TB
+  subgraph TODAY["TODAY — engine inside FIM · file events only · container-blind"]
+    direction LR
+    K1["kernel<br/>4 kprobes / 3 LSM hooks"] --> RB1[("ring buffer<br/>8 MiB")]
+    RB1 --> E1["eBPF engine<br/>libfimebpf.so"]
+    E1 --> F1["FIM (wazuh-syscheckd)"]
+    F1 -. "9 callbacks + FIM config filter<br/>inside the engine" .-> E1
+    F1 --> A1["agentd → manager"]
+  end
+  subgraph TARGET["TARGET — standalone provider · file + exec + network · correlation keys"]
+    direction LR
+    K2["kernel hooks<br/>3 event classes"] --> RB2[("ring buffer")]
+    RB2 --> EM["eBPF Module<br/>fan-out, filters, backpressure"]
+    EM -->|"raw events + PID, cgroup id,<br/>ns inodes, container id?"| F2["FIM"]
+    EM --> I2["IT Hygiene"]
+    EM -.-> X2["future consumer"]
+    F2 & I2 -->|"enrich: cgroup → container/pod"| C2["Container Instances<br/>Security Module"]
+    F2 & I2 --> S2["state sync → manager"]
+  end
+  TODAY ==>|"this spike designs the extraction"| TARGET
+  </pre>
+  </div>
+  <p style="font-size:.88rem; color: var(--muted);">Full-size versions with citations:
+    <a href="diagrams/context-architecture.html">context/architecture</a> ·
+    <a href="diagrams/class-structure.html">class structure</a> ·
+    <a href="diagrams/event-sequence.html">event sequence</a> ·
+    <a href="diagrams/fallback-lifecycle.html">fallback ladder</a>.
+  </p>
+</section>
+
+<section id="dissection">
+  <h2>The ask, dissected</h2>
+
+  <p>The issue is two tightly-coupled research tracks. Everything below is a restructuring of the
+  issue body; nothing is invented.</p>
+
+  <div class="grid cols2">
+    <div class="card">
+      <h4>Track 1 — Module design</h4>
+      <p><strong>Boundary:</strong> in-process library vs dedicated threads vs separate process —
+      trade privilege isolation (BPF needs strong capabilities) against IPC cost and restart
+      independence (angle 1).</p>
+      <p><strong>Coupling audit:</strong> enumerate exactly what is FIM-specific today and must be
+      cut or generalized (angle 2). <em>→ done, see "What exists in-tree".</em></p>
+      <p><strong>Event contract (the core deliverable):</strong> schema per event — type,
+      timestamp, PID/TID, path, and the correlation keys; versioned; serialization is hand-rolled
+      flat layout, <strong>protobuf disallowed</strong> (angle 3).</p>
+      <p><strong>Subscription &amp; filtering:</strong> how consumers register interest (event
+      types, path prefixes, per-cgroup scope); what filtering can be pushed into the kernel
+      (angle 4); one program with user-space demux vs per-consumer programs.</p>
+      <p><strong>Lifecycle:</strong> load/attach on start, clean detach, re-attach on config
+      change without dropping events for other consumers; graceful degradation when
+      capabilities/kernel features are missing (angle 5).</p>
+      <p><strong>Backpressure:</strong> ring buffer sizing, drop policy, drop <em>surfacing</em>
+      (a silently dropped event is a missed security state), slow-consumer isolation (angle 6).</p>
+      <p><strong>Extensibility proof:</strong> adding a 3rd consumer must not touch the engine;
+      the same engine must serve plain hosts with empty correlation keys (angle 7).</p>
+    </div>
+    <div class="card">
+      <h4>Track 2 — Kernel / runtime compatibility</h4>
+      <p><strong>Kernel floor:</strong> which eBPF features each event class needs; single attach
+      mechanism or fallback for old kernels; explicit policy question — lowest common denominator
+      vs higher floor with documented exclusions (angle 8).</p>
+      <p><strong>Features per event class:</strong> file = LSM hooks vs kprobes + path
+      resolution; exec = <code>sched_process_exec</code> tracepoint / exec kprobes + argv;
+      network = socket kprobes/fentry + cgroup association; cross-cutting = CO-RE/BTF, ring
+      buffer vs perf-array, cgroup-id and namespace helpers (angle 9).</p>
+      <p><strong>Attach decision:</strong> LSM-only vs kprobe/tracepoint fallback — compare event
+      QUALITY (false positives, missed events) and the maintenance burden of two attach paths
+      (angle 10).</p>
+      <p><strong>Container runtimes:</strong> containerd, CRI-O, Docker — do hooks fire
+      identically, are cgroup/namespace semantics consistent (angle 11)? cgroup v2 unified vs
+      hybrid v1; systemd vs cgroupfs driver (angle 12).</p>
+      <p><strong>Host privileges:</strong> capabilities for a systemd service (CAP_BPF,
+      CAP_PERFMON, CAP_SYS_ADMIN, CAP_DAC_READ_SEARCH), SELinux/AppArmor policy deltas the
+      package must ship or document (angle 13).</p>
+      <p><strong>Performance budget:</strong> events/sec on a busy node across all three classes,
+      absorbable per-event cost, kernel-side vs user-space filtering (angle 14).</p>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <strong>Explicitly out of scope:</strong> the container→pod/metadata resolution algorithm and
+    file-path resolution — those belong to sibling spikes #37382 (Container module) and #37533
+    (FIM integration). The engine only ships raw keys.
+  </div>
+
+  <h3>Hard constraints (issue, Constraints)</h3>
+  <ul class="checklist">
+    <li>No external dependencies, feature-wide: C/C++ on the stack Wazuh already ships; BPF
+        loading via what is already vendored (libbpf — confirmed in-tree via
+        <code>libbpf-bootstrap</code>); no new runtime SDKs.</li>
+    <li>Consumer-agnostic: FIM/IT Hygiene must need nothing eBPF-specific beyond subscribing;
+        a third consumer must never require touching the engine.</li>
+    <li>Events carry enough raw identity that consumers can correlate to containers
+        <em>without</em> the eBPF Module ever depending on the Container module.</li>
+    <li>Serialization: hand-rolled/flat layout; protobuf explicitly disallowed (angle 3).</li>
+  </ul>
+</section>
+
+<section id="current">
+  <h2>What exists in-tree today (audited, verified)</h2>
+
+  <p>
+    Everything eBPF lives in <strong>one directory</strong> —
+    <code>src/syscheckd/src/ebpf/</code> — building one shared library
+    (<code>libfimebpf.so</code>) used by exactly one consumer: FIM's whodata mode. Physically
+    easy to lift; logically fused to FIM at three seams:
+  </p>
+
+  <div class="seams">
+    <div class="seam">
+      <p><strong>The engine filters with FIM's config.</strong> The ring-buffer callback looks the
+      path up in FIM's directory table and drops the event unless that directory has
+      <code>WHODATA_ACTIVE</code> — FIM's monitoring semantics are hardcoded inside the engine.</p>
+      <p><code>ebpf_whodata.cpp:117-119</code> (hand-verified)</p>
+    </div>
+    <div class="seam">
+      <p><strong>The engine emits FIM's struct.</strong> Events leave as
+      <code>whodata_evt</code> — FIM's own type (<code>syscheck-config.h:228-252</code>) — built
+      field-by-field in the engine and pushed through a FIM callback.</p>
+      <p><code>ebpf_whodata.cpp:670-691</code></p>
+    </div>
+    <div class="seam">
+      <p><strong>The engine runs on 9 FIM callbacks.</strong> Config lookup, user/group
+      resolution, event delivery + free, logging, path absolutization, shutdown flag, queue size —
+      all injected from FIM at init.</p>
+      <p><code>fimebpf_initialize()</code> — <code>syscheck.c:823-833</code> →
+      <code>ebpf_whodata.cpp:701-709</code></p>
+    </div>
+  </div>
+
+  <h3>Already in-tree vs net-new</h3>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Capability the target needs</th><th>Today</th><th>Evidence</th></tr></thead>
+    <tbody>
+      <tr><td>File-activity BPF programs (open/attr/unlink/rename)</td>
+          <td class="yes">EXISTS — 4 kprobes + 3 LSM hooks (dpath/walk variants)</td>
+          <td><code>modern.bpf.c:370-949</code> (SEC list verified)</td></tr>
+      <tr><td>LSM vs kprobe runtime selection + fallback</td>
+          <td class="yes">EXISTS — checks <code>/sys/kernel/security/lsm</code>; dpath→walk retry</td>
+          <td><code>ebpf_whodata.cpp:64-81, 482-525, 552-580</code></td></tr>
+      <tr><td>Ring buffer delivery + bounded user-space queue</td>
+          <td class="yes">EXISTS — 8 MiB RINGBUF; <code>BoundedQueue</code> (drops when full)</td>
+          <td><code>modern.bpf.c:64-67</code>; <code>bounded_queue.hpp</code></td></tr>
+      <tr><td>CO-RE portability (one binary, many kernels)</td>
+          <td class="yes">EXISTS — vmlinux.h, BPF_CORE_READ, kconfig kernel-version checks</td>
+          <td><code>modern.bpf.c:11,98,108-116</code></td></tr>
+      <tr><td>Vendored loader toolchain</td>
+          <td class="yes">EXISTS — libbpf-bootstrap (libbpf + bpftool), Linux-agent-only; .bpf.o ships prebuilt</td>
+          <td><code>external_sources.sh:106</code>; <code>src/external/CMakeLists.txt:1035-1048</code>; <code>build_external.sh:541-556</code></td></tr>
+      <tr><td>Startup healthcheck + graceful degradation</td>
+          <td class="cond">PARTIAL — full event round-trip probe; but degradation = switch FIM to <em>audit</em>, an escape hatch that only exists for file events</td>
+          <td><code>ebpf_whodata.cpp:715-798</code>; <code>syscheck.c:827-831</code></td></tr>
+      <tr><td>Process-exec event programs</td><td class="no">MISSING — no tracepoints at all in the wired program</td>
+          <td>grep of <code>modern.bpf.c</code>: no <code>tracepoint/</code>, no exec hooks</td></tr>
+      <tr><td>Network event programs</td><td class="no">MISSING</td>
+          <td>no socket/connect/accept hooks in <code>modern.bpf.c</code></td></tr>
+      <tr><td>Correlation keys (cgroup id, namespace inodes)</td>
+          <td class="no">MISSING — <code>bpf_get_current_cgroup_id</code> unused; zero cgroup references in the engine; <code>file_event</code> carries pid/uid/inode/paths only</td>
+          <td><code>modern.bpf.c:38-50</code>; grep verified</td></tr>
+      <tr><td>Multi-consumer subscription / fan-out / per-consumer filters</td>
+          <td class="no">MISSING — single hardcoded consumer, filter = FIM config</td>
+          <td><code>ebpf_whodata.cpp:117-119</code></td></tr>
+      <tr><td>Neutral, versioned event contract</td>
+          <td class="no">MISSING — output type is FIM's <code>whodata_evt</code>; kernel/user structs duplicated by hand</td>
+          <td><code>modern.bpf.c:38-50</code> vs <code>bpf_helpers.h:28-41</code></td></tr>
+      <tr><td>Sub-5.8-kernel path (perf-event-array)</td>
+          <td class="no">MISSING — hard floor: kernel ≥ 5.8 enforced, else audit fallback</td>
+          <td><code>ebpf_whodata.cpp:360</code>; docs (4.14): "requires kernel version 5.8 or higher"</td></tr>
+      <tr><td>Drop <em>surfacing</em> to consumers/telemetry</td>
+          <td class="cond">PARTIAL — queue-full logs once locally; nothing reaches consumers or the manager as a signal (sibling #37532 wants this as a re-baseline trigger)</td>
+          <td><code>ebpf_whodata.cpp:136-140</code>; evidence/siblings.html</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="callout">
+    <strong>Housekeeping found by the audit</strong> (cleanup candidates for the extraction):
+    dead <code>modern-arm.bpf.c</code> (zero references anywhere); stale
+    <code>wrapper_bpf.h</code> skeleton naming tracepoint programs that don't exist; the
+    hand-duplicated <code>file_event</code> struct (kernel + userspace copies must stay in
+    lockstep). Full audit: <code>evidence/ebpf-engine-audit.html</code>.
+  </div>
+
+  <h3>And where would a new module plug in?</h3>
+  <p>
+    The 5.x pattern for big collectors is: C++ engine as a shared library
+    (<code>src/wazuh_modules/&lt;name&gt;/</code>) + thin C wrapper
+    (<code>wm_&lt;name&gt;.c</code>) exposing a <code>wm_context</code>, hosted one-thread-each
+    by <code>wazuh-modulesd</code>. But note: <strong>FIM is not hosted there</strong> — it is
+    its own daemon that modulesd only queries over a socket, and today's engine lives inside
+    that daemon. So "make it a module" has at least three structurally-precedented shapes
+    (wmodule in modulesd / library linked into consumers / separate daemon), which is exactly
+    the issue's angle 1 question. Registration recipe with file:line:
+    <code>evidence/module-framework.html</code> §7. Also relevant: the repo has
+    <strong>no ADR convention yet</strong> — design docs live in the mdBook at
+    <code>docs/ref/modules/&lt;module&gt;/architecture.md</code>; the spike's "ADRs committed in
+    the repo" will establish the convention (§8).
+  </p>
+</section>
+
+<section id="compat">
+  <h2>Compatibility — the landscape the design must survive</h2>
+
+  <p>
+    The real internal <strong>Tier 1/2/3 agent OS matrix</strong> was provided by the team
+    (2026-07-13, <code>evidence/tier-matrix.html</code>) — it supersedes the issue's example
+    distro list and reaches meaningfully lower (RHEL/CentOS 7, Amazon Linux 2, Debian 10) and
+    higher (RHEL 10, Debian 13, Fedora 44, Ubuntu 26.04). Crossing it with the desk-verified
+    feature floors (BCC kernel table + man pages, <code>evidence/kernel-features.html</code>)
+    splits the Linux fleet into <strong>three bands</strong>. Kernel numbers are verified per
+    distro docs; feature availability is still <em>derivation, not probe results</em> — RHEL
+    backports features into old version numbers and distro kernel configs vary, which is why the
+    issue demands an empirical matrix (starting point 7).
+  </p>
+
+  <details>
+    <summary>Crash course — the eight terms the table below uses (plain English)</summary>
+    <p style="font-size:.92rem;">Each term answers one of five questions about running eBPF on a
+    given machine:</p>
+    <div class="tablewrap"><table>
+      <tbody>
+        <tr><td rowspan="3"><strong>Where can a program attach?</strong></td>
+            <td><strong>kprobe</strong></td><td>breakpoint on almost any internal kernel function; works on ancient kernels, but kernel internals aren't a stable API — needs maintenance</td></tr>
+        <tr><td><strong>tracepoint</strong></td><td>official, maintained instrumentation points (e.g. "a process just executed"); stable, ancient</td></tr>
+        <tr><td><strong>LSM hooks</strong></td><td>the kernel's security checkpoints (where SELinux/AppArmor plug in) — the semantically correct spot for security events; BPF can attach only on kernel ≥5.7 AND if the machine opted in at boot (<code>bpf</code> in <code>lsm=</code>)</td></tr>
+        <tr><td><strong>How does data get out?</strong></td>
+            <td><strong>ring buffer</strong></td><td>the modern kernel→userspace event queue (ordered, signals when full); exists only since kernel 5.8 — this is today's hard floor</td></tr>
+        <tr><td rowspan="2"><strong>What can the program read?</strong></td>
+            <td><strong>bpf_d_path</strong></td><td>helper that turns an open file into its full path (<code>/etc/passwd</code>); ≥5.10, callable from LSM-type hooks only — without it the code walks the directory tree by hand</td></tr>
+        <tr><td><strong>cgroup-id helper</strong></td><td>returns the ID of the process's control group — THE "which container did this" correlation key; since 4.18 (AL2's 4.14 kernel lacks it)</td></tr>
+        <tr><td><strong>What privileges are needed?</strong></td>
+            <td><strong>CAP_BPF / CAP_PERFMON</strong></td><td>narrow root-powers ("capabilities") covering just BPF, since 5.8; older kernels force CAP_SYS_ADMIN — "basically root". Nuance: the hosting daemons (modulesd, syscheckd) already run as root (only agentd drops to the wazuh user — verified in each main.c), so this row is about hardening/confinement options and SELinux/AppArmor policy (which can deny bpf() even to root — see the installer's chcon), not about making it work</td></tr>
+        <tr><td><strong>Does one binary run everywhere?</strong></td>
+            <td><strong>BTF / CO-RE</strong></td><td>BTF = metadata a kernel publishes about its own structs; CO-RE = our pre-compiled program adapts itself to the running kernel by reading its BTF at load time. Kernels built without BTF (Debian 10, Ubuntu 20.04-GA, AL2-4.14) can't run our one-binary build — we'd have to ship metadata or per-kernel builds</td></tr>
+      </tbody>
+    </table></div>
+    <p style="font-size:.85rem; color: var(--muted);">Full definitions with sources:
+    <a href="glossary.html">glossary</a>. "in-tree" throughout this pack = in the wazuh/wazuh
+    codebase as it exists today.</p>
+  </details>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th style="width:11rem">Band</th><th>Who (tier · kernel)</th><th>What works</th><th>Consequence for the module</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="status-bad">Band 0<br/>eBPF impossible</td>
+        <td>RHEL 7, CentOS 7, Oracle 7-RHCK (Tier 2 · 3.10) — plus all Tier 3 legacy (being
+            removed per #31714)</td>
+        <td>Nothing — even kprobe BPF programs need kernel 4.1</td>
+        <td>Must be explicitly excluded in the kernel-floor ADR. FIM survives on audit whodata;
+            exec/network eBPF telemetry can never exist here.</td>
+      </tr>
+      <tr>
+        <td class="status-warn">Band 1<br/>legacy eBPF only</td>
+        <td>Amazon Linux 2 @ 4.14 (Tier 2; 5.10 is the default AMI kernel since 2026-01, extras
+            5.4/5.15; upstream EOL 2026-06-30) · RHEL/Stream/Alma/Rocky/Oracle 8 (4.18) ·
+            Debian 10 (4.19) · Ubuntu 20.04 GA (5.4; HWE = 5.15 → Band 2)</td>
+        <td>kprobes ✔, tracepoints ✔, cgroup-id helper only ≥4.18 (AL2 @ 4.14 lacks the primary
+            correlation key). No ring buffer, no LSM hooks, no bpf_d_path, no CAP_BPF (needs full
+            CAP_SYS_ADMIN). BTF patchy: RHEL 8 backports it; Debian 10 / U20.04-GA / AL2-4.14
+            generally ship without → CO-RE breaks unless given external BTF or a non-CO-RE build</td>
+        <td>The true cost center: supporting it means a perf-event-array delivery path +
+            kprobe-only programs + a BTF strategy + broad privileges — none of which exist
+            in-tree today.</td>
+      </tr>
+      <tr>
+        <td class="status-ok">Band 2<br/>full modern eBPF</td>
+        <td><strong>ALL of Tier 1 Linux</strong>: Amazon Linux 2023 (6.1/6.12), Ubuntu 26.04
+            (Linux 7.0) — plus Tier 2: RHEL/Stream 9-10 + clones (5.14/6.12), Debian 11-13
+            (5.10/6.1/6.12), Ubuntu 22.04/24.04 (5.15/6.8) + 20.04-HWE, AL2 @ 5.10/5.15,
+            Fedora 42-44 (≥6.14), Leap/SLES current SPs (5.14/6.4) and 16 (6.12)</td>
+        <td>Ring buffer ✔, LSM hooks ✔ (version-wise — still needs <code>bpf</code> in the
+            boot-time <code>lsm=</code> list + <code>CONFIG_BPF_LSM</code>; the engine already
+            probes this at runtime, <code>ebpf_whodata.cpp:64-81</code>), bpf_d_path ✔,
+            CAP_BPF/CAP_PERFMON ✔, BTF ✔</td>
+        <td>Today's engine design (ringbuf + LSM-with-kprobe-fallback + CO-RE) already fits this
+            entire band; remaining risk is per-distro kernel config, i.e. probe work.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="font-size:.85rem; color: var(--muted);">
+    Windows/macOS tier rows are unaffected — the module is Linux-only by construction (build-gated,
+    <code>src/external/CMakeLists.txt:1035</code>). Note <code>bpf_d_path</code> is only callable
+    from LSM/tracing hooks, never kprobes — clean path resolution is coupled to the modern attach
+    path. Open verification item: how today's prebuilt <code>modern.bpf.o</code> is produced for
+    <strong>aarch64</strong> (present across nearly all tier rows; the in-tree
+    <code>modern-arm.bpf.c</code> is dead code and kprobe argument access is arch-specific).
+    Sources: <code>evidence/tier-matrix.html</code>, <code>evidence/kernel-features.html</code>.
+  </p>
+
+  <div class="callout info">
+    <strong>How can ONE module work across such different kernels?</strong> Four mechanisms,
+    all already proven in-tree at small scale: <strong>(1) probe, don't assume</strong> — a
+    startup healthcheck loads programs and round-trips a real event; on failure the module
+    declares itself unavailable instead of limping (<code>ebpf_whodata.cpp:715-798</code> →
+    <code>syscheck.c:827-831</code>); <strong>(2) CO-RE</strong> — one compiled BPF object
+    relocates itself against the running kernel's type info at load time, which is how today's
+    single <code>modern.bpf.o</code> spans 5.8→6.x unmodified; <strong>(3) graded program
+    sets</strong> — the same event can be acquired via LSM+<code>bpf_d_path</code>, LSM+path-walk,
+    or plain kprobes, selected at startup per box (<code>ebpf_whodata.cpp:482-525</code>);
+    consumers always see the same event, never the hook; <strong>(4) a floor</strong> — below
+    ≥5.8 the module refuses cleanly and those boxes keep today's behavior (audit whodata for
+    FIM), as a documented product exclusion. Like SIMD dispatch in a library: one binary,
+    runtime feature probe, best path chosen, one API, documented minimum.
+  </div>
+
+  <div class="callout risk">
+    <strong>The central tension, sharpened by the tier table:</strong> today's engine floor is
+    kernel ≥ 5.8 (ring buffer, enforced at <code>ebpf_whodata.cpp:360</code>) with Linux Audit
+    as the fallback — <em>but audit only replaces file events</em>; there is no audit-equivalent
+    for process-exec or network. A modern-first floor (≥5.8/5.10) covers <strong>100% of Tier 1
+    Linux and most of Tier 2</strong>; paying the Band 1 tax (perf-event-array + kprobe-only +
+    BTF strategy + CAP_SYS_ADMIN) buys essentially the RHEL 8 clone family plus aging editions
+    (AL2 past upstream EOL with a 5.10 default anyway; Ubuntu 20.04 has HWE 5.15); and Band 0
+    (RHEL/CentOS 7) is unreachable no matter what. That is the kernel-floor decision (Q2) the
+    spike must get product sign-off on — per event class, argued in tier+band terms.
+  </div>
+
+  <p>
+    Published docs today (4.14 — no 5.x docs exist) confirm the current world: eBPF is documented
+    only for FIM whodata, "requires kernel version 5.8 or higher", falls back to audit, three file
+    hooks. Details + verbatim quotes: <code>evidence/docs-whodata.html</code>.
+  </p>
+</section>
+
+<section id="siblings">
+  <h2>The sibling constellation — who depends on this spike</h2>
+  <p>Parent #37203 has exactly five sub-issues (verified via the sub-issues API). Internal
+  shorthand: #37203-1 = 37382, #37203-2 = <strong>37396 (this)</strong>, #37203-3 = 37533,
+  #37203-4 = 37534; #37532 is a fifth, cross-cutting one.</p>
+
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Issue</th><th>Spike</th><th>What it demands FROM #37396</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="https://github.com/wazuh/wazuh/issues/37382">#37382</a></td>
+        <td>Container Instances Security Module — connection/auth, correlation &amp; metadata resolution</td>
+        <td>Joint decision on the <strong>primary correlation key</strong> ("which key does the
+        eBPF Module actually emit reliably — coordinate with #37203-2"); it catalogs the edge
+        cases (hostPID/hostNetwork pods, <code>--cgroupns=host</code>, Kata, pause sandbox) that
+        constrain the choice. Acceptance on both sides requires cross-referenced alignment.</td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/wazuh/wazuh/issues/37533">#37533</a></td>
+        <td>FIM integration — consuming eBPF events + enrichment as synchronized state</td>
+        <td><strong>Contract reviewer #1</strong> (our acceptance criterion). Sharpest question
+        aimed at us: does the file path in an event come out as the <em>in-container</em> path or
+        the <em>host overlay</em> path (bpf_d_path semantics)? FIM needs both forms.</td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/wazuh/wazuh/issues/37534">#37534</a></td>
+        <td>IT Hygiene (Syscollector) integration — container-aware inventory</td>
+        <td><strong>Contract reviewer #2</strong>; the reason the contract must cover
+        <strong>process-exec and network</strong> classes, not just file. Its coverage matrix
+        (which inventory dimensions are eBPF-driven in v1) feeds back into which hooks we must
+        support.</td>
+      </tr>
+      <tr>
+        <td><a href="https://github.com/wazuh/wazuh/issues/37532">#37532</a></td>
+        <td>Baseline acquisition — initial state that eBPF then diffs</td>
+        <td>Consumes our <strong>overflow/drop signal</strong> as a re-baseline trigger (drops
+        must be surfaced, not just logged); asks whether the module offers
+        <strong>"enumerate a cgroup's existing tasks on attach"</strong> or user-space must
+        /proc-walk; floats replay-from-container-create as a scan substitute.</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p style="font-size:.88rem; color: var(--muted);">Gists of each sibling: <code>evidence/siblings.html</code>.</p>
+</section>
+
+<section id="requirements">
+  <h2>Deliverables &amp; acceptance (the spike's definition of done)</h2>
+  <div class="grid cols2">
+    <div class="card">
+      <h4>Deliverables — module design</h4>
+      <ul class="checklist">
+        <li>Module architecture decision record (boundary, threading, capability confinement,
+            framework mapping) with rationale</li>
+        <li class="partial">Coupling extraction map — current touch-points → target boundary
+            <em>(seams + inventory done; refactor list pending)</em></li>
+        <li>Event contract spec: schema + correlation keys for file/exec/network, versioning,
+            flat serialization, subscription/filter API</li>
+        <li>Backpressure &amp; degradation policy (sizing, drop policy, drop surfacing,
+            slow-consumer isolation, missing-feature behavior)</li>
+        <li>Extensibility proof: 3rd-consumer sketch + host/no-container path</li>
+        <li>Prototype: multi-consumer fan-out demonstrating decoupling</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Deliverables — compatibility</h4>
+      <ul class="checklist">
+        <li class="partial">Compatibility matrix (distro × runtime × cgroup mode × feature
+            columns) <em>(desk-derived floors done; empirical probes pending)</em></li>
+        <li>Min-kernel decision record per event class, with product sign-off</li>
+        <li>Host-capability requirements + SELinux/AppArmor policy delta for packaging</li>
+        <li>Performance numbers: events/sec ×3 classes, p99 BPF runtime
+            (<code>kernel.bpf_stats_enabled</code>), drop rate at saturation</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <h4>Acceptance criteria</h4>
+    <ul class="checklist">
+      <li>Event contract accepted by BOTH #37533 (FIM) and #37534 (IT Hygiene) owners, covering
+          file + exec + network</li>
+      <li>Architecture + min-kernel decisions committed as ADRs in the repo (note: repo has no
+          ADR convention yet — we'd establish it)</li>
+      <li>Compatibility matrix signed off by platform/QA; kernel floor per event class feeds
+          #37203 restriction 4</li>
+      <li>Coupling extraction map cross-referenced by implementation tickets</li>
+      <li>Prototype: two independent consumers, distinct filters, one stream, correlation keys
+          delivered, no mutual stalling — on ≥1 LSM-capable AND ≥1 fallback kernel</li>
+      <li>Correlation-key set aligned with #37382 findings</li>
+    </ul>
+  </div>
+
+  <div class="callout info">
+    <strong>Item-by-item accounting:</strong> every bullet in the issue — scopes, constraints,
+    all 14 angles (sub-bullets split out), all 11 starting points, every deliverable and
+    acceptance criterion — is tracked as one of <strong>83 items</strong> with status and
+    evidence pointers in <a href="tracker.html"><strong>the tracker</strong></a>
+    (<code>tracker.html</code> is the source of truth; rollup after the 2026-07-14 grill sweep:
+    4 done · 20 partial · 49 open · 0 decision-blocked · 5 guards · 5 context). Nothing gets
+    planned or closed without its row moving; execution phases live in <code>plan.html</code>.
+  </div>
+</section>
+
+<section id="diagrams">
+  <h2>Diagrams</h2>
+  <div class="grid cols2">
+    <div class="card"><h4><a href="diagrams/context-architecture.html">Context / architecture</a></h4>
+      <p>Today's engine-inside-FIM vs the target provider topology, with the sibling modules and
+      the socket path to the manager.</p></div>
+    <div class="card"><h4><a href="diagrams/class-structure.html">Class structure &amp; data contracts</a></h4>
+      <p>The <code>fimebpf</code> singleton (9 callbacks), the three event shapes
+      (<code>file_event</code> → <code>dynamic_file_event</code> → <code>whodata_evt</code>), the
+      bounded queue, the libbpf dispatch table.</p></div>
+    <div class="card"><h4><a href="diagrams/event-sequence.html">Runtime event sequence</a></h4>
+      <p>Startup (init, healthcheck, program selection) + steady state (poll → filter → queue →
+      drain → FIM callback), with the audit-fallback branch.</p></div>
+    <div class="card"><h4><a href="diagrams/fallback-lifecycle.html">Fallback ladder</a></h4>
+      <p>The full decision tree: provider config → platform gates → healthcheck → LSM detection →
+      dpath/walk retry → run — and why its bottom rung (audit) doesn't generalize to exec/network.</p></div>
+  </div>
+</section>
+
+<section id="questions">
+  <h2>Decisions &amp; open questions</h2>
+  <p><strong class="status-ok">Decided (grill session 2026-07-13/14 — full rationale in
+  <code>questions.html</code>, execution in <code>plan.html</code>):</strong></p>
+  <ul class="checklist">
+    <li class="done"><strong>D1 — Scope: design-first + mini-lab.</strong> Phase 1 = contract +
+        ADRs + extraction map (desk); phase 2 = targeted 3-kernel mini-lab + prototype; full
+        matrix/perf deferred to a follow-up phase.</li>
+    <li class="done"><strong>D2 — Kernel floor: argue ≥5.8, one delivery stack.</strong> Band 1
+        keeps today's audit behavior; Band 0/Tier 3 excluded. <em>Caveat: every sub-5.8 bullet
+        still gets characterized with evidence (Band 1 probe box, rejected-LCD analysis in the
+        ADR) — answered, not built.</em></li>
+    <li class="partial"><strong>D3 — Boundary: ⚠ REOPENED (2026-07-15), no decision
+        stands.</strong> A teammate proposed the engine be a <em>component</em> (shared library,
+        per-consumer BPF instances) instead of a living module — kernel-level check confirms
+        instances don't conflict (and a ring buffer's single consumer cursor means per-consumer
+        buffers vs one-owner-fan-out are the only two shapes). The architecture ADR is now a
+        full pros/cons evaluation of component vs modulesd-module vs dedicated daemon (open
+        item O5); fulcrum = whether future consumers will share an event class.</li>
+    <li class="done"><strong>D4 — Prototype: in-tree, on a local wazuh branch</strong>
+        (revised 2026-07-15: "we usually prototype directly on wazuh"). Self-contained dir +
+        own build target reusing the vendored libbpf toolchain; speaks the draft contract core;
+        NOT wired into any daemon or packaging — and it can demonstrate both boundary shapes to
+        feed the O5 evaluation.</li>
+    <li class="done"><strong>D5 — ADRs drafted in the evidence pack;</strong> committed repo
+        location decided with the team at PR time.</li>
+    <li class="done"><strong>D6 — Mini-lab: x86 laptop primary</strong> (Alma 9 LSM-mode,
+        Ubuntu 24.04 kprobe-mode, Alma 8 Band 1; real VMs, not WSL2/Docker) <strong>+ one Mac
+        aarch64 Lima VM</strong> to close the modern-arm.bpf.o question.</li>
+    <li class="done"><strong>D7 — Publication: fully local;</strong> jr0me posts and coordinates
+        with sibling owners himself; we produce paste-ready drafts only.</li>
+  </ul>
+  <p><strong class="status-bad">Still open (external gates + design-emergent):</strong></p>
+  <ul class="checklist">
+    <li><strong>O1</strong> — product sign-off on the ≥5.8 floor (via the min-kernel ADR draft).</li>
+    <li><strong>O2</strong> — ADR committed location (team, at PR time; gates AC-2).</li>
+    <li><strong>O3</strong> — x86 laptop OS/tooling (pin at phase-2 start; doesn't block phase 1).</li>
+    <li><strong>O4</strong> — primary correlation key choice (drafted with a recommendation,
+        settled jointly with #37382).</li>
+    <li><strong>O5</strong> — module boundary (D3 reopened): component/shared-library vs
+        modulesd-hosted module vs dedicated daemon — full evaluation in the architecture ADR;
+        fulcrum = the class-overlap question, put to #37533/#37534 and the issue owner.</li>
+  </ul>
+</section>
+
+<section id="glossary">
+  <h2>Glossary (full version: <code>glossary.html</code>)</h2>
+  <details open>
+    <summary>Wazuh domain</summary>
+    <div class="tablewrap"><table>
+      <tbody>
+        <tr><td><strong>agent / manager</strong></td><td>endpoint collector daemons / central analysis server</td></tr>
+        <tr><td><strong>FIM · syscheck</strong></td><td>File Integrity Monitoring; daemon <code>wazuh-syscheckd</code></td></tr>
+        <tr><td><strong>whodata</strong></td><td>FIM mode recording WHO changed a file (audit- or eBPF-backed)</td></tr>
+        <tr><td><strong>IT Hygiene · Syscollector</strong></td><td>system inventory module (packages, processes, ports, netifaces)</td></tr>
+        <tr><td><strong>wmodules · modulesd</strong></td><td>the agent's module framework: <code>wm_context</code> structs, one thread each, hosted by <code>wazuh-modulesd</code></td></tr>
+        <tr><td><strong>dbsync / agent_sync_protocol</strong></td><td>shared libs: SQLite state diffing / reliable state sync to the manager</td></tr>
+        <tr><td><strong>Container Instances Security Module</strong></td><td>planned passive enricher: cgroup/PID → container/pod metadata (#37382)</td></tr>
+        <tr><td><strong>correlation keys</strong></td><td>raw identifiers on each event: PID, cgroup id, namespace inodes, container id when derivable</td></tr>
+        <tr><td><strong>ADR</strong></td><td>Architecture Decision Record — short committed doc: decision + rationale</td></tr>
+        <tr><td><strong>in-tree</strong></td><td>in the wazuh/wazuh codebase as it exists today (vs vendored/external or not-yet-written code)</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+  <details>
+    <summary>Kernel / eBPF</summary>
+    <div class="tablewrap"><table>
+      <tbody>
+        <tr><td><strong>eBPF · verifier</strong></td><td>sandboxed programs run inside the kernel after static safety verification</td></tr>
+        <tr><td><strong>kprobe / tracepoint / LSM hook</strong></td><td>attach points: any kernel function (unstable ABI, 4.1) / maintained static points (4.7) / security hooks with correct semantics (BPF-attachable since 5.7, needs boot-time enablement)</td></tr>
+        <tr><td><strong>libbpf · CO-RE · BTF · vmlinux.h · skeleton</strong></td><td>the loader library; "compile once run everywhere" relocation against the running kernel's type info (BTF); generated headers embedding types/objects</td></tr>
+        <tr><td><strong>ring buffer</strong></td><td><code>BPF_MAP_TYPE_RINGBUF</code> (5.8): ordered kernel→user event queue; predecessor perf-event-array works pre-5.8</td></tr>
+        <tr><td><strong>bpf_d_path</strong></td><td>helper resolving a full pathname (5.10) — LSM/tracing hooks only, never kprobes</td></tr>
+        <tr><td><strong>bpf_get_current_cgroup_id</strong></td><td>helper returning the task's cgroup-v2 id (4.18) — the main container key</td></tr>
+        <tr><td><strong>CAP_BPF / CAP_PERFMON</strong></td><td>capabilities (5.8) splitting BPF rights out of CAP_SYS_ADMIN; pre-5.8 needs full CAP_SYS_ADMIN</td></tr>
+        <tr><td><strong>cgroup v1/v2 · namespaces</strong></td><td>resource hierarchies and isolation primitives that define containers; their ids/inodes are the correlation keys</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+  <details>
+    <summary>Containers / peers</summary>
+    <div class="tablewrap"><table>
+      <tbody>
+        <tr><td><strong>containerd / CRI-O / Docker</strong></td><td>the three runtimes the module must behave identically across</td></tr>
+        <tr><td><strong>cgroup driver (systemd/cgroupfs)</strong></td><td>how kubelet/Docker lay out cgroups — affects path layout, possibly id semantics (to verify)</td></tr>
+        <tr><td><strong>overlayfs</strong></td><td>container image filesystem — why host paths ≠ in-container paths (path resolution is out of scope, owned by #37533)</td></tr>
+        <tr><td><strong>Tetragon / Falco / Inspektor Gadget / Hubble</strong></td><td>peer eBPF security tools to mine for interface patterns only (issue, starting point 2) — not yet surveyed</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+</section>
+
+<section id="codemap">
+  <h2>Code map (key entries — full table: <code>code-map.html</code>)</h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>What</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td>Engine home (everything eBPF)</td><td><code>src/syscheckd/src/ebpf/</code></td></tr>
+      <tr><td>BPF programs (kprobes :370-587, LSM :723-949, ringbuf :64-67, event struct :38-50)</td><td><code>src/syscheckd/src/ebpf/src/modern.bpf.c</code></td></tr>
+      <tr><td>Loader / fan-in / FIM conversion (filter :117-119, convert :670-691, callbacks :701-709, min-kernel :360)</td><td><code>src/syscheckd/src/ebpf/src/ebpf_whodata.cpp</code></td></tr>
+      <tr><td>FIM init + audit fallback</td><td><code>src/syscheckd/src/syscheck.c:823-833</code></td></tr>
+      <tr><td>Engine thread launch</td><td><code>src/syscheckd/src/run_check.c:685-692</code></td></tr>
+      <tr><td>Provider config (<code>whodata provider</code>, default audit)</td><td><code>src/config/src/syscheck-config.c:93, 2070-2080</code></td></tr>
+      <tr><td>Module framework interface</td><td><code>src/wazuh_modules/include/wmodules_def.h:35-43</code></td></tr>
+      <tr><td>Thread-per-module host</td><td><code>src/wazuh_modules/src/main.c:133-141</code></td></tr>
+      <tr><td>C++ module bridge example (Syscollector)</td><td><code>src/wazuh_modules/src/wm_syscollector.c:67, 474-486</code></td></tr>
+      <tr><td>libbpf-bootstrap vendoring / prebuilt .bpf.o</td><td><code>packages/externals/external_sources.sh:106</code> · <code>src/external/CMakeLists.txt:1035-1048</code></td></tr>
+      <tr><td>Packaging install of the 3 eBPF artifacts</td><td><code>src/init/inst-functions.sh:632-656</code></td></tr>
+      <tr><td>Design-doc home (no ADRs yet)</td><td><code>docs/ref/modules/&lt;module&gt;/architecture.md</code></td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="status">
+  <h2>Investigation status — honest coverage</h2>
+  <ul class="checklist">
+    <li class="done">Issue + parent + all five siblings read and mapped (evidence/parent-37203.html, evidence/siblings.html)</li>
+    <li class="done">Current engine fully audited with verified citations; coupling seams identified (evidence/ebpf-engine-audit.html)</li>
+    <li class="done">Module framework mapped incl. new-module recipe and ADR-location fact (evidence/module-framework.html)</li>
+    <li class="done">Public docs surveyed; 4.14-vs-5.1.0 lag flagged (evidence/docs-whodata.html)</li>
+    <li class="done">Kernel feature floors desk-verified against BCC table + man pages (evidence/kernel-features.html)</li>
+    <li class="done">Real Tier 1/2/3 OS matrix received from the team, kernels verified, banded against feature floors (evidence/tier-matrix.html)</li>
+    <li class="partial">Compatibility matrix: bands derived — NO empirical probes run yet (RHEL backports, distro kernel configs CONFIG_BPF_LSM/BTF, boot-time lsm= defaults, GA-vs-HWE kernels, aarch64 modern.bpf.o build path)</li>
+    <li>Peer-pattern survey (Tetragon/Falco/Inspektor Gadget/Hubble): not started</li>
+    <li>Container-runtime semantics (containerd/CRI-O/Docker cgroup-id consistency): not started</li>
+    <li>Capabilities / SELinux / AppArmor validation: not started</li>
+    <li>Performance baseline: not started</li>
+    <li>Prototype: not started</li>
+    <li>Nothing posted to GitHub; no branch created — investigation is entirely local so far</li>
+    <li class="done">Grill session complete (2026-07-14): decisions D1-D7 recorded; execution
+        plan agreed in <code>plan.html</code> (phase 1 design → phase 2 mini-lab → phase 3
+        external gates); awaiting shared-understanding confirmation to start phase 1</li>
+  </ul>
+</section>
+
+<section id="docs">
+  <h2>All documents (this pack is HTML-only)</h2>
+  <div class="grid cols3">
+    <div class="card"><h4>Core</h4><p class="filelist">
+      <a href="brief.html">brief</a> · <a href="requirements.html">requirements</a> ·
+      <a href="tracker.html">tracker</a> · <a href="plan.html">plan</a> ·
+      <a href="questions.html">decisions &amp; open questions</a> ·
+      <a href="glossary.html">glossary</a> · <a href="code-map.html">code map</a> ·
+      <a href="notes.html">investigation log</a></p></div>
+    <div class="card"><h4>Evidence</h4><p class="filelist">
+      <a href="evidence/parent-37203.html">parent #37203</a> ·
+      <a href="evidence/siblings.html">sibling spikes</a> ·
+      <a href="evidence/ebpf-engine-audit.html">engine audit</a> ·
+      <a href="evidence/module-framework.html">module framework</a> ·
+      <a href="evidence/kernel-features.html">kernel features</a> ·
+      <a href="evidence/tier-matrix.html">tier matrix</a> ·
+      <a href="evidence/docs-whodata.html">public docs</a></p></div>
+    <div class="card"><h4>Diagrams</h4><p class="filelist">
+      <a href="diagrams/context-architecture.html">context</a> ·
+      <a href="diagrams/class-structure.html">classes</a> ·
+      <a href="diagrams/event-sequence.html">sequence</a> ·
+      <a href="diagrams/fallback-lifecycle.html">fallback ladder</a></p></div>
+  </div>
+</section>
+
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><span style='color:#6b7280;'>&larr; start</span></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 1 / 20</span><span style="min-width:0;text-align:right;"><a href="brief.html">Brief &rarr;</a></span></div>
+<footer>
+  Spike #37396 evidence dashboard · started 2026-07-13, HTML-only since 2026-07-14 (per jr0me:
+  all findings, introductions and docs in HTML — no markdown deliverables). Repo evidence
+  gathered at <code>main</code> = 5.1.0-alpha0.
+</footer>
+
+</body>
+</html>

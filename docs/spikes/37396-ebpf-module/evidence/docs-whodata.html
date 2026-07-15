@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evidence — public docs on eBPF whodata</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="../index.html">&larr; dashboard</a> · <a href="../tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="../requirements.html">&larr; Requirements</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 6 / 20</span><span style="min-width:0;text-align:right;"><a href="ebpf-engine-audit.html">Engine audit (code) &rarr;</a></span></div>
+<h1>Evidence — what the public docs say eBPF does in Wazuh today</h1>
+<p>Source pages (fetched 2026-07-13; <code>documentation.wazuh.com/current</code> serves <strong>4.14</strong> — release notes top out at 4.14.6; there are NO published 5.x docs, and the spike targets 5.1.0):</p>
+<ul><li><a href="https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/advanced-settings.html">https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/advanced-settings.html</a></li><li><a href="https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html">https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/syscheck.html</a></li></ul>
+<h2>Findings</h2>
+<ol><li><strong>Scope today</strong>: eBPF is used ONLY for FIM who-data (recording *who* changed a file), as an alternative to auditd. Verbatim: "Who-data monitoring in eBPF mode directly extracts FIM events from programs that use eBPF. This approach eliminates the need for external dependencies like <code>auditd</code>."</li><li><strong>Documented kernel floor</strong>: "Who-data monitoring with eBPF requires kernel version 5.8 or higher, as the data structure is only present in kernels starting with this version." (the data structure = the BPF ring buffer, mainlined in 5.8). No BTF/CO-RE requirement documented.</li><li><strong>Documented hooks (file events only, exactly three)</strong>: <code>vfs_open</code> (file created…), <code>security_inode_setattr</code> (file modified), <code>vfs_unlink</code> (file removed); events cross to user space via "a kernel data structure called <code>ring_buffer</code>", consumed by the FIM module.</li><li><strong>Configuration</strong>: per-directory attribute <code>whodata=&quot;yes&quot;</code> (default no) plus: ``<code>xml &lt;whodata&gt; &lt;provider&gt;ebpf&lt;/provider&gt;      &lt;!-- allowed: audit | ebpf; default audit --&gt; &lt;queue_size&gt;50000&lt;/queue_size&gt; &lt;!-- larger = more agent memory --&gt; &lt;/whodata&gt; </code>``</li><li><strong>Fallback (verbatim)</strong>: "If the <code>&lt;provider&gt;</code> tag is not configured, the FIM module defaults to the <code>audit</code> mode. Additionally, if the provider is set to <code>ebpf</code>, but unavailable due to kernel version incompatibility, it also falls back to the <code>audit</code> mode."</li><li><strong>Tier 1/2</strong>: not public terminology on docs. Closest: installation guide OS list and the packages list. GitHub issue wazuh/wazuh#31714 (closed) defines Tier 3 = AIX/Solaris/HP-UX removal and confirms tiers are an internal classification. ⇒ The distro/kernel table in #37396's body is the working assumption, not documented public fact. <strong>Superseded 2026-07-13:</strong> the real internal tier table was provided by jr0me — see tier-matrix.html; the issue's list is a subset of actual Tier 2.</li></ol>
+<h2>Tensions to carry into the spike</h2>
+<ul><li>Published floor is <strong>5.8 + fall-back-to-audit</strong>; the spike contemplates distros *below* 5.8 (RHEL 8 = 4.18, Ubuntu 20.04 = 5.4) and an intra-eBPF fallback (LSM vs kprobe/tracepoint) — a different degradation model than today's documented one.</li><li>Today's documented eBPF surface = 3 file hooks for one consumer. The spike's surface = 3 event classes × multi-consumer fan-out ⇒ almost everything to be designed is net-new and publicly undocumented.</li></ul>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="../requirements.html">&larr; Requirements</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 6 / 20</span><span style="min-width:0;text-align:right;"><a href="ebpf-engine-audit.html">Engine audit (code) &rarr;</a></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>

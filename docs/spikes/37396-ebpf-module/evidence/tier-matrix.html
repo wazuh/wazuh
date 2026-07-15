@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evidence — Tier 1/2/3 agent OS matrix</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="../index.html">&larr; dashboard</a> · <a href="../tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="kernel-features.html">&larr; Kernel feature floors</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 14 / 20</span><span style="min-width:0;text-align:right;"><a href="../code-map.html">Code map &rarr;</a></span></div>
+<h1>Evidence — the real Tier 1/2/3 agent OS matrix (user-provided)</h1>
+<p>Source: internal tier/allocator table pasted by jr0me on 2026-07-13. This SUPERSEDES the "working assumption" distro list quoted in the issue body (angle 8) — the issue's examples (RHEL 8/9, Ubuntu 20.04/22.04/24.04, Debian 11) turn out to be a subset; the real Tier 2 goes meaningfully lower (RHEL/CentOS 7, Amazon Linux 2, Debian 10) and higher (RHEL 10, Debian 12/13, Fedora, SUSE, Ubuntu 26.04).</p>
+<h2>The table (Linux rows; Windows/macOS omitted — the eBPF Module is Linux-only by construction,</h2>
+<p>build-gated at <code>src/external/CMakeLists.txt:1035</code> and <code>src/syscheckd/CMakeLists.txt:125-128</code>)</p>
+<div class="tablewrap"><table><thead><tr><th>Tier</th><th>OS</th><th>Versions</th><th>Arch</th><th>Kernel (verified)</th></tr></thead><tbody><tr><td>1</td><td>Amazon Linux</td><td>2023</td><td>x86_64, aarch64</td><td>6.1 or 6.12 (user choice) — AWS AL2023 release notes/FAQ</td></tr><tr><td>1</td><td>Ubuntu</td><td>26.04</td><td>x86_64, aarch64</td><td><strong>7.0</strong> — canonical.com blog / release notes</td></tr><tr><td>2</td><td>RedHat</td><td>7</td><td>x86_64</td><td>3.10</td></tr><tr><td>2</td><td>RedHat</td><td>8, 9, 10</td><td>x86_64, aarch64</td><td>4.18 / 5.14 / 6.12</td></tr><tr><td>2</td><td>CentOS</td><td>7</td><td>x86_64, aarch64</td><td>3.10</td></tr><tr><td>2</td><td>CentOS Stream</td><td>8, 9, 10</td><td>x86_64, aarch64</td><td>4.18 / 5.14 / 6.12</td></tr><tr><td>2</td><td>Debian</td><td>10, 11, 12, 13</td><td>x86_64, aarch64</td><td>4.19 / 5.10 / 6.1 / 6.12 (wiki.debian.org/DebianReleases)</td></tr><tr><td>2</td><td>Fedora</td><td>42, 43, 44</td><td>x86_64, aarch64</td><td>6.14 / 6.17 / ≥6.17 (Fedora release notes; 44 to confirm)</td></tr><tr><td>2</td><td>openSUSE Leap</td><td>15, 16</td><td>x86_64, aarch64</td><td>15 is SP-dependent (4.12→6.4; current SPs 6.4) / 16 = 6.12 — probe per SP</td></tr><tr><td>2</td><td>SLES</td><td>15, 16</td><td>x86_64, aarch64</td><td>same kernel lineage as Leap — probe per SP</td></tr><tr><td>2</td><td>Ubuntu</td><td>20.04, 22.04, 24.04</td><td>x86_64, aarch64</td><td>5.4 (HWE 5.15) / 5.15 (HWE 6.8) / 6.8 (ubuntu.com/kernel/lifecycle)</td></tr><tr><td>2</td><td>Amazon Linux</td><td>2</td><td>x86_64, aarch64</td><td>4.14 or 5.10 (5.10 default AMI since 2026-01-20; extras 5.4/5.10/5.15). NOTE: AWS docs state AL2 EOL 2026-06-30 — already past; tier table still lists it</td></tr><tr><td>2</td><td>Oracle Linux</td><td>7 (x86_64); 8, 9, 10</td><td>(+aarch64 for 8-10)</td><td>dual-kernel: RHCK mirrors RHEL (3.10/4.18/5.14/6.12) vs UEK (UEK6 5.4, UEK7 5.15, UEK8 6.12) — probe BOTH</td></tr><tr><td>2</td><td>AlmaLinux / Rocky</td><td>8, 9, 10</td><td>x86_64, aarch64</td><td>RHEL clones: 4.18 / 5.14 / 6.12</td></tr><tr><td>3</td><td>RHEL 6, CentOS 6/8, Oracle 6, AL1, Debian 7/8/9, RHEL 7 aarch64</td><td>—</td><td>—</td><td>ancient (2.6.32–4.18); no allocator; tier 3 support being removed per wazuh/wazuh#31714 — treat as OUT</td></tr></tbody></table></div>
+<p>Non-Linux tier rows (Windows 10/11, Server 2012R2–2025, macOS 15/26/27): unaffected by this module; the engine must simply stay absent/cleanly disabled there (already the case today via build gating).</p>
+<p>Kernel sources: AL2 = docs.aws.amazon.com/AL2 release notes + aml2-kernel.html (fetched 2026-07-13); AL2023 = AWS FAQ/release notes (6.1 + 6.12); Ubuntu 26.04 = canonical.com/blog + discourse announcement (Linux 7.0); RHEL = access.redhat.com/articles/3078; Debian = wiki.debian.org/DebianReleases; Ubuntu = ubuntu.com/kernel/lifecycle; SUSE = suse.com/support/kb/doc/?id=000019587; Oracle UEK = docs.oracle.com UEK release docs. Fedora 44 kernel not yet confirmed.</p>
+<h2>The three bands this induces (feature floors per evidence/kernel-features.html)</h2>
+<p><strong>Band 0 — eBPF impossible.</strong> RHEL 7 / CentOS 7 / Oracle 7-RHCK (kernel 3.10; even kprobe BPF programs need 4.1) + all Tier 3. Consequence: FIM keeps audit whodata; process-exec/network eBPF telemetry can never exist here. These are Tier 2 rows the kernel-floor ADR must explicitly exclude (or serve via non-eBPF means, out of scope).</p>
+<p><strong>Band 1 — legacy eBPF only.</strong> AL2 on 4.14 (also lacks <code>bpf_get_current_cgroup_id</code>, which needs 4.18 → even the primary correlation key is absent!), RHEL/Stream/Alma/Rocky/Oracle 8 (4.18), Debian 10 (4.19), Ubuntu 20.04 GA (5.4). Have: kprobes, tracepoints, cgroup-id helper (≥4.18 only). Missing: BPF-LSM (5.7), ring buffer (5.8), CAP_BPF/CAP_PERFMON (5.8 → needs full CAP_SYS_ADMIN), bpf_d_path (5.10). BTF: RHEL 8 backports it (probe to confirm coverage); Debian 10 / Ubuntu 20.04 GA / AL2-4.14 generally ship <strong>without BTF</strong> → CO-RE needs external BTF or a non-CO-RE build — a bigger cost than "just add kprobe fallback". Supporting this band = building a perf-event-array delivery path + kprobe-only programs + a BTF strategy + running as CAP_SYS_ADMIN.</p>
+<p><strong>Band 2 — full modern eBPF.</strong> Everything else, including BOTH Tier 1 Linux entries: AL2023 (6.1/6.12), Ubuntu 26.04 (7.0), RHEL/Stream 9-10 + clones (5.14/6.12), Debian 11-13 (5.10/6.1/6.12), Ubuntu 22.04/24.04 (5.15/6.8, + 20.04-HWE 5.15), AL2 on 5.10/5.15, Fedora, Leap/SLES current SPs / 16. Version-wise: ring buffer, LSM hooks, bpf_d_path, CAP_BPF all present — still gated on distro kernel configs (<code>CONFIG_BPF_LSM</code>, <code>CONFIG_DEBUG_INFO_BTF</code>) and the boot-time <code>lsm=</code> list, which is what the empirical probe matrix must confirm.</p>
+<h2>What the bands do to the spike's questions</h2>
+<ol><li><strong>Tier 1 Linux is entirely Band 2.</strong> A modern-first design (ringbuf + LSM + d_path, CAP_BPF confinement) covers 100% of Tier 1 with no fallback code at all.</li><li><strong>Every hard case is Tier 2</strong>, and they split cleanly: Band 0 (exclude — audit keeps FIM alive), Band 1 (the real cost center: perf-array + kprobe + BTF strategy + CAP_SYS_ADMIN), Band 2 (config probes only).</li><li>AL2's 5.10 default (since 2026-01) + its upstream EOL (2026-06-30, already past) weaken the case for paying the 4.14 tax; likewise Ubuntu 20.04 GA-vs-HWE matters (HWE 5.15 = Band 2). The kernel-floor ADR (deliverable) should be argued in tier+band terms, not distro anecdotes.</li><li>aarch64 is pervasive in Tier 1/2 — and the in-tree audit found a DEAD <code>modern-arm.bpf.c</code> plus an arch-unqualified prebuilt <code>modern.bpf.o</code> shipped from the deps bucket (which is laid out per (os,arch) — see memory <code>project_externals_publish_layout</code>). <strong>Open verification item:</strong> confirm how/whether today's <code>modern.bpf.o</code> is built for aarch64 (kprobe arg access via PT_REGS is arch-specific).</li></ol>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="kernel-features.html">&larr; Kernel feature floors</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 14 / 20</span><span style="min-width:0;text-align:right;"><a href="../code-map.html">Code map &rarr;</a></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>

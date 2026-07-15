@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evidence — parent objective #37203</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="../index.html">&larr; dashboard</a> · <a href="../tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="../brief.html">&larr; Brief</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 3 / 20</span><span style="min-width:0;text-align:right;"><a href="siblings.html">Sibling spikes &rarr;</a></span></div>
+<h1>Evidence — parent objective #37203 "Container runtime security"</h1>
+<p>Source: <a href="https://github.com/wazuh/wazuh/issues/37203">https://github.com/wazuh/wazuh/issues/37203</a> (fetched 2026-07-13; state OPEN, labels level/objective + type/enhancement, no comments).</p>
+<h2>The two-module split (Description, verbatim)</h2>
+<blockquote><p>This objective proposes creating two independent modules: the Container Instances Security<br/>Module described here, and a new eBPF Module that extracts the eBPF engine out as a<br/>standalone, shared runtime telemetry provider. The Container Instances Security Module acts<br/>as a passive enrichment source: security modules (FIM, IT Hygiene) consume raw events and<br/>state from the eBPF Module and query the Container Instances Security Module to enrich each<br/>event and state with container-level context (container ID, image, namespace, pod name,<br/>labels, etc.). Enriched events and states are delivered to the Wazuh Agent over a socket,<br/>which forwards them to the Wazuh Server using the existing state synchronization<br/>infrastructure.</p></blockquote>
+<p>Also: "The first supported orchestration platform integrations are Kubernetes and Docker (replacing the current Docker Listener approach). The first supported use cases are FIM and IT Hygiene, both via the eBPF provider (IT Hygiene coverage TBD)."</p>
+<h2>NFR4 — the requirement this spike implements (verbatim)</h2>
+<blockquote><p>4. Extract the eBPF engine into a new, independent eBPF Module, decoupled from Container<br/>Instances Security, serving as a shared runtime telemetry provider for FIM and IT Hygiene,<br/>and extensible to other security modules in the future.</p></blockquote>
+<h2>Implementation restrictions (verbatim, abridged)</h2>
+<blockquote><p>1. The module must act as a passive enrichment source queried by the security modules, not<br/>as a primary event producer.  [= the Container module]<br/>2. The eBPF Provider is the source of low-level runtime events (file activity, process<br/>execution, network activity, etc.) consumed by the security modules.<br/>3. Enriched events and states must be delivered to the agent over a socket and forwarded to<br/>the server through the existing state synchronization infrastructure.<br/>4. Supported agent platforms (eBPF, Kubernetes, Docker versions) are to be defined.<br/>[← #37396's compatibility matrix feeds this]</p></blockquote>
+<h2>Correlation sources (FR6, verbatim list)</h2>
+<p>PID, cgroup identifiers, namespace identifiers, container IDs, runtime metadata.</p>
+<h2>The four expected spikes (Notes §3, verbatim)</h2>
+<blockquote><p>1. Correlation mechanism: determine the best runtime identifiers for eBPF correlation<br/>(PID, cgroup, namespace, container ID).<br/>2. eBPF compatibility: evaluate kernel compatibility and fallback mechanisms.   [≈ #37396]<br/>3. FIM integration: determine required changes to support container-aware monitoring.<br/>4. IT Hygiene integration: identify inventory sources that can leverage eBPF collection.</p></blockquote>
+<h2>Other load-bearing facts</h2>
+<ul><li>FR3: "Replace the Docker Listener with a generic container runtime connector."</li><li>FR9: container states go to the same <code>wazuh-states-*</code> indices as endpoint states.</li><li>FR11: config block <code>container_security</code> / <code>container_instances</code> (enabled, type, path, credentials).</li><li>NFR3: configurable item limits on FIM/IT Hygiene for stability.</li><li>Note 1 (assumption): "eBPF events can be correlated with a container runtime."</li></ul>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="../brief.html">&larr; Brief</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 3 / 20</span><span style="min-width:0;text-align:right;"><a href="siblings.html">Sibling spikes &rarr;</a></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Execution plan — spike #37396</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="index.html">&larr; dashboard</a> · <a href="tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="questions.html">&larr; Decisions & open questions</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 18 / 20</span><span style="min-width:0;text-align:right;"><a href="tracker.html">Tracker (83 items) &rarr;</a></span></div>
+<h1>Execution plan — spike #37396</h1>
+<p>Agreed via /grilling 2026-07-13/14 (decisions D1-D7 in questions.html). Every task lists the tracker rows it moves — no task is done until its rows move. STATUS: awaiting jr0me's shared-understanding confirmation before phase 1 starts.</p>
+<h2>Standing rules (from D2, D7 + guards)</h2>
+<ul><li>Nothing posted to GitHub by the assistant — paste-ready drafts only; jr0me coordinates (D7).</li><li>Every sub-5.8 bullet gets ANSWERED (characterized with evidence), even though we build ≥5.8-only (D2 caveat).</li><li>Guards CON-1..3, OOS-1, INV-3 checked against every artifact before it's called done.</li><li>Tracker + questions.html + memory pointer updated at every step (jr0me's standing requirement).</li></ul>
+<h2>Phase 1 — Design (this machine, no lab needed)</h2>
+<div class="tablewrap"><table><thead><tr><th>#</th><th>Task</th><th>Produces</th><th>Moves tracker rows</th></tr></thead><tbody><tr><td>P1.1</td><td>Peer-pattern survey: Tetragon event API, Falco plugin sources, Inspektor Gadget, Hubble — interface patterns only, cited</td><td>evidence/peers.html</td><td>SP-2</td></tr><tr><td>P1.2</td><td><strong>Event contract draft v0 — boundary-NEUTRAL core</strong>: schemas for file + exec + network events (correlation keys: recommendation + edge cases for O4), versioning scheme, filtering/subscription semantics, drop-notification signal for #37532, enumerate-on-attach answer. The delivery binding is kept as a thin final layer with BOTH variants sketched (flat wire format over unix socket vs in-process library API) so the contract survives whichever way P1.3's boundary evaluation (O5) lands</td><td>contract-draft.html (+ header sketch)</td><td>SD-2, SD-3, SD-7, A3.1-A3.3, A4.1-A4.3, A6.1 (surfacing design), A7.1-A7.2 sketches → D-M3</td></tr><tr><td>P1.3</td><td><strong>Architecture ADR draft — full multi-option evaluation (D3 reopened 2026-07-15, no pre-decision)</strong>: (a) component/shared library, per-consumer BPF instances + per-consumer ring buffers (teammate proposal; shared_modules precedent); (b) modulesd-hosted module + socket fan-out; (c) dedicated daemon wazuh-ebpfd. Pros/cons quantified for each: kernel hot-path cost vs class overlap, memory, lifecycle/mode-divergence, slow-consumer isolation, privileges, packaging, NFR4/AC-5 wording alignment. Decision fulcrum: the class-overlap question (put to #37533/#37534/owner). Ends in a recommendation, decided at ADR review</td><td>adr-001-module-architecture.html</td><td>D-M1, A1.1-A1.2, SP-5, SD-1 (evaluation), O5</td></tr><tr><td>P1.4</td><td><strong>Min-kernel ADR draft</strong> (≥5.8 per D2; per-event-class exclusions; full rejected-LCD analysis: perf-array/kprobe-only/BTF costs + Band 1 population data; explicit "why no audit/scan fallback for the exec + network classes" — audit execve/connect rules and /proc-scan snapshots deliver neither short-lived-activity capture nor event-time correlation keys, so below-floor boxes keep today's scan-based Syscollector + audit whodata rather than getting a degraded new feature)</td><td>adr-002-minimum-kernel.html</td><td>D-C2 (draft), A8.1-A8.2, A10.2 (desk part)</td></tr><tr><td>P1.5</td><td><strong>Coupling extraction map → ordered refactor list</strong> (from audit seams to concrete PR-sized steps)</td><td>extraction-map.html</td><td>D-M2, A2.* (close out)</td></tr><tr><td>P1.6</td><td><strong>Backpressure &amp; degradation policy draft</strong> (sizing rationale, drop policy, drop surfacing, slow-consumer isolation design, missing-feature ladder replacing audit-only hatch)</td><td>part of contract-draft.html or policy.html</td><td>D-M4, SD-4, SD-6, A5.1-A5.2, A6.2</td></tr><tr><td>P1.7</td><td>Review pack for jr0me: paste-ready #37396 comment draft + pings for #37382/#37533/#37534 owners</td><td>comment-drafts/</td><td>(enables AC-1, AC-6 via D7)</td></tr></tbody></table></div>
+<p>Exit criteria: contract + both ADRs + extraction map + policy reviewed by jr0me; comment drafts ready; tracker rows moved to PARTIAL/DONE accordingly.</p>
+<h2>Phase 2 — Mini-lab (x86 laptop + Mac spot-check, per D6)</h2>
+<div class="tablewrap"><table><thead><tr><th>#</th><th>Task</th><th>Produces</th><th>Moves tracker rows</th></tr></thead><tbody><tr><td>P2.1</td><td>VM runbook + provisioning: AlmaLinux 9 (LSM mode, SELinux enforcing), Ubuntu 24.04 (kprobe mode, AppArmor), AlmaLinux 8 @4.18 (Band 1); Docker inside one VM. Tooling pinned per laptop OS (O3)</td><td>lab/runbook.html</td><td>(infrastructure)</td></tr><tr><td>P2.2</td><td>Feature probes on all 3 kernels: LSM attach, kprobe attach, exec tracepoint, socket hook, ringbuf vs perf-array, bpf_d_path, cgroup-id, BTF presence</td><td>evidence/probes-*.html → matrix columns</td><td>SP-7, A9.1-A9.4 (empirical), A13.1 (floors)</td></tr><tr><td>P2.3</td><td><strong>PoC build + run</strong> (D4-rev: in-tree, self-contained dir + own build target on a local wazuh branch, reusing the vendored libbpf-bootstrap toolchain): 2 consumers, distinct filters, correlation keys incl. from a real container, no mutual stalling — on Alma 9 (LSM) AND Ubuntu 24.04 (kprobe). If O5 is still open, build BOTH delivery shapes (library instantiation vs socket fan-out) and measure, feeding P1.3's evaluation</td><td>PoC dir on branch + run logs</td><td>SP-4, D-M6, SD-5, A7.1 (proof), → AC-5 evidence, O5 data</td></tr><tr><td>P2.4</td><td>Band 1 characterization on Alma 8: LSM fails (expected), kprobe works, ringbuf absent; document what a perf-array path would take + event-quality delta</td><td>evidence/band1-assessment.html</td><td>SP-9, A10.1, A10.2 (empirical), D2 caveat closed</td></tr><tr><td>P2.5</td><td>Caps/SELinux/AppArmor lite pass: strip capabilities to minimum on both Band 2 VMs; record denials + policy deltas</td><td>evidence/caps-selinux.html</td><td>SP-10 (lite), A13.1-A13.2, D-C3 draft</td></tr><tr><td>P2.6</td><td>Mac aarch64 spot-check (one Lima VM): probes + PoC smoke; answers the modern-arm.bpf.o question</td><td>evidence/aarch64-spotcheck.html</td><td>closes the aarch64 verification item (tier-matrix.html §4)</td></tr><tr><td>P2.7</td><td>Fold probe results into the compatibility matrix</td><td>update tier-matrix.html → matrix v1</td><td>D-C1 (mini-lab columns), SC-1..SC-3</td></tr></tbody></table></div>
+<p>Exit criteria: AC-5 evidence captured; matrix v1 with empirical columns for 3 kernels + aarch64; Band 1 story documented.</p>
+<h2>Phase 3 — External / follow-up (mostly not ours; tracked, not executed here)</h2>
+<ul><li>jr0me posts phase-1 pack; collects #37533/#37534 contract review (AC-1) and #37382 key alignment (AC-6, O4).</li><li>Product sign-off on the floor (O1 → AC-3, D-C2 final).</li><li>ADR placement decision + PR (O2 → AC-2).</li><li>Full distro×runtime×cgroup matrix + cross-runtime semantics + performance baseline — follow-up phase, possibly QA-assisted (SP-6, SP-8 full, SP-11, D-C4, A11.2, A12.*, A14.*).</li><li>Implementation tickets reference the extraction map (AC-4).</li></ul>
+<h2>Deliberately NOT in this plan</h2>
+<ul><li>Building any sub-5.8 delivery stack (answered, not built — D2).</li><li>Wiring the PoC into agent daemons, release packaging, or default builds (D4-rev: the PoC lives in-tree on a branch but stays a self-contained dir with its own target — daemon integration belongs to implementation tickets).</li><li>Path resolution / container metadata resolution (OOS-1 guard — #37533/#37382 territory).</li></ul>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="questions.html">&larr; Decisions & open questions</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 18 / 20</span><span style="min-width:0;text-align:right;"><a href="tracker.html">Tracker (83 items) &rarr;</a></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evidence — sibling spikes of #37203</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .84rem; line-height: 1.5; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    blockquote p { margin: .3rem 0; }
+    ul, ol { padding-left: 1.5rem; }
+    li { margin: .35rem 0; }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+</style>
+</head>
+<body>
+  <nav class="crumb"><a href="../index.html">&larr; dashboard</a> · <a href="../tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="parent-37203.html">&larr; Parent objective #37203</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 4 / 20</span><span style="min-width:0;text-align:right;"><a href="../requirements.html">Requirements &rarr;</a></span></div>
+<h1>Evidence — sibling spikes of parent #37203</h1>
+<p>Source: GitHub GraphQL sub-issues API + timeline cross-references (agent sweep 2026-07-13). Parent #37203 has exactly five sub-issues, all OPEN, all by Nicogp, all 5.1.0 / Agent / Linux, labels module/agent + type/research + level/task.</p>
+<p>Shorthand used inside the issues: <code>#37203-1</code>=37382, <code>#37203-2</code>=<strong>37396 (this spike)</strong>, <code>#37203-3</code>=37533, <code>#37203-4</code>=37534. #37532 is an extra, cross-cutting fifth spike.</p>
+<div class="tablewrap"><table><thead><tr><th>#</th><th>Title (abridged)</th><th>Covers</th><th>Parent OQ</th></tr></thead><tbody><tr><td>37382</td><td>Container Instances Security Module — connection/auth, correlation &amp; metadata resolution (K8s + Docker)</td><td>The passive enricher: authenticated transport to kube-apiserver/kubelet/Docker API from a host systemd process; resolution cache <code>cgroup_id → {container_id, image, pod, ns, labels, owner_refs, oci_mounts…}</code>; runtime-agnostic enrichment query API. "Never sees or touches the eBPF event stream."</td><td>OQ1 correlation</td></tr><tr><td>37396</td><td>eBPF Module — standalone runtime telemetry provider</td><td>This spike.</td><td>OQ2 compatibility</td></tr><tr><td>37532</td><td>Baseline acquisition — initial container state FIM/Syscollector build, which eBPF then diffs</td><td>eBPF sees activity, not existence → host-side baseline scans (overlay merged dirs, /proc scoped by cgroup/netns, package DBs); baseline↔eBPF handoff algorithm (subscribe/buffer/scan/replay, watermark; no lost/double-counted change).</td><td>(extra)</td></tr><tr><td>37533</td><td>FIM integration — consuming eBPF events + enrichment as synchronized state</td><td>FIM as consumer: subscribe raw file events, enrich via 37382, state in <code>wazuh-states-fim-*</code> via existing sync; owns path resolution <code>(container-identity, kernel_path) → (logical_path, host_path) | drop</code> incl. volumes; PK/synthetic identity; deletion bounding.</td><td>OQ3 FIM</td></tr><tr><td>37534</td><td>IT Hygiene (Syscollector) integration — container-aware inventory</td><td>Coverage-definition matrix (dimension × source × feasibility × v1); strong v1: processes (exec events + /proc), network/ports (+ shared-netns attribution nuance); state on <code>wazuh-states-inventory-*</code>.</td><td>OQ4 IT Hygiene</td></tr></tbody></table></div>
+<h2>Demands the siblings place ON #37396 (contract inputs)</h2>
+<ol><li><strong>37382</strong>: "Which key does the eBPF Module actually emit reliably (coordinate with #37203-2)" — the primary correlation-key choice is joint; 37382 catalogs edge cases that constrain it (hostPID/hostNetwork pods, <code>--cgroupns=host</code>, Kata, pause sandbox).</li><li><strong>37533</strong> (contract reviewer #1): needs to know whether the path in file events is the *in-container* path or the *host overlay* path (bpf_d_path semantics) — it needs both forms.</li><li><strong>37534</strong> (contract reviewer #2): the reason the contract must include <strong>process-exec and network</strong> event classes, not only file.</li><li><strong>37532</strong>: consumes the contract's <strong>overflow/drop signal</strong> as a re-baseline trigger; asks whether the eBPF Module offers "enumerate a cgroup's existing tasks on attach" or user-space must /proc-walk; floats "replay from container-create" (observe rootfs unpack + pid-1 exec).</li></ol>
+<h2>Cross-check against #37396 acceptance</h2>
+<ul><li>"Correlation-key set aligned with the Container Instances Security Module spike (#37203-1)" → that is <strong>#37382</strong>. ✔ mapped.</li><li>"reviewed and accepted by both the FIM and IT Hygiene integration spike owners" → <strong>#37533, #37534</strong>. ✔ mapped.</li></ul>
+  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="parent-37203.html">&larr; Parent objective #37203</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 4 / 20</span><span style="min-width:0;text-align:right;"><a href="../requirements.html">Requirements &rarr;</a></span></div>
+<footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
+  investigation record on 2026-07-14.</footer>
+</body>
+</html>
