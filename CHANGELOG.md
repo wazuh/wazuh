@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 #### Fixed
 
 - Fixed Fortigate Decoder, malicious ioc rule and RHEL 8,9,10 incorrect rpm check. ([#37434](https://github.com/wazuh/wazuh/pull/37434))
+- Fixed typo in `/etc/security/opasswd` permission check on Debian 10, Ubuntu 20.04 and Ubuntu 22.04 SCA rules. ([#37652](https://github.com/wazuh/wazuh/pull/37652))
 
 ## [v4.14.7]
 
