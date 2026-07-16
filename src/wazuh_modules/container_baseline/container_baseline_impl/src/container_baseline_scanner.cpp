@@ -3,9 +3,11 @@
 #include "baseline_rows.hpp"
 #include "container_connector_client.hpp"
 #include "network_scanner.hpp"
+#include "package_scanner.hpp"
 #include "pid_resolver.hpp"
 #include "process_scanner.hpp"
 #include "rootfs_file_walker.hpp"
+#include "user_scanner.hpp"
 
 #include <json.hpp>
 
@@ -109,6 +111,28 @@ int RunSyscollectorBaseline(const std::string& connector_socket_path, const RowS
             ApplyIdentity(row, identity);
             auto [id, json] = BuildPortJson(row);
             sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-ports", json, 1});
+        }
+
+        // M4 data classes (users/groups + packages) address the rootfs through
+        // /proc/<pid>/root, so they need the live PID rather than the cgroup.
+        const auto pid = pids.front();
+
+        for (auto row : ScanContainerUsers(pid)) {
+            ApplyIdentity(row, identity);
+            auto [id, json] = BuildUserJson(row);
+            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-users", json, 1});
+        }
+
+        for (auto row : ScanContainerGroups(pid)) {
+            ApplyIdentity(row, identity);
+            auto [id, json] = BuildGroupJson(row);
+            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-groups", json, 1});
+        }
+
+        for (auto row : ScanContainerPackages(pid)) {
+            ApplyIdentity(row, identity);
+            auto [id, json] = BuildPackageJson(row);
+            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-packages", json, 1});
         }
     }
 
