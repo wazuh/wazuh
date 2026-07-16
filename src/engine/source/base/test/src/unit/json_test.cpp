@@ -2991,8 +2991,9 @@ INSTANTIATE_TEST_SUITE_P(
         // Only duplicates
         std::make_tuple(R"({"a": 3, "a": 2})", size_t(1), R"({"a":3})"),
         // Duplicate with complex values
-        std::make_tuple(
-            R"({"check": "$event == 2", "check": "$event.id == 2"})", size_t(1), R"({"check":"$event == 2"})"),
+        std::make_tuple(R"({"check": "$event == 2", "check": "$event.id == 2"})",
+                        size_t(1),
+                        R"({"check":"$event == 2"})"),
         // Duplicate with same values
         std::make_tuple(R"({"level": "5", "level": "5"})", size_t(1), R"({"level":"5"})"),
         // Duplicate with object values
@@ -3194,4 +3195,149 @@ TEST(JsonTest, eraseRootKeysByPrefixAllMatchLeavesEmptyObject)
 
     ASSERT_NO_THROW(input.eraseRootKeysByPrefix("_"));
     ASSERT_EQ(input, expected);
+}
+
+/****************************************************************************************/
+// Compact documents (small allocator)
+/****************************************************************************************/
+
+namespace
+{
+// Typical agent metadata header (the flagship compact-document use case).
+constexpr std::string_view AGENT_HEADER =
+    R"({"wazuh":{"agent":{"id":"001","name":"agent-one","version":"5.0.0","host":{"hostname":"host1","os":{"name":"Ubuntu","platform":"linux"}}}}})";
+} // namespace
+
+class JsonCompact : public ::testing::Test
+{
+protected:
+    void SetUp() override { logging::testInit(); }
+    void TearDown() override {}
+};
+
+TEST_F(JsonCompact, CompactParse_SmallDocFitsInitialBlock)
+{
+    const Json normal {AGENT_HEADER};
+    const Json compacted = Json::compact(AGENT_HEADER);
+
+    // Same content...
+    ASSERT_EQ(normal, compacted);
+    std::string_view id;
+    ASSERT_EQ(compacted.getString(id, "/wazuh/agent/id"), RetGet::Success);
+    ASSERT_EQ(id, "001");
+
+    // ...but a fraction of the memory: initial block vs the default 64 KB chunk.
+    ASSERT_LE(compacted.getAllocatedMemory(), Json::COMPACT_INITIAL_CAPACITY);
+    ASSERT_GT(compacted.getAllocatedMemory(), 0u);
+    ASSERT_GE(normal.getAllocatedMemory(), 64u * 1024u);
+}
+
+TEST_F(JsonCompact, CompactParse_InvalidJson_Throws)
+{
+    ASSERT_THROW(Json::compact(R"({not valid json)"), std::runtime_error);
+}
+
+TEST_F(JsonCompact, CompactCopy_EqualsOriginal)
+{
+    const Json original {AGENT_HEADER};
+    const Json compacted = original.compact();
+
+    ASSERT_EQ(original, compacted);
+    ASSERT_LE(compacted.getAllocatedMemory(), Json::COMPACT_INITIAL_CAPACITY);
+
+    // Original untouched (still standard allocator, same content).
+    ASSERT_GE(original.getAllocatedMemory(), 64u * 1024u);
+    ASSERT_EQ(original, Json {AGENT_HEADER});
+}
+
+TEST_F(JsonCompact, Memory_UsedLeqAllocated)
+{
+    const Json normal {AGENT_HEADER};
+    const Json compacted = Json::compact(AGENT_HEADER);
+
+    ASSERT_GT(normal.getUsedMemory(), 0u);
+    ASSERT_LE(normal.getUsedMemory(), normal.getAllocatedMemory());
+    ASSERT_GT(compacted.getUsedMemory(), 0u);
+    ASSERT_LE(compacted.getUsedMemory(), compacted.getAllocatedMemory());
+
+    // Empty document: nothing used yet.
+    const Json empty;
+    ASSERT_EQ(empty.getUsedMemory(), 0u);
+}
+
+TEST_F(JsonCompact, Compact_MoveSemantics)
+{
+    // Move constructor: the moved-to document must remain valid after the source dies.
+    std::vector<Json> holder;
+    {
+        Json src = Json::compact(AGENT_HEADER);
+        holder.push_back(std::move(src));
+    } // src destroyed here
+
+    std::string_view id;
+    ASSERT_EQ(holder[0].getString(id, "/wazuh/agent/id"), RetGet::Success);
+    ASSERT_EQ(id, "001");
+    ASSERT_LE(holder[0].getAllocatedMemory(), Json::COMPACT_INITIAL_CAPACITY);
+
+    // Force vector reallocation (each element move-constructed again).
+    for (int i = 0; i < 20; ++i)
+    {
+        holder.push_back(Json::compact(AGENT_HEADER));
+    }
+    ASSERT_EQ(holder[0].getString(id, "/wazuh/agent/id"), RetGet::Success);
+    ASSERT_EQ(id, "001");
+
+    // Move assignment over a compact document (its old pool must be released safely).
+    Json target = Json::compact(R"({"other":"doc"})");
+    target = Json::compact(AGENT_HEADER);
+    ASSERT_EQ(target.getString(id, "/wazuh/agent/id"), RetGet::Success);
+    ASSERT_EQ(id, "001");
+
+    // Move assignment over a standard document.
+    Json standard {R"({"a":1})"};
+    standard = Json::compact(AGENT_HEADER);
+    ASSERT_EQ(standard.getString(id, "/wazuh/agent/id"), RetGet::Success);
+    ASSERT_LE(standard.getAllocatedMemory(), Json::COMPACT_INITIAL_CAPACITY);
+}
+
+TEST_F(JsonCompact, Compact_GrowsInSmallChunks)
+{
+    Json doc = Json::compact(R"({"arr":[]})");
+    const auto initialAllocated = doc.getAllocatedMemory();
+    ASSERT_LE(initialAllocated, Json::COMPACT_INITIAL_CAPACITY);
+
+    // Append data until the pool must grow past the initial block.
+    const std::string filler(64, 'x');
+    for (int i = 0; i < 200; ++i)
+    {
+        doc.appendString(filler, "/arr");
+    }
+
+    ASSERT_GT(doc.getAllocatedMemory(), initialAllocated);
+    ASSERT_LE(doc.getUsedMemory(), doc.getAllocatedMemory());
+    // Still far below one default 64 KB chunk.
+    ASSERT_LT(doc.getAllocatedMemory(), 64u * 1024u);
+    // Document is still fully valid.
+    ASSERT_EQ(doc.size("/arr"), 200u);
+}
+
+TEST_F(JsonCompact, Compact_HintRounding)
+{
+    // hint=4500 -> initial block rounded up to 5 KB (5120 bytes).
+    const Json doc = Json::compact(R"({"a":1})", 4500);
+    ASSERT_LE(doc.getAllocatedMemory(), 5u * 1024u);
+    ASSERT_GT(doc.getAllocatedMemory(), 4u * 1024u);
+}
+
+TEST_F(JsonCompact, Compact_SharedPtrConstFlow)
+{
+    // The agentcache flow: parse -> compact -> shared_ptr<const Json>. The move must
+    // preserve the compact allocator (a copy would fall back to 64 KB chunks).
+    const Json parsed {AGENT_HEADER};
+    auto header = std::make_shared<const Json>(parsed.compact());
+
+    std::string_view id;
+    ASSERT_EQ(header->getString(id, "/wazuh/agent/id"), RetGet::Success);
+    ASSERT_EQ(id, "001");
+    ASSERT_LE(header->getAllocatedMemory(), Json::COMPACT_INITIAL_CAPACITY);
 }

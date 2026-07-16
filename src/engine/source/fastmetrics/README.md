@@ -97,7 +97,7 @@ counter->add(1);  // lock-free, hot path
 Pull metrics avoid state duplication by executing a callback on read:
 
 ```cpp
-FASTMETRICS_PULL(uint64_t, "indexer.queue.size", [wIndexer]() { return wIndexer->queueSize(); });
+FASTMETRICS_PULL(uint64_t, "indexer.queue.size", [wIndexer]() { return wIndexer->byteSize(); });
 FASTMETRICS_PULL(double, "router.eps.1m", [rate]() { return rate->getRate(std::chrono::seconds(60)); });
 ```
 
@@ -135,6 +135,8 @@ Predefined names in `metric_names.hpp`:
 | `indexer.events.dropped` | PULL | main.cpp (indexer connector) |
 | `router.queue.size` | PULL | router/orchestrator |
 | `router.queue.usage.percent` | PULL | router/orchestrator |
+| `router.queue.bytes.used` | PULL | router/orchestrator |
+| `router.queue.bytes.usage.percent` | PULL | router/orchestrator |
 | `router.events.processed` | COUNTER | router/worker |
 | `router.events.dropped` | COUNTER | router/orchestrator |
 | `router.eps.1m` | PULL | router/orchestrator (SlidingWindowRate) |

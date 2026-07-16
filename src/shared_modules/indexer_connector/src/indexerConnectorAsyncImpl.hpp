@@ -112,13 +112,51 @@ class IndexerConnectorAsyncImpl final
     std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
     LogFn m_logFn;
     bool m_error413Logged {false};
+    bool m_loggerDropLogged {false};
     size_t m_successCount {0};
     size_t m_maxQueueBytes {0};
     size_t m_flushInterval {FlushInterval};
     size_t m_bulkMaxBytes {BulkMaxBytes};
+    size_t m_loggerQueueSize {DEFAULT_LOGGER_QUEUE_SIZE};
+    size_t m_loggerThreads {DEFAULT_LOGGER_THREADS};
     std::unique_ptr<IndexerBulkQueue> m_queue;
 
 public:
+    static constexpr size_t DEFAULT_LOGGER_QUEUE_SIZE {8}; ///< Default cap of the error-logger queue (elements).
+    static constexpr size_t DEFAULT_LOGGER_THREADS {1};    ///< Default number of error-logger threads.
+
+    /**
+     * @brief Cheap check of the "errors" field in the head of an OpenSearch _bulk response.
+     *
+     * A bulk response starts with {"took":N,"errors":false,...}. This scans the first bytes
+     * for the "errors" key and inspects its value token, so the happy path can skip the
+     * logger queue entirely (avoiding a second life of the full payload + response).
+     * Conservative: if the field cannot be found or recognized in the head, reports true so
+     * the logger's full parse decides.
+     *
+     * @param response Raw HTTP _bulk response body.
+     * @return false only when the response head contains "errors": false; true otherwise.
+     */
+    static bool bulkResponseHasErrors(std::string_view response)
+    {
+        constexpr std::string_view KEY {"\"errors\""};
+        constexpr size_t HEAD_BYTES {256};
+
+        const auto keyPos = response.substr(0, HEAD_BYTES).find(KEY);
+        if (keyPos == std::string_view::npos)
+        {
+            return true; // conservative: let the logger parse it
+        }
+
+        auto pos = keyPos + KEY.size();
+        while (pos < response.size() && (response[pos] == ':' || response[pos] == ' ' || response[pos] == '\t' ||
+                                         response[pos] == '\n' || response[pos] == '\r'))
+        {
+            ++pos;
+        }
+        return !(pos < response.size() && response[pos] == 'f');
+    }
+
     ~IndexerConnectorAsyncImpl() = default;
 
     explicit IndexerConnectorAsyncImpl(
@@ -221,6 +259,23 @@ public:
         m_bulkMaxBytes = config.contains("bulk_max_bytes") && config.at("bulk_max_bytes").is_number_integer()
                              ? config.at("bulk_max_bytes").get<size_t>()
                              : BulkMaxBytes;
+
+        // Error-logger sizing: bounded queue (elements) and thread count. Only responses whose
+        // bulk reported errors are enqueued (see onSuccess), so small defaults suffice.
+        m_loggerQueueSize = config.contains("logger_queue_size") && config.at("logger_queue_size").is_number_integer()
+                                ? config.at("logger_queue_size").get<size_t>()
+                                : DEFAULT_LOGGER_QUEUE_SIZE;
+        m_loggerThreads = config.contains("logger_threads") && config.at("logger_threads").is_number_integer()
+                              ? config.at("logger_threads").get<size_t>()
+                              : DEFAULT_LOGGER_THREADS;
+        if (m_loggerQueueSize == 0)
+        {
+            m_loggerQueueSize = DEFAULT_LOGGER_QUEUE_SIZE;
+        }
+        if (m_loggerThreads == 0)
+        {
+            m_loggerThreads = DEFAULT_LOGGER_THREADS;
+        }
 
         m_loggerProcessor = std::make_unique<ThreadLoggerQueue>(
             [this](const IndexerResponse& data)
@@ -367,7 +422,9 @@ public:
 
                     ++itemIndex;
                 }
-            });
+            },
+            static_cast<unsigned int>(m_loggerThreads),
+            m_loggerQueueSize);
 
         m_queue = std::make_unique<IndexerBulkQueue>(
             [this](std::vector<std::string>& dataQueue)
@@ -404,9 +461,29 @@ public:
                     {
                         m_successCount++;
                     }
+
+                    // Fast path: when the bulk head reports "errors":false there is nothing to
+                    // log — drop payload and response right here instead of parking a full copy
+                    // of both in the logger queue (the main RSS driver under sustained load).
+                    if (!bulkResponseHasErrors(response))
+                    {
+                        return;
+                    }
+
+                    // Dispatch to error logger (bounded queue: drop + warn when it is full).
                     IndexerResponse responseData(std::move(bulkData), std::move(boundaries), std::move(response));
-                    m_loggerProcessor->push(std::move(responseData));
-                    // Dispatch to error logger.
+                    if (m_loggerProcessor->push(std::move(responseData)))
+                    {
+                        m_loggerDropLogged = false;
+                    }
+                    else if (!m_loggerDropLogged)
+                    {
+                        m_loggerDropLogged = true;
+                        LOGFN_WARN(m_logFn,
+                                   "Indexer error-logger queue is full (%zu elements): bulk error details dropped. "
+                                   "Increase 'logger_queue_size' to keep them.",
+                                   m_loggerQueueSize);
+                    }
                 };
 
                 const auto onError =

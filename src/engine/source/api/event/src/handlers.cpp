@@ -1,12 +1,14 @@
 #include <api/event/handlers.hpp>
 #include <api/event/ndJsonParser.hpp>
 #include <base/logging.hpp>
+
 #include <fastmetrics/registry.hpp>
 
 namespace api::event::handlers
 {
 adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orchestrator,
-                                const std::shared_ptr<::dumper::IDumper>& dumper)
+                                const std::shared_ptr<::dumper::IDumper>& dumper,
+                                std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache)
 {
     auto lambdaName = logging::getLambdaName(__FUNCTION__, "apiHandler");
     auto weakOrchestrator = std::weak_ptr(orchestrator);
@@ -18,6 +20,7 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
     return [lambdaName = std::move(lambdaName),
             weakOrchestrator = std::move(weakOrchestrator),
             weakDump = std::weak_ptr(dumper),
+            agentMetadataCache = std::move(agentMetadataCache),
             bytesReceivedCounter,
             eventsReceivedCounter](const auto& req, auto& res)
     {
@@ -54,7 +57,7 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
                 orchestratorRef->postEvent(std::move(ingestEvent));
             };
 
-            protocol::parseNDJson(req.body, enqueueHook);
+            protocol::parseNDJson(req.body, enqueueHook, agentMetadataCache);
         }
         catch (const std::exception& e)
         {

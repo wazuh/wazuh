@@ -83,12 +83,19 @@ ANALYSISD_HEADER = [
     "server_events_received",
     "router_queue_size",
     "router_queue_usage_percent",
+    "router_queue_bytes_used",
+    "router_queue_bytes_usage_percent",
     "router_events_processed",
     "router_events_dropped",
-    "indexer_queue_usage_percent",
     "indexer_queue_size",
+    "indexer_queue_usage_percent",
     "indexer_events_dropped",
     "router_eps_1m",
+    "agent_cache_entries",
+    "agent_cache_hits",
+    "agent_cache_insertions",
+    "agent_cache_updates",
+    "agent_cache_evictions",
     "spaces_standard_events_unclassified",
     "raw_response_json",
 ]
@@ -780,12 +787,21 @@ def _flatten_analysisd_stats(raw: dict[str, object], timestamp: str, elapsed_s: 
     row["server_events_received"]     = _as_int(global_metrics.get("server.events.received"))
     row["router_queue_size"]          = _as_int(global_metrics.get("router.queue.size"))
     row["router_queue_usage_percent"] = _as_float(global_metrics.get("router.queue.usage.percent"))
+    row["router_queue_bytes_used"]           = _as_int(global_metrics.get("router.queue.bytes.used"))
+    row["router_queue_bytes_usage_percent"]  = _as_float(global_metrics.get("router.queue.bytes.usage.percent"))
     row["router_events_processed"]    = _as_int(global_metrics.get("router.events.processed"))
     row["router_events_dropped"]      = _as_int(global_metrics.get("router.events.dropped"))
-    row["indexer_queue_usage_percent"] = _as_float(global_metrics.get("indexer.queue.usage.percent"))
     row["indexer_queue_size"]         = _as_int(global_metrics.get("indexer.queue.size"))
+    row["indexer_queue_usage_percent"] = _as_float(global_metrics.get("indexer.queue.usage.percent"))
     row["indexer_events_dropped"]     = _as_int(global_metrics.get("indexer.events.dropped"))
     row["router_eps_1m"]              = _as_float(global_metrics.get("router.eps.1m"))
+
+    # Agent metadata cache (entries is an instantaneous gauge; the rest are cumulative counters).
+    row["agent_cache_entries"]        = _as_int(global_metrics.get("agent.cache.entries"))
+    row["agent_cache_hits"]           = _as_int(global_metrics.get("agent.cache.hits"))
+    row["agent_cache_insertions"]     = _as_int(global_metrics.get("agent.cache.insertions"))
+    row["agent_cache_updates"]        = _as_int(global_metrics.get("agent.cache.updates"))
+    row["agent_cache_evictions"]      = _as_int(global_metrics.get("agent.cache.evictions"))
 
     # Walk spaces to find the "standard" space and extract events.unclassified.
     for space in raw.get("spaces") or []:
@@ -824,7 +840,8 @@ def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
                 row = _flatten_analysisd_stats(raw, ts_now, elapsed_s)
                 logger.info(
                     "[analysisd-api] events_received=%d router_q=%d router_q_pct=%.1f "
-                    "indexer_q=%d indexer_q_pct=%.1f indexer_dropped=%d unclassified=%d",
+                    "indexer_q=%d indexer_q_pct=%.1f indexer_dropped=%d unclassified=%d "
+                    "cache_entries=%d cache_hits=%d cache_ins=%d cache_upd=%d cache_evict=%d",
                     _as_int(row.get("server_events_received")),
                     _as_int(row.get("router_queue_size")),
                     _as_float(row.get("router_queue_usage_percent")),
@@ -832,6 +849,11 @@ def analysisd_api_monitor_loop(csv_path: str, interval: float, socket_path: str,
                     _as_float(row.get("indexer_queue_usage_percent")),
                     _as_int(row.get("indexer_events_dropped")),
                     _as_int(row.get("spaces_standard_events_unclassified")),
+                    _as_int(row.get("agent_cache_entries")),
+                    _as_int(row.get("agent_cache_hits")),
+                    _as_int(row.get("agent_cache_insertions")),
+                    _as_int(row.get("agent_cache_updates")),
+                    _as_int(row.get("agent_cache_evictions")),
                 )
             except Exception as exc:
                 row = _empty_analysisd_row(ts_now, elapsed_s)

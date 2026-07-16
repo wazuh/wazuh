@@ -29,7 +29,8 @@ Definitions::Definitions(const json::Json& definitions)
         }
     }
 
-    m_definitions = std::make_unique<json::Json>(definitions);
+    // Compact copy, usually small.
+    m_definitions = std::make_unique<json::Json>(definitions.compact());
 
     // Preresolve definitions to handle dependencies correctly
     preResolveDefinitions();

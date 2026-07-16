@@ -100,9 +100,9 @@ func main() {
 	defer writerCancel()
 	go writer.Run(writerCtx)
 
-	log.Printf("scenario=%s total_agents=%d parallel_agents=%d repeat_until=%ds drain=%ds keepalive=%s engine_cols=%v",
+	log.Printf("scenario=%s total_agents=%d parallel_agents=%d repeat_until=%ds drain=%ds keepalive=%s cluster_name=%s engine_cols=%v",
 		scn.Name, scn.Behavior.TotalAgents, scn.Behavior.ParallelAgents,
-		scn.Behavior.RepeatUntil, int(dt.Seconds()), *keepaliveInterval, *reportEngine)
+		scn.Behavior.RepeatUntil, int(dt.Seconds()), *keepaliveInterval, scn.ClusterName, *reportEngine)
 
 	registered, err := runner.Run(rootCtx, scn, runner.Config{
 		Manager:           *manager,
@@ -127,18 +127,18 @@ func main() {
 
 	if *summaryJSON != "" {
 		meta := metrics.SummaryMeta{
-			ScenarioName:    scn.Name,
-			ScenarioPath:    scn.FilePath,
-			Manager:         *manager,
-			Port:            *port,
-			RegPort:         *regPort,
-			TotalAgents:     scn.Behavior.TotalAgents,
+			ScenarioName:     scn.Name,
+			ScenarioPath:     scn.FilePath,
+			Manager:          *manager,
+			Port:             *port,
+			RegPort:          *regPort,
+			TotalAgents:      scn.Behavior.TotalAgents,
 			AgentsRegistered: registered,
-			ParallelAgents:  scn.Behavior.ParallelAgents,
-			RepeatUntil:     scn.Behavior.RepeatUntil,
-			DrainTimeout:    int(dt.Seconds()),
-			Sender:          "go",
-			Version:         version,
+			ParallelAgents:   scn.Behavior.ParallelAgents,
+			RepeatUntil:      scn.Behavior.RepeatUntil,
+			DrainTimeout:     int(dt.Seconds()),
+			Sender:           "go",
+			Version:          version,
 		}
 		if err := c.WriteSummary(*summaryJSON, meta, t0, time.Now(), *reportEngine); err != nil {
 			log.Printf("write summary: %v", err)

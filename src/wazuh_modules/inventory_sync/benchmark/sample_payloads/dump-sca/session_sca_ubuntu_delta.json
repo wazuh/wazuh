@@ -126,21 +126,42 @@
           "description": "The contents of the /etc/issue file are displayed to users prior to login for local terminals.",
           "id": "28541",
           "mitre": {
-            "subtechnique": [
-              "T1048.003",
-              "T1552.001"
-            ],
-            "tactic": [
-              "TA0009",
-              "TA0010"
-            ],
-            "technique": [
-              "T1005",
-              "T1025",
-              "T1041",
-              "T1567",
-              "T1573"
-            ]
+            "tactic": {
+              "id": [
+                "TA0009",
+                "TA0010"
+              ],
+              "name": [
+                "Collection",
+                "Exfiltration"
+              ]
+            },
+            "technique": {
+              "id": [
+                "T1005",
+                "T1025",
+                "T1041",
+                "T1567",
+                "T1573"
+              ],
+              "name": [
+                "Data from Local System",
+                "Data from Removable Media",
+                "Exfiltration Over C2 Channel",
+                "Exfiltration Over Web Service",
+                "Encrypted Channel"
+              ]
+            },
+            "subtechnique": {
+              "id": [
+                "T1048.003",
+                "T1552.001"
+              ],
+              "name": [
+                "Exfiltration Over Unencrypted Non-C2 Protocol",
+                "Credentials In Files"
+              ]
+            }
           },
           "name": "Ensure access to /etc/issue is configured.",
           "rationale": "- IF - the /etc/issue file does not have the correct access configured, it could be modified by unauthorized users with incorrect or misleading information.",

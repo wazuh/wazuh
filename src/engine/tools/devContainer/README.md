@@ -112,17 +112,19 @@ The `e2e/` directory provides scripts to deploy a complete Wazuh ecosystem for e
 ### init.sh
 Initializes the E2E environment by running three steps in order:
 
-1. **Artifact download** — uses the GitHub CLI to find the latest successful build in `wazuh/wazuh-indexer` and `wazuh/wazuh-dashboard` and downloads the `.deb` packages into `wazuh-indexer/` and `wazuh-dashboard/` respectively.
+1. **Package download** — downloads the Wazuh Indexer and Dashboard `.deb` packages into `wazuh-indexer/` and `wazuh-dashboard/` respectively. By default, package URLs are resolved from the staging nightly manifest, falling back to the nightly backup manifest when a package is missing. Use `--from-wf` to download from the latest successful GitHub Actions workflows instead.
 2. **Certificate generation** — downloads `wazuh-install.sh` from the official Wazuh 4.x repository, generates a temporary `config.yml`, runs `--generate-config-files` to produce the cert bundle, extracts it into `certs/`, and cleans up all temporary files. If `certs/` already exists the script prompts whether to regenerate.
 3. **Logging** — all output is mirrored to `init.log` in the same directory.
 
 **Prerequisites:**
-- GitHub CLI (`gh`) must be installed and authenticated (`gh auth login`)
+- Default mode: `curl`
+- Workflow mode (`--from-wf`): GitHub CLI (`gh`) must be installed and authenticated (`gh auth login`)
 
 **Usage:**
 ```bash
 cd e2e
 ./init.sh
+./init.sh --from-wf
 ```
 
 ### docker-compose.yml

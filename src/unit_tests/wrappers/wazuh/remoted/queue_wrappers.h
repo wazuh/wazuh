@@ -16,6 +16,8 @@
 
 size_t __wrap_rem_get_qsize();
 size_t __wrap_rem_get_tsize();
+size_t __wrap_rem_get_input_bytes_used();
+size_t __wrap_rem_get_input_max_bytes();
 
 int __wrap_rem_msgpush(const char * buffer, unsigned long size, struct sockaddr_storage * addr, int sock);
 

@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 
+#include <agentcache/agentMetadataCache.hpp>
 #include <api/handlers.hpp>
 #include <api/status/handlers.hpp>
 #include <base/eventParser.hpp>
@@ -257,6 +258,7 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
     std::shared_ptr<ioc::sync::IocSync> iocSyncService;
+    std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache;
     bool firstStart {false};
 
     try
@@ -450,6 +452,29 @@ int main(int argc, char* argv[])
                                     flushInterval));
                 }
                 jsonCnf.setUint64(flushInterval, "/flush_interval_seconds");
+
+                // Error-logger sizing: bounded queue + thread count (only error responses are queued)
+                constexpr size_t INDEXER_LOGGER_QUEUE_SIZE_MAX = 1024;
+                const auto loggerQueueSize = confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE);
+                if (loggerQueueSize == 0 || loggerQueueSize > INDEXER_LOGGER_QUEUE_SIZE_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_logger_queue_size must be between 1 and {} (got {})",
+                                    INDEXER_LOGGER_QUEUE_SIZE_MAX,
+                                    loggerQueueSize));
+                }
+                jsonCnf.setUint64(loggerQueueSize, "/logger_queue_size");
+
+                constexpr size_t INDEXER_LOGGER_THREADS_MAX = 16;
+                const auto loggerThreads = confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS);
+                if (loggerThreads == 0 || loggerThreads > INDEXER_LOGGER_THREADS_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_logger_threads must be between 1 and {} (got {})",
+                                    INDEXER_LOGGER_THREADS_MAX,
+                                    loggerThreads));
+                }
+                jsonCnf.setUint64(loggerThreads, "/logger_threads");
 
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
@@ -800,50 +825,23 @@ int main(int argc, char* argv[])
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
-
-            // Start metrics stream logging task (on-demand channel creation)
-            // Only enabled via internal_options.conf
-            if (streamLogger && confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
-            {
-                // Prepare metrics channel configuration (lazy creation on first write)
-                const auto metricsChannelConfig = streamlog::RotationConfig {
-                    .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
-                    .pattern = confManager.get<std::string>(conf::key::STREAMLOG_METRICS_PATTERN),
-                    .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_MAX_SIZE),
-                    .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_BUFFER_SIZE),
-                    .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
-                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL),
-                    .maxFiles = confManager.get<size_t>(conf::key::STREAMLOG_MAX_FILES),
-                    .maxAccumulatedSize = confManager.get<size_t>(conf::key::STREAMLOG_MAX_ACCUMULATED_SIZE)};
-
-                auto metricsWriter = streamLogger->ensureAndGetWriter("engine-metrics", metricsChannelConfig, "json");
-
-                scheduler::TaskConfig metricsConfig {.interval =
-                                                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL),
-                                                     .runImmediately = false,
-                                                     .CPUPriority = 0,
-                                                     .taskFunction = [metricsWriter, metricsManager]()
-                                                     { metricsManager->writeAllMetrics(metricsWriter); }};
-
-                scheduler->scheduleTask("MetricsLogger", std::move(metricsConfig));
-                LOG_INFO("Metrics stream logging enabled (interval: {} seconds, on-demand channel creation).",
-                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL));
-            }
-            else if (!confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
-            {
-                LOG_DEBUG("Metrics stream logging DISABLED");
-            }
         }
 
         // HTTP enriched events server
         if (enableProcessing)
         {
             engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
+            agentMetadataCache = std::make_shared<agentcache::AgentMetadataCache>(
+                std::chrono::seconds(confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_TTL)));
+
+            // Register the cache's instantaneous "agent.cache.entries" pull metric.
+            agentcache::registerCacheMetrics(agentMetadataCache);
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
-            engineRemoteServer->addRoute(
-                httpsrv::Method::POST, "/events/enriched", api::event::handlers::pushEvent(orchestrator, dumper));
+            engineRemoteServer->addRoute(httpsrv::Method::POST,
+                                         "/events/enriched",
+                                         api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
@@ -906,6 +904,22 @@ int main(int argc, char* argv[])
                     LOG_INFO("[CMSync] Event processing is now active");
                 }
             };
+
+            // Async clean agent cache, safely evicting stale entries to avoid memory bloat. This is a best-effort
+            // operation, so it is not critical if the cache is not cleaned on time. The number of evicted
+            // entries is recorded by the cache itself (agent.cache.evictions).
+            scheduler->scheduleTask("clean-agent-cache",
+                                    scheduler::TaskConfig {.interval = confManager.get<std::size_t>(
+                                                               conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL),
+                                                           .runImmediately = false,
+                                                           .CPUPriority = 0,
+                                                           .taskFunction = [agentMetadataCache]()
+                                                           {
+                                                               if (agentMetadataCache)
+                                                               {
+                                                                   agentMetadataCache->evictStale();
+                                                               }
+                                                           }});
 
             // Async Synchronize on startup
             scheduler->scheduleTask(

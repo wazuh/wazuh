@@ -220,14 +220,8 @@ SC_NAME=$("$PYTHON" -c "import json,sys; print(json.load(open('$SCENARIO')).get(
 
 # Resolve post_run_grace from the scenario root. Returns empty string when
 # the field is missing/null so we can fall back to the per-mode default below.
-SC_POST_RUN_GRACE=$("$PYTHON" -c "
-import json
-try:
-    v = json.load(open('$SCENARIO')).get('post_run_grace')
-    print(int(v) if v is not None else '')
-except Exception:
-    print('')
-")
+SC_POST_RUN_GRACE=$("$PYTHON" -c "import json, sys; v=json.load(open(sys.argv[1])).get(\"post_run_grace\"); print(int(v) if v is not None else \"\")" "$SCENARIO")
+SC_CLUSTER_NAME=$("$PYTHON" -c "import json, sys; v=json.load(open(sys.argv[1])).get(\"cluster_name\", \"wazuh\"); print(v if v is not None else \"wazuh\")" "$SCENARIO")
 
 # ---------------------------------------------------------------------------
 # Remote mode detection & SSH setup
@@ -425,6 +419,7 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "scenario_name": "$SC_NAME",
     "manager": "$MANAGER",
     "port": $PORT,
+    "cluster_name": "$SC_CLUSTER_NAME",
     "process": "wazuh-manager-modulesd",
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }

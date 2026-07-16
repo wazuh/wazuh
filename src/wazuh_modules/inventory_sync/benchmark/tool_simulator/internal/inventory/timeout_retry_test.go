@@ -185,7 +185,7 @@ func TestAckTimeoutRetry_Disabled_AbortsOnFirstTimeout(t *testing.T) {
 	conn := connectTo(t, fr.addr, identity)
 
 	c := metrics.New()
-	src := New(step, basePayload())
+	src := New(step, basePayload(), "wazuh")
 	err := src.Run(context.Background(), conn, c)
 	if err == nil {
 		t.Fatal("expected timeout error, got nil")
@@ -210,7 +210,7 @@ func TestAckTimeoutRetry_Start_CompletesAfterRetries(t *testing.T) {
 	conn := connectTo(t, fr.addr, identity)
 
 	c := metrics.New()
-	src := New(step, basePayload())
+	src := New(step, basePayload(), "wazuh")
 	if err := src.Run(context.Background(), conn, c); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -236,7 +236,7 @@ func TestAckTimeoutRetry_Start_BudgetExhausted(t *testing.T) {
 	conn := connectTo(t, fr.addr, identity)
 
 	c := metrics.New()
-	src := New(step, basePayload())
+	src := New(step, basePayload(), "wazuh")
 	err := src.Run(context.Background(), conn, c)
 	if err == nil {
 		t.Fatal("expected timeout error after budget exhaustion")
@@ -261,7 +261,7 @@ func TestAckTimeoutRetry_End_CompletesAfterRetry(t *testing.T) {
 	conn := connectTo(t, fr.addr, identity)
 
 	c := metrics.New()
-	src := New(step, basePayload())
+	src := New(step, basePayload(), "wazuh")
 	if err := src.Run(context.Background(), conn, c); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -288,7 +288,7 @@ func TestAckTimeoutRetry_End_Unlimited(t *testing.T) {
 	conn := connectTo(t, fr.addr, identity)
 
 	c := metrics.New()
-	src := New(step, basePayload())
+	src := New(step, basePayload(), "wazuh")
 	if err := src.Run(context.Background(), conn, c); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -315,7 +315,7 @@ func TestAckTimeoutOverride_ShortensWait(t *testing.T) {
 	conn := connectTo(t, fr.addr, identity)
 
 	c := metrics.New()
-	src := New(step, basePayload())
+	src := New(step, basePayload(), "wazuh")
 
 	t0 := time.Now()
 	_ = src.Run(context.Background(), conn, c)

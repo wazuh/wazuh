@@ -207,8 +207,16 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
     const auto targetDotPath = targetField.dotPath();
     const auto allowedFieldsPtr = buildCtx->allowedFieldsPtr();
 
+    // Literal DB key
+    std::string literalKey;
+    const bool literalKeyValid =
+        key->isValue()
+        && std::static_pointer_cast<const Value>(key)->sharedValue()->getString(literalKey) == json::RetGet::Success;
+
     // Return Op
     return [key,
+            literalKey,
+            literalKeyValid,
             assetType,
             targetValueValidator,
             successTrace,
@@ -245,10 +253,11 @@ TransformOp KVDBGet(std::shared_ptr<IKVDBManager> kvdbManager,
         }
         else
         {
-            if (std::static_pointer_cast<const Value>(key)->value().getString(resolvedKey) != json::RetGet::Success)
+            if (!literalKeyValid)
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace3)
             }
+            resolvedKey = literalKey;
         }
         // Get value from KVDB
         try
@@ -588,14 +597,35 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
         const auto failureTrace6 =
             fmt::format("{} -> Final array failed validation for '{}': ", name, targetField.dotPath());
 
+        // Literal key array, Avoiding a per-event json::Json copy of every key.
+        std::vector<std::string> literalKeys;
+        if (keyArray->isValue())
+        {
+            const auto sharedKeys = std::static_pointer_cast<const Value>(keyArray)->sharedValue();
+            auto maybeKeys = sharedKeys->getArray();
+            if (!maybeKeys.has_value())
+            { // This should never happen because of the build-time validation above, but we check it anyway.
+                throw std::runtime_error("Expected array for key list but getArray() returned nullopt");
+            }
+            const auto& jKeys = maybeKeys.value();
+            for (const auto& jKey : jKeys)
+            {
+                std::string keyStr;
+                jKey.getString(keyStr); // guaranteed string by the build-time validation above
+                literalKeys.emplace_back(std::move(keyStr));
+            }
+        }
+
         // Return Op
         return [=,
                 isTestMode = buildCtx->isTestMode(),
                 targetField = targetField.jsonPath(),
                 kvdbHandler = std::move(kvdbHandler)](base::Event event) -> TransformResult
         {
-            // Resolve array of keys
-            std::vector<json::Json> keys;
+            // Resolve array of keys: literal keys are precomputed; references are extracted
+            // per event as strings (no json::Json copies).
+            std::vector<std::string> refKeys;
+            const std::vector<std::string>* keys = &literalKeys;
             if (keyArray->isReference())
             {
                 const auto& keyArrayRef = *std::static_pointer_cast<Reference>(keyArray);
@@ -610,36 +640,30 @@ TransformBuilder getOpBuilderKVDBGetArray(std::shared_ptr<IKVDBManager> kvdbMana
                     RETURN_FAILURE(isTestMode, event, failureTrace2)
                 }
 
+                refKeys.reserve(value.value().size());
                 for (const auto& key : value.value())
                 {
-                    if (!key.isString())
+                    std::string keyStr;
+                    if (key.getString(keyStr) != json::RetGet::Success)
                     {
                         RETURN_FAILURE(isTestMode, event, failureTrace2)
                     }
 
-                    keys.emplace_back(key);
+                    refKeys.emplace_back(std::move(keyStr));
                 }
-            }
-            else
-            {
-                keys = std::static_pointer_cast<const Value>(keyArray)->value().getArray().value();
+                keys = &refKeys;
             }
 
             // Get values from KVDB
             bool first = true;
             json::Json::Type type {};
             std::vector<std::reference_wrapper<const json::Json>> values;
-            values.reserve(keys.size());
+            values.reserve(keys->size());
 
-            for (const auto& jKey : keys)
+            for (const auto& jKeyStr : *keys)
             {
                 try
                 {
-                    std::string jKeyStr;
-                    if (jKey.getString(jKeyStr) != json::RetGet::Success)
-                    {
-                        RETURN_FAILURE(isTestMode, event, failureTrace3)
-                    }
                     const json::Json& jValue = kvdbHandler->get(jKeyStr);
 
                     if (first)
@@ -751,17 +775,18 @@ auto getFnSearchMap(const json::Json& jMap)
             throw std::runtime_error("Found heterogeneous values on the map value from DB");
         }
 
-        map[index] = std::move(value);
+        map[index] = value.compact(); // Compact copy
     }
 
-    // Move the lookup table into the closure instead of copying it.
-    return [map = std::move(map)](uint64_t pos) -> std::optional<json::Json>
+    // Move the lookup table into the closure instead of copying it. Returns a pointer into
+    // the captured table (valid as long as the closure lives) so lookups never copy.
+    return [map = std::move(map)](uint64_t pos) -> const json::Json*
     {
-        if (pos < map.size())
+        if (pos < map.size() && map[pos].has_value())
         {
-            return map[pos];
+            return &*map[pos];
         }
-        return std::nullopt;
+        return nullptr;
     };
 }
 } // namespace
@@ -840,8 +865,9 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
         return makeTransformNoOp(buildCtx,
                                  fmt::format("{} -> Skipped KVDB map build (allowMissingDependencies)", name));
     }
-    // Build the lookup function from the KVDB map
-    std::function<std::optional<json::Json>(uint64_t)> getValueFn;
+    // Build the lookup function from the KVDB map (returns a pointer into the table owned
+    // by the closure; never copies per lookup).
+    std::function<const json::Json*(uint64_t)> getValueFn;
     {
         const auto& nsReader = buildCtx->getStoreNSReader();
 
@@ -911,8 +937,8 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
     };
 
     // Return Op
-    return
-        [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](base::Event event) -> TransformResult
+    return [=, isTestMode = buildCtx->isTestMode(), targetField = targetField.jsonPath()](
+               base::Event event) -> TransformResult
     {
         // Get mask in hex
         uint64_t mask {};
@@ -932,9 +958,9 @@ TransformOp OpBuilderHelperKVDBDecodeBitmask(const Reference& targetField,
             auto flag = 0x1ULL << bitPos;
             if (flag & mask)
             {
-                auto value = getValueFn(bitPos);
+                const auto* value = getValueFn(bitPos);
 
-                if (value.has_value())
+                if (value != nullptr)
                 {
                     isResultEmpty = false;
                     event->appendJson(*value, targetField);

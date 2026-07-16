@@ -374,6 +374,16 @@ ANALYSISD_METRICS = [
     ("spaces_standard_events_unclassified", "Standard Space — Events Unclassified",  "Count"),
 ]
 
+# Agent metadata cache metrics. "entries" is an instantaneous gauge (pull); the rest are
+# monotonic cumulative counters.
+AGENT_CACHE_METRICS = [
+    ("agent_cache_entries",    "Agent Cache — Entries (current)",         "Count"),
+    ("agent_cache_hits",       "Agent Cache — Hits (cumulative)",         "Count"),
+    ("agent_cache_insertions", "Agent Cache — Insertions (cumulative)",   "Count"),
+    ("agent_cache_updates",    "Agent Cache — Updates (cumulative)",      "Count"),
+    ("agent_cache_evictions",  "Agent Cache — Evictions (cumulative)",    "Count"),
+]
+
 EXTRA_PROCESS_COMPONENTS = (
     "wazuh-indexer",
     "wazuh-indexer-engine",
@@ -502,7 +512,8 @@ def generate_charts(
                         modulesd_dfs[label] = df
 
     has_extra_procs = any(extra_proc_dfs.values())
-    if not monitors and not benches and not disk_dfs and not remoted_dfs and not has_extra_procs:
+    if (not monitors and not benches and not disk_dfs and not remoted_dfs
+            and not analysisd_dfs and not has_extra_procs):
         print("No data files found — nothing to generate.")
         return
 
@@ -518,7 +529,8 @@ def generate_charts(
     }
     has_extra_procs = any(extra_proc_dfs.values())
 
-    if not monitors and not benches and not disk_dfs and not remoted_dfs and not has_extra_procs:
+    if (not monitors and not benches and not disk_dfs and not remoted_dfs
+            and not analysisd_dfs and not has_extra_procs):
         print("All CSV files are empty — nothing to generate.")
         return
 
@@ -661,27 +673,72 @@ def generate_charts(
                 out,
             )
 
-        # Router queue: size + usage percent — stacked panels
+        # Router queue (events): size + usage percent — stacked panels.
+        # router.queue.size / router.queue.usage.percent are the event-count
+        # view of the router's internal queue (see orchestrator.cpp), NOT bytes.
         if any("router_queue_size" in df.columns for df in analysisd_dfs.values()):
             plot_stacked_timeseries(
                 analysisd_dfs,
                 "router_queue_size", "router_queue_usage_percent",
-                "Router Queue Size", "Router Queue Usage %",
-                "Messages", "%",
-                "Analysisd — Router Queue",
-                os.path.join(out_dir, f"analysisd_router_queue.{fmt}"),
+                "Router Queue Size (events)", "Router Queue Size Usage %",
+                "Events", "%",
+                "Analysisd — Router Queue (events)",
+                os.path.join(out_dir, f"analysisd_router_queue_events.{fmt}"),
             )
 
-        # Indexer queue: size + usage percent — stacked panels
+        # Router queue (bytes): size + usage percent — stacked panels.
+        # router.queue.bytes.used / router.queue.bytes.usage.percent are the
+        # byte-based view of the same queue, tracked independently of the
+        # event-count view above.
+        if any("router_queue_bytes_used" in df.columns for df in analysisd_dfs.values()):
+            plot_stacked_timeseries(
+                analysisd_dfs,
+                "router_queue_bytes_used", "router_queue_bytes_usage_percent",
+                "Router Queue Size (bytes)", "Router Queue Size Usage %",
+                "Bytes", "%",
+                "Analysisd — Router Queue (bytes)",
+                os.path.join(out_dir, f"analysisd_router_queue_bytes.{fmt}"),
+            )
+
+        # Indexer queue: size + usage percent — stacked panels.
+        # indexer.queue.size is only ever tracked in bytes (no event-count
+        # variant exists for the indexer connector's egress queue).
         if any("indexer_queue_size" in df.columns for df in analysisd_dfs.values()):
             plot_stacked_timeseries(
                 analysisd_dfs,
                 "indexer_queue_size", "indexer_queue_usage_percent",
-                "Indexer Queue Size", "Indexer Queue Usage %",
-                "Messages", "%",
-                "Analysisd — Indexer Queue",
+                "Indexer Queue Size (bytes)", "Indexer Queue Size Usage %",
+                "Bytes", "%",
+                "Analysisd — Indexer Queue (bytes)",
                 os.path.join(out_dir, f"analysisd_indexer_queue.{fmt}"),
             )
+
+        # -- Agent metadata cache -------------------------------------------
+        # Per-metric overlay charts (one per run) for each cache metric.
+        for col, title_suffix, ylabel in AGENT_CACHE_METRICS:
+            if not any(col in df.columns for df in analysisd_dfs.values()):
+                continue
+            out = os.path.join(out_dir, f"analysisd_{col}.{fmt}")
+            plot_timeseries(
+                analysisd_dfs,
+                col,
+                f"Analysisd — {title_suffix}",
+                ylabel,
+                out,
+            )
+
+        # Combined cache overview: entries gauge (top) + cumulative counters
+        # (bottom), one chart per run.
+        if any(
+            any(c in df.columns for c, _, _ in AGENT_CACHE_METRICS)
+            for df in analysisd_dfs.values()
+        ):
+            for label, df in analysisd_dfs.items():
+                safe_label = label.replace(" ", "_")
+                _plot_agent_cache_overview(
+                    df, label,
+                    os.path.join(out_dir, f"analysisd_agent_cache_overview_{safe_label}.{fmt}"),
+                )
 
     # -- Summary bar charts --------------------------------------------------
     if monitors:
@@ -1540,6 +1597,75 @@ def _plot_combined(
     ax2.set_xlabel("Elapsed time (s)")
     ax2.set_ylabel("Sessions completed / s")
     ax2.legend(loc="upper right", fontsize=9)
+    ax2.grid(True, alpha=0.3)
+    ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"  -> {out_path}")
+
+
+def _plot_agent_cache_overview(
+    df: pd.DataFrame,
+    label: str,
+    out_path: str,
+):
+    """Two stacked panels sharing X (elapsed_s) for the agent metadata cache:
+      - Top:    entries — instantaneous number of cached agents (gauge).
+      - Bottom: hits / insertions / updates / evictions — cumulative counters.
+
+    The bottom panel makes the cache's effectiveness legible at a glance: hits
+    climbing far faster than insertions/updates means most batches reuse a
+    cached header (the win the cache exists for); evictions track TTL turnover.
+    """
+    counter_series = [
+        ("agent_cache_hits",       "Hits",       COLORS[2]),
+        ("agent_cache_insertions", "Insertions", COLORS[0]),
+        ("agent_cache_updates",    "Updates",    COLORS[1]),
+        ("agent_cache_evictions",  "Evictions",  COLORS[3]),
+    ]
+    has_entries = "agent_cache_entries" in df.columns and df["agent_cache_entries"].notna().any()
+    has_counters = any(c in df.columns and df[c].notna().any() for c, _, _ in counter_series)
+    if not has_entries and not has_counters:
+        return
+
+    # Derive the overall hit rate from the final cumulative values for the title.
+    hit_rate_txt = ""
+    if has_counters and {"agent_cache_hits", "agent_cache_insertions", "agent_cache_updates"}.issubset(df.columns):
+        hits = float(pd.to_numeric(df["agent_cache_hits"], errors="coerce").fillna(0).iloc[-1])
+        ins = float(pd.to_numeric(df["agent_cache_insertions"], errors="coerce").fillna(0).iloc[-1])
+        upd = float(pd.to_numeric(df["agent_cache_updates"], errors="coerce").fillna(0).iloc[-1])
+        lookups = hits + ins + upd
+        if lookups > 0:
+            hit_rate_txt = f"  —  hit rate {100.0 * hits / lookups:.1f}%"
+
+    fig, (ax1, ax2) = plt.subplots(
+        2, 1, figsize=(14, 8), sharex=True, gridspec_kw={"height_ratios": [1, 1]},
+    )
+
+    # Panel 1 — entries (gauge).
+    if has_entries:
+        ax1.plot(df["elapsed_s"], df["agent_cache_entries"],
+                 color=COLORS[4], linewidth=1.6, alpha=0.9, label="Entries (current)")
+        ax1.fill_between(df["elapsed_s"], df["agent_cache_entries"],
+                         alpha=0.15, color=COLORS[4])
+    ax1.set_ylabel("Entries")
+    ax1.set_ylim(0, None)
+    ax1.set_title(f"Analysisd — Agent Metadata Cache ({label}){hit_rate_txt}",
+                  fontsize=14, fontweight="bold")
+    ax1.legend(loc="upper left", fontsize=9)
+    ax1.grid(True, alpha=0.3)
+
+    # Panel 2 — cumulative counters.
+    for col, name, color in counter_series:
+        if col in df.columns and df[col].notna().any():
+            ax2.plot(df["elapsed_s"], df[col],
+                     color=color, linewidth=1.4, alpha=0.9, label=name)
+    ax2.set_xlabel("Elapsed time (s)")
+    ax2.set_ylabel("Count (cumulative)")
+    ax2.set_ylim(0, None)
+    ax2.legend(loc="upper left", fontsize=9)
     ax2.grid(True, alpha=0.3)
     ax2.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 

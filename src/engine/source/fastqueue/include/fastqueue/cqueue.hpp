@@ -8,6 +8,7 @@
 
 #include <blockingconcurrentqueue.h>
 
+#include <fastqueue/bytelimiter.hpp>
 #include <fastqueue/iqueue.hpp>
 #include <fastqueue/ratelimiter.hpp>
 
@@ -60,22 +61,7 @@ private:
     std::size_t m_minCapacity;                            ///< The minimum capacity of the queue.
     std::unique_ptr<RateLimiter> m_rateLimiter;           ///< Optional rate limiter (nullptr = no limiting)
 
-    // Byte-capacity tracking (disabled when m_maxBytes == 0)
-    std::size_t m_maxBytes {0};
-    std::atomic<std::size_t> m_currentBytes {0};
-    std::function<std::size_t(const T&)> m_sizeOf;
-
-    // Atomically subtract sz from m_currentBytes, clamping to 0 on underflow.
-    inline void releaseBytes(std::size_t sz) noexcept
-    {
-        const std::size_t prev = m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
-        if (prev < sz)
-        {
-            // Underflow: compensate without clobbering concurrent increments.
-            // store(0) would destroy any fetch_add that landed between our fetch_sub and here.
-            m_currentBytes.fetch_add(sz - prev, std::memory_order_relaxed);
-        }
-    }
+    ByteLimiter<T> m_byteLimiter;
 
 public:
     /**
@@ -146,54 +132,33 @@ public:
      */
     void setByteLimit(std::size_t maxBytes, std::function<std::size_t(const T&)> sizeOf) override
     {
-        m_maxBytes = maxBytes;
-        m_sizeOf = std::move(sizeOf);
-        m_currentBytes.store(0, std::memory_order_relaxed);
+        m_byteLimiter.configure(maxBytes, std::move(sizeOf));
     }
 
     /**
      * @copydoc IQueue::bytesUsed
      */
-    std::size_t bytesUsed() const noexcept override { return m_currentBytes.load(std::memory_order_relaxed); }
+    std::size_t bytesUsed() const noexcept override { return m_byteLimiter.bytesUsed(); }
 
     /**
      * @copydoc IQueue::maxBytes
      */
-    std::size_t maxBytes() const noexcept override { return m_maxBytes; }
+    std::size_t maxBytes() const noexcept override { return m_byteLimiter.maxBytes(); }
 
     /**
      * @copydoc IQueue::push
      */
     inline bool push(T&& element) override
     {
-        if (m_sizeOf)
+        const std::size_t sz = m_byteLimiter.measure(element);
+        if (!m_byteLimiter.tryAcquireBytes(sz))
+            return false;
+        if (!m_queue.try_enqueue(std::move(element)))
         {
-            const std::size_t sz = m_sizeOf(element);
-            if (m_maxBytes > 0)
-            {
-                if (sz > m_maxBytes)
-                {
-                    return false; // Single element exceeds the entire byte budget.
-                }
-                const std::size_t prev = m_currentBytes.fetch_add(sz, std::memory_order_relaxed);
-                if (prev >= m_maxBytes || sz > m_maxBytes - prev)
-                {
-                    m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
-                    return false; // Byte quota exceeded.
-                }
-            }
-            else
-            {
-                m_currentBytes.fetch_add(sz, std::memory_order_relaxed);
-            }
-            if (!m_queue.try_enqueue(std::move(element)))
-            {
-                m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
-                return false; // Element-count limit hit.
-            }
-            return true;
+            m_byteLimiter.releaseBytes(sz);
+            return false;
         }
-        return m_queue.try_enqueue(std::move(element));
+        return true;
     }
 
     /**
@@ -201,34 +166,15 @@ public:
      */
     inline bool tryPush(const T& element) override
     {
-        if (m_sizeOf)
+        const std::size_t sz = m_byteLimiter.measure(element);
+        if (!m_byteLimiter.tryAcquireBytes(sz))
+            return false;
+        if (!m_queue.try_enqueue(element))
         {
-            const std::size_t sz = m_sizeOf(element);
-            if (m_maxBytes > 0)
-            {
-                if (sz > m_maxBytes)
-                {
-                    return false;
-                }
-                const std::size_t prev = m_currentBytes.fetch_add(sz, std::memory_order_relaxed);
-                if (prev >= m_maxBytes || sz > m_maxBytes - prev)
-                {
-                    m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
-                    return false;
-                }
-            }
-            else
-            {
-                m_currentBytes.fetch_add(sz, std::memory_order_relaxed);
-            }
-            if (!m_queue.try_enqueue(element))
-            {
-                m_currentBytes.fetch_sub(sz, std::memory_order_relaxed);
-                return false;
-            }
-            return true;
+            m_byteLimiter.releaseBytes(sz);
+            return false;
         }
-        return m_queue.try_enqueue(element);
+        return true;
     }
 
     /**
@@ -267,9 +213,9 @@ public:
             result = m_queue.wait_dequeue_timed(element, normalizedTimeout);
         }
 
-        if (result && m_sizeOf)
+        if (result)
         {
-            releaseBytes(m_sizeOf(element));
+            m_byteLimiter.releaseBytes(m_byteLimiter.measure(element));
         }
         return result;
     }
@@ -288,10 +234,7 @@ public:
         {
             return false;
         }
-        if (m_sizeOf)
-        {
-            releaseBytes(m_sizeOf(element));
-        }
+        m_byteLimiter.releaseBytes(m_byteLimiter.measure(element));
         return true;
     }
 
@@ -332,14 +275,14 @@ public:
             return 0;
         }
         const std::size_t dequeued = m_queue.try_dequeue_bulk(elements, max);
-        if (dequeued > 0 && m_sizeOf)
+        if (dequeued > 0 && m_byteLimiter.isEnabled())
         {
             std::size_t totalBytes = 0;
             for (std::size_t i = 0; i < dequeued; ++i)
             {
-                totalBytes += m_sizeOf(elements[i]);
+                totalBytes += m_byteLimiter.measure(elements[i]);
             }
-            releaseBytes(totalBytes);
+            m_byteLimiter.releaseBytes(totalBytes);
         }
         return dequeued;
     }

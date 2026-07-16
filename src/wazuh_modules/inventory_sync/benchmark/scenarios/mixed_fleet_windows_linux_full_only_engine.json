@@ -1,0 +1,123 @@
+{
+  "name": "mixed_fleet_windows_linux_full",
+  "description": "Engine-only router queue memory test for mixed Windows/Linux simulated fleets. Each agent sends twelve 5-minute bursts with 2-minute idle gaps, alternating payload sizes and starting with Azure and ending with syslog. The final 2-minute drain leaves the monitor running with no new events so the router queue/RSS drop can be observed. Total planned runtime is about 84 minutes including the final drain.",
+  "lanes": {
+    "engine_router_queue_bursts": [
+      {
+        "engine": "sample_payloads/engine/azure.log",
+        "location": "azure",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0
+      },
+      {
+        "engine": "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      },
+      {
+        "engine": "sample_payloads/engine/azure.log",
+        "location": "azure",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      },
+      {
+        "engine": "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      },
+      {
+        "engine": "sample_payloads/engine/azure.log",
+        "location": "azure",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      },
+      {
+        "engine": "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      },
+      {
+        "engine": "sample_payloads/engine/azure.log",
+        "location": "azure",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      },
+      {
+        "engine": "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      },
+      {
+        "engine": "sample_payloads/engine/azure.log",
+        "location": "azure",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      },
+      {
+        "engine": "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      },
+      {
+        "engine": "sample_payloads/engine/azure.log",
+        "location": "azure",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      },
+      {
+        "engine": "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps": 250,
+        "loop": true,
+        "duration": 300.0,
+        "initial_delay": 120.0
+      }
+    ]
+  },
+  "fleets": [
+    {
+      "name": "windows",
+      "agents": 50,
+      "lanes": [
+        "engine_router_queue_bursts"
+      ]
+    },
+    {
+      "name": "linux",
+      "agents": 50,
+      "lanes": [
+        "engine_router_queue_bursts"
+      ]
+    }
+  ],
+  "parallel_agents": 0,
+  "repeat_until": 0,
+  "drain_timeout": 120,
+  "post_run_grace": 0
+}

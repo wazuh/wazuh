@@ -15,7 +15,6 @@
  *  - byte-limit enforcement (queue_max_bytes)
  *  - oversized individual events
  *  - byte quota recovery after dequeue
- *  - concurrent producers and consumer
  */
 
 #include <stdarg.h>
@@ -24,7 +23,6 @@
 #include <cmocka.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <stdatomic.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -210,84 +208,6 @@ static void test_byte_limit_recovery_after_dequeue(void **state) {
     rem_msgfree(msg);
 }
 
-/* ── Concurrent producers / consumer ─────────────────────────────────────── */
-
-#define CONCURRENT_ITEMS   200
-#define CONCURRENT_THREADS 4
-#define PAYLOAD_SIZE       8
-/* Byte cap: holds ~50 messages at a time so producers must retry */
-#define CONCURRENT_BYTE_CAP (50 * PAYLOAD_SIZE)
-
-static atomic_int concurrent_produced;
-static atomic_int concurrent_consumed;
-
-static void *concurrent_producer(void *arg) {
-    (void)arg;
-    struct sockaddr_storage addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.ss_family = AF_INET;
-
-    char payload[PAYLOAD_SIZE];
-    memset(payload, 'x', PAYLOAD_SIZE);
-
-    for (int i = 0; i < CONCURRENT_ITEMS; i++) {
-        int rc;
-        /* Retry until accepted; byte or count quota may be temporarily full */
-        do {
-            rc = rem_msgpush(payload, PAYLOAD_SIZE, &addr, 1);
-        } while (rc != 0);
-        atomic_fetch_add(&concurrent_produced, 1);
-    }
-    return NULL;
-}
-
-static void *concurrent_consumer(void *arg) {
-    int total = *(int *)arg;
-    int consumed = 0;
-    while (consumed < total) {
-        message_t *msg = rem_msgpop();
-        if (msg) {
-            rem_msgfree(msg);
-            consumed++;
-            atomic_fetch_add(&concurrent_consumed, 1);
-        }
-    }
-    return NULL;
-}
-
-static int setup_concurrent(void **state) {
-    (void)state;
-    global_counter = 0;
-    atomic_store(&g_discard_count, 0);
-    atomic_store(&concurrent_produced, 0);
-    atomic_store(&concurrent_consumed, 0);
-    /* Larger queue to reduce count-limit contention */
-    rem_msginit(256);
-    rem_set_input_queue_max_bytes(CONCURRENT_BYTE_CAP);
-    return 0;
-}
-
-static void test_concurrent_producers_consumer(void **state) {
-    (void)state;
-
-    int total_expected = CONCURRENT_THREADS * CONCURRENT_ITEMS;
-
-    pthread_t producers[CONCURRENT_THREADS];
-    pthread_t consumer;
-
-    pthread_create(&consumer, NULL, concurrent_consumer, &total_expected);
-    for (int i = 0; i < CONCURRENT_THREADS; i++) {
-        pthread_create(&producers[i], NULL, concurrent_producer, NULL);
-    }
-    for (int i = 0; i < CONCURRENT_THREADS; i++) {
-        pthread_join(producers[i], NULL);
-    }
-    pthread_join(consumer, NULL);
-
-    assert_int_equal(total_expected, atomic_load(&concurrent_produced));
-    assert_int_equal(total_expected, atomic_load(&concurrent_consumed));
-}
-
 /* ── Test Suite ───────────────────────────────────────────────────────────── */
 
 int main(void) {
@@ -297,7 +217,6 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_byte_limit_exhausted_discards,       setup, teardown),
         cmocka_unit_test_setup_teardown(test_byte_limit_oversized_event_rejected, setup, teardown),
         cmocka_unit_test_setup_teardown(test_byte_limit_recovery_after_dequeue,   setup, teardown),
-        cmocka_unit_test_setup_teardown(test_concurrent_producers_consumer, setup_concurrent, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

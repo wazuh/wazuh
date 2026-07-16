@@ -2600,3 +2600,69 @@ TEST_F(IndexerConnectorAsyncTest, FlushIntervalSecondsFromJsonConfigTimerFires)
         << "Expected 1s timer (from JSON flush_interval_seconds) to fire within 3s";
     EXPECT_GT(callCount, 0);
 }
+
+/****************************************************************************************
+ * Error-logger fast path & sizing (bulkResponseHasErrors + logger_queue_size/threads)
+ ****************************************************************************************/
+
+TEST_F(IndexerConnectorAsyncTest, BulkResponseHasErrors_FalseIsDetected)
+{
+    // Canonical OpenSearch response head
+    EXPECT_FALSE(
+        IndexerConnectorAsyncImplTest::bulkResponseHasErrors(R"({"took":30,"errors":false,"items":[{"create":{}}]})"));
+    // With whitespace around the colon
+    EXPECT_FALSE(IndexerConnectorAsyncImplTest::bulkResponseHasErrors(R"({"took":1,"errors": false,"items":[]})"));
+    EXPECT_FALSE(IndexerConnectorAsyncImplTest::bulkResponseHasErrors("{\"took\":1,\"errors\":\n\tfalse}"));
+}
+
+TEST_F(IndexerConnectorAsyncTest, BulkResponseHasErrors_TrueIsDetected)
+{
+    EXPECT_TRUE(
+        IndexerConnectorAsyncImplTest::bulkResponseHasErrors(R"({"took":30,"errors":true,"items":[{"create":{}}]})"));
+    EXPECT_TRUE(IndexerConnectorAsyncImplTest::bulkResponseHasErrors(R"({"took":1,"errors": true})"));
+}
+
+TEST_F(IndexerConnectorAsyncTest, BulkResponseHasErrors_ConservativeWhenUnrecognized)
+{
+    // Field absent from the head -> conservative true (the logger's full parse decides)
+    EXPECT_TRUE(IndexerConnectorAsyncImplTest::bulkResponseHasErrors(R"({"took":30,"items":[]})"));
+    // Empty / malformed responses -> conservative true
+    EXPECT_TRUE(IndexerConnectorAsyncImplTest::bulkResponseHasErrors(""));
+    EXPECT_TRUE(IndexerConnectorAsyncImplTest::bulkResponseHasErrors(R"({"errors")"));
+    // Field beyond the scanned head (first 256 bytes) -> conservative true
+    const std::string longHead = "{\"took\":1,\"padding\":\"" + std::string(300, 'x') + "\",\"errors\":false}";
+    EXPECT_TRUE(IndexerConnectorAsyncImplTest::bulkResponseHasErrors(longHead));
+}
+
+TEST_F(IndexerConnectorAsyncTest, ConstructorWithLoggerSizingConfig)
+{
+    // Explicit logger sizing must be accepted and the connector must keep indexing normally.
+    config["logger_queue_size"] = 4;
+    config["logger_threads"] = 2;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    EXPECT_NO_THROW({
+        IndexerConnectorAsyncImplTest connector(
+            config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-logger-sizing");
+        connector.bulkIndex("id1", "index1", R"({"field":"value"})");
+    });
+}
+
+TEST_F(IndexerConnectorAsyncTest, ConstructorWithZeroLoggerSizingFallsBackToDefaults)
+{
+    // Zero values are invalid; the connector falls back to the defaults instead of
+    // creating an unbounded queue or zero threads.
+    config["logger_queue_size"] = 0;
+    config["logger_threads"] = 0;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    ON_CALL(*mockSelector, getNext()).WillByDefault(Return("mockserver:9200"));
+
+    EXPECT_NO_THROW({
+        IndexerConnectorAsyncImplTest connector(
+            config, nullptr, &mockHttpRequest, std::move(mockSelector), "test-logger-zero");
+        connector.bulkIndex("id1", "index1", R"({"field":"value"})");
+    });
+}

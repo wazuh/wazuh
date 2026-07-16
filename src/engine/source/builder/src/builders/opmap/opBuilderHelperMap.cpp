@@ -2553,8 +2553,9 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
     const auto isTestMode = buildCtx->isTestMode();
     const auto tgtPath = targetField.jsonPath();
 
-    const std::optional<json::Json> capturedVal =
-        argIsValue ? std::optional<json::Json>(std::static_pointer_cast<Value>(opArgs[0])->value()) : std::nullopt;
+    // Literal comparison value: share the Value's compact document
+    const std::shared_ptr<const json::Json> capturedVal =
+        argIsValue ? std::static_pointer_cast<Value>(opArgs[0])->sharedValue() : nullptr;
 
     const std::optional<std::string> refPath =
         (!argIsValue) ? std::optional<std::string>(std::static_pointer_cast<Reference>(opArgs[0])->jsonPath())
@@ -2574,14 +2575,17 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
             RETURN_FAILURE(isTestMode, event, failureTrace1);
         }
 
-        std::optional<json::Json> cmpLocal = capturedVal;
-        if (!cmpLocal && refPath)
+        // Comparison value: the shared literal, or a per-event snapshot of the reference.
+        const json::Json* cmp = capturedVal.get();
+        std::optional<json::Json> refSnap;
+        if (cmp == nullptr && refPath)
         {
             try
             {
-                if (auto snapOpt = event->getJson(*refPath))
+                refSnap = event->getJson(*refPath);
+                if (refSnap)
                 {
-                    cmpLocal = std::move(*snapOpt);
+                    cmp = &*refSnap;
                 }
             }
             catch (const std::runtime_error& e)
@@ -2601,7 +2605,7 @@ TransformOp opBuilderHelperDeleteFieldsWithValue(const Reference& targetField,
 
             try
             {
-                if (cmpLocal && event->equals(childPath, *cmpLocal))
+                if (cmp != nullptr && event->equals(childPath, *cmp))
                 {
                     (void)event->erase(childPath);
                 }
@@ -3478,6 +3482,11 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
     const auto failureTrace9 = fmt::format(
         "{} -> Cannot map subfields of {} because is not allowed for {}", name, targetField.dotPath(), assetType);
 
+    // Literal object parameter: share the Value's compact document once at build time
+    // instead of materializing a 64 KB json::Json copy per event.
+    const std::shared_ptr<const json::Json> valueObject =
+        opArgs[0]->isValue() ? std::static_pointer_cast<Value>(opArgs[0])->sharedValue() : nullptr;
+
     // Return Op
     return [=,
             isTestMode = buildCtx->isTestMode(),
@@ -3496,8 +3505,9 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
 
         auto pointerPath = json::Json::formatJsonPath(resolvedKey);
 
-        // Get object
-        std::optional<json::Json> resolvedObject {std::nullopt};
+        // Get object: the shared literal, or a per-event snapshot of the reference.
+        const json::Json* resolvedObject = valueObject.get();
+        std::optional<json::Json> refObject;
 
         if (parameter->isReference())
         {
@@ -3509,16 +3519,12 @@ TransformOp opBuilderHelperGetValueGeneric(const Reference& targetField,
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace3);
             }
-            resolvedObject = event->getJson(ref.jsonPath());
-            if (!resolvedObject.value().isObject())
+            refObject = event->getJson(ref.jsonPath());
+            if (!refObject.value().isObject())
             {
                 RETURN_FAILURE(isTestMode, event, failureTrace4);
             }
-        }
-        else
-        {
-            // Parameter is a value
-            resolvedObject = std::static_pointer_cast<Value>(parameter)->value();
+            resolvedObject = &*refObject;
         }
 
         // Get value from object

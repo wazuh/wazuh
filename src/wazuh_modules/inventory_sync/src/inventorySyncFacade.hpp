@@ -2148,10 +2148,10 @@ private:
 
     static inline const LogFn m_logFn {WM_INVENTORY_SYNC_LOGTAG};
     std::string m_clusterName;
-    int m_maxSessions {1000};          // Maximum concurrent sessions (configured from internal_options)
-    size_t m_workersQueueSize {10000}; // Input queue cap (configured from internal_options)
+    int m_maxSessions {1000};         // Maximum concurrent sessions (configured from internal_options)
+    size_t m_workersQueueSize {1000}; // Input queue cap (configured from internal_options)
     std::atomic<uint64_t> m_dataValueQuotaRemaining {
-        500000};                                   // Global DataValue quota (configured from internal_options)
+        250000};                                   // Global DataValue quota (configured from internal_options)
     std::atomic<int64_t> m_lastQueueDropLogNs {0}; // steady_clock ns of last queue-drop warning
     static constexpr int64_t WARN_THROTTLE_NS = 90LL * 1000LL * 1000LL * 1000LL; // 90 s
     mutable std::shared_mutex m_agentSessionsMutex;

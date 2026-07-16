@@ -201,7 +201,7 @@ func newRunnableSource(t *testing.T, step scenario.Step, payload *PayloadInfo, f
 	if step.EndAckTimeout == 0 {
 		step.EndAckTimeout = 2.0
 	}
-	return New(step, payload), conn, metrics.New()
+	return New(step, payload, "wazuh"), conn, metrics.New()
 }
 
 func basePayload() *PayloadInfo {

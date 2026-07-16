@@ -200,6 +200,7 @@ inside one lane run sequentially.
   "total_agents": 1,
   "parallel_agents": 1,
   "repeat_until": 0,
+  "cluster_name": "wazuh",
   "drain_timeout": 30,
   "post_run_grace": 0
 }
@@ -215,6 +216,7 @@ Top-level fields:
 | `fleets` | Optional split of agents into groups that run different lane subsets. |
 | `parallel_agents` | Global agent concurrency cap. `0` means all registered agents run together. |
 | `repeat_until` | `0` means one pass. `>0` loops the lanes until the time budget expires. |
+| `cluster_name` | Cluster name stamped into inventory Start frames. Must match manager `<cluster><name>`; use `undefined` when the manager has no cluster block. Defaults to `wazuh`. |
 | `drain_timeout` | Optional sender-side post-finish drain window. When omitted, the sender uses its built-in default (60 s). |
 | `post_run_grace` | Optional monitor-side grace read by `run_benchmark.sh`. |
 

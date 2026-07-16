@@ -16,19 +16,19 @@ interpreted as follows:
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | `Status_Ok (0)`               | Happy path — session created or completed cleanly                                                          | Increment `start_ack_ok` / `end_ack_ok`; latency recorded                                                       |
 | `Status_Error (1)`            | Hard reject. Examples: agent locked by another `Mode_Metadata*`/`Mode_Group*` session, invalid Start fields | Increment `start_ack_error` / `end_ack_error`; pre-StartAck → abort the runner; post-StartAck → count and exit |
-| `Status_Offline (2)`          | Backpressure. Examples: `inventory_sync_data_value_quota` exhausted (default 500000), `m_maxSessions` reached, indexer unreachable | Increment `start_ack_offline` / `end_ack_offline`; do **not** retry inside the runner — the scenario decides |
+| `Status_Offline (2)`          | Backpressure. Examples: `inventory_sync_data_value_quota` exhausted (default 250000), `m_maxSessions` reached, indexer unreachable | Increment `start_ack_offline` / `end_ack_offline`; do **not** retry inside the runner — the scenario decides |
 | `Status_ChecksumMismatch (3)` | Only for `Mode_ModuleCheck` — agent's checksum does not match manager's                                    | If step has `auto_resync=true`, queue a follow-up delta session immediately                                     |
 | `Status_Processing (4)`       | Intermediate ack from `handleEnd` — the indexer-queue handler is still working                              | Record latency for "end_ack_processing"; keep waiting for the final ack                                         |
 
 Two safeguards configurable via `internal_options.conf` (`wazuh_modules`
 section) directly affect the sender under stress:
 
-- `inventory_sync_queue_size` (default `10000`) — caps the input router
+- `inventory_sync_queue_size` (default `1000`) — caps the input router
   queue. Inbound router messages are dropped when full and the manager logs
   a rate-limited warning every 90 s. The sender does **not** observe drops
   directly; it only sees missing acks. The acceptance suite includes a
   saturation test that watches `messages_dropped` in `bench.csv`.
-- `inventory_sync_data_value_quota` (default `500000`) — global cap on the
+- `inventory_sync_data_value_quota` (default `250000`) — global cap on the
   cumulative `Start.size` of active sessions. When exhausted, new Starts
   return `Status_Offline` with `session=UINT64_MAX`. The fixture
   `data_value_quota_exhausted_flow.json` in the integration tests verifies

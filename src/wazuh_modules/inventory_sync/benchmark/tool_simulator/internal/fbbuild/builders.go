@@ -13,9 +13,11 @@ import (
 
 // BuildStart wraps a Start table inside a Message union. Field set matches
 // the Python builder (module, mode, size, agentid, agentname, agentversion,
-// option, index).
+// option, index) plus cluster_name, which remoted validates against the
+// manager's own cluster name since wazuh/wazuh#37238 — a Start without it
+// (or with a mismatch) is rejected before reaching inventory_sync.
 func BuildStart(module string, mode fb.Mode, size uint64, option fb.Option,
-	agentID, agentName, agentVersion string, indices []string) []byte {
+	agentID, agentName, agentVersion, clusterName string, indices []string) []byte {
 
 	b := flatbuffers.NewBuilder(256)
 
@@ -23,6 +25,7 @@ func BuildStart(module string, mode fb.Mode, size uint64, option fb.Option,
 	agentIDOff := b.CreateString(agentID)
 	agentNameOff := b.CreateString(agentName)
 	agentVerOff := b.CreateString(agentVersion)
+	clusterNameOff := b.CreateString(clusterName)
 
 	var indexVecOff flatbuffers.UOffsetT
 	if len(indices) > 0 {
@@ -42,6 +45,7 @@ func BuildStart(module string, mode fb.Mode, size uint64, option fb.Option,
 	fb.StartAddMode(b, mode)
 	fb.StartAddSize(b, size)
 	fb.StartAddAgentid(b, agentIDOff)
+	fb.StartAddClusterName(b, clusterNameOff)
 	fb.StartAddAgentname(b, agentNameOff)
 	fb.StartAddAgentversion(b, agentVerOff)
 	fb.StartAddOption(b, option)

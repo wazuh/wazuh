@@ -212,7 +212,8 @@ void Orchestrator::postEvent(IngestEvent&& event)
     const auto bytesUsed = m_eventQueue->bytesUsed();
     const auto maxBytes = m_eventQueue->maxBytes();
 
-    const bool isCountContended = totalSlots > 0 && (queueSize * 100) >= (totalSlots * CONTENTION_LOAD_PERCENT_THRESHOLD);
+    const bool isCountContended =
+        totalSlots > 0 && (queueSize * 100) >= (totalSlots * CONTENTION_LOAD_PERCENT_THRESHOLD);
     const bool isBytesContended = maxBytes > 0 && (bytesUsed * 100) >= (maxBytes * CONTENTION_LOAD_PERCENT_THRESHOLD);
     const bool isContended = isCountContended || isBytesContended;
 
@@ -326,6 +327,27 @@ Orchestrator::Orchestrator(const Options& opt)
                          auto freeSlots = eventQueue->aproxFreeSlots();
                          auto total = size + freeSlots;
                          return total > 0 ? (static_cast<double>(size) * 100.0 / total) : 0.0;
+                     });
+
+    FASTMETRICS_PULL(size_t,
+                     fastmetrics::names::ROUTER_QUEUE_BYTES_USED,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
+                         return eventQueue ? eventQueue->bytesUsed() : 0;
+                     });
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_QUEUE_BYTES_USAGE_PERCENT,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
+                         if (!eventQueue)
+                             return 0.0;
+                         const auto maxBytes = eventQueue->maxBytes();
+                         if (maxBytes == 0)
+                             return 0.0;
+                         return static_cast<double>(eventQueue->bytesUsed()) * 100.0 / static_cast<double>(maxBytes);
                      });
 
     // Total events dropped at input (never resets, unlike contention window counter)
