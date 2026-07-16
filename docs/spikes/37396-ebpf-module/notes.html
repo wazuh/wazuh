@@ -124,6 +124,15 @@ enumeration kept OUT of v0); both delivery bindings sketched thin (SOCK_SEQPACKE
 over identical record bytes — boundary-neutral per O5.</li>
 <li>Review asks table (§8) names what each sibling must confirm; §9 lists freeze blockers
 (cgroup-v1 semantics probe, path-context pinning, exec/net hook selection, O4/O5).</li>
+<li><strong>Diagram syntax fix (2026-07-16, reported by jr0me):</strong> class-structure and
+event-sequence had mermaid parse errors. Causes: semicolons inside sequence-diagram
+message/note text (mermaid treats <code>;</code> as a statement terminator — 2 occurrences)
+and, in the class diagram, a member line starting with the reserved word <code>note:</code>
+plus off-grammar member tails. Fixed; ALL six mermaid blocks in the pack now validated with
+mermaid-cli (npx @mermaid-js/mermaid-cli renders each to SVG). Practice going forward: every
+new/edited mermaid block gets mmdc-validated before committing. NOTE: jr0me hit this on the
+RETIRED sibling dir (~/Dev/jr0me/wazuh-37396-evidence/) — fixes land only in the live in-tree
+pack; the stale dir still shows the bug and should be deleted.</li>
 <li>Tracker: 12 rows → PARTIAL (SD-2/3/7, A3.1-3.3, A4.1-4.3, A6.1, A7.2, D-M3); O4
 annotated with the drafted recommendation; dashboard status + docs list updated.
 Next: P1.3 architecture ADR (3-option evaluation) + P1.4 min-kernel ADR.</li></ul>

@@ -43,13 +43,13 @@ classDiagram
   direction LR
 
   class file_event {
-    <<C struct — defined TWICE>>
+    <<C struct defined twice>>
     modern.bpf.c 38-50 and bpf_helpers.h 28-41
     +u32 pid, ppid, uid, gid
     +u64 inode, dev
     +char comm[], filename[]
     +char cwd[], parent_cwd[], parent_comm[]
-    note: NO cgroup id, NO namespace inodes
+    misses cgroup id and ns inodes
   }
 
   class dynamic_file_event {
@@ -63,21 +63,25 @@ classDiagram
   class BoundedQueue~T~ {
     <<thread-safe MPSC buffer>>
     bounded_queue.hpp
-    +push(T) bool  — drops when full
-    +pop(T&, timeout) bool
-    -m_maxSize = syscheck.queue_size
+    drops newest when full
+    +push(T) bool
+    +pop(T ref, timeout) bool
+    -m_maxSize from syscheck.queue_size
   }
 
   class fimebpf {
-    <<singleton — the FIM coupling>>
+    <<singleton, the FIM coupling>>
     ebpf_whodata.hpp 40-59
     +m_fim_configuration_directory
-    +m_get_user  +m_get_group
-    +m_fim_whodata_event  +m_free_whodata_event
-    +m_loggingFunction  +m_abspath
+    +m_get_user
+    +m_get_group
+    +m_fim_whodata_event
+    +m_free_whodata_event
+    +m_loggingFunction
+    +m_abspath
     +m_fim_shutdown_process_on
     +m_queue_size
-    +initialize(9 FIM fn ptrs)
+    +initialize(nine FIM fn ptrs)
   }
 
   class w_bpf_helpers_t {
@@ -98,11 +102,11 @@ classDiagram
   }
 
   class ebpf_whodata_loop {
-    <<free functions, ebpf_whodata.cpp>>
-    +init_bpfobj() — open lib/modern.bpf.o
-    +select_programs() — LSM vs kprobe
-    +handle_event(ctx, data, sz) — rb callback
-    +ebpf_pop_events() — drain thread
+    <<free functions in ebpf_whodata.cpp>>
+    +init_bpfobj() opens lib modern.bpf.o
+    +select_programs() LSM vs kprobe
+    +handle_event(ctx, data, sz) rb callback
+    +ebpf_pop_events() drain thread
     +ebpf_whodata_healthcheck()
   }
 

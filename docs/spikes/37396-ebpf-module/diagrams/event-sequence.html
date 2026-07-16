@@ -60,7 +60,7 @@ sequenceDiagram
   E->>K: healthcheck round-trip: create/modify/metadata/delete on tmp/ebpf_hc  (:715-798)
   alt healthcheck fails
     SC->>SC: whodata_provider = AUDIT_PROVIDER  (syscheck.c:830)
-    note over SC: engine never starts; audit backend used instead
+    note over SC: engine never starts, audit backend used instead
   end
   M->>E: run_check.c:688 w_create_thread(ebpf_whodata)
   end
@@ -72,7 +72,7 @@ sequenceDiagram
   alt path monitored with whodata (WHODATA_ACTIVE)
     E->>Q: push(dynamic_file_event)  (drop + one-time log if full)
     Q-->>E: drain thread pops (ebpf_pop_events)
-    E->>E: build whodata_evt; resolve user/group via FIM get_user/get_group  (:670-691)
+    E->>E: build whodata_evt and resolve user/group via FIM get_user/get_group  (:670-691)
     E->>F: m_fim_whodata_event(w_evt) → m_free_whodata_event
     F->>F: FIM processing → event to queue/sockets/queue → agentd → manager
   else not monitored
