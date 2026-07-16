@@ -867,7 +867,11 @@ clean-deps:
 # paths leaves other targets' fetched deps behind. Wipe everything under
 # external/ instead, except the two files tracked by git (CMakeLists.txt
 # and .gitignore), regardless of which TARGET this is invoked with.
-	find external -mindepth 1 -maxdepth 1 ! -name 'CMakeLists.txt' ! -name '.gitignore' -exec rm -rf {} +
+# external/ may not exist (e.g. a clean checkout that never ran make deps),
+# so skip the find instead of letting it fail the build.
+	if [ -d external ]; then \
+		find external -mindepth 1 -maxdepth 1 ! -name 'CMakeLists.txt' ! -name '.gitignore' -exec rm -rf {} + ; \
+	fi
 	rm -rf shared_modules/http-request/* shared_modules/http-request/.??* $(WCS_FLAT_DIR)
 
 clean-internals:
