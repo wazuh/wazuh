@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <variant>
 
 namespace wazuh::container_instances
@@ -13,6 +14,17 @@ namespace wazuh::container_instances
     /// The store never reads the clock itself: every mutating call receives `now`,
     /// so the whole state machine is testable with a fake clock.
     using TimePoint = std::chrono::steady_clock::time_point;
+
+    /// Identity of an enrichment source (one connector instance). Generic string
+    /// so the store is N-ary by construction: "kubernetes", "docker@<socket>", ...
+    using SourceId = std::string;
+
+    inline const SourceId KUBERNETES_SOURCE {"kubernetes"};
+
+    [[nodiscard]] inline SourceId dockerSource(const std::string& socketPath)
+    {
+        return "docker@" + socketPath;
+    }
 
     enum class VerdictReason : std::uint8_t
     {
@@ -37,6 +49,7 @@ namespace wazuh::container_instances
     {
         ContainerRecordPtr record;
         std::optional<TimePoint> deletedAt;
+        SourceId source; ///< Which connector's snapshot owns this record.
     };
 
     /// Permanent "definitively not a container" answer. Never retried while the

@@ -53,15 +53,18 @@ namespace wazuh::container_instances
     LookupResult MetadataStore::lookupByContainerId(const std::string& containerId) const
     {
         std::shared_lock lock(m_mutex);
-        const auto it = m_byContainerId.find(containerId);
-        if (it == m_byContainerId.end())
+        for (const auto& [source, records] : m_bySource)
         {
-            return {};
+            const auto it = records.find(containerId);
+            if (it != records.end())
+            {
+                LookupResult result;
+                result.status = LookupResult::Status::resolved;
+                result.record = it->second;
+                return result;
+            }
         }
-        LookupResult result;
-        result.status = LookupResult::Status::resolved;
-        result.record = it->second;
-        return result;
+        return {};
     }
 
     LookupResult MetadataStore::lookupByPodContainer(const std::string& podUid, const std::string& containerName) const
@@ -82,7 +85,10 @@ namespace wazuh::container_instances
     {
         std::shared_lock lock(m_mutex);
         StoreStats result;
-        result.resolved = m_byContainerId.size();
+        for (const auto& [source, records] : m_bySource)
+        {
+            result.resolved += records.size();
+        }
         for (const auto& [inode, entry] : m_byCgroup)
         {
             if (std::holds_alternative<PendingEntry>(entry))
@@ -98,26 +104,27 @@ namespace wazuh::container_instances
         return result;
     }
 
-    void MetadataStore::applySnapshot(std::vector<ContainerRecord> snapshot,
+    void MetadataStore::applySnapshot(const SourceId& source,
+                                      std::vector<ContainerRecord> snapshot,
                                       const std::unordered_set<std::uint64_t>& liveInodes,
                                       TimePoint now)
     {
         std::unique_lock lock(m_mutex);
 
-        auto delta = diffSnapshot(m_byContainerId, snapshot);
+        auto& sourceRecords = m_bySource[source];
+        auto delta = diffSnapshot(sourceRecords, snapshot);
 
         for (auto& record : delta.added)
         {
-            insertResolvedLocked(std::move(record));
+            insertResolvedLocked(source, std::move(record));
         }
         for (auto& record : delta.updated)
         {
-            insertResolvedLocked(std::move(record));
+            insertResolvedLocked(source, std::move(record));
         }
 
-        // A container present in the snapshot is alive even when its record is
-        // byte-identical to the stored one (the diff calls it "unchanged"): clear
-        // any grace-period mark so a reappearance never gets swept.
+        // A container present in this source's snapshot is alive even when its
+        // record is byte-identical to the stored one: clear any grace mark.
         for (const auto& record : snapshot)
         {
             if (record.cgroupId == 0)
@@ -127,41 +134,43 @@ namespace wazuh::container_instances
             const auto entryIt = m_byCgroup.find(record.cgroupId);
             if (entryIt != m_byCgroup.end())
             {
-                if (auto* resolved = std::get_if<ResolvedEntry>(&entryIt->second))
+                if (auto* resolved = std::get_if<ResolvedEntry>(&entryIt->second);
+                    resolved != nullptr && resolved->source == source)
                 {
                     resolved->deletedAt.reset();
                 }
             }
         }
 
-        // Removals enter the grace period; records unreachable by cgroup id have
-        // nothing to serve late events with, so they go immediately.
+        // Removals affect ONLY this source's records; records unreachable by
+        // cgroup id have nothing to serve late events with, so they go now.
         for (const auto& containerId : delta.removedContainerIds)
         {
-            const auto it = m_byContainerId.find(containerId);
-            if (it == m_byContainerId.end())
+            const auto it = sourceRecords.find(containerId);
+            if (it == sourceRecords.end())
             {
                 continue;
             }
             const auto& record = it->second;
             if (record->cgroupId == 0)
             {
-                eraseResolvedLocked(containerId);
+                eraseResolvedLocked(source, containerId);
                 continue;
             }
             const auto entryIt = m_byCgroup.find(record->cgroupId);
             if (entryIt != m_byCgroup.end())
             {
                 if (auto* resolved = std::get_if<ResolvedEntry>(&entryIt->second);
-                    resolved != nullptr && !resolved->deletedAt)
+                    resolved != nullptr && resolved->source == source && !resolved->deletedAt)
                 {
                     resolved->deletedAt = now;
                 }
             }
         }
 
-        // Sweeps: expired grace records, pending TTL, verdict liveness.
-        std::vector<std::string> expiredContainerIds;
+        // Sweeps: expired grace records (any source — expiry is owner-marked),
+        // pending TTL, verdict liveness.
+        std::vector<std::pair<SourceId, std::string>> expiredRecords;
         std::vector<std::uint64_t> expiredInodes;
         for (auto& [inode, entry] : m_byCgroup)
         {
@@ -169,7 +178,7 @@ namespace wazuh::container_instances
             {
                 if (resolved->deletedAt && now - *resolved->deletedAt >= REMOVAL_GRACE)
                 {
-                    expiredContainerIds.push_back(resolved->record->containerId);
+                    expiredRecords.emplace_back(resolved->source, resolved->record->containerId);
                 }
             }
             else if (const auto* pending = std::get_if<PendingEntry>(&entry))
@@ -191,9 +200,9 @@ namespace wazuh::container_instances
                 }
             }
         }
-        for (const auto& containerId : expiredContainerIds)
+        for (const auto& [expiredSource, containerId] : expiredRecords)
         {
-            eraseResolvedLocked(containerId);
+            eraseResolvedLocked(expiredSource, containerId);
         }
         for (const auto inode : expiredInodes)
         {
@@ -244,19 +253,19 @@ namespace wazuh::container_instances
         // Resolved entries win: positive evidence is never overwritten by a verdict.
     }
 
-    void MetadataStore::upsertResolved(ContainerRecord record)
+    void MetadataStore::upsertResolved(const SourceId& source, ContainerRecord record)
     {
         std::unique_lock lock(m_mutex);
-        insertResolvedLocked(std::move(record));
+        insertResolvedLocked(source, std::move(record));
     }
 
-    void MetadataStore::insertResolvedLocked(ContainerRecord record)
+    void MetadataStore::insertResolvedLocked(const SourceId& source, ContainerRecord record)
     {
-        eraseResolvedLocked(record.containerId);
+        eraseResolvedLocked(source, record.containerId);
 
         auto shared = std::make_shared<const ContainerRecord>(std::move(record));
 
-        m_byContainerId[shared->containerId] = shared;
+        m_bySource[source][shared->containerId] = shared;
         if (!shared->podUid.empty())
         {
             m_byPodContainer[podContainerKey(shared->podUid, shared->containerName)] = shared;
@@ -264,22 +273,41 @@ namespace wazuh::container_instances
         if (shared->cgroupId != 0)
         {
             const auto it = m_byCgroup.find(shared->cgroupId);
-            if (it != m_byCgroup.end() && std::holds_alternative<VerdictEntry>(it->second))
+            if (it != m_byCgroup.end())
             {
-                m_logger(LogLevel::info,
-                         "Verdict for cgroup inode " + std::to_string(shared->cgroupId) + " superseded by container " +
-                             shared->containerId);
+                if (std::holds_alternative<VerdictEntry>(it->second))
+                {
+                    m_logger(LogLevel::info,
+                             "Verdict for cgroup inode " + std::to_string(shared->cgroupId) +
+                                 " superseded by container " + shared->containerId);
+                }
+                else if (const auto* resolved = std::get_if<ResolvedEntry>(&it->second))
+                {
+                    // Contested inode (cri-dockerd: same container through two
+                    // APIs): Kubernetes evidence outranks Docker for the index.
+                    if (resolved->source != source && resolved->source == KUBERNETES_SOURCE &&
+                        source != KUBERNETES_SOURCE)
+                    {
+                        return; // Record stored in its source map; index stays K8s.
+                    }
+                }
             }
             ResolvedEntry entry;
             entry.record = shared;
+            entry.source = source;
             m_byCgroup[shared->cgroupId] = std::move(entry);
         }
     }
 
-    void MetadataStore::eraseResolvedLocked(const std::string& containerId)
+    void MetadataStore::eraseResolvedLocked(const SourceId& source, const std::string& containerId)
     {
-        const auto it = m_byContainerId.find(containerId);
-        if (it == m_byContainerId.end())
+        const auto sourceIt = m_bySource.find(source);
+        if (sourceIt == m_bySource.end())
+        {
+            return;
+        }
+        const auto it = sourceIt->second.find(containerId);
+        if (it == sourceIt->second.end())
         {
             return;
         }
@@ -305,7 +333,7 @@ namespace wazuh::container_instances
                 }
             }
         }
-        m_byContainerId.erase(it);
+        sourceIt->second.erase(it);
     }
 
 } // namespace wazuh::container_instances

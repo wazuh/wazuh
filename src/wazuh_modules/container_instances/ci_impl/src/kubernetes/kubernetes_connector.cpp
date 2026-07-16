@@ -110,7 +110,7 @@ namespace wazuh::container_instances
             }
         }
 
-        m_store.applySnapshot(std::move(records), scan.allInodes, std::chrono::steady_clock::now());
+        m_store.applySnapshot(KUBERNETES_SOURCE, std::move(records), scan.allInodes, std::chrono::steady_clock::now());
         for (const auto& [inode, reason] : verdicts)
         {
             m_store.upsertVerdict(inode, reason);
@@ -283,7 +283,7 @@ namespace wazuh::container_instances
                                              workloads ? k8s::resolveOwnerChain(pod, *workloads) : pod.ownerRefs,
                                              m_nodeName);
                     record.cgroupId = cgroupInode;
-                    m_store.upsertResolved(std::move(record));
+                    m_store.upsertResolved(KUBERNETES_SOURCE, std::move(record));
                     return RefreshOutcome::resolved;
                 }
             }

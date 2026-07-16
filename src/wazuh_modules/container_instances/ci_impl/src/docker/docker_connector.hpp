@@ -2,6 +2,7 @@
 
 #include "../cache/i_metadata_store.hpp"
 #include "../cgroup/i_cgroup_resolver.hpp"
+#include "../core/cache_entry.hpp"
 #include "../core/i_container_connector.hpp"
 #include "../core/i_on_demand_refresher.hpp"
 #include "../core/logger.hpp"
@@ -28,6 +29,7 @@ namespace wazuh::container_instances
         DockerConnector(IDockerApiClient& client,
                         const ICgroupResolver& resolver,
                         IMetadataStore& store,
+                        SourceId source,
                         Logger logger);
 
         void run(const StopController& stop) override;
@@ -43,6 +45,7 @@ namespace wazuh::container_instances
         IDockerApiClient& m_client;
         const ICgroupResolver& m_resolver;
         IMetadataStore& m_store;
+        SourceId m_source;
         Logger m_logger;
 
         /// (id, action, timeNano) of recent events: dedupe across since= resume

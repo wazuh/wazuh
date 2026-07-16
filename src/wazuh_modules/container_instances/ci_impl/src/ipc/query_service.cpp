@@ -39,14 +39,14 @@ namespace wazuh::container_instances
     } // namespace
 
     QueryService::QueryService(IMetadataStore& store,
-                               IOnDemandRefresher& refresher,
+                               std::vector<RefresherBinding> refreshers,
                                const ICgroupResolver& resolver,
                                RetryPolicy coldCacheRetry,
                                std::string connectorName,
                                Logger logger,
                                Sleeper sleeper)
         : m_store(store)
-        , m_refresher(refresher)
+        , m_refreshers(std::move(refreshers))
         , m_resolver(resolver)
         , m_coldCacheRetry(coldCacheRetry)
         , m_connectorName(std::move(connectorName))
@@ -130,13 +130,24 @@ namespace wazuh::container_instances
 
             if (entry)
             {
-                const auto outcome = m_refresher.refreshOne(entry->containerId, cgroupInode);
-                if (outcome == RefreshOutcome::resolved)
+                // Route by the resolver's hint; an unknown hint (bare-hex leaf)
+                // tries every source.
+                const bool dockerHinted = entry->hint == RuntimeHint::docker;
+                const bool anyHint = entry->hint == RuntimeHint::unknown;
+                for (const auto& binding : m_refreshers)
                 {
-                    const auto lookup = m_store.lookupByCgroup(cgroupInode);
-                    if (lookup.status != LookupResult::Status::miss)
+                    if (!anyHint && binding.docker != dockerHinted)
                     {
-                        return fromLookup(lookup);
+                        continue;
+                    }
+                    const auto outcome = binding.refresher->refreshOne(entry->containerId, cgroupInode);
+                    if (outcome == RefreshOutcome::resolved)
+                    {
+                        const auto lookup = m_store.lookupByCgroup(cgroupInode);
+                        if (lookup.status != LookupResult::Status::miss)
+                        {
+                            return fromLookup(lookup);
+                        }
                     }
                 }
             }

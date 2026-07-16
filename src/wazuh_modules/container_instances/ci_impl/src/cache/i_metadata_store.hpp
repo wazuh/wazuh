@@ -51,10 +51,12 @@ namespace wazuh::container_instances
                                                                 const std::string& containerName) const = 0;
         [[nodiscard]] virtual StoreStats stats() const = 0;
 
-        /// Reconcile: replace the resolved set with `snapshot` (full-snapshot diff
-        /// inside), extract API-evidence verdicts, sweep pending TTLs, age grace
+        /// Reconcile ONE source's view: replace that source's resolved set with
+        /// `snapshot` (diff is computed within the source, so multiple sources
+        /// coexist without evicting each other), sweep pending TTLs, age grace
         /// entries, and run verdict liveness against `liveInodes`.
-        virtual void applySnapshot(std::vector<ContainerRecord> snapshot,
+        virtual void applySnapshot(const SourceId& source,
+                                   std::vector<ContainerRecord> snapshot,
                                    const std::unordered_set<std::uint64_t>& liveInodes,
                                    TimePoint now) = 0;
 
@@ -62,7 +64,7 @@ namespace wazuh::container_instances
         virtual void upsertVerdict(std::uint64_t cgroupInode, VerdictReason reason) = 0;
 
         /// Targeted single-record insert from the cold path (on-demand refresh).
-        virtual void upsertResolved(ContainerRecord record) = 0;
+        virtual void upsertResolved(const SourceId& source, ContainerRecord record) = 0;
     };
 
 } // namespace wazuh::container_instances

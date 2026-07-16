@@ -21,10 +21,12 @@ namespace wazuh::container_instances
     DockerConnector::DockerConnector(IDockerApiClient& client,
                                      const ICgroupResolver& resolver,
                                      IMetadataStore& store,
+                                     SourceId source,
                                      Logger logger)
         : m_client(client)
         , m_resolver(resolver)
         , m_store(store)
+        , m_source(std::move(source))
         , m_logger(std::move(logger))
     {
     }
@@ -64,7 +66,7 @@ namespace wazuh::container_instances
             record.cgroupId = (it != inodeByContainerId.end()) ? it->second : 0;
         }
 
-        m_store.applySnapshot(std::move(records), scan.allInodes, std::chrono::steady_clock::now());
+        m_store.applySnapshot(m_source, std::move(records), scan.allInodes, std::chrono::steady_clock::now());
         m_lastReconcile = std::chrono::steady_clock::now();
         m_reconcilePending = false;
     }
@@ -159,7 +161,7 @@ namespace wazuh::container_instances
         {
             auto detail = m_client.inspect(containerId);
             detail.record.cgroupId = cgroupInode;
-            m_store.upsertResolved(std::move(detail.record));
+            m_store.upsertResolved(m_source, std::move(detail.record));
             return RefreshOutcome::resolved;
         }
         catch (const DockerApiError& error)

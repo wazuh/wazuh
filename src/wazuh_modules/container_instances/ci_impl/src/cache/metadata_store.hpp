@@ -34,17 +34,18 @@ namespace wazuh::container_instances
                                                         const std::string& containerName) const override;
         [[nodiscard]] StoreStats stats() const override;
 
-        void applySnapshot(std::vector<ContainerRecord> snapshot,
+        void applySnapshot(const SourceId& source,
+                           std::vector<ContainerRecord> snapshot,
                            const std::unordered_set<std::uint64_t>& liveInodes,
                            TimePoint now) override;
 
         void upsertPending(std::uint64_t cgroupInode, int attempts, TimePoint now) override;
         void upsertVerdict(std::uint64_t cgroupInode, VerdictReason reason) override;
-        void upsertResolved(ContainerRecord record) override;
+        void upsertResolved(const SourceId& source, ContainerRecord record) override;
 
     private:
-        void insertResolvedLocked(ContainerRecord record);
-        void eraseResolvedLocked(const std::string& containerId);
+        void insertResolvedLocked(const SourceId& source, ContainerRecord record);
+        void eraseResolvedLocked(const SourceId& source, const std::string& containerId);
 
         static std::string podContainerKey(const std::string& podUid, const std::string& containerName)
         {
@@ -53,7 +54,8 @@ namespace wazuh::container_instances
 
         mutable std::shared_mutex m_mutex;
         std::unordered_map<std::uint64_t, CacheEntry> m_byCgroup;
-        std::unordered_map<std::string, ContainerRecordPtr> m_byContainerId;
+        /// One resolved-record map per source: removal diffs never cross sources.
+        std::unordered_map<SourceId, std::unordered_map<std::string, ContainerRecordPtr>> m_bySource;
         std::unordered_map<std::string, ContainerRecordPtr> m_byPodContainer;
         std::optional<TimePoint> m_lastReconcile;
         Logger m_logger;
