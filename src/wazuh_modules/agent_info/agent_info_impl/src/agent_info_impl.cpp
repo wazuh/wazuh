@@ -1858,6 +1858,22 @@ AgentInfoImpl::CoordinationResult AgentInfoImpl::coordinateModules(const std::st
                     // Not a real failure: the sync was aborted because the module is stopping.
                     m_logFunction(LOG_DEBUG, "Synchronization of " + table + " aborted: the module is stopping.");
                 }
+                else if (syncResult.managerNotReady
+                         && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+                {
+                    // The manager is not ready for this agent yet, mostly right after a restart, and the
+                    // sync has not failed enough times in a row to suspect it will not clear. Agent-info
+                    // retries this table on the next coordination cycle.
+                    m_logFunction(LOG_INFO, "Synchronization of " + table + " deferred: " +
+                                  syncResult.failureReason + " Will retry next cycle.");
+                }
+                else if (syncResult.managerNotReady)
+                {
+                    // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                    m_logFunction(LOG_WARNING, "Failed to synchronize " + table + " " +
+                                  std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
+                                  syncResult.failureReason);
+                }
                 else
                 {
                     m_logFunction(LOG_WARNING, "Failed to synchronize " + table +
