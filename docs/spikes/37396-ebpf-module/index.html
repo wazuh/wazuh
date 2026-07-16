@@ -123,8 +123,8 @@
   <a href="questions.html"><strong>decisions</strong></a> (what we agreed and why). Every
   subpage has a "&larr; dashboard" link back here.
   <br/><strong>Prefer a guided path?</strong> Every page now has a <em>reading order</em> bar
-  (top and bottom) with prev/next links that walk all 20 pages in a sensible order — this
-  dashboard is 1&nbsp;/&nbsp;20; <a href="brief.html">next is the Brief &rarr;</a>
+  (top and bottom) with prev/next links that walk all 21 pages in a sensible order — this
+  dashboard is 1&nbsp;/&nbsp;21; <a href="brief.html">next is the Brief &rarr;</a>
 </div>
 
 <nav class="toc">
@@ -827,7 +827,10 @@ flowchart TB
     <li class="done">Kernel feature floors desk-verified against BCC table + man pages (evidence/kernel-features.html)</li>
     <li class="done">Real Tier 1/2/3 OS matrix received from the team, kernels verified, banded against feature floors (evidence/tier-matrix.html)</li>
     <li class="partial">Compatibility matrix: bands derived — NO empirical probes run yet (RHEL backports, distro kernel configs CONFIG_BPF_LSM/BTF, boot-time lsm= defaults, GA-vs-HWE kernels, aarch64 modern.bpf.o build path)</li>
-    <li>Peer-pattern survey (Tetragon/Falco/Inspektor Gadget/Hubble): not started</li>
+    <li class="done">Peer-pattern survey done (P1.1, 2026-07-15): all four tools mapped onto the
+        boundary options, kernel floors spot-checked (evidence/peers.html) — headline: nobody
+        shares one program set across processes; IG's library-core + thin-hosts is the leading
+        synthesis for O5</li>
     <li>Container-runtime semantics (containerd/CRI-O/Docker cgroup-id consistency): not started</li>
     <li>Capabilities / SELinux / AppArmor validation: not started</li>
     <li>Performance baseline: not started</li>
@@ -855,6 +858,7 @@ flowchart TB
       <a href="evidence/module-framework.html">module framework</a> ·
       <a href="evidence/kernel-features.html">kernel features</a> ·
       <a href="evidence/tier-matrix.html">tier matrix</a> ·
+      <a href="evidence/peers.html">peer patterns</a> ·
       <a href="evidence/docs-whodata.html">public docs</a></p></div>
     <div class="card"><h4>Diagrams</h4><p class="filelist">
       <a href="diagrams/context-architecture.html">context</a> ·
@@ -864,7 +868,7 @@ flowchart TB
   </div>
 </section>
 
-<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><span style='color:#6b7280;'>&larr; start</span></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 1 / 20</span><span style="min-width:0;text-align:right;"><a href="brief.html">Brief &rarr;</a></span></div>
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><span style='color:#6b7280;'>&larr; start</span></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 1 / 21</span><span style="min-width:0;text-align:right;"><a href="brief.html">Brief &rarr;</a></span></div>
 <footer>
   Spike #37396 evidence dashboard · started 2026-07-13, HTML-only since 2026-07-14 (per jr0me:
   all findings, introductions and docs in HTML — no markdown deliverables). Repo evidence

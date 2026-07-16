@@ -40,7 +40,7 @@
 </head>
 <body>
   <nav class="crumb"><a href="index.html">&larr; dashboard</a> · <a href="tracker.html">tracker</a></nav>
-<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 20 / 20</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 21 / 21</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
 <h1>Investigation log — spike #37396 (eBPF Module extraction)</h1>
 <p>Append-only. Newest at the bottom.</p>
 <h2>2026-07-13 — bootstrap</h2>
@@ -94,7 +94,22 @@ with plain commits on this branch. The old sibling dir
 <code>~/Dev/jr0me/wazuh-37396-evidence/</code> is retired (left in place untouched, fully
 contained in commit 6d9229d070; delete whenever jr0me confirms). The in-tree PoC (D4-rev) will
 live on this same branch.</li></ul>
-  <!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 20 / 20</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
+<h2>2026-07-15 — phase 1 started: P1.1 peer-pattern survey DONE</h2>
+<ul><li>Two background research agents (Tetragon+Falco; Inspektor Gadget+Hubble); kernel floors
+and architecture claims for all four spot-checked by hand against primary pages. Synthesized
+into <strong>evidence/peers.html</strong> (inserted into the reading order as page 15/21).</li>
+<li>Headlines: (1) no peer shares one loaded BPF program set across independent processes —
+the real options are per-consumer instances (Falco libs, IG) vs one-owner fan-out (Tetragon,
+Hubble), confirming the ring-buffer single-cursor analysis; (2) IG = "library core, daemon as
+thin host" — the leading synthesis for O5; (3) Falco deprecated its embedded gRPC event server
+(complexity) and killed per-kernel-compiled probes (ops pain) — both feed the ADR rationales;
+(4) drop-surfacing converged industry-wide after pain (IG audit: silent drops = detection
+bypass; Hubble in-band per-stage LostEvent; Falco drop-policy actions) — adopted as contract
+requirements for P1.2; (5) Falco modern probe's documented capability set (CAP_BPF, CAP_PERFMON,
+CAP_SYS_RESOURCE, CAP_SYS_PTRACE) = peer baseline for D-C3.</li>
+<li>Tracker: SP-2 → DONE; A1.2 note updated. O5 entry annotated with the survey input.
+Next: P1.2 event contract draft v0 (boundary-neutral core).</li></ul>
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 21 / 21</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
 <footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
   investigation record on 2026-07-14.</footer>
 </body>

@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Evidence — peer-pattern survey (Tetragon, Falco, Inspektor Gadget, Hubble)</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    blockquote { border-left: 4px solid var(--accent); background: #3d7dd612; margin: 1rem 0;
+                 padding: .7rem 1rem; border-radius: 0 10px 10px 0; font-size: .93rem; }
+    ul { padding-left: 1.5rem; } li { margin: .35rem 0; }
+    .callout { border-left: 4px solid var(--accent); background: #3d7dd612;
+               border-radius: 0 10px 10px 0; padding: .7rem 1rem; margin: 1rem 0; font-size: .93rem; }
+    .callout.warn { border-left-color: var(--warn); background: #c77c1112; }
+    .src { font-size: .8rem; color: var(--muted); }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+  </style>
+</head>
+<body>
+  <nav class="crumb"><a href="../index.html">&larr; dashboard</a> · <a href="../tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tier-matrix.html">&larr; Tier matrix & bands</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 15 / 21</span><span style="min-width:0;text-align:right;"><a href="../code-map.html">Code map &rarr;</a></span></div>
+
+<h1>Evidence — peer-pattern survey: Tetragon, Falco, Inspektor Gadget, Hubble</h1>
+<p>Issue starting point 2 ("survey peers for the shared eBPF provider pattern — extract the
+interface patterns, not the code"). Documentation-level survey via two research agents,
+2026-07-15; load-bearing kernel-floor and architecture claims spot-checked by hand against the
+cited pages. Where public docs are silent, items say NOT DOCUMENTED.</p>
+
+<h2>The headline for our boundary question (O5)</h2>
+<div class="callout">
+  <p><strong>The four peers cover our entire option space, and none of them does the one thing
+  our reopened D3 debate implicitly asked about:</strong> no project shares one loaded BPF
+  program set across independent processes. The industry's answers really are the two shapes our
+  ring-buffer analysis predicted — per-consumer instances or one-owner fan-out.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Peer</th><th>Shape</th><th>Maps to our option</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Falco libs</strong> (libscap/libsinsp)</td><td>C/C++ libraries each consumer links; every consumer owns its driver instance, programs, buffers</td><td>(a) component / shared library — the teammate's model</td></tr>
+      <tr><td><strong>Falco plugins</strong></td><td>trusted <code>.so</code> modules loaded into ONE daemon sharing one in-process stream ("they run in the same thread and address space… and could crash the program")</td><td>(b) modules hosted in one daemon</td></tr>
+      <tr><td><strong>Hubble</strong></td><td>observer embedded in the daemon that already owns the BPF datapath; per-subscriber ring-readers over one userspace ring</td><td>(b) module-in-owning-daemon (+ relay = (c) layered on top)</td></tr>
+      <tr><td><strong>Tetragon</strong></td><td>dedicated per-node daemon exclusively owning all programs; N gRPC subscribers, each with its own listener buffer</td><td>(c) dedicated daemon / hub</td></tr>
+      <tr><td><strong>Inspektor Gadget</strong></td><td><strong>library first</strong> (Go API, local runtime, per-consumer instances) with CLI / daemon / DaemonSet as thin hosts over the same library</td><td>proves (a) and (c) can be ONE layered design — daemon becomes a deployment choice, not an architecture</td></tr>
+    </tbody>
+  </table></div>
+  <p>Second decisive input: <strong>Falco tried and retired the "embedded gRPC event
+  subscription server"</strong> — deprecated in 0.43 because it "add[s] substantial complexity to
+  the core codebase, including dependencies on specific protobuf and gRPC framework versions"
+  (falco.org/blog/falco-0-43-0). A warning label for our socket-fan-out option, though our
+  constraint set differs (hand-rolled flat format, no protobuf, local socket only).</p>
+</div>
+
+<h2>Tetragon (Cilium) — the dedicated-daemon archetype</h2>
+<ul>
+<li><strong>Shape:</strong> per-node daemon (DaemonSet/container/systemd package) exclusively
+owning all BPF programs; consumers subscribe over gRPC server-streaming
+(<code>GetEvents</code>, default unix socket). Program bundles ("sensors") load/unload at
+runtime via the same gRPC surface (<code>AddTracingPolicy</code>…) — lifecycle without restart.
+Multiple listeners each get their own buffer; a slow listener overflows alone
+(<code>tetragon_notify_overflowed_events_total</code>: "events dropped because listener buffer
+was full"). <span class="src">tetragon.io/docs/overview, /concepts/events, /reference/grpc-api, /reference/metrics</span></li>
+<li><strong>Contract:</strong> protobuf, shipped as an independently versioned Go module
+(<code>api/v1/tetragon</code>). Every event carries identity resolved IN the daemon: cluster-unique
+<code>exec_id</code>, pid/uid, binary+args, container id (first 15 digits), pod metadata,
+namespaces, credentials — all subscribers see identical identity. Formal deprecation policy NOT
+DOCUMENTED. <span class="src">tetragon.io/docs/reference/grpc-api</span></li>
+<li><strong>Filtering:</strong> two layers. Kernel-side TracingPolicy selectors evaluated in BPF
+(matchArgs/matchBinaries/matchNamespaces/matchCapabilities…, K8s pod/namespace scoping via
+cgroup state populated by OCI hooks "before containers start executing", even in-kernel
+rate-limited <code>Post</code>); hard limits (≤5 selectors/hook). Userspace per-subscriber
+allow/deny lists + CEL expressions on the gRPC request. <span class="src">tetragon.io/docs/concepts/tracing-policy/*</span></li>
+<li><strong>Drops:</strong> counted at every stage with distinct metrics (bpf_missed → ringbuf
+lost → queue lost → per-listener overflow → export rate-limit) — but NO in-stream loss
+notification to gRPC consumers (metrics only). Community reports buffer tuning is opaque
+("sometimes… can even make things worse", tetragon#4821). <span class="src">tetragon.io/docs/reference/metrics; github.com/cilium/tetragon/issues/4821</span></li>
+<li><strong>Kernel compat (verified):</strong> "needs Linux kernel version 4.19 or greater",
+tested on 4.19/5.4/5.10/5.15; <strong>BTF/CO-RE mandatory</strong>
+(<code>CONFIG_DEBUG_INFO_BTF=y</code>; BTFhub/pahole/rebuild as escape hatches). No attach-type
+auto-fallback: policies fail to load if the hook type is unavailable; features gate per kernel
+(kprobe arg resolution ≥5.4, LSM ≥5.7 + <code>lsm=…,bpf</code>). RHEL 8 @4.18: below floor,
+NOT in test matrix. <span class="src">tetragon.io/docs/installation/faq (spot-checked)</span></li>
+</ul>
+
+<h2>Falco — a 10-year experiment across all three options, regrets documented</h2>
+<ul>
+<li><strong>Shape:</strong> layered libraries — drivers (kmod / eBPF) → <code>libscap</code>
+(reads ring buffers, OS state) → <code>libsinsp</code> (enrichment, state table, rule engine) —
+that each consumer process instantiates (CNCF-donated precisely for reuse; Stratoshark is
+another consumer). The modern CO-RE probe is embedded in the consumer binary ("a unique,
+self-contained executable"). Cross-process sharing of one driver's stream: NOT DOCUMENTED —
+their answer to multi-consumer is in-process <strong>plugins</strong> (trusted .so, "could
+crash the program"). Daemon fan-out is <em>alerts only</em> (stdout/file/HTTP + Falcosidekick),
+never raw kernel telemetry. <span class="src">github.com/falcosecurity/libs; falco.org/docs/concepts/plugins/architecture, /concepts/outputs</span></li>
+<li><strong>Contract:</strong> kernel→user is a raw C-struct format (<code>ppm_evt_hdr</code> +
+length-prefixed params) with <strong>two-axis version negotiation at startup: an API version
+(transport) and a Schema version (event types/fields)</strong> — the most directly relevant
+versioning pattern for our flat-format constraint. Userspace: sinsp field model; plugin ABI is
+semver'd (framework refuses mismatched major). <span class="src">falco.org/docs/concepts/event-sources/kernel/architecture</span></li>
+<li><strong>Enrichment placement (their 0.41 lesson = our architecture validated):</strong>
+container metadata enrichment was MOVED OUT of the core libs into an async plugin because doing
+it synchronously in-core raced container startup and lost metadata; the plugin pre-fetches on
+container-create ("onCreate comes way before onStart… plenty of time to deliver the container's
+metadata before the first process… is even started"). That is our parent's exact split (engine
+produces raw keys; a separate component enriches) and echoes #37532's replay-from-create idea.
+<span class="src">falco.org/blog/falco-0-41-0; github.com/falcosecurity/plugins (container)</span></li>
+<li><strong>Filtering:</strong> kernel-side = syscall-set pushdown computed from what consumers
+actually loaded ("union of the base set… and the syscalls specified in the loaded rules"),
+injected as a BPF map/bitmask, "ignore unnecessary syscalls before any data field extraction".
+Per-cgroup kernel scoping NOT DOCUMENTED (workload scoping is userspace rules).
+<span class="src">falco.org/blog/adaptive-syscalls-selection</span></li>
+<li><strong>Drops as consumer-visible POLICY:</strong> kernel drops-on-full with per-reason
+counters, and a configurable <code>syscall_event_drops</code> policy — actions
+<code>[ignore|log|alert|exit]</code>, threshold, throttling — where the drop alert is delivered
+through the NORMAL event channel ("Falco internal: syscall event drop…"). The deprecated gRPC
+alert queue that grew "in memory until you read them" is their documented slow-consumer
+anti-pattern. <span class="src">falco.org/docs/concepts/event-sources/kernel/dropped-events</span></li>
+<li><strong>Kernel compat (verified) — degradation by ENGINE SWAP behind one capture
+interface:</strong> modern CO-RE probe (default; "usually all versions ≥5.8 are enough but…
+required features could also be backported", needs ring buffer + BTF; runs with just
+<code>CAP_BPF, CAP_PERFMON, CAP_SYS_RESOURCE, CAP_SYS_PTRACE</code>) ⇄ kernel module (≥3.10,
+"requires full privileges") for old fleets. The middle option — per-kernel-compiled eBPF probe —
+was their biggest operational pain ("a BPF probe for every supported kernel!") and was removed
+in 0.44; carrying two eBPF drivers "splits engineering effort" (0.43). <span class="src">falco.org/docs/concepts/event-sources/kernel (spot-checked); falco.org/blog/falco-modern-bpf, /falco-0-43-0, /falco-0-44-0</span></li>
+</ul>
+
+<h2>Inspektor Gadget — "library first, daemon as a thin host"</h2>
+<ul>
+<li><strong>Shape:</strong> the engine is a supported Go library (GadgetContext + <code>local</code>
+or <code>grpc</code> runtime, operator pipeline); <code>ig</code> CLI, <code>ig daemon</code>
+(persistent detached "Gadget Instances"), and the K8s DaemonSet are thin hosts over the same
+library — Microsoft Defender for Containers embeds it in-process. Instrumentation ships as
+versioned OCI images (eBPF ELF + optional WASM + optional pre-generated BTF layer + metadata
+YAML). <strong>Per-instance model:</strong> each gadget run loads its own programs and declares
+its own buffer (<code>GADGET_TRACER_MAP(events, 256KB)</code>) — no shared event bus; only
+enrichment infrastructure (SocketEnricher, container collection) is shared engine state.
+Multi-client attach semantics to one instance: NOT DOCUMENTED. <span class="src">inspektor-gadget.io/docs (architecture, api/golang, spec/oci, headless)</span></li>
+<li><strong>Contract:</strong> no fixed global schema — per-gadget event structs, layout derived
+from BTF, transported as typed "data sources"; well-known field types
+(<code>gadget_mntns_id</code>, <code>gadget_netns_id</code>, timestamps, endpoints) TRIGGER
+enrichment/conversion by convention. Identity key = mount-namespace inode id resolved node-side
+to container/pod. Wire-format version negotiation NOT DOCUMENTED. <span class="src">inspektor-gadget.io/docs/gadget-devel/gadget-ebpf-api</span></li>
+<li><strong>Filtering:</strong> container scoping kernel-side via a mount-ns filter map
+(<code>gadget_should_discard_mntns_id()</code>, "as early as possible in the eBPF program");
+generic field filtering userspace (Filter operator). <span class="src">inspektor-gadget.io/docs/gadget-devel/gadget-ebpf-api, /spec/operators</span></li>
+<li><strong>Drops — the audit lesson:</strong> a 2026 security audit found the fixed 256KB
+buffer dropped events SILENTLY — "an attacker could first produce many harmless events to flood
+the buffer, then perform malicious operations that would not be caught" — fixed by adding
+per-CPU <code>_lost_samples</code> counters reported to userspace. For a security product, an
+unsurfaced drop is a detection bypass, not an observability gap. <span class="src">shielder.com/blog/2026/04/inspektor-gadget-security-audit (spot-checked claim, kernel floor page verified)</span></li>
+<li><strong>Kernel compat (verified):</strong> "at least Linux 5.10 with BTF enabled"; optional
+btfgen OCI layer ships reduced BTF for BTF-less kernels (btfhub layout); and
+<code>&lt;gadget/buffer.h&gt;</code> auto-selects ring buffer (≥5.8) vs perf buffer — gadget code
+is transport-agnostic. The most reusable compat pattern if Band 1 is ever revisited.
+<span class="src">inspektor-gadget.io/docs/reference/requirements (spot-checked)</span></li>
+</ul>
+
+<h2>Hubble (Cilium) — the polished in-daemon hub</h2>
+<ul>
+<li><strong>Shape (verified):</strong> "embedded into the Cilium agent in order to achieve high
+performance with low-overhead" — the agent owns the BPF datapath; Hubble owns no probes. Event
+path: BPF perf buffer → agent monitor → Hubble's lock-free userspace overwrite-ring
+(capacity 2ⁿ−1, default 4095) → per-subscriber "ring readers" with follow mode.
+<strong>Slow-client isolation is structural:</strong> the writer never blocks or tracks
+readers; a slow client is overtaken and gets a <code>LostEvent</code> — it can never stall the
+producer or peers. Cluster fan-out via a separate relay (mTLS, bounded sort buffer).
+<span class="src">docs.cilium.io/en/latest/internals/hubble (spot-checked)</span></li>
+<li><strong>Contract — loss is IN-BAND:</strong> one canonical protobuf <code>Flow</code>
+(identity pre-enriched server-side; "gRPC API is stable as of 1.0… upheld for the whole
+lifecycle of Cilium 1.x"), and the stream itself carries <code>LostEvent{source,
+num_events_lost, cpu}</code> with an enum naming WHICH stage dropped
+(<code>PERF_EVENT_RING_BUFFER</code> / <code>OBSERVER_EVENTS_QUEUE</code> /
+<code>HUBBLE_RING_BUFFER</code>), mirrored as <code>hubble_lost_events_total</code> metrics.
+Exactly the drop-surfacing shape #37532 asked us for. Pain points on record: false-positive
+loss metrics (cilium#46584), log spam under load (cilium#34981), user confusion (hubble#1737) —
+attribution must be precise per-stage/per-subscriber or it becomes noise. <span class="src">docs.cilium.io/_api/v1/flow; github issues cited</span></li>
+<li><strong>Filtering:</strong> per-subscriber server-side FlowFilters (allow/deny, pods, FQDNs,
+L7, CEL); kernel-side only global volume control (<code>monitor-aggregation</code>). No
+per-subscriber kernel predicates. <span class="src">docs.cilium.io/internals/hubble</span></li>
+<li><strong>Kernel compat:</strong> none of its own — inherits Cilium's (recommend "5.10 or
+later (or equivalent such as 4.18 on RHEL 8.10)", BTF required). Structural benefit of the hub
+model: consumers never care about kernels. <span class="src">docs.cilium.io/operations/system_requirements</span></li>
+</ul>
+
+<h2>Cross-cutting synthesis (our five questions)</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Question</th><th>Convergent industry answer</th><th>Divergences that matter</th></tr></thead>
+<tbody>
+<tr><td>(a) Boundary</td>
+    <td>Nobody shares one loaded program set across independent processes; the real options are
+        per-consumer instances (Falco libs, IG) vs one-owner fan-out (Tetragon, Hubble).</td>
+    <td>IG dissolves the dichotomy: engine-as-library + daemon-as-thin-host over it. Falco
+        retired its embedded gRPC event server for complexity; Hubble's works because it fans
+        out one team's fixed schema.</td></tr>
+<tr><td>(b) Contract</td>
+    <td>Identity/correlation fields resolved once, node-side, before consumers see events; keys
+        are kernel-native ids (mntns inode, cgroup/endpoint identity, container id).</td>
+    <td>Schema shape splits: fixed protobuf (Tetragon, Hubble — one owner of vocabulary) vs
+        per-source typed schemas + conventions (IG) vs raw structs with negotiated API+schema
+        versions (Falco — closest to our no-protobuf flat-format constraint).</td></tr>
+<tr><td>(c) Filtering</td>
+    <td>Coarse scope filtering pushed into the kernel as early as possible (mntns/cgroup maps,
+        syscall-set pushdown computed from consumer interest); fine per-consumer filtering in
+        userspace (allow/deny + CEL).</td>
+    <td>Nobody does per-subscriber kernel predicates. Tetragon uniquely does in-kernel rate
+        limiting and enforcement actions.</td></tr>
+<tr><td>(d) Backpressure</td>
+    <td>Producer never blocks; drops counted at EVERY stage; slow consumers isolated (own
+        buffer/cursor) and lose only their own events. All four learned drop-surfacing the hard
+        way (IG audit; Hubble noise issues; Falco policy; Tetragon opaque tuning).</td>
+    <td>Drop semantics: drop-newest (IG, Falco kernel-side, Tetragon) vs overwrite-oldest
+        (Hubble ring). Surfacing: in-band on the stream (Hubble LostEvent; Falco self-alert
+        through the normal channel) vs metrics-only (Tetragon).</td></tr>
+<tr><td>(e) Kernel compat</td>
+    <td>All are CO-RE-first with BTF required; practical floors 4.19–5.10; features gate per
+        kernel rather than silently degrade.</td>
+    <td>Old-fleet strategies: Falco = engine swap (kmod ≥3.10) behind one interface; IG = ship
+        BTF in the artifact + auto ringbuf/perf switch; Tetragon = external BTF or unsupported.
+        Falco killed per-kernel-compiled probes as unsustainable — the strongest external
+        validation of our prebuilt-CO-RE + ≥5.8 floor direction (D2).</td></tr>
+</tbody>
+</table></div>
+
+<h2>Direct inputs to our deliverables</h2>
+<ul>
+<li><strong>→ O5 / P1.3 (boundary ADR):</strong> the option space is fully represented in the
+wild; IG's layered pattern (library core, hosts as deployment choices) is the strongest
+candidate synthesis; Falco's plugin model shows in-process co-hosting works but couples crash
+domains; Falco's gRPC deprecation and Tetragon's buffer-tuning opacity are the recorded costs
+of the fan-out path; Falco-libs/IG per-instance duplication is the recorded cost of the
+component path (mitigated in our v1 by disjoint classes).</li>
+<li><strong>→ P1.2 (contract):</strong> adopt Falco's two-axis versioning (transport API version
+vs event schema version) for our flat format; carry kernel-native correlation keys resolved
+once; adopt Hubble's in-band per-stage <code>LostEvent</code> + Falco's drop-policy actions as
+the drop-surfacing contract #37532 needs; per-consumer coarse scope filters kernel-side
+(cgroup/mntns maps), fine filters userspace.</li>
+<li><strong>→ D-C3 (capabilities):</strong> Falco modern probe's documented minimum set
+(<code>CAP_BPF, CAP_PERFMON, CAP_SYS_RESOURCE, CAP_SYS_PTRACE</code>) is a concrete peer
+baseline for the systemd-unit analysis.</li>
+<li><strong>→ D2 (floor ADR):</strong> peer floors (Tetragon 4.19-BTF-mandatory, Falco modern
+≥5.8, IG 5.10) bracket our ≥5.8 recommendation; Falco's removal of per-kernel probes and
+"backported features" caveat both go into the rejected-LCD rationale.</li>
+</ul>
+
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tier-matrix.html">&larr; Tier matrix & bands</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 15 / 21</span><span style="min-width:0;text-align:right;"><a href="../code-map.html">Code map &rarr;</a></span></div>
+<footer>Spike #37396 evidence · gathered via two web-research agents 2026-07-15; kernel floors
+and architecture claims for all four tools spot-checked against the cited primary pages ·
+HTML-only pack.</footer>
+</body>
+</html>
