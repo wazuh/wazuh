@@ -41,21 +41,21 @@
   <div class="panel">
   <pre class="mermaid">
 flowchart TB
-  A["ossec.conf whodata provider setting"] -->|"absent or 'audit' (default)<br/>syscheck-config.c:93"| AUD["AUDIT_PROVIDER<br/>Linux Audit whodata backend<br/>whodata/syscheck_audit.c"]
-  A -->|"'ebpf'<br/>syscheck-config.c:2070-2080"| G{"Linux build with ENABLE_AUDIT?<br/>main.c:313-320"}
-  G -->|no| ERR["error 6966<br/>FIM_ERROR_EBPF_NOT_SUPPORTED"]
-  G -->|yes| HC{"healthcheck passes?<br/>ebpf_whodata.cpp:715-798"}
-  HC -->|"kernel below 5.8 (:360, msg 6980)<br/>libbpf load fails<br/>object load fails<br/>ringbuf creation fails<br/>event round-trip fails"| FB["mwarn 6959 →<br/>whodata_provider = AUDIT_PROVIDER<br/>syscheck.c:827-831"]
+  A["ossec.conf whodata provider setting"] -->|"absent or 'audit' (default)&lt;br/>syscheck-config.c:93"| AUD["AUDIT_PROVIDER&lt;br/>Linux Audit whodata backend&lt;br/>whodata/syscheck_audit.c"]
+  A -->|"'ebpf'&lt;br/>syscheck-config.c:2070-2080"| G{"Linux build with ENABLE_AUDIT?&lt;br/>main.c:313-320"}
+  G -->|no| ERR["error 6966&lt;br/>FIM_ERROR_EBPF_NOT_SUPPORTED"]
+  G -->|yes| HC{"healthcheck passes?&lt;br/>ebpf_whodata.cpp:715-798"}
+  HC -->|"kernel below 5.8 (:360, msg 6980)&lt;br/>libbpf load fails&lt;br/>object load fails&lt;br/>ringbuf creation fails&lt;br/>event round-trip fails"| FB["mwarn 6959 →&lt;br/>whodata_provider = AUDIT_PROVIDER&lt;br/>syscheck.c:827-831"]
   FB --> AUD
-  HC -->|yes| LSM{"'bpf' in /sys/kernel/security/lsm?<br/>is_bpf_lsm_active() :64-81"}
-  LSM -->|"yes → LSM program set<br/>(msg 6051/6052)"| DP{"lsm _dpath variants load?<br/>(bpf_d_path allowlist)"}
-  LSM -->|"no → kprobe program set<br/>select_programs() :482-525"| KP["attach 4 kprobes<br/>vfs_open, security_inode_setattr,<br/>vfs_unlink, vfs_rename"]
-  DP -->|yes| LSMA["attach lsm _dpath programs<br/>file_open, path_unlink, path_rename"]
-  DP -->|"no (e.g. Amazon Linux 2/2023)<br/>reopen + retry once :552-580, msg 6053"| WALK["attach lsm _walk variants<br/>(manual dentry walk)"]
-  KP --> RUN["poll ring buffer → BoundedQueue → FIM<br/>run_check.c:688 thread"]
+  HC -->|yes| LSM{"'bpf' in /sys/kernel/security/lsm?&lt;br/>is_bpf_lsm_active() :64-81"}
+  LSM -->|"yes → LSM program set&lt;br/>(msg 6051/6052)"| DP{"lsm _dpath variants load?&lt;br/>(bpf_d_path allowlist)"}
+  LSM -->|"no → kprobe program set&lt;br/>select_programs() :482-525"| KP["attach 4 kprobes&lt;br/>vfs_open, security_inode_setattr,&lt;br/>vfs_unlink, vfs_rename"]
+  DP -->|yes| LSMA["attach lsm _dpath programs&lt;br/>file_open, path_unlink, path_rename"]
+  DP -->|"no (e.g. Amazon Linux 2/2023)&lt;br/>reopen + retry once :552-580, msg 6053"| WALK["attach lsm _walk variants&lt;br/>(manual dentry walk)"]
+  KP --> RUN["poll ring buffer → BoundedQueue → FIM&lt;br/>run_check.c:688 thread"]
   LSMA --> RUN
   WALK --> RUN
-  RUN --> STOP["stop: m_fim_shutdown_process_on()<br/>checked in loops; w_bpf_deinit()"]
+  RUN --> STOP["stop: m_fim_shutdown_process_on()&lt;br/>checked in loops; w_bpf_deinit()"]
 
   style AUD fill:#ffe9d6,stroke:#d98e4a
   style ERR fill:#ffdddd,stroke:#c0392b

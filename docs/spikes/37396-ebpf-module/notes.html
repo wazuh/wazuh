@@ -128,11 +128,20 @@ over identical record bytes — boundary-neutral per O5.</li>
 event-sequence had mermaid parse errors. Causes: semicolons inside sequence-diagram
 message/note text (mermaid treats <code>;</code> as a statement terminator — 2 occurrences)
 and, in the class diagram, a member line starting with the reserved word <code>note:</code>
-plus off-grammar member tails. Fixed; ALL six mermaid blocks in the pack now validated with
-mermaid-cli (npx @mermaid-js/mermaid-cli renders each to SVG). Practice going forward: every
-new/edited mermaid block gets mmdc-validated before committing. NOTE: jr0me hit this on the
-RETIRED sibling dir (~/Dev/jr0me/wazuh-37396-evidence/) — fixes land only in the live in-tree
-pack; the stale dir still shows the bug and should be deleted.</li>
+plus off-grammar member tails. NOTE: jr0me hit this first on the RETIRED sibling dir
+(~/Dev/jr0me/wazuh-37396-evidence/) — fixes land only in the live in-tree pack.</li>
+<li><strong>Second round (same day, jr0me: "still has syntax errors") — the REAL root cause
+found:</strong> the first mmdc validation had a blind spot — it parsed the FILE TEXT, but the
+browser parses HTML first: raw <code>&amp;lt;&amp;lt;annotation&amp;gt;&amp;gt;</code> inside
+<code>&amp;lt;pre&amp;gt;</code> is consumed as an unknown HTML TAG, so mermaid received mangled
+source (the class diagram's stereotypes became <code>&amp;lt;&amp;gt;</code>); raw
+<code>&amp;lt;br/&amp;gt;</code> in labels was silently swallowed the same way (cosmetic).
+Fix: HTML-escape every raw <code>&amp;lt;</code> inside ALL six mermaid blocks (5 files), so
+textContent equals the intended source. Validation now structurally sound: (1) grep proves no
+raw <code>&amp;lt;</code> remains in any block; (2) the UNESCAPED extraction — exactly what the
+browser hands mermaid — renders green in mermaid-cli/headless Chrome for all six blocks.
+Practice: mermaid-in-HTML must always be entity-escaped, and validation must run on the
+browser-view (unescaped) source.</li>
 <li>Tracker: 12 rows → PARTIAL (SD-2/3/7, A3.1-3.3, A4.1-4.3, A6.1, A7.2, D-M3); O4
 annotated with the drafted recommendation; dashboard status + docs list updated.
 Next: P1.3 architecture ADR (3-option evaluation) + P1.4 min-kernel ADR.</li></ul>

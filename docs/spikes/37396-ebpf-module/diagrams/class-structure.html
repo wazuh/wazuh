@@ -43,7 +43,7 @@ classDiagram
   direction LR
 
   class file_event {
-    <<C struct defined twice>>
+    &lt;&lt;C struct defined twice>>
     modern.bpf.c 38-50 and bpf_helpers.h 28-41
     +u32 pid, ppid, uid, gid
     +u64 inode, dev
@@ -53,7 +53,7 @@ classDiagram
   }
 
   class dynamic_file_event {
-    <<queued form>>
+    &lt;&lt;queued form>>
     bpf_helpers.h 43-56
     +std::string filename, cwd, parent_cwd
     +std::string comm, parent_comm
@@ -61,7 +61,7 @@ classDiagram
   }
 
   class BoundedQueue~T~ {
-    <<thread-safe MPSC buffer>>
+    &lt;&lt;thread-safe MPSC buffer>>
     bounded_queue.hpp
     drops newest when full
     +push(T) bool
@@ -70,7 +70,7 @@ classDiagram
   }
 
   class fimebpf {
-    <<singleton, the FIM coupling>>
+    &lt;&lt;singleton, the FIM coupling>>
     ebpf_whodata.hpp 40-59
     +m_fim_configuration_directory
     +m_get_user
@@ -85,7 +85,7 @@ classDiagram
   }
 
   class w_bpf_helpers_t {
-    <<libbpf dispatch table>>
+    &lt;&lt;libbpf dispatch table>>
     bpf_helpers.h
     dlopen-resolved libbpf fn pointers
     bpf_object__open_file, load, attach
@@ -93,7 +93,7 @@ classDiagram
   }
 
   class whodata_evt {
-    <<FIM-owned output struct>>
+    &lt;&lt;FIM-owned output struct>>
     syscheck-config.h 228-252
     +user_id, user_name, group_id, group_name
     +process_name, path, effective_uid
@@ -102,7 +102,7 @@ classDiagram
   }
 
   class ebpf_whodata_loop {
-    <<free functions in ebpf_whodata.cpp>>
+    &lt;&lt;free functions in ebpf_whodata.cpp>>
     +init_bpfobj() opens lib modern.bpf.o
     +select_programs() LSM vs kprobe
     +handle_event(ctx, data, sz) rb callback

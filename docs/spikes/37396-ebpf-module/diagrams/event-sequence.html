@@ -39,13 +39,13 @@
   <pre class="mermaid">
 sequenceDiagram
   autonumber
-  participant M as syscheckd main()<br/>main.c:313-320
-  participant SC as check_ebpf_availability()<br/>syscheck.c:823-833
-  participant E as engine (libfimebpf)<br/>ebpf_whodata.cpp
+  participant M as syscheckd main()&lt;br/>main.c:313-320
+  participant SC as check_ebpf_availability()&lt;br/>syscheck.c:823-833
+  participant E as engine (libfimebpf)&lt;br/>ebpf_whodata.cpp
   participant L as libbpf (dlopened)
-  participant K as kernel<br/>modern.bpf.o programs
+  participant K as kernel&lt;br/>modern.bpf.o programs
   participant Q as BoundedQueue
-  participant F as FIM<br/>fim_whodata_event()
+  participant F as FIM&lt;br/>fim_whodata_event()
 
   rect rgb(240, 246, 255)
   note over M,F: startup (provider = ebpf)

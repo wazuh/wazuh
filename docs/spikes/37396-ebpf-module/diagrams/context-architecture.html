@@ -42,21 +42,21 @@
   <pre class="mermaid">
 flowchart LR
   subgraph KERNEL["Linux kernel"]
-    HOOKS["4 kprobes: vfs_open, security_inode_setattr,<br/>vfs_unlink, vfs_rename<br/>3 LSM hooks: file_open, path_unlink, path_rename<br/>(each in dpath / walk variant)"]
-    RB[("ring buffer 'rb'<br/>8 MiB RINGBUF")]
+    HOOKS["4 kprobes: vfs_open, security_inode_setattr,&lt;br/>vfs_unlink, vfs_rename&lt;br/>3 LSM hooks: file_open, path_unlink, path_rename&lt;br/>(each in dpath / walk variant)"]
+    RB[("ring buffer 'rb'&lt;br/>8 MiB RINGBUF")]
     HOOKS --> RB
   end
   subgraph SYSD["wazuh-syscheckd (FIM daemon)"]
-    ENG["eBPF engine<br/>libfimebpf.so<br/>src/syscheckd/src/ebpf/"]
-    Q["BoundedQueue<br/>(size = syscheck.queue_size)"]
-    FIM["FIM whodata handling<br/>fim_whodata_event()"]
+    ENG["eBPF engine&lt;br/>libfimebpf.so&lt;br/>src/syscheckd/src/ebpf/"]
+    Q["BoundedQueue&lt;br/>(size = syscheck.queue_size)"]
+    FIM["FIM whodata handling&lt;br/>fim_whodata_event()"]
     ENG --> Q --> FIM
   end
   RB -->|"struct file_event"| ENG
-  FIM -. "9 callbacks + directory config<br/>filter inside the engine" .-> ENG
-  FIM --> SOCK["queue/sockets/queue<br/>(datagram socket)"]
+  FIM -. "9 callbacks + directory config&lt;br/>filter inside the engine" .-> ENG
+  FIM --> SOCK["queue/sockets/queue&lt;br/>(datagram socket)"]
   SOCK --> AGD["wazuh-agentd"] --> MGR["Wazuh manager"]
-  AUD["Linux Audit backend<br/>(whodata fallback)"] -.->|"healthcheck failure<br/>switches provider"| FIM
+  AUD["Linux Audit backend&lt;br/>(whodata fallback)"] -.->|"healthcheck failure&lt;br/>switches provider"| FIM
   </pre>
   </div>
 
@@ -68,23 +68,23 @@ flowchart LR
   <pre class="mermaid">
 flowchart LR
   subgraph KERNEL2["Linux kernel"]
-    H2["file hooks (FIM)<br/>process-exec hooks (IT Hygiene)<br/>network hooks (IT Hygiene)"]
+    H2["file hooks (FIM)&lt;br/>process-exec hooks (IT Hygiene)&lt;br/>network hooks (IT Hygiene)"]
     RB2[("ring buffer")]
     H2 --> RB2
   end
   subgraph EBPFM["eBPF Module — standalone telemetry provider (#37396)"]
-    LC["program lifecycle<br/>load / attach / detach / reload"]
-    FAN["fan-out + per-consumer filters<br/>backpressure & drop accounting"]
+    LC["program lifecycle&lt;br/>load / attach / detach / reload"]
+    FAN["fan-out + per-consumer filters&lt;br/>backpressure & drop accounting"]
   end
   RB2 --> FAN
-  FAN -->|"raw events + correlation keys:<br/>PID, cgroup id, ns inodes,<br/>container id where derivable"| FIMC["FIM<br/>(contract reviewer: #37533)"]
-  FAN -->|"exec + network classes"| ITH["IT Hygiene / Syscollector<br/>(contract reviewer: #37534)"]
-  FAN -.->|"extensibility proof:<br/>3rd consumer, no engine change"| FUT["future module"]
-  FIMC -->|"query: cgroup id → container/pod/image"| CIS["Container Instances Security Module<br/>passive enricher, never sees the stream<br/>(#37382)"]
+  FAN -->|"raw events + correlation keys:&lt;br/>PID, cgroup id, ns inodes,&lt;br/>container id where derivable"| FIMC["FIM&lt;br/>(contract reviewer: #37533)"]
+  FAN -->|"exec + network classes"| ITH["IT Hygiene / Syscollector&lt;br/>(contract reviewer: #37534)"]
+  FAN -.->|"extensibility proof:&lt;br/>3rd consumer, no engine change"| FUT["future module"]
+  FIMC -->|"query: cgroup id → container/pod/image"| CIS["Container Instances Security Module&lt;br/>passive enricher, never sees the stream&lt;br/>(#37382)"]
   ITH -->|query| CIS
-  FIMC --> SYNC["existing state sync<br/>(agent_sync_protocol → manager)"]
+  FIMC --> SYNC["existing state sync&lt;br/>(agent_sync_protocol → manager)"]
   ITH --> SYNC
-  BASE["Baseline acquisition (#37532)"] -.->|"consumes drop/overflow signal;<br/>wants enumerate-on-attach"| FAN
+  BASE["Baseline acquisition (#37532)"] -.->|"consumes drop/overflow signal;&lt;br/>wants enumerate-on-attach"| FAN
   </pre>
   </div>
 
