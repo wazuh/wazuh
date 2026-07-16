@@ -42,7 +42,7 @@
 </head>
 <body>
   <nav><a href="index.html">&larr; dashboard</a></nav>
-<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="plan.html">&larr; Execution plan</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 20 / 21</span><span style="min-width:0;text-align:right;"><a href="notes.html">Investigation log &rarr;</a></span></div>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="plan.html">&larr; Execution plan</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 21 / 22</span><span style="min-width:0;text-align:right;"><a href="notes.html">Investigation log &rarr;</a></span></div>
   <h1>Tracker — every bullet in issue #37396, accounted for</h1>
   <p class="sub">One row per item (sub-bullets split out). This page IS the tracker — the
     single artifact; the stats bar self-counts from the rows.
@@ -68,12 +68,12 @@
   <h2>Scope — in scope (design)<span class="count"></span></h2>
   <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
     <tr data-status="DECISION"><td class="id">SD-1</td><td>Module architecture: in-process library vs separate process/daemon</td><td><span class="badge st-DECISION">DECISION</span></td><td>D3 REOPENED 2026-07-15 (teammate's component/shared-library challenge) → O5; full multi-option evaluation in P1.3 ADR</td></tr>
-    <tr data-status="OPEN"><td class="id">SD-2</td><td>Public event contract</td><td><span class="badge st-OPEN">OPEN</span></td><td>inputs: sibling demands; current file_event fields (audit §3)</td></tr>
-    <tr data-status="OPEN"><td class="id">SD-3</td><td>Subscription/filtering API</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="PARTIAL"><td class="id">SD-2</td><td>Public event contract</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 written (contract-draft.html §2-4); review by #37533/#37534 pending (AC-1)</td></tr>
+    <tr data-status="PARTIAL"><td class="id">SD-3</td><td>Subscription/filtering API</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 §5: subscribe verbs, kernel-side scope maps, filter-as-data (kills the FIM-callback seam)</td></tr>
     <tr data-status="PARTIAL"><td class="id">SD-4</td><td>Program lifecycle: load/attach/detach on config change</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>current lifecycle documented (audit §6, fallback diagram); reload-without-drops open</td></tr>
     <tr data-status="OPEN"><td class="id">SD-5</td><td>Fan-out to multiple consumers</td><td><span class="badge st-OPEN">OPEN</span></td><td>single consumer today (audit §3)</td></tr>
     <tr data-status="PARTIAL"><td class="id">SD-6</td><td>Backpressure/overflow policy</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>today: 8 MiB ringbuf + queue drop, logged once; #37532 wants the signal</td></tr>
-    <tr data-status="PARTIAL"><td class="id">SD-7</td><td>Correlation identifiers emitted per event</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>requirements collected (#37382, FR6, helper floors); choice open</td></tr>
+    <tr data-status="PARTIAL"><td class="id">SD-7</td><td>Correlation identifiers emitted per event</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 §3 [R]: cgroup_id primary + ns-inode tie-breakers + process cookie (pid,start_ns); O4 alignment with #37382 pending</td></tr>
   </tbody></table>
 
   <h2>Scope — in scope (compatibility)<span class="count"></span></h2>
@@ -102,18 +102,18 @@
     <tr data-status="DONE"><td class="id">A1.3</td><td>Mapping onto the agent module framework; what "a module" is in 5.x</td><td><span class="badge st-DONE">DONE</span></td><td>module-framework.html (3 shapes; FIM not a wmodule)</td></tr>
     <tr data-status="DONE"><td class="id">A2.1</td><td>Where eBPF lives; who reaches in; files/interfaces to cut</td><td><span class="badge st-DONE">DONE</span></td><td>ebpf-engine-audit.html §1,§3; code-map.html</td></tr>
     <tr data-status="DONE"><td class="id">A2.2</td><td>What is FIM-specific to generalize</td><td><span class="badge st-DONE">DONE</span></td><td>audit §3: 3 seams + paths + user/group resolution</td></tr>
-    <tr data-status="PARTIAL"><td class="id">A3.1</td><td>Raw event schema incl. correlation keys (cgroup id, ns inodes, container id?)</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>file_event has NO keys today; sibling demands recorded; schema undrafted</td></tr>
-    <tr data-status="OPEN"><td class="id">A3.2</td><td>Contract versioning (independent shipping)</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
-    <tr data-status="PARTIAL"><td class="id">A3.3</td><td>Serialization: in-process struct vs wire format; protobuf DISALLOWED</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>constraint recorded; depends on Q3</td></tr>
-    <tr data-status="OPEN"><td class="id">A4.1</td><td>Registration: event types, path prefixes, per-cgroup scope</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
-    <tr data-status="OPEN"><td class="id">A4.2</td><td>Kernel-side filtering vs user-space fan-out; what goes into maps</td><td><span class="badge st-OPEN">OPEN</span></td><td>today all filtering is user-space FIM config</td></tr>
-    <tr data-status="OPEN"><td class="id">A4.3</td><td>Many consumers, different filters: demux vs per-consumer programs</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A3.1</td><td>Raw event schema incl. correlation keys (cgroup id, ns inodes, container id?)</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>schemas drafted for all 3 classes (contract-draft.html §4); path-context + cgroup-v1 flags pending P2 probes</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A3.2</td><td>Contract versioning (independent shipping)</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 §2.2: Falco-style two-axis (transport + per-class schema, append-only growth)</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A3.3</td><td>Serialization: in-process struct vs wire format; protobuf DISALLOWED</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 §2/§7: flat records + string table; SAME bytes over socket or library callback — boundary-neutral</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A4.1</td><td>Registration: event types, path prefixes, per-cgroup scope</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 §5: class/type masks, cgroup scope, path prefixes, self-exclusion</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A4.2</td><td>Kernel-side filtering vs user-space fan-out; what goes into maps</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 §5.1/[R]: kernel = class enablement + cgroup map + self-deny; userspace = prefixes/fields (peer-validated split)</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A4.3</td><td>Many consumers, different filters: demux vs per-consumer programs</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 §5/§7: union-maps + per-subscriber refinement (module shape) vs exact per-instance maps (component shape)</td></tr>
     <tr data-status="PARTIAL"><td class="id">A5.1</td><td>Load/attach/detach; re-attach on config change w/o dropping others' events</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>single-consumer lifecycle documented; multi-consumer reload open</td></tr>
     <tr data-status="PARTIAL"><td class="id">A5.2</td><td>Capability acquisition + graceful degradation (disable, log, don't crash)</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>precedent: healthcheck→audit ladder; audit hatch is file-only → redesign</td></tr>
-    <tr data-status="PARTIAL"><td class="id">A6.1</td><td>Ringbuf sizing, drop policy, drop surfacing to consumers/telemetry</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>today 8 MiB, drop logged once, nothing surfaced; #37532 consumes signal</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A6.1</td><td>Ringbuf sizing, drop policy, drop surfacing to consumers/telemetry</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 §6 [R]: in-band per-stage LOST records + seq gap detection + HEALTH counters (Hubble/Falco patterns; #37532's trigger)</td></tr>
     <tr data-status="OPEN"><td class="id">A6.2</td><td>Slow-consumer isolation</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
     <tr data-status="OPEN"><td class="id">A7.1</td><td>3rd-consumer sketch proving the contract generic</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
-    <tr data-status="OPEN"><td class="id">A7.2</td><td>Host/no-container path (empty correlation keys)</td><td><span class="badge st-OPEN">OPEN</span></td><td>—</td></tr>
+    <tr data-status="PARTIAL"><td class="id">A7.2</td><td>Host/no-container path (empty correlation keys)</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 §3.3: keys never empty; SUB_ACK host baseline — same consumer code on plain hosts</td></tr>
   </tbody></table>
 
   <h2>Angles — kernel / runtime compatibility<span class="count"></span></h2>
@@ -155,7 +155,7 @@
   <table><thead><tr><th style="width:4.5rem">ID</th><th>Item</th><th style="width:7rem">Status</th><th>Evidence / note</th></tr></thead><tbody>
     <tr data-status="OPEN"><td class="id">D-M1</td><td>Architecture decision record (boundary, threading, caps, framework mapping)</td><td><span class="badge st-OPEN">OPEN</span></td><td>now a multi-option evaluation (D3 reopened → O5); drafted in evidence pack per D5; phase 1</td></tr>
     <tr data-status="PARTIAL"><td class="id">D-M2</td><td>Coupling extraction map + concrete refactor list</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>seams+inventory+cleanup done; ordered list unwritten</td></tr>
-    <tr data-status="OPEN"><td class="id">D-M3</td><td>Event contract spec (schema, keys, versioning, serialization, subscribe/filter API)</td><td><span class="badge st-OPEN">OPEN</span></td><td>rolls up SD-2/3/7, A3, A4</td></tr>
+    <tr data-status="PARTIAL"><td class="id">D-M3</td><td>Event contract spec (schema, keys, versioning, serialization, subscribe/filter API)</td><td><span class="badge st-PARTIAL">PARTIAL</span></td><td>draft v0 = contract-draft.html (2026-07-16); freeze blocked on §9 items (probes, O4, O5)</td></tr>
     <tr data-status="OPEN"><td class="id">D-M4</td><td>Backpressure &amp; degradation policy</td><td><span class="badge st-OPEN">OPEN</span></td><td>rolls up SD-6, A5.2, A6</td></tr>
     <tr data-status="OPEN"><td class="id">D-M5</td><td>Extensibility proof (3rd consumer + host path)</td><td><span class="badge st-OPEN">OPEN</span></td><td>A7</td></tr>
     <tr data-status="OPEN"><td class="id">D-M6</td><td>Prototype: multi-consumer fan-out</td><td><span class="badge st-OPEN">OPEN</span></td><td>SP-4; AC-5 needs 2 kernels</td></tr>
@@ -175,7 +175,7 @@
     <tr data-status="OPEN"><td class="id">AC-6</td><td>Correlation keys aligned with #37382 findings</td><td><span class="badge st-OPEN">OPEN</span></td><td>joint decision; #37382 also open</td></tr>
   </tbody></table>
 
-<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="plan.html">&larr; Execution plan</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 20 / 21</span><span style="min-width:0;text-align:right;"><a href="notes.html">Investigation log &rarr;</a></span></div>
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="plan.html">&larr; Execution plan</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 21 / 22</span><span style="min-width:0;text-align:right;"><a href="notes.html">Investigation log &rarr;</a></span></div>
 <footer>Spike #37396 tracker · this page is the single tracker artifact ·
   all grill decisions recorded as D1-D7 in <a href="questions.html">questions.html</a>;
   execution phases in <a href="plan.html">plan.html</a>; remaining external gates O1 (floor

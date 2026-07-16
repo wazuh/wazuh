@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Event contract — draft v0 (spike #37396)</title>
+  <style>
+    :root { color-scheme: light dark;
+      --accent:#3d7dd6; --ok:#2e8b57; --warn:#c77c11; --bad:#c0392b;
+      --muted:#6b7280; --border:#8884; }
+    * { box-sizing: border-box; }
+    body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+           max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem 6rem; line-height: 1.62;
+           font-size: 15.5px; }
+    nav.crumb { font-size: .9rem; margin-bottom: 1.2rem; }
+    a { color: var(--accent); text-decoration: none; } a:hover { text-decoration: underline; }
+    h1 { font-size: 1.55rem; margin: 0 0 1rem; letter-spacing: -.01em; line-height: 1.3; }
+    h2 { font-size: 1.2rem; margin: 2.4rem 0 .7rem; padding-left: .6rem;
+         border-left: 4px solid var(--accent); letter-spacing: -.01em; }
+    h3 { font-size: 1.02rem; margin: 1.7rem 0 .5rem; }
+    p { margin: .65rem 0; }
+    code { background: #88808018; padding: .1em .4em; border-radius: 5px; font-size: .87em;
+           font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+    pre { background: #88808014; border: 1px solid var(--border); border-radius: 10px;
+          padding: .9rem 1.1rem; overflow-x: auto; font-size: .82rem; line-height: 1.45; }
+    pre code { background: none; padding: 0; font-size: inherit; }
+    .tablewrap { overflow-x: auto; margin: .9rem 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+    th, td { border: 1px solid var(--border); padding: .45rem .65rem; text-align: left;
+             vertical-align: top; }
+    th { background: #8881; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+    ul { padding-left: 1.5rem; } li { margin: .35rem 0; }
+    .callout { border-left: 4px solid var(--warn); background: #c77c1112;
+               border-radius: 0 10px 10px 0; padding: .7rem 1rem; margin: 1rem 0; font-size: .93rem; }
+    .callout.info { border-left-color: var(--accent); background: #3d7dd612; }
+    .rec { font-weight: 700; color: var(--accent); }
+    .src { font-size: .8rem; color: var(--muted); }
+    footer { margin-top: 3rem; font-size: .8rem; color: var(--muted);
+             border-top: 1px solid var(--border); padding-top: 1rem; }
+  </style>
+</head>
+<body>
+  <nav class="crumb"><a href="index.html">&larr; dashboard</a> · <a href="tracker.html">tracker</a></nav>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="evidence/peers.html">&larr; Peer patterns</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 16 / 22</span><span style="min-width:0;text-align:right;"><a href="code-map.html">Code map &rarr;</a></span></div>
+
+<h1>eBPF Module event contract — DRAFT v0 (boundary-neutral core)</h1>
+<div class="callout">
+  <strong>Status: draft for review, decides nothing by itself.</strong> Written 2026-07-16 as
+  P1.2 of the <a href="plan.html">plan</a>. Reviewers of record: #37533 (FIM), #37534
+  (IT&nbsp;Hygiene) — acceptance AC-1 — plus #37382 for the correlation-key set (AC-6/O4) and
+  #37532 for the loss/watermark semantics. Items marked <span class="rec">[R]</span> are
+  recommendations open to challenge. The contract core is <strong>boundary-neutral</strong>: it
+  survives whichever way the O5 evaluation lands (component library vs modulesd module vs
+  daemon); the delivery binding is a thin last layer with both variants in §7.
+</div>
+
+<h2>1. Scope and principles</h2>
+<ul>
+<li><strong>What this is:</strong> the record format, identity/correlation semantics,
+subscription and filtering semantics, and reliability semantics for raw runtime events
+(file, process-exec, network) produced by the eBPF engine for consumer modules.</li>
+<li><strong>What this is not:</strong> no container names, images, pods, labels (engine stays
+container-blind — INV-3/CON-3: consumers enrich via the Container module #37382); no
+path→logical-path resolution (#37533 owns it, OOS-1); no rule/policy language.</li>
+<li><strong>Constraints honored:</strong> hand-rolled flat layout, no protobuf (CON/A3.3);
+consumer-agnostic — subscribing requires zero eBPF-specific code in consumers (CON-2); works
+with "empty" container context on plain hosts (A7.2, §3.3).</li>
+<li><strong>Peer patterns adopted:</strong> Falco's two-axis versioning (§2.2); Hubble's
+in-band per-stage loss reporting + Falco's drop-policy hooks (§6); industry-standard filtering
+split — coarse scope in kernel, fine filters in userspace (§5). <span class="src">evidence/peers.html</span></li>
+</ul>
+
+<h2>2. Record envelope and versioning</h2>
+<h3>2.1 Framing</h3>
+<p>Every record = fixed 32-byte envelope + fixed per-class body + a trailing
+<strong>string table</strong> (variable). All integers host-endian (local delivery only). String
+fields in bodies are <code>(u16 offset, u16 len)</code> pairs pointing into the string table;
+absent strings are <code>(0,0)</code>. <code>record_len</code> covers the whole record, so a
+reader can always skip what it doesn't understand — this is what makes append-only schema
+growth safe.</p>
+<pre><code>struct ebpf_rec_hdr {            /* 32 bytes, all records */
+    u16 transport_version;       /* framing itself; v0 = 1                  */
+    u16 record_type;             /* EVENT=1, LOST=2, SUB_ACK=3, HEALTH=4    */
+    u32 record_len;              /* total bytes incl. header + string table */
+    u16 event_class;             /* FILE=1, PROCESS=2, NETWORK=3            */
+    u16 event_type;              /* per class, §4                           */
+    u16 schema_version;          /* per (class); append-only growth         */
+    u16 flags;                   /* bit0 STR_TRUNCATED, bit1 CGROUP_V1,
+                                    bit2 PATH_CONTEXT_UNPINNED (§4.1)       */
+    u64 seq;                     /* per-subscriber monotonic, gap = loss    */
+    u64 ts_boot_ns;              /* CLOCK_BOOTTIME at event, kernel-side    */
+};</code></pre>
+<h3>2.2 Versioning <span class="rec">[R]</span> — Falco's two-axis model</h3>
+<ul>
+<li><strong>Transport version</strong> (envelope + string-table mechanics + control records):
+bumped only for framing changes; subscriber and engine exchange it at subscribe time and refuse
+on major mismatch.</li>
+<li><strong>Schema version per event class</strong>: fields are append-only at the END of the
+fixed body; new fields ⇒ minor bump (old readers skip via <code>record_len</code>); removing
+or re-typing ⇒ major bump (engine can emit the previous major on request during a deprecation
+window). Consumers declare the schema versions they understand at subscribe time.</li>
+</ul>
+<p class="src">Rationale: engine and consumers may ship independently (issue angle 3);
+Falco negotiates exactly these two axes at startup (peers §Falco).</p>
+
+<h2>3. Identity and correlation keys (feeds O4 / #37382)</h2>
+<h3>3.1 Identity block (every EVENT record)</h3>
+<pre><code>struct ebpf_identity {           /* 48 bytes fixed + comm strings */
+    u32 pid;                     /* tgid (userspace notion of PID)  */
+    u32 tid;
+    u32 ppid;
+    u32 uid, gid;                /* real; effective uid in flags?   */
+    u32 _pad;
+    u64 proc_start_boot_ns;      /* task start, CLOCK_BOOTTIME      */
+    u64 parent_start_boot_ns;
+    /* strings: comm, parent_comm, exe_path (best effort)           */
+};</code></pre>
+<p><span class="rec">[R] Process cookie = (pid, proc_start_boot_ns).</span> PIDs are recycled;
+the pair is unique per boot and race-free (captured in-kernel at event time). Consumers and the
+Container module key process-scoped state on the cookie, never the bare PID. Peer precedent:
+Tetragon's cluster-wide <code>exec_id</code> is the same idea with node identity added —
+node identity is the agent's concern, not this contract's.</p>
+<h3>3.2 Correlation block (every EVENT record)</h3>
+<pre><code>struct ebpf_correlation {        /* 24 bytes */
+    u64 cgroup_id;               /* bpf_get_current_cgroup_id(); v2 inode id */
+    u32 mntns_ino;               /* task nsproxy inode numbers                */
+    u32 pidns_ino;
+    u32 netns_ino;
+    u32 _pad;
+};</code></pre>
+<p><span class="rec">[R] Primary key recommendation for #37382 alignment:
+<code>cgroup_id</code>, with the three namespace inodes as tie-breakers/fallbacks.</span>
+Rationale: one u64, captured atomically at event time by a stable helper (≥4.18, inside our
+≥5.8 floor), equals the cgroupfs inode userspace sees, and the Container module can maintain a
+cgroup_id→container cache (#37382's stated design). The edge cases #37382 cataloged are the
+tie-breaker cases: <code>hostPID</code>/<code>hostNetwork</code> pods (pidns/netns = host, cgroup
+still container-scoped → cgroup_id survives), <code>--cgroupns=host</code> (cgroup path visible
+differently in-container, id unchanged), Kata/VM runtimes (host-side cgroup of the VMM — keys
+identify the sandbox, not in-guest detail; documented limitation), pause/sandbox containers
+(cgroup distinguishes sandbox vs workload containers where the runtime separates them).
+<strong>cgroup v1/hybrid hosts:</strong> flag bit <code>CGROUP_V1</code> set; semantics of the
+returned id under v1 must be pinned by the P2.2 probe (A12.1) before v0 freezes.</p>
+<h3>3.3 The host (no-container) path — A7.2 answered</h3>
+<p>Keys are NEVER empty. On plain hosts every field still populates (root cgroup id, init
+namespace inodes). At subscribe time the engine sends <code>SUB_ACK</code> carrying the
+<strong>host baseline</strong>: the engine process's own cgroup_id and init ns inodes. A
+consumer distinguishes "host process" from "containerized" by comparing against the baseline —
+no special cases in the schema, and the same consumer code works on container-free servers.</p>
+
+<h2>4. Event classes and schemas (draft field sets)</h2>
+<h3>4.1 FILE (consumer of record: FIM / #37533)</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>event_type</th><th>Hook heritage</th><th>Body fields (beyond identity+correlation)</th></tr></thead>
+<tbody>
+<tr><td><code>FILE_OPEN_CREATE</code></td><td>lsm/file_open ∥ kprobe/vfs_open (in-tree today)</td>
+    <td>u64 inode, u64 dev, u32 open_flags, strings: path, cwd, parent_cwd</td></tr>
+<tr><td><code>FILE_ATTR_CHANGE</code></td><td>lsm path hooks ∥ kprobe/security_inode_setattr</td>
+    <td>u64 inode, u64 dev, u32 attr_mask (which attrs changed), strings: path</td></tr>
+<tr><td><code>FILE_UNLINK</code></td><td>lsm/path_unlink ∥ kprobe/vfs_unlink</td>
+    <td>u64 inode, u64 dev, strings: path</td></tr>
+<tr><td><code>FILE_RENAME</code></td><td>lsm/path_rename ∥ kprobe/vfs_rename</td>
+    <td>u64 inode, u64 dev, strings: old_path, new_path</td></tr>
+</tbody>
+</table></div>
+<div class="callout">
+<strong>Path semantics — the #37533 question, answered honestly:</strong> <code>path</code> is
+the kernel-resolved path at event time (via <code>bpf_d_path</code> on the LSM set, manual
+dentry walk on the kprobe set). Whether that string is the in-container view or the host
+overlay view — and whether the two attach sets agree — is precisely what the P2.2/P2.4 probes
+measure (SP-8); until pinned, records carry flag <code>PATH_CONTEXT_UNPINNED</code>. The
+contract guarantees the raw keys either way, so #37533's resolution layer
+(<code>(container-identity, kernel_path) → (logical, host)</code>) always has its inputs. v0
+freeze REQUIRES this flag retired.</div>
+<h3>4.2 PROCESS (consumer of record: IT Hygiene / #37534)</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>event_type</th><th>Hook candidates (P2 probes decide)</th><th>Body fields</th></tr></thead>
+<tbody>
+<tr><td><code>PROC_EXEC</code></td><td>tracepoint sched_process_exec <span class="rec">[R]</span> (stable ABI, 4.7) vs exec kprobes</td>
+    <td>strings: exe_path, argv (concatenated, NUL-separated, cap 4&nbsp;KiB <span class="rec">[R]</span>, STR_TRUNCATED flag), cwd; u32 argc</td></tr>
+<tr><td><code>PROC_EXIT</code></td><td>tracepoint sched_process_exit</td>
+    <td>u32 exit_code, u32 signal — lets consumers close cookie-keyed state and lets #37382 age cache entries</td></tr>
+</tbody>
+</table></div>
+<h3>4.3 NETWORK (consumer of record: IT Hygiene / #37534)</h3>
+<div class="tablewrap"><table>
+<thead><tr><th>event_type</th><th>Hook candidates (P2 probes decide)</th><th>Body fields</th></tr></thead>
+<tbody>
+<tr><td><code>NET_CONNECT</code></td><td>kprobe/fentry tcp_connect + udp variants <span class="rec">[R]</span></td>
+    <td>u8 family, u8 proto, u16 sport, u16 dport, u8 saddr[16], u8 daddr[16] (v4-mapped)</td></tr>
+<tr><td><code>NET_ACCEPT</code></td><td>kprobe/fentry inet_csk_accept</td><td>same field set</td></tr>
+<tr><td><code>NET_LISTEN</code></td><td>kprobe inet_listen</td><td>family, proto, sport, backlog</td></tr>
+</tbody>
+</table></div>
+<p class="src">Per-packet/flow-volume telemetry is explicitly OUT (that is observability, not
+inventory; #37534's coverage matrix confirms scope). The netns_ino key + #37534's shared-netns
+pod nuance: attribution of a connection to a container in a shared network namespace uses the
+process cookie, not netns.</p>
+
+<h2>5. Subscription and filtering (SD-3 / A4)</h2>
+<pre><code>subscribe(request) → SUB_ACK | error
+request = {
+    transport_version, schema_versions[class],
+    class_mask,                  /* which classes           */
+    type_mask[class],            /* which events per class  */
+    scope:  { cgroup_ids[] | ALL },   /* kernel-side, §5.1  */
+    exclude:{ self=true, pids[] },    /* kernel-side         */
+    path_prefixes[]              /* FILE only; engine-side userspace, §5.2 */
+}</code></pre>
+<h3>5.1 What is enforced IN the kernel <span class="rec">[R]</span></h3>
+<ul>
+<li>Class/type enablement: hooks for unrequested classes are simply not attached (component
+shape) or detached when no subscriber wants them (module shape) — zero cost for unused classes.</li>
+<li>Cgroup scoping: a BPF hash map of allowed cgroup ids consulted first thing in every program
+(IG's <code>mntns_filter</code> pattern; Tetragon's policy scoping). Empty scope = ALL.</li>
+<li>Self-exclusion: the agent's own pids (engine + consumers) in a deny map — mandatory,
+prevents feedback loops (FIM watching its own DB writes).</li>
+</ul>
+<h3>5.2 What stays in userspace</h3>
+<p>Path-prefix and any per-field filtering (engine-side, per subscriber). Kernel-side string
+prefix matching is verifier-hostile and peers avoid it too (peers §synthesis c). NOTE the
+in-tree precedent to kill: today the engine calls FIM's <code>fim_configuration_directory</code>
+per event (the coupling seam); in this contract the filter is DATA (prefix list) handed over at
+subscribe, not a callback into consumer code.</p>
+<p class="src">Under the module shape, kernel maps hold the UNION of subscriber scopes and
+per-subscriber refinement happens at fan-out; under the component shape each instance's maps
+are exact. Same contract, different enforcement point — boundary-neutral.</p>
+
+<h2>6. Reliability: ordering, loss, watermark (SD-6 / A6.1 / #37532)</h2>
+<ul>
+<li><strong>Ordering:</strong> per-CPU order is preserved; TOTAL order across CPUs is NOT
+guaranteed. Consumers needing order sort by <code>ts_boot_ns</code>; same trade as all peers.</li>
+<li><strong>Sequence numbers:</strong> <code>seq</code> is per-subscriber and gap-free by
+construction; any gap a consumer observes equals loss it wasn't told about — defense in depth
+on top of LOST records.</li>
+<li><strong>In-band loss reporting <span class="rec">[R]</span> (Hubble pattern):</strong>
+<pre><code>LOST record body = {
+    u16 stage;        /* KERNEL_RINGBUF=1, ENGINE_QUEUE=2, SUBSCRIBER_QUEUE=3 */
+    u16 _pad;
+    u32 count;
+    u64 first_ts_boot_ns, last_ts_boot_ns;
+}</code></pre>
+    Emitted on the SAME stream, per subscriber, when drops are detected at any stage; stage
+    taxonomy is per-boundary so tuning is actionable (the Tetragon lesson: metrics alone with
+    opaque stages ⇒ unfixable overflows). Cumulative counters also queryable via HEALTH.</li>
+<li><strong>Slow-consumer isolation:</strong> per-subscriber queues/instances — a slow consumer
+loses ITS events (gets LOST records saying so) and can never stall the producer or peers
+(Hubble's structural isolation; Falco's warning about unbounded gRPC queues heeded — queues are
+BOUNDED, drop-newest, counted).</li>
+<li><strong>Watermark / enumerate-on-attach — the #37532 answer <span class="rec">[R]</span>:</strong>
+<code>SUB_ACK</code> carries <code>{engine_boot_ts, current_seq, host_baseline (§3.3)}</code>.
+A consumer building a baseline does: subscribe (events start buffering with seq S₀) → scan
+/proc or disk → reconcile scan against events with seq &gt; S₀. No lost, no double-counted
+change — the handoff #37532 specifies. Engine-side enumeration ("dump existing tasks per
+cgroup on attach") is NOT in v0: it drags stateful scanning into the engine and every peer
+keeps snapshots consumer-side; revisit only if #37532's evaluation shows /proc-walk +
+watermark insufficient.</li>
+<li><strong>Degradation signaling:</strong> HEALTH records announce attach-set changes
+(LSM→kprobe fallback at start, class unavailable on this kernel) so consumers KNOW event
+quality context instead of guessing (feeds D-M4's missing-feature ladder).</li>
+</ul>
+
+<h2>7. Delivery bindings (thin layer — both sketched, O5 decides)</h2>
+<h3>7.1 Socket binding (module / daemon shapes)</h3>
+<ul>
+<li><code>SOCK_SEQPACKET</code> unix socket under <code>queue/sockets/ebpf</code> — preserves
+record boundaries (one record per packet), connection-oriented (subscriber death = detach),
+local-only. Handshake = subscribe request record; then EVENT/LOST/HEALTH stream.</li>
+<li>Records are the flat layout of §2 verbatim — no re-serialization; the engine writes the
+same bytes it built from the ring buffer.</li>
+</ul>
+<h3>7.2 Library binding (component shape)</h3>
+<pre><code>/* C ABI sketch — mirrors the socket verbs 1:1 */
+ebpf_engine_t* ebpf_engine_open(const ebpf_engine_cfg*);   /* loads .bpf.o    */
+int  ebpf_engine_subscribe(ebpf_engine_t*, const ebpf_sub_request*,
+                           ebpf_rec_cb, void* ctx);        /* SUB_ACK via cb  */
+int  ebpf_engine_poll(ebpf_engine_t*, int timeout_ms);     /* drives cb       */
+void ebpf_engine_close(ebpf_engine_t*);                    /* detach + unload */</code></pre>
+<p>The callback receives the SAME record bytes (§2). One subscriber per instance; multi-consumer
+means multiple instances (per-instance programs/buffers — the kernel facts in questions.html
+D3). Everything above §7 is identical in both bindings — that is the boundary-neutrality
+claim, and the in-tree PoC (D4-rev) validates it by A/B-ing both bindings over one record
+implementation.</p>
+
+<h2>8. Review asks (who must confirm what)</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Reviewer</th><th>Must confirm</th></tr></thead>
+<tbody>
+<tr><td>#37533 (FIM)</td><td>FILE field sufficiency vs today's <code>whodata_evt</code> (§4.1 —
+    note parent_cwd kept); path-semantics flag approach acceptable until P2 probes pin it;
+    prefix-filter-as-data replaces the config callback.</td></tr>
+<tr><td>#37534 (IT Hygiene)</td><td>PROC/NET types + fields cover the v1 coverage matrix;
+    argv 4&nbsp;KiB cap; per-packet telemetry exclusion.</td></tr>
+<tr><td>#37382 (Container module)</td><td>cgroup_id-primary + ns-inode tie-breakers + process
+    cookie = resolvable by the cache design; edge-case treatment (§3.2); PROC_EXIT as cache
+    aging signal.</td></tr>
+<tr><td>#37532 (Baseline)</td><td>watermark handshake (§6) suffices; engine-side enumeration
+    stays out of v0.</td></tr>
+<tr><td>O5 evaluation (P1.3)</td><td>both bindings remain thin over one record layer (§7) —
+    if either binding demands schema changes, that is an O5 data point.</td></tr>
+</tbody>
+</table></div>
+
+<h2>9. Open items blocking v0 → v1 freeze</h2>
+<ul>
+<li>cgroup v1/hybrid id semantics (A12.1 probe) — affects §3.2 flag semantics.</li>
+<li>Path context pinning (SP-8 probe) — retire <code>PATH_CONTEXT_UNPINNED</code>.</li>
+<li>Exec/net hook selection (P2.2 probes) — §4.2/4.3 hook columns are candidates, not choices.</li>
+<li>O4 alignment with #37382; O5 outcome folds §7 down to one primary binding.</li>
+<li>Ring buffer / queue sizing defaults — deferred to D-M4 policy + P2 measurements
+    (current engine: 8 MiB ringbuf, 50k queue default — starting points, not decisions).</li>
+</ul>
+
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="evidence/peers.html">&larr; Peer patterns</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 16 / 22</span><span style="min-width:0;text-align:right;"><a href="code-map.html">Code map &rarr;</a></span></div>
+<footer>Spike #37396 · P1.2 deliverable (draft v0, 2026-07-16) · inputs:
+evidence/ebpf-engine-audit.html (current file_event/whodata_evt fields),
+evidence/siblings.html (consumer demands), evidence/peers.html (adopted patterns),
+evidence/kernel-features.html (helper floors) · HTML-only pack.</footer>
+</body>
+</html>

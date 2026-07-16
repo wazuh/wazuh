@@ -40,7 +40,7 @@
 </head>
 <body>
   <nav class="crumb"><a href="index.html">&larr; dashboard</a> · <a href="tracker.html">tracker</a></nav>
-<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 21 / 21</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
+<!-- readnav-top --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 22 / 22</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
 <h1>Investigation log — spike #37396 (eBPF Module extraction)</h1>
 <p>Append-only. Newest at the bottom.</p>
 <h2>2026-07-13 — bootstrap</h2>
@@ -109,7 +109,25 @@ requirements for P1.2; (5) Falco modern probe's documented capability set (CAP_B
 CAP_SYS_RESOURCE, CAP_SYS_PTRACE) = peer baseline for D-C3.</li>
 <li>Tracker: SP-2 → DONE; A1.2 note updated. O5 entry annotated with the survey input.
 Next: P1.2 event contract draft v0 (boundary-neutral core).</li></ul>
-<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 21 / 21</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
+<h2>2026-07-16 — P1.2: event contract draft v0 written</h2>
+<ul><li><strong>contract-draft.html</strong> (reading order 16/22): flat record envelope +
+string table; Falco-style two-axis versioning (transport + per-class schema, append-only);
+identity block with process cookie (pid, proc_start_boot_ns) against PID reuse; correlation
+block [R]: cgroup_id primary + mnt/pid/net ns inodes; keys never empty — SUB_ACK carries host
+baseline (A7.2 answered); schemas for FILE (4 types, parity with today's whodata_evt), PROCESS
+(exec+exit; argv cap 4 KiB), NETWORK (connect/accept/listen; no per-packet telemetry);
+subscription/filter API — kernel = class enablement + cgroup-scope map + self-exclusion,
+userspace = path prefixes as DATA (kills the FIM-callback seam); reliability §6 = per-subscriber
+seq (gap = loss), in-band per-stage LOST records (Hubble pattern), HEALTH records announcing
+attach-set degradation, subscribe watermark = the #37532 handoff answer (engine-side
+enumeration kept OUT of v0); both delivery bindings sketched thin (SOCK_SEQPACKET vs C ABI)
+over identical record bytes — boundary-neutral per O5.</li>
+<li>Review asks table (§8) names what each sibling must confirm; §9 lists freeze blockers
+(cgroup-v1 semantics probe, path-context pinning, exec/net hook selection, O4/O5).</li>
+<li>Tracker: 12 rows → PARTIAL (SD-2/3/7, A3.1-3.3, A4.1-4.3, A6.1, A7.2, D-M3); O4
+annotated with the drafted recommendation; dashboard status + docs list updated.
+Next: P1.3 architecture ADR (3-option evaluation) + P1.4 min-kernel ADR.</li></ul>
+<!-- readnav-bottom --><div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;font-size:.88rem;margin:1.1rem 0;padding:.55rem .9rem;border:1px solid #8884;border-radius:10px;flex-wrap:wrap;"><span style="min-width:0;"><a href="tracker.html">&larr; Tracker (83 items)</a></span><span style="color:#6b7280;font-size:.78rem;white-space:nowrap;">reading order 22 / 22</span><span style="min-width:0;text-align:right;"><span style='color:#6b7280;'>end &rarr;</span></span></div>
 <footer>Spike #37396 evidence · HTML is the only format of this pack · generated from the
   investigation record on 2026-07-14.</footer>
 </body>
