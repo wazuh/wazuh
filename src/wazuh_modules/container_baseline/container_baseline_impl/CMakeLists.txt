@@ -15,7 +15,15 @@ include_directories(
   ${SRC_FOLDER}/shared/include
   ${SRC_FOLDER}/external/nlohmann
   ${SRC_FOLDER}/external/openssl/include
-  ${SRC_FOLDER}/wazuh_modules/container_connector/include
+  ${SRC_FOLDER}/shared_modules/container_instances_client/include
+  # M4 package scanning reuses sysinfo's header-only parse helpers (parseDpkg,
+  # parseRpm, BerkeleyRpmDBReader) without linking libsysinfo — see
+  # package_scanner.cpp. libdb + sqlite3 are the vendored deps those need.
+  ${SRC_FOLDER}/data_provider/src
+  ${SRC_FOLDER}/data_provider/src/packages
+  ${SRC_FOLDER}/shared_modules/utils
+  ${SRC_FOLDER}/external/libdb/build_unix
+  ${SRC_FOLDER}/external/sqlite
 )
 
 link_directories(${SRC_FOLDER}/external/openssl/)
@@ -28,7 +36,11 @@ target_include_directories(CONTAINER_BASELINE_IMPL PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-target_link_libraries(CONTAINER_BASELINE_IMPL PUBLIC container_connector wazuhext)
+target_link_libraries(CONTAINER_BASELINE_IMPL PUBLIC
+  wazuhext
+  ${SRC_FOLDER}/external/libdb/build_unix/libdb.a
+  ${SRC_FOLDER}/external/sqlite/libsqlite3.a
+)
 
 set_target_properties(CONTAINER_BASELINE_IMPL PROPERTIES
   POSITION_INDEPENDENT_CODE ON

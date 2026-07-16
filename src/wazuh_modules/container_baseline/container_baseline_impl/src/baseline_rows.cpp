@@ -34,6 +34,36 @@ void ApplyIdentity(PortBaselineRow& row, const ContainerIdentity& id)
     row.image          = id.image;
 }
 
+void ApplyIdentity(UserBaselineRow& row, const ContainerIdentity& id)
+{
+    row.container_id   = id.container_id;
+    row.pod_uid        = id.pod_uid;
+    row.pod_name       = id.pod_name;
+    row.k8s_namespace  = id.k8s_namespace;
+    row.container_name = id.container_name;
+    row.image          = id.image;
+}
+
+void ApplyIdentity(GroupBaselineRow& row, const ContainerIdentity& id)
+{
+    row.container_id   = id.container_id;
+    row.pod_uid        = id.pod_uid;
+    row.pod_name       = id.pod_name;
+    row.k8s_namespace  = id.k8s_namespace;
+    row.container_name = id.container_name;
+    row.image          = id.image;
+}
+
+void ApplyIdentity(PackageBaselineRow& row, const ContainerIdentity& id)
+{
+    row.container_id   = id.container_id;
+    row.pod_uid        = id.pod_uid;
+    row.pod_name       = id.pod_name;
+    row.k8s_namespace  = id.k8s_namespace;
+    row.container_name = id.container_name;
+    row.image          = id.image;
+}
+
 namespace {
 
 nlohmann::json KubernetesBlock(const std::string& container_id,
@@ -122,6 +152,69 @@ std::pair<std::string, std::string> BuildPortJson(const PortBaselineRow& row)
     const std::string id = row.container_id + ":" + row.network_transport + ":" +
                             row.source_ip + ":" + std::to_string(row.source_port) + ":" +
                             std::to_string(row.file_inode);
+    return {id, data.dump()};
+}
+
+std::pair<std::string, std::string> BuildUserJson(const UserBaselineRow& row)
+{
+    nlohmann::json data;
+    nlohmann::json user;
+    user["name"]        = row.name;
+    user["id"]          = row.uid;
+    user["group"]       = {{"id", row.gid}};
+    user["description"] = row.description;
+    user["home"]        = row.home;
+    user["shell"]       = row.shell;
+    data["user"]      = user;
+    data["baseline"]  = true;
+    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
+                                         row.k8s_namespace, row.container_name, row.image);
+
+    // Keyed by name, not uid: /etc/passwd allows duplicate uids (e.g. root
+    // aliases) but a name appears once per file.
+    const std::string id = row.container_id + ":user:" + row.name;
+    return {id, data.dump()};
+}
+
+std::pair<std::string, std::string> BuildGroupJson(const GroupBaselineRow& row)
+{
+    nlohmann::json data;
+    nlohmann::json group;
+    group["name"]  = row.name;
+    group["id"]    = row.gid;
+    group["users"] = row.members;
+    data["group"]     = group;
+    data["baseline"]  = true;
+    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
+                                         row.k8s_namespace, row.container_name, row.image);
+
+    const std::string id = row.container_id + ":group:" + row.name;
+    return {id, data.dump()};
+}
+
+std::pair<std::string, std::string> BuildPackageJson(const PackageBaselineRow& row)
+{
+    nlohmann::json data;
+    nlohmann::json package;
+    package["name"]         = row.name;
+    package["version"]      = row.version;
+    package["architecture"] = row.architecture;
+    package["description"]  = row.description;
+    package["size"]         = row.size;
+    package["vendor"]       = row.vendor;
+    package["installed"]    = row.install_time;
+    package["category"]     = row.category;
+    package["source"]       = row.source;
+    package["type"]         = row.format;
+    data["package"]   = package;
+    data["baseline"]  = true;
+    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
+                                         row.k8s_namespace, row.container_name, row.image);
+
+    // name+arch+version identifies a package row; multiarch dpkg installs the
+    // same name for several architectures, so arch must be part of the key.
+    const std::string id = row.container_id + ":pkg:" + row.format + ":" + row.name + ":" +
+                            row.architecture + ":" + row.version;
     return {id, data.dump()};
 }
 
