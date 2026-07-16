@@ -48,7 +48,29 @@ namespace wazuh::container_instances
             {
                 const auto& block = configuration["docker"];
                 DockerConfig docker;
-                docker.socketPath = block.value("socket_path", docker.socketPath);
+                if (block.contains("socket_path"))
+                {
+                    docker.socketPaths.clear();
+                    const auto& paths = block["socket_path"];
+                    if (paths.is_array())
+                    {
+                        for (const auto& path : paths)
+                        {
+                            if (path.is_string() && !path.get<std::string>().empty())
+                            {
+                                docker.socketPaths.push_back(path.get<std::string>());
+                            }
+                        }
+                    }
+                    else if (paths.is_string())
+                    {
+                        docker.socketPaths.push_back(paths.get<std::string>());
+                    }
+                }
+                if (docker.socketPaths.empty())
+                {
+                    docker.socketPaths.push_back("/var/run/docker.sock");
+                }
                 config.docker = std::move(docker);
             }
             if (!config.kubernetes && !config.docker)
@@ -98,16 +120,18 @@ namespace wazuh::container_instances
             }
             if (config.docker)
             {
-                const auto& socketPath = config.docker.value().socketPath;
-                m_dockerClient = std::make_unique<DockerApiClient>(m_transport, socketPath, m_logger);
-                auto connector = std::make_unique<DockerConnector>(
-                    *m_dockerClient, m_resolver, m_store, dockerSource(socketPath), m_logger);
-                RefresherBinding binding;
-                binding.docker = true;
-                binding.refresher = connector.get();
-                refreshers.push_back(binding);
-                m_connectors.push_back(std::move(connector));
-                connectorNames += connectorNames.empty() ? "docker" : ",docker";
+                for (const auto& socketPath : config.docker.value().socketPaths)
+                {
+                    m_dockerClients.push_back(std::make_unique<DockerApiClient>(m_transport, socketPath, m_logger));
+                    auto connector = std::make_unique<DockerConnector>(
+                        *m_dockerClients.back(), m_resolver, m_store, dockerSource(socketPath), m_logger);
+                    RefresherBinding binding;
+                    binding.docker = true;
+                    binding.refresher = connector.get();
+                    refreshers.push_back(binding);
+                    m_connectors.push_back(std::move(connector));
+                    connectorNames += connectorNames.empty() ? "docker" : ",docker";
+                }
             }
 
             m_queryService = std::make_unique<QueryService>(
@@ -172,7 +196,7 @@ namespace wazuh::container_instances
         std::unique_ptr<YamlKubeconfigLoader> m_kubeconfigLoader;
         std::unique_ptr<KubernetesApiClient> m_k8sClient;
         std::unique_ptr<OwnershipPoller> m_ownershipPoller;
-        std::unique_ptr<DockerApiClient> m_dockerClient;
+        std::vector<std::unique_ptr<DockerApiClient>> m_dockerClients;
         std::vector<std::unique_ptr<IContainerConnector>> m_connectors;
         std::unique_ptr<QueryService> m_queryService;
         std::unique_ptr<IpcServer> m_ipcServer;

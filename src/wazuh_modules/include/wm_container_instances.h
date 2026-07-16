@@ -35,7 +35,7 @@ typedef struct wm_container_instances_t
     unsigned int kubernetes_present : 1;
     unsigned int docker_present : 1;
     wm_container_instances_kubernetes_t kubernetes;
-    char* docker_socket_path;
+    char** docker_socket_paths; /* NULL-terminated; one enrichment source per socket. */
 } wm_container_instances_t;
 
 extern const wm_context WM_CONTAINER_INSTANCES_CONTEXT;

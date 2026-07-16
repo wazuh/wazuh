@@ -115,8 +115,14 @@ static int wm_container_instances_parse_docker(const OS_XML* xml, xml_node* node
         }
         if (strcmp(children[i]->element, CI_XML_SOCKET_PATH) == 0)
         {
-            os_free(config->docker_socket_path);
-            os_strdup(children[i]->content, config->docker_socket_path);
+            size_t count = 0;
+            while (config->docker_socket_paths && config->docker_socket_paths[count])
+            {
+                count++;
+            }
+            os_realloc(config->docker_socket_paths, (count + 2) * sizeof(char*), config->docker_socket_paths);
+            os_strdup(children[i]->content, config->docker_socket_paths[count]);
+            config->docker_socket_paths[count + 1] = NULL;
         }
         else
         {

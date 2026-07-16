@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace wazuh::container_instances
 {
@@ -18,7 +19,9 @@ namespace wazuh::container_instances
 
     struct DockerConfig
     {
-        std::string socketPath {"/var/run/docker.sock"};
+        /// One connector (= one enrichment source) per socket. Additional
+        /// entries cover exposed DinD daemons.
+        std::vector<std::string> socketPaths {"/var/run/docker.sock"};
     };
 
     /// Validated configuration handed to the facade. Each populated section

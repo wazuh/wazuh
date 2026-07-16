@@ -56,10 +56,19 @@ static cJSON* wm_container_instances_build_config(const wm_container_instances_t
     if (data->docker_present)
     {
         cJSON* docker = cJSON_CreateObject();
-        cJSON_AddStringToObject(docker,
-                                "socket_path",
-                                data->docker_socket_path ? data->docker_socket_path
-                                                         : WM_CONTAINER_INSTANCES_DEF_DOCKER_SOCKET);
+        cJSON* sockets = cJSON_CreateArray();
+        if (data->docker_socket_paths && data->docker_socket_paths[0])
+        {
+            for (size_t i = 0; data->docker_socket_paths[i]; i++)
+            {
+                cJSON_AddItemToArray(sockets, cJSON_CreateString(data->docker_socket_paths[i]));
+            }
+        }
+        else
+        {
+            cJSON_AddItemToArray(sockets, cJSON_CreateString(WM_CONTAINER_INSTANCES_DEF_DOCKER_SOCKET));
+        }
+        cJSON_AddItemToObject(docker, "socket_path", sockets);
         cJSON_AddItemToObject(config, "docker", docker);
     }
 
@@ -111,7 +120,14 @@ void wm_container_instances_destroy(wm_container_instances_t* data)
     {
         os_free(data->kubernetes.kubeconfig);
         os_free(data->kubernetes.node_name);
-        os_free(data->docker_socket_path);
+        if (data->docker_socket_paths)
+        {
+            for (size_t i = 0; data->docker_socket_paths[i]; i++)
+            {
+                os_free(data->docker_socket_paths[i]);
+            }
+            os_free(data->docker_socket_paths);
+        }
         os_free(data);
     }
 }
@@ -141,10 +157,19 @@ cJSON* wm_container_instances_dump(const wm_container_instances_t* data)
     if (data->docker_present)
     {
         cJSON* docker = cJSON_CreateObject();
-        cJSON_AddStringToObject(docker,
-                                "socket_path",
-                                data->docker_socket_path ? data->docker_socket_path
-                                                         : WM_CONTAINER_INSTANCES_DEF_DOCKER_SOCKET);
+        cJSON* sockets = cJSON_CreateArray();
+        if (data->docker_socket_paths && data->docker_socket_paths[0])
+        {
+            for (size_t i = 0; data->docker_socket_paths[i]; i++)
+            {
+                cJSON_AddItemToArray(sockets, cJSON_CreateString(data->docker_socket_paths[i]));
+            }
+        }
+        else
+        {
+            cJSON_AddItemToArray(sockets, cJSON_CreateString(WM_CONTAINER_INSTANCES_DEF_DOCKER_SOCKET));
+        }
+        cJSON_AddItemToObject(docker, "socket_path", sockets);
         cJSON_AddItemToObject(wm, "docker", docker);
     }
 
