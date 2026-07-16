@@ -242,6 +242,6 @@ int execute_firewall_chain(
 
     write_debug_file(argv0, "Ended");
 
-    // Always return OS_SUCCESS to avoid retry loops in execd
-    return OS_SUCCESS;
+    // No method actually blocked/unblocked the IP: report failure so execd can log it.
+    return OS_INVALID;
 }

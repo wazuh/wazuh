@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
     write_debug_file(argv[0], "Ended");
 
     cJSON_Delete(input_json);
-    return OS_SUCCESS;
+    return OS_INVALID;
 }
 
 firewall_result_t try_pf_macos(const char *srcip, int action, int ip_version, const char *argv0) {
