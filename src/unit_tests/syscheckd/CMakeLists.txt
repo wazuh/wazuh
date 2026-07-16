@@ -284,7 +284,8 @@ elseif(${TARGET} STREQUAL "winagent")
                                                                    -Wl,--wrap=_imp__rsync_initialize \
                                                                    -Wl,--wrap=fim_db_teardown")
 else()
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time \
+                                     -Wl,--wrap,StartMQPredicated -Wl,--wrap,SendMSG")
 endif()
 
 # Compiling tests

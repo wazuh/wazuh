@@ -1115,6 +1115,10 @@ void test_fim_db_remove_validated_path(void **state){
 void test_fim_send_msg_shutdown_skips_fatal(void **state) {
     (void) state;
 
+    /* tolerate any incidental mutex traffic in the exercised path */
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
     is_fim_shutdown = false;                 /* passes the early shutdown check */
 
     /* The send fails, so the reconnection branch is taken. */
@@ -1136,6 +1140,10 @@ void test_fim_send_msg_shutdown_skips_fatal(void **state) {
 
 void test_notify_rk_shutdown_skips_fatal(void **state) {
     (void) state;
+
+    /* tolerate any incidental mutex traffic in the exercised path */
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
 
     rootcheck.notify = QUEUE;
     rootcheck.queue = 1;
