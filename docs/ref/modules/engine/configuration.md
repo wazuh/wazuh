@@ -49,6 +49,7 @@ Configure bulk indexing and flush behavior:
 
 - **`analysisd.indexer_bulk_size_events`** - Maximum documents per bulk request (event count, not bytes)
 - **`analysisd.indexer_flush_interval`** - Periodic flush interval (seconds)
+- **`analysisd.indexer_max_retry_delay`** - Maximum exponential-backoff retry delay in seconds (default: 15, range: 1-3600). See [Indexer Connector - Retry and backoff behavior](../indexer_connector/README.md#retry-and-backoff-behavior) for how the delay scales between retries.
 
 #### Synchronization Intervals
 
