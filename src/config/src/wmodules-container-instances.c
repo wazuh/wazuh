@@ -179,18 +179,11 @@ int wm_container_instances_read(const OS_XML* xml, xml_node** nodes, wmodule* mo
         }
     }
 
-    /* The active connector is selected by which section is present: exactly one. */
-    if (config->enabled)
+    /* Each present section becomes one enrichment source; both present enables
+     * dual-runtime monitoring. */
+    if (config->enabled && !config->kubernetes_present && !config->docker_present)
     {
-        if (config->kubernetes_present && config->docker_present)
-        {
-            wm_container_instances_invalidate(config,
-                                              "<kubernetes> and <docker> are mutually exclusive; configure one");
-        }
-        else if (!config->kubernetes_present && !config->docker_present)
-        {
-            wm_container_instances_invalidate(config, "a <kubernetes> or <docker> section is required");
-        }
+        wm_container_instances_invalidate(config, "a <kubernetes> or <docker> section is required");
     }
 
     if (config->kubernetes_present)
