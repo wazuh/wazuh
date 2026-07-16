@@ -67,13 +67,20 @@ public:
     std::string m_payload;
     std::vector<uint64_t> m_boundaries;
     std::string m_response;
+    // Send attempt's sequence id (see IndexerBulkQueue::Processor), tagging the classification's
+    // requestBackoff()/reportHealthyResponse() verdict.
+    uint64_t m_sequence {0};
 
     IndexerResponse() = default;
 
-    explicit IndexerResponse(std::string&& payload, std::vector<uint64_t>&& boundaries, std::string&& response)
+    explicit IndexerResponse(std::string&& payload,
+                             std::vector<uint64_t>&& boundaries,
+                             std::string&& response,
+                             uint64_t sequence)
         : m_payload(std::move(payload))
         , m_boundaries(std::move(boundaries))
         , m_response(std::move(response))
+        , m_sequence(sequence)
     {
     }
 
@@ -86,12 +93,14 @@ public:
         m_payload = std::move(data.m_payload);
         m_boundaries = std::move(data.m_boundaries);
         m_response = std::move(data.m_response);
+        m_sequence = data.m_sequence;
     }
     IndexerResponse& operator=(IndexerResponse&& data) noexcept
     {
         m_payload = std::move(data.m_payload);
         m_boundaries = std::move(data.m_boundaries);
         m_response = std::move(data.m_response);
+        m_sequence = data.m_sequence;
         return *this;
     }
 };
@@ -113,8 +122,10 @@ class IndexerConnectorAsyncImpl final
     std::unique_ptr<TSelector> m_selector;
     THttpRequest* m_httpRequest;
     std::atomic<bool> m_stopping {false};
-    std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
     LogFn m_logFn;
+    std::atomic<size_t> m_clusterBlockedItemCount {0};
+    std::unique_ptr<IndexerBulkQueue> m_queue;
+    std::unique_ptr<ThreadLoggerQueue> m_loggerProcessor;
     bool m_error413Logged {false};
     bool m_loggerDropLogged {false};
     size_t m_successCount {0};
@@ -124,7 +135,6 @@ class IndexerConnectorAsyncImpl final
     size_t m_loggerQueueSize {DEFAULT_LOGGER_QUEUE_SIZE};
     size_t m_loggerThreads {DEFAULT_LOGGER_THREADS};
     size_t m_maxRetryDelay {MaxRetryDelay};
-    std::unique_ptr<IndexerBulkQueue> m_queue;
 
 public:
     static constexpr size_t DEFAULT_LOGGER_QUEUE_SIZE {8}; ///< Default cap of the error-logger queue (elements).
@@ -162,7 +172,14 @@ public:
         return !(pos < response.size() && response[pos] == 'f');
     }
 
-    ~IndexerConnectorAsyncImpl() = default;
+    ~IndexerConnectorAsyncImpl()
+    {
+        m_stopping.store(true);
+        if (m_queue)
+        {
+            m_queue->stop();
+        }
+    }
 
     explicit IndexerConnectorAsyncImpl(
         const nlohmann::json& config,
@@ -269,6 +286,10 @@ public:
             config.contains("max_retry_delay_seconds") && config.at("max_retry_delay_seconds").is_number_integer()
                 ? config.at("max_retry_delay_seconds").get<size_t>()
                 : MaxRetryDelay;
+        if (m_maxRetryDelay < RetryDelay)
+        {
+            throw IndexerConnectorException("max_retry_delay_seconds must be >= the base retry delay");
+        }
 
         // Error-logger sizing: bounded queue (elements) and thread count. Only responses whose
         // bulk reported errors are enqueued (see onSuccess), so small defaults suffice.
@@ -306,6 +327,7 @@ public:
                     parsedResponse["errors"].get(errorsElement) != simdjson::SUCCESS ||
                     !errorsElement.get_bool().value_unsafe())
                 {
+                    m_queue->reportHealthyResponse(data.m_sequence);
                     return;
                 }
 
@@ -313,6 +335,7 @@ public:
                 simdjson::dom::array itemsArray;
                 if (parsedResponse["items"].get_array().get(itemsArray) != simdjson::SUCCESS)
                 {
+                    m_queue->reportHealthyResponse(data.m_sequence);
                     return;
                 }
 
@@ -323,6 +346,7 @@ public:
                                "Mismatch between the number of events (%zu) and response items (%zu)",
                                data.m_boundaries.size(),
                                itemsSize);
+                    m_queue->reportHealthyResponse(data.m_sequence);
                     return;
                 }
 
@@ -332,6 +356,7 @@ public:
 
                 // Process items with optimized iteration
                 size_t itemIndex = 0;
+                size_t clusterBlockedCount = 0;
                 for (const auto& item : itemsArray)
                 {
                     // Try to find the operation element (could be "index", "create")
@@ -375,6 +400,15 @@ public:
                     if (simdjson::dom::element typeElement; errorElement["type"].get(typeElement) == simdjson::SUCCESS)
                     {
                         errorType = typeElement.get_string().value_unsafe();
+                    }
+
+                    // Expected, recoverable condition (cluster refusing writes) - tally instead of
+                    // logging per document; back off once per batch below.
+                    if (errorType == "cluster_block_exception")
+                    {
+                        ++clusterBlockedCount;
+                        ++itemIndex;
+                        continue;
                     }
 
                     // Extract caused_by information if available
@@ -432,12 +466,31 @@ public:
 
                     ++itemIndex;
                 }
+
+                if (clusterBlockedCount > 0)
+                {
+                    const auto totalBlocked =
+                        m_clusterBlockedItemCount.fetch_add(clusterBlockedCount, std::memory_order_relaxed) +
+                        clusterBlockedCount;
+                    LOGFN_WARN(m_logFn,
+                               "Index write(s) blocked by the cluster (cluster_block_exception) - %zu document(s) "
+                               "in this batch (%zu total) not indexed due to this expected condition. Backing off "
+                               "future sends.",
+                               clusterBlockedCount,
+                               totalBlocked);
+                    m_queue->requestBackoff(data.m_sequence);
+                }
+                else
+                {
+                    // Errors present but none were cluster_block_exception.
+                    m_queue->reportHealthyResponse(data.m_sequence);
+                }
             },
             static_cast<unsigned int>(m_loggerThreads),
             m_loggerQueueSize);
 
         m_queue = std::make_unique<IndexerBulkQueue>(
-            [this](std::vector<std::string>& dataQueue)
+            [this](uint64_t sequence, std::vector<std::string>& dataQueue)
             {
                 if (m_stopping.load())
                 {
@@ -458,7 +511,7 @@ public:
                     bulkData.append(item);
                 }
 
-                const auto onSuccess = [this, &bulkData, &boundaries](std::string&& response)
+                const auto onSuccess = [this, &bulkData, &boundaries, sequence](std::string&& response)
                 {
                     if (m_queue->bulkMaxBytes() != m_bulkMaxBytes && m_successCount == MaxSuccessCount)
                     {
@@ -477,11 +530,13 @@ public:
                     // of both in the logger queue (the main RSS driver under sustained load).
                     if (!bulkResponseHasErrors(response))
                     {
+                        m_queue->reportHealthyResponse(sequence);
                         return;
                     }
 
                     // Dispatch to error logger (bounded queue: drop + warn when it is full).
-                    IndexerResponse responseData(std::move(bulkData), std::move(boundaries), std::move(response));
+                    IndexerResponse responseData(
+                        std::move(bulkData), std::move(boundaries), std::move(response), sequence);
                     if (m_loggerProcessor->push(std::move(responseData)))
                     {
                         m_loggerDropLogged = false;
@@ -545,15 +600,16 @@ public:
                     }
                     else if (statusCode == HTTP_CONNECTION_ERROR)
                     {
-                        LOGFN_DEBUG2(m_logFn, "Connection error (%s), retrying with exponential backoff.", error.c_str());
+                        LOGFN_DEBUG2(
+                            m_logFn, "Connection error (%s), retrying with exponential backoff.", error.c_str());
                         throw IndexerConnectorException(error);
                     }
                     else
                     {
                         LOGFN_WARN(m_logFn,
-                                 "%s, status code: %ld. Discarding event(s) in this batch.",
-                                 error.c_str(),
-                                 statusCode);
+                                   "%s, status code: %ld. Discarding event(s) in this batch.",
+                                   error.c_str(),
+                                   statusCode);
                     }
                 };
 
