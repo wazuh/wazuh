@@ -344,7 +344,9 @@ class MetricsSnapshotTasks:
                         "last_seen": MetricsSnapshotTasks._to_iso(
                             doc.get("lastKeepAlive")
                         ),
-                        "disconnected_at": doc.get("disconnection_time") or None,
+                        "disconnected_at": MetricsSnapshotTasks._to_iso(
+                            doc.get("disconnection_time")
+                        ),
                         "register": {"ip": register_ip},
                         "host": {
                             "ip": [ip] if ip else [],
