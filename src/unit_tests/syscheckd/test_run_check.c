@@ -30,6 +30,7 @@
 #include "../syscheckd/include/syscheck.h"
 #include "../syscheckd/src/db/include/db.h"
 #include "../config/syscheck-config.h"
+#include "../rootcheck/rootcheck.h"   /* rootcheck global, QUEUE, ROOTCHECK, ALERT_* for notify_rk test (#37646) */
 
 #ifdef TEST_WINAGENT
 #include "../wrappers/windows/processthreadsapi_wrappers.h"
