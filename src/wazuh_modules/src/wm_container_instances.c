@@ -37,7 +37,6 @@ const wm_context WM_CONTAINER_INSTANCES_CONTEXT = {
 static cJSON* wm_container_instances_build_config(const wm_container_instances_t* data)
 {
     cJSON* config = cJSON_CreateObject();
-    cJSON_AddStringToObject(config, "type", data->kubernetes_present ? "kubernetes" : "docker");
 
     if (data->kubernetes_present)
     {
@@ -54,7 +53,7 @@ static cJSON* wm_container_instances_build_config(const wm_container_instances_t
         cJSON_AddBoolToObject(kubernetes, "insecure_skip_tls_verify", data->kubernetes.insecure_skip_tls_verify);
         cJSON_AddItemToObject(config, "kubernetes", kubernetes);
     }
-    else
+    if (data->docker_present)
     {
         cJSON* docker = cJSON_CreateObject();
         cJSON_AddStringToObject(docker,
@@ -139,7 +138,7 @@ cJSON* wm_container_instances_dump(const wm_container_instances_t* data)
             kubernetes, "insecure_skip_tls_verify", data->kubernetes.insecure_skip_tls_verify ? "yes" : "no");
         cJSON_AddItemToObject(wm, "kubernetes", kubernetes);
     }
-    else if (data->docker_present)
+    if (data->docker_present)
     {
         cJSON* docker = cJSON_CreateObject();
         cJSON_AddStringToObject(docker,

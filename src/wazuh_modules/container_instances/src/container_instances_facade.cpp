@@ -19,8 +19,10 @@
 #include "filesystem_wrapper.hpp"
 
 #include <stdexcept>
+#include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
 namespace wazuh::container_instances
 {
@@ -32,11 +34,9 @@ namespace wazuh::container_instances
         {
             ModuleConfig config;
 
-            const auto type = configuration.value("type", "");
-            if (type == "kubernetes")
+            if (configuration.contains("kubernetes"))
             {
-                config.type = ConnectorType::kubernetes;
-                const auto& block = configuration.value("kubernetes", nlohmann::json::object());
+                const auto& block = configuration["kubernetes"];
                 KubernetesConfig kubernetes; // Defaults from KubernetesConfig apply when tags are absent.
                 kubernetes.kubeconfigPath = block.value("kubeconfig", kubernetes.kubeconfigPath);
                 kubernetes.nodeName = block.value("node_name", kubernetes.nodeName);
@@ -44,17 +44,16 @@ namespace wazuh::container_instances
                 kubernetes.insecureSkipTlsVerify = block.value("insecure_skip_tls_verify", false);
                 config.kubernetes = std::move(kubernetes);
             }
-            else if (type == "docker")
+            if (configuration.contains("docker"))
             {
-                config.type = ConnectorType::docker;
-                const auto& block = configuration.value("docker", nlohmann::json::object());
+                const auto& block = configuration["docker"];
                 DockerConfig docker;
                 docker.socketPath = block.value("socket_path", docker.socketPath);
                 config.docker = std::move(docker);
             }
-            else
+            if (!config.kubernetes && !config.docker)
             {
-                throw std::runtime_error("container_instances: <type> must be 'kubernetes' or 'docker'");
+                throw std::runtime_error("container_instances: a kubernetes or docker section is required");
             }
 
             return config;
@@ -73,14 +72,12 @@ namespace wazuh::container_instances
             , m_store(m_logger)
             , m_transport(m_logger)
         {
-            const char* connectorName = "docker";
-            IOnDemandRefresher* refresher = nullptr;
+            std::vector<RefresherBinding> refreshers;
+            std::string connectorNames;
 
-            if (config.type == ConnectorType::kubernetes)
+            if (config.kubernetes)
             {
-                connectorName = "kubernetes";
                 const auto& kubernetes = config.kubernetes.value();
-
                 m_kubeconfigLoader = std::make_unique<YamlKubeconfigLoader>(m_fileIO, m_logger);
                 KubernetesClientConfig clientConfig;
                 clientConfig.kubeconfigPath = kubernetes.kubeconfigPath;
@@ -92,27 +89,39 @@ namespace wazuh::container_instances
                     std::make_unique<OwnershipPoller>(*m_k8sClient, kubernetes.ownershipPollInterval, m_logger);
                 auto connector = std::make_unique<KubernetesConnector>(
                     *m_k8sClient, m_resolver, m_store, *m_ownershipPoller, kubernetes.nodeName, m_logger);
-                refresher = connector.get();
-                m_connector = std::move(connector);
+                RefresherBinding binding;
+                binding.docker = false;
+                binding.refresher = connector.get();
+                refreshers.push_back(binding);
+                m_connectors.push_back(std::move(connector));
+                connectorNames = "kubernetes";
             }
-            else
+            if (config.docker)
             {
-                m_dockerClient =
-                    std::make_unique<DockerApiClient>(m_transport, config.docker.value().socketPath, m_logger);
-                auto connector = std::make_unique<DockerConnector>(*m_dockerClient, m_resolver, m_store, m_logger);
-                refresher = connector.get();
-                m_connector = std::move(connector);
+                const auto& socketPath = config.docker.value().socketPath;
+                m_dockerClient = std::make_unique<DockerApiClient>(m_transport, socketPath, m_logger);
+                auto connector = std::make_unique<DockerConnector>(
+                    *m_dockerClient, m_resolver, m_store, dockerSource(socketPath), m_logger);
+                RefresherBinding binding;
+                binding.docker = true;
+                binding.refresher = connector.get();
+                refreshers.push_back(binding);
+                m_connectors.push_back(std::move(connector));
+                connectorNames += connectorNames.empty() ? "docker" : ",docker";
             }
 
             m_queryService = std::make_unique<QueryService>(
-                m_store, *refresher, m_resolver, RetryPolicy {}, connectorName, m_logger);
+                m_store, std::move(refreshers), m_resolver, RetryPolicy {}, connectorNames, m_logger);
             m_ipcServer = std::make_unique<IpcServer>(*m_queryService, config.ipcSocketPath, m_logger);
 
             if (m_ownershipPoller)
             {
                 m_ownershipPoller->start(m_stop);
             }
-            m_connectorThread = std::thread([this] { m_connector->run(m_stop); });
+            for (auto& connector : m_connectors)
+            {
+                m_connectorThreads.emplace_back([this, &connector] { connector->run(m_stop); });
+            }
 
             try
             {
@@ -135,9 +144,12 @@ namespace wazuh::container_instances
         {
             m_stop.requestStop();
             m_ipcServer->stop(); // Intake stops first.
-            if (m_connectorThread.joinable())
+            for (auto& thread : m_connectorThreads)
             {
-                m_connectorThread.join();
+                if (thread.joinable())
+                {
+                    thread.join();
+                }
             }
             if (m_ownershipPoller)
             {
@@ -161,10 +173,10 @@ namespace wazuh::container_instances
         std::unique_ptr<KubernetesApiClient> m_k8sClient;
         std::unique_ptr<OwnershipPoller> m_ownershipPoller;
         std::unique_ptr<DockerApiClient> m_dockerClient;
-        std::unique_ptr<IContainerConnector> m_connector;
+        std::vector<std::unique_ptr<IContainerConnector>> m_connectors;
         std::unique_ptr<QueryService> m_queryService;
         std::unique_ptr<IpcServer> m_ipcServer;
-        std::thread m_connectorThread;
+        std::vector<std::thread> m_connectorThreads;
     };
 
     ContainerInstancesFacade& ContainerInstancesFacade::instance()
