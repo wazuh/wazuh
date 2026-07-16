@@ -9,6 +9,12 @@ All notable changes to this project will be documented in this file.
 
 - Fixed AES connection getting reset to blowfish on keystore rebuild. ([#37524](https://github.com/wazuh/wazuh/pull/37524))
 
+### Agent
+
+#### Fixed
+
+- Prevent a race condition in `randombytes` during the initialization of the Windows RSA key container ([#37701](https://github.com/wazuh/wazuh/pull/37701))
+
 ### Ruleset
 
 #### Fixed
