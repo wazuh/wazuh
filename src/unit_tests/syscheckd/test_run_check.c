@@ -40,6 +40,8 @@ void set_whodata_mode_changes();
 
 /* External 'static' functions prototypes */
 void fim_send_msg(char mq, const char * location, const char * msg);
+/* rootcheck notification, compiled into the same binary through ROOTCHECK_O */
+int notify_rk(int rk_type, const char *msg);
 #ifdef WIN32
 DWORD WINAPI fim_run_realtime(__attribute__((unused)) void * args);
 
@@ -78,6 +80,21 @@ time_t __wrap_time(time_t *timer) {
 
 
 extern bool fim_shutdown_process_on();
+extern bool is_fim_shutdown;
+
+#ifndef TEST_WINAGENT
+/* Local wrap of StartMQPredicated used by the issue #37646 regression tests.
+ * It models the shutdown race: the shutdown flag flips to true while the queue
+ * reconnection is being attempted, then the (mocked) result is returned. */
+int __wrap_StartMQPredicated(__attribute__((unused)) const char *path,
+                             __attribute__((unused)) short int type,
+                             __attribute__((unused)) short int n_attempts,
+                             __attribute__((unused)) bool (*fn_ptr)(void)) {
+    is_fim_shutdown = true;
+    return mock_type(int);
+}
+#endif
+
 /* Setup/Teardown */
 
 static int setup_group(void ** state) {
@@ -1090,6 +1107,58 @@ void test_fim_db_remove_validated_path(void **state){
     fim_db_remove_validated_path(path, &mock_data);
 }
 
+#ifndef TEST_WINAGENT
+/* Regression tests for issue #37646: a queue that is unreachable because the
+ * agent is shutting down must be handled as expected (debug + clean return),
+ * not as a fatal error (CRITICAL 1211 + *_exit). */
+void test_fim_send_msg_shutdown_skips_fatal(void **state) {
+    (void) state;
+
+    is_fim_shutdown = false;                 /* passes the early shutdown check */
+
+    /* The send fails, so the reconnection branch is taken. */
+    expect_SendMSGPredicated_call("test message", "test location", 'a', fim_shutdown_process_on, -1);
+    expect_string(__wrap__mdebug1, formatted_msg, QUEUE_SEND);
+
+    /* StartMQPredicated aborts the reconnection because a shutdown is in progress
+     * (our wrap flips is_fim_shutdown to true) and returns OS_INVALID. */
+    will_return(__wrap_StartMQPredicated, -1);
+
+    /* The guard must log at debug and return WITHOUT calling merror_exit
+     * (no expect for __wrap__merror_exit -> the test aborts if it is called). */
+    expect_string(__wrap__mdebug1, formatted_msg, "FIM queue unavailable during shutdown. Skipping message.");
+
+    fim_send_msg('a', "test location", "test message");
+
+    is_fim_shutdown = false;
+}
+
+void test_notify_rk_shutdown_skips_fatal(void **state) {
+    (void) state;
+
+    rootcheck.notify = QUEUE;
+    rootcheck.queue = 1;
+    is_fim_shutdown = false;
+
+    /* First send fails -> reconnection branch. */
+    expect_SendMSG_call("test message", ROOTCHECK, ROOTCHECK_MQ, -1);
+    expect_string(__wrap__mtdebug1, tag, "rootcheck");
+    expect_string(__wrap__mtdebug1, formatted_msg, QUEUE_SEND);
+
+    /* StartMQPredicated aborts because of the shutdown -> OS_INVALID. */
+    will_return(__wrap_StartMQPredicated, -1);
+
+    /* The guard must log at debug and return 0 WITHOUT calling mterror_exit. */
+    expect_string(__wrap__mtdebug1, tag, "rootcheck");
+    expect_string(__wrap__mtdebug1, formatted_msg, "Rootcheck queue unavailable during shutdown. Skipping notification.");
+
+    int ret = notify_rk(ALERT_ROOTKIT_FOUND, "test message");
+    assert_int_equal(ret, 0);
+
+    is_fim_shutdown = false;
+}
+#endif
+
 int main(void) {
 #ifndef WIN_WHODATA
     const struct CMUnitTest tests[] = {
@@ -1124,6 +1193,9 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_fim_link_silent_scan, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_already_monitored, setup_symbolic_links, teardown_symbolic_links),
         cmocka_unit_test_setup_teardown(test_fim_link_reload_broken_link_reload_broken, setup_symbolic_links, teardown_symbolic_links),
+        /* issue #37646: shutdown-skip guard must avoid the fatal QUEUE (1211) path */
+        cmocka_unit_test(test_fim_send_msg_shutdown_skips_fatal),
+        cmocka_unit_test(test_notify_rk_shutdown_skips_fatal),
 #else
         cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_first_timeout, setup_hash, teardown_hash),
         cmocka_unit_test_setup_teardown(test_fim_run_realtime_w_wait_success, setup_hash, teardown_hash),
