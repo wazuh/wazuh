@@ -305,6 +305,9 @@ list(APPEND shared_tests_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap
 list(APPEND shared_tests_names "test_remoted_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
+list(APPEND shared_tests_names "test_yaml2json_op")
+list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+
 endif()
 
 if(${TARGET} STREQUAL "server")

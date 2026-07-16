@@ -11,6 +11,10 @@ All notable changes to this project will be documented in this file.
 
 ### Agent
 
+#### Changed
+
+- Improved SCA policy YAML parsing to bound memory usage on deeply nested policies. ([#37725](https://github.com/wazuh/wazuh/pull/37725))
+
 #### Fixed
 
 - Prevent a race condition in `randombytes` during the initialization of the Windows RSA key container ([#37701](https://github.com/wazuh/wazuh/pull/37701))
