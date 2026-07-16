@@ -75,6 +75,7 @@ set(WAZUH_MAIN_PROJECT
 # Shared CMake helpers
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(WazuhRpath)
+include(WazuhJemalloc)
 
 # Define CLIENT for agent builds
 if("${TARGET}" STREQUAL "winagent" OR "${TARGET}" STREQUAL "agent")

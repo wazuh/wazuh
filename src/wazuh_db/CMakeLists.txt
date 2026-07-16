@@ -104,6 +104,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
     wazuh-manager-db PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
                                                   ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-manager-db PRIVATE wdb_lib)
+  wazuh_link_jemalloc(wazuh-manager-db)
 
   wazuh_set_runtime_rpath(wazuh-manager-db)
 endif()
