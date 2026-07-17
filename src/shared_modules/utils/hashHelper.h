@@ -19,6 +19,7 @@
 #include <fstream>
 #include <array>
 #include <string>
+#include <mutex>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -107,13 +108,17 @@ namespace Utils
             }
             static void initializeContext(const HashType hashType, std::unique_ptr<EVP_MD_CTX, EvpContextDeleter>& spCtx)
             {
-                static auto cryptoInitialized { false };
-
-                if (!cryptoInitialized)
+                // std::call_once guarantees OPENSSL_init_crypto runs exactly once process-wide
+                // and that every concurrent caller blocks until it's done — a plain static bool
+                // guard here previously let multiple threads race past the check before either
+                // set it, so EVP_DigestInit below could transiently fail on the first-ever
+                // HashData construction (e.g. syscollector fanning out several RSync-backed
+                // checksum computations across its thread pool on its first evaluation cycle).
+                static std::once_flag cryptoInitFlag;
+                std::call_once(cryptoInitFlag, []()
                 {
                     OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, nullptr);
-                    cryptoInitialized = true;
-                }
+                });
 
                 auto ret{0};
 
