@@ -1,0 +1,6 @@
+# PoC build + run artifacts (never committed)
+hc_poc
+hc_poc_mt
+*.dSYM/
+.poc_run/
+*.o

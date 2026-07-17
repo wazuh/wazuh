@@ -1,0 +1,35 @@
+# D10 mock — /stateful (state sync). Contract: #37733 §2.8 (FullSession).
+# The WHOLE session is one POST (load-balancer affinity). The client streams the
+# body from a spooled file; the manager processes + waits for the indexer, then
+# answers synchronously. Retries reuse the SAME X-Session-Id; the manager returns
+# the cached result (10-min LRU) — proven in the PoC run.
+
+### REQUEST (a full inventory-sync session as one body; may be multi-MB)
+POST /stateful HTTP/1.1
+Host: 127.0.0.1:27840
+protocol-version: 1
+Authorization: Wazuh 001:1784311282:9f1c8e5d4a2b1c3d0b61a813cda43396
+X-Session-Id: sess-0001
+Content-Type: application/octet-stream
+Content-Length: 3145728
+
+<FullSession FlatBuffer bytes: Start + DataBatch[] + End>
+
+### RESPONSE (success — synchronous, after indexer confirmation)
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"status":"success","sessionId":"sess-0001","itemsProcessed":3145703}
+
+### RESPONSE (same X-Session-Id replayed — cached, deduplicated)
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"status":"success","sessionId":"sess-0001","itemsProcessed":3145703}
+
+### RESPONSE (indexer timeout)
+HTTP/1.1 504 Gateway Timeout
+
+### NOTE
+# ReqRet / EndAck{Processing} are REMOVED under HTTPS (#37738 §2/§6): the session
+# is atomic, so on error/timeout the agent retries the WHOLE session (same id).

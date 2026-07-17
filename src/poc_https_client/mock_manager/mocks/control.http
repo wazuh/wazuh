@@ -1,0 +1,64 @@
+# D10 mock — /control (Startup / Notify / Response). Contract: #37738 §5, #37733 §4/§9.
+# All manager->agent work is PULLED here (no server push). Startup reuses the
+# handshake JSON that parse_handshake_json already reads (start_agent.c:304).
+
+### REQUEST — Startup
+POST /control HTTP/1.1
+protocol-version: 1
+Authorization: Wazuh 001:1784311282:<mac>
+Content-Type: application/octet-stream
+
+{"phase":"startup","version":"5.1.0","config_checksum":"d41d8cd98f00b204e9800998ecf8427e"}
+
+### RESPONSE — Startup accepted (the handshake JSON)
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"limits":{"eps":0},"cluster_name":"mock","cluster_node":"node01","agent_groups":["default"],"merged_sum":"d41d8cd98f00b204e9800998ecf8427e"}
+
+### RESPONSE — Startup rejected (version too high vs allow_higher_versions)
+HTTP/1.1 426 Upgrade Required
+Content-Type: application/json
+
+{"error":"Agent version must be lower or equal to manager version","code":426}
+
+### REQUEST — Notify (periodic keep-alive; carries current config checksum)
+POST /control HTTP/1.1
+protocol-version: 1
+Authorization: Wazuh 001:1784311328:<mac>
+
+{"phase":"notify","status":"active","merged_sum":"d41d8cd98f00b204e9800998ecf8427e"}
+
+### RESPONSE — Notify (state refresh + pulled tasks + optional config_update)
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"state":{"limits":{"eps":0},"cluster":"mock","groups":["default"],"merged_sum":"d41d8cd98f00b204e9800998ecf8427e"},
+ "tasks":[
+   {"task_id":"018f9a-0001","type":"active_response","priority":1,"payload":{"command":"firewall-drop","args":"srcip 10.0.0.9"},"created":1784311328},
+   {"task_id":"018f9a-0002","type":"agent_reload_config","priority":5,"payload":{"command":"reload"},"created":1784311328}
+ ],
+ "config_update":null,
+ "timestamp":1784311328}
+
+### RESPONSE — Notify with a centralized-config push (NOT a task — synchronous)
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"state":{"merged_sum":"newchecksum..."},"tasks":[],
+ "config_update":{"checksum":"newchecksum...","content":"<base64 merged.mg>"},
+ "timestamp":1784311400}
+
+### REQUEST — Response (agent returns results for tasks that require one)
+POST /control HTTP/1.1
+protocol-version: 1
+Authorization: Wazuh 001:1784311330:<mac>
+
+{"phase":"response","results":[
+   {"task_id":"018f9a-0001","status":"completed","result":{"code":0,"message":"ok"}},
+   {"task_id":"018f9a-0002","status":"completed","result":{"code":0}}
+]}
+
+### RESPONSE — Response ack
+HTTP/1.1 200 OK
+Content-Length: 0

@@ -1,0 +1,39 @@
+# D10 mock — /stateless (events). Contract: #37732 (auth + H/E), #37733 (semantics).
+# The three-byte sequence "\nE " separates events; continuation lines carry one
+# extra leading space. Authorization MAC = AES-CMAC(agent-key, canonical-request).
+
+### REQUEST
+POST /stateless HTTP/1.1
+Host: 127.0.0.1:27840
+protocol-version: 1
+Authorization: Wazuh 001:1784311282:4b88d9235ea1a109d617f27f604918ea
+Content-Type: application/octet-stream
+Content-Length: 189
+
+H {"wazuh":{"agent":{"id":"001"}}}
+E 1:/var/log/syslog:sshd: Accepted publickey for root
+E 1:/var/log/auth.log:session opened for user root
+E v:vulnerability-scanner:{"cve":"CVE-2024-1234"}
+
+### RESPONSE (accepted — empty body)
+HTTP/1.1 200 OK
+Content-Length: 0
+
+### RESPONSE (payload agent-id != authenticated id, or malformed batch)
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{"error":"Invalid event batch","code":400}
+
+### RESPONSE (bad/expired/absent MAC — generic)
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+
+{"error":"Invalid client authentication","code":401}
+
+### RESPONSE (back-pressure)
+HTTP/1.1 503 Service Unavailable
+Retry-After: 2
+Content-Type: application/json
+
+{"error":"Service temporarily unavailable","code":503}
