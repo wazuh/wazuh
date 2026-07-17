@@ -39,7 +39,7 @@ The library provides two classes depending on the use case:
 ### Async flush behavior
 
 - Events are queued in memory immediately and flushed by a background thread.
-- Up to `analysisd.indexer_bulk_max_bytes` bytes per flush batch (default 16 MB; always takes at least one item, even if it exceeds the threshold on its own).
+- Up to `analysisd.indexer_bulk_max_bytes` bytes per flush batch (default 8 MB; always takes at least one item, even if it exceeds the threshold on its own).
 - Flush automatically after 20 seconds of inactivity (configurable via `analysisd.indexer_flush_interval`).
 - If the queue exceeds `analysisd.indexer_queue_max_bytes` (default 64 MB, maps to `max_queue_bytes` in the connector config), new events are dropped and counted until it drains.
 - The queue is in-memory only: buffered events are discarded (not retried) if the manager stops or restarts.

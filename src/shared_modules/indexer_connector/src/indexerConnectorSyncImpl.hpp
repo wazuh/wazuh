@@ -785,6 +785,10 @@ public:
             config.contains("max_retry_delay_seconds") && config.at("max_retry_delay_seconds").is_number_integer()
                 ? config.at("max_retry_delay_seconds").get<size_t>()
                 : MaxRetryDelay;
+        if (m_maxRetryDelay < RetryDelay)
+        {
+            throw IndexerConnectorException("max_retry_delay_seconds must be >= the base retry delay");
+        }
 
         m_lastBulkTime = std::chrono::steady_clock::now();
         m_bulkThread = std::thread(

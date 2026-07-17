@@ -314,3 +314,64 @@ TEST_F(HlpTestModeTest, ParserFailureWithTestModeTrace)
     EXPECT_TRUE(result.hasTrace());
     EXPECT_THAT(result.trace(), testing::HasSubstr("->"));
 }
+
+// =============================================================================
+// Section 4: target == source aliasing (RapidJSON short-string optimization)
+// =============================================================================
+//
+// Some HLP mappers (e.g. ip.cpp's getMapper) capture a raw std::string_view into
+// the source text and only read it when the Mapper runs, via
+// json::Json::setString(). When target and source are the same field and the
+// value is short enough for RapidJSON's short-string optimization (inline,
+// no separate allocation -- see document.h's ShortString, up to 21 chars on
+// 64-bit builds), that read and the target overwrite touch the exact same
+// inline byte buffer. This is safe today only because
+// specificHLPBuilder's captured sourceValue is fully consumed by
+// hlp::parser::run before any mapper writes to the event (hlp.cpp:164-165),
+// and because json::Json::setString() itself copies the value into an
+// independent temporary rapidjson::Value before committing the overwrite
+// (json.cpp). Neither guarantee was covered by a test, so pin both here
+// against real, shipped parsers.
+class HlpAliasingTest : public BaseBuilderTest
+{
+};
+
+TEST_F(HlpAliasingTest, IpParserTargetEqualsSourceWithShortValue)
+{
+    EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mocks->ctx, isTestMode()).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mocks->ctx, validator());
+    EXPECT_CALL(*mocks->validator, hasField(DotPath("field"))).WillOnce(testing::Return(false));
+
+    std::vector<OpArg> opArgs {makeRef("field")};
+    Reference targetField("field");
+
+    auto op = ipParseBuilder(targetField, opArgs, mocks->ctx);
+
+    // 9 bytes: well within RapidJSON's inline short-string range.
+    auto event = makeEvent(R"({"field": "127.0.0.1"})");
+    auto result = op(event);
+
+    ASSERT_TRUE(result.success());
+    ASSERT_EQ(*result.payload(), *makeEvent(R"({"field": "127.0.0.1"})"));
+}
+
+TEST_F(HlpAliasingTest, DateParserTargetEqualsSourceWithShortValue)
+{
+    EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mocks->ctx, isTestMode()).Times(testing::AtLeast(1));
+    EXPECT_CALL(*mocks->ctx, validator());
+    EXPECT_CALL(*mocks->validator, hasField(DotPath("field"))).WillOnce(testing::Return(false));
+
+    std::vector<OpArg> opArgs {makeRef("field"), makeValue(R"("ISO8601Z")")};
+    Reference targetField("field");
+
+    // 20 bytes: still within RapidJSON's inline short-string range, unlike the
+    // reformatted (24-byte, heap-allocated) output written back to the same path.
+    auto event = makeEvent(R"({"field": "2023-01-15T10:30:00Z"})");
+    auto op = dateParseBuilder(targetField, opArgs, mocks->ctx);
+    auto result = op(event);
+
+    ASSERT_TRUE(result.success());
+    ASSERT_EQ(*result.payload(), *makeEvent(R"({"field": "2023-01-15T10:30:00.000Z"})"));
+}
