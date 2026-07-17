@@ -77,7 +77,16 @@ int main(int argc, char **argv) {
         }
     }
 
-    int ip_version = (strchr(srcip, ':') != NULL) ? 6 : 4;
+    // Validate IP and get version (mirrors block-ip-unix.c / block-ip-macos.c)
+    int ip_version = validate_srcip(srcip);
+    if (ip_version == OS_INVALID) {
+        char log_msg[OS_MAXSTR];
+        memset(log_msg, '\0', OS_MAXSTR);
+        snprintf(log_msg, OS_MAXSTR - 1, "Invalid IP address: '%s'", srcip);
+        write_debug_file(argv[0], log_msg);
+        cJSON_Delete(input_json);
+        return OS_INVALID;
+    }
 
     int result;
     if (action == DISABLE_COMMAND) {
