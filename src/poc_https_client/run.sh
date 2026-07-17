@@ -19,7 +19,7 @@ echo "== creating a pre-shared agent key (client.keys-style) =="
 KEY_HEX="$(openssl rand -hex 16)"
 echo "001 $KEY_HEX" > "$WORK/agent.keys"
 
-echo "== building the C client (libcurl + libcrypto) =="
+echo "== building the client (C++17 core behind the C ABI; plain-C drivers) =="
 make -s clean >/dev/null 2>&1 || true
 make -s
 

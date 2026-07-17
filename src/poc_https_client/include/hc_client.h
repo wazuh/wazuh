@@ -11,6 +11,13 @@
  * (pages/design-architecture.html §G): an opaque handle, an injected config and
  * callback table, and submit/lifecycle calls. The PoC implements the subset
  * needed to prove the mechanics.
+ *
+ * The implementation behind this header is C++17 (src/hcClientFacade.*): this
+ * file is the entire C↔C++ boundary, the same contract shape as the manager's
+ * remoted_module on 5.0.0-https (single C-ABI header, exceptions caught at the
+ * extern "C" edge, injected callbacks, POD-style config copied at creation).
+ * The drivers (src/main.c, src/main_mt.c) stay plain C on purpose: they stand
+ * in for the C agentd caller and never see a C++ type.
  */
 
 #ifndef HC_CLIENT_H
@@ -19,6 +26,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* ---- verification modes (DEC-6: CA file + hostname; no native OS stores) ---- */
 typedef enum {
@@ -93,5 +104,9 @@ hc_conn_state_t hc_state(const hc_handle *h);
 /* result codes */
 enum { HC_OK = 0, HC_RETRYABLE = 1, HC_BACKPRESSURE = 2, HC_AUTH_FAIL = 3,
        HC_PERMANENT = 4, HC_ERROR = 5 };
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* HC_CLIENT_H */
