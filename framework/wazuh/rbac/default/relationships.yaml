@@ -27,7 +27,19 @@ relationships:
         - agents_read
         - cluster_read
         - mitre_read
-      rule_ids: []
+      rule_ids:
+        - wazuh_indexer_readonly
+        - wazuh_indexer_demo
+
+    wazuh_indexer_admin:
+      policy_ids:
+        - agents_all
+        - security_read
+        - cluster_all
+        - mitre_read
+        - task_status
+      rule_ids:
+        - wazuh_indexer_admin
 
     users_admin:
       policy_ids:
