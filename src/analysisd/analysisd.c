@@ -1962,9 +1962,16 @@ void DispatchUpgradeModule(Eventinfo * lf) {
     cJSON *message_obj = cJSON_Parse(lf->log);
 
     if (message_obj) {
+        cJSON *message_command = cJSON_GetObjectItem(message_obj, "command");
         cJSON *message_params = cJSON_GetObjectItem(message_obj, "parameters");
 
-        if (message_params) {
+        // Agents may only report their own upgrade status; any other command
+        // (e.g. "upgrade", "upgrade_custom") must come from the management API,
+        // never from the agent-message channel.
+        if (!message_command || message_command->type != cJSON_String ||
+            strcmp(message_command->valuestring, "upgrade_update_status") != 0) {
+            mdebug1("Agent '%s' is not allowed to request the upgrade command received on the agent channel", lf->agent_id);
+        } else if (message_params) {
             int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
 
             if (sock == OS_SOCKTERR) {
