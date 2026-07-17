@@ -574,6 +574,7 @@ rm -fr %{buildroot}
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/libvulnerability_scanner.so
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/librocksdb.so.8
 %attr(750, root, wazuh-manager) %{_localstatedir}/lib/librouter.so
+%attr(750, root, wazuh-manager) %{_localstatedir}/lib/libremoted_module.so
 %{_localstatedir}/lib/libpython3.12.so.1.0
 %dir %attr(770, wazuh-manager, wazuh-manager) %{_localstatedir}/logs
 %attr(660, wazuh-manager, wazuh-manager) %ghost %{_localstatedir}/logs/api.log
