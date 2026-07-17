@@ -34,6 +34,7 @@ class RpmLibMock : public IRpmLibWrapper
         virtual ~RpmLibMock() override {};
         MOCK_METHOD(int, rpmReadConfigFiles, (const char* file, const char* target), (override));
         MOCK_METHOD(void, rpmFreeRpmrc, (), (override));
+        MOCK_METHOD(void, rpmFreeMacros, (), (override));
         MOCK_METHOD(rpmtd, rpmtdNew, (), (override));
         MOCK_METHOD(void, rpmtdFree, (rpmtd td), (override));
         MOCK_METHOD(rpmts, rpmtsCreate, (), (override));
@@ -96,6 +97,7 @@ TEST(RpmLibTest, RAII)
 {
     auto mock {std::make_shared<NiceMock<RpmLibMock>>()};
     EXPECT_CALL(*mock, rpmReadConfigFiles(_, _)).WillOnce(Return(0));
+    EXPECT_CALL(*mock, rpmFreeMacros());
     EXPECT_CALL(*mock, rpmFreeRpmrc());
     {
         RpmPackageManager rpm{mock};
