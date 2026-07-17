@@ -40,9 +40,7 @@ All notable changes to this project will be documented in this file.
 
 #### Fixed
 
-- Fixed Microsoft Store packages with multiple sub-applications being reported with an arbitrary sub-application name, e.g. Python 3.13 reported as "pip (Python 3.13)". ([#6761](https://github.com/wazuh/external-devel-requests/issues/6761))
-- Fixed the Python Microsoft Store package reporting the MSIX package revision as version instead of the interpreter version. ([#6761](https://github.com/wazuh/external-devel-requests/issues/6761))
-- Fixed the PYPI collector not scanning Microsoft Store Python installations, which prevented packages like pip from being inventoried. ([#6761](https://github.com/wazuh/external-devel-requests/issues/6761))
+- Fixed the name, version and PyPI packages reported for Microsoft Store Python installations. ([#37441](https://github.com/wazuh/wazuh/pull/37441))
 
 ## [v4.14.7]
 

@@ -23,6 +23,7 @@ target_link_libraries(sysInfoWindows_unit_test
     iphlpapi
     ws2_32
     shell32
+    version
     debug gtestd
     debug gmockd
     debug gtest_maind

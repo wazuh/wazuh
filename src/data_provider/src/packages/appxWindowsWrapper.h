@@ -9,7 +9,6 @@
  */
 #include <ctime>
 #include <algorithm>
-#include <cstdio>
 #include <stdexcept>
 #include <string>
 #include <set>
@@ -17,6 +16,7 @@
 #include "ipackageWrapper.h"
 #include "registryHelper.h"
 #include "windowsHelper.h"
+#include "fileVersionHelper.h"
 #include "stringHelper.h"
 #include "sharedDefs.h"
 
@@ -44,40 +44,7 @@ struct AppxExeVersionReader
 {
     static std::string read(const std::string& exePath)
     {
-        std::string version;
-        DWORD handle { 0 };
-        const auto size { GetFileVersionInfoSizeA(exePath.c_str(), &handle) };
-
-        if (size)
-        {
-            std::vector<unsigned char> buffer(size);
-
-            if (GetFileVersionInfoA(exePath.c_str(), 0, size, buffer.data()))
-            {
-                struct LangCodePage
-                {
-                    unsigned short language;
-                    unsigned short codePage;
-                }* translation { nullptr };
-                UINT length { 0 };
-
-                if (VerQueryValueA(buffer.data(), "\\VarFileInfo\\Translation", reinterpret_cast<LPVOID*>(&translation), &length)
-                        && translation && length >= sizeof(LangCodePage))
-                {
-                    char subBlock[64] {};
-                    snprintf(subBlock, sizeof(subBlock), "\\StringFileInfo\\%04x%04x\\ProductVersion", translation->language, translation->codePage);
-                    char* value { nullptr };
-                    UINT valueLength { 0 };
-
-                    if (VerQueryValueA(buffer.data(), subBlock, reinterpret_cast<LPVOID*>(&value), &valueLength) && value && valueLength)
-                    {
-                        version = Utils::trim(std::string(value), " \t");
-                    }
-                }
-            }
-        }
-
-        return version;
+        return Utils::getFileProductVersion(exePath);
     }
 };
 
