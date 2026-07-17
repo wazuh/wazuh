@@ -2,6 +2,7 @@
 
 #include "reconciler.hpp"
 
+#include <unordered_set>
 #include <mutex>
 #include <utility>
 #include <vector>
@@ -101,6 +102,27 @@ namespace wazuh::container_instances
             }
         }
         result.lastReconcile = m_lastReconcile;
+        return result;
+    }
+
+    std::vector<ContainerRecordPtr> MetadataStore::listContainers() const
+    {
+        std::shared_lock lock(m_mutex);
+        std::vector<ContainerRecordPtr> result;
+        std::unordered_set<std::string> seen;
+
+        for (const auto& [source, records] : m_bySource)
+        {
+            for (const auto& [containerId, record] : records)
+            {
+                if (!record || record->cgroupId == 0 || !seen.insert(containerId).second)
+                {
+                    continue;
+                }
+                result.push_back(record);
+            }
+        }
+
         return result;
     }
 
