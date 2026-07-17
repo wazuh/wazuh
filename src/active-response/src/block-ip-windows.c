@@ -292,36 +292,49 @@ firewall_result_t try_netsh(const char *srcip, int action, int ip_version, const
         // route fallback while the firewall was off - so a non-zero "no rule matched" exit
         // is expected and is NOT treated as a failure. The caller removes the null-route
         // unconditionally, independently of this result.
-        char remote_ip_arg_del[OS_MAXSTR];
-        memset(remote_ip_arg_del, '\0', OS_MAXSTR);
-        snprintf(remote_ip_arg_del, OS_MAXSTR - 1, "remoteip=%s/%s", srcip, host_prefix);
-
-        char *exec_cmd[] = {
-            netsh_path,
-            "advfirewall",
-            "firewall",
-            "delete",
-            "rule",
-            (char *)rule_name,
-            remote_ip_arg_del,
-            NULL
-        };
+        //
+        // netsh matches the rule by its exact remoteip prefix. For IPv6 we also try the
+        // legacy "/32" prefix: an agent upgraded from a version that wrote every rule as
+        // remoteip=<ip>/32 may still carry such a rule, which a "/128" delete would not match.
+        const char *del_prefixes[2];
+        int del_prefix_count = 0;
+        del_prefixes[del_prefix_count++] = host_prefix;
+        if (ip_version == 6) {
+            del_prefixes[del_prefix_count++] = "32";  // pre-upgrade IPv6 rules used /32
+        }
 
         firewall_result_t del_res = FIREWALL_EXECUTION_FAILED;
-        wfd = wpopenv(netsh_path, exec_cmd, W_BIND_STDERR);
-        if (wfd) {
-            int result_del = wpclose(wfd);
-            if (result_del == 0) {
-                del_res = FIREWALL_SUCCESS;  // a matching rule was actually removed
+        for (int p = 0; p < del_prefix_count; p++) {
+            char remote_ip_arg_del[OS_MAXSTR];
+            memset(remote_ip_arg_del, '\0', OS_MAXSTR);
+            snprintf(remote_ip_arg_del, OS_MAXSTR - 1, "remoteip=%s/%s", srcip, del_prefixes[p]);
+
+            char *exec_cmd[] = {
+                netsh_path,
+                "advfirewall",
+                "firewall",
+                "delete",
+                "rule",
+                (char *)rule_name,
+                remote_ip_arg_del,
+                NULL
+            };
+
+            wfd = wpopenv(netsh_path, exec_cmd, W_BIND_STDERR);
+            if (wfd) {
+                int result_del = wpclose(wfd);
+                if (result_del == 0) {
+                    del_res = FIREWALL_SUCCESS;  // a matching rule was actually removed
+                } else {
+                    memset(log_msg, '\0', OS_MAXSTR);
+                    snprintf(log_msg, OS_MAXSTR - 1,
+                             "netsh delete rule (remoteip=%s/%s) returned %d (no matching rule is expected if the block used the route fallback)",
+                             srcip, del_prefixes[p], result_del);
+                    write_debug_file(argv0, log_msg);
+                }
             } else {
-                memset(log_msg, '\0', OS_MAXSTR);
-                snprintf(log_msg, OS_MAXSTR - 1,
-                         "netsh delete rule returned %d (no matching rule is expected if the block used the route fallback)",
-                         result_del);
-                write_debug_file(argv0, log_msg);
+                write_debug_file(argv0, "Unable to execute netsh delete rule");
             }
-        } else {
-            write_debug_file(argv0, "Unable to execute netsh delete rule");
         }
         os_free(netsh_path);
         return del_res;
@@ -350,8 +363,16 @@ firewall_result_t try_route_windows(const char *srcip, int action, int ip_versio
 
     // The IPv4 mask below only applies to IPv4 targets; netsh already covers IPv6.
     if (ip_version == 6) {
-        log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "check",
-                          "route fallback supports IPv4 only - skipping IPv6 target");
+        // On ENABLE this is a genuine limitation worth flagging. On DISABLE, skipping IPv6
+        // here is the expected path (the route fallback never creates an IPv6 null-route, so
+        // there is nothing to remove), so keep it at debug to avoid a warning on every
+        // routine IPv6 unblock.
+        if (action == ENABLE_COMMAND) {
+            log_firewall_action(argv0, LOG_LEVEL_WARNING, "route", "check",
+                              "route fallback supports IPv4 only - skipping IPv6 target");
+        } else {
+            write_debug_file(argv0, "route fallback is IPv4-only - no null-route to remove for IPv6 target");
+        }
         return FIREWALL_NOT_AVAILABLE;
     }
 
