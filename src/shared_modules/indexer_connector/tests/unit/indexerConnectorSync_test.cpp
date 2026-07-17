@@ -38,13 +38,13 @@ protected:
     NiceMock<MockServerSelector> mockServerSelector;
 
     // Helper to track calls and simulate responses
-    int callCount = 0;
+    std::atomic<int> callCount {0};
     std::vector<std::string> receivedData;
 
     void SetUp() override
     {
         config["hosts"] = nlohmann::json::array({"localhost:9200"});
-        callCount = 0;
+        callCount.store(0);
         receivedData.clear();
 
         // Default behavior for server selector - suppress warnings for internal calls
@@ -619,7 +619,10 @@ TEST_F(IndexerConnectorSyncTest, BackgroundFlushTest)
     // Add data to force sending
     std::string id = "id1";
     std::string data = R"({"field":"value1"})";
-    connector.bulkIndex(id, "index1", data);
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex(id, "index1", data);
+    }
 
     // Force flush to process the data
     connector.flush();
@@ -1017,7 +1020,10 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError409VersionConflictWithRetr
 
     IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    connector.bulkIndex("test_id", "test_index", R"({"field":"value"})");
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("test_id", "test_index", R"({"field":"value"})");
+    }
     EXPECT_THROW(connector.flush(), IndexerConnectorException);
 
     EXPECT_EQ(callCount, 1) << "Should have made exactly 1 call (no retry on 409)";
@@ -1073,7 +1079,10 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkError429TooManyRequestsWithRetr
 
     IndexerConnectorSyncImplNoFlushInterval connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    connector.bulkIndex("test_id", "test_index", R"({"field":"value"})");
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("test_id", "test_index", R"({"field":"value"})");
+    }
     connector.flush();
 
     auto status = retryCompletedFuture.wait_for(std::chrono::seconds(10));
@@ -1147,7 +1156,10 @@ TEST_F(IndexerConnectorSyncTest, ProcessBulkChunkStoppingDuringProcessing)
     auto connector = std::make_unique<IndexerConnectorSyncImplNoFlushInterval>(
         config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    connector->bulkIndex("test_id", "test_index", R"({"field":"value"})");
+    {
+        auto lock = connector->scopeLock();
+        connector->bulkIndex("test_id", "test_index", R"({"field":"value"})");
+    }
     connector->flush();
 
     // Wait for processing to start with shorter timeout
@@ -4497,19 +4509,38 @@ TEST_F(IndexerConnectorSyncTest, FlushIntervalSecondsFromJsonConfigTimerFires)
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
     EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
 
+    std::atomic<int> timerFlushCount {0};
+
     EXPECT_CALL(mockHttpRequest, post(_, _, _))
         .Times(AtLeast(1))
-        .WillRepeatedly(Invoke([this](auto requestParams, auto postParams, auto configParams)
-                               { this->simulateSuccessfulPost(requestParams, postParams, configParams); }));
+        .WillRepeatedly(Invoke(
+            [&timerFlushCount](auto, auto postParams, auto)
+            {
+                timerFlushCount++;
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams)
+                        .onSuccess(R"({"took":1,"errors":false,"items":[]})");
+                }
+            }));
 
     IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
 
-    connector.bulkIndex("id1", "test_index", R"({"data":"timer-test"})");
+    {
+        auto lock = connector.scopeLock();
+        connector.bulkIndex("id1", "test_index", R"({"data":"timer-test"})");
+    }
 
     // 2s is enough for the 1s timer.
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
-    EXPECT_GT(callCount, 0) << "Expected 1s timer (from JSON flush_interval_seconds) to fire within 2s";
+    EXPECT_GT(timerFlushCount.load(), 0) << "Expected 1s timer (from JSON flush_interval_seconds) to fire within 2s";
 }
 
 TEST_F(IndexerConnectorSyncTest, FlushIntervalTimerDoesNotFlushWhenNoData)
