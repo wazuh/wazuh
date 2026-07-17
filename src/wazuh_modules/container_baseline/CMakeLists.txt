@@ -28,7 +28,7 @@ add_subdirectory(container_baseline_impl)
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${SRC_FOLDER}/shared/include
-  ${SRC_FOLDER}/wazuh_modules/container_connector/include
+  ${SRC_FOLDER}/shared_modules/container_instances_client/include
 )
 
 file(GLOB CONTAINER_BASELINE_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")

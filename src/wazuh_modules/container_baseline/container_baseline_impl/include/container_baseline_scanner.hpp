@@ -36,11 +36,11 @@ struct MonitoredPath
 };
 
 /// @brief Run the FIM file baseline for every container currently known to the
-/// container-connector, over every configured MonitoredPath, and hand each
+/// container_instances, over every configured MonitoredPath, and hand each
 /// resulting row to `sink`.
 ///
-/// @param connector_socket_path Unix socket path of the container-connector IPC
-///                                server (see container_connector_client.hpp).
+/// @param connector_socket_path Unix socket path of the container_instances IPC
+///                                server (see container_instances_client.hpp).
 /// @param paths Monitored in-container paths (translated from syscheck.k8s_directories).
 /// @param sink Callback invoked once per file row; the caller (syscheckd) is
 ///             responsible for actually persisting it via its own sync_handle.
@@ -52,7 +52,7 @@ int RunFimBaseline(const std::string&          connector_socket_path,
                     const RowSink&               sink);
 
 /// @brief Run the Syscollector process+network baseline for every container
-/// currently known to the container-connector, and hand each resulting row to
+/// currently known to container_instances, and hand each resulting row to
 /// `sink`. See baseline_rows.hpp for the draft-schema caveat on the JSON shape.
 int RunSyscollectorBaseline(const std::string& connector_socket_path, const RowSink& sink);
 

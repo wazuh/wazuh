@@ -913,6 +913,7 @@ void check_ebpf_availability() {
     minfo(FIM_EBPF_INIT);
     fimebpf_initialize(fim_whodata_active_ebpf, get_user, get_group, fim_whodata_event,
                        free_whodata_event, loggingFunction, abspath, fim_shutdown_process_on, syscheck.queue_size);
+
     if (ebpf_whodata_healthcheck()) {
         mwarn(FIM_ERROR_EBPF_HEALTHCHECK);
 

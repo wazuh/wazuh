@@ -35,7 +35,7 @@ struct ProcessBaselineRow
 /// from /proc/<pid>/{stat,cmdline}.
 ///
 /// No exec, no external tooling: this is the same class of host-side /proc read
-/// container_connector's CgroupResolver already relies on for cgroup_id
+/// container_instances already relies on for cgroup_id
 /// resolution (Angle 2 in the spike). Processes that exit between
 /// ResolvePidsForContainer() and the /proc/<pid>/stat read are silently skipped
 /// (best-effort snapshot, same race window any /proc-based enumeration has).

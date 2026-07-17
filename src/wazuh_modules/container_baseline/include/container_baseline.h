@@ -41,10 +41,10 @@
 #  define EXPORTED
 #endif
 
-/* Default IPC socket path of the container-connector module. Callers that
+/* Default IPC socket path of the container_instances module. Callers that
  * don't have a config-supplied override (e.g. the FIM/Syscollector wiring in
  * this branch) can use this literal directly instead of duplicating it. */
-#define CB_DEFAULT_CONNECTOR_SOCKET_PATH "/var/ossec/queue/sockets/container_connector"
+#define CB_DEFAULT_CONNECTOR_SOCKET_PATH "queue/sockets/container_instances"
 
 #ifdef __cplusplus
 extern "C" {

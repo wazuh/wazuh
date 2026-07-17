@@ -33,6 +33,7 @@ namespace wazuh::container_instances
         [[nodiscard]] LookupResult lookupByPodContainer(const std::string& podUid,
                                                         const std::string& containerName) const override;
         [[nodiscard]] StoreStats stats() const override;
+        [[nodiscard]] std::vector<ContainerRecordPtr> listContainers() const override;
 
         void applySnapshot(const SourceId& source,
                            std::vector<ContainerRecord> snapshot,
