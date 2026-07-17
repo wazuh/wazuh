@@ -1,7 +1,7 @@
 #include "container_baseline_scanner.hpp"
 
 #include "baseline_rows.hpp"
-#include "container_connector_client.hpp"
+#include "container_instances_client.hpp"
 #include "network_scanner.hpp"
 #include "package_scanner.hpp"
 #include "pid_resolver.hpp"
@@ -11,11 +11,22 @@
 
 #include <json.hpp>
 
+#include <chrono>
+#include <thread>
+
 namespace wazuh::container_baseline {
 
 namespace {
 
 constexpr int kOperationCreate = 0;
+
+// The container_instances IPC socket binds before its connectors finish their
+// first snapshot (list is a pure store read with no cold-cache refresh), so a
+// one-shot baseline at agent startup can see an "ok" but empty list while the
+// store is still warming. Retry an empty list briefly; an actually-empty host
+// only pays this once, at startup.
+constexpr int kListRetryAttempts = 10;
+constexpr auto kListRetryDelay = std::chrono::milliseconds{500};
 
 ContainerIdentity IdentityFromMetaJson(const std::string& container_id, const std::string& meta_json)
 {
@@ -45,19 +56,77 @@ ContainerIdentity IdentityFromMetaJson(const std::string& container_id, const st
     return id;
 }
 
-// Every container currently tracked by the connector, paired with its resolved
-// identity. One IPC round trip per container (list + one lookup each) — bounded
-// by however many containers the node runs, same cost class container_connector
-// itself already pays per eBPF-event lookup.
+ContainerIdentity IdentityFromResolveJson(const std::string& container_id, const std::string& reply_json)
+{
+    ContainerIdentity id;
+    id.container_id = container_id;
+
+    const auto j = nlohmann::json::parse(reply_json, nullptr, false);
+    if (j.is_discarded() || !j.is_object() || j.value("status", "") != "resolved")
+    {
+        return id;
+    }
+
+    const auto dataIt = j.find("data");
+    if (dataIt == j.end() || !dataIt->is_object())
+    {
+        return id;
+    }
+
+    const auto& data = *dataIt;
+    if (const auto it = data.find("container_name"); it != data.end() && it->is_string())
+    {
+        id.container_name = it->get<std::string>();
+    }
+    if (const auto it = data.find("image"); it != data.end() && it->is_string())
+    {
+        id.image = it->get<std::string>();
+    }
+    if (const auto it = data.find("pod_uid"); it != data.end() && it->is_string())
+    {
+        id.pod_uid = it->get<std::string>();
+    }
+    if (const auto it = data.find("pod_name"); it != data.end() && it->is_string())
+    {
+        id.pod_name = it->get<std::string>();
+    }
+    if (const auto it = data.find("namespace"); it != data.end() && it->is_string())
+    {
+        id.k8s_namespace = it->get<std::string>();
+    }
+
+    return id;
+}
+
+// Every container currently tracked by the container_instances store, paired
+// with its resolved identity. One IPC round trip to list, then one lookup per
+// listed container. The list call gives us cgroup ids, so the lookup can resolve
+// the richer metadata in the same module that owns it.
 std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path)
 {
-    wazuh::container_connector::ContainerConnectorClient client(socket_path);
+    wazuh::container_instances_client::ContainerInstancesClient client(socket_path);
     std::vector<ContainerIdentity> out;
 
-    for (const auto& ref : client.ListContainers()) {
-        const auto lookup = client.LookupByContainerId(ref.container_id);
-        out.push_back(lookup.found ? IdentityFromMetaJson(ref.container_id, lookup.meta_json)
-                                    : ContainerIdentity{ref.container_id, {}, {}, {}, {}, {}});
+    std::vector<wazuh::container_instances_client::ContainerRef> refs;
+    for (int attempt = 1; attempt <= kListRetryAttempts; ++attempt)
+    {
+        refs = client.listContainers();
+        if (!refs.empty() || attempt == kListRetryAttempts)
+        {
+            break;
+        }
+        std::this_thread::sleep_for(kListRetryDelay);
+    }
+
+    for (const auto& ref : refs)
+    {
+        const auto lookup = client.resolveByCgroupId(ref.cgroupId, ref.containerId);
+        if (lookup.status != wazuh::container_instances_client::LookupStatus::resolved)
+        {
+            out.push_back(ContainerIdentity{ref.containerId, {}, {}, {}, {}, {}});
+            continue;
+        }
+        out.push_back(IdentityFromResolveJson(ref.containerId, lookup.json));
     }
     return out;
 }

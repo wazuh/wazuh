@@ -104,6 +104,11 @@ namespace wazuh::container_instances::wire
             request.op = QueryRequest::Op::status;
             return request;
         }
+        if (op == "list")
+        {
+            request.op = QueryRequest::Op::list;
+            return request;
+        }
         if (op != "resolve")
         {
             return detail::makeError(QueryResponse::ErrorCode::badRequest, "unknown op");
@@ -213,6 +218,18 @@ namespace wazuh::container_instances::wire
                 }
                 data["connector"] = response.connectorName;
                 body["data"] = std::move(data);
+                if (!response.containers.empty())
+                {
+                    auto containers = nlohmann::json::array();
+                    for (const auto& record : response.containers)
+                    {
+                        if (record)
+                        {
+                            containers.push_back(recordToJson(*record));
+                        }
+                    }
+                    body["containers"] = std::move(containers);
+                }
                 break;
             }
             case QueryResponse::Status::error:

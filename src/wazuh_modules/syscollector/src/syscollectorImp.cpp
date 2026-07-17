@@ -1841,8 +1841,8 @@ void Syscollector::scanContainerBaseline()
     m_logFunction(LOG_DEBUG_VERBOSE,
                  "Container baseline scan finished (" + std::to_string(baselined) + " container(s)).");
 #else
-    // Container baseline acquisition (#37532) only runs on Linux — the same
-    // Linux-only constraint as container_connector and the eBPF module it
+    // Container baseline acquisition (#37532) only runs on Linux - the same
+    // Linux-only constraint as container_instances and the eBPF module it
     // depends on.
     m_logFunction(LOG_DEBUG_VERBOSE, "Container baseline scan skipped (Linux-only feature).");
 #endif

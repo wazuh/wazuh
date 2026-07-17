@@ -17,7 +17,7 @@ extern "C" {
 /**
  * @brief Run the container file baseline (spike #37532) for every container
  * currently known to the container-connector module, over every configured
- * `<directories type="kubernetes">` entry, and persist each resulting row
+ * `<directories tags="kubernetes">` entry, and persist each resulting row
  * through the existing FIM sync-protocol handle (syscheck.sync_handle) — the
  * same persistence path a normal host-FIM stateful event already uses.
  *
@@ -27,14 +27,16 @@ extern "C" {
  * file already present and untouched when the agent starts stayed invisible
  * to the state index. This closes that gap for the file/hash data class.
  *
- * No-op if there are no <directories type="kubernetes"> entries configured,
- * or if FIM synchronization is disabled (syscheck.enable_synchronization).
+ * No-op if there are no <directories tags="kubernetes"> entries configured,
+ * if FIM synchronization is disabled (syscheck.enable_synchronization), or if
+ * the container_instances module isn't running (its IPC socket is absent).
  *
- * Intended call site: syscheck.c's check_ebpf_availability(), right after
- * fimebpf_enable_k8s_container_support() — i.e. once, at FIM startup, only
- * when K8s directories are actually configured. Re-baselining on container
- * lifecycle events / eBPF overflow signals (spike Angle 6) is out of scope
- * for this slice.
+ * This is independent of the whodata provider (audit vs eBPF): it only
+ * enriches FIM state with container metadata, it doesn't affect change
+ * detection. Call site: main.c, once at FIM startup right after
+ * fim_initialize(), regardless of which whodata provider is configured.
+ * Re-baselining on container lifecycle events / eBPF overflow signals (spike
+ * Angle 6) is out of scope for this slice.
  */
 void fim_run_k8s_container_baseline(void);
 

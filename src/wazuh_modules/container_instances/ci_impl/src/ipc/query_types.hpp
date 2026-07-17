@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace wazuh::container_instances
 {
@@ -17,6 +18,7 @@ namespace wazuh::container_instances
     {
         enum class Op : std::uint8_t
         {
+            list,
             resolve,
             status
         };
@@ -51,6 +53,7 @@ namespace wazuh::container_instances
 
         Status status {Status::error};
         ContainerRecordPtr record;           ///< resolved.
+        std::vector<ContainerRecordPtr> containers; ///< list op.
         std::optional<VerdictReason> reason; ///< notContainer.
         int retryAfterMs {0};                ///< pending.
         std::optional<StoreStats> stats;     ///< ok.

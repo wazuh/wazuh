@@ -17,6 +17,9 @@
 #include "shared.h"
 #include "syscheck.h"
 #include "startup_gate_op.h"
+#ifdef __linux__
+#include "container_baseline_fim.h"
+#endif
 
 #ifndef WIN32
 
@@ -304,6 +307,17 @@ int main(int argc, char **argv)
     }
 
     fim_initialize();
+
+#ifdef __linux__
+    // Baseline container files once at startup, independent of the whodata
+    // provider: it enriches FIM state with container_instances metadata, it
+    // doesn't depend on eBPF vs audit for change detection. No-op when no
+    // K8s directories are configured, sync is disabled, or container_instances
+    // isn't running.
+    if (!syscheck.disabled) {
+        fim_run_k8s_container_baseline();
+    }
+#endif
 
     if (!syscheck.disabled && start_realtime == 1) {
         realtime_start();

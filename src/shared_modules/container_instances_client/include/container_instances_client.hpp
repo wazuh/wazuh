@@ -7,9 +7,11 @@
 
 #include <chrono>
 #include <cstdint>
+#include <json.hpp>
 #include <cstring>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace wazuh::container_instances_client
 {
@@ -27,6 +29,13 @@ namespace wazuh::container_instances_client
     {
         LookupStatus status {LookupStatus::unavailable};
         std::string json; ///< resolved: the "data" object; notContainer: the "reason" string.
+    };
+
+    struct ContainerRef
+    {
+        std::string runtime;
+        std::string containerId;
+        std::uint64_t cgroupId {0};
     };
 
     /// Synchronous, connect-per-request client for the Container Instances query
@@ -54,6 +63,64 @@ namespace wazuh::container_instances_client
         {
             return roundTrip(R"({"version":1,"op":"resolve","cgroup_id":")" + std::to_string(cgroupId) +
                              R"(","container_id":")" + containerId + R"("})");
+        }
+
+        [[nodiscard]] std::vector<ContainerRef> listContainers() const
+        {
+            std::vector<ContainerRef> result;
+            const auto reply = roundTrip(R"({"version":1,"op":"list"})");
+            if (reply.json.empty())
+            {
+                return result;
+            }
+
+            const auto parsed = nlohmann::json::parse(reply.json, nullptr, false);
+            if (parsed.is_discarded() || !parsed.is_object() || parsed.value("status", "") != "ok")
+            {
+                return result;
+            }
+
+            const auto containersIt = parsed.find("containers");
+            if (containersIt == parsed.end() || !containersIt->is_array())
+            {
+                return result;
+            }
+
+            for (const auto& item : *containersIt)
+            {
+                if (!item.is_object())
+                {
+                    continue;
+                }
+
+                ContainerRef ref;
+                if (const auto it = item.find("runtime"); it != item.end() && it->is_string())
+                {
+                    ref.runtime = it->get<std::string>();
+                }
+                if (const auto it = item.find("container_id"); it != item.end() && it->is_string())
+                {
+                    ref.containerId = it->get<std::string>();
+                }
+                if (const auto it = item.find("cgroup_id"); it != item.end() && it->is_string())
+                {
+                    try
+                    {
+                        ref.cgroupId = std::stoull(it->get<std::string>());
+                    }
+                    catch (...)
+                    {
+                        ref.cgroupId = 0;
+                    }
+                }
+                if (ref.containerId.empty())
+                {
+                    continue;
+                }
+                result.push_back(std::move(ref));
+            }
+
+            return result;
         }
 
         [[nodiscard]] std::string status() const

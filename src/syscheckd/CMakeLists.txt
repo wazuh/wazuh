@@ -169,7 +169,7 @@ elseif(NOT UNIT_TEST)
   set_target_properties(
     wazuh-syscheckd PROPERTIES LINKER_LANGUAGE CXX RUNTIME_OUTPUT_DIRECTORY
                                                    ${SRC_FOLDER}/build/bin)
-  target_link_libraries(wazuh-syscheckd PRIVATE syscheckd_lib)
+  target_link_libraries(wazuh-syscheckd PRIVATE syscheckd_lib fimebpf)
 
   wazuh_set_runtime_rpath(wazuh-syscheckd)
 endif()
