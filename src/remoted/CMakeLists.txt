@@ -38,7 +38,8 @@ include_directories(
   ${SRC_FOLDER}/shared_modules/common/
   ${SRC_FOLDER}/shared_modules/router/include/
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
-  ${CMAKE_CURRENT_SOURCE_DIR}/src/)
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/
+  ${CMAKE_CURRENT_SOURCE_DIR}/remoted_module/include/)
 
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -59,6 +60,10 @@ set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
 
+# Build the isolated C++ module (libremoted_module.so). Its sources never enter
+# the C glob below; the only C<->C++ contact is remoted_module/include/remoted_module.h.
+add_subdirectory(remoted_module)
+
 # Collect source files
 file(GLOB REMOTED_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
 
@@ -74,7 +79,7 @@ if(UNIT_TEST)
 endif()
 
 target_link_libraries(remoted_lib PUBLIC wazuhext pthread router config
-                                         wazuh_modulesd_lib wazuh)
+                                         wazuh_modulesd_lib wazuh remoted_module)
 
 if(UNIX)
   target_link_libraries(remoted_lib PUBLIC dl)
