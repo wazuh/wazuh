@@ -72,8 +72,8 @@ public:
      * @note fastmetrics::registerManager() must have been called before construction, as the
      *       cache resolves its metric counters from the metrics manager.
      */
-    explicit AgentMetadataCache(std::chrono::seconds ttl,
-                                ClockFn clock = []() { return std::chrono::steady_clock::now(); })
+    explicit AgentMetadataCache(
+        std::chrono::seconds ttl, ClockFn clock = []() { return std::chrono::steady_clock::now(); })
         : m_ttl(ttl)
         , m_clock(std::move(clock))
         , m_hitsCounter(fastmetrics::manager().getOrCreateCounter(fastmetrics::names::AGENT_CACHE_HITS))
@@ -272,10 +272,7 @@ private:
     static inline const json::PointerPath AGENT_ID_PATH {"/wazuh/agent/id"}; ///< JSON pointer path to the agent ID.
     static constexpr std::size_t CACHE_INITIAL_CAPACITY = 1024; ///< Initial capacity for the cache's internal maps.
 
-    std::chrono::steady_clock::rep nowRep() const
-    {
-        return m_clock().time_since_epoch().count();
-    }
+    std::chrono::steady_clock::rep nowRep() const { return m_clock().time_since_epoch().count(); }
 
     struct CacheEntry
     {

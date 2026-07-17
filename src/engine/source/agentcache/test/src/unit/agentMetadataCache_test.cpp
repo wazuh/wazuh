@@ -56,7 +56,10 @@ struct FakeClock
 {
     AgentMetadataCache::ClockFn fn()
     {
-        return [this]() { return now; };
+        return [this]()
+        {
+            return now;
+        };
     }
 
     void advance(std::chrono::steady_clock::duration duration) { now += duration; }

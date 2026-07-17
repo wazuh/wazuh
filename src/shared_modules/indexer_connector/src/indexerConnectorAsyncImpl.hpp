@@ -55,7 +55,6 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
-constexpr auto HTTP_CONNECTION_ERROR {-1};
 
 // Overhead is the fixed JSON scaffolding for one bulk item:
 // {"index":{"_index":"<index>","id":"<id>"}}
@@ -596,12 +595,6 @@ public:
                     else if (statusCode == HTTP_TOO_MANY_REQUESTS)
                     {
                         LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
-                        throw IndexerConnectorException(error);
-                    }
-                    else if (statusCode == HTTP_CONNECTION_ERROR)
-                    {
-                        LOGFN_DEBUG2(
-                            m_logFn, "Connection error (%s), retrying with exponential backoff.", error.c_str());
                         throw IndexerConnectorException(error);
                     }
                     else

@@ -212,9 +212,9 @@ private:
             {
                 retryPending = false;
                 logDebug1(LOGGER_DEFAULT_TAG,
-                        "IndexerBulkQueue: pausing %lld ms before next send (%s).",
-                        static_cast<long long>(delay.count()),
-                        externalBackoffRequested ? "external backoff requested" : "previous send failed");
+                          "IndexerBulkQueue: pausing %lld ms before next send (%s).",
+                          static_cast<long long>(delay.count()),
+                          externalBackoffRequested ? "external backoff requested" : "previous send failed");
                 std::unique_lock<std::mutex> lock(m_mutex);
                 m_cv.wait_for(lock, delay, [this]() { return !m_running; });
             }
@@ -292,8 +292,9 @@ private:
 
                 if (shouldRetry)
                 {
-                    logDebug1(LOGGER_DEFAULT_TAG, "IndexerBulkQueue dispatch error: %s. Will retry after backoff.",
-                            ex.what());
+                    logDebug1(LOGGER_DEFAULT_TAG,
+                              "IndexerBulkQueue dispatch error: %s. Will retry after backoff.",
+                              ex.what());
                     retryPending = true;
                 }
             }

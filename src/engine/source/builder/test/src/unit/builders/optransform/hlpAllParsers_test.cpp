@@ -42,11 +42,13 @@ struct HlpParserTestParam
 {
     std::string name;
     TransformBuilder builder;
-    std::string inputEvent;         // JSON event with source field
-    std::vector<OpArg> extraArgs;   // Additional builder args beyond the source ref
+    std::string inputEvent;       // JSON event with source field
+    std::vector<OpArg> extraArgs; // Additional builder args beyond the source ref
 };
 
-class HlpAllParsersTest : public BaseBuilderTest, public testing::WithParamInterface<HlpParserTestParam>
+class HlpAllParsersTest
+    : public BaseBuilderTest
+    , public testing::WithParamInterface<HlpParserTestParam>
 {
 };
 
@@ -97,42 +99,38 @@ INSTANTIATE_TEST_SUITE_P(
         HlpParserTestParam {
             "parse_date", dateParseBuilder, R"({"source": "2023-01-15T10:30:00Z"})", {makeValue(R"("ISO8601Z")")}},
         HlpParserTestParam {"parse_ip", ipParseBuilder, R"({"source": "192.168.1.1"})", {}},
-        HlpParserTestParam {
-            "parse_uri", uriParseBuilder, R"({"source": "https://example.com/path?q=1"})", {}},
+        HlpParserTestParam {"parse_uri", uriParseBuilder, R"({"source": "https://example.com/path?q=1"})", {}},
         HlpParserTestParam {"parse_fqdn", fqdnParseBuilder, R"({"source": "www.example.com"})", {}},
         HlpParserTestParam {"parse_json", jsonParseBuilder, R"({"source": "{\"key\":\"value\"}"})", {}},
-        HlpParserTestParam {
-            "parse_xml", xmlParseBuilder, R"({"source": "<root><item>value</item></root>"})", {}},
-        HlpParserTestParam {
-            "parse_csv",
-            csvParseBuilder,
-            R"({"source": "one,two,three"})",
-            {makeValue(R"("field1")"), makeValue(R"("field2")"), makeValue(R"("field3")")}},
-        HlpParserTestParam {
-            "parse_dsv",
-            dsvParseBuilder,
-            R"({"source": "one|two|three"})",
-            {makeValue(R"("|")"), makeValue(R"("\"")"), makeValue(R"("\\")"), makeValue(R"("field1")"), makeValue(R"("field2")"), makeValue(R"("field3")")}},
-        HlpParserTestParam {
-            "parse_key_value",
-            keyValueParseBuilder,
-            R"({"source": "key1=val1 key2=val2"})",
-            {makeValue(R"("=")"), makeValue(R"(" ")"), makeValue(R"("\"")"), makeValue(R"("\\")")}},
-        HlpParserTestParam {
-            "parse_quoted", quotedParseBuilder, R"({"source": "\"hello world\""})", {}},
-        HlpParserTestParam {
-            "parse_between",
-            betweenParseBuilder,
-            R"({"source": "[content]"})",
-            {makeValue(R"("[")"), makeValue(R"("]")")}},
+        HlpParserTestParam {"parse_xml", xmlParseBuilder, R"({"source": "<root><item>value</item></root>"})", {}},
+        HlpParserTestParam {"parse_csv",
+                            csvParseBuilder,
+                            R"({"source": "one,two,three"})",
+                            {makeValue(R"("field1")"), makeValue(R"("field2")"), makeValue(R"("field3")")}},
+        HlpParserTestParam {"parse_dsv",
+                            dsvParseBuilder,
+                            R"({"source": "one|two|three"})",
+                            {makeValue(R"("|")"),
+                             makeValue(R"("\"")"),
+                             makeValue(R"("\\")"),
+                             makeValue(R"("field1")"),
+                             makeValue(R"("field2")"),
+                             makeValue(R"("field3")")}},
+        HlpParserTestParam {"parse_key_value",
+                            keyValueParseBuilder,
+                            R"({"source": "key1=val1 key2=val2"})",
+                            {makeValue(R"("=")"), makeValue(R"(" ")"), makeValue(R"("\"")"), makeValue(R"("\\")")}},
+        HlpParserTestParam {"parse_quoted", quotedParseBuilder, R"({"source": "\"hello world\""})", {}},
+        HlpParserTestParam {"parse_between",
+                            betweenParseBuilder,
+                            R"({"source": "[content]"})",
+                            {makeValue(R"("[")"), makeValue(R"("]")")}},
         HlpParserTestParam {"parse_alphanumeric", alphanumericParseBuilder, R"({"source": "abc123"})", {}},
-        HlpParserTestParam {
-            "parse_user_agent",
-            userAgentParseBuilder,
-            R"({"source": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})",
-            {}},
-        HlpParserTestParam {
-            "parse_file_path", filePathParseBuilder, R"({"source": "/usr/local/bin/test"})", {}}),
+        HlpParserTestParam {"parse_user_agent",
+                            userAgentParseBuilder,
+                            R"({"source": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})",
+                            {}},
+        HlpParserTestParam {"parse_file_path", filePathParseBuilder, R"({"source": "/usr/local/bin/test"})", {}}),
     [](const testing::TestParamInfo<HlpParserTestParam>& info) { return info.param.name; });
 
 // =============================================================================
@@ -204,8 +202,7 @@ TEST_F(HlpNegativeTest, InvalidInputForParser)
 TEST_F(HlpNegativeTest, DisallowedTargetField)
 {
     EXPECT_CALL(*mocks->ctx, context()).Times(testing::AtLeast(1));
-    EXPECT_CALL(*mocks->allowedFields, check(testing::_, DotPath("forbidden_field")))
-        .WillOnce(testing::Return(false));
+    EXPECT_CALL(*mocks->allowedFields, check(testing::_, DotPath("forbidden_field"))).WillOnce(testing::Return(false));
 
     std::vector<OpArg> opArgs {makeRef("source")};
     Reference targetField("forbidden_field");

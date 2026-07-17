@@ -42,7 +42,6 @@ constexpr auto HTTP_NOT_FOUND {404};
 constexpr auto HTTP_VERSION_CONFLICT {409};
 constexpr auto HTTP_CONTENT_LENGTH {413};
 constexpr auto HTTP_TOO_MANY_REQUESTS {429};
-constexpr auto HTTP_CONNECTION_ERROR {-1};
 
 // JSON structure components for bulk operations
 constexpr auto INDEX_OPERATION_PREFIX {20};  // {"index":{"_index":"
@@ -460,11 +459,6 @@ class IndexerConnectorSyncImpl final
                 needToRetry = true;
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
             }
-            else if (statusCode == HTTP_CONNECTION_ERROR)
-            {
-                needToRetry = true;
-                LOGFN_DEBUG2(m_logFn, "Connection error (%s), retrying with exponential backoff.", error.c_str());
-            }
             else
             {
                 LOGFN_WARN(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
@@ -627,11 +621,6 @@ class IndexerConnectorSyncImpl final
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
-                needToRetry = true;
-            }
-            else if (statusCode == HTTP_CONNECTION_ERROR)
-            {
-                LOGFN_DEBUG2(m_logFn, "Connection error (%s), retrying with exponential backoff.", error.c_str());
                 needToRetry = true;
             }
             else
@@ -969,8 +958,8 @@ public:
             m_shouldNotifyAfterBulk = true;
         };
 
-        const auto onError = [this, &needToRetry](
-                                 const std::string& url, const long statusCode, const std::string& error)
+        const auto onError =
+            [this, &needToRetry](const std::string& url, const long statusCode, const std::string& error)
         {
             if (statusCode == HTTP_VERSION_CONFLICT)
             {
@@ -984,11 +973,6 @@ public:
             {
                 needToRetry = true;
                 LOGFN_DEBUG2(m_logFn, "Too many requests, retrying with exponential backoff.");
-            }
-            else if (statusCode == HTTP_CONNECTION_ERROR)
-            {
-                needToRetry = true;
-                LOGFN_DEBUG2(m_logFn, "Connection error (%s), retrying with exponential backoff.", error.c_str());
             }
             else
             {
@@ -1026,7 +1010,8 @@ public:
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
-                LOGFN_DEBUG1(m_logFn, "Retrying update by query in %lld ms.", static_cast<long long>(retryDelay.count()));
+                LOGFN_DEBUG1(
+                    m_logFn, "Retrying update by query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
             }
@@ -1050,8 +1035,7 @@ public:
             resultJson = nlohmann::json::parse(response);
         };
 
-        const auto onError = [this, &needToRetry](
-                                 const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string&)
         {
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
@@ -1093,8 +1077,7 @@ public:
             if (needToRetry)
             {
                 const auto retryDelay = retryBackoff.nextDelay();
-                LOGFN_DEBUG1(
-                    m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
+                LOGFN_DEBUG1(m_logFn, "Retrying search query in %lld ms.", static_cast<long long>(retryDelay.count()));
                 std::unique_lock<std::mutex> lock(m_retryMutex);
                 m_retryCv.wait_for(lock, retryDelay, [this]() { return m_stopping.load(); });
             }
@@ -1356,8 +1339,7 @@ public:
             }
         };
 
-        const auto onError = [this, &needToRetry](
-                                 const std::string& error, const long statusCode, const std::string&)
+        const auto onError = [this, &needToRetry](const std::string& error, const long statusCode, const std::string&)
         {
             if (statusCode == HTTP_TOO_MANY_REQUESTS)
             {
