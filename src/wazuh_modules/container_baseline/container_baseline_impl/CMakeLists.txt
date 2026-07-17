@@ -13,9 +13,9 @@ set(CMAKE_CXX_FLAGS
 include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   ${SRC_FOLDER}/shared/include
+  ${SRC_FOLDER}/shared_modules/container_instances_client/include
   ${SRC_FOLDER}/external/nlohmann
   ${SRC_FOLDER}/external/openssl/include
-  ${SRC_FOLDER}/shared_modules/container_instances_client/include
   # M4 package scanning reuses sysinfo's header-only parse helpers (parseDpkg,
   # parseRpm, BerkeleyRpmDBReader) without linking libsysinfo — see
   # package_scanner.cpp. libdb + sqlite3 are the vendored deps those need.

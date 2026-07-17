@@ -50,6 +50,7 @@ namespace wazuh::container_instances
         [[nodiscard]] virtual LookupResult lookupByPodContainer(const std::string& podUid,
                                                                 const std::string& containerName) const = 0;
         [[nodiscard]] virtual StoreStats stats() const = 0;
+        [[nodiscard]] virtual std::vector<ContainerRecordPtr> listContainers() const = 0;
 
         /// Reconcile ONE source's view: replace that source's resolved set with
         /// `snapshot` (diff is computed within the source, so multiple sources

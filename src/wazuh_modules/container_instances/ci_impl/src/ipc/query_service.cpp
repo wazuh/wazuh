@@ -60,6 +60,14 @@ namespace wazuh::container_instances
     {
         try
         {
+            if (request.op == QueryRequest::Op::list)
+            {
+                QueryResponse response;
+                response.status = QueryResponse::Status::ok;
+                response.containers = m_store.listContainers();
+                response.connectorName = m_connectorName;
+                return response;
+            }
             if (request.op == QueryRequest::Op::status)
             {
                 QueryResponse response;
