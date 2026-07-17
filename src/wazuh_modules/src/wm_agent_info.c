@@ -69,6 +69,7 @@ agent_info_set_is_shutting_down_function_func agent_info_set_is_shutting_down_fu
 agent_info_set_cluster_name_func agent_info_set_cluster_name_ptr = NULL;
 agent_info_set_cluster_node_func agent_info_set_cluster_node_ptr = NULL;
 agent_info_set_agent_groups_func agent_info_set_agent_groups_ptr = NULL;
+agent_info_set_query_handshake_function_func agent_info_set_query_handshake_function_ptr = NULL;
 
 // Sync protocol function pointers
 static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
@@ -636,6 +637,8 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_cluster_name_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_name");
         agent_info_set_cluster_node_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_node");
         agent_info_set_agent_groups_ptr = so_get_function_sym(agent_info_module, "agent_info_set_agent_groups");
+        agent_info_set_query_handshake_function_ptr =
+            so_get_function_sym(agent_info_module, "agent_info_set_query_handshake_function");
 
         // Get sync protocol function pointers
         agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");
@@ -663,6 +666,13 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         if (agent_info_set_is_shutting_down_function_ptr)
         {
             agent_info_set_is_shutting_down_function_ptr(wm_agent_info_is_shutting_down);
+        }
+
+        // Set the handshake query function so agent-info can re-query agentd for fresh
+        // cluster_name/cluster_node/agent_groups on every metadata population cycle
+        if (agent_info_set_query_handshake_function_ptr)
+        {
+            agent_info_set_query_handshake_function_ptr(wm_agent_info_query_agentd_handshake);
         }
     }
     else
