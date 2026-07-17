@@ -811,6 +811,7 @@ int Start_win32_Syscheck() {
 #endif /* WIN32 */
 
 #ifdef __linux__
+#include "container_baseline_fim.h"
 #ifdef ENABLE_AUDIT
 /* Wrapper for eBPF that provides syscheck.directories internally
  * This is cleaner than keeping a reference to syscheck.directories inside the ebpf instance.
@@ -841,6 +842,7 @@ void check_ebpf_availability() {
 
         if (k8s_count > 0) {
             fimebpf_enable_k8s_container_support();
+            fim_run_k8s_container_baseline();
         }
     }
 
