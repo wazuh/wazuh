@@ -128,7 +128,8 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
                              std::shared_ptr<IDBSync> dbSync,
                              std::shared_ptr<ISysInfo> sysInfo,
                              std::shared_ptr<IFileIOUtils> fileIO,
-                             std::shared_ptr<IFileSystemWrapper> fileSystem)
+                             std::shared_ptr<IFileSystemWrapper> fileSystem,
+                             handshake_query_callback_t handshakeQueryFunction)
     : m_dBSync(
           dbSync ? std::move(dbSync)
           : std::make_shared<DBSync>(
@@ -139,6 +140,7 @@ AgentInfoImpl::AgentInfoImpl(std::string dbPath,
     , m_reportDiffFunction(std::move(reportDiffFunction))
     , m_logFunction(std::move(logFunction))
     , m_queryModuleFunction(std::move(queryModuleFunction))
+    , m_handshakeQueryFunction(std::move(handshakeQueryFunction))
 {
     if (!m_logFunction)
     {
@@ -460,27 +462,55 @@ void AgentInfoImpl::populateAgentMetadata()
         agentMetadata["host_os_version"] = osInfo["os_version"];
     }
 
-    // Get cluster_name from handshake (set by agentd during connection via agent_info_set_cluster_name)
-    const char* cluster_name = agent_info_get_cluster_name();
+    // Re-query agentd for fresh handshake data on every cycle instead of relying on a
+    // one-time cached copy (see #37543): a manager-side cluster_name change is picked up
+    // by agentd on reconnect, but was never re-read here, so it stayed stale until the
+    // agent process restarted.
+    if (m_handshakeQueryFunction)
+    {
+        char clusterNameBuf[256] = {0};
+        char clusterNodeBuf[256] = {0};
+        char agentGroupsBuf[65536] = {0};
 
-    agentMetadata["cluster_name"] = std::string(cluster_name);
+        if (m_handshakeQueryFunction(clusterNameBuf,
+                                     sizeof(clusterNameBuf),
+                                     clusterNodeBuf,
+                                     sizeof(clusterNodeBuf),
+                                     agentGroupsBuf,
+                                     sizeof(agentGroupsBuf)))
+        {
+            m_lastLiveClusterName = clusterNameBuf;
+            m_lastLiveClusterNode = clusterNodeBuf;
+            m_lastLiveAgentGroups = agentGroupsBuf;
+            m_hasLiveHandshakeSucceededOnce = true;
+        }
+        else
+        {
+            // Transient failure (e.g. agentd unreachable): fall back to the last
+            // successfully live-queried values below, NOT the one-time startup cache,
+            // so a single missed cycle doesn't revert cluster_name to a stale value.
+            m_logFunction(LOG_DEBUG, "Live handshake query failed, falling back to last known values");
+        }
+    }
 
-    // Get cluster_node from handshake (set by agentd during connection via agent_info_set_cluster_node)
-    const char* cluster_node = agent_info_get_cluster_node();
+    // Once a live query has succeeded at least once, always prefer those last-known-good
+    // values. Only before the first success (or when no callback is registered at all,
+    // e.g. in unit tests) do we fall back to the C-side cache seeded once at module startup.
+    std::string cluster_name =
+        m_hasLiveHandshakeSucceededOnce ? m_lastLiveClusterName : agent_info_get_cluster_name();
+    std::string cluster_node =
+        m_hasLiveHandshakeSucceededOnce ? m_lastLiveClusterNode : agent_info_get_cluster_node();
 
-    agentMetadata["cluster_node"] = std::string(cluster_node);
+    agentMetadata["cluster_name"] = cluster_name;
+    agentMetadata["cluster_node"] = cluster_node;
 
     // Get agent groups (only for agents)
-    // Priority: 1) Groups from handshake, 2) Groups from merged.mg
+    // Priority: 1) Groups from live/last-known-good handshake, 2) Groups from merged.mg
     std::vector<std::string> groups;
 
-    // First, try to get groups from handshake (received from manager)
-    const char* handshake_groups = agent_info_get_agent_groups();
-
-    if (handshake_groups && handshake_groups[0] != '\0')
+    auto parseCsvGroups = [](const std::string & groups_str)
     {
-        // Parse CSV groups from handshake
-        std::string groups_str(handshake_groups);
+        std::vector<std::string> parsed;
         std::istringstream iss(groups_str);
         std::string group;
 
@@ -488,20 +518,42 @@ void AgentInfoImpl::populateAgentMetadata()
         {
             if (!group.empty())
             {
-                groups.push_back(group);
+                parsed.push_back(group);
             }
         }
 
-        m_logFunction(LOG_DEBUG, "Using " + std::to_string(groups.size()) + " groups from manager handshake");
+        return parsed;
+    };
 
-        // Clear handshake groups after consuming them
-        // Subsequent calls will read from merged.mg
-        agent_info_clear_agent_groups();
+    if (m_hasLiveHandshakeSucceededOnce)
+    {
+        if (!m_lastLiveAgentGroups.empty())
+        {
+            groups = parseCsvGroups(m_lastLiveAgentGroups);
+            m_logFunction(LOG_DEBUG, "Using " + std::to_string(groups.size()) + " groups from manager handshake");
+        }
+        else
+        {
+            // Legitimate "no groups assigned by the manager" state
+            groups = readAgentGroups();
+        }
     }
     else
     {
-        // Fall back to reading from merged.mg
-        groups = readAgentGroups();
+        // No live query has ever succeeded: preserve the previous one-shot-at-startup
+        // behavior (consume the cached handshake groups once, then fall back to merged.mg)
+        const char* cached_handshake_groups = agent_info_get_agent_groups();
+
+        if (cached_handshake_groups && cached_handshake_groups[0] != '\0')
+        {
+            groups = parseCsvGroups(cached_handshake_groups);
+            m_logFunction(LOG_DEBUG, "Using " + std::to_string(groups.size()) + " groups from manager handshake");
+            agent_info_clear_agent_groups();
+        }
+        else
+        {
+            groups = readAgentGroups();
+        }
     }
 
     // Update the global metadata provider BEFORE updateChanges
