@@ -18,6 +18,7 @@
 #include "wazuhdb_queries_op.h"
 #include "router.h"
 #include "sym_load.h"
+#include "remoted_module.h"
 #include "indexed_queue_op.h"
 #include "batch_queue_op.h"
 #include "http_op.h"
@@ -291,6 +292,30 @@ void HandleSecure()
 
     if (router_sync_handle = router_provider_create("inventory-states", false), !router_sync_handle) {
         mdebug2("Failed to create router handle for 'inventory synchronization'.");
+    }
+
+    // Launch the remoted C++ module in its own thread, seeded with a config struct.
+    {
+        remoted_module_config_t rm_config = {0};
+        rm_config.worker_threads = worker_pool;
+        rm_config.queue_size = (int)logr.queue_size;
+        rm_config.port = logr.port;
+        rm_config.worker_node = logr.worker_node;
+
+        char *rm_cluster_name = get_cluster_name();
+        if (rm_cluster_name) {
+            snprintf(rm_config.cluster_name, sizeof(rm_config.cluster_name), "%s", rm_cluster_name);
+            os_free(rm_cluster_name);
+        }
+
+        char *rm_node_name = get_node_name();
+        if (rm_node_name) {
+            snprintf(rm_config.node_name, sizeof(rm_config.node_name), "%s", rm_node_name);
+            os_free(rm_node_name);
+        }
+
+        remoted_module_start(mtLoggingFunctionsWrapper, &rm_config);
+        atexit(remoted_module_stop);
     }
 
     // Create upsert control message thread
