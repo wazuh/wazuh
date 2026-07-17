@@ -68,7 +68,7 @@ t_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_load_rules_decoders.yaml')
 t_config_parameters, t_config_metadata, t_case_ids = configuration.get_test_cases_data(t_cases_path)
 
 # Test daemons to restart.
-daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON]}
+daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON], 'extra_sockets': [LOGTEST_SOCKET_PATH]}
 
 def create_dummy_session():
     connection = SocketController(address=LOGTEST_SOCKET_PATH, family='AF_UNIX', connection_protocol='TCP')

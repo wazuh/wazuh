@@ -82,7 +82,7 @@ receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None
 
 # Test daemons to restart.
-daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON]}
+daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON], 'extra_sockets': [LOGTEST_SOCKET_PATH]}
 
 
 # Tests

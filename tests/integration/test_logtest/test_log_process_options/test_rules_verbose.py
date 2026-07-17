@@ -70,7 +70,7 @@ receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]
 receiver_sockets = None
 
 # Test daemons to restart.
-daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON]}
+daemons_handler_configuration = {'daemons': [ANALYSISD_DAEMON, WAZUH_DB_DAEMON], 'extra_sockets': [LOGTEST_SOCKET_PATH]}
 
 local_rules_debug_messages = ['Trying rule: 880000 - Parent rules verbose', '*Rule 880000 matched',
                               '*Trying child rules', 'Trying rule: 880001 - test last_match', '*Rule 880001 matched',

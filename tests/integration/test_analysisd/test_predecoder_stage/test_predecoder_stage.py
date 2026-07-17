@@ -61,7 +61,7 @@ test_cases_path = Path(TEST_CASES_PATH, 'cases_syslog_socket_input.yaml')
 _, test_metadata, test_cases_ids = configuration.get_test_cases_data(test_cases_path)
 
 # Test daemons to restart.
-daemons_handler_configuration = {'all_daemons': True}
+daemons_handler_configuration = {'all_daemons': True, 'extra_sockets': [LOGTEST_SOCKET_PATH]}
 
 # Test variables.
 receiver_sockets_params = [(LOGTEST_SOCKET_PATH, 'AF_UNIX', 'TCP')]

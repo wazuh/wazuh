@@ -12,7 +12,7 @@ import sys
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
 from wazuh_testing.constants.platforms import WINDOWS
-from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
+from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS, ANALYSISD_DAEMON
 from wazuh_testing.constants.paths import ROOT_PREFIX
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import (
@@ -332,6 +332,8 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         all_daemons (boolean): Configure to restart all wazuh services. Default `False`.
         ignore_errors (boolean): Configure if errors in daemon handling should be ignored. This option is available
         in order to use this fixture along with invalid configuration. Default `False`
+        extra_sockets (list, optional): Additional wazuh-analysisd sockets (e.g. LOGTEST_SOCKET_PATH) that are not
+            part of its default socket set but that the module needs ready before proceeding. Default `[]`
 
     Args:
         request (pytest.FixtureRequest): Provide information about the current test function which made the request.
@@ -339,6 +341,7 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
     daemons = []
     ignore_errors = False
     all_daemons = False
+    extra_sockets = []
 
     if config := getattr(request.module, "daemons_handler_configuration", None):
         if "daemons" in config:
@@ -354,6 +357,9 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         if "ignore_errors" in config:
             logger.debug(f"Ignore error set to {config['ignore_errors']}")
             ignore_errors = config["ignore_errors"]
+
+        if "extra_sockets" in config:
+            extra_sockets = config["extra_sockets"]
     else:
         logger.debug("Wazuh control set to 'all_daemons'")
         all_daemons = True
@@ -362,11 +368,16 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         if all_daemons:
             logger.debug("Restarting wazuh using wazuh-control")
             services.control_service("restart")
+            services.wait_expected_daemon_status(target_daemon="wazuh-analysisd", running_condition=True,
+                                                extra_sockets=extra_sockets)
         else:
             for daemon in daemons:
                 logger.debug(f"Restarting {daemon}")
                 # Restart daemon instead of starting due to legacy used fixture in the test suite.
                 services.control_service("restart", daemon=daemon)
+                daemon_extra_sockets = extra_sockets if daemon == ANALYSISD_DAEMON else []
+                services.wait_expected_daemon_status(target_daemon=daemon, running_condition=True,
+                                                        extra_sockets=daemon_extra_sockets)
 
     except ValueError as value_error:
         logger.error(f"{str(value_error)}")
@@ -376,6 +387,10 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         logger.error(f"{str(called_process_error)}")
         if not ignore_errors:
             raise called_process_error
+    except TimeoutError as timeout_error:
+        logger.error(f"{str(timeout_error)}")
+        if not ignore_errors:
+            raise timeout_error
 
     yield
 
