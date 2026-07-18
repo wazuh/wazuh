@@ -406,7 +406,7 @@ def runReadyToReview(moduleName, clean=False, target="agent"):
     # The ASAN check is in the end. It builds again the module but with the ASAN flag
     # and runs the test tool.
     # Running this type of check in Windows will be analyzed in #17019
-    if target != "winagent" and moduleName != "shared_modules/agent_metadata" and moduleName != "shared_modules/file_helper" and moduleName != "wazuh_modules/agent_info" and moduleName != "wazuh_modules/sca":
+    if target != "winagent" and moduleName != "shared_modules/agent_metadata" and moduleName != "shared_modules/file_helper" and moduleName != "wazuh_modules/agent_info" and moduleName != "wazuh_modules/sca" and moduleName != "client-agent/https_client":
         runASAN(moduleName=moduleName,
                 testToolConfig=smokeTestConfig)
     if clean:
