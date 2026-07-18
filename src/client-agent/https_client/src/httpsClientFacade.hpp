@@ -12,29 +12,39 @@
 #ifndef _HTTPS_CLIENT_FACADE_HPP
 #define _HTTPS_CLIENT_FACADE_HPP
 
+#include "callbackDispatcher.hpp"
+#include "cmacSigner.hpp"
+#include "controlStream.hpp"
+#include "curlPerformer.hpp"
 #include "https_client.h"
+#include "keyProvider.hpp"
 #include "loggerHelper.h"
 #include "moduleConfig.hpp"
+#include "registrationGate.hpp"
+#include "spoolFile.hpp"
+#include "statefulStream.hpp"
+#include "statelessStream.hpp"
+#include "stopToken.hpp"
 #include "sysSeams.hpp"
 
-#include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <mutex>
+#include <thread>
 
 constexpr auto HTTPS_CLIENT_LOGTAG {"wazuh-agentd:https-client"}; ///< Tag used for module logging.
 
 /**
- * @brief Internal engine of the agent HTTPS client.
+ * @brief Composition root of the agent HTTPS client behind the C ABI.
  *
- * Composition root behind the C ABI (include/https_client.h). It owns the
- * module's threads and implements the cooperative-shutdown lifecycle
- * (atomic flag + join), mirroring the manager-side RemotedModuleFacade.
- * Unlike remoted, the hc_* ABI is handle-based, so this facade is a plain
- * class owned by the opaque hc_handle rather than a Singleton.
- *
- * The endpoint streams (stateless, stateful, control) and the callback
- * dispatcher plug in behind this lifecycle skeleton.
+ * Builds every seam (curl performer, signer, spool factory, dispatcher) and
+ * owns the module's threads: the control loop, the stateless sender, the
+ * stateful sender and the dispatcher. The data streams idle behind a
+ * registration gate until Startup is accepted. Shutdown is cooperative:
+ * interrupt in-flight requests, join the loops, drain (final flush + final
+ * Notify), then stop the dispatcher — no callback outlives stop(). The
+ * lifecycle skeleton mirrors the manager-side RemotedModuleFacade.
  */
 class HttpsClientFacade final
 {
@@ -55,16 +65,42 @@ public:
     hc_conn_state_t state() const;
 
 private:
-    bool validateConfig() const;
-    void publishState(hc_conn_state_t newState);
+    void controlLoop();
+    void statelessLoop();
+    void statefulLoop();
+    void drain();
+    std::chrono::milliseconds controlInterval() const;
 
-    ModuleConfig m_config;          ///< Typed deep copy with defaults applied.
-    hc_callbacks_t m_callbacks {};  ///< Injected environment; owned by value.
-    FsProbe m_fsProbe;              ///< Real probe for the fail-closed TLS checks.
+    ModuleConfig m_config;
     const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
-    std::mutex m_lifecycleMutex;             ///< Serializes start()/stop().
-    std::atomic<bool> m_started {false};     ///< Lifecycle flag; data-plane gate.
-    std::atomic<int> m_state {HC_STATE_STOPPED}; ///< Published hc_conn_state_t.
+
+    // Seams (built once; stable references handed to the streams).
+    SystemClock m_clock;
+    Mt19937Random m_random;
+    FsProbe m_fsProbe;
+    ConfigKeyProvider m_keyProvider;
+    CmacSigner m_signer;
+    TempSpoolFactory m_spoolFactory;
+    CurlPerformer m_performer;
+    CallbackDispatcher m_dispatcher;
+
+    StatelessStream m_stateless;
+    StatefulStream m_stateful;
+    ControlStream m_control;
+
+    // One waiter per stream thread; the stop flag doubles as the abort flag.
+    Waiter m_controlWaiter;
+    Waiter m_statelessWaiter;
+    Waiter m_statefulWaiter;
+    Waiter m_drainWaiter; ///< Fresh (never stopped) so the final drain can run.
+    RegistrationGate m_gate;
+
+    std::thread m_controlThread;
+    std::thread m_statelessThread;
+    std::thread m_statefulThread;
+
+    mutable std::mutex m_lifecycleMutex;
+    bool m_started {false};
 };
 
 #endif // _HTTPS_CLIENT_FACADE_HPP

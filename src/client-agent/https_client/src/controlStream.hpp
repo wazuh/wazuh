@@ -49,6 +49,12 @@ public:
     hc_conn_state_t connState() const;
     bool isRegistered() const;
 
+    /// True while retrying Startup (Rejected/AuthError): use the slow cadence.
+    bool useSlowCadence() const
+    {
+        return m_machine.useSlowCadence();
+    }
+
 private:
     OutcomeClass sendStartup(Waiter& waiter);
     OutcomeClass sendNotify(Waiter& waiter, bool shuttingDown);

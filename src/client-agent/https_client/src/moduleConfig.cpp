@@ -112,5 +112,5 @@ bool ModuleConfig::validateClientCert(const IFsProbe& fsProbe, const LogFn& logF
 
 std::string ModuleConfig::baseUrl() const
 {
-    return "https://" + serverHost + ":" + std::to_string(serverPort);
+    return scheme + "://" + serverHost + ":" + std::to_string(serverPort);
 }

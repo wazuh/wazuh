@@ -54,6 +54,8 @@ bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& sp
     *fileOut = nullptr;
     if (spec.bodyFilePath.empty())
     {
+        // In-memory body: a fixed-size POST.
+        handle.setOptionLong(CurlOption::Post, 1L);
         handle.setOptionPtr(CurlOption::PostFields, spec.body);
         handle.setOptionLong(CurlOption::PostFieldSize, static_cast<long>(spec.bodyLength));
         return true;
@@ -63,7 +65,7 @@ bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& sp
     {
         return false;
     }
-    handle.streamBodyFromFile(file, spec.bodyFileSize);
+    handle.streamBodyFromFile(file, spec.bodyFileSize); // Streamed POST (sets the method itself).
     *fileOut = file;
     return true;
 }
@@ -72,11 +74,11 @@ void CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
                                      HttpResponse& response) const
 {
     handle.setOptionString(CurlOption::Url, m_config.baseUrl() + spec.target);
-    handle.setOptionLong(CurlOption::Post, 1L);
     for (const auto& header : spec.headers)
     {
         handle.appendHeader(header);
     }
+    handle.appendHeader("Expect:"); // Disable 100-continue; keep a fixed Content-Length.
     handle.captureResponseBody(&response.body);
     handle.captureRetryAfter(&response.retryAfterSeconds);
     handle.setOptionLong(CurlOption::TimeoutMs, static_cast<long>(spec.timeoutMs));

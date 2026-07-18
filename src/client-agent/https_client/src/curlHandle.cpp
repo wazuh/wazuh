@@ -175,9 +175,14 @@ namespace
 
         void streamBodyFromFile(std::FILE* file, uint64_t size) override
         {
+            // UPLOAD + INFILESIZE_LARGE streams from the read callback with a
+            // fixed Content-Length (no chunked encoding); CUSTOMREQUEST keeps
+            // it a POST.
+            curl_easy_setopt(m_handle, CURLOPT_UPLOAD, 1L);
+            curl_easy_setopt(m_handle, CURLOPT_CUSTOMREQUEST, "POST");
             curl_easy_setopt(m_handle, CURLOPT_READFUNCTION, readTrampoline);
             curl_easy_setopt(m_handle, CURLOPT_READDATA, file);
-            curl_easy_setopt(m_handle, CURLOPT_POSTFIELDSIZE_LARGE, static_cast<curl_off_t>(size));
+            curl_easy_setopt(m_handle, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(size));
         }
 
         void wireAbort(const std::atomic<bool>* abortFlag) override

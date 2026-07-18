@@ -57,6 +57,11 @@ struct ModuleConfig
 
     std::string spoolDir;
 
+    // Always "https" in production (fromC never changes it); the component
+    // test overrides it to "http" to drive the real curl path against a
+    // plaintext fake manager.
+    std::string scheme {"https"};
+
     static ModuleConfig fromC(const hc_config_t& config);
 
     bool validate(const IFsProbe& fsProbe, const LogFn& logFn) const;

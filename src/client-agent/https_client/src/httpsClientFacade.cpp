@@ -11,9 +11,18 @@
 
 #include "httpsClientFacade.hpp"
 
+#include "curlHandle.hpp"
+
 HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbacks_t& callbacks)
     : m_config(ModuleConfig::fromC(config))
-    , m_callbacks(callbacks)
+    , m_keyProvider(m_config.agentKeyHex)
+    , m_signer(m_config.agentId, m_keyProvider)
+    , m_spoolFactory(m_config.spoolDir)
+    , m_performer(m_config, defaultCurlHandleFactory())
+    , m_dispatcher(callbacks)
+    , m_stateless(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher)
+    , m_stateful(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_dispatcher)
+    , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher)
 {
 }
 
@@ -24,25 +33,27 @@ HttpsClientFacade::~HttpsClientFacade()
 
 bool HttpsClientFacade::start()
 {
+    std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+    if (m_started)
     {
-        std::lock_guard<std::mutex> lock(m_lifecycleMutex);
-        if (m_started)
-        {
-            LOGFN_WARN(m_logFn, "https_client already started, ignoring start request.");
-            return true;
-        }
-        if (!validateConfig())
-        {
-            return false;
-        }
-        m_started = true;
+        LOGFN_WARN(m_logFn, "https_client already started, ignoring start request.");
+        return true;
+    }
+    if (!m_config.validate(m_fsProbe, m_logFn))
+    {
+        return false; // Fail closed: nothing starts.
     }
     LOGFN_INFO(m_logFn,
                "Starting https_client (server=%s:%u, agent=%s).",
                m_config.serverHost.c_str(),
                m_config.serverPort,
                m_config.agentId.c_str());
-    publishState(HC_STATE_STARTING);
+    m_started = true;
+    m_dispatcher.start();
+    m_dispatcher.onStateChange(HC_STATE_STARTING);
+    m_controlThread = std::thread(&HttpsClientFacade::controlLoop, this);
+    m_statelessThread = std::thread(&HttpsClientFacade::statelessLoop, this);
+    m_statefulThread = std::thread(&HttpsClientFacade::statefulLoop, this);
     return true;
 }
 
@@ -57,7 +68,101 @@ void HttpsClientFacade::stop()
         m_started = false;
     }
     LOGFN_INFO(m_logFn, "Stopping https_client.");
-    publishState(HC_STATE_STOPPED);
+
+    // Interrupt in-flight requests and break the loops; wake gated streams.
+    m_controlWaiter.requestStop();
+    m_statelessWaiter.requestStop();
+    m_statefulWaiter.requestStop();
+    m_gate.abort();
+
+    if (m_controlThread.joinable())
+    {
+        m_controlThread.join();
+    }
+    if (m_statelessThread.joinable())
+    {
+        m_statelessThread.join();
+    }
+    if (m_statefulThread.joinable())
+    {
+        m_statefulThread.join();
+    }
+
+    drain(); // Best-effort final flush + shutdown Notify, from this thread.
+
+    m_dispatcher.onStateChange(HC_STATE_STOPPED);
+    m_dispatcher.stop(); // Drains queued callbacks, then joins.
+}
+
+void HttpsClientFacade::controlLoop()
+{
+    while (true)
+    {
+        const bool registered = m_control.step(m_controlWaiter, false);
+        if (registered)
+        {
+            m_gate.open();
+        }
+        if (!m_controlWaiter.waitFor(controlInterval()))
+        {
+            break;
+        }
+    }
+}
+
+void HttpsClientFacade::statelessLoop()
+{
+    if (!m_gate.wait())
+    {
+        return; // Aborted before registration.
+    }
+    while (true)
+    {
+        m_stateless.tick(m_statelessWaiter, false);
+        if (!m_statelessWaiter.waitFor(std::chrono::milliseconds {m_config.batchIntervalMs}))
+        {
+            break;
+        }
+    }
+}
+
+void HttpsClientFacade::statefulLoop()
+{
+    if (!m_gate.wait())
+    {
+        return;
+    }
+    while (true)
+    {
+        while (m_stateful.step(m_statefulWaiter))
+        {
+            if (m_statefulWaiter.stopRequested())
+            {
+                return;
+            }
+        }
+        if (!m_statefulWaiter.waitFor(std::chrono::milliseconds {m_config.batchIntervalMs}))
+        {
+            break;
+        }
+    }
+}
+
+void HttpsClientFacade::drain()
+{
+    if (m_control.connState() != HC_STATE_REGISTERED)
+    {
+        return; // Never registered: nothing to flush toward the manager.
+    }
+    m_stateless.tick(m_drainWaiter, true); // One final forced flush.
+    m_control.step(m_drainWaiter, true);   // Final Notify with shutdown status.
+}
+
+std::chrono::milliseconds HttpsClientFacade::controlInterval() const
+{
+    const uint32_t seconds =
+        m_control.useSlowCadence() ? m_config.rejectedRetryIntervalS : m_config.notifyIntervalS;
+    return std::chrono::seconds {seconds};
 }
 
 bool HttpsClientFacade::submitEvent(const uint8_t* frame, size_t length)
@@ -66,8 +171,7 @@ bool HttpsClientFacade::submitEvent(const uint8_t* frame, size_t length)
     {
         return false;
     }
-    // Routed to the stateless stream once it lands; nothing accepts data yet.
-    return false;
+    return m_stateless.submit(frame, length);
 }
 
 bool HttpsClientFacade::submitSyncSession(const char* sessionId, const uint8_t* buffer, size_t length)
@@ -76,8 +180,9 @@ bool HttpsClientFacade::submitSyncSession(const char* sessionId, const uint8_t* 
     {
         return false;
     }
-    // Routed to the stateful stream once it lands; nothing accepts data yet.
-    return false;
+    const bool queued = m_stateful.submit(sessionId, buffer, length);
+    m_statefulWaiter.notify(); // Wake the sender promptly.
+    return queued;
 }
 
 bool HttpsClientFacade::submitTaskResponse(const char* taskId, const char* resultJson)
@@ -86,33 +191,20 @@ bool HttpsClientFacade::submitTaskResponse(const char* taskId, const char* resul
     {
         return false;
     }
-    // Routed to the control stream once it lands; nothing accepts data yet.
-    return false;
+    m_control.queueTaskResponse(taskId, resultJson);
+    return true;
 }
 
 void HttpsClientFacade::notifyNow()
 {
     if (m_started)
     {
-        LOGFN_DEBUG1(m_logFn, "notify_now requested (control stream not wired yet).");
+        m_controlWaiter.notify(); // Break the Notify cadence for one out-of-cycle send.
     }
 }
 
 hc_conn_state_t HttpsClientFacade::state() const
 {
-    return static_cast<hc_conn_state_t>(m_state.load());
-}
-
-bool HttpsClientFacade::validateConfig() const
-{
-    return m_config.validate(m_fsProbe, m_logFn);
-}
-
-void HttpsClientFacade::publishState(hc_conn_state_t newState)
-{
-    const int previous = m_state.exchange(newState);
-    if (previous != newState && m_callbacks.on_state_change != nullptr)
-    {
-        m_callbacks.on_state_change(newState, m_callbacks.user_data);
-    }
+    std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+    return m_started ? m_control.connState() : HC_STATE_STOPPED;
 }

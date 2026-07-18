@@ -52,3 +52,31 @@ endif()
 
 add_test(NAME https_client_unit_test COMMAND https_client_unit_test)
 set_tests_properties(https_client_unit_test PROPERTIES LABELS "https_client")
+
+# Component test: real curl path vs a fork-based plaintext fake manager.
+# fork() + a listening server make it Unix-only; excluded on winagent.
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  file(GLOB COMPONENT_SRC_FILES ${CMAKE_CURRENT_LIST_DIR}/component/*.cpp)
+  add_executable(https_client_component_test ${COMPONENT_SRC_FILES})
+  target_link_libraries(
+    https_client_component_test
+    debug gtestd
+    debug gmockd
+    optimized gtest
+    optimized gmock
+    https_client
+    pthread)
+  target_include_directories(
+    https_client_component_test
+    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include
+            ${CMAKE_CURRENT_LIST_DIR}/../src
+            ${SRC_FOLDER}
+            ${SRC_FOLDER}/shared_modules/utils
+            ${SRC_FOLDER}/shared_modules/common
+            ${SRC_FOLDER}/external/cJSON
+            ${SRC_FOLDER}/external/cpp-httplib
+            ${SRC_FOLDER}/external/openssl/include
+            ${SRC_FOLDER}/external/curl/include)
+  add_test(NAME https_client_component_test COMMAND https_client_component_test)
+  set_tests_properties(https_client_component_test PROPERTIES LABELS "https_client")
+endif()
