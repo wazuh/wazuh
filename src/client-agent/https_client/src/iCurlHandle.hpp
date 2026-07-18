@@ -52,21 +52,21 @@ enum class CurlOption
  */
 class ICurlHandle
 {
-public:
-    virtual ~ICurlHandle() = default;
+    public:
+        virtual ~ICurlHandle() = default;
 
-    virtual bool setOptionLong(CurlOption option, long value) = 0;
-    virtual bool setOptionString(CurlOption option, const std::string& value) = 0;
-    virtual bool setOptionPtr(CurlOption option, const void* value) = 0;
-    virtual void appendHeader(const std::string& header) = 0;
+        virtual bool setOptionLong(CurlOption option, long value) = 0;
+        virtual bool setOptionString(CurlOption option, const std::string& value) = 0;
+        virtual bool setOptionPtr(CurlOption option, const void* value) = 0;
+        virtual void appendHeader(const std::string& header) = 0;
 
-    virtual void captureResponseBody(std::string* output) = 0;
-    virtual void captureRetryAfter(long* output) = 0;
-    virtual void streamBodyFromFile(std::FILE* file, uint64_t size) = 0;
-    virtual void wireAbort(const std::atomic<bool>* abortFlag) = 0;
+        virtual void captureResponseBody(std::string* output) = 0;
+        virtual void captureRetryAfter(long* output) = 0;
+        virtual void streamBodyFromFile(std::FILE* file, uint64_t size) = 0;
+        virtual void wireAbort(const std::atomic<bool>* abortFlag) = 0;
 
-    virtual TransportStatus perform() = 0;
-    virtual long responseCode() = 0;
+        virtual TransportStatus perform() = 0;
+        virtual long responseCode() = 0;
 };
 
 using CurlHandleFactory = std::function<std::unique_ptr<ICurlHandle>()>;

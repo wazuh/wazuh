@@ -22,14 +22,29 @@ namespace
     ControlStateMachine inState(State target)
     {
         ControlStateMachine machine; // Starts in Starting.
+
         switch (target)
         {
-            case State::Starting: break;
-            case State::Registered: machine.onEvent(Event::StartupAccepted); break;
-            case State::Rejected: machine.onEvent(Event::StartupRejected); break;
-            case State::AuthError: machine.onEvent(Event::AuthFailed); break;
-            case State::Stopping: machine.onEvent(Event::Stop); break;
+            case State::Starting:
+                break;
+
+            case State::Registered:
+                machine.onEvent(Event::StartupAccepted);
+                break;
+
+            case State::Rejected:
+                machine.onEvent(Event::StartupRejected);
+                break;
+
+            case State::AuthError:
+                machine.onEvent(Event::AuthFailed);
+                break;
+
+            case State::Stopping:
+                machine.onEvent(Event::Stop);
+                break;
         }
+
         return machine;
     }
 } // namespace
@@ -109,7 +124,10 @@ TEST(ControlStateMachineTest, RegisteredVersionRejectionDemotesToRejected)
 
 TEST(ControlStateMachineTest, TransientFailureNeverChangesState)
 {
-    for (const auto state : {State::Starting, State::Registered, State::Rejected, State::AuthError})
+    for (const auto state :
+            {
+                State::Starting, State::Registered, State::Rejected, State::AuthError
+            })
     {
         auto machine = inState(state);
         const auto effects = machine.onEvent(Event::TransientFailure);
@@ -120,7 +138,10 @@ TEST(ControlStateMachineTest, TransientFailureNeverChangesState)
 
 TEST(ControlStateMachineTest, StopFromEveryStateGoesStopping)
 {
-    for (const auto state : {State::Starting, State::Registered, State::Rejected, State::AuthError})
+    for (const auto state :
+            {
+                State::Starting, State::Registered, State::Rejected, State::AuthError
+            })
     {
         auto machine = inState(state);
         machine.onEvent(Event::Stop);

@@ -21,7 +21,8 @@ namespace
 {
     // RFC 4493 test key: 2b7e151628aed2a6abf7158809cf4f3c.
     const std::vector<uint8_t> RFC4493_KEY = {0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6,
-                                              0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
+        0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c
+    };
 } // namespace
 
 TEST(CmacSignerTest, Rfc4493EmptyMessageVector)
@@ -34,7 +35,8 @@ TEST(CmacSignerTest, Rfc4493EmptyMessageVector)
 TEST(CmacSignerTest, Rfc4493SixteenByteMessageVector)
 {
     const std::vector<uint8_t> message = {0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96,
-                                          0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a};
+                                          0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17, 0x2a
+                                         };
     const auto mac = CmacSigner::macHex(RFC4493_KEY, message.data(), message.size());
     ASSERT_TRUE(mac.has_value());
     EXPECT_EQ("070a16b46b4d4144f79bdd9dd04a287c", *mac);
@@ -83,10 +85,12 @@ TEST(CmacSignerTest, SignFileMatchesInMemorySignature)
 
     // A body larger than the incremental chunk proves the chunked path.
     std::string body(100 * 1024 + 37, '\0');
+
     for (size_t index = 0; index < body.size(); index++)
     {
         body[index] = static_cast<char>('a' + (index % 23));
     }
+
     const std::string path = ::testing::TempDir() + "hc_signer_body.tmp";
     {
         std::ofstream file {path, std::ios::binary};
@@ -95,7 +99,7 @@ TEST(CmacSignerTest, SignFileMatchesInMemorySignature)
 
     const auto fromFile = signer.signFile("POST", "/stateful", path, 1700000000);
     const auto fromMemory = signer.sign(
-        "POST", "/stateful", reinterpret_cast<const uint8_t*>(body.data()), body.size(), 1700000000);
+                                "POST", "/stateful", reinterpret_cast<const uint8_t*>(body.data()), body.size(), 1700000000);
     std::remove(path.c_str());
 
     ASSERT_TRUE(fromFile.has_value());

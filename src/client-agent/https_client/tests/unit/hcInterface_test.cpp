@@ -90,10 +90,10 @@ namespace
 
 class HcInterfaceTest : public ::testing::Test
 {
-protected:
-    Recorder m_recorder;
-    hc_config_t m_config {makeConfig()};
-    hc_callbacks_t m_callbacks {makeCallbacks(&m_recorder)};
+    protected:
+        Recorder m_recorder;
+        hc_config_t m_config {makeConfig()};
+        hc_callbacks_t m_callbacks {makeCallbacks(&m_recorder)};
 };
 
 TEST_F(HcInterfaceTest, CreateWithNullArgsReturnsNull)
@@ -161,7 +161,7 @@ TEST_F(HcInterfaceTest, DrainReturnsWithinDeadlineAgainstADeadServer)
     hc_stop(handle); // Must not hang despite the unreachable server.
     const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
                              std::chrono::steady_clock::now() - begin)
-                             .count();
+                         .count();
     EXPECT_LT(elapsed, 5);
     hc_destroy(handle);
 }
@@ -237,24 +237,27 @@ TEST_F(HcInterfaceTest, LifecycleChurn)
     // concurrent submits from another thread.
     hc_handle* handle = hc_create(&m_config, &m_callbacks);
     ASSERT_NE(nullptr, handle);
+
     for (int cycle = 0; cycle < 20; cycle++)
     {
         ASSERT_TRUE(hc_start(handle));
         std::atomic<bool> submitting {true};
         std::thread producer(
             [&]
+        {
+            const uint8_t frame[] = "1:/var/log/syslog:churn";
+
+            while (submitting.load())
             {
-                const uint8_t frame[] = "1:/var/log/syslog:churn";
-                while (submitting.load())
-                {
-                    hc_submit_event(handle, frame, sizeof(frame) - 1);
-                }
-            });
+                hc_submit_event(handle, frame, sizeof(frame) - 1);
+            }
+        });
         std::this_thread::sleep_for(std::chrono::milliseconds {2});
         submitting = false;
         producer.join();
         hc_stop(handle);
     }
+
     hc_destroy(handle);
 }
 

@@ -18,8 +18,8 @@
 
 class MockHttpPerformer : public IHttpPerformer
 {
-public:
-    MOCK_METHOD(HttpResponse, perform, (const HttpRequestSpec& spec), (override));
+    public:
+        MOCK_METHOD(HttpResponse, perform, (const HttpRequestSpec& spec), (override));
 };
 
 #endif // _HC_MOCK_HTTP_PERFORMER_HPP

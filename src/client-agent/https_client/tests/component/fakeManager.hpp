@@ -17,6 +17,9 @@
 
 #include "external/cpp-httplib/httplib.h"
 
+#include <openssl/evp.h>
+#include <openssl/x509.h>
+
 #include <atomic>
 #include <csignal>
 #include <cstdint>
@@ -36,148 +39,205 @@
  */
 class FakeManager final
 {
-public:
-    explicit FakeManager(uint16_t port, const std::string& keyHex)
-        : m_port(port)
-        , m_keyHex(keyHex)
-    {
-        m_pid = fork();
-        if (m_pid == 0)
+    public:
+        FakeManager(uint16_t port, const std::string& keyHex, bool tls = false)
+            : m_port(port)
+            , m_keyHex(keyHex)
+            , m_tls(tls)
         {
-            runServer();
-            _exit(0);
-        }
-        waitUntilReady();
-    }
+            m_pid = fork();
 
-    ~FakeManager()
-    {
-        if (m_pid > 0)
-        {
-            kill(m_pid, SIGTERM);
-            waitpid(m_pid, nullptr, 0);
-        }
-    }
-
-    FakeManager(const FakeManager&) = delete;
-    FakeManager& operator=(const FakeManager&) = delete;
-
-private:
-    static bool verifyCmac(const std::string& keyHex, const std::string& target,
-                           const httplib::Request& request)
-    {
-        const auto auth = request.get_header_value("Authorization");
-        // Format: "Wazuh <id>:<ts>:<mac>".
-        const auto space = auth.find(' ');
-        if (auth.rfind("Wazuh ", 0) != 0 || space == std::string::npos)
-        {
-            return false;
-        }
-        const std::string token = auth.substr(space + 1);
-        const auto firstColon = token.find(':');
-        const auto secondColon = token.rfind(':');
-        if (firstColon == std::string::npos || firstColon == secondColon)
-        {
-            return false;
-        }
-        const std::string id = token.substr(0, firstColon);
-        const std::string ts = token.substr(firstColon + 1, secondColon - firstColon - 1);
-        const std::string mac = token.substr(secondColon + 1);
-
-        const std::string canonical =
-            "WAZUH-REQUEST\n1\nPOST\n" + target + "\n" + id + "\n" + ts + "\n" + request.body;
-        const ConfigKeyProvider provider {keyHex};
-        const auto key = provider.cmacKey();
-        if (!key)
-        {
-            return false;
-        }
-        const auto expected =
-            CmacSigner::macHex(*key, reinterpret_cast<const uint8_t*>(canonical.data()),
-                               canonical.size());
-        return expected.has_value() && *expected == mac;
-    }
-
-    void runServer()
-    {
-        httplib::Server server;
-        const std::string keyHex = m_keyHex;
-        auto backpressureArmed = std::make_shared<std::atomic<bool>>(true);
-        auto lastSession = std::make_shared<std::string>();
-
-        server.Post("/stateless",
-                    [keyHex, backpressureArmed](const httplib::Request& request, httplib::Response& response)
-                    {
-                        if (!verifyCmac(keyHex, "/stateless", request))
-                        {
-                            response.status = 401;
-                            return;
-                        }
-                        if (request.has_header("X-Arm-Backpressure") && backpressureArmed->exchange(false))
-                        {
-                            response.status = 503;
-                            response.set_header("Retry-After", "1");
-                            return;
-                        }
-                        response.status = 200;
-                        response.set_content(request.body, "text/plain"); // Echo for body assertions.
-                    });
-
-        server.Post("/stateful",
-                    [keyHex, lastSession](const httplib::Request& request, httplib::Response& response)
-                    {
-                        if (!verifyCmac(keyHex, "/stateful", request))
-                        {
-                            response.status = 401;
-                            return;
-                        }
-                        const auto session = request.get_header_value("X-Session-Id");
-                        const bool cached = (*lastSession == session);
-                        *lastSession = session;
-                        response.status = 200;
-                        response.set_content(
-                            std::string {"{\"sessionId\":\""} + session + "\",\"cached\":" +
-                                (cached ? "true" : "false") + ",\"bytes\":" +
-                                std::to_string(request.body.size()) + "}",
-                            "application/json");
-                    });
-
-        server.Post("/control",
-                    [keyHex](const httplib::Request& request, httplib::Response& response)
-                    {
-                        if (!verifyCmac(keyHex, "/control", request))
-                        {
-                            response.status = 401;
-                            return;
-                        }
-                        if (request.has_header("X-Reject-Version"))
-                        {
-                            response.status = 426;
-                            return;
-                        }
-                        response.status = 200;
-                        response.set_content(R"({"limits":{"eps":0}})", "application/json");
-                    });
-
-        server.listen("127.0.0.1", m_port);
-    }
-
-    void waitUntilReady()
-    {
-        httplib::Client probe {"127.0.0.1", m_port};
-        for (int attempt = 0; attempt < 100; attempt++)
-        {
-            if (auto result = probe.Post("/control"))
+            if (m_pid == 0)
             {
-                return; // Any HTTP reply means the listener is up.
+                runServer();
+                _exit(0);
             }
-            usleep(20 * 1000);
-        }
-    }
 
-    pid_t m_pid {-1};
-    uint16_t m_port;
-    std::string m_keyHex;
+            waitUntilReady();
+        }
+
+        ~FakeManager()
+        {
+            if (m_pid > 0)
+            {
+                kill(m_pid, SIGTERM);
+                waitpid(m_pid, nullptr, 0);
+            }
+        }
+
+        FakeManager(const FakeManager&) = delete;
+        FakeManager& operator=(const FakeManager&) = delete;
+
+    private:
+        static bool verifyCmac(const std::string& keyHex, const std::string& target,
+                               const httplib::Request& request)
+        {
+            const auto auth = request.get_header_value("Authorization");
+            // Format: "Wazuh <id>:<ts>:<mac>".
+            const auto space = auth.find(' ');
+
+            if (auth.rfind("Wazuh ", 0) != 0 || space == std::string::npos)
+            {
+                return false;
+            }
+
+            const std::string token = auth.substr(space + 1);
+            const auto firstColon = token.find(':');
+            const auto secondColon = token.rfind(':');
+
+            if (firstColon == std::string::npos || firstColon == secondColon)
+            {
+                return false;
+            }
+
+            const std::string id = token.substr(0, firstColon);
+            const std::string ts = token.substr(firstColon + 1, secondColon - firstColon - 1);
+            const std::string mac = token.substr(secondColon + 1);
+
+            const std::string canonical =
+                "WAZUH-REQUEST\n1\nPOST\n" + target + "\n" + id + "\n" + ts + "\n" + request.body;
+            const ConfigKeyProvider provider {keyHex};
+            const auto key = provider.cmacKey();
+
+            if (!key)
+            {
+                return false;
+            }
+
+            const auto expected =
+                CmacSigner::macHex(*key, reinterpret_cast<const uint8_t*>(canonical.data()),
+                                   canonical.size());
+            return expected.has_value() && *expected == mac;
+        }
+
+        template<typename ServerT>
+        void registerEndpoints(ServerT& server)
+        {
+            const std::string keyHex = m_keyHex;
+            auto backpressureArmed = std::make_shared<std::atomic<bool>>(true);
+            auto lastSession = std::make_shared<std::string>();
+
+            server.Post("/stateless",
+                        [keyHex, backpressureArmed](const httplib::Request & request, httplib::Response & response)
+            {
+                if (!verifyCmac(keyHex, "/stateless", request))
+                {
+                    response.status = 401;
+                    return;
+                }
+
+                if (request.has_header("X-Arm-Backpressure") && backpressureArmed->exchange(false))
+                {
+                    response.status = 503;
+                    response.set_header("Retry-After", "1");
+                    return;
+                }
+
+                response.status = 200;
+                response.set_content(request.body, "text/plain"); // Echo for body assertions.
+            });
+
+            server.Post("/stateful",
+                        [keyHex, lastSession](const httplib::Request & request, httplib::Response & response)
+            {
+                if (!verifyCmac(keyHex, "/stateful", request))
+                {
+                    response.status = 401;
+                    return;
+                }
+
+                const auto session = request.get_header_value("X-Session-Id");
+                const bool cached = (*lastSession == session);
+                *lastSession = session;
+                response.status = 200;
+                response.set_content(
+                    std::string {"{\"sessionId\":\""} + session + "\",\"cached\":" +
+                    (cached ? "true" : "false") + ",\"bytes\":" +
+                    std::to_string(request.body.size()) + "}",
+                    "application/json");
+            });
+
+            server.Post("/control",
+                        [keyHex](const httplib::Request & request, httplib::Response & response)
+            {
+                if (!verifyCmac(keyHex, "/control", request))
+                {
+                    response.status = 401;
+                    return;
+                }
+
+                if (request.has_header("X-Reject-Version"))
+                {
+                    response.status = 426;
+                    return;
+                }
+
+                response.status = 200;
+                response.set_content(R"({"limits":{"eps":0}})", "application/json");
+            });
+        }
+
+        // Self-signed cert + key generated in-process (no CLI, no files). The
+        // client uses HC_VERIFY_NONE, so the cert only needs to exist.
+        static void makeSelfSigned(EVP_PKEY** keyOut, X509** certOut)
+        {
+            EVP_PKEY* pkey = EVP_RSA_gen(2048);
+            X509* cert = X509_new();
+            ASN1_INTEGER_set(X509_get_serialNumber(cert), 1);
+            X509_gmtime_adj(X509_get_notBefore(cert), 0);
+            X509_gmtime_adj(X509_get_notAfter(cert), 60L * 60L);
+            X509_set_pubkey(cert, pkey);
+            X509_NAME* name = X509_get_subject_name(cert);
+            X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
+                                       reinterpret_cast<const unsigned char*>("127.0.0.1"), -1, -1, 0);
+            X509_set_issuer_name(cert, name);
+            X509_sign(cert, pkey, EVP_sha256());
+            *keyOut = pkey;
+            *certOut = cert;
+        }
+
+        void runServer()
+        {
+            if (m_tls)
+            {
+                EVP_PKEY* pkey = nullptr;
+                X509* cert = nullptr;
+                makeSelfSigned(&pkey, &cert);
+                httplib::SSLServer server {cert, pkey};
+                registerEndpoints(server);
+                server.listen("127.0.0.1", m_port);
+                X509_free(cert);
+                EVP_PKEY_free(pkey);
+                return;
+            }
+
+            httplib::Server server;
+            registerEndpoints(server);
+            server.listen("127.0.0.1", m_port);
+        }
+
+        void waitUntilReady() const
+        {
+            const char* scheme = m_tls ? "https" : "http";
+            const std::string base = std::string {scheme} + "://127.0.0.1:" + std::to_string(m_port);
+            httplib::Client probe {base};
+            probe.enable_server_certificate_verification(false);
+
+            for (int attempt = 0; attempt < 200; attempt++)
+            {
+                if (auto result = probe.Post("/control"))
+                {
+                    return; // Any HTTP reply means the listener is up.
+                }
+
+                usleep(20 * 1000);
+            }
+        }
+
+        pid_t m_pid {-1};
+        uint16_t m_port;
+        std::string m_keyHex;
+        bool m_tls {false};
 };
 
 #endif // _HC_FAKE_MANAGER_HPP

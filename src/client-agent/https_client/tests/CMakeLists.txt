@@ -58,6 +58,10 @@ set_tests_properties(https_client_unit_test PROPERTIES LABELS "https_client")
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   file(GLOB COMPONENT_SRC_FILES ${CMAKE_CURRENT_LIST_DIR}/component/*.cpp)
   add_executable(https_client_component_test ${COMPONENT_SRC_FILES})
+  # cpp-httplib SSLServer/SSLClient (the TLS fake manager) needs the OpenSSL
+  # support macro and the vendored OpenSSL symbols linked directly (wazuhext
+  # does not re-export them).
+  target_compile_definitions(https_client_component_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
   target_link_libraries(
     https_client_component_test
     debug gtestd
@@ -65,6 +69,8 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
     optimized gtest
     optimized gmock
     https_client
+    ${SRC_FOLDER}/external/openssl/libssl.a
+    ${SRC_FOLDER}/external/openssl/libcrypto.a
     pthread)
   target_include_directories(
     https_client_component_test

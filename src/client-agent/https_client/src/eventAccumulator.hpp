@@ -32,44 +32,44 @@
  */
 class EventAccumulator final
 {
-public:
-    struct Snapshot
-    {
-        std::string body;    ///< "E ..." lines ready to follow the H line.
-        size_t byteLength;   ///< Bytes represented (the prefix consume() removes).
-        unsigned eventCount;
-    };
+    public:
+        struct Snapshot
+        {
+            std::string body;    ///< "E ..." lines ready to follow the H line.
+            size_t byteLength;   ///< Bytes represented (the prefix consume() removes).
+            unsigned eventCount;
+        };
 
-    EventAccumulator(uint64_t batchSizeBytes, uint32_t capMultiplier, uint32_t batchIntervalMs);
+        EventAccumulator(uint64_t batchSizeBytes, uint32_t capMultiplier, uint32_t batchIntervalMs);
 
-    /// Appends one event. Returns false (drop-newest) when the cap is hit.
-    bool append(const uint8_t* frame, size_t length);
+        /// Appends one event. Returns false (drop-newest) when the cap is hit.
+        bool append(const uint8_t* frame, size_t length);
 
-    /// True when a flush is due: bytes >= batchSize, or age >= interval and
-    /// there is something to send. elapsedMs is measured by the caller's clock.
-    bool flushDue(uint64_t elapsedMs) const;
+        /// True when a flush is due: bytes >= batchSize, or age >= interval and
+        /// there is something to send. elapsedMs is measured by the caller's clock.
+        bool flushDue(uint64_t elapsedMs) const;
 
-    bool empty() const;
+        bool empty() const;
 
-    /// Copies the current buffer for sending. resetAge = true restarts the age
-    /// clock reference (call when a flush cycle begins).
-    Snapshot snapshot();
+        /// Copies the current buffer for sending. resetAge = true restarts the age
+        /// clock reference (call when a flush cycle begins).
+        Snapshot snapshot();
 
-    /// Removes exactly the first byteLength bytes and eventCount events (the
-    /// prefix that was sent), preserving anything appended meanwhile.
-    void consume(const Snapshot& sent);
+        /// Removes exactly the first byteLength bytes and eventCount events (the
+        /// prefix that was sent), preserving anything appended meanwhile.
+        void consume(const Snapshot& sent);
 
-    hc_buffer_level_t level() const;
+        hc_buffer_level_t level() const;
 
-private:
-    hc_buffer_level_t levelForLocked() const;
+    private:
+        hc_buffer_level_t levelForLocked() const;
 
-    mutable std::mutex m_mutex;
-    std::string m_buffer;
-    unsigned m_eventCount {0};
-    uint64_t m_batchSizeBytes;
-    uint64_t m_capBytes;
-    uint32_t m_batchIntervalMs;
+        mutable std::mutex m_mutex;
+        std::string m_buffer;
+        unsigned m_eventCount {0};
+        uint64_t m_batchSizeBytes;
+        uint64_t m_capBytes;
+        uint32_t m_batchIntervalMs;
 };
 
 /// Escapes one frame into an "E <frame>\n" line (embedded '\n' -> "\n ").

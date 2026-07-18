@@ -28,16 +28,19 @@ HttpResponse CurlPerformer::perform(const HttpRequestSpec& spec)
 {
     HttpResponse response;
     const auto handle = m_factory();
+
     if (!handle)
     {
         return response; // OtherError by default.
     }
 
     std::FILE* bodyFile = nullptr;
+
     if (!configureBody(*handle, spec, &bodyFile))
     {
         return response;
     }
+
     const FilePtr fileGuard {bodyFile, std::fclose};
 
     configureRequest(*handle, spec, response);
@@ -52,6 +55,7 @@ bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& sp
                                   std::FILE** fileOut) const
 {
     *fileOut = nullptr;
+
     if (spec.bodyFilePath.empty())
     {
         // In-memory body: a fixed-size POST.
@@ -60,11 +64,14 @@ bool CurlPerformer::configureBody(ICurlHandle& handle, const HttpRequestSpec& sp
         handle.setOptionLong(CurlOption::PostFieldSize, static_cast<long>(spec.bodyLength));
         return true;
     }
+
     std::FILE* file = std::fopen(spec.bodyFilePath.c_str(), "rb");
+
     if (file == nullptr)
     {
         return false;
     }
+
     handle.streamBodyFromFile(file, spec.bodyFileSize); // Streamed POST (sets the method itself).
     *fileOut = file;
     return true;
@@ -74,17 +81,20 @@ void CurlPerformer::configureRequest(ICurlHandle& handle, const HttpRequestSpec&
                                      HttpResponse& response) const
 {
     handle.setOptionString(CurlOption::Url, m_config.baseUrl() + spec.target);
-    for (const auto& header : spec.headers)
-    {
-        handle.appendHeader(header);
+
+for (const auto& header : spec.headers)
+{
+    handle.appendHeader(header);
     }
+
     handle.appendHeader("Expect:"); // Disable 100-continue; keep a fixed Content-Length.
     handle.captureResponseBody(&response.body);
     handle.captureRetryAfter(&response.retryAfterSeconds);
     handle.setOptionLong(CurlOption::TimeoutMs, static_cast<long>(spec.timeoutMs));
+
     if (spec.abortFlag != nullptr)
-    {
-        handle.wireAbort(spec.abortFlag);
+{
+    handle.wireAbort(spec.abortFlag);
     }
 }
 
@@ -94,19 +104,23 @@ void CurlPerformer::applyTls(ICurlHandle& handle) const
     const bool verifyHost = m_config.verifyMode == HC_VERIFY_FULL;
     handle.setOptionLong(CurlOption::VerifyPeer, verifyPeer ? 1L : 0L);
     handle.setOptionLong(CurlOption::VerifyHost, verifyHost ? 2L : 0L);
+
     if (!m_config.caPath.empty())
     {
         handle.setOptionString(CurlOption::CaInfo, m_config.caPath);
     }
+
     if (!m_config.clientCert.empty())
     {
         handle.setOptionString(CurlOption::SslCert, m_config.clientCert);
         handle.setOptionString(CurlOption::SslKey, m_config.clientKey);
     }
+
     if (!m_config.ciphers.empty())
     {
         handle.setOptionString(CurlOption::SslCiphers, m_config.ciphers);
     }
+
     handle.setOptionLong(CurlOption::FollowLocation, 0L); // H4: no redirects.
     handle.setOptionLong(CurlOption::NoSignal, 1L);       // H6.
 }

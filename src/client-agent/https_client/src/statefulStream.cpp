@@ -32,10 +32,12 @@ StatefulStream::StatefulStream(const ModuleConfig& config, IHttpPerformer& perfo
 bool StatefulStream::submit(const std::string& sessionId, const uint8_t* buffer, size_t length)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
+
     if (m_queue.size() >= m_maxQueue)
     {
         return false;
     }
+
     m_queue.push_back(Session {sessionId, std::vector<uint8_t>(buffer, buffer + length)});
     return true;
 }
@@ -43,10 +45,12 @@ bool StatefulStream::submit(const std::string& sessionId, const uint8_t* buffer,
 bool StatefulStream::step(Waiter& waiter)
 {
     Session session;
+
     if (!popNext(session))
     {
         return false;
     }
+
     const auto result = sendSession(session, waiter);
     m_sink.onSyncResponse(session.id, result.code, result.body);
     return true;
@@ -61,10 +65,12 @@ bool StatefulStream::hasPending() const
 bool StatefulStream::popNext(Session& out)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
+
     if (m_queue.empty())
     {
         return false;
     }
+
     out = std::move(m_queue.front());
     m_queue.pop_front();
     return true;
@@ -73,9 +79,10 @@ bool StatefulStream::popNext(Session& out)
 StatefulStream::SendResult StatefulStream::sendSession(const Session& session, Waiter& waiter)
 {
     const auto spool = m_spoolFactory.spool(session.body.data(), session.body.size());
+
     if (!spool)
     {
-        return {HC_ERROR, {}}; // Spool failure: reported up; the FSM will retry.
+        return {HC_RESULT_ERROR, {}}; // Spool failure: reported up; the FSM will retry.
     }
 
     HttpRequestSpec spec;

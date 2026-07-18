@@ -25,44 +25,47 @@
  */
 class Backoff final
 {
-public:
-    Backoff(uint32_t baseMs, uint32_t capMs, IRandom& random)
-        : m_baseMs(baseMs)
-        , m_capMs(capMs)
-        , m_random(random)
-    {
-    }
-
-    std::chrono::milliseconds next()
-    {
-        const auto delay = std::chrono::milliseconds {
-            static_cast<int64_t>(m_random.uniform01() * static_cast<double>(currentCeilingMs()))};
-        if (m_attempt < MAX_ATTEMPT_SHIFT)
+    public:
+        Backoff(uint32_t baseMs, uint32_t capMs, IRandom& random)
+            : m_baseMs(baseMs)
+            , m_capMs(capMs)
+            , m_random(random)
         {
-            m_attempt++;
         }
-        return delay;
-    }
 
-    /// The current window ceiling; also the floor back-pressure compares against.
-    uint64_t currentCeilingMs() const
-    {
-        const uint64_t exponential = static_cast<uint64_t>(m_baseMs) << m_attempt;
-        return std::min<uint64_t>(exponential, m_capMs);
-    }
+        std::chrono::milliseconds next()
+        {
+            const auto delay = std::chrono::milliseconds
+            {
+                static_cast<int64_t>(m_random.uniform01() * static_cast<double>(currentCeilingMs()))};
 
-    void reset()
-    {
-        m_attempt = 0;
-    }
+            if (m_attempt < MAX_ATTEMPT_SHIFT)
+            {
+                m_attempt++;
+            }
 
-private:
-    static constexpr uint32_t MAX_ATTEMPT_SHIFT = 20; ///< Overflow guard; cap rules anyway.
+            return delay;
+        }
 
-    uint32_t m_baseMs;
-    uint32_t m_capMs;
-    IRandom& m_random;
-    uint32_t m_attempt {0};
+        /// The current window ceiling; also the floor back-pressure compares against.
+        uint64_t currentCeilingMs() const
+        {
+            const uint64_t exponential = static_cast<uint64_t>(m_baseMs) << m_attempt;
+            return std::min<uint64_t>(exponential, m_capMs);
+        }
+
+        void reset()
+        {
+            m_attempt = 0;
+        }
+
+    private:
+        static constexpr uint32_t MAX_ATTEMPT_SHIFT = 20; ///< Overflow guard; cap rules anyway.
+
+        uint32_t m_baseMs;
+        uint32_t m_capMs;
+        IRandom& m_random;
+        uint32_t m_attempt {0};
 };
 
 #endif // _HC_BACKOFF_HPP

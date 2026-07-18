@@ -17,26 +17,33 @@ OutcomeClass classifyOutcome(const HttpResponse& response)
     {
         return OutcomeClass::Interrupted;
     }
+
     if (response.status != TransportStatus::Ok)
     {
         return OutcomeClass::Retryable; // timeout / connect / TLS / other transport error
     }
+
     const long code = response.httpCode;
+
     if (code >= 200 && code < 300)
     {
         return OutcomeClass::Ok;
     }
+
     if (code == 401 || code == 403) // 401 per #37732; 403 kept until FR7.4 is reconciled (T2)
     {
         return OutcomeClass::AuthFail;
     }
+
     if (code == 426)
     {
         return OutcomeClass::VersionRejected;
     }
+
     if (code == 429 || code == 503)
     {
         return OutcomeClass::BackPressure;
     }
+
     return (code >= 500) ? OutcomeClass::Retryable : OutcomeClass::Permanent;
 }

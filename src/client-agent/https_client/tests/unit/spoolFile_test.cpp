@@ -94,7 +94,11 @@ TEST(SpoolFileTest, MoveAssignmentDeletesThePreviousFile)
 {
     const std::string pathA = ::testing::TempDir() + "hc_spool_a.tmp";
     const std::string pathB = ::testing::TempDir() + "hc_spool_b.tmp";
-    for (const auto& path : {pathA, pathB})
+
+    for (const auto& path :
+            {
+                pathA, pathB
+            })
     {
         std::ofstream file {path, std::ios::binary};
         file << "data";

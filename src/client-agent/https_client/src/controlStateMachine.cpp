@@ -13,14 +13,17 @@
 
 ControlStateMachine::ActionKind ControlStateMachine::nextAction() const
 {
-    switch (m_state)
+    if (m_state == State::Registered)
     {
-        case State::Starting:
-        case State::Rejected:
-        case State::AuthError: return ActionKind::Startup;
-        case State::Registered: return ActionKind::Notify;
-        default: return ActionKind::Idle; // Stopping.
+        return ActionKind::Notify;
     }
+
+    if (m_state == State::Starting || m_state == State::Rejected || m_state == State::AuthError)
+    {
+        return ActionKind::Startup;
+    }
+
+    return ActionKind::Idle; // Stopping.
 }
 
 ControlStateMachine::Effects ControlStateMachine::onEvent(Event event)
@@ -29,28 +32,32 @@ ControlStateMachine::Effects ControlStateMachine::onEvent(Event event)
     {
         return transitionTo(State::Stopping);
     }
+
     switch (event)
     {
         case Event::StartupAccepted:
-        {
-            auto effects = transitionTo(State::Registered);
-            effects.releaseGate = true;
-            effects.applyHandshake = true;
-            effects.resetCadence = true;
-            return effects;
-        }
+            {
+                auto effects = transitionTo(State::Registered);
+                effects.releaseGate = true;
+                effects.applyHandshake = true;
+                effects.resetCadence = true;
+                return effects;
+            }
+
         case Event::StartupRejected:
-        {
-            auto effects = transitionTo(State::Rejected);
-            effects.slowCadence = true;
-            return effects;
-        }
+            {
+                auto effects = transitionTo(State::Rejected);
+                effects.slowCadence = true;
+                return effects;
+            }
+
         case Event::AuthFailed:
-        {
-            auto effects = transitionTo(State::AuthError);
-            effects.slowCadence = true;
-            return effects;
-        }
+            {
+                auto effects = transitionTo(State::AuthError);
+                effects.slowCadence = true;
+                return effects;
+            }
+
         case Event::NotifyOk:
             // A successful Notify from AuthError recovers to Registered.
             return (m_state == State::AuthError) ? transitionTo(State::Registered) : Effects {};
@@ -62,14 +69,27 @@ ControlStateMachine::Effects ControlStateMachine::onEvent(Event event)
 
 hc_conn_state_t ControlStateMachine::connState() const
 {
-    switch (m_state)
+    if (m_state == State::Starting)
     {
-        case State::Starting: return HC_STATE_STARTING;
-        case State::Registered: return HC_STATE_REGISTERED;
-        case State::Rejected: return HC_STATE_REJECTED;
-        case State::AuthError: return HC_STATE_AUTH_ERROR;
-        default: return HC_STATE_STOPPED; // Stopping.
+        return HC_STATE_STARTING;
     }
+
+    if (m_state == State::Registered)
+    {
+        return HC_STATE_REGISTERED;
+    }
+
+    if (m_state == State::Rejected)
+    {
+        return HC_STATE_REJECTED;
+    }
+
+    if (m_state == State::AuthError)
+    {
+        return HC_STATE_AUTH_ERROR;
+    }
+
+    return HC_STATE_STOPPED; // Stopping.
 }
 
 ControlStateMachine::Effects ControlStateMachine::transitionTo(State next)

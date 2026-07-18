@@ -29,23 +29,28 @@ RetrySender::Result RetrySender::send(const HttpRequestSpec& spec, Waiter& waite
     base.abortFlag = waiter.stopFlag();
 
     Result result;
+
     for (uint32_t attempt = 1; attempt <= maxAttempts; attempt++)
     {
         result = attemptOnce(base);
+
         if (!isRetryable(result.outcome) || attempt == maxAttempts)
         {
             break;
         }
+
         if (!waiter.waitFor(delayFor(result)))
         {
             result.outcome = OutcomeClass::Interrupted; // Shutdown during the delay.
             break;
         }
     }
+
     if (result.outcome == OutcomeClass::Ok)
     {
         m_backoff.reset();
     }
+
     return result;
 }
 
@@ -55,12 +60,14 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
     const auto timestamp = m_clock.wallSeconds();
     const auto headers =
         attempt.bodyFilePath.empty()
-            ? m_signer.sign("POST", attempt.target, attempt.body, attempt.bodyLength, timestamp)
-            : m_signer.signFile("POST", attempt.target, attempt.bodyFilePath, timestamp);
+        ? m_signer.sign("POST", attempt.target, attempt.body, attempt.bodyLength, timestamp)
+        : m_signer.signFile("POST", attempt.target, attempt.bodyFilePath, timestamp);
+
     if (!headers)
     {
         return {OutcomeClass::Permanent, {}}; // Unusable credentials: retrying cannot help.
     }
+
     attempt.headers.push_back(headers->protocolVersion);
     attempt.headers.push_back(headers->authorization);
 
@@ -73,12 +80,14 @@ RetrySender::Result RetrySender::attemptOnce(const HttpRequestSpec& base)
 std::chrono::milliseconds RetrySender::delayFor(const Result& result)
 {
     const auto backoffDelay = m_backoff.next();
+
     if (result.outcome == OutcomeClass::BackPressure)
     {
         const auto serverDelay =
             std::chrono::milliseconds {result.response.retryAfterSeconds * 1000};
         return std::max(serverDelay, backoffDelay); // The server's delay wins when longer.
     }
+
     return backoffDelay;
 }
 

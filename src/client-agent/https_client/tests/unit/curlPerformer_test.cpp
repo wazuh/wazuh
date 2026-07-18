@@ -107,13 +107,13 @@ TEST(CurlPerformerTest, ResponseBodyAndRetryAfterFlowBack)
     EXPECT_CALL(*handle, captureResponseBody(_)).WillOnce(SaveArg<0>(&bodyOut));
     EXPECT_CALL(*handle, captureRetryAfter(_)).WillOnce(SaveArg<0>(&retryAfterOut));
     EXPECT_CALL(*handle, perform())
-        .WillOnce(Invoke(
-            [&]() -> TransportStatus
-            {
-                *bodyOut = "{\"ok\":true}";
-                *retryAfterOut = 7;
-                return TransportStatus::Ok;
-            }));
+    .WillOnce(Invoke(
+                  [&]() -> TransportStatus
+    {
+        *bodyOut = "{\"ok\":true}";
+        *retryAfterOut = 7;
+        return TransportStatus::Ok;
+    }));
     EXPECT_CALL(*handle, responseCode()).WillOnce(Return(503));
 
     auto performer = makePerformer(makeConfig(HC_VERIFY_NONE), std::move(mock));

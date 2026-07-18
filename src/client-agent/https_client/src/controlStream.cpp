@@ -30,10 +30,12 @@ namespace
     std::string jsonField(const nlohmann::json& object, const char* key)
     {
         const auto it = object.find(key);
+
         if (it == object.end())
         {
             return {};
         }
+
         return it->is_string() ? it->get<std::string>() : it->dump();
     }
 } // namespace
@@ -53,13 +55,19 @@ bool ControlStream::step(Waiter& waiter, bool shuttingDown)
 {
     switch (m_machine.nextAction())
     {
-        case ControlStateMachine::ActionKind::Startup: sendStartup(waiter); break;
+        case ControlStateMachine::ActionKind::Startup:
+            sendStartup(waiter);
+            break;
+
         case ControlStateMachine::ActionKind::Notify:
             sendNotify(waiter, shuttingDown);
             sendPendingResponses(waiter);
             break;
-        default: break; // Idle.
+
+        default:
+            break; // LCOV_EXCL_LINE: Idle only when Stopping, never driven here.
     }
+
     return isRegistered();
 }
 
@@ -90,8 +98,8 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
                                       CONTROL_MAX_ATTEMPTS);
     const auto event = (result.outcome == OutcomeClass::Ok)
-                           ? ControlStateMachine::Event::StartupAccepted
-                           : eventFor(result.outcome);
+                       ? ControlStateMachine::Event::StartupAccepted
+                       : eventFor(result.outcome);
     const auto effects = m_machine.onEvent(event);
     applyEffects(effects, result.response.body);
     return result.outcome;
@@ -109,10 +117,12 @@ OutcomeClass ControlStream::sendNotify(Waiter& waiter, bool shuttingDown)
                                       CONTROL_MAX_ATTEMPTS);
     const auto effects = m_machine.onEvent(eventFor(result.outcome));
     applyEffects(effects, {});
+
     if (result.outcome == OutcomeClass::Ok)
     {
         handleNotifyBody(result.response.body);
     }
+
     return result.outcome;
 }
 
@@ -123,20 +133,25 @@ void ControlStream::sendPendingResponses(Waiter& waiter)
         std::lock_guard<std::mutex> lock(m_responseMutex);
         pending.swap(m_pendingResponses);
     }
+
     if (pending.empty())
     {
         return;
     }
+
     nlohmann::json request;
     request["phase"] = "response";
     request["results"] = nlohmann::json::array();
+
     for (const auto& [taskId, resultJson] : pending)
     {
         request["results"].push_back({{"task_id", taskId}, {"result", resultJson}});
     }
+
     const std::string body = request.dump();
     const auto result =
         m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter, CONTROL_MAX_ATTEMPTS);
+
     if (result.outcome != OutcomeClass::Ok)
     {
         // Re-queue for a later cycle; the manager task TTL bounds retention.
@@ -152,6 +167,7 @@ void ControlStream::applyEffects(const ControlStateMachine::Effects& effects,
     {
         m_sink.onStateChange(m_machine.connState());
     }
+
     if (effects.applyHandshake)
     {
         m_sink.onStartupResult(true, handshake);
@@ -164,39 +180,55 @@ void ControlStream::handleNotifyBody(const std::string& body)
     {
         return;
     }
+
     dispatchTasks(body);
 }
 
 void ControlStream::dispatchTasks(const std::string& body)
 {
     const auto parsed = nlohmann::json::parse(body, nullptr, false);
+
     if (parsed.is_discarded() || !parsed.is_object())
     {
         return; // Tolerant: a malformed Notify body is ignored, never fatal.
     }
+
     const auto tasks = parsed.find("tasks");
+
     if (tasks == parsed.end() || !tasks->is_array())
     {
         return;
     }
+
     for (const auto& task : *tasks)
     {
         const std::string taskId = jsonField(task, "task_id");
+
         if (taskId.empty() || !m_deduper.markIfNew(taskId))
         {
             continue; // Duplicate (at-least-once) or unidentifiable.
         }
+
         m_sink.onTask(taskId, jsonField(task, "type"), jsonField(task, "payload"));
     }
 }
 
 ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
 {
-    switch (outcome)
+    if (outcome == OutcomeClass::Ok)
     {
-        case OutcomeClass::Ok: return ControlStateMachine::Event::NotifyOk;
-        case OutcomeClass::AuthFail: return ControlStateMachine::Event::AuthFailed;
-        case OutcomeClass::VersionRejected: return ControlStateMachine::Event::StartupRejected;
-        default: return ControlStateMachine::Event::TransientFailure;
+        return ControlStateMachine::Event::NotifyOk;
     }
+
+    if (outcome == OutcomeClass::AuthFail)
+    {
+        return ControlStateMachine::Event::AuthFailed;
+    }
+
+    if (outcome == OutcomeClass::VersionRejected)
+    {
+        return ControlStateMachine::Event::StartupRejected;
+    }
+
+    return ControlStateMachine::Event::TransientFailure;
 }

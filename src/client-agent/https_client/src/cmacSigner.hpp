@@ -34,46 +34,46 @@ struct SignedHeaders
 /// every retry freshly; RetrySender enforces that.
 class ISigner
 {
-public:
-    virtual ~ISigner() = default;
+    public:
+        virtual ~ISigner() = default;
 
-    virtual std::optional<SignedHeaders> sign(const std::string& method, const std::string& target,
-                                              const uint8_t* body, size_t bodyLength,
-                                              std::time_t timestamp) const = 0;
-
-    /// File-backed bodies (spooled /stateful sessions): the MAC is computed
-    /// incrementally over the file so peak memory stays flat.
-    virtual std::optional<SignedHeaders> signFile(const std::string& method,
-                                                  const std::string& target,
-                                                  const std::string& bodyFilePath,
+        virtual std::optional<SignedHeaders> sign(const std::string& method, const std::string& target,
+                                                  const uint8_t* body, size_t bodyLength,
                                                   std::time_t timestamp) const = 0;
+
+        /// File-backed bodies (spooled /stateful sessions): the MAC is computed
+        /// incrementally over the file so peak memory stays flat.
+        virtual std::optional<SignedHeaders> signFile(const std::string& method,
+                                                      const std::string& target,
+                                                      const std::string& bodyFilePath,
+                                                      std::time_t timestamp) const = 0;
 };
 
 /// AES-CMAC over the canonical request via OpenSSL 3 EVP_MAC (the vendored
 /// crypto; no new dependency).
 class CmacSigner final : public ISigner
 {
-public:
-    CmacSigner(std::string agentId, const IKeyProvider& keyProvider);
+    public:
+        CmacSigner(std::string agentId, const IKeyProvider& keyProvider);
 
-    std::optional<SignedHeaders> sign(const std::string& method, const std::string& target,
-                                      const uint8_t* body, size_t bodyLength,
-                                      std::time_t timestamp) const override;
-
-    std::optional<SignedHeaders> signFile(const std::string& method, const std::string& target,
-                                          const std::string& bodyFilePath,
+        std::optional<SignedHeaders> sign(const std::string& method, const std::string& target,
+                                          const uint8_t* body, size_t bodyLength,
                                           std::time_t timestamp) const override;
 
-    /// AES-CMAC(key, message) as 32 lowercase hex chars. Exposed so tests can
-    /// pin the RFC 4493 vectors directly.
-    static std::optional<std::string> macHex(const std::vector<uint8_t>& key,
-                                             const uint8_t* message, size_t messageLength);
+        std::optional<SignedHeaders> signFile(const std::string& method, const std::string& target,
+                                              const std::string& bodyFilePath,
+                                              std::time_t timestamp) const override;
 
-private:
-    SignedHeaders makeHeaders(std::time_t timestamp, const std::string& macHexDigest) const;
+        /// AES-CMAC(key, message) as 32 lowercase hex chars. Exposed so tests can
+        /// pin the RFC 4493 vectors directly.
+        static std::optional<std::string> macHex(const std::vector<uint8_t>& key,
+                                                 const uint8_t* message, size_t messageLength);
 
-    std::string m_agentId;
-    const IKeyProvider& m_keyProvider;
+    private:
+        SignedHeaders makeHeaders(std::time_t timestamp, const std::string& macHexDigest) const;
+
+        std::string m_agentId;
+        const IKeyProvider& m_keyProvider;
 };
 
 #endif // _HC_CMAC_SIGNER_HPP

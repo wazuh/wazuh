@@ -34,15 +34,18 @@ HttpsClientFacade::~HttpsClientFacade()
 bool HttpsClientFacade::start()
 {
     std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+
     if (m_started)
     {
         LOGFN_WARN(m_logFn, "https_client already started, ignoring start request.");
         return true;
     }
+
     if (!m_config.validate(m_fsProbe, m_logFn))
     {
         return false; // Fail closed: nothing starts.
     }
+
     LOGFN_INFO(m_logFn,
                "Starting https_client (server=%s:%u, agent=%s).",
                m_config.serverHost.c_str(),
@@ -61,10 +64,12 @@ void HttpsClientFacade::stop()
 {
     {
         std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+
         if (!m_started)
         {
             return;
         }
+
         m_started = false;
     }
     LOGFN_INFO(m_logFn, "Stopping https_client.");
@@ -79,10 +84,12 @@ void HttpsClientFacade::stop()
     {
         m_controlThread.join();
     }
+
     if (m_statelessThread.joinable())
     {
         m_statelessThread.join();
     }
+
     if (m_statefulThread.joinable())
     {
         m_statefulThread.join();
@@ -99,10 +106,12 @@ void HttpsClientFacade::controlLoop()
     while (true)
     {
         const bool registered = m_control.step(m_controlWaiter, false);
+
         if (registered)
         {
             m_gate.open();
         }
+
         if (!m_controlWaiter.waitFor(controlInterval()))
         {
             break;
@@ -116,9 +125,11 @@ void HttpsClientFacade::statelessLoop()
     {
         return; // Aborted before registration.
     }
+
     while (true)
     {
         m_stateless.tick(m_statelessWaiter, false);
+
         if (!m_statelessWaiter.waitFor(std::chrono::milliseconds {m_config.batchIntervalMs}))
         {
             break;
@@ -132,6 +143,7 @@ void HttpsClientFacade::statefulLoop()
     {
         return;
     }
+
     while (true)
     {
         while (m_stateful.step(m_statefulWaiter))
@@ -141,6 +153,7 @@ void HttpsClientFacade::statefulLoop()
                 return;
             }
         }
+
         if (!m_statefulWaiter.waitFor(std::chrono::milliseconds {m_config.batchIntervalMs}))
         {
             break;
@@ -154,6 +167,7 @@ void HttpsClientFacade::drain()
     {
         return; // Never registered: nothing to flush toward the manager.
     }
+
     m_stateless.tick(m_drainWaiter, true); // One final forced flush.
     m_control.step(m_drainWaiter, true);   // Final Notify with shutdown status.
 }
@@ -171,6 +185,7 @@ bool HttpsClientFacade::submitEvent(const uint8_t* frame, size_t length)
     {
         return false;
     }
+
     return m_stateless.submit(frame, length);
 }
 
@@ -180,6 +195,7 @@ bool HttpsClientFacade::submitSyncSession(const char* sessionId, const uint8_t* 
     {
         return false;
     }
+
     const bool queued = m_stateful.submit(sessionId, buffer, length);
     m_statefulWaiter.notify(); // Wake the sender promptly.
     return queued;
@@ -191,6 +207,7 @@ bool HttpsClientFacade::submitTaskResponse(const char* taskId, const char* resul
     {
         return false;
     }
+
     m_control.queueTaskResponse(taskId, resultJson);
     return true;
 }

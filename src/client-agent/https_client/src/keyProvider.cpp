@@ -21,14 +21,17 @@ namespace
         {
             return character - '0';
         }
+
         if (character >= 'a' && character <= 'f')
         {
             return character - 'a' + 10;
         }
+
         if (character >= 'A' && character <= 'F')
         {
             return character - 'A' + 10;
         }
+
         return -1;
     }
 } // namespace
@@ -44,16 +47,21 @@ std::optional<std::vector<uint8_t>> ConfigKeyProvider::cmacKey() const
     {
         return std::nullopt;
     }
+
     std::vector<uint8_t> key(KEY_BYTES);
+
     for (size_t index = 0; index < KEY_BYTES; index++)
     {
         const int high = hexNibble(m_keyHex[2 * index]);
         const int low = hexNibble(m_keyHex[2 * index + 1]);
+
         if (high < 0 || low < 0)
         {
             return std::nullopt;
         }
+
         key[index] = static_cast<uint8_t>((high << 4) | low);
     }
+
     return key;
 }

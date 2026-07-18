@@ -35,44 +35,44 @@
  */
 class ControlStream final
 {
-public:
-    ControlStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
-                  IClock& clock, IRandom& random, ICallbackSink& sink);
+    public:
+        ControlStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
+                      IClock& clock, IRandom& random, ICallbackSink& sink);
 
-    /// One control iteration. Returns whether Startup has been accepted (the
-    /// producer gate is open) so the facade can gate the data streams.
-    bool step(Waiter& waiter, bool shuttingDown);
+        /// One control iteration. Returns whether Startup has been accepted (the
+        /// producer gate is open) so the facade can gate the data streams.
+        bool step(Waiter& waiter, bool shuttingDown);
 
-    /// Queue a task result for the next Response.
-    void queueTaskResponse(const std::string& taskId, const std::string& resultJson);
+        /// Queue a task result for the next Response.
+        void queueTaskResponse(const std::string& taskId, const std::string& resultJson);
 
-    hc_conn_state_t connState() const;
-    bool isRegistered() const;
+        hc_conn_state_t connState() const;
+        bool isRegistered() const;
 
-    /// True while retrying Startup (Rejected/AuthError): use the slow cadence.
-    bool useSlowCadence() const
-    {
-        return m_machine.useSlowCadence();
-    }
+        /// True while retrying Startup (Rejected/AuthError): use the slow cadence.
+        bool useSlowCadence() const
+        {
+            return m_machine.useSlowCadence();
+        }
 
-private:
-    OutcomeClass sendStartup(Waiter& waiter);
-    OutcomeClass sendNotify(Waiter& waiter, bool shuttingDown);
-    void sendPendingResponses(Waiter& waiter);
-    void applyEffects(const ControlStateMachine::Effects& effects, const std::string& handshake);
-    void handleNotifyBody(const std::string& body);
-    void dispatchTasks(const std::string& body);
-    ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
+    private:
+        OutcomeClass sendStartup(Waiter& waiter);
+        OutcomeClass sendNotify(Waiter& waiter, bool shuttingDown);
+        void sendPendingResponses(Waiter& waiter);
+        void applyEffects(const ControlStateMachine::Effects& effects, const std::string& handshake);
+        void handleNotifyBody(const std::string& body);
+        void dispatchTasks(const std::string& body);
+        ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
 
-    const ModuleConfig& m_config;
-    Backoff m_backoff;
-    RetrySender m_sender;
-    ICallbackSink& m_sink;
-    ControlStateMachine m_machine;
-    TaskDeduper m_deduper;
+        const ModuleConfig& m_config;
+        Backoff m_backoff;
+        RetrySender m_sender;
+        ICallbackSink& m_sink;
+        ControlStateMachine m_machine;
+        TaskDeduper m_deduper;
 
-    std::mutex m_responseMutex;
-    std::vector<std::pair<std::string, std::string>> m_pendingResponses;
+        std::mutex m_responseMutex;
+        std::vector<std::pair<std::string, std::string>> m_pendingResponses;
 };
 
 #endif // _HC_CONTROL_STREAM_HPP

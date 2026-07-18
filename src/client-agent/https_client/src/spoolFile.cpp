@@ -24,6 +24,7 @@ namespace
 #else
         const char* candidates[] = {std::getenv("TMPDIR"), "/tmp"};
 #endif
+
         for (const char* candidate : candidates)
         {
             if (candidate != nullptr && candidate[0] != '\0')
@@ -31,6 +32,7 @@ namespace
                 return candidate;
             }
         }
+
         return "."; // LCOV_EXCL_LINE: at least one candidate is always set in practice.
     }
 
@@ -67,6 +69,7 @@ SpoolFile& SpoolFile::operator=(SpoolFile&& other) noexcept
         m_path = std::move(other.m_path);
         other.m_path.clear();
     }
+
     return *this;
 }
 
@@ -87,20 +90,25 @@ std::unique_ptr<SpoolFile> TempSpoolFactory::spool(const uint8_t* buffer, size_t
 {
     const std::string path = uniquePath();
     std::ofstream file {path, std::ios::binary | std::ios::trunc};
+
     if (!file)
     {
         return nullptr;
     }
+
     if (length > 0)
     {
         file.write(reinterpret_cast<const char*>(buffer), static_cast<std::streamsize>(length));
     }
+
     file.close();
+
     if (!file)
     {
         std::remove(path.c_str()); // LCOV_EXCL_LINE: write failure is not reproducible in tests.
         return nullptr;            // LCOV_EXCL_LINE
     }
+
     return std::make_unique<SpoolFile>(path);
 }
 

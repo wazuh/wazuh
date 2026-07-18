@@ -105,15 +105,19 @@ TEST(EventAccumulatorTest, LadderThresholdsBothDirections)
     const std::string frame(8, 'x'); // 11-byte line.
 
     EXPECT_EQ(HC_BUFFER_NORMAL, accumulator.level());
+
     for (int index = 0; index < 5; index++) // 55 bytes -> 55% -> WARNING.
     {
         append(accumulator, frame);
     }
+
     EXPECT_EQ(HC_BUFFER_WARNING, accumulator.level());
+
     for (int index = 0; index < 2; index++) // 77 bytes -> 77% -> FULL.
     {
         append(accumulator, frame);
     }
+
     EXPECT_EQ(HC_BUFFER_FULL, accumulator.level());
     append(accumulator, frame); // 88 bytes.
     append(accumulator, frame); // 99 bytes -> 99% -> FLOOD.

@@ -29,48 +29,48 @@
  */
 struct ModuleConfig
 {
-    std::string serverHost;
-    uint16_t serverPort {443};
-    std::string agentId;
-    std::string agentKeyHex;
-    hc_verify_mode_t verifyMode {HC_VERIFY_FULL};
-    std::string caPath;
-    std::string clientCert;
-    std::string clientKey;
-    std::string ciphers;
+        std::string serverHost;
+        uint16_t serverPort {443};
+        std::string agentId;
+        std::string agentKeyHex;
+        hc_verify_mode_t verifyMode {HC_VERIFY_FULL};
+        std::string caPath;
+        std::string clientCert;
+        std::string clientKey;
+        std::string ciphers;
 
-    uint64_t batchSizeBytes {1024 * 1024};
-    uint32_t batchIntervalMs {10000};
-    uint32_t bufferCapMultiplier {4};
+        uint64_t batchSizeBytes {1024 * 1024};
+        uint32_t batchIntervalMs {10000};
+        uint32_t bufferCapMultiplier {4};
 
-    uint32_t notifyIntervalS {20};
-    uint32_t rejectedRetryIntervalS {60};
+        uint32_t notifyIntervalS {20};
+        uint32_t rejectedRetryIntervalS {60};
 
-    std::string version;
-    std::string configChecksum;
+        std::string version;
+        std::string configChecksum;
 
-    uint32_t requestTimeoutMs {10000};
-    uint32_t statefulTimeoutMs {120000};
-    uint32_t backoffBaseMs {1000};
-    uint32_t backoffCapMs {60000};
-    uint32_t drainTimeoutMs {5000};
+        uint32_t requestTimeoutMs {10000};
+        uint32_t statefulTimeoutMs {120000};
+        uint32_t backoffBaseMs {1000};
+        uint32_t backoffCapMs {60000};
+        uint32_t drainTimeoutMs {5000};
 
-    std::string spoolDir;
+        std::string spoolDir;
 
-    // Always "https" in production (fromC never changes it); the component
-    // test overrides it to "http" to drive the real curl path against a
-    // plaintext fake manager.
-    std::string scheme {"https"};
+        // Always "https" in production (fromC never changes it); the component
+        // test overrides it to "http" to drive the real curl path against a
+        // plaintext fake manager.
+        std::string scheme {"https"};
 
-    static ModuleConfig fromC(const hc_config_t& config);
+        static ModuleConfig fromC(const hc_config_t& config);
 
-    bool validate(const IFsProbe& fsProbe, const LogFn& logFn) const;
+        bool validate(const IFsProbe& fsProbe, const LogFn& logFn) const;
 
-    std::string baseUrl() const;
+        std::string baseUrl() const;
 
-private:
-    bool validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const;
-    bool validateClientCert(const IFsProbe& fsProbe, const LogFn& logFn) const;
+    private:
+        bool validateTls(const IFsProbe& fsProbe, const LogFn& logFn) const;
+        bool validateClientCert(const IFsProbe& fsProbe, const LogFn& logFn) const;
 };
 
 #endif // _HC_MODULE_CONFIG_HPP

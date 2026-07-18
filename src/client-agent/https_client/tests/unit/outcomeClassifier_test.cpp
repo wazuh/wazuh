@@ -81,11 +81,11 @@ TEST(OutcomeClassifierTest, AbortedIsInterruptedNeverOk)
 
 TEST(OutcomeClassifierTest, HcResultMapping)
 {
-    EXPECT_EQ(HC_OK, toHcResult(OutcomeClass::Ok));
-    EXPECT_EQ(HC_RETRYABLE, toHcResult(OutcomeClass::Retryable));
-    EXPECT_EQ(HC_BACKPRESSURE, toHcResult(OutcomeClass::BackPressure));
-    EXPECT_EQ(HC_AUTH_FAIL, toHcResult(OutcomeClass::AuthFail));
-    EXPECT_EQ(HC_PERMANENT, toHcResult(OutcomeClass::Permanent));
-    EXPECT_EQ(HC_PERMANENT, toHcResult(OutcomeClass::VersionRejected));
-    EXPECT_EQ(HC_ERROR, toHcResult(OutcomeClass::Interrupted));
+    EXPECT_EQ(HC_RESULT_OK, toHcResult(OutcomeClass::Ok));
+    EXPECT_EQ(HC_RESULT_RETRYABLE, toHcResult(OutcomeClass::Retryable));
+    EXPECT_EQ(HC_RESULT_BACKPRESSURE, toHcResult(OutcomeClass::BackPressure));
+    EXPECT_EQ(HC_RESULT_AUTH_FAIL, toHcResult(OutcomeClass::AuthFail));
+    EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::Permanent));
+    EXPECT_EQ(HC_RESULT_PERMANENT, toHcResult(OutcomeClass::VersionRejected));
+    EXPECT_EQ(HC_RESULT_ERROR, toHcResult(OutcomeClass::Interrupted));
 }

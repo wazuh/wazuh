@@ -37,40 +37,40 @@ namespace
 
     class StatelessStreamTest : public ::testing::Test
     {
-    protected:
-        StatelessStreamTest()
-            : m_signer("001", m_keyProvider)
-            , m_config(makeConfig())
-            , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink)
-        {
-        }
+        protected:
+            StatelessStreamTest()
+                : m_signer("001", m_keyProvider)
+                , m_config(makeConfig())
+                , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink)
+            {
+            }
 
-        static ModuleConfig makeConfig()
-        {
-            hc_config_t config {};
-            std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
-            std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
-            config.verify_mode = HC_VERIFY_NONE;
-            config.batch_size_bytes = 16; // Small so a couple of events trigger a flush.
-            config.batch_interval_ms = 5000;
-            config.buffer_cap_multiplier = 4;
-            return ModuleConfig::fromC(config);
-        }
+            static ModuleConfig makeConfig()
+            {
+                hc_config_t config {};
+                std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
+                std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
+                config.verify_mode = HC_VERIFY_NONE;
+                config.batch_size_bytes = 16; // Small so a couple of events trigger a flush.
+                config.batch_interval_ms = 5000;
+                config.buffer_cap_multiplier = 4;
+                return ModuleConfig::fromC(config);
+            }
 
-        bool submit(const std::string& frame)
-        {
-            return m_stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
-        }
+            bool submit(const std::string& frame)
+            {
+                return m_stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+            }
 
-        ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
-        CmacSigner m_signer;
-        ModuleConfig m_config;
-        FakeClock m_clock;
-        ScriptedRandom m_random {{0.0}}; // Zero jitter keeps deferrals deterministic.
-        NiceMock<MockCallbackSink> m_sink;
-        MockHttpPerformer m_performer;
-        FakeWaiter m_waiter;
-        StatelessStream m_stream;
+            ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
+            CmacSigner m_signer;
+            ModuleConfig m_config;
+            FakeClock m_clock;
+            ScriptedRandom m_random {{0.0}}; // Zero jitter keeps deferrals deterministic.
+            NiceMock<MockCallbackSink> m_sink;
+            MockHttpPerformer m_performer;
+            FakeWaiter m_waiter;
+            StatelessStream m_stream;
     };
 } // namespace
 
@@ -84,13 +84,13 @@ TEST_F(StatelessStreamTest, FlushOnSizeThresholdSendsHeaderAndEvents)
 {
     std::string sentBody;
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Invoke(
-            [&](const HttpRequestSpec& spec)
-            {
-                sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-                EXPECT_EQ("/stateless", spec.target);
-                return response(TransportStatus::Ok, 200);
-            }));
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        EXPECT_EQ("/stateless", spec.target);
+        return response(TransportStatus::Ok, 200);
+    }));
 
     submit("event-aaaa");
     submit("event-bbbb"); // Pushes the buffer past 16 bytes.
@@ -133,7 +133,7 @@ TEST_F(StatelessStreamTest, Permanent413DropsTheBatchWithoutRetry)
 TEST_F(StatelessStreamTest, RetryableKeepsTheBatch)
 {
     EXPECT_CALL(m_performer, perform(_))
-        .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
+    .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
     submit("event-aaaa");
     submit("event-bbbb");
     m_stream.tick(m_waiter, true); // force; the batch stays after failure.
@@ -163,8 +163,8 @@ TEST_F(StatelessStreamTest, BackPressureIsRetriedInsideOneFlushWhenWaiterAllows)
     // Retry-After and retries within the same tick.
     m_waiter.script({true});
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Return(response(TransportStatus::Ok, 503, 2)))
-        .WillOnce(Return(response(TransportStatus::Ok, 200)));
+    .WillOnce(Return(response(TransportStatus::Ok, 503, 2)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
     submit("event-aaaa");
     submit("event-bbbb");
     m_stream.tick(m_waiter, false);
@@ -179,6 +179,7 @@ TEST_F(StatelessStreamTest, BufferLevelEmittedOnlyOnChange)
     // cap = 16 * 4 = 64 bytes. Cross 50% (32 bytes) to reach WARNING.
     ::testing::InSequence sequence;
     EXPECT_CALL(m_sink, onBufferLevel(HC_BUFFER_WARNING)).Times(1);
+
     for (int index = 0; index < 3; index++) // 3 x 13-byte lines = 39 bytes.
     {
         submit("event-1234"); // "E event-1234\n" = 13 bytes.
@@ -189,6 +190,7 @@ TEST_F(StatelessStreamTest, DropNewestReturnsFalseAtCap)
 {
     // cap = 64 bytes; fill it, then the next append is dropped.
     bool anyDropped = false;
+
     for (int index = 0; index < 20; index++)
     {
         if (!submit("event-1234"))
@@ -196,5 +198,6 @@ TEST_F(StatelessStreamTest, DropNewestReturnsFalseAtCap)
             anyDropped = true;
         }
     }
+
     EXPECT_TRUE(anyDropped);
 }

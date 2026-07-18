@@ -26,9 +26,11 @@ std::vector<uint8_t> buildCanonicalRequest(const std::string& method, const std:
     std::vector<uint8_t> buffer;
     buffer.reserve(head.size() + bodyLength);
     buffer.insert(buffer.end(), head.begin(), head.end());
+
     if (body != nullptr && bodyLength > 0)
     {
         buffer.insert(buffer.end(), body, body + bodyLength);
     }
+
     return buffer;
 }

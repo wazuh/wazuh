@@ -25,34 +25,36 @@
  */
 class TaskDeduper final
 {
-public:
-    explicit TaskDeduper(size_t capacity = 4096)
-        : m_capacity(capacity == 0 ? 1 : capacity)
-    {
-    }
-
-    /// Records the id. Returns true if it is new (should be dispatched),
-    /// false if it was already seen (drop).
-    bool markIfNew(const std::string& taskId)
-    {
-        if (m_seen.count(taskId) != 0)
+    public:
+        explicit TaskDeduper(size_t capacity = 4096)
+            : m_capacity(capacity == 0 ? 1 : capacity)
         {
-            return false;
         }
-        if (m_order.size() >= m_capacity)
-        {
-            m_seen.erase(m_order.front());
-            m_order.pop_front();
-        }
-        m_seen.insert(taskId);
-        m_order.push_back(taskId);
-        return true;
-    }
 
-private:
-    size_t m_capacity;
-    std::unordered_set<std::string> m_seen;
-    std::deque<std::string> m_order;
+        /// Records the id. Returns true if it is new (should be dispatched),
+        /// false if it was already seen (drop).
+        bool markIfNew(const std::string& taskId)
+        {
+            if (m_seen.count(taskId) != 0)
+            {
+                return false;
+            }
+
+            if (m_order.size() >= m_capacity)
+            {
+                m_seen.erase(m_order.front());
+                m_order.pop_front();
+            }
+
+            m_seen.insert(taskId);
+            m_order.push_back(taskId);
+            return true;
+        }
+
+    private:
+        size_t m_capacity;
+        std::unordered_set<std::string> m_seen;
+        std::deque<std::string> m_order;
 };
 
 #endif // _HC_TASK_DEDUPER_HPP

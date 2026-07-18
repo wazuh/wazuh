@@ -47,11 +47,36 @@ namespace
         record->count++;
     }
 
+    void recordTag(const std::string& tag, Record* record)
+    {
+        std::lock_guard<std::mutex> lock(record->mutex);
+        record->order.push_back(tag);
+        record->count++;
+    }
+
+    void recordStartup(bool accepted, const char*, void* userData)
+    {
+        recordTag(accepted ? "startup:ok" : "startup:no", static_cast<Record*>(userData));
+    }
+
+    void recordSync(const char* sessionId, int, const char*, void* userData)
+    {
+        recordTag(std::string {"sync:"} + sessionId, static_cast<Record*>(userData));
+    }
+
+    void recordBuffer(int level, void* userData)
+    {
+        recordTag("buffer:" + std::to_string(level), static_cast<Record*>(userData));
+    }
+
     hc_callbacks_t makeCallbacks(Record* record)
     {
         hc_callbacks_t callbacks {};
+        callbacks.on_startup_result = recordStartup;
         callbacks.on_task = recordTask;
+        callbacks.on_sync_response = recordSync;
         callbacks.on_state_change = recordState;
+        callbacks.on_buffer_level = recordBuffer;
         callbacks.user_data = record;
         return callbacks;
     }
@@ -75,19 +100,23 @@ TEST(CallbackDispatcherTest, DeliversInSubmissionOrderOnOneThread)
     {
         dispatcher.onTask("task-" + std::to_string(index), "ar", "{}");
     }
+
     waitForCount(record, 20);
     dispatcher.stop();
 
     ASSERT_EQ(20u, record.order.size());
+
     for (int index = 0; index < 20; index++)
     {
         EXPECT_EQ("task-" + std::to_string(index), record.order[index]); // FIFO.
     }
+
     // Every callback ran on the same (single) dispatcher thread.
     for (const auto& id : record.threads)
     {
         EXPECT_EQ(record.threads.front(), id);
     }
+
     EXPECT_NE(std::this_thread::get_id(), record.threads.front());
 }
 
@@ -96,11 +125,13 @@ TEST(CallbackDispatcherTest, StopDrainsQueuedCallbacks)
     Record record;
     CallbackDispatcher dispatcher {makeCallbacks(&record)};
     dispatcher.start();
+
     for (int index = 0; index < 50; index++)
     {
         dispatcher.onStateChange(HC_STATE_REGISTERED);
         dispatcher.onTask("t" + std::to_string(index), "ar", "{}");
     }
+
     dispatcher.stop(); // Must run everything already queued before joining.
     EXPECT_EQ(100, record.count.load());
 }
@@ -126,6 +157,32 @@ TEST(CallbackDispatcherTest, NullCallbacksAreSafe)
     dispatcher.onStartupResult(true, "{}");
     dispatcher.onBufferLevel(HC_BUFFER_NORMAL);
     dispatcher.stop(); // No crash despite null handlers.
+}
+
+TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
+{
+    Record record;
+    CallbackDispatcher dispatcher {makeCallbacks(&record)};
+    dispatcher.start();
+    dispatcher.onStartupResult(true, R"({"limits":{}})");
+    dispatcher.onTask("t1", "active_response", "{}");
+    dispatcher.onSyncResponse("sess-1", 0, R"({"ok":true})");
+    dispatcher.onStateChange(HC_STATE_REGISTERED);
+    dispatcher.onBufferLevel(HC_BUFFER_WARNING);
+    waitForCount(record, 5);
+    dispatcher.stop();
+
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(), "startup:ok"));
+    EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "t1"));
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(), "sync:sess-1"));
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(),
+                        "state:" + std::to_string(HC_STATE_REGISTERED)));
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(),
+                        "buffer:" + std::to_string(HC_BUFFER_WARNING)));
 }
 
 TEST(CallbackDispatcherTest, DoubleStartAndDoubleStopAreSafe)

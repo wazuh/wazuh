@@ -24,20 +24,20 @@
  */
 class CurlPerformer final : public IHttpPerformer
 {
-public:
-    CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory);
+    public:
+        CurlPerformer(const ModuleConfig& config, CurlHandleFactory factory);
 
-    HttpResponse perform(const HttpRequestSpec& spec) override;
+        HttpResponse perform(const HttpRequestSpec& spec) override;
 
-private:
-    bool configureBody(ICurlHandle& handle, const HttpRequestSpec& spec,
-                       std::FILE** fileOut) const;
-    void configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
-                          HttpResponse& response) const;
-    void applyTls(ICurlHandle& handle) const;
+    private:
+        bool configureBody(ICurlHandle& handle, const HttpRequestSpec& spec,
+                           std::FILE** fileOut) const;
+        void configureRequest(ICurlHandle& handle, const HttpRequestSpec& spec,
+                              HttpResponse& response) const;
+        void applyTls(ICurlHandle& handle) const;
 
-    const ModuleConfig& m_config;
-    CurlHandleFactory m_factory;
+        const ModuleConfig& m_config;
+        CurlHandleFactory m_factory;
 };
 
 #endif // _HC_CURL_PERFORMER_HPP

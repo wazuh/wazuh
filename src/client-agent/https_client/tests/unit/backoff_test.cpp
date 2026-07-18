@@ -29,10 +29,12 @@ TEST(BackoffTest, CeilingIsCappedAndStaysCapped)
 {
     ScriptedRandom random {{1.0}};
     Backoff backoff {1000, 60000, random};
+
     for (int attempt = 0; attempt < 12; attempt++)
     {
         backoff.next();
     }
+
     EXPECT_EQ(60000u, backoff.currentCeilingMs());
     backoff.next();
     EXPECT_EQ(60000u, backoff.currentCeilingMs());
@@ -70,9 +72,11 @@ TEST(BackoffTest, AttemptShiftIsBoundedAgainstOverflow)
 {
     ScriptedRandom random {{1.0}};
     Backoff backoff {1000, 60000, random};
+
     for (int attempt = 0; attempt < 100; attempt++)
     {
         backoff.next(); // Must neither overflow nor exceed the cap.
     }
+
     EXPECT_EQ(60000u, backoff.currentCeilingMs());
 }

@@ -21,47 +21,47 @@
 /// the temp file never outlives the request even on failure/abort paths.
 class SpoolFile
 {
-public:
-    explicit SpoolFile(std::string path);
-    ~SpoolFile();
+    public:
+        explicit SpoolFile(std::string path);
+        ~SpoolFile();
 
-    SpoolFile(const SpoolFile&) = delete;
-    SpoolFile& operator=(const SpoolFile&) = delete;
-    SpoolFile(SpoolFile&& other) noexcept;
-    SpoolFile& operator=(SpoolFile&& other) noexcept;
+        SpoolFile(const SpoolFile&) = delete;
+        SpoolFile& operator=(const SpoolFile&) = delete;
+        SpoolFile(SpoolFile&& other) noexcept;
+        SpoolFile& operator=(SpoolFile&& other) noexcept;
 
-    const std::string& path() const
-    {
-        return m_path;
-    }
+        const std::string& path() const
+        {
+            return m_path;
+        }
 
-private:
-    void removeFile();
-    std::string m_path;
+    private:
+        void removeFile();
+        std::string m_path;
 };
 
 /// Creates spool files from a byte buffer. Injected so tests can force spool
 /// failures without touching the filesystem.
 class ISpoolFileFactory
 {
-public:
-    virtual ~ISpoolFileFactory() = default;
-    virtual std::unique_ptr<SpoolFile> spool(const uint8_t* buffer, size_t length) = 0;
+    public:
+        virtual ~ISpoolFileFactory() = default;
+        virtual std::unique_ptr<SpoolFile> spool(const uint8_t* buffer, size_t length) = 0;
 };
 
 /// Writes the buffer to a uniquely-named temp file under the configured spool
 /// directory (portable across POSIX and Windows; no mkstemp dependency).
 class TempSpoolFactory final : public ISpoolFileFactory
 {
-public:
-    explicit TempSpoolFactory(std::string spoolDir);
-    std::unique_ptr<SpoolFile> spool(const uint8_t* buffer, size_t length) override;
+    public:
+        explicit TempSpoolFactory(std::string spoolDir);
+        std::unique_ptr<SpoolFile> spool(const uint8_t* buffer, size_t length) override;
 
-private:
-    std::string uniquePath();
+    private:
+        std::string uniquePath();
 
-    std::string m_spoolDir;
-    uint64_t m_counter {0};
+        std::string m_spoolDir;
+        uint64_t m_counter {0};
 };
 
 #endif // _HC_SPOOL_FILE_HPP

@@ -46,6 +46,7 @@ std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
     {
         flushOnce(waiter);
     }
+
     return std::chrono::milliseconds {m_config.batchIntervalMs};
 }
 
@@ -57,17 +58,19 @@ hc_buffer_level_t StatelessStream::level() const
 bool StatelessStream::flushDue(bool force) const
 {
     if (m_accumulator.empty())
-    {
-        return false;
-    }
-    if (force)
-    {
-        return true;
-    }
-    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                             m_clock.steadyNow() - m_lastFlush)
-                             .count();
-    return m_accumulator.flushDue(static_cast<uint64_t>(elapsed));
+{
+    return false;
+}
+
+if (force)
+{
+    return true;
+}
+
+const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                         m_clock.steadyNow() - m_lastFlush)
+                     .count();
+return m_accumulator.flushDue(static_cast<uint64_t>(elapsed));
 }
 
 void StatelessStream::flushOnce(Waiter& waiter)
@@ -89,12 +92,14 @@ void StatelessStream::flushOnce(Waiter& waiter)
         m_accumulator.consume(snapshot); // 4xx (413) also drops the batch.
         publishLevel();
     }
+
     // BackPressure/Retryable/AuthFail/Interrupted: keep the batch for the next tick.
 }
 
 void StatelessStream::publishLevel()
 {
     const auto level = m_accumulator.level();
+
     if (level != m_lastLevel)
     {
         m_lastLevel = level;

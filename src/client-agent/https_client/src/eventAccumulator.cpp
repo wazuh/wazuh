@@ -15,15 +15,18 @@ std::string encodeEventLine(const uint8_t* frame, size_t length)
 {
     std::string line = "E ";
     line.reserve(length + 3);
+
     for (size_t index = 0; index < length; index++)
     {
         const char character = static_cast<char>(frame[index]);
         line.push_back(character);
+
         if (character == '\n')
         {
             line.push_back(' '); // Continuation escape: one leading space.
         }
     }
+
     line.push_back('\n');
     return line;
 }
@@ -40,10 +43,12 @@ bool EventAccumulator::append(const uint8_t* frame, size_t length)
 {
     const std::string line = encodeEventLine(frame, length);
     std::lock_guard<std::mutex> lock(m_mutex);
+
     if (m_buffer.size() + line.size() > m_capBytes)
     {
         return false; // Drop-newest.
     }
+
     m_buffer += line;
     m_eventCount++;
     return true;
@@ -52,11 +57,13 @@ bool EventAccumulator::append(const uint8_t* frame, size_t length)
 bool EventAccumulator::flushDue(uint64_t elapsedMs) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
+
     if (m_buffer.empty())
-    {
-        return false;
-    }
-    return m_buffer.size() >= m_batchSizeBytes || elapsedMs >= m_batchIntervalMs;
+{
+    return false;
+}
+
+return m_buffer.size() >= m_batchSizeBytes || elapsedMs >= m_batchIntervalMs;
 }
 
 bool EventAccumulator::empty() const
@@ -89,17 +96,21 @@ hc_buffer_level_t EventAccumulator::levelForLocked() const
 {
     // Occupancy of the whole bounded buffer, mapped onto the legacy ladder.
     const double occupancy = static_cast<double>(m_buffer.size()) / static_cast<double>(m_capBytes);
+
     if (occupancy >= 0.90)
     {
         return HC_BUFFER_FLOOD;
     }
+
     if (occupancy >= 0.75)
     {
         return HC_BUFFER_FULL;
     }
+
     if (occupancy >= 0.50)
     {
         return HC_BUFFER_WARNING;
     }
+
     return HC_BUFFER_NORMAL;
 }

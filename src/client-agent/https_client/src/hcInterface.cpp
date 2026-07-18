@@ -23,7 +23,7 @@ namespace Log
 {
     // Single definition of the DSO-global log sink used by loggerHelper.h.
     std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
-        GLOBAL_LOG_FUNCTION;
+    GLOBAL_LOG_FUNCTION;
 } // namespace Log
 
 struct hc_handle
@@ -49,12 +49,12 @@ namespace
                           const char* func,
                           const char* logMessage,
                           va_list args)
+        {
+            if (callbackLog)
             {
-                if (callbackLog)
-                {
-                    callbackLog(level, tag, file, line, func, logMessage, args);
-                }
-            });
+                callbackLog(level, tag, file, line, func, logMessage, args);
+            }
+        });
     }
 } // namespace
 
@@ -67,6 +67,7 @@ extern "C"
         {
             return nullptr;
         }
+
         try
         {
             assignModuleLogSink(callbacks->log);
@@ -84,6 +85,7 @@ extern "C"
         {
             return false;
         }
+
         try
         {
             return handle->impl.start();
@@ -100,6 +102,7 @@ extern "C"
         {
             return;
         }
+
         try
         {
             handle->impl.stop();
@@ -128,6 +131,7 @@ extern "C"
         {
             return false;
         }
+
         try
         {
             return handle->impl.submitEvent(frame, length);
@@ -139,12 +143,13 @@ extern "C"
     }
 
     bool hc_submit_sync_session(hc_handle* handle, const char* session_id, const uint8_t* buffer,
-                                size_t length)
+         size_t length)
     {
         if (handle == nullptr)
         {
             return false;
         }
+
         try
         {
             return handle->impl.submitSyncSession(session_id, buffer, length);
@@ -161,6 +166,7 @@ extern "C"
         {
             return false;
         }
+
         try
         {
             return handle->impl.submitTaskResponse(task_id, result_json);
@@ -177,6 +183,7 @@ extern "C"
         {
             return;
         }
+
         try
         {
             handle->impl.notifyNow();
@@ -193,6 +200,7 @@ extern "C"
         {
             return HC_STATE_STOPPED;
         }
+
         try
         {
             return handle->impl.state();

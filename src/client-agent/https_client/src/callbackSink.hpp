@@ -23,15 +23,15 @@
  */
 class ICallbackSink
 {
-public:
-    virtual ~ICallbackSink() = default;
+    public:
+        virtual ~ICallbackSink() = default;
 
-    virtual void onStartupResult(bool accepted, const std::string& handshakeJson) = 0;
-    virtual void onTask(const std::string& taskId, const std::string& taskType,
-                        const std::string& payloadJson) = 0;
-    virtual void onSyncResponse(const std::string& sessionId, int result, const std::string& body) = 0;
-    virtual void onStateChange(hc_conn_state_t state) = 0;
-    virtual void onBufferLevel(hc_buffer_level_t level) = 0;
+        virtual void onStartupResult(bool accepted, const std::string& handshakeJson) = 0;
+        virtual void onTask(const std::string& taskId, const std::string& taskType,
+                            const std::string& payloadJson) = 0;
+        virtual void onSyncResponse(const std::string& sessionId, int result, const std::string& body) = 0;
+        virtual void onStateChange(hc_conn_state_t state) = 0;
+        virtual void onBufferLevel(hc_buffer_level_t level) = 0;
 };
 
 #endif // _HC_CALLBACK_SINK_HPP

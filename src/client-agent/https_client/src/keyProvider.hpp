@@ -20,10 +20,10 @@
 /// Source of the AES-CMAC signing key.
 class IKeyProvider
 {
-public:
-    virtual ~IKeyProvider() = default;
-    /// The 16-byte AES-128 key, or nullopt when the material is unusable.
-    virtual std::optional<std::vector<uint8_t>> cmacKey() const = 0;
+    public:
+        virtual ~IKeyProvider() = default;
+        /// The 16-byte AES-128 key, or nullopt when the material is unusable.
+        virtual std::optional<std::vector<uint8_t>> cmacKey() const = 0;
 };
 
 /**
@@ -37,12 +37,12 @@ public:
  */
 class ConfigKeyProvider final : public IKeyProvider
 {
-public:
-    explicit ConfigKeyProvider(std::string keyHex);
-    std::optional<std::vector<uint8_t>> cmacKey() const override;
+    public:
+        explicit ConfigKeyProvider(std::string keyHex);
+        std::optional<std::vector<uint8_t>> cmacKey() const override;
 
-private:
-    std::string m_keyHex;
+    private:
+        std::string m_keyHex;
 };
 
 #endif // _HC_KEY_PROVIDER_HPP

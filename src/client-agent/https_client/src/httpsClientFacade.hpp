@@ -48,59 +48,59 @@ constexpr auto HTTPS_CLIENT_LOGTAG {"wazuh-agentd:https-client"}; ///< Tag used 
  */
 class HttpsClientFacade final
 {
-public:
-    HttpsClientFacade(const hc_config_t& config, const hc_callbacks_t& callbacks);
-    ~HttpsClientFacade();
+    public:
+        HttpsClientFacade(const hc_config_t& config, const hc_callbacks_t& callbacks);
+        ~HttpsClientFacade();
 
-    HttpsClientFacade(const HttpsClientFacade&) = delete;
-    HttpsClientFacade& operator=(const HttpsClientFacade&) = delete;
+        HttpsClientFacade(const HttpsClientFacade&) = delete;
+        HttpsClientFacade& operator=(const HttpsClientFacade&) = delete;
 
-    bool start();
-    void stop();
+        bool start();
+        void stop();
 
-    bool submitEvent(const uint8_t* frame, size_t length);
-    bool submitSyncSession(const char* sessionId, const uint8_t* buffer, size_t length);
-    bool submitTaskResponse(const char* taskId, const char* resultJson);
-    void notifyNow();
-    hc_conn_state_t state() const;
+        bool submitEvent(const uint8_t* frame, size_t length);
+        bool submitSyncSession(const char* sessionId, const uint8_t* buffer, size_t length);
+        bool submitTaskResponse(const char* taskId, const char* resultJson);
+        void notifyNow();
+        hc_conn_state_t state() const;
 
-private:
-    void controlLoop();
-    void statelessLoop();
-    void statefulLoop();
-    void drain();
-    std::chrono::milliseconds controlInterval() const;
+    private:
+        void controlLoop();
+        void statelessLoop();
+        void statefulLoop();
+        void drain();
+        std::chrono::milliseconds controlInterval() const;
 
-    ModuleConfig m_config;
-    const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
+        ModuleConfig m_config;
+        const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 
-    // Seams (built once; stable references handed to the streams).
-    SystemClock m_clock;
-    Mt19937Random m_random;
-    FsProbe m_fsProbe;
-    ConfigKeyProvider m_keyProvider;
-    CmacSigner m_signer;
-    TempSpoolFactory m_spoolFactory;
-    CurlPerformer m_performer;
-    CallbackDispatcher m_dispatcher;
+        // Seams (built once; stable references handed to the streams).
+        SystemClock m_clock;
+        Mt19937Random m_random;
+        FsProbe m_fsProbe;
+        ConfigKeyProvider m_keyProvider;
+        CmacSigner m_signer;
+        TempSpoolFactory m_spoolFactory;
+        CurlPerformer m_performer;
+        CallbackDispatcher m_dispatcher;
 
-    StatelessStream m_stateless;
-    StatefulStream m_stateful;
-    ControlStream m_control;
+        StatelessStream m_stateless;
+        StatefulStream m_stateful;
+        ControlStream m_control;
 
-    // One waiter per stream thread; the stop flag doubles as the abort flag.
-    Waiter m_controlWaiter;
-    Waiter m_statelessWaiter;
-    Waiter m_statefulWaiter;
-    Waiter m_drainWaiter; ///< Fresh (never stopped) so the final drain can run.
-    RegistrationGate m_gate;
+        // One waiter per stream thread; the stop flag doubles as the abort flag.
+        Waiter m_controlWaiter;
+        Waiter m_statelessWaiter;
+        Waiter m_statefulWaiter;
+        Waiter m_drainWaiter; ///< Fresh (never stopped) so the final drain can run.
+        RegistrationGate m_gate;
 
-    std::thread m_controlThread;
-    std::thread m_statelessThread;
-    std::thread m_statefulThread;
+        std::thread m_controlThread;
+        std::thread m_statelessThread;
+        std::thread m_statefulThread;
 
-    mutable std::mutex m_lifecycleMutex;
-    bool m_started {false};
+        mutable std::mutex m_lifecycleMutex;
+        bool m_started {false};
 };
 
 #endif // _HTTPS_CLIENT_FACADE_HPP

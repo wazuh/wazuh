@@ -21,9 +21,9 @@
  */
 class IHttpPerformer
 {
-public:
-    virtual ~IHttpPerformer() = default;
-    virtual HttpResponse perform(const HttpRequestSpec& spec) = 0;
+    public:
+        virtual ~IHttpPerformer() = default;
+        virtual HttpResponse perform(const HttpRequestSpec& spec) = 0;
 };
 
 #endif // _HC_I_HTTP_PERFORMER_HPP

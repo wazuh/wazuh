@@ -39,31 +39,31 @@ namespace
 
     class RetrySenderTest : public ::testing::Test
     {
-    protected:
-        RetrySenderTest()
-            : m_signer("001", m_keyProvider)
-            , m_backoff(1000, 60000, m_random)
-            , m_sender(m_performer, m_signer, m_clock, m_backoff)
-        {
-        }
+        protected:
+            RetrySenderTest()
+                : m_signer("001", m_keyProvider)
+                , m_backoff(1000, 60000, m_random)
+                , m_sender(m_performer, m_signer, m_clock, m_backoff)
+            {
+            }
 
-        HttpRequestSpec makeSpec()
-        {
-            HttpRequestSpec spec;
-            spec.target = "/stateless";
-            spec.body = reinterpret_cast<const uint8_t*>("body");
-            spec.bodyLength = 4;
-            return spec;
-        }
+            HttpRequestSpec makeSpec()
+            {
+                HttpRequestSpec spec;
+                spec.target = "/stateless";
+                spec.body = reinterpret_cast<const uint8_t*>("body");
+                spec.bodyLength = 4;
+                return spec;
+            }
 
-        ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
-        CmacSigner m_signer;
-        FakeClock m_clock;
-        ScriptedRandom m_random {{1.0}}; // Jitter always hits the window ceiling.
-        Backoff m_backoff;
-        MockHttpPerformer m_performer;
-        FakeWaiter m_waiter;
-        RetrySender m_sender;
+            ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
+            CmacSigner m_signer;
+            FakeClock m_clock;
+            ScriptedRandom m_random {{1.0}}; // Jitter always hits the window ceiling.
+            Backoff m_backoff;
+            MockHttpPerformer m_performer;
+            FakeWaiter m_waiter;
+            RetrySender m_sender;
     };
 } // namespace
 
@@ -71,12 +71,12 @@ TEST_F(RetrySenderTest, SuccessOnFirstAttemptSignsAndResetsBackoff)
 {
     std::vector<std::string> seenHeaders;
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Invoke(
-            [&](const HttpRequestSpec& spec)
-            {
-                seenHeaders = spec.headers;
-                return response(TransportStatus::Ok, 200);
-            }));
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        seenHeaders = spec.headers;
+        return response(TransportStatus::Ok, 200);
+    }));
 
     m_backoff.next(); // Pre-dirty the backoff to observe the reset.
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
@@ -93,14 +93,14 @@ TEST_F(RetrySenderTest, EveryRetryIsFreshlySigned)
 {
     std::vector<std::string> authorizations;
     EXPECT_CALL(m_performer, perform(_))
-        .Times(2)
-        .WillRepeatedly(Invoke(
-            [&](const HttpRequestSpec& spec)
-            {
-                authorizations.push_back(spec.headers.back());
-                m_clock.advance(std::chrono::seconds {5}); // Time passes between attempts.
-                return response(TransportStatus::Ok, 500);
-            }));
+    .Times(2)
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        authorizations.push_back(spec.headers.back());
+        m_clock.advance(std::chrono::seconds {5}); // Time passes between attempts.
+        return response(TransportStatus::Ok, 500);
+    }));
     m_waiter.script({true});
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 2);
@@ -114,8 +114,8 @@ TEST_F(RetrySenderTest, EveryRetryIsFreshlySigned)
 TEST_F(RetrySenderTest, ServerRetryAfterWinsWhenLonger)
 {
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Return(response(TransportStatus::Ok, 503, 90)))
-        .WillOnce(Return(response(TransportStatus::Ok, 200)));
+    .WillOnce(Return(response(TransportStatus::Ok, 503, 90)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
     m_waiter.script({true});
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
@@ -128,8 +128,8 @@ TEST_F(RetrySenderTest, ServerRetryAfterWinsWhenLonger)
 TEST_F(RetrySenderTest, BackoffWinsOverShorterRetryAfter)
 {
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Return(response(TransportStatus::Ok, 503, 0))) // Retry-After absent.
-        .WillOnce(Return(response(TransportStatus::Ok, 200)));
+    .WillOnce(Return(response(TransportStatus::Ok, 503, 0))) // Retry-After absent.
+    .WillOnce(Return(response(TransportStatus::Ok, 200)));
     m_waiter.script({true});
 
     m_sender.send(makeSpec(), m_waiter, 4);
@@ -171,7 +171,7 @@ TEST_F(RetrySenderTest, StopDuringTheDelayInterrupts)
 TEST_F(RetrySenderTest, AbortedTransferSurfacesAsInterrupted)
 {
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Return(response(TransportStatus::Aborted, 0)));
+    .WillOnce(Return(response(TransportStatus::Aborted, 0)));
     const auto result = m_sender.send(makeSpec(), m_waiter, 4);
     EXPECT_EQ(OutcomeClass::Interrupted, result.outcome);
     EXPECT_TRUE(m_waiter.requestedDelays().empty()); // Never waits after an abort.
@@ -180,8 +180,8 @@ TEST_F(RetrySenderTest, AbortedTransferSurfacesAsInterrupted)
 TEST_F(RetrySenderTest, MaxAttemptsBoundsTheLoop)
 {
     EXPECT_CALL(m_performer, perform(_))
-        .Times(3)
-        .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
+    .Times(3)
+    .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
     m_waiter.script({true, true, true});
 
     const auto result = m_sender.send(makeSpec(), m_waiter, 3);
@@ -194,12 +194,12 @@ TEST_F(RetrySenderTest, WaiterStopFlagIsWiredAsTheAbortFlag)
 {
     const std::atomic<bool>* seenFlag = nullptr;
     EXPECT_CALL(m_performer, perform(_))
-        .WillOnce(Invoke(
-            [&](const HttpRequestSpec& spec)
-            {
-                seenFlag = spec.abortFlag;
-                return response(TransportStatus::Ok, 200);
-            }));
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        seenFlag = spec.abortFlag;
+        return response(TransportStatus::Ok, 200);
+    }));
     m_sender.send(makeSpec(), m_waiter, 1);
     EXPECT_EQ(m_waiter.stopFlag(), seenFlag);
 }

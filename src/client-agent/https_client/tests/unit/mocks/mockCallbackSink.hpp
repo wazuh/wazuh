@@ -18,16 +18,16 @@
 
 class MockCallbackSink : public ICallbackSink
 {
-public:
-    MOCK_METHOD(void, onStartupResult, (bool accepted, const std::string& handshakeJson), (override));
-    MOCK_METHOD(void, onTask,
-                (const std::string& taskId, const std::string& taskType,
-                 const std::string& payloadJson),
-                (override));
-    MOCK_METHOD(void, onSyncResponse,
-                (const std::string& sessionId, int result, const std::string& body), (override));
-    MOCK_METHOD(void, onStateChange, (hc_conn_state_t state), (override));
-    MOCK_METHOD(void, onBufferLevel, (hc_buffer_level_t level), (override));
+    public:
+        MOCK_METHOD(void, onStartupResult, (bool accepted, const std::string& handshakeJson), (override));
+        MOCK_METHOD(void, onTask,
+                    (const std::string& taskId, const std::string& taskType,
+                     const std::string& payloadJson),
+                    (override));
+        MOCK_METHOD(void, onSyncResponse,
+                    (const std::string& sessionId, int result, const std::string& body), (override));
+        MOCK_METHOD(void, onStateChange, (hc_conn_state_t state), (override));
+        MOCK_METHOD(void, onBufferLevel, (hc_buffer_level_t level), (override));
 };
 
 #endif // _HC_MOCK_CALLBACK_SINK_HPP

@@ -18,8 +18,8 @@
 
 class MockSpoolFactory : public ISpoolFileFactory
 {
-public:
-    MOCK_METHOD(std::unique_ptr<SpoolFile>, spool, (const uint8_t* buffer, size_t length), (override));
+    public:
+        MOCK_METHOD(std::unique_ptr<SpoolFile>, spool, (const uint8_t* buffer, size_t length), (override));
 };
 
 #endif // _HC_MOCK_SPOOL_FACTORY_HPP

@@ -36,10 +36,12 @@ double Mt19937Random::uniform01()
 bool FsProbe::isReadableFile(const std::string& path) const
 {
     std::FILE* file = std::fopen(path.c_str(), "rb");
+
     if (file == nullptr)
     {
         return false;
     }
+
     std::fclose(file);
     return true;
 }

@@ -48,13 +48,26 @@ inline int toHcResult(OutcomeClass outcome)
 {
     switch (outcome)
     {
-        case OutcomeClass::Ok: return HC_OK;
-        case OutcomeClass::Retryable: return HC_RETRYABLE;
-        case OutcomeClass::BackPressure: return HC_BACKPRESSURE;
-        case OutcomeClass::AuthFail: return HC_AUTH_FAIL;
-        case OutcomeClass::Permanent: return HC_PERMANENT;
-        case OutcomeClass::VersionRejected: return HC_PERMANENT;
-        default: return HC_ERROR;
+        case OutcomeClass::Ok:
+            return HC_RESULT_OK;
+
+        case OutcomeClass::Retryable:
+            return HC_RESULT_RETRYABLE;
+
+        case OutcomeClass::BackPressure:
+            return HC_RESULT_BACKPRESSURE;
+
+        case OutcomeClass::AuthFail:
+            return HC_RESULT_AUTH_FAIL;
+
+        case OutcomeClass::Permanent:
+            return HC_RESULT_PERMANENT;
+
+        case OutcomeClass::VersionRejected:
+            return HC_RESULT_PERMANENT;
+
+        default:
+            return HC_RESULT_ERROR;
     }
 }
 

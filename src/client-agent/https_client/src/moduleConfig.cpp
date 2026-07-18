@@ -60,10 +60,11 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
 bool ModuleConfig::validate(const IFsProbe& fsProbe, const LogFn& logFn) const
 {
     if (serverHost.empty() || agentId.empty())
-    {
-        LOGFN_ERROR(logFn, "https_client config rejected: server_host and agent_id are mandatory.");
+{
+    LOGFN_ERROR(logFn, "https_client config rejected: server_host and agent_id are mandatory.");
         return false;
     }
+
     return validateTls(fsProbe, logFn) && validateClientCert(fsProbe, logFn);
 }
 
@@ -74,11 +75,13 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) cons
         LOGFN_ERROR(logFn, "https_client config rejected: unknown verify_mode %d.", verifyMode);
         return false;
     }
+
     if (verifyMode == HC_VERIFY_NONE)
     {
         LOGFN_WARN(logFn, "https_client TLS verification is DISABLED (verify_mode=none).");
         return true;
     }
+
     // Fail closed (H1): a verifying mode without a readable CA never sends.
     if (caPath.empty() || !fsProbe.isReadableFile(caPath))
     {
@@ -88,25 +91,29 @@ bool ModuleConfig::validateTls(const IFsProbe& fsProbe, const LogFn& logFn) cons
                     caPath.c_str());
         return false;
     }
+
     return true;
 }
 
 bool ModuleConfig::validateClientCert(const IFsProbe& fsProbe, const LogFn& logFn) const
 {
     if (clientCert.empty() && clientKey.empty())
-    {
-        return true;
-    }
-    if (clientCert.empty() || clientKey.empty())
-    {
-        LOGFN_ERROR(logFn, "https_client config rejected: client certificate and key must be set together.");
+{
+    return true;
+}
+
+if (clientCert.empty() || clientKey.empty())
+{
+    LOGFN_ERROR(logFn, "https_client config rejected: client certificate and key must be set together.");
         return false;
     }
+
     if (!fsProbe.isReadableFile(clientCert) || !fsProbe.isReadableFile(clientKey))
-    {
-        LOGFN_ERROR(logFn, "https_client config rejected: client certificate or key is not readable.");
+{
+    LOGFN_ERROR(logFn, "https_client config rejected: client certificate or key is not readable.");
         return false;
     }
+
     return true;
 }
 
