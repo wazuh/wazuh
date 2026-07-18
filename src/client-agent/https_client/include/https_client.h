@@ -1,0 +1,234 @@
+/*
+ * Wazuh agent HTTPS client (C++ transport module)
+ * Copyright (C) 2015, Wazuh Inc.
+ * July 17, 2026.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#ifndef _HTTPS_CLIENT_H
+#define _HTTPS_CLIENT_H
+
+/*
+ * C-ABI bridge for the agent HTTPS client C++ module.
+ *
+ * This is the ONLY header shared between the agent's C code and the C++
+ * module, mirroring the manager-side remoted_module contract: a POD
+ * configuration struct with fixed-size buffers, an injected callback table,
+ * and an opaque handle. All exceptions are caught at this boundary; nothing
+ * ever throws into C. agentd links the module directly (see
+ * src/client-agent/CMakeLists.txt).
+ *
+ * The transport contract implemented behind this ABI is the one proposed in
+ * #37732 (AES-CMAC request signing, H/E stateless format, status codes) and
+ * #37733 (task delivery via /control Notify, single-request /stateful
+ * sessions), as consolidated in the #37738 spike.
+ */
+
+// Define EXPORTED for any platform
+#if __GNUC__ >= 4
+#define HC_EXPORTED __attribute__((visibility("default")))
+#else
+#define HC_EXPORTED
+#endif
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "commonDefs.h" // full_log_fnc_t
+
+/* TLS verification modes (DEC-6: configured CA file + hostname).
+ * HC_VERIFY_FULL is deliberately 0 so that a zero-initialized configuration
+ * fails closed instead of silently disabling verification. */
+typedef enum hc_verify_mode_t
+{
+    HC_VERIFY_FULL = 0, ///< Verify peer against the CA and check the hostname.
+    HC_VERIFY_CERT = 1, ///< Verify peer against the CA only.
+    HC_VERIFY_NONE = 2  ///< No TLS verification (explicit opt-out).
+} hc_verify_mode_t;
+
+/* Connection state, surfaced to the C core (feeds the .state metrics). */
+typedef enum hc_conn_state_t
+{
+    HC_STATE_STOPPED = 0,  ///< Not started, or stopped.
+    HC_STATE_STARTING,     ///< Started; Startup not accepted yet.
+    HC_STATE_REGISTERED,   ///< Startup accepted; streams running.
+    HC_STATE_REJECTED,     ///< Startup rejected (e.g. version); slow retry.
+    HC_STATE_AUTH_ERROR    ///< Persistent auth failure (key/clock skew).
+} hc_conn_state_t;
+
+/* Occupancy level of the stateless accumulator. Replaces the legacy client
+ * buffer levels so the manager-side flood alerts (rules 202-205 analogues)
+ * keep working. */
+typedef enum hc_buffer_level_t
+{
+    HC_BUFFER_NORMAL = 0,
+    HC_BUFFER_WARNING,
+    HC_BUFFER_FULL,
+    HC_BUFFER_FLOOD
+} hc_buffer_level_t;
+
+/* Outcome classes of a request/submission (D9 classification). Crosses the
+ * ABI in the on_sync_response callback. */
+typedef enum hc_result_t
+{
+    HC_OK = 0,
+    HC_RETRYABLE,
+    HC_BACKPRESSURE,
+    HC_AUTH_FAIL,
+    HC_PERMANENT,
+    HC_ERROR
+} hc_result_t;
+
+#define HC_MAX_HOST 256
+#define HC_MAX_ID 16
+#define HC_MAX_KEY 256
+#define HC_MAX_PATH 1024
+#define HC_MAX_CIPHERS 256
+#define HC_MAX_VERSION 64
+#define HC_MAX_CHECKSUM 64
+
+    /**
+     * @brief Configuration passed from the agent (C) to the C++ module.
+     *
+     * POD struct with fixed-size buffers so the ABI is stable and it compiles
+     * cleanly both as C99 and C++17. The struct is owned by the caller; the
+     * module deep-copies it during hc_create(). Numeric fields left at 0 take
+     * the module defaults (documented per field).
+     */
+    typedef struct hc_config_t
+    {
+        char server_host[HC_MAX_HOST]; ///< Manager address (single server, IR2).
+        uint16_t server_port;          ///< Manager HTTPS port.
+        char agent_id[HC_MAX_ID];      ///< Agent id from client.keys.
+        char agent_key[HC_MAX_KEY];    ///< Opaque credential material (hex). The
+                                       ///< CMAC key-derivation recipe is pending
+                                       ///< (#37732); it is isolated behind the
+                                       ///< module's key provider.
+        int verify_mode;               ///< hc_verify_mode_t; 0 = full (fail closed).
+        char ca_path[HC_MAX_PATH];     ///< certificate_authorities file path.
+        char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate (FR11.3).
+        char client_key[HC_MAX_PATH];  ///< Optional mTLS private key.
+        char ciphers[HC_MAX_CIPHERS];  ///< Optional cipher list.
+
+        uint64_t batch_size_bytes;      ///< <batch><size>; 0 -> 1 MiB.
+        uint32_t batch_interval_ms;     ///< <batch><interval>; 0 -> 10000.
+        uint32_t buffer_cap_multiplier; ///< Accumulator cap = N x batch size; 0 -> 4.
+
+        uint32_t notify_interval_s;         ///< notify_time; 0 -> 20.
+        uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
+
+        char version[HC_MAX_VERSION];       ///< Product version for Startup.
+        char config_checksum[HC_MAX_CHECKSUM]; ///< merged.mg checksum for Startup/Notify.
+
+        uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
+        uint32_t stateful_timeout_ms; ///< /stateful requests; 0 -> 120000.
+        uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.
+        uint32_t backoff_cap_ms;      ///< Full-jitter cap; 0 -> 60000.
+        uint32_t drain_timeout_ms;    ///< Shutdown drain window; 0 -> 5000.
+
+        char spool_dir[HC_MAX_PATH];  ///< Stateful spool dir; empty -> system tmp.
+    } hc_config_t;
+
+    /**
+     * @brief Environment injected by the C core.
+     *
+     * Every callback except log fires from the module's single dispatcher
+     * thread, serialized in submission order; callbacks must not block for
+     * long and must not call back into hc_* functions. log follows the
+     * remoted_module contract (agentd passes mtLoggingFunctionsWrapper) and
+     * may fire from any module thread.
+     */
+    typedef struct hc_callbacks_t
+    {
+        full_log_fnc_t log;
+        void (*on_startup_result)(bool accepted, const char* handshake_json, void* user_data);
+        void (*on_task)(const char* task_id, const char* task_type, const char* payload_json,
+                        void* user_data);
+        void (*on_sync_response)(const char* session_id, int result, const char* body,
+                                 void* user_data);
+        void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t
+        void (*on_buffer_level)(int level, void* user_data);  ///< hc_buffer_level_t
+        void* user_data;
+    } hc_callbacks_t;
+
+    typedef struct hc_handle hc_handle;
+
+    /* ---- lifecycle (the module owns its threads; stop is cooperative + join) ---- */
+
+    /**
+     * @brief Create a client instance. Copies the configuration and callback
+     *        table; spawns nothing yet. Returns NULL on invalid arguments or
+     *        internal failure.
+     */
+    HC_EXPORTED hc_handle* hc_create(const hc_config_t* config, const hc_callbacks_t* callbacks);
+
+    /**
+     * @brief Start the client: validates the configuration (TLS settings fail
+     *        closed) and launches the worker threads. Returns false and starts
+     *        nothing when validation fails. A second start is ignored (true).
+     */
+    HC_EXPORTED bool hc_start(hc_handle* handle);
+
+    /**
+     * @brief Stop the client: drains within the configured window (final
+     *        flush + final Notify), aborts in-flight requests explicitly and
+     *        joins every thread. No callback fires after this returns. Safe
+     *        without a prior start.
+     */
+    HC_EXPORTED void hc_stop(hc_handle* handle);
+
+    /** @brief Destroy the instance. Implies hc_stop(). NULL-safe. */
+    HC_EXPORTED void hc_destroy(hc_handle* handle);
+
+    /* ---- data plane (called from agentd's EventForward seam) ---- */
+
+    /**
+     * @brief Submit one event frame ("queue:location:message" bytes) for the
+     *        /stateless batch. Returns false when the client is not running
+     *        or the accumulator is full (drop-newest; the occupancy ladder is
+     *        surfaced via on_buffer_level).
+     */
+    HC_EXPORTED bool hc_submit_event(hc_handle* handle, const uint8_t* frame, size_t length);
+
+    /**
+     * @brief Submit a whole sync session for /stateful. Asynchronous: the
+     *        outcome arrives via on_sync_response with the same session_id.
+     *        Returns false when the client is not running or the session
+     *        queue is full.
+     */
+    HC_EXPORTED bool hc_submit_sync_session(hc_handle* handle, const char* session_id,
+                                            const uint8_t* buffer, size_t length);
+
+    /* ---- control plane ---- */
+
+    /** @brief Queue a task result for the next /control Response. */
+    HC_EXPORTED bool hc_submit_task_response(hc_handle* handle, const char* task_id,
+                                             const char* result_json);
+
+    /** @brief Force an out-of-cycle Notify (config change, restart...). */
+    HC_EXPORTED void hc_notify_now(hc_handle* handle);
+
+    /** @brief Current connection state (hc_conn_state_t). NULL -> STOPPED. */
+    HC_EXPORTED int hc_get_state(const hc_handle* handle);
+
+#ifdef __cplusplus
+}
+#endif
+
+// Function-pointer typedefs, useful if the module is ever loaded via dlopen/dlsym.
+typedef hc_handle* (*hc_create_func)(const hc_config_t* config, const hc_callbacks_t* callbacks);
+typedef bool (*hc_start_func)(hc_handle* handle);
+typedef void (*hc_stop_func)(hc_handle* handle);
+typedef void (*hc_destroy_func)(hc_handle* handle);
+
+#endif // _HTTPS_CLIENT_H
