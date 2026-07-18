@@ -51,7 +51,8 @@ namespace
     protected:
         StatefulStreamTest()
             : m_signer("001", m_keyProvider)
-            , m_stream(makeConfig(), m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_sink)
+            , m_config(makeConfig())
+            , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_sink)
         {
         }
 
@@ -71,14 +72,14 @@ namespace
 
         ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
         CmacSigner m_signer;
+        ModuleConfig m_config;
         FakeClock m_clock;
         ScriptedRandom m_random {{0.0}};
         NiceMock<MockSpoolFactory> m_spoolFactory;
         NiceMock<MockCallbackSink> m_sink;
         MockHttpPerformer m_performer;
         FakeWaiter m_waiter;
-        StatefulStream m_stream {makeConfig(), m_performer, m_signer,        m_clock,
-                                 m_random,     m_spoolFactory, m_sink};
+        StatefulStream m_stream;
     };
 } // namespace
 

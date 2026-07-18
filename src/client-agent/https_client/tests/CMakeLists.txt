@@ -31,10 +31,10 @@ target_include_directories(
   PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include
           ${CMAKE_CURRENT_LIST_DIR}/../src
           ${UNIT_SRC_DIR}/mocks
+          ${SRC_FOLDER}
           ${SRC_FOLDER}/shared_modules/utils
           ${SRC_FOLDER}/shared_modules/common
-          ${SRC_FOLDER}/external/cJSON
-          ${SRC_FOLDER}/external/nlohmann)
+          ${SRC_FOLDER}/external/cJSON)
 
 if(HTTPS_CLIENT_TSAN)
   target_compile_options(https_client_unit_test PRIVATE -fsanitize=thread -g)

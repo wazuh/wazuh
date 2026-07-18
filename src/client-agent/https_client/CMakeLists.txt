@@ -24,10 +24,10 @@ target_include_directories(
   https_client
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
+          ${SRC_FOLDER} # external/nlohmann/json.hpp (repo-style include)
           ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, singleton.hpp
           ${SRC_FOLDER}/shared_modules/common # commonDefs.h
           ${SRC_FOLDER}/external/cJSON # cJSON.h (pulled by commonDefs.h)
-          ${SRC_FOLDER}/external/nlohmann
           ${SRC_FOLDER}/external/curl/include
           ${SRC_FOLDER}/external/openssl/include)
 
