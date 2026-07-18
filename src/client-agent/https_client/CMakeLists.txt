@@ -31,7 +31,8 @@ target_include_directories(
           ${SRC_FOLDER}/external/curl/include
           ${SRC_FOLDER}/external/openssl/include)
 
-target_link_libraries(https_client PRIVATE pthread)
+# wazuhext carries the vendored libcurl + OpenSSL symbols for agent targets.
+target_link_libraries(https_client PRIVATE wazuhext pthread)
 
 set_target_properties(https_client PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                               BUILD_RPATH "$ORIGIN/../lib")

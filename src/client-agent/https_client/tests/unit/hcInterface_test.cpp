@@ -199,6 +199,18 @@ TEST_F(HcInterfaceTest, StartRejectsMissingMandatoryFields)
     hc_destroy(other);
 }
 
+TEST_F(HcInterfaceTest, StartFailsClosedWithoutCaInFullMode)
+{
+    hc_config_t failClosed = m_config;
+    failClosed.verify_mode = HC_VERIFY_FULL; // No CA configured -> must refuse to start.
+    hc_handle* handle = hc_create(&failClosed, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    EXPECT_FALSE(hc_start(handle));
+    EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(handle));
+    EXPECT_TRUE(m_recorder.states.empty());
+    hc_destroy(handle);
+}
+
 TEST_F(HcInterfaceTest, NullHandleIsSafeEverywhere)
 {
     EXPECT_FALSE(hc_start(nullptr));

@@ -12,7 +12,7 @@
 #include "httpsClientFacade.hpp"
 
 HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbacks_t& callbacks)
-    : m_config(config)
+    : m_config(ModuleConfig::fromC(config))
     , m_callbacks(callbacks)
 {
 }
@@ -39,9 +39,9 @@ bool HttpsClientFacade::start()
     }
     LOGFN_INFO(m_logFn,
                "Starting https_client (server=%s:%u, agent=%s).",
-               m_config.server_host,
-               m_config.server_port,
-               m_config.agent_id);
+               m_config.serverHost.c_str(),
+               m_config.serverPort,
+               m_config.agentId.c_str());
     publishState(HC_STATE_STARTING);
     return true;
 }
@@ -105,12 +105,7 @@ hc_conn_state_t HttpsClientFacade::state() const
 
 bool HttpsClientFacade::validateConfig() const
 {
-    if (m_config.server_host[0] == '\0' || m_config.agent_id[0] == '\0')
-    {
-        LOGFN_ERROR(m_logFn, "https_client config rejected: server_host and agent_id are mandatory.");
-        return false;
-    }
-    return true;
+    return m_config.validate(m_fsProbe, m_logFn);
 }
 
 void HttpsClientFacade::publishState(hc_conn_state_t newState)

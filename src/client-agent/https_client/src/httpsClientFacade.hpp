@@ -14,6 +14,8 @@
 
 #include "https_client.h"
 #include "loggerHelper.h"
+#include "moduleConfig.hpp"
+#include "sysSeams.hpp"
 
 #include <atomic>
 #include <cstddef>
@@ -56,8 +58,9 @@ private:
     bool validateConfig() const;
     void publishState(hc_conn_state_t newState);
 
-    hc_config_t m_config {};        ///< Deep copy (fixed-size buffers make plain copy safe).
+    ModuleConfig m_config;          ///< Typed deep copy with defaults applied.
     hc_callbacks_t m_callbacks {};  ///< Injected environment; owned by value.
+    FsProbe m_fsProbe;              ///< Real probe for the fail-closed TLS checks.
     const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
     std::mutex m_lifecycleMutex;             ///< Serializes start()/stop().
     std::atomic<bool> m_started {false};     ///< Lifecycle flag; data-plane gate.
