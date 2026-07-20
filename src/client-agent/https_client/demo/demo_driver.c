@@ -11,6 +11,9 @@
  * hc_destroy. Not production code; a demo harness only.
  */
 
+/* Expose POSIX clock_gettime/nanosleep under strict -std=c11 on glibc. */
+#define _POSIX_C_SOURCE 200809L
+
 #include "https_client.h"
 
 #include <stdarg.h>
