@@ -2323,6 +2323,22 @@ bool AgentInfoImpl::performIntegritySync(const std::string& table)
             // Not a real failure: the integrity check was aborted because the module is stopping.
             m_logFunction(LOG_DEBUG, "Integrity check for " + table + " aborted: the module is stopping.");
         }
+        else if (syncResult.managerNotReady
+                 && syncResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+        {
+            // The manager is not ready for this agent yet, mostly right after a restart, and the
+            // sync has not failed enough times in a row to suspect it will not clear. Agent-info
+            // retries this table on the next integrity cycle.
+            m_logFunction(LOG_INFO, "Integrity check for " + table + " deferred: " +
+                          syncResult.failureReason + " Will retry next cycle.");
+        }
+        else if (syncResult.managerNotReady)
+        {
+            // Not a restart hiccup any more: the manager has not been ready for several cycles.
+            m_logFunction(LOG_WARNING, "Integrity check for " + table + " failed " +
+                          std::to_string(syncResult.consecutiveFailures) + " times in a row: " +
+                          syncResult.failureReason);
+        }
         else
         {
             m_logFunction(LOG_WARNING, "Failed integrity check for " + table +

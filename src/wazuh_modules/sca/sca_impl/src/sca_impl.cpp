@@ -838,6 +838,23 @@ int SecurityConfigurationAssessment::executeFlushSync()
         LoggingHelper::getInstance().log(LOG_INFO, "SCA flush aborted: the module is stopping.");
         return -1;
     }
+    else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+    {
+        // The manager is not ready for this agent yet, mostly right after a restart, and the sync
+        // has not failed enough times in a row to suspect it will not clear. Not an error yet.
+        LoggingHelper::getInstance().log(LOG_INFO, "SCA flush deferred: " + result.failureReason +
+                                         " Will retry next cycle.");
+        return -1;
+    }
+    else if (result.managerNotReady)
+    {
+        // The manager has not been ready for several cycles in a row: this is no longer a restart
+        // hiccup, so it must stay visible.
+        LoggingHelper::getInstance().log(LOG_WARNING, "SCA flush failed " +
+                                         std::to_string(result.consecutiveFailures) + " times in a row: " +
+                                         result.failureReason);
+        return -1;
+    }
     else
     {
         LoggingHelper::getInstance().log(LOG_ERROR, "SCA flush failed");

@@ -323,6 +323,17 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// cycle. It is what tells a brief post-restart hiccup (the count stays at one and clears on the
         /// next cycle) apart from a lasting condition such as the manager having no indexer available
         /// (the count keeps growing), which the modules must keep reporting at WARNING.
+        ///
+        /// The streak is counted in sync ATTEMPTS that reach the handshake, not in cycles, and it is
+        /// per protocol instance. When several sync flows share one instance (agent-info: metadata,
+        /// groups and the integrity check; FIM: the periodic and the agent-info-requested syncs;
+        /// SCA/Syscollector: the periodic sync and the flush), each of them bumps this same counter,
+        /// so the SYNC_MANAGER_NOT_READY_TOLERANCE threshold can be reached in fewer real cycles for
+        /// those modules than for a single-flow one. Only outcomes that reach the handshake move the
+        /// counter: early returns (queue-open failure, nothing-to-sync success, invalid mode) leave it
+        /// untouched, so "consecutive" is not strictly "consecutive cycles". This is acceptable because
+        /// managerNotReady is a manager-wide condition: a real success means the manager is ready, and
+        /// resetting the streak on it is correct regardless of which flow observed it.
         std::atomic<unsigned int> m_consecutiveSyncFailures{0};
 };
 
