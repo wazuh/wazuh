@@ -2,7 +2,9 @@
 
 #include "baseline_rows.hpp"
 #include "container_instances_client.hpp"
+#include "interface_scanner.hpp"
 #include "network_scanner.hpp"
+#include "os_scanner.hpp"
 #include "package_scanner.hpp"
 #include "pid_resolver.hpp"
 #include "process_scanner.hpp"
@@ -202,6 +204,31 @@ int RunSyscollectorBaseline(const std::string& connector_socket_path, const RowS
             ApplyIdentity(row, identity);
             auto [id, json] = BuildPackageJson(row);
             sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-packages", json, 1});
+        }
+
+        // Remaining container-relevant syscollector classes: the image's OS
+        // identity (rootfs os-release via the same /proc/<pid>/root family) and
+        // the container netns' interfaces/addresses (setns hop — see
+        // interface_scanner.hpp). Hardware/hotfixes/services/browser-extensions
+        // are deliberately absent: hardware is the host's (already reported by
+        // host syscollector), hotfixes are Windows-only, and services/browser
+        // extensions don't exist in single-process container workloads.
+        for (auto row : ScanContainerOs(pid)) {
+            ApplyIdentity(row, identity);
+            auto [id, json] = BuildOsJson(row);
+            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-system", json, 1});
+        }
+
+        auto ifscan = ScanContainerInterfaces(pid);
+        for (auto row : ifscan.interfaces) {
+            ApplyIdentity(row, identity);
+            auto [id, json] = BuildInterfaceJson(row);
+            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-interfaces", json, 1});
+        }
+        for (auto row : ifscan.addresses) {
+            ApplyIdentity(row, identity);
+            auto [id, json] = BuildNetworkAddressJson(row);
+            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-networks", json, 1});
         }
     }
 

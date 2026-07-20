@@ -64,6 +64,36 @@ void ApplyIdentity(PackageBaselineRow& row, const ContainerIdentity& id)
     row.image          = id.image;
 }
 
+void ApplyIdentity(OsBaselineRow& row, const ContainerIdentity& id)
+{
+    row.container_id   = id.container_id;
+    row.pod_uid        = id.pod_uid;
+    row.pod_name       = id.pod_name;
+    row.k8s_namespace  = id.k8s_namespace;
+    row.container_name = id.container_name;
+    row.image          = id.image;
+}
+
+void ApplyIdentity(InterfaceBaselineRow& row, const ContainerIdentity& id)
+{
+    row.container_id   = id.container_id;
+    row.pod_uid        = id.pod_uid;
+    row.pod_name       = id.pod_name;
+    row.k8s_namespace  = id.k8s_namespace;
+    row.container_name = id.container_name;
+    row.image          = id.image;
+}
+
+void ApplyIdentity(NetworkAddressBaselineRow& row, const ContainerIdentity& id)
+{
+    row.container_id   = id.container_id;
+    row.pod_uid        = id.pod_uid;
+    row.pod_name       = id.pod_name;
+    row.k8s_namespace  = id.k8s_namespace;
+    row.container_name = id.container_name;
+    row.image          = id.image;
+}
+
 namespace {
 
 nlohmann::json KubernetesBlock(const std::string& container_id,
@@ -215,6 +245,70 @@ std::pair<std::string, std::string> BuildPackageJson(const PackageBaselineRow& r
     // same name for several architectures, so arch must be part of the key.
     const std::string id = row.container_id + ":pkg:" + row.format + ":" + row.name + ":" +
                             row.architecture + ":" + row.version;
+    return {id, data.dump()};
+}
+
+std::pair<std::string, std::string> BuildOsJson(const OsBaselineRow& row)
+{
+    nlohmann::json data;
+    nlohmann::json os;
+    os["name"]     = row.name;
+    os["full"]     = row.full;
+    os["version"]  = row.version;
+    os["codename"] = row.codename;
+    os["platform"] = row.platform;
+    os["family"]   = row.family;
+    os["kernel"]   = row.kernel;
+    os["type"]     = "linux";
+    data["os"]        = os;
+    data["baseline"]  = true;
+    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
+                                         row.k8s_namespace, row.container_name, row.image);
+
+    // One OS row per container.
+    const std::string id = row.container_id + ":os";
+    return {id, data.dump()};
+}
+
+std::pair<std::string, std::string> BuildInterfaceJson(const InterfaceBaselineRow& row)
+{
+    nlohmann::json data;
+    nlohmann::json iface;
+    iface["name"]  = row.name;
+    iface["mac"]   = row.mac;
+    iface["mtu"]   = row.mtu;
+    iface["state"] = row.state;
+    iface["type"]  = row.type;
+    data["interface"]  = iface;
+    data["statistics"] = {
+        {"rx", {{"bytes", row.rx_bytes}, {"packets", row.rx_packets}, {"errors", row.rx_errors}, {"dropped", row.rx_dropped}}},
+        {"tx", {{"bytes", row.tx_bytes}, {"packets", row.tx_packets}, {"errors", row.tx_errors}, {"dropped", row.tx_dropped}}},
+    };
+    data["baseline"]  = true;
+    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
+                                         row.k8s_namespace, row.container_name, row.image);
+
+    const std::string id = row.container_id + ":iface:" + row.name;
+    return {id, data.dump()};
+}
+
+std::pair<std::string, std::string> BuildNetworkAddressJson(const NetworkAddressBaselineRow& row)
+{
+    nlohmann::json data;
+    nlohmann::json network;
+    network["interface"] = row.interface_name;
+    network["protocol"]  = row.protocol;
+    network["ip"]        = row.address;
+    network["netmask"]   = row.netmask;
+    if (!row.broadcast.empty()) network["broadcast"] = row.broadcast;
+    data["network"]   = network;
+    data["baseline"]  = true;
+    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
+                                         row.k8s_namespace, row.container_name, row.image);
+
+    // iface + address is unique within one netns; protocol is implied by the
+    // address family but kept out of the key (an address string is unambiguous).
+    const std::string id = row.container_id + ":net:" + row.interface_name + ":" + row.address;
     return {id, data.dump()};
 }
 
