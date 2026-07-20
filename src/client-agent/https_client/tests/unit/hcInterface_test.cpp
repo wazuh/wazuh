@@ -231,6 +231,19 @@ TEST_F(HcInterfaceTest, StartFailsClosedWithoutCaInFullMode)
     hc_destroy(handle);
 }
 
+TEST_F(HcInterfaceTest, SyncIntakeBindFailureIsNonFatal)
+{
+    // A sync socket in a nonexistent directory cannot bind; the client must
+    // still start (the intake is best-effort) and stop cleanly.
+    hc_config_t config = m_config;
+    std::strncpy(config.sync_socket_path, "/nonexistent_dir_xyz/hc_sync.sock",
+                 sizeof(config.sync_socket_path) - 1);
+    hc_handle* handle = hc_create(&config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    EXPECT_TRUE(hc_start(handle)); // Bind fails, but start succeeds.
+    hc_destroy(handle);
+}
+
 TEST_F(HcInterfaceTest, LifecycleChurn)
 {
     // The designated ThreadSanitizer workload: repeated start/stop with
