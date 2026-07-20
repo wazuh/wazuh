@@ -396,6 +396,9 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
         def debug2(self, msg):
             pass
 
+        def warning(self, msg):
+            pass
+
     class ClientMock:
         async def send_request(self, request):
             pass
@@ -418,17 +421,9 @@ async def test_LocalServerHandlerWorker_process_request(process_request_mock, ev
         assert mock_contextvar.get() == f"Local {lshw.name}"
         process_request_mock.assert_called_with(b"hello", b"bye")
 
-    with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
-        lshw.process_request(command=b"dapi", data=b"bye")
-
-    with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
-        lshw.process_request(command=b"sendsync", data=b"bye")
-
-    with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
-        lshw.process_request(command=b"sendasync", data=b"bye")
-
-    with pytest.raises(WazuhClusterError, match=".* 3023 .*"):
-        lshw.process_request(command=b"sendrreload", data=b"bye")
+    expected_err = b'err', json.dumps(WazuhClusterError(3023), cls=c_common.WazuhJSONEncoder).encode()
+    for not_connected_command in (b"dapi", b"sendsync", b"sendasync", b"sendrreload"):
+        assert lshw.process_request(command=not_connected_command, data=b"bye") == expected_err
 
     server_mock.node.client = ClientMock()
     with patch.object(server_mock.node.client, "send_request", return_value='') as send_request_mock:
