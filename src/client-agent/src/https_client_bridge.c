@@ -105,6 +105,13 @@ static void bridge_build_config(hc_config_t *config)
         strncpy(config->config_checksum, checksum, sizeof(config->config_checksum) - 1);
         os_free(checksum);
     }
+
+    /* Stateful sync sessions arrive on a separate STREAM socket so a whole
+     * (multi-MB) session bypasses the 64 KB DGRAM event queue; the module
+     * streams it to disk and then to /stateful. Stateless events keep using
+     * the DGRAM queue. Producers connect via sendSyncSession() (the eventual
+     * agent_sync_protocol transport swap). */
+    strncpy(config->sync_socket_path, SYNCQUEUE, sizeof(config->sync_socket_path) - 1);
 }
 
 void w_https_client_start(void)

@@ -223,6 +223,16 @@ HC_EXPORTED bool hc_submit_sync_session(hc_handle* handle, const char* session_i
 HC_EXPORTED bool hc_submit_sync_session_file(hc_handle* handle, const char* session_id,
                                              const char* file_path, uint64_t size);
 
+/**
+ * @brief Producer-side helper: stream a whole sync session to the agent's
+ *        sync intake socket (the STREAM socket that bypasses the 64 KB DGRAM
+ *        cap). Standalone (no handle) — a producer process calls this in place
+ *        of chunked DGRAM sends. Returns false on connect/write failure.
+ *        Unix-only.
+ */
+HC_EXPORTED bool hc_send_sync_session(const char* socket_path, const char* session_id,
+                                      const uint8_t* body, size_t length);
+
 /* ---- control plane ---- */
 
 /** @brief Queue a task result for the next /control Response. */

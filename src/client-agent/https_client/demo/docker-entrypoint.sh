@@ -33,6 +33,6 @@ echo "# The real https_client module talking to the mock over HTTPS.         #"
 echo "#   [client:N] = module log    >> = callbacks    [mock] = manager       #"
 echo "########################################################################"
 echo
-LD_LIBRARY_PATH=/demo /demo/demo_driver 127.0.0.1 "$PORT" "$KEY_HEX" || true
+LD_LIBRARY_PATH=/demo /demo/demo_driver 127.0.0.1 "$PORT" "$KEY_HEX" /tmp/hc_demo_sync.sock || true
 echo
 echo "== demo done =="

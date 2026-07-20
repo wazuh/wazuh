@@ -107,9 +107,10 @@ int main(int argc, char **argv)
 {
     if (argc < 4)
     {
-        fprintf(stderr, "usage: %s <host> <port> <key_hex>\n", argv[0]);
+        fprintf(stderr, "usage: %s <host> <port> <key_hex> [sync_socket_path]\n", argv[0]);
         return 2;
     }
+    const char *sync_socket = argc > 4 ? argv[4] : NULL;
     clock_gettime(CLOCK_MONOTONIC, &g_start);
 
     hc_config_t config;
@@ -121,12 +122,16 @@ int main(int argc, char **argv)
     config.verify_mode = HC_VERIFY_NONE; /* demo mock uses a self-signed cert */
     config.notify_interval_s = 2;        /* Notify every 2 s so we see a few   */
     config.batch_interval_ms = 1000;     /* flush events every 1 s             */
-    config.request_timeout_ms = 3000;
+    config.request_timeout_ms = 10000;   /* a multi-MB /stateful takes a moment */
     config.backoff_base_ms = 200;
     config.backoff_cap_ms = 2000;
     strncpy(config.version, "5.1.0", sizeof config.version - 1);
     strncpy(config.config_checksum, "d41d8cd98f00b204e9800998ecf8427e",
             sizeof config.config_checksum - 1);
+    if (sync_socket)
+    {
+        strncpy(config.sync_socket_path, sync_socket, sizeof config.sync_socket_path - 1);
+    }
 
     hc_callbacks_t callbacks;
     memset(&callbacks, 0, sizeof callbacks);
@@ -156,11 +161,29 @@ int main(int argc, char **argv)
         hc_submit_event(handle, (const uint8_t *)frame, (size_t)n);
     }
 
-    printf("== submitting a /stateful sync session (streamed) ==\n");
+    printf("== submitting a small /stateful sync session (in-memory) ==\n");
     unsigned char session[4096];
     memcpy(session, "FULLSESSION:syscollector:", 25);
     memset(session + 25, 'D', sizeof session - 25);
     hc_submit_sync_session(handle, "demo-sess-1", session, sizeof session);
+
+    if (sync_socket)
+    {
+        /* The producer path: stream a 3 MB session over the local intake
+         * socket. It bypasses the legacy 64 KB DGRAM cap entirely, is spooled
+         * to disk by the module, and streamed to /stateful. */
+        printf("== streaming a 3 MB /stateful session over the intake socket "
+               "(no 64 KB cap) ==\n");
+        const size_t big_len = 3u * 1024 * 1024;
+        unsigned char *big = malloc(big_len);
+        memcpy(big, "FULLSESSION:syscollector:", 25);
+        memset(big + 25, 'D', big_len - 25);
+        if (!hc_send_sync_session(sync_socket, "demo-big-session", big, big_len))
+        {
+            printf("   (!) failed to stream the session to %s\n", sync_socket);
+        }
+        free(big);
+    }
 
     printf("== forcing an out-of-cycle Notify ==\n");
     hc_notify_now(handle);
