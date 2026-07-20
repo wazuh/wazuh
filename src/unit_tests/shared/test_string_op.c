@@ -13,7 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../headers/shared.h"
+#include "shared.h"
 
 #define OS_TRIMCRLF_ARRAY_SIZE 11
 #define OS_TRIMCRLF_MAX_STR_SIZE 8

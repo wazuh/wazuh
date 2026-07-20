@@ -14,6 +14,8 @@
 #include "json.hpp"
 #include "browser_extensions_wrapper.hpp"
 
+#include <ifilesystem_wrapper.hpp>
+
 namespace chrome
 {
 
@@ -152,11 +154,13 @@ namespace chrome
         public:
             /// @brief Constructor that initializes the ChromeExtensionsProvider with a wrapper for Chrome extensions.
             /// @param chromeExtensionsWrapper A shared pointer to an IChromeExtensionsWrapper instance that provides
+            /// @param fileSystemWrapper A unique pointer to an IFileSystemWrapper instance that provides
             /// methods to interact with Chrome extensions.
             /// This constructor allows the ChromeExtensionsProvider to use a specific implementation of IChromeExtensionsWrapper
             /// to collect data about Chrome extensions.
             explicit ChromeExtensionsProvider(
-                std::shared_ptr<IBrowserExtensionsWrapper> chromeExtensionsWrapper);
+                std::shared_ptr<IBrowserExtensionsWrapper> chromeExtensionsWrapper,
+                std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
             /// @brief Default constructor for ChromeExtensionsProvider, initializes with a default IChromeExtensionsWrapper.
             /// This constructor creates a ChromeExtensionsProvider instance using a default-constructed shared pointer to an
             /// IChromeExtensionsWrapper, allowing the provider to function without requiring an explicit wrapper instance.
@@ -258,6 +262,11 @@ namespace chrome
             std::shared_ptr<IBrowserExtensionsWrapper> m_chromeExtensionsWrapper;
             std::string m_currentBrowserType;
             std::string m_currentUid;
+
+            /**
+             * @brief Pointer to the file system wrapper implementation.
+             */
+            std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
     };
 
 } // namespace chrome

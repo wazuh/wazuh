@@ -16,17 +16,23 @@
 #include <errno.h>
 #include <string.h>
 
-#include "../../headers/shared.h"
-#include "../../headers/sec.h"
-#include "../../addagent/manage_agents.h"
+#include "shared.h"
+#include "sec.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
-#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 #include "../wrappers/libc/string_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
+#include "../wrappers/libc/stdio_wrappers.h"
+
 #include "cJSON.h"
+
+#ifndef WIN32
+#include "../wrappers/wazuh/data_provider/sysInfo_wrappers.h"
+#include "../../data_provider/include/sysInfo.h"
+#endif
 
 /* redefinitons/wrapping */
 
@@ -35,6 +41,11 @@ extern cJSON* w_create_agent_remove_payload(const char *id, const int purge);
 extern cJSON* w_create_sendsync_payload(const char *daemon_name, cJSON *message);
 extern int w_parse_agent_add_response(const char* buffer, char *err_response, char* id, char* key, const int json_format, const int exit_on_error);
 extern int w_parse_agent_remove_response(const char* buffer, char *err_response, const int json_format, const int exit_on_error);
+
+#ifndef WIN32
+extern sysinfo_networks_func sysinfo_network_ptr;
+extern sysinfo_free_result_func sysinfo_free_result_ptr;
+#endif
 
 static void test_create_agent_add_payload(void **state) {
     char* agent = "agent1";
@@ -190,11 +201,11 @@ void test_w_send_clustered_message_connection_error(void **state) {
         will_return(__wrap_external_socket_connect, -1);
 
         will_return(__wrap_strerror, "ERROR");
-        expect_string(__wrap__mwarn, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
+        expect_string(__wrap__mdebug1, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
     }
     expect_value_count(__wrap_sleep, seconds, 1, 9);
 
-    expect_string(__wrap__merror, formatted_msg, "Could not send message through the cluster after '10' attempts.");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not send message through the cluster after '10' attempts.");
 
     assert_int_equal(w_send_clustered_message("command", "payload", response), -2);
 }
@@ -216,11 +227,11 @@ void test_w_send_clustered_message_send_error(void **state) {
         will_return(__wrap_OS_SendSecureTCPCluster, -1);
 
         will_return(__wrap_strerror, "ERROR");
-        expect_string(__wrap__mwarn, formatted_msg, "OS_SendSecureTCPCluster(): ERROR");
+        expect_string(__wrap__mdebug1, formatted_msg, "OS_SendSecureTCPCluster(): ERROR");
     }
     expect_value_count(__wrap_sleep, seconds, 1, 9);
 
-    expect_string(__wrap__merror, formatted_msg, "Could not send message through the cluster after '10' attempts.");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not send message through the cluster after '10' attempts.");
 
     assert_int_equal(w_send_clustered_message(command, payload, response), -2);
 }
@@ -247,11 +258,11 @@ void test_w_send_clustered_message_recv_cluster_error_detected(void **state) {
         will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
         will_return(__wrap_OS_RecvSecureClusterTCP, -2);
 
-        expect_string(__wrap__mwarn, formatted_msg, "Cluster error detected");
+        expect_string(__wrap__mdebug1, formatted_msg, "Cluster error detected");
     }
     expect_value_count(__wrap_sleep, seconds, 1, 9);
 
-    expect_string(__wrap__merror, formatted_msg, "Could not send message through the cluster after '10' attempts.");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not send message through the cluster after '10' attempts.");
 
     assert_int_equal(w_send_clustered_message(command, payload, response), -1);
 }
@@ -279,11 +290,11 @@ void test_w_send_clustered_message_recv_error(void **state) {
         will_return(__wrap_OS_RecvSecureClusterTCP, -1);
 
         will_return(__wrap_strerror, "ERROR");
-        expect_string(__wrap__mwarn, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
+        expect_string(__wrap__mdebug1, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
     }
     expect_value_count(__wrap_sleep, seconds, 1, 9);
 
-    expect_string(__wrap__merror, formatted_msg, "Could not send message through the cluster after '10' attempts.");
+    expect_string(__wrap__mwarn, formatted_msg, "Could not send message through the cluster after '10' attempts.");
 
     assert_int_equal(w_send_clustered_message(command, payload, response), -1);
 }
@@ -376,7 +387,7 @@ void test_w_send_clustered_message_success_after_connection_error(void **state) 
     will_return(__wrap_external_socket_connect, -1);
 
     will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mwarn, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
+    expect_string(__wrap__mdebug1, formatted_msg, "Could not connect to socket 'queue/cluster/c-internal.sock': ERROR (0).");
     expect_value(__wrap_sleep, seconds, 1);
 
     will_return(__wrap_external_socket_connect, sock_num);
@@ -413,7 +424,7 @@ void test_w_send_clustered_message_success_after_send_error(void **state) {
     will_return(__wrap_OS_SendSecureTCPCluster, -1);
 
     will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mwarn, formatted_msg, "OS_SendSecureTCPCluster(): ERROR");
+    expect_string(__wrap__mdebug1, formatted_msg, "OS_SendSecureTCPCluster(): ERROR");
 
     expect_value(__wrap_sleep, seconds, 1);
 
@@ -455,7 +466,7 @@ void test_w_send_clustered_message_success_after_cluster_error(void **state) {
     will_return(__wrap_OS_RecvSecureClusterTCP, recv_response);
     will_return(__wrap_OS_RecvSecureClusterTCP, -2);
 
-    expect_string(__wrap__mwarn, formatted_msg, "Cluster error detected");
+    expect_string(__wrap__mdebug1, formatted_msg, "Cluster error detected");
     expect_value(__wrap_sleep, seconds, 1);
 
     will_return(__wrap_external_socket_connect, sock_num);
@@ -497,7 +508,7 @@ void test_w_send_clustered_message_success_after_recv_error(void **state) {
     will_return(__wrap_OS_RecvSecureClusterTCP, -1);
 
     will_return(__wrap_strerror, "ERROR");
-    expect_string(__wrap__mwarn, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
+    expect_string(__wrap__mdebug1, formatted_msg, "OS_RecvSecureClusterTCP(): ERROR");
     expect_value(__wrap_sleep, seconds, 1);
 
     will_return(__wrap_external_socket_connect, sock_num);
@@ -592,35 +603,276 @@ static void test_os_write_agent_info_success(void **state) {
     assert_int_equal(ret, 1);
 }
 
-static void test_os_write_agent_info_no_success(void **state) {
-    test_mode = 1;
+#ifndef WIN32
+static void test_getPrimaryIP_no_sysinfo_network(void ** state) {
+    sysinfo_network_ptr = NULL;
 
-    expect_string(__wrap_wfopen, path, AGENT_INFO_FILE);
-    expect_string(__wrap_wfopen, mode, "w");
-    will_return(__wrap_wfopen, NULL);
+    char * ip = getPrimaryIP();
 
-    errno = 1;
-
-    will_return(__wrap_strerror, "Operation not permitted");
-    char response[OS_MAXSTR];
-    snprintf(response, sizeof(response),
-         "(1103): Could not open file '%s' due to [(%d)-(%s)].",
-         AGENT_INFO_FILE, errno, "Operation not permitted");
-
-    expect_string(__wrap__merror, formatted_msg, response);    
-    int ret = os_write_agent_info("agent", "192.168.56.10", "001", NULL);
-
-    errno = 0;
-    test_mode = 0;
-    assert_int_equal(ret, 0);
+    assert_null(ip);
 }
+
+static void test_getPrimaryIP_no_sysinfo_free(void ** state) {
+    sysinfo_network_ptr = (int (*)(cJSON **)) 1;
+    sysinfo_free_result_ptr = NULL;
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+}
+
+static void test_getPrimaryIP_sysinfo_network_return_error(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = NULL;
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 1234);
+    expect_string(__wrap__mdebug1, formatted_msg, "Unable to get system network information. Error code: 1234.");
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+}
+
+static void test_getPrimaryIP_sysinfo_network_no_object(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = NULL;
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+}
+
+static void test_getPrimaryIP_sysinfo_network_no_iface(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse("{}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_no_iface_array(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse("{\"iface\":{}}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_empty_array(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse("{\"iface\":[]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_no_gateway(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\"}]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_invalid_gateway_type(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":1234}]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_empty_gateway(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\" \"}]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv6_address(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"fe80::\",\"IPv6\":[{\"address\":"
+                                   "\"fe80::a00:27ff:fee0:d046\"}]}]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_string_equal(ip, "FE80:0000:0000:0000:0A00:27FF:FEE0:D046");
+
+    os_free(ip);
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv4_address(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse(
+        "{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"fe80::\",\"IPv4\":[{\"address\":\"192.168.1.10\"}]}]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_string_equal(ip, "192.168.1.10");
+
+    os_free(ip);
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv6_address(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv6\":[{\"address\":"
+                                   "\"fe80::a00:27ff:fee0:d046\"}]}]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_string_equal(ip, "FE80:0000:0000:0000:0A00:27FF:FEE0:D046");
+
+    os_free(ip);
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv4_address(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse(
+        "{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv4\":[{\"address\":\"192.168.1.10\"}]}]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_string_equal(ip, "192.168.1.10");
+
+    os_free(ip);
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_no_address_array(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\"}]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_address_invalid_type(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks =
+        cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv4\":[{\"address\":1234}]}]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_null(ip);
+
+    cJSON_Delete(networks);
+}
+
+static void test_getPrimaryIP_sysinfo_network_iface_valid_gateway_multiple_address_array(void ** state) {
+    sysinfo_network_ptr = __wrap_sysinfo_networks;
+    sysinfo_free_result_ptr = __wrap_sysinfo_free_result;
+    cJSON * networks = cJSON_Parse("{\"iface\":[{\"name\":\"eth0\",\"gateway\":\"192.168.1.1\",\"IPv4\":[{\"address\":"
+                                   "\"192.168.1.10\"},{\"address\":\"192.168.1.11\"}]}]}");
+
+    will_return(__wrap_sysinfo_networks, networks);
+    will_return(__wrap_sysinfo_networks, 0);
+    will_return(__wrap_sysinfo_free_result, networks);
+
+    char * ip = getPrimaryIP();
+
+    assert_string_equal(ip, "192.168.1.10");
+
+    os_free(ip);
+    cJSON_Delete(networks);
+}
+#endif /* !WIN32 */
 
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_create_agent_add_payload),
         cmocka_unit_test(test_parse_agent_add_response),
         cmocka_unit_test(test_os_write_agent_info_success),
-        cmocka_unit_test(test_os_write_agent_info_no_success),
         #ifndef WIN32
         cmocka_unit_test(test_create_agent_remove_payload),
         cmocka_unit_test(test_create_sendsync_payload),
@@ -637,6 +889,24 @@ int main(void) {
         cmocka_unit_test(test_w_send_clustered_message_success_after_send_error),
         cmocka_unit_test(test_w_send_clustered_message_success_after_cluster_error),
         cmocka_unit_test(test_w_send_clustered_message_success_after_recv_error),
+        // Tests getPrimaryIP
+        cmocka_unit_test(test_getPrimaryIP_no_sysinfo_network),
+        cmocka_unit_test(test_getPrimaryIP_no_sysinfo_free),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_return_error),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_no_object),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_no_iface),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_no_iface_array),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_empty_array),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_no_gateway),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_invalid_gateway_type),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_empty_gateway),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv6_address),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_ipv6_gateway_ipv4_address),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv6_address),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_ipv4_gateway_ipv4_address),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_valid_gateway_no_address_array),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_valid_gateway_address_invalid_type),
+        cmocka_unit_test(test_getPrimaryIP_sysinfo_network_iface_valid_gateway_multiple_address_array),
         #endif
     };
     return cmocka_run_group_tests(tests, NULL, NULL);

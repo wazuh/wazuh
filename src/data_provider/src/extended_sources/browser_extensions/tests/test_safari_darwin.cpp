@@ -10,10 +10,11 @@
 #include "ibrowser_extensions_wrapper.hpp"
 #include "safari_darwin.hpp"
 #include <string>
-#include "filesystemHelper.h"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
 #include <unistd.h>
+
+#include <filesystem>
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
@@ -26,7 +27,7 @@ class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 TEST(SafariExtensionsTests, IgnoresNonExtensionApp)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string appsPath = Utils::getParentPath(__FILE__) + "/input_files/apps_mock_dir";
+    std::string appsPath = std::filesystem::path(__FILE__).parent_path().string() + "/input_files/apps_mock_dir";
     EXPECT_CALL(*mockExtensionsWrapper, getApplicationsPath()).WillOnce(::testing::Return(appsPath));
 
     SafariExtensionsProvider safariExtensionsProvider(mockExtensionsWrapper);
@@ -39,7 +40,7 @@ TEST(SafariExtensionsTests, IgnoresNonExtensionApp)
 TEST(SafariExtensionsTests, CollectReturnsExpectedJson)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string appsPath = Utils::getParentPath(__FILE__) + "/input_files/apps_mock_dir";
+    std::string appsPath = std::filesystem::path(__FILE__).parent_path().string() + "/input_files/apps_mock_dir";
     EXPECT_CALL(*mockExtensionsWrapper, getApplicationsPath()).WillOnce(::testing::Return(appsPath));
 
     SafariExtensionsProvider safariExtensionsProvider(mockExtensionsWrapper);

@@ -1,0 +1,34 @@
+# Name of the helper function
+name: sha1
+
+metadata:
+  description: |
+    Calculates the hash SHA-1 of a string. The result of the hash (sha1) operation is rendered as a hexadecimal number
+    which is 40 digits long and is mapped to “field”. If the “field” already exists, then it will be replaced.
+    In case of errors “field” will not be modified.
+    This helper function is typically used in the map stage
+  keywords:
+    - undefined
+
+helper_type: map
+
+# Arguments expected by the helper function
+arguments:
+  any_string:
+    type: string # Expected type is string
+    generate: string
+    source: reference # Includes values or references (their names start with $)
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+output:
+  type: string
+  subset: string
+
+test:
+  - arguments:
+      any_string: Hi Wazuh!
+    should_pass: true
+    expected: c4e30dbc1b87ba8f29b24a74dba2f006be2a709e
+    description: Get hash of string

@@ -118,22 +118,6 @@ class FedoraOsParser : public ISysOsParser
         bool parseFile(std::istream& in, nlohmann::json& output) override;
 };
 
-class SolarisOsParser : public ISysOsParser
-{
-    public:
-        SolarisOsParser() = default;
-        ~SolarisOsParser() = default;
-        bool parseFile(std::istream& in, nlohmann::json& output) override;
-};
-
-class HpUxOsParser : public ISysOsParser
-{
-    public:
-        HpUxOsParser() = default;
-        ~HpUxOsParser() = default;
-        bool parseUname(const std::string& in, nlohmann::json& output) override;
-};
-
 class AlpineOsParser : public ISysOsParser
 {
     public:
@@ -182,11 +166,6 @@ class FactorySysOsParser final
                 return std::make_unique<FedoraOsParser>();
             }
 
-            if (platform == "solaris")
-            {
-                return std::make_unique<SolarisOsParser>();
-            }
-
             if (platform == "debian")
             {
                 return std::make_unique<DebianOsParser>();
@@ -215,11 +194,6 @@ class FactorySysOsParser final
             if (platform == "rhel")
             {
                 return std::make_unique<RedHatOsParser>();
-            }
-
-            if (platform == "hp-ux")
-            {
-                return std::make_unique<HpUxOsParser>();
             }
 
             if (platform == "alpine")

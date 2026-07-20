@@ -15,36 +15,31 @@
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "address": {
+                                        "network_ip": {
                                             "type": "string",
                                             "format": "ipv4"
                                         },
-                                        "broadcast": {
+                                        "network_broadcast": {
                                             "type": "string",
                                             "format": "ipv4"
                                         },
-                                        "dhcp": {
-                                            "type": "string",
-                                            "enum": [
-                                                "enabled",
-                                                "disabled",
-                                                "unknown"
-                                            ]
+                                        "network_dhcp": {
+                                            "type": "integer"
                                         },
-                                        "metric": {
+                                        "network_metric": {
                                             "type": "string"
                                         },
-                                        "netmask": {
+                                        "network_netmask": {
                                             "type": "string",
                                             "format": "ipv4"
                                         }
                                     },
                                     "required": [
-                                        "address",
-                                        "broadcast",
-                                        "dhcp",
-                                        "metric",
-                                        "netmask"
+                                        "network_ip",
+                                        "network_broadcast",
+                                        "network_dhcp",
+                                        "network_metric",
+                                        "network_netmask"
                                     ]
                                 }
                             },
@@ -53,65 +48,60 @@
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "address": {
+                                        "network_ip": {
                                             "type": "string",
                                             "format": "ipv6"
                                         },
-                                        "broadcast": {
+                                        "network_broadcast": {
                                             "type": "string"
                                         },
-                                        "dhcp": {
-                                            "type": "string",
-                                            "enum": [
-                                                "enabled",
-                                                "disabled",
-                                                "unknown"
-                                            ]
+                                        "network_dhcp": {
+                                            "type": "integer"
                                         },
-                                        "metric": {
+                                        "network_metric": {
                                             "type": "string"
                                         },
-                                        "netmask": {
+                                        "network_netmask": {
                                             "type": "string"
                                         }
                                     },
                                     "required": [
-                                        "address",
-                                        "broadcast",
-                                        "dhcp",
-                                        "metric",
-                                        "netmask"
+                                        "network_ip",
+                                        "network_broadcast",
+                                        "network_dhcp",
+                                        "network_metric",
+                                        "network_netmask"
                                     ]
                                 }
                             },
-                            "adapter": {
+                            "interface_alias": {
                                 "type": "string"
                             },
-                            "gateway": {
+                            "network_gateway": {
                                 "type": "string"
                             },
-                            "mac": {
+                            "host_mac": {
                                 "type": "string"
                             },
-                            "mtu": {
+                            "interface_mtu": {
                                 "type": "integer"
                             },
-                            "name": {
+                            "interface_name": {
                                 "type": "string"
                             },
-                            "rx_bytes": {
+                            "host_network_ingress_bytes": {
                                 "type": "integer"
                             },
-                            "rx_dropped": {
+                            "host_network_ingress_drops": {
                                 "type": "integer"
                             },
-                            "rx_errors": {
+                            "host_network_ingress_errors": {
                                 "type": "integer"
                             },
-                            "rx_packets": {
+                            "host_network_ingress_packages": {
                                 "type": "integer"
                             },
-                            "state": {
+                            "interface_state": {
                                 "type": "string",
                                 "enum": [
                                     "up",
@@ -119,42 +109,42 @@
                                     "unknown"
                                 ]
                             },
-                            "tx_bytes": {
+                            "host_network_egress_bytes": {
                                 "type": "integer"
                             },
-                            "tx_dropped": {
+                            "host_network_egress_drops": {
                                 "type": "integer"
                             },
-                            "tx_errors": {
+                            "host_network_egress_errors": {
                                 "type": "integer"
                             },
-                            "tx_packets": {
+                            "host_network_egress_packages": {
                                 "type": "integer"
                             },
-                            "type": {
+                            "interface_type": {
                                 "type": "string"
                             }
                         },
                         "required": [
-                            "adapter",
-                            "gateway",
-                            "mac",
-                            "mtu",
-                            "name",
-                            "rx_bytes",
-                            "rx_dropped",
-                            "rx_errors",
-                            "rx_packets",
-                            "state",
-                            "tx_bytes",
-                            "tx_dropped",
-                            "tx_errors",
-                            "tx_packets",
-                            "type"
+                            "interface_alias",
+                            "network_gateway",
+                            "host_mac",
+                            "interface_mtu",
+                            "interface_name",
+                            "host_network_ingress_bytes",
+                            "host_network_ingress_drops",
+                            "host_network_ingress_errors",
+                            "host_network_ingress_packages",
+                            "interface_state",
+                            "host_network_egress_bytes",
+                            "host_network_egress_drops",
+                            "host_network_egress_errors",
+                            "host_network_egress_packages",
+                            "interface_type"
                         ],
                         "if": {
                             "properties": {
-                                "state": {
+                                "interface_state": {
                                     "anyOf": [
                                         {
                                             "const": "unknown"
@@ -168,7 +158,7 @@
                         },
                         "then": {
                             "properties": {
-                                "mac": {
+                                "host_mac": {
                                     "anyOf": [
                                         {
                                             "pattern": "^([0-9a-fA-F]{2}[:-]){5}([0-9a-fA-F]{2})$"
@@ -182,7 +172,7 @@
                         },
                         "else": {
                             "properties": {
-                                "mac": {
+                                "host_mac": {
                                     "pattern": "^([0-9a-fA-F]{2}[:-]){5}([0-9a-fA-F]{2})$"
                                 }
                             }

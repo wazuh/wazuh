@@ -21,21 +21,18 @@ from sqlalchemy.exc import OperationalError
 
 import api.configuration as aconf
 import wazuh.core.cluster.cluster
-import wazuh.core.cluster.utils
 import wazuh.core.manager
 import wazuh.core.results as wresults
 from wazuh import agent
 from wazuh.cluster import get_node_wrapper, get_nodes_info
 from wazuh.core import common, exception
 from wazuh.core.cluster import local_client, common as c_common
-from wazuh.core.cluster.cluster import check_cluster_status
 from wazuh.core.exception import WazuhException, WazuhClusterError, WazuhError
 from wazuh.core.pyDaemonModule import spawn_process_pool_worker, API_AUTHENTICATION_PROCESS
 from wazuh.core.wazuh_socket import wazuh_sendsync
 
 
 authentication_funcs = {'check_token', 'check_user_master', 'get_permissions', 'get_security_conf'}
-events_funcs = {'send_event_to_analysisd'}
 
 node_info = wazuh.core.cluster.cluster.get_node()
 pools = common.mp_pools.get()
@@ -113,7 +110,8 @@ class DistributedAPI:
         self.origin_module = 'API'
         self.nodes = nodes if nodes is not None else list()
         if not basic_services:
-            self.basic_services = ('wazuh-modulesd', 'wazuh-analysisd', 'wazuh-execd', 'wazuh-db', 'wazuh-remoted')
+            self.basic_services = ('wazuh-manager-modulesd', 'wazuh-manager-analysisd',
+                                   'wazuh-manager-db', 'wazuh-manager-remoted')
         else:
             self.basic_services = basic_services
 
@@ -154,14 +152,13 @@ class DistributedAPI:
                 self.debug_log(f"Receiving parameters {self.f_kwargs}")
 
             is_dapi_enabled = self.cluster_items['distributed_api']['enabled']
-            is_cluster_disabled = self.node == local_client and not check_cluster_status()
 
             # First case: execute the request locally.
             # If the distributed api is not enabled
             # If the cluster is disabled or the request type is local_any
             # if the request was made in the master node and the request type is local_master
             # if the request came forwarded from the master node and its type is distributed_master
-            if not is_dapi_enabled or is_cluster_disabled or self.request_type == 'local_any' or \
+            if not is_dapi_enabled or self.request_type == 'local_any' or \
                     (self.request_type == 'local_master' and self.node_info['type'] == 'master') or \
                     (self.request_type == 'distributed_master' and self.from_cluster):
 
@@ -220,8 +217,9 @@ class DistributedAPI:
               in failed status.
             * Wazuh must be started before using the API is the services are stopped.
 
-        The basic services wazuh needs to be running are: wazuh-modulesd, wazuh-remoted, wazuh-analysisd, wazuh-execd
-        and wazuh-db
+        The basic services wazuh needs to be running are: wazuh-manager-modulesd, wazuh-manager-remoted,
+        wazuh-manager-analysisd
+        and wazuh-manager-db
         """
         if self.f == wazuh.core.manager.status:
             return
@@ -284,13 +282,11 @@ class DistributedAPI:
                                           self.nodes, self.current_user, self.origin_module)
 
                 else:
-                    loop = asyncio.get_event_loop()
+                    loop = asyncio.get_running_loop()
                     if 'thread_pool' in pools:
                         pool = pools.get('thread_pool')
                     elif self.f.__name__ in authentication_funcs:
                         pool = pools.get('authentication_pool')
-                    elif self.f.__name__ in events_funcs:
-                        pool = pools.get('events_pool')
                     else:
                         pool = pools.get('process_pool')
 
@@ -410,7 +406,7 @@ class DistributedAPI:
 
     async def send_tmp_file(self, node_name=None):
         # POST/agent/group/:group_id/configuration and POST/agent/group/:group_id/file/:file_name API calls write
-        # a temporary file in /var/ossec/tmp which needs to be sent to the master before forwarding the request
+        # a temporary file in /var/wazuh-manager/tmp which needs to be sent to the master before forwarding the request
         tmp_file = self.f_kwargs.get('tmp_file', '')
         if not tmp_file:
             raise exception.WazuhClusterError(3034, extra_message='tmp_file parameter is required')
@@ -743,6 +739,9 @@ class SendSyncRequestQueue(WazuhRequestQueue):
 
     async def run(self):
         while True:
+            if self.server.configuration['node_type'] == 'master':
+                await self.server.tasks_event.wait()
+
             names, request = (await self.request_queue.get()).split(' ', 1)
             names = names.split('*', 1)
             # name    -> node name the request must be sent to. None if called from a worker node.

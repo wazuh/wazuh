@@ -49,9 +49,9 @@ class SysOsInfo
             output["os_build"] = osInfoProvider->build();
             output["os_version"] = version;
             output["hostname"] = osInfoProvider->nodeName();
-            output["os_release"] = osInfoProvider->release();
-            output["os_display_version"] = osInfoProvider->displayVersion();
-            output["release"] = version;
+            output["os_distribution_release"] = osInfoProvider->release();
+            output["os_full"] = osInfoProvider->displayVersion();
+            output["os_kernel_release"] = version;
             output["architecture"] = osInfoProvider->machine();
             output["os_platform"] = "windows";
         }

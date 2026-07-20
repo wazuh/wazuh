@@ -12,14 +12,17 @@ import shutil
 from collections import defaultdict
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Tuple, Dict, Callable, List
+from typing import Awaitable, Any, Tuple, Dict, Callable, List
 from typing import Union
 
-from wazuh.core import cluster as metadata, common, exception, utils, analysis
+from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.cluster import client, cluster, common as c_common
-from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
+from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
-from wazuh.core.exception import WazuhException, WazuhClusterError
+from wazuh.core.cluster.utils import log_subprocess_execution, safe_join
+from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.exception import WazuhException
+from wazuh.core.indexer.active_response import ActiveResponseFetchTask
 from wazuh.core.utils import safe_move, get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
 
@@ -118,53 +121,6 @@ class ReceiveIntegrityTask(c_common.ReceiveFileTask):
         super().done_callback(future)
 
 
-class AsyncReloadRulesetFlag:
-    """
-    Asynchronous flag with locking to control ruleset reload operations in worker nodes.
-
-    This class provides an async context manager for safely setting and clearing a boolean flag
-    used to indicate when the ruleset should be reloaded.
-    """
-
-    def __init__(self):
-        """Initializes the asynchronous lock and the flag state."""
-        self._lock = asyncio.Lock()
-        self._flag = False
-
-    async def __aenter__(self):
-        """Acquire the lock asynchronously when entering the context.
-
-        Returns
-        -------
-        AsyncReloadRulesetFlag
-            The instance itself.
-        """
-        await self._lock.acquire()
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        """Release the lock when exiting the context."""
-        self._lock.release()
-
-    def set(self):
-        """Set the flag to True, indicating a reload is required."""
-        self._flag = True
-
-    def clear(self):
-        """Clear the flag, indicating no reload is required."""
-        self._flag = False
-
-    def is_set(self):
-        """Check if the flag is set.
-
-        Returns
-        -------
-        bool
-            True if the flag is set, False otherwise.
-        """
-        return self._flag
-
-
 class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
     """
     Handle connection with the master node.
@@ -191,9 +147,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         # Flag to prevent a new Integrity check if Integrity sync is in progress.
         self.check_integrity_free = True
 
-        # Async flag used to indicate when the worker should reload the ruleset after the next sync
-        self.reload_ruleset_flag = AsyncReloadRulesetFlag()
-
         # Every task logger is configured to log using a tag describing the synchronization process. For example,
         # a log coming from the "Integrity" logger will look like this:
         # [Worker name] [Integrity] Log information
@@ -203,7 +156,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                              'Agent-groups recv full': self.setup_task_logger('Agent-groups recv full'),
                              'Integrity check': self.setup_task_logger('Integrity check'),
                              'Integrity sync': self.setup_task_logger('Integrity sync')}
-        default_date = datetime.utcfromtimestamp(0)
+        default_date = datetime.fromtimestamp(0, tz=timezone.utc)
         self.sync_agent_groups_from_master = {'date_start_worker': default_date, 'date_end_worker': default_date,
                                               'n_synced_chunks': 0}
         self.agent_info_sync_status = {'date_start': 0.0}
@@ -277,7 +230,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             return self.setup_sync_integrity(command, data)
         elif command == b'syn_m_a_e':
             logger = self.task_loggers['Agent-info sync']
-            start_time = datetime.utcfromtimestamp(self.agent_info_sync_status['date_start'])
+            start_time = datetime.fromtimestamp(self.agent_info_sync_status['date_start'], tz=timezone.utc)
             return c_common.end_sending_agent_information(logger, start_time, data.decode())
         elif command == b'syn_m_a_err':
             logger = self.task_loggers['Agent-info sync']
@@ -398,14 +351,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         integrity_logger.info(
             f"Finished in {(get_utc_now().timestamp() - self.integrity_check_status['date_start']):.3f}s. "
             f"Sync not required.")
-
-        async with self.reload_ruleset_flag:
-            if self.reload_ruleset_flag.is_set():
-                response = await analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
-                analysis.log_ruleset_reload_response(self.logger, response)
-
-                # Clear the flag
-                self.reload_ruleset_flag.clear()
 
     async def compare_agent_groups_checksums(self, master_checksum, logger):
         """Compare the checksum of the local database with the checksum of the master node to check if these differ.
@@ -551,13 +496,13 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             Master's response after finishing the synchronization.
         """
         logger.info('Starting.')
-        start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        start_time = datetime.now(timezone.utc)
         data = await super().get_chunks_in_task_id(task_id, error_command)
         result = await super().update_chunks_wdb(data, info_type, logger, error_command, timeout)
         response = await self.send_request(command=command, data=json.dumps(result).encode())
         await self.check_agent_groups_checksums(data, logger)
 
-        end_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        end_time = datetime.now(timezone.utc)
         logger.info(f'Finished in {(end_time - start_time).total_seconds():.3f}s. '
                     f'Updated {result["updated_chunks"]} chunks.')
 
@@ -610,8 +555,8 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
         Asynchronous task that is started when the worker connects to the master. It starts an agent-info
         synchronization process every 'sync_agent_info' seconds.
 
-        A JSON object with the information of all local agents is retrieved from local wazuh-db socket
-        and sent to the master's wazuh-db.
+        A JSON object with the information of all local agents is retrieved from local wazuh-manager-db socket
+        and sent to the master's wazuh-manager-db.
         """
         logger = self.task_loggers["Agent-info sync"]
         agent_info = c_common.SyncWazuhdb(manager=self, logger=logger, data_retriever=None, cmd=b'syn_a_w_m',
@@ -736,14 +681,6 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                 log_subprocess_execution(self.task_loggers['Integrity sync'], logs)
                 logger.debug("Updating local files: End.")
 
-            async with self.reload_ruleset_flag:
-                if self.reload_ruleset_flag.is_set():
-                    response = await analysis.send_reload_ruleset_msg(origin={'module': 'cluster'})
-                    analysis.log_ruleset_reload_response(self.logger, response)
-
-                    # Clear the flag
-                    self.reload_ruleset_flag.clear()
-
             logger.info(f"Finished in {get_utc_now().timestamp() - self.integrity_sync_status['date_start']:.3f}s.")
         except Exception as e:
             logger.error(f"Error synchronizing files: {e}")
@@ -794,7 +731,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
             if data_['merged']:  # worker nodes can only receive agent-groups files
                 item_key = data_['cluster_item_key']
                 if item_key not in cluster_items['files']:
-                    raise WazuhClusterError(3022, extra_message=f"Invalid cluster_item_key: {item_key}")
+                    raise exception.WazuhClusterError(3022, extra_message=f"Invalid cluster_item_key: {item_key}")
 
                 # Split merged file into individual files inside zipdir (directory containing unzipped files),
                 # and then move each one to the destination directory (<wazuh_path>/filename).
@@ -804,7 +741,7 @@ class WorkerHandler(client.AbstractClient, c_common.WazuhCommon):
                     full_unmerged_name = safe_join(common.WAZUH_PATH, name)
                     expected_base = safe_join(common.WAZUH_PATH, item_key)
                     if not os.path.commonpath([full_unmerged_name, expected_base]).startswith(expected_base):
-                        raise WazuhClusterError(3022,
+                        raise exception.WazuhClusterError(3022,
                             extra_message=f"File path outside allowed directory: {name}")
                     tmp_unmerged_path = full_unmerged_name + '.tmp'
                     with open(tmp_unmerged_path, 'wb') as f:
@@ -920,8 +857,11 @@ class Worker(client.AbstractClientManager):
         self.extra_args = {'cluster_name': self.cluster_name, 'version': self.version, 'node_type': self.node_type}
         self.dapi = dapi.APIRequestQueue(server=self)
         self.integrity_control = {}
+        self.run_active_response_job = None
+        self.active_response_task = ActiveResponseFetchTask(self)
+        self.indexer_task_manager = IndexerTaskManager()
 
-    def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
+    def add_tasks(self) -> List[Tuple[Awaitable[Any], Tuple]]:
         """Define the tasks that the worker will always run in an infinite loop.
 
         Returns
@@ -930,9 +870,26 @@ class Worker(client.AbstractClientManager):
             The first item is the coroutine to run and the second is the arguments it needs. In this case,
             all coroutines don't need arguments.
         """
-        return super().add_tasks() + [(self.client.sync_integrity, tuple()),
+        tasks = super().add_tasks() + [(self.client.sync_integrity, tuple()),
                                       (self.client.sync_agent_info, tuple()),
                                       (self.dapi.run, tuple())]
+        try:
+            _indexer_conf = get_ossec_conf(section="indexer")
+        except Exception:
+            _indexer_conf = {}
+
+        if _indexer_conf:
+            self.run_active_response_job = lambda: self.indexer_task_manager.manage_indexer_tasks(
+                [self.active_response_task.run]
+            )
+        else:
+            self.logger.warning(
+                "Indexer is not configured in wazuh-manager.conf or it is unavailable; "
+                "Indexer tasks will not be started."
+            )
+        if self.run_active_response_job:
+            tasks.append((self.run_active_response_job, tuple()))
+        return tasks
 
     def get_node(self) -> Dict:
         """Get basic information about the worker node. Used in the GET/cluster/node API call.

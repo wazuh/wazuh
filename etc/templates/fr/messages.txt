@@ -4,8 +4,7 @@ no="n"
 yesmatch="o"
 nomatch="n"
 agent="agent"
-local="local"
-server="serveur"
+server="manager"
 help="aide"
 
 # Global
@@ -21,10 +20,9 @@ system="Système"
 user="Utilisateur"
 host="Hôte"
 hitanyorabort="Appuyez sur Entrée pour continuer ou Ctrl-C pour annuler."
-whattoinstall="Quel type d'installation voulez-vous (manager, agent, local ou aide) ?"
-serverchose="Installation du manager (serveur) choisie"
+whattoinstall="Quel type d'installation voulez-vous (manager, agent, ou aide) ?"
+serverchose="Installation du manager choisie"
 clientchose="Installation de l'agent (client) choisie"
-localchose="Installation en local choisie"
 
 # Part 2
 settingupenv="Définition de l'environnement d'installation"
@@ -59,11 +57,6 @@ runrootcheck="Voulez-vous démarrer le moteur de détection de rootkit ?"
 norootcheck="Rootcheck non lancé (détection de rootkit)"
 yesrootcheck="Lancement de rootcheck (détection de rootkit)"
 
-# Part 3.4
-runopenscap="Voulez-vous démarrer OpenSCAP?"
-norunopenscap="OpenSCAP non lancé"
-yesrunopenscap="Lancement de OpenSCAP"
-
 # Part 3.5/server/local
 enable_ar="voulez-vous démarrer la réponse active ?"
 noactive="Réponse active désactivée"
@@ -75,11 +68,6 @@ yesfirewall="pare-feu (firewall-drop) activé (local) pour les levels >= 6"
 defaultwhitelist="liste blanche (white list) par défaut pour la réponse active :"
 addwhite="Voulez-vous d'autres adresses IP dans votre liste (white list) ?"
 ipswhite="IPs (séparées par des espaces) : "
-
-# Part 3.5/server/local
-syslog="Voulez-vous activer fonctionnalité syslog (port udp 514) ?"
-nosyslog="Fonctionnalité syslog désactivé"
-yessyslog="Fonctionnalité syslog activé"
 
 # Part 3.4/3.5
 readlogs="Mise en place de la configuration pour analyser les logs suivants :"

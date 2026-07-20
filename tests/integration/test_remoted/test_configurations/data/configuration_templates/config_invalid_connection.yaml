@@ -1,10 +1,6 @@
 - sections:
     - section: remote
       elements:
-        - connection:
-            value: CONNECTION
-        -  allowed-ips:
-            value: 127.0.0.1
         - port:
             value: 'PORT'
         - protocol:

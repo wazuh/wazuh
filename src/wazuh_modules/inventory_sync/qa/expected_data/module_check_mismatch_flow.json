@@ -1,0 +1,23 @@
+{
+  "test_name": "module_check_mismatch_flow",
+  "description": "Expected responses for ModuleCheck flow with mismatched checksums",
+  "expected_responses": [
+    {
+      "message_type": "StartAck",
+      "status": "Status_Ok",
+      "description": "StartAck should be received with OK status"
+    },
+    {
+      "message_type": "EndAck",
+      "status": "Status_ChecksumMismatch",
+      "description": "EndAck should be received with ChecksumMismatch status when checksums don't match"
+    }
+  ],
+  "expected_logs": [
+    {
+      "level": "INFO",
+      "pattern": "ModuleCheck: Checksums DO NOT match.*full resync required",
+      "description": "Log should indicate checksums don't match and full resync is required"
+    }
+  ]
+}

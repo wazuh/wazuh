@@ -28,19 +28,21 @@ else
     HOST=`uname -n`
 fi
 
-OSSEC_INIT="/etc/ossec-init.conf"
 NAMESERVERS=`cat /etc/resolv.conf | grep "^nameserver" | cut -d " " -sf 2`
 NAMESERVERS2=`cat /etc/resolv.conf | grep "^nameserver" | cut -sf 2`
 HOST_CMD=`command -v host 2>/dev/null`
 NAME="Wazuh"
-INSTYPE="server"
+INSTYPE="manager"
 # Default installation directory
-INSTALLDIR="/var/ossec";
+INSTALLDIR="/var/wazuh-manager";
 PREINSTALLEDDIR=""
 CEXTRA=""
+WAZUH_CONF="wazuh-manager.conf"
+WAZUH_LOGFILE="wazuh-manager.log"
+WAZUH_LOGJSON="wazuh-manager.json"
 
 # Internal definitions
-NEWCONFIG="./etc/ossec.mc"
+NEWCONFIG="./etc/wazuh.mc"
 PRECONFIG="./etc/PRECONFIG"
 
 ## Templates

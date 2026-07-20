@@ -139,7 +139,7 @@ def test_agentd_state_config(test_configuration, test_metadata, remove_state_fil
         time.sleep(int(test_metadata['local_internal_options']['agent.state_interval']))
     assert test_metadata['state_file_exist'] == os.path.exists(AGENTD_STATE)
 
-    # Follow ossec.log to find desired messages by a callback
+    # Follow wazuh log file to find desired messages by a callback
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     wazuh_log_monitor.start(callback=callbacks.generate_callback(str(test_metadata['event_monitor'])))
     assert (wazuh_log_monitor.callback_result != None), f'Error invalid configuration event not detected'

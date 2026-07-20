@@ -1,0 +1,28 @@
+run-name: Check changelog on PR ${{ github.event.pull_request.number }}
+name: 5.X - Check changelog
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  # Enforces the update of a changelog file on every pull request
+  verify-changelog:
+    if: ${{ !github.event.pull_request.draft && github.repository == 'wazuh/wazuh' }}
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Verify changelog
+        uses: dangoslen/changelog-enforcer@v3
+        id: verify-changelog
+        with:
+          skipLabels: "autocut,skip-changelog"
+          changeLogPath: "CHANGELOG.md"

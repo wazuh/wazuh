@@ -13,14 +13,15 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../config/client-config.h"
+#include "client-config.h"
+#include "agentd.h"
 
 #include "../wrappers/posix/pthread_wrappers.h"
 
 int w_agentd_get_buffer_lenght();
 
 #ifndef TEST_WINAGENT
-int buffer_append(const char *msg);
+int buffer_append(const char *msg, ssize_t msg_len);
 int w_agentd_buffer_resize(unsigned int current_capacity, unsigned int desired_capacity);
 void w_agentd_buffer_free(unsigned int current_capacity);
 void buffer_init();
@@ -29,7 +30,7 @@ void buffer_init();
 extern agent *agt;
 extern int i;
 extern int j;
-extern char **buffer;
+extern buffered_message *buffer;
 
 /* setup/teardown */
 
@@ -44,20 +45,13 @@ static int teardown_group(void **state) {
 }
 
 // The mock function for getDefine_Int
+#ifndef TEST_WINAGENT
 int __wrap_getDefine_Int(const char *category, const char *name, int min, int max) {
     function_called();
 
     return mock_type(int);
 }
-
-void __wrap__minfo(const char *file, int line, const char *func, const char *format, ...) {
-        function_called();
-}
-
-void __wrap__mwarn(const char *file, int line, const char *func, const char *format, ...) {
-        function_called();
-}
-
+#endif
 
 /* tests */
 
@@ -142,8 +136,10 @@ void test_buffer_append(void **state)
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     buffer_init();
-    buffer_append("Testing");
+    buffer_append("Testing", -1);
 
     assert_int_equal(1, w_agentd_get_buffer_lenght());
 
@@ -152,7 +148,95 @@ void test_buffer_append(void **state)
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     // expect_function_call(__wrap__mwarn);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    w_agentd_buffer_free(agt->buflength);
+
+    os_free(agt);
+}
+
+void test_buffer_append_text_size_excludes_null_terminator(void **state)
+{
+    os_calloc(1, sizeof(agent), agt);
+    agt->buffer = 1;
+    agt->buflength = 5;
+    i = 0;
+    j = 0;
+
+    const char *text_event = "1:/var/log/syslog:Apr 20 hello";
+
+    expect_function_call(__wrap_getDefine_Int);
+    will_return(__wrap_getDefine_Int, 90);
+
+    expect_function_call(__wrap_getDefine_Int);
+    will_return(__wrap_getDefine_Int, 80);
+
+    expect_function_call(__wrap_getDefine_Int);
+    will_return(__wrap_getDefine_Int, 15);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    buffer_init();
+    buffer_append(text_event, -1);
+
+    assert_non_null(buffer[0].data);
+    assert_int_equal(strlen(text_event), buffer[0].size);
+    assert_memory_equal(text_event, buffer[0].data, strlen(text_event));
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    w_agentd_buffer_free(agt->buflength);
+
+    os_free(agt);
+}
+
+void test_buffer_append_binary_preserves_size(void **state)
+{
+    os_calloc(1, sizeof(agent), agt);
+    agt->buffer = 1;
+    agt->buflength = 5;
+    i = 0;
+    j = 0;
+
+    const char payload[] = { 's', 'y', 's', 'c', 'h', 'e', 'c', 'k',
+                             '\0', '{', '"', 'x', '"', ':', '1', '}', '\0' };
+    const size_t payload_len = sizeof(payload);
+
+    expect_function_call(__wrap_getDefine_Int);
+    will_return(__wrap_getDefine_Int, 90);
+
+    expect_function_call(__wrap_getDefine_Int);
+    will_return(__wrap_getDefine_Int, 80);
+
+    expect_function_call(__wrap_getDefine_Int);
+    will_return(__wrap_getDefine_Int, 15);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+
+    buffer_init();
+    buffer_append(payload, (ssize_t)payload_len);
+
+    assert_non_null(buffer[0].data);
+    assert_int_equal(payload_len, buffer[0].size);
+    assert_memory_equal(payload, buffer[0].data, payload_len);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     w_agentd_buffer_free(agt->buflength);
 
@@ -175,6 +259,8 @@ void test_w_agentd_buffer_resize_shrink(void **state)
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 15);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     buffer_init();
 
     for (int k = 0; k < agt->buflength; k++) {
@@ -185,21 +271,21 @@ void test_w_agentd_buffer_resize_shrink(void **state)
         expect_function_call(__wrap_pthread_mutex_unlock);
         // Unloock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_unlock);
-        buffer_append("Testing");
+        buffer_append("Testing", -1);
     }
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_pthread_mutex_lock);
 
-    expect_function_call(__wrap__mwarn);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mwarn, formatted_msg);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     // Loock, unloock the mutex for the w_agentd_state_update
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int new_capacity = 2;
     int retval = w_agentd_buffer_resize(agt->buflength, new_capacity);
@@ -216,7 +302,7 @@ void test_w_agentd_buffer_resize_shrink(void **state)
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     w_agentd_buffer_free(new_capacity);
     os_free(agt);
@@ -238,6 +324,8 @@ void test_w_agentd_buffer_resize_grow_continue(void **state)
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 15);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     buffer_init();
 
     for (int k = 0; k < agt->buflength; k++) {
@@ -248,7 +336,7 @@ void test_w_agentd_buffer_resize_grow_continue(void **state)
         expect_function_call(__wrap_pthread_mutex_unlock);
         // Unloock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_unlock);
-        buffer_append("Testing");
+        buffer_append("Testing", -1);
     }
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -256,7 +344,7 @@ void test_w_agentd_buffer_resize_grow_continue(void **state)
     expect_function_call(__wrap_pthread_mutex_lock);
 
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int new_capacity = 5;
     int retval = w_agentd_buffer_resize(agt->buflength, new_capacity);
@@ -274,7 +362,7 @@ void test_w_agentd_buffer_resize_grow_continue(void **state)
     expect_function_call(__wrap_pthread_mutex_unlock);
 
     // expect_function_call(__wrap__mwarn);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     w_agentd_buffer_free(new_capacity);
     os_free(agt);
@@ -296,6 +384,8 @@ void test_w_agentd_buffer_resize_grow_two_parts(void **state)
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 15);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     buffer_init();
 
     for (int k = 0; k < agt->buflength; k++) {
@@ -306,7 +396,7 @@ void test_w_agentd_buffer_resize_grow_two_parts(void **state)
         expect_function_call(__wrap_pthread_mutex_unlock);
         // Unloock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_unlock);
-        buffer_append("Testing");
+        buffer_append("Testing", -1);
     }
 
     expect_function_call(__wrap_pthread_mutex_lock);
@@ -315,7 +405,7 @@ void test_w_agentd_buffer_resize_grow_two_parts(void **state)
 
     // Loock, unloock the mutex for the w_agentd_state_update
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     int new_capacity = 5;
     int retval = w_agentd_buffer_resize(agt->buflength, new_capacity);
@@ -332,7 +422,7 @@ void test_w_agentd_buffer_resize_grow_two_parts(void **state)
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
 
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     w_agentd_buffer_free(new_capacity);
     os_free(agt);
@@ -354,6 +444,8 @@ void test_w_agentd_buffer_free(void **state)
     expect_function_call(__wrap_getDefine_Int);
     will_return(__wrap_getDefine_Int, 15);
 
+    expect_any(__wrap__mdebug1, formatted_msg);
+
     buffer_init();
 
     for (int k = 0; k < agt->buflength; k++) {
@@ -364,12 +456,12 @@ void test_w_agentd_buffer_free(void **state)
         expect_function_call(__wrap_pthread_mutex_unlock);
         // Unloock w_agentd_buffer_resize
         expect_function_call(__wrap_pthread_mutex_unlock);
-        buffer_append("Testing");
+        buffer_append("Testing", -1);
     }
 
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_function_call(__wrap__minfo);
+    expect_any(__wrap__mdebug1, formatted_msg);
 
     w_agentd_buffer_free(agt->buflength);
 
@@ -389,6 +481,8 @@ int main(void) {
         cmocka_unit_test(test_w_agentd_get_buffer_lenght_buffer),
         #ifndef TEST_WINAGENT
         cmocka_unit_test(test_buffer_append),
+        cmocka_unit_test(test_buffer_append_text_size_excludes_null_terminator),
+        cmocka_unit_test(test_buffer_append_binary_preserves_size),
         cmocka_unit_test(test_w_agentd_buffer_free),
         cmocka_unit_test(test_w_agentd_buffer_resize_shrink),
         cmocka_unit_test(test_w_agentd_buffer_resize_grow_continue),

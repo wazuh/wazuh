@@ -78,7 +78,7 @@ build() {
         make clean-internals
         make clean-windows
         make clean-test
-        make TARGET=$target DEBUG=1 TEST=1 -j$JOBS
+        make TARGET=$target TEST=1 -j$JOBS
     } > build-$target.log 2>&1
 }
 
@@ -100,7 +100,7 @@ cmocka-tests() {
     } > cmocka-tests-$target.log 2>&1
 
     if [ "$target" = "winagent" ]; then
-        WINEARCH="win32" WINEPATH="/usr/i686-w64-mingw32/lib;$(realpath $(pwd)/../..)" ctest || true
+        WINEARCH="win32" WINEPATH="/usr/i686-w64-mingw32/lib;/usr/lib/gcc/i686-w64-mingw32/13-posix;$(realpath $(pwd)/../..);$(realpath $(pwd)/../../build/bin)" ctest || true
     else
         make coverage || true
     fi 2>> cmocka-tests-$target.log

@@ -13,7 +13,7 @@ import struct
 import sys
 from contextvars import ContextVar
 from datetime import datetime
-from unittest.mock import patch, MagicMock, call, ANY, AsyncMock, mock_open
+from unittest.mock import patch, MagicMock, Mock, call, ANY, AsyncMock, mock_open
 
 import cryptography
 import pytest
@@ -131,7 +131,8 @@ def test_inbuffer_get_info_from_header(unpack_mock):
     # If the flag value is the same as divide_flag, we will forward this value to the flag_divided attribute.
     assert in_buffer.cmd == b"pw"
     assert in_buffer.flag_divided == b"d"
-    assert in_buffer.payload == bytearray(in_buffer.total)
+    # Payload starts empty; memory is committed only as bytes arrive (lazy allocation).
+    assert in_buffer.payload == bytearray()
 
     unpack_mock.return_value = (0, 2048, b'echo')
     in_buffer.get_info_from_header(b"header", "hhl", 1)
@@ -171,6 +172,69 @@ def test_inbuffer_receive_data():
 
     assert isinstance(in_buffer.receive_data(b"data"), bytes)
     assert in_buffer.received == 1028
+
+
+def test_inbuffer_lazy_allocation():
+    """Validate that get_info_from_header does not pre-allocate the full declared payload.
+
+    A peer can declare any size up to MAX_TOTAL_SIZE.  Memory must only be
+    committed as bytes actually arrive, so that a connection that sends only
+    the 20-byte header cannot pin the full declared amount.
+    """
+    buf = cluster_common.InBuffer()
+    # Simulate parsing a header that declares the maximum allowed payload size.
+    with patch('struct.unpack', return_value=(1, cluster_common.MAX_TOTAL_SIZE, b'cmd---------')):
+        buf.get_info_from_header(b'x' * 20, '!2I12s', 20)
+
+    # Payload buffer must be empty immediately after header parsing — no pre-allocation.
+    assert buf.total == cluster_common.MAX_TOTAL_SIZE
+    assert len(buf.payload) == 0
+
+    # After receiving some bytes the payload grows by exactly that amount.
+    remaining = buf.receive_data(b'hello')
+    assert len(buf.payload) == 5
+    assert buf.received == 5
+    assert remaining == b''
+
+
+@pytest.mark.asyncio
+async def test_handler_payload_deadline_fires():
+    """Validate that a connection is closed if declared payload bytes never arrive.
+
+    The deadline must fire after PRE_AUTH_PAYLOAD_TIMEOUT and call
+    transport.close() so memory for the outstanding payload is released.
+    """
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    transport_mock = Mock()
+    handler.transport = transport_mock
+
+    handler._start_payload_deadline()
+    assert handler._payload_deadline is not None
+
+    # Advance the event loop past the deadline.
+    await asyncio.sleep(cluster_common.PRE_AUTH_PAYLOAD_TIMEOUT + 0.1)
+
+    transport_mock.close.assert_called_once()
+    # Timer handle is consumed once it fires.
+    assert handler._payload_deadline is None
+
+
+@pytest.mark.asyncio
+async def test_handler_payload_deadline_cancelled_on_complete():
+    """Validate that the deadline is cancelled once the full payload arrives."""
+    handler = cluster_common.Handler(fernet_key, cluster_items)
+    transport_mock = Mock()
+    handler.transport = transport_mock
+
+    handler._start_payload_deadline()
+    assert handler._payload_deadline is not None
+
+    handler._cancel_payload_deadline()
+    assert handler._payload_deadline is None
+
+    # Give the loop a turn — transport must not be closed.
+    await asyncio.sleep(0)
+    transport_mock.close.assert_not_called()
 
 
 # Test SendStringTask methods
@@ -755,7 +819,7 @@ async def test_handler_update_chunks_wdb(send_request_mock):
                                                                                'generic_errors': ['ERR'],
                                                                                'time_spent': 6,
                                                                                'total_updated': 0, 'updated_chunks': 2}
-                    logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-db in 6.000s.')])
+                    logger_debug_mock.assert_has_calls([call('2/5 chunks updated in wazuh-manager-db in 6.000s.')])
                     logger_debug2_mock.assert_has_calls([call('Chunk 1/5: 0'), call('Chunk 2/5: 1')])
                     logger_error_mock.assert_has_calls([call('other1'), call('other2'),
                                                         call('Wazuh-db response for chunk 1/5 was not "ok": 0'),
@@ -1141,7 +1205,7 @@ def test_handler_receive_file_rejects_invalid_and_disallowed_paths():
     handler = cluster_common.Handler(fernet_key, cluster_items)
 
     # Disallowed path (attempt to write into /etc)
-    assert handler.receive_file(b"/etc/ossec.conf") == (b"err", b"Write path not allowed")
+    assert handler.receive_file(b"/etc/wazuh-manager.conf") == (b"err", b"Write path not allowed")
 
 
 def test_handler_update_file():
@@ -1668,7 +1732,7 @@ async def test_sync_wazuh_db_retrieve_information(socket_mock):
         with patch.object(sync_object.logger, 'error') as logger_error_mock:
             assert await sync_object.retrieve_information() == []
             logger_error_mock.assert_called_with(
-                'Could not obtain data from wazuh-db: Error 1000 - Wazuh Internal Error')
+                'Could not obtain data from wazuh-manager-db: Error 1000 - Wazuh Internal Error')
 
 
 @patch('wazuh.core.wdb_http.WazuhDBHTTPClient')
@@ -1702,7 +1766,7 @@ async def test_sync_wazuh_db_retrieve_agents_information_ko():
         with patch.object(sync_object.logger, 'error') as logger_error_mock:
             assert await sync_object.retrieve_agents_information() is None
             logger_error_mock.assert_called_with(
-                'Could not obtain data from wazuh-db: Error 1000 - Wazuh Internal Error')
+                'Could not obtain data from wazuh-manager-db: Error 1000 - Wazuh Internal Error')
 
 
 @pytest.mark.asyncio
@@ -1862,9 +1926,7 @@ def test_asyncio_exception_handler(format_tb, mock_loop, mock_logging):
 @patch('wazuh.core.common.os.chmod')
 @patch('wazuh.core.common.os.chown')
 @patch('wazuh.core.common.wazuh_gid', return_value=0)
-@patch('wazuh.core.common.wazuh_uid', return_value=0)
-@patch('wazuh.core.common.INSTALLATION_UID_PATH', os.path.join('/tmp', 'installation_uid'))
-def test_wazuh_json_encoder_default(mock_chmod, mock_chown, mock_gid, mock_uid):
+def test_wazuh_json_encoder_default(mock_gid, mock_chown, mock_chmod):
     """Test if a special JSON encoder is defined for Wazuh."""
 
     wazuh_encoder = cluster_common.WazuhJSONEncoder()
@@ -1888,10 +1950,10 @@ def test_wazuh_json_encoder_default(mock_chmod, mock_chown, mock_gid, mock_uid):
 
     with patch('builtins.callable', return_value=False):
         # Test second condition
-        assert isinstance(wazuh_encoder.default(exception.WazuhException(3012)), dict)
-        assert wazuh_encoder.default(exception.WazuhException(3012)) == \
+        assert isinstance(wazuh_encoder.default(exception.WazuhException(3009)), dict)
+        assert wazuh_encoder.default(exception.WazuhException(3009)) == \
                {'__wazuh_exception__': {'__class__': 'WazuhException',
-                                        '__object__': {'type': 'about:blank', 'title': 'WazuhException', 'code': 3012,
+                                        '__object__': {'type': 'about:blank', 'title': 'WazuhException', 'code': 3009,
                                                        'extra_message': None, 'extra_remediation': None,
                                                        'cmd_error': False, 'dapi_errors': {}}}}
 
@@ -1926,9 +1988,7 @@ def test_wazuh_json_encoder_default(mock_chmod, mock_chown, mock_gid, mock_uid):
 @patch('wazuh.core.common.os.chmod')
 @patch('wazuh.core.common.os.chown')
 @patch('wazuh.core.common.wazuh_gid', return_value=0)
-@patch('wazuh.core.common.wazuh_uid', return_value=0)
-@patch('wazuh.core.common.INSTALLATION_UID_PATH', os.path.join('/tmp', 'installation_uid'))
-def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
+def test_as_wazuh_object_ok(mock_gid, mock_chown, mock_chmod):
     """Test the different outputs taking into account the input values."""
 
     # Test the first condition - Wazuh methods without @dapi_allower must be blocked
@@ -1936,11 +1996,16 @@ def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
         cluster_common.as_wazuh_object({"__callable__": {"__name__": "to_dict", "__wazuh__": "version"}})
     assert "is not exposed with @dapi_allower decorator" in str(err.value)
 
-    # Test the first condition - non-internal callable must be blocked
+    # Test the first condition and nested else
     with pytest.raises(exception.WazuhInternalError) as err:
-        cluster_common.as_wazuh_object({"__callable__": {"__name__": "path", "__qualname__": "__loader__.value",
-                                                        "__module__": "os"}})
-    assert "Decoding callable from module" in str(err.value)
+        cluster_common.as_wazuh_object({
+            "__callable__": {
+                "__name__": "join",
+                "__qualname__": "path.join",
+                "__module__": "os"
+            }
+        })
+    assert "Decoding callable from module 'os' is not allowed" in str(err.value)
 
     with pytest.raises(exception.WazuhInternalError) as err:
         cluster_common.as_wazuh_object({"__callable__": {"__name__": "__name__", "__qualname__": "value",
@@ -2003,9 +2068,7 @@ def test_as_wazuh_object_ok(mock_chmod, mock_chown, mock_gid, mock_uid):
 @patch('wazuh.core.common.os.chmod')
 @patch('wazuh.core.common.os.chown')
 @patch('wazuh.core.common.wazuh_gid', return_value=0)
-@patch('wazuh.core.common.wazuh_uid', return_value=0)
-@patch('wazuh.core.common.INSTALLATION_UID_PATH', os.path.join('/tmp', 'installation_uid'))
-def test_as_wazuh_object_ko(mock_chmod, mock_chown, mock_gid, mock_uid):
+def test_as_wazuh_object_ko(mock_chmod, mock_chown, mock_gid):
     """Test if the exceptions are correctly raised."""
 
     with pytest.raises(exception.WazuhInternalError, match=r'.* 1000 .*'):

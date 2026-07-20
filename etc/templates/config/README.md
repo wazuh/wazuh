@@ -2,25 +2,21 @@
 
 
 
-## Manager 'ossec.conf' file
+## Manager 'wazuh-manager.conf' file
 
 
     header-comments.template
 
-    <ossec_config>
+    <wazuh_config>
         global.template
 
         logging.template
-
-        alerts.template
 
         remote-secure.template
 
         [remote-syslog.template]
 
         rootcheck.template
-
-        wodle-openscap.template
 
         wodle-syscollector.template
 
@@ -39,7 +35,7 @@
         localfile-extra.template
 
         rules.template
-    </ossec_config>
+    </wazuh_config>
 
 ## Agent 'ossec.conf' file
 
@@ -47,23 +43,21 @@
 
     <ossec_config>
         <client>
-          <server>
+          <manager>
             <address>192.168.10.100</address>
-          </server>
+          </manager>
           <config-profile>distribution, distributionVersion</config-profile>
         </client>
         <client_buffer>
           <!-- Agent buffer options -->
           <disabled>no</disabled>
           <queue_size>5000</queue_size>
-          <events_per_second>500</events_per_second>
+          <events_per_second>600</events_per_second>
         </client_buffer>
 
         logging.template
 
         rootcheck.template
-
-        wodle-openscap.template
 
         wodle-syscollector.template
 

@@ -1,0 +1,57 @@
+cmake_minimum_required(VERSION 3.12.4)
+
+project(agent_metadata)
+
+if(NOT DEFINED WAZUH_MAIN_PROJECT)
+  get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+
+  if(NOT SRC_FOLDER STREQUAL "/")
+    get_filename_component(SRC_FOLDER ${SRC_FOLDER} ABSOLUTE)
+  endif()
+endif()
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Address/UB sanitizer (optional)
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/)
+
+add_library(agent_metadata SHARED src/metadata_provider.cpp ${RESOURCE_OBJ_DLL})
+
+target_include_directories(agent_metadata
+                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+  set_target_properties(
+    agent_metadata
+    PROPERTIES LINK_FLAGS
+               "-Wl,--add-stdcall-alias -Wl,--output-def,libagent_metadata.def")
+
+  find_program(DLLTOOL i686-w64-mingw32-dlltool)
+  if(NOT DLLTOOL)
+    message(FATAL_ERROR "DLL tool for delayed load libraries not found.")
+  endif(NOT DLLTOOL)
+
+  add_custom_command(
+    TARGET agent_metadata
+    POST_BUILD
+    COMMAND "${DLLTOOL}" -D "libagent_metadata.dll" --def
+            "libagent_metadata.def" --output-delaylib "libagent_metadata.lib"
+    COMMAND cp "libagent_metadata.lib"
+            "${CMAKE_BINARY_DIR}/bin/libagent_metadata.lib"
+    COMMENT "Creating delayed load library for agent_metadata.")
+elseif(UNIX AND NOT APPLE)
+  target_link_libraries(agent_metadata PRIVATE pthread)
+  string(APPEND CMAKE_SHARED_LINKER_FLAGS " -Wl,-rpath=$ORIGIN")
+endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+
+if(UNIT_TEST)
+  enable_testing()
+  add_coverage_libraries(agent_metadata)
+  add_subdirectory(tests)
+endif()

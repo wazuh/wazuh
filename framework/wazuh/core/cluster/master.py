@@ -19,11 +19,17 @@ from uuid import uuid4
 from wazuh.core import cluster as metadata, common, exception, utils
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import server, cluster, common as c_common
+from wazuh.core.cluster.common import IndexerTaskManager
 from wazuh.core.cluster.dapi import dapi
 from wazuh.core.cluster.utils import context_tag, log_subprocess_execution, safe_join
 from wazuh.core.common import DECIMALS_DATE_FORMAT
+from wazuh.core.configuration import get_ossec_conf
+from wazuh.core.indexer.metrics_snapshot import MetricsSnapshotTasks
 from wazuh.core.utils import get_utc_now
 from wazuh.core.wdb import AsyncWazuhDBConnection
+from wazuh.core.indexer.active_response import ActiveResponseFetchTask
+from wazuh.core.indexer.disconnected_agents import DisconnectedAgentSyncTasks
+
 
 DEFAULT_DATE: str = 'n/a'
 
@@ -403,6 +409,10 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
                                                  set_data_command='global set-agent-groups',
                                                  set_payload={'mode': 'override', 'sync_status': 'synced'})
 
+        if not self.server.tasks_event.is_set():
+            self.logger.info("Starting cluster tasks.")
+            self.server.tasks_event.set()
+
         return cmd, payload
 
     def get_manager(self) -> server.AbstractServer:
@@ -617,7 +627,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         return super().end_receiving_file(task_and_file_names=task_and_file_names, logger_tag='Integrity check')
 
     async def sync_wazuh_db_info(self, task_id: bytes, info_type: str):
-        """Create a process to send to the local wazuh-db the chunks of data received from a worker.
+        """Create a process to send to the local wazuh-manager-db the chunks of data received from a worker.
 
         Parameters
         ----------
@@ -633,7 +643,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Agent-info sync']
         logger.info('Starting.')
-        start_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        start_time = datetime.now(timezone.utc)
 
         data = await self.get_chunks_in_task_id(task_id, b'syn_m_a_err')
         result = await self.update_chunks_wdb(data, 'agent-info', logger, b'syn_m_a_err',
@@ -641,7 +651,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
 
         # Send result to worker.
         response = await self.send_request(command=b'syn_m_a_e', data=json.dumps(result).encode())
-        end_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+        end_time = datetime.now(timezone.utc)
         self.sync_agent_info_status.update({'date_start_master': start_time.strftime(DECIMALS_DATE_FORMAT),
                                             'date_end_master': end_time.strftime(DECIMALS_DATE_FORMAT),
                                             'n_synced_chunks': result['updated_chunks']})
@@ -730,7 +740,7 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
         """
         logger = self.task_loggers['Integrity check']
         date_start_master = utils.get_utc_now()
-        logger.info(f"Starting.")
+        logger.info("Starting.")
 
         await self.wait_for_file(file=received_file, task_id=task_id)
 
@@ -988,6 +998,11 @@ class MasterHandler(server.AbstractServerHandler, c_common.WazuhCommon):
             In case the connection was lost due to an exception, it will be available on this parameter.
         """
         super().connection_lost(exc)
+
+        if len(self.server.clients) == 0:
+            self.logger.info("Stopping cluster tasks.")
+            self.server.tasks_event.clear()
+
         self.logger.info("Cancelling pending tasks.")
 
         # Cancel all pending tasks
@@ -1020,7 +1035,7 @@ class Master(server.AbstractServer):
         except (FileNotFoundError, PermissionError):
             self.logger.warning(
                 "In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory '/dev/shm' must be "
-                "accessible by the 'wazuh' user. Check that this file has permissions to be accessed by all users. "
+                "accessible by the 'wazuh-manager' user. Check that this file has permissions to be accessed by all users. "
                 "Changing the file permissions to 777 will solve this issue.")
             self.logger.warning(
                 "The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 and higher versions.")
@@ -1028,7 +1043,31 @@ class Master(server.AbstractServer):
         self.integrity_already_executed = []
         self.dapi = dapi.APIRequestQueue(server=self)
         self.sendsync = dapi.SendSyncRequestQueue(server=self)
+        self.indexer_task_manager = IndexerTaskManager()
         self.tasks.extend([self.dapi.run, self.sendsync.run, self.file_status_update, self.agent_groups_update])
+
+        try:
+            _indexer_conf = get_ossec_conf(section="indexer")
+            self.disconnected_agent_sync = DisconnectedAgentSyncTasks(server=self,
+                                                                      cluster_items=self.cluster_items)
+            self.active_response_task = ActiveResponseFetchTask(self)
+            self.metrics_snapshot = MetricsSnapshotTasks(server=self, cluster_items=self.cluster_items)
+            indexer_tasks = [self.disconnected_agent_sync.run_agent_groups_sync,
+                             self.active_response_task.run,
+                             self.disconnected_agent_sync.run_cluster_name_sync,
+                             self.metrics_snapshot.run_metrics_snapshot]
+        except Exception as e:
+            self.logger.error(f"Error loading indexer configuration: {e}")
+            _indexer_conf = {}
+
+        if _indexer_conf:
+            self.tasks.append(lambda: self.indexer_task_manager.manage_indexer_tasks(indexer_tasks))
+        else:
+            self.logger.warning(
+                "Indexer is not configured in wazuh-manager.conf or it is unavailable; "
+                "Indexer tasks will not be started."
+            )
+
         # pending API requests waiting for a response
         self.pending_api_requests = {}
 
@@ -1065,6 +1104,8 @@ class Master(server.AbstractServer):
         await asyncio.sleep(self.cluster_items['intervals']['master']['agent_group_start_delay'])
 
         while True:
+            await self.tasks_event.wait()
+
             try:
                 before = perf_counter()
                 sync_object.logger.info("Starting.")
@@ -1090,6 +1131,8 @@ class Master(server.AbstractServer):
         """
         file_integrity_logger = self.setup_task_logger("Local integrity")
         while True:
+            await self.tasks_event.wait()
+
             before = perf_counter()
             file_integrity_logger.info("Starting.")
             try:
@@ -1131,7 +1174,7 @@ class Master(server.AbstractServer):
         # Get active agents by node and format last keep alive date format
         for node_name in workers_info.keys():
             active_agents = Agent.get_agents_overview(filters={'status': 'active', 'node_name': node_name}, limit=None,
-                                                      count=True, get_data=False, q="id!=000").get('totalItems', 0)
+                                                      count=True).get('totalItems', 0)
             workers_info[node_name]["info"]["n_active_agents"] = active_agents
             if workers_info[node_name]['info']['type'] != 'master':
                 workers_info[node_name]['status']['last_keep_alive'] = str(

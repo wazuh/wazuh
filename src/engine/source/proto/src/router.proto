@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.router;
+
+enum State
+{
+    STATE_UNKNOWN = 0; ///< Unset state
+    DISABLED = 1;      ///< Entry is inactive, it's not being used or error
+    ENABLED = 2;       ///< Entry is active, it's being used
+}
+
+/* Client representation of a post route */
+message EntryPost
+{
+    string name = 1;                 // Name of the route
+    string namespaceId = 2;          // Namespace to end of the route
+    uint32 priority = 3;             // Priority of the route
+    optional string description = 4; // Description of the route
+}
+
+message Entry
+{
+    string name = 1;                 // Name of the route
+    string namespaceId = 2;          // Namespace to end of the route
+    uint32 priority = 3;             // Priority of the route
+    optional string description = 4; // Description of the route
+
+    State entry_status = 5; // Status of the entry [INACTIVE|ACTIVE]
+    uint32 uptime = 6;      // Last update of the route
+}
+
+/***************************************************
+ * Post a route to the router
+ *
+ * command: router.route/post (<resource>/<action>)
+ **************************************************/
+message RoutePost_Request
+{
+    optional EntryPost route = 1; // Route to add
+}
+// message RoutePost_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Delete a route from the router
+ *
+ * command: router.route/delete (<resource>/<action>)
+ **************************************************/
+message RouteDelete_Request
+{
+    string name = 1; // Name of the route to delete
+}
+// message RouteDelete_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get a route from the router
+ *
+ * command: router.route/get (<resource>/<action>)
+ **************************************************/
+message RouteGet_Request
+{
+    string name = 1; // Name of the route to get
+}
+
+message RouteGet_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    optional Entry route = 3;  // Route queried if status is OK
+}
+
+/***************************************************
+ * Reload a specific route from the router
+ *
+ * command: router.route/reload (<resource>/<action>)
+ **************************************************/
+message RouteReload_Request
+{
+    string name = 1; // Name of the route to reload
+}
+
+// message RouteReload_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Patch a route to the router (Parcial update route)
+ *
+ * Actually, it only supports the update of the priority (Name and priority are required)
+ *
+ * command: router.route/patchPriority (<resource>/<action>)
+ **************************************************/
+message RoutePatchPriority_Request
+{
+    string name = 1;     // Name of the route to update
+    uint32 priority = 2; // Priority of the route to update
+}
+// message RoutePatchPriority_Request -> Return a GenericStatus_Response
+
+/***************************************************
+ * Get the table of routes from the router
+ * command: router.table/get (<resource>/<action>)
+ **************************************************/
+message TableGet_Request
+{
+    // Nothing
+}
+
+message TableGet_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    repeated Entry table = 3;  // Routes queried if status is OK and table is not empty
+}
+
+/***************************************************
+ * Send a event to queue of the router
+ *
+ * Send a Standard Wazuh event -> "<Queue>:<Location>:<Message>"
+ * Standard Wazuh event
+ * command: router.queue/post (<resource>/<action>)
+ **************************************************/
+message QueuePost_Request
+{
+    string wazuh_event = 1; // Event to send
+    reserved 2;             // Reserved for future use (event json position)
+    reserved "event";       // Reserved for event in json format for future use in the engine
+}
+// message QueuePost_Request -> Return a GenericStatus_Response

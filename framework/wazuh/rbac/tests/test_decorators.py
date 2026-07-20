@@ -134,8 +134,7 @@ def _conf_payload():
     return {
         "auth": {
             "use_password": "yes",
-            "ssl_manager_key": "etc/sslmanager.key",
-            "key_request": {"enabled": "no"}
+            "ssl_manager_key": "etc/sslmanager.key"
         },
         "integration": {
             "secret": "topsecret",
@@ -236,6 +235,76 @@ def test_has_update_permissions_none_rbac(db_setup):
     """Returns False gracefully when the RBAC context variable returns None."""
     db_setup.rbac.set(None)
     assert db_setup._has_update_permissions() is False
+
+
+def test_has_update_permissions_deny_manager_update_config(db_setup):
+    """Returns False when manager:update_config has effect=deny."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'manager:update_config': {'*:*': 'deny'}})
+    assert db_setup._has_update_permissions() is False
+
+
+def test_has_update_permissions_deny_cluster_update_config(db_setup):
+    """Returns False when cluster:update_config has effect=deny."""
+    db_setup.rbac.set({'rbac_mode': 'white', 'cluster:update_config': {'node:id:master-node': 'deny'}})
+    assert db_setup._has_update_permissions() is False
+
+
+def test_has_update_permissions_mixed_deny_allow_allows(db_setup):
+    """Returns True when at least one resource carries allow, even if others carry deny."""
+    db_setup.rbac.set({
+        'rbac_mode': 'white',
+        'manager:update_config': {
+            'node:id:worker-1': 'deny',
+            'node:id:master': 'allow'
+        }
+    })
+    assert db_setup._has_update_permissions() is True
+
+
+def test_has_update_permissions_all_deny(db_setup):
+    """Returns False when all resources carry deny."""
+    db_setup.rbac.set({
+        'rbac_mode': 'white',
+        'manager:update_config': {
+            'node:id:worker-1': 'deny',
+            'node:id:worker-2': 'deny'
+        }
+    })
+    assert db_setup._has_update_permissions() is False
+
+
+def test_mask_sensitive_config_raw_xml_with_deny_rule(db_setup):
+    """Verifies that cluster.key is masked when user has manager:update_config deny rule."""
+    db_setup.rbac.set({
+        'rbac_mode': 'white',
+        'manager:read': {'*:*': 'allow'},
+        'manager:update_config': {'*:*': 'deny'}
+    })
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _XML_WITH_CLUSTER_KEY
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+    assert "<key>*****</key>" in result
+
+
+def test_mask_sensitive_config_raw_xml_with_cluster_deny_rule(db_setup):
+    """Verifies that cluster.key is masked when user has cluster:update_config deny rule."""
+    db_setup.rbac.set({
+        'rbac_mode': 'white',
+        'cluster:read': {'*:*': 'allow'},
+        'cluster:update_config': {'node:id:master-node': 'deny'}
+    })
+
+    @db_setup.mask_sensitive_config()
+    def get_conf_raw():
+        return _XML_WITH_CLUSTER_KEY
+
+    result = get_conf_raw()
+    assert "SECRETCLUSTERKEY" not in result
+    assert "<key>*****</key>" in result
 
 
 # ---------------------------------------------------------------------------

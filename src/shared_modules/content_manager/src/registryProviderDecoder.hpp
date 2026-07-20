@@ -30,7 +30,10 @@ public:
      *
      * @param data
      */
-    explicit RegisterProviderDecoder(const std::shared_ptr<std::vector<char>>& data) : m_data {data} {}
+    explicit RegisterProviderDecoder(const std::shared_ptr<std::vector<char>>& data)
+        : m_data {data}
+    {
+    }
 
     /**
      * @brief Decode data.

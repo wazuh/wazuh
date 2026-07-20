@@ -13,9 +13,8 @@
 #define _SQLITE3_WRAPPER_HPP
 
 #include "external/sqlite/sqlite3.h"
-#include <iostream>
-#include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <sys/stat.h>
 
@@ -23,11 +22,12 @@ constexpr auto DB_DEFAULT_PATH {"temp.db"};
 constexpr auto DB_MEMORY {":memory:"};
 constexpr auto DB_PERMISSIONS {0640};
 
-namespace SQLite
+namespace SQLite3Wrapper
 {
     class Sqlite3Error : public std::exception
     {
         const char* m_errorMessage;
+
     public:
         explicit Sqlite3Error(const char* errorMessage)
             : m_errorMessage(errorMessage)
@@ -44,7 +44,6 @@ namespace SQLite
     {
         static void connectionDeleter(sqlite3* p)
         {
-            std::cout << "SQLite connection deleter called." << std::endl;
             if (p == nullptr)
             {
                 return;
@@ -55,9 +54,21 @@ namespace SQLite
                                      const int flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE)
         {
             sqlite3* pDb {nullptr};
-            if (const auto result {sqlite3_open_v2(path.c_str(), &pDb, flags, nullptr)}; SQLITE_OK != result)
+            const auto result {sqlite3_open_v2(path.c_str(), &pDb, flags, nullptr)};
+
+            if (SQLITE_OK != result)
             {
-                throw Sqlite3Error {"Unspecified type during initialization of SQLite."};
+                std::string errorMsg = "Failed to open SQLite database at path '" + path + "': ";
+                errorMsg += sqlite3_errstr(result);
+
+                // If pDb is not null, we can get a more detailed error message
+                if (pDb)
+                {
+                    errorMsg += " - " + std::string(sqlite3_errmsg(pDb));
+                    sqlite3_close_v2(pDb);
+                }
+
+                throw std::runtime_error(errorMsg);
             }
 
             return pDb;
@@ -296,6 +307,6 @@ namespace SQLite
         const int m_bindParametersCount;
         int m_bindParametersIndex {0};
     };
-} // namespace SQLite
+} // namespace SQLite3Wrapper
 
 #endif // _SQLITE3_WRAPPER_HPP

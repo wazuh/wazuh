@@ -11,7 +11,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "os_net_wrappers.h"
 
 int __wrap_OS_BindUnixDomainWithPerms(const char *path, int type, int max_msg_size, uid_t uid, gid_t gid, mode_t perm) {
@@ -119,6 +119,16 @@ int __wrap_OS_SetSendTimeout(__attribute__((unused)) int socket,
     return mock();
 }
 
+int __wrap_OS_SetKeepalive(__attribute__((unused)) int socket) {
+    return mock();
+}
+
+void __wrap_OS_SetKeepalive_Options(__attribute__((unused)) int socket,
+                                    __attribute__((unused)) int idle,
+                                    __attribute__((unused)) int intvl,
+                                    __attribute__((unused)) int cnt) {
+    function_called();
+}
 
 int __wrap_wnet_select(__attribute__((unused)) int sock,
                        __attribute__((unused)) int timeout) {

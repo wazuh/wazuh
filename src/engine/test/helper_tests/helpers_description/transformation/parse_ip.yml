@@ -1,0 +1,64 @@
+# Name of the helper function
+name: parse_ip
+
+metadata:
+  description: |
+    This parser is designed to validate and parse strings representing IP addresses, whether they are in IPv4 or IPv6 format.
+    Evaluates if the content of the input field is a string that accurately represents an IP address in either IPv4 or IPv6 format.
+    It checks the string for compliance with IP addressing standards, including the correct notation
+    and range for IPv4 (four decimal numbers separated by dots, each ranging from 0 to 255)
+    and the correct format for IPv6 (eight groups of four hexadecimal digits separated by colons).
+    If the string is a valid IP address, it stores the same string in `field` without modification.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed - string generation is random
+
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      input_field: 192.168.1.1
+    target_field: any_value
+    should_pass: true
+    expected: 192.168.1.1
+    description: Success ip parse
+  - arguments:
+      input_field: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+    target_field: any_value
+    should_pass: true
+    expected: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+    description: Success ip parse
+  - arguments:
+      input_field: 999.999.999.999
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: Failure ip parse
+  - arguments:
+      input_field: 999.999.999.999
+    target_field:
+      key: value
+    should_pass: false
+    expected:
+      key: value
+    description: Failure ip parse

@@ -260,7 +260,8 @@ TEST_F(SocketWrapperTest, DISABLED_ReadPartialBody)
                             }),
                         Return(packetSize)))
         .WillOnce(DoAll(Invoke(
-                            [&data, &header](int, void* buffer, size_t, int) {
+                            [&data, &header](int, void* buffer, size_t, int)
+                            {
                                 std::copy(data.begin() + data.size() / 2,
                                           data.end(),
                                           (char*)buffer + HEADER_FIELD_SIZE + data.size() / 2);

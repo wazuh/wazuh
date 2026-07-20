@@ -1,6 +1,6 @@
 - name: POLICY_POSITION
   description: Verify that the policies from the response match with the list of policies IDs
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     resources:
       role_ids:

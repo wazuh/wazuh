@@ -2,18 +2,19 @@
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 if(${TARGET} STREQUAL "winagent")
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
+    link_directories(${SRC_FOLDER}/build/lib)
 endif(${TARGET} STREQUAL "winagent")
 
 # Tests list and flags
 list(APPEND shared_tests_names "test_list_op")
 set(LIST_OP_BASE_FLAGS "-Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
                         -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthread_rwlock_unlock \
-                        -Wl,--wrap,pthread_rwlock_wrlock ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap,pthread_rwlock_wrlock -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${LIST_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND shared_tests_flags "${LIST_OP_BASE_FLAGS}")
 endif()
@@ -36,14 +37,11 @@ else()
     list(APPEND shared_tests_flags "-Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 \
                                     -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=CreateProcessW \
-                                    -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=getpid \
+                                    -Wl,--wrap=fim_db_teardown -Wl,--wrap=getpid \
                                     -Wl,--wrap=access -Wl,--wrap=CreateFile -Wl,--wrap=opendir -Wl,--wrap=stat \
                                     -Wl,--wrap=utf8_CreateFile -Wl,--wrap=utf8_stat64 -Wl,--wrap=QueryDosDeviceA \
                                     -Wl,--wrap=convert_windows_string -Wl,--wrap=wstr_split ${DEBUG_OP_WRAPPERS}")
 endif()
-
-list(APPEND shared_tests_names "test_integrity_op")
-list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_rbtree_op")
 if(${TARGET} STREQUAL "winagent")
@@ -59,7 +57,7 @@ set(VALIDATE_OP_FLAGS "-Wl,--wrap,w_expression_match -Wl,--wrap,w_calloc_express
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 else()
 list(APPEND shared_tests_flags "${VALIDATE_OP_FLAGS}")
 endif()
@@ -69,7 +67,7 @@ set(STRING_OP_BASE_FLAGS "${DEBUG_OP_WRAPPERS} -Wl,--wrap,syscom_dispatch")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${STRING_OP_BASE_FLAGS} -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND shared_tests_flags "${STRING_OP_BASE_FLAGS}")
 endif()
@@ -80,7 +78,7 @@ set(EXPRESSION_BASE_FLAGS "-Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -W
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${EXPRESSION_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND shared_tests_flags "${EXPRESSION_BASE_FLAGS}")
 endif()
@@ -93,7 +91,7 @@ set(VERSION_OP_BASE_FLAGS "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush 
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${VERSION_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND shared_tests_flags "${VERSION_OP_BASE_FLAGS}")
 endif()
@@ -104,7 +102,7 @@ set(QUEUE_OP_BASE_FLAGS "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlo
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${QUEUE_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND shared_tests_flags "${QUEUE_OP_BASE_FLAGS}")
 endif()
@@ -115,40 +113,50 @@ set(QUEUE_LINKED_OP_BASE_FLAGS  "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mu
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${QUEUE_LINKED_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND shared_tests_flags "${QUEUE_LINKED_OP_BASE_FLAGS}")
 endif()
 
+if(NOT ${TARGET} STREQUAL "winagent")
+list(APPEND shared_tests_names "test_batch_queue_op")
+set(BATCH_QUEUE_OP_BASE_FLAGS  "-Wl,--wrap=pthread_cond_wait \
+                                -Wl,--wrap=pthread_cond_signal")
+list(APPEND shared_tests_flags "${BATCH_QUEUE_OP_BASE_FLAGS}")
+endif()
+
+list(APPEND shared_tests_names "test_hashmap_op")
+if(${TARGET} STREQUAL "winagent")
+  list(APPEND shared_tests_flags
+       "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck -Wl,--wrap,is_fim_shutdown -Wl,--wrap,_imp__dbsync_initialize -Wl,--wrap,fim_db_teardown")
+else()
+  list(APPEND shared_tests_flags " ")
+endif()
+
+if(NOT ${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_names "test_indexed_queue_op")
 set(INDEXED_QUEUE_OP_FLAGS "-Wl,--wrap=pthread_mutex_lock,--wrap=pthread_mutex_unlock,--wrap=pthread_cond_wait \
                             -Wl,--wrap=pthread_cond_signal,--wrap=pthread_cond_timedwait")
-if(${TARGET} STREQUAL "winagent")
-list(APPEND shared_tests_flags "${INDEXED_QUEUE_OP_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
-                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
-else()
 list(APPEND shared_tests_flags "${INDEXED_QUEUE_OP_FLAGS}")
 endif()
 
 list(APPEND shared_tests_names "test_agent_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,wdb_get_agent_info -Wl,--wrap,_mdebug1 -Wl,--wrap,getpid \
-                                -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
-                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,external_socket_connect \
-                                -Wl,--wrap,sleep -Wl,--wrap,strerror -Wl,--wrap,getpid -Wl,--wrap,close \
                                 -Wl,--wrap,fclose -Wl,--wrap,fprintf -Wl,--wrap,wfopen -Wl,--wrap,_merror \
                                 -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread \
                                 -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown ${DEBUG_OP_WRAPPERS}")
 else()
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,external_socket_connect \
                                 -Wl,--wrap,sleep -Wl,--wrap,strerror -Wl,--wrap,getpid -Wl,--wrap,close \
                                 -Wl,--wrap,fclose -Wl,--wrap,fprintf -Wl,--wrap,wfopen -Wl,--wrap,_merror \
                                 -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fopen -Wl,--wrap,fread \
                                 -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen \
-                                -Wl,--wrap,OS_SendSecureTCPCluster -Wl,--wrap,OS_RecvSecureClusterTCP ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,OS_SendSecureTCPCluster -Wl,--wrap,OS_RecvSecureClusterTCP \
+                                -Wl,--wrap,sysinfo_networks -Wl,--wrap,sysinfo_free_result ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_enrollment_op")
@@ -164,10 +172,15 @@ set(ENROLLMENT_OP_BASE_FLAGS "-Wl,--wrap=OS_IsValidIP,--wrap=_merror,--wrap=_mwa
 if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                    -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                    -Wl,--wrap=fim_db_teardown")
 else()
     list(APPEND shared_tests_flags "${ENROLLMENT_OP_BASE_FLAGS} -Wl,--wrap=fprintf,--wrap=gethostname \
                                     -Wl,--wrap=fgets,--wrap=chmod,--wrap=stat,--wrap=getpid")
+endif()
+
+if(NOT ${TARGET} STREQUAL "winagent")
+    list(APPEND shared_tests_names "test_ssl_op")
+    list(APPEND shared_tests_flags "-Wl,--wrap,SSL_read -Wl,--wrap=SSL_new")
 endif()
 
 list(APPEND shared_tests_names "test_time_op")
@@ -188,18 +201,18 @@ list(APPEND shared_tests_names "test_utf8_op")
 if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND shared_tests_flags " ")
 endif()
 
 list(APPEND shared_tests_names "test_log_builder")
 if(${TARGET} STREQUAL "winagent")
-list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
-list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,control_check_connection,--wrap,send,--wrap,recv,--wrap,close \
+list(APPEND shared_tests_flags "-Wl,--wrap,getDefine_Int,--wrap,getPrimaryIP,--wrap,getDefine_Int_default \
                                 -Wl,--wrap,getpid,--wrap,fcntl")
 endif()
 
@@ -225,13 +238,13 @@ if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS} -Wl,--wrap,get_windows_file_time_epoch,--wrap,mdebug2 \
                                 -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND shared_tests_flags "${BINARIES_OP_BASE_FLAGS} -Wl,--wrap,getenv")
 endif()
 
 
-if(${TARGET} STREQUAL "server")
+if(${TARGET} STREQUAL "manager")
 list(APPEND shared_tests_names "test_bzip2_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=fopen,--wrap=fread,--wrap=fclose,--wrap=fwrite,--wrap=BZ2_bzWriteOpen \
                                 -Wl,--wrap=BZ2_bzWriteClose -Wl,--wrap=BZ2_bzReadClose,--wrap=BZ2_bzReadOpen \
@@ -244,19 +257,24 @@ list(APPEND shared_tests_flags "-Wl,--wrap=OS_StrIsNum,--wrap=_merror,--wrap=w_t
                                 -Wl,--wrap=OSRegex_Compile -Wl,--wrap=OSRegex_Execute -Wl,--wrap,OSMatch_Execute \
                                 -Wl,--wrap,OSRegex_Execute_ex")
 
-list(APPEND shared_tests_names "test_rootcheck_op")
-set(ROOTCHECK_OP_BASE_FLAGS "-Wl,--wrap=wdbc_query_ex -Wl,--wrap=_merror,--wrap=close")
-if(${TARGET} STREQUAL "winagent")
-list(APPEND shared_tests_flags "${ROOTCHECK_OP_BASE_FLAGS}")
-else()
-list(APPEND shared_tests_flags "${ROOTCHECK_OP_BASE_FLAGS} -Wl,--wrap=getpid")
-endif()
-
 list(APPEND shared_tests_names "test_fs_op")
 list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_wazuhdb_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP")
+
+list(APPEND shared_tests_names "test_wazuhdb_queries_op")
+list(APPEND shared_tests_flags "-Wl,--wrap,strerror \
+                                -Wl,--wrap,cJSON_CreateObject -Wl,--wrap,cJSON_CreateArray -Wl,--wrap,cJSON_CreateString -Wl,--wrap,cJSON_Parse \
+                                -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddNumberToObject \
+                                -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_PrintUnformatted -Wl,--wrap,cJSON_GetObjectItem \
+                                -Wl,--wrap,cJSON_Delete -Wl,--wrap,time -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread -Wl,--wrap,fwrite -Wl,--wrap=fgetc\
+                                -Wl,--wrap,fclose -Wl,--wrap,cJSON_AddArrayToObject -Wl,--wrap,remove -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,closedir \
+                                -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,wdbc_query_parse_json -Wl,--wrap,wdbc_query_parse \
+                                -Wl,--wrap,Privsep_GetUser -Wl,--wrap,Privsep_GetGroup -Wl,--wrap,chown \
+                                -Wl,--wrap,chmod -Wl,--wrap,IsDir -Wl,--wrap,fgets -Wl,--wrap,fflush -Wl,--wrap,fseek -Wl,--wrap,get_node_name \
+                                -Wl,--wrap,rbtree_insert -Wl,--wrap,wfopen \
+                                -Wl,--wrap,stat -Wl,--wrap,fgetpos ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(APPEND shared_tests_names "test_syscheck_op")
@@ -269,7 +287,7 @@ if(${TARGET} STREQUAL "winagent")
     list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=syscom_dispatch -Wl,--wrap=is_fim_shutdown \
                                     -Wl,--wrap,cJSON_CreateArray@0 -Wl,--wrap,cJSON_CreateObject@0 -Wl,--wrap=Start_win32_Syscheck \
                                     -Wl,--wrap,utf8_CreateFile -Wl,--wrap,utf8_GetFileSecurity -Wl,--wrap,utf8_GetFileAttributes \
-                                    -Wl,--wrap=QueryDosDeviceA")
+                                    -Wl,--wrap,utf8_LookupAccountSid -Wl,--wrap=QueryDosDeviceA")
 else()
     list(APPEND shared_tests_flags "${SYSCHECK_OP_BASE_FLAGS} -Wl,--wrap=cJSON_CreateArray,--wrap=cJSON_CreateObject -Wl,--wrap,getpid")
 endif()
@@ -284,6 +302,12 @@ list(APPEND shared_tests_flags "-Wl,--wrap,w_get_file_content -Wl,--wrap,cJSON_P
                                 -Wl,--wrap,fread -Wl,--wrap,remove \
                                 -Wl,--wrap,fseek -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
 
+# audit_op.c is compiled only when ENABLE_AUDIT is set (Linux agent only), so its
+# unit test must be gated the same way. Without this guard the manager build
+# (audit disabled) links test_audit_op against audit_* symbols that audit_op.c
+# never emitted -> undefined references. audit_op coverage still runs in the
+# Linux agent job. See #36247.
+if(ENABLE_AUDIT)
 list(APPEND shared_tests_names "test_audit_op")
 list(APPEND shared_tests_flags "-Wl,--wrap,audit_send -Wl,--wrap,popen \
                                 -Wl,--wrap,select -Wl,--wrap,audit_get_reply -Wl,--wrap,wpopenv -Wl,--wrap,fgets \
@@ -294,6 +318,7 @@ list(APPEND shared_tests_flags "-Wl,--wrap,audit_send -Wl,--wrap,popen \
                                 -Wl,--wrap,fflush -Wl,--wrap,fprintf -Wl,--wrap,fread -Wl,--wrap,fseek \
                                 -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
                                 -Wl,--wrap,get_binary_path ${DEBUG_OP_WRAPPERS}")
+endif()
 
 list(APPEND shared_tests_names "test_privsep_op")
 list(APPEND shared_tests_flags "-Wl,--wrap=sysconf,--wrap=getpwnam_r,--wrap=getgrnam_r,--wrap=getpid")
@@ -307,13 +332,7 @@ list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
 
 endif()
 
-if(${TARGET} STREQUAL "server")
-list(APPEND shared_tests_names "test_json-queue")
-list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,wfopen \
-                                -Wl,--wrap,fflush -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
-                                -Wl,--wrap,remove -Wl,--wrap,fprintf -Wl,--wrap,fgets -Wl,--wrap,w_ftell \
-                                -Wl,--wrap,fgetpos -Wl,--wrap,fgetc,--wrap,stat,--wrap,sleep,--wrap,getpid,--wrap,clearerr -Wl,--wrap,popen")
-
+if(${TARGET} STREQUAL "manager")
 list(APPEND shared_tests_names "test_bqueue")
 list(APPEND shared_tests_flags "-Wl,--wrap,_merror -Wl,--wrap,_mdebug2")
 
@@ -325,7 +344,7 @@ if(${TARGET} STREQUAL "winagent")
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                                 -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
 list(APPEND shared_tests_flags "-Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock")
 endif()
@@ -347,7 +366,7 @@ if(${TARGET} STREQUAL "winagent")
                                 -Wl,--wrap,cJSON_GetObjectItem@8 -Wl,--wrap,cJSON_GetStringValue@4 \
                                 -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
                                 -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                -Wl,--wrap=fim_db_teardown")
 else()
     list(APPEND shared_tests_flags "-Wl,--wrap,so_free_library -Wl,--wrap,so_get_function_sym \
                                 -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_module_handle_on_path \
@@ -357,6 +376,9 @@ endif()
 
 list(APPEND shared_tests_names "test_rwlock_op")
 list(APPEND shared_tests_flags "${DEBUG_OP_WRAPPERS}")
+
+list(APPEND shared_tests_names "test_module_limits")
+list(APPEND shared_tests_flags " ")
 
 list(APPEND shared_tests_names "test_read-alert")
 if("${TARGET}" STREQUAL "winagent")
@@ -379,17 +401,16 @@ foreach(counter RANGE ${count})
 
     if("${test_name}" STREQUAL "test_read-alert")
         target_sources(${test_name} PRIVATE
-            ${SRC_FOLDER}/shared/read-alert.c
+            ${SRC_FOLDER}/shared/src/read-alert.c
             ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/debug_op_wrappers.c
         )
     endif()
 
-    if(${TARGET} STREQUAL "server")
+    if(${TARGET} STREQUAL "manager")
         target_link_libraries(
             ${test_name}
             ${WAZUHLIB}
             ${WAZUHEXT}
-            ANALYSISD_O
             ${TEST_DEPS}
         )
     else()

@@ -4,7 +4,7 @@
      firewall-drop. Pierwsze doda hosta do listy
      /etc/hosts.deny, a drugie zablokuje hosta na
      poziomie iptables (dla linuxa) lub ipfilter
-     (dla Solaris, FreeBSD oraz NetBSD).
+     (dla FreeBSD oraz NetBSD).
    - Przedstawione metody mogą zatrzymać ataki brute
      force na ssh, skanowanie portów oraz pare innych.
      Możesz również na przykład dodać blokowanie

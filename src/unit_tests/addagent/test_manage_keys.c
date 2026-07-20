@@ -14,7 +14,6 @@
 #include <stdio.h>
 
 #include "shared.h"
-#include "../../addagent/manage_agents.h"
 #include "../wrappers/common.h"
 #include "../wrappers/libc/stdlib_wrappers.h"
 #include "../wrappers/wazuh/shared/b64_wrappers.h"
@@ -88,7 +87,8 @@ void test_k_import_keyinvalid(void **state) {
 
 int main(void) {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_k_import_successful, NULL, NULL),
+        // Skipped because it will be deleted by https://github.com/wazuh/wazuh/issues/30924
+        // cmocka_unit_test_setup_teardown(test_k_import_successful, NULL, NULL),
         cmocka_unit_test_setup_teardown(test_k_import_keyinvalid, NULL, NULL),
     };
 

@@ -18,17 +18,14 @@ SEARCH_DIR=${SOURCES_PATH}/src
 
 function configure() {
     echo USER_LANGUAGE="en" > ${CONFIG}
-    echo USER_NO_STOP="y" >> ${CONFIG}
     echo USER_INSTALL_TYPE="agent" >> ${CONFIG}
     echo USER_DIR="${DESTINATION_PATH}" >> ${CONFIG}
     echo USER_DELETE_DIR="y" >> ${CONFIG}
     echo USER_CLEANINSTALL="y" >> ${CONFIG}
     echo USER_BINARYINSTALL="y" >> ${CONFIG}
-    echo USER_AGENT_SERVER_IP="MANAGER_IP" >> ${CONFIG}
+    echo USER_AGENT_MANAGER_IP="MANAGER_IP" >> ${CONFIG}
     echo USER_ENABLE_SYSCHECK="y" >> ${CONFIG}
     echo USER_ENABLE_ROOTCHECK="y" >> ${CONFIG}
-    echo USER_ENABLE_OPENSCAP="n" >> ${CONFIG}
-    echo USER_ENABLE_CISCAT="n" >> ${CONFIG}
     echo USER_ENABLE_ACTIVE_RESPONSE="y" >> ${CONFIG}
     echo USER_CA_STORE="n" >> ${CONFIG}
 }
@@ -55,12 +52,10 @@ function build() {
     echo "Running install script"
     ${SOURCES_PATH}/install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
-    find ${DESTINATION_PATH}/ruleset/sca/ -type f -exec rm -f {} \;
+    find "${DESTINATION_PATH}/ruleset/sca/" -type f -exec rm -f {} \;
 
     # Add the auxiliar script used while installing the package
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/
-    cp ${SOURCES_PATH}/gen_ossec.sh ${INSTALLATION_SCRIPTS_DIR}/
-    cp ${SOURCES_PATH}/add_localfiles.sh ${INSTALLATION_SCRIPTS_DIR}/
     cp ${SOURCES_PATH}/VERSION.json ${INSTALLATION_SCRIPTS_DIR}/
 
     mkdir -p ${INSTALLATION_SCRIPTS_DIR}/src/init

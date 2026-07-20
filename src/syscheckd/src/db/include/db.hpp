@@ -12,9 +12,9 @@
 #ifndef _DB_HPP
 #define _DB_HPP
 #include "db.h"
-#include <string.h>
 #include <functional>
 #include <json.hpp>
+#include <string.h>
 
 // Define EXPORTED for any platform
 #ifdef _WIN32
@@ -46,15 +46,15 @@ using SearchData = std::tuple<FILE_SEARCH_TYPE, std::string, std::string, std::s
 class no_entry_found : public std::exception
 {
     public:
-        __attribute__((__returns_nonnull__))
-        const char* what() const noexcept override
+        __attribute__((__returns_nonnull__)) const char* what() const noexcept override
         {
             return m_error.what();
         }
 
         explicit no_entry_found(const std::string& whatArg)
-            : m_error{ whatArg }
-        {}
+            : m_error {whatArg}
+        {
+        }
 
     private:
         /// an exception object as storage for error messages
@@ -71,125 +71,118 @@ class EXPORTED DB final
         }
 
         /**
-        * @brief Init facade with database connection
-        *
-        * @param storage Storage type.
-        * @param syncInterval Sync sync interval.
-        * @param sync_max_interval Maximum interval allowed for the synchronization process.
-        * @param sync_response_timeout Minimum interval for the synchronization process.
-        * @param callbackSyncFileWrapper Callback sync file values.
-        * @param callbackSyncRegistryWrapper Callback sync registry values.
-        * @param callbackLogWrapper Callback to log lines.
-        * @param fileLimit File limit.
-        * @param valueLimit Registry value limit.
-        * @param syncRegistryEnabled Flag to enable/disable the registry sync mechanism.
-        * @param syncThreadPool Number of threads used by RSync.
-        * @param syncQueueSize Number to define the size of the queue to be synchronized.
-        */
-        void init(const int storage,
-                  const int syncInterval,
-                  const uint32_t syncMaxInterval,
-                  const uint32_t syncResponseTimeout,
-                  std::function<void(const std::string&)> callbackSyncFileWrapper,
-                  std::function<void(const std::string&)> callbackSyncRegistryWrapper,
+         * @brief Init facade with database connection
+         *
+         * @param storage Storage type.
+         * @param callbackLogWrapper Callback to log lines.
+         * @param fileLimit File limit.
+         * @param valueLimit Registry value limit.
+         */
+        void init(int storage,
                   std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                   int fileLimit,
-                  int valueLimit,
-                  bool syncRegistryEnabled,
-                  const int syncThreadPool,
-                  const int syncQueueSize);
+                  int valueLimit);
 
         /**
-        * @brief runIntegrity Execute the integrity mechanism.
-        */
-        void runIntegrity();
-
-        /**
-        * @brief pushMessage Push a message to the queue of the integrity mechanism.
-        *
-        * @param message Message payload comming from the manager.
-        */
-        void pushMessage(const std::string& message);
-
-        /**
-        * @brief DBSyncHandle return the dbsync handle, for operations with the database.
-        *
-        * @return dbsync handle.
-        */
+         * @brief DBSyncHandle return the dbsync handle, for operations with the database.
+         *
+         * @return dbsync handle.
+         */
         DBSYNC_HANDLE DBSyncHandle();
 
         /**
-        * @brief createJsonEvent Create and fill the json with event data.
-        *
-        * @param fileJson The json structure with fim file data.
-        * @param resultJson The json structure with the result of the dbsync querie.
-        * @param type Represents the result type of the database operation events.
-        * @param ctx Context struct with data related to the fim_entry.
-        *
-        * @return jsonEvent The json structure with the event information.
-        */
-        nlohmann::json createJsonEvent(const nlohmann::json& fileJson,
-                                       const nlohmann::json& resultJson,
-                                       ReturnTypeCallback type,
-                                       create_json_event_ctx* ctx);
-
-        /**
-        * @brief removeFile Remove a file from the database.
-        *
-        * @param path File to remove.
-        */
+         * @brief removeFile Remove a file from the database.
+         *
+         * @param path File to remove.
+         */
         void removeFile(const std::string& path);
 
         /**
-        * @brief getFile Get a file from the database.
-        *
-        * @param path File to get.
-        * @param callback Callback return the file data.
-        */
-        void getFile(const std::string& path,
-                     std::function<void(const nlohmann::json&)> callback);
+         * @brief getFile Get a file from the database.
+         *
+         * @param path File to get.
+         * @param callback Callback return the file data.
+         */
+        void getFile(const std::string& path, std::function<void(const nlohmann::json&)> callback);
 
         /**
-        * @brief countEntries Count files in the database.
-        *
-        * @param tableName Table name.
-        * @param selectType Type of count.
-        * @return Number of files.
-        */
-        int countEntries(const std::string& tableName,
-                         const COUNT_SELECT_TYPE selectType);
+         * @brief countEntries Count files in the database.
+         *
+         * @param tableName Table name.
+         * @param selectType Type of count.
+         * @return Number of files.
+         */
+        int countEntries(const std::string& tableName, COUNT_SELECT_TYPE selectType);
 
         /**
-        * @brief updateFile Update/insert a file in the database.
-        *
-        * @param file File entry/data to update/insert.
-        * @param ctx Context struct with data related to the fim_entry.
-        * @param callback Callback to send the fim message.
-        */
-        void updateFile(const nlohmann::json& file,
-                        create_json_event_ctx* ctx,
-                        std::function<void(nlohmann::json)> callbackPrimitive);
+         * @brief maxVersion Get the maximum version from a table.
+         *
+         * @param tableName Table name.
+         * @return Maximum version value, 0 if no entries exist.
+         */
+        int maxVersion(const std::string& tableName);
 
         /**
-        * @brief searchFiles Search files in the database.
-        *
-        * @param searchData parameter to search information.
-        * @param callback Callback return the file data.
-        */
-        void searchFile(const SearchData& data,
-                        std::function<void(const std::string&)> callback);
+         * @brief updateVersion Update the version column for all entries in a table.
+         *
+         * @param tableName Table name.
+         * @param version New version value to set.
+         * @return 0 on success, -1 on error.
+         */
+        int updateVersion(const std::string& tableName, int version);
 
         /**
-        * @brief teardown Close the fimdb instances.
-        */
+         * @brief updateFile Update/insert a file in the database.
+         *
+         * @param file File entry/data to update/insert.
+         * @param callback Callback to send the fim message.
+         */
+        void updateFile(const nlohmann::json& file, std::function<void(int, const nlohmann::json&)> callback);
+
+        /**
+         * @brief searchFiles Search files in the database.
+         *
+         * @param searchData parameter to search information.
+         * @param callback Callback return the file data.
+         */
+        void searchFile(const SearchData& data, std::function<void(const std::string&)> callback);
+
+        /**
+         * @brief teardown Close the fimdb instances.
+         */
         void teardown();
 
+        /**
+         * @brief closeAndDeleteDatabase Closes the database connection and deletes the database file.
+         */
+        void closeAndDeleteDatabase();
+
+        /**
+         * @brief Update the last_sync_time for a given table.
+         *
+         * @param tableName Name of the table to update.
+         * @param timestamp The sync timestamp to set (UNIX format).
+         */
+        void updateLastSyncTime(const std::string& tableName, int64_t timestamp);
+
+        /**
+         * @brief Get the last_sync_time for a given table.
+         *
+         * @param tableName Name of the table to query.
+         * @return int64_t The last sync timestamp (UNIX format), or 0 if not found.
+         */
+        int64_t getLastSyncTime(const std::string& tableName);
+
+        int countSyncedDocs(const std::string& tableName);
+
+        std::vector<nlohmann::json> getDocumentsToPromote(const std::string& tableName, int numberOfDocumentsToPromote);
+
+        std::vector<nlohmann::json> getDocumentsToDemote(const std::string& tableName, int numberOfDocumentsToDemote);
     private:
         DB() = default;
         ~DB() = default;
         DB(const DB&) = delete;
         DB& operator=(const DB&) = delete;
 };
-
 
 #endif //_IFIMDB_HPP

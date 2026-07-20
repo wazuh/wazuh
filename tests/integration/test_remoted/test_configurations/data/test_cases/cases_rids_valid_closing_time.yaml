@@ -3,11 +3,9 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     RIDS_CLOSING_TIME: '1s'
   metadata:
     port: '1514'
-    connection: 'secure'
     rids_closing_time: '1s'
 
 - name: Command config wazuh manager for rids closing time
@@ -15,11 +13,9 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     RIDS_CLOSING_TIME: '30s'
   metadata:
     port: '1514'
-    connection: 'secure'
     rids_closing_time: '30s'
 
 - name: Command config wazuh manager for rids closing time
@@ -27,11 +23,9 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     RIDS_CLOSING_TIME: '1m'
   metadata:
     port: '1514'
-    connection: 'secure'
     rids_closing_time: '1m'
 
 - name: Command config wazuh manager for rids closing time
@@ -39,11 +33,9 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     RIDS_CLOSING_TIME: '30m'
   metadata:
     port: '1514'
-    connection: 'secure'
     rids_closing_time: '30m'
 
 - name: Command config wazuh manager for rids closing time
@@ -51,11 +43,9 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     RIDS_CLOSING_TIME: '1h'
   metadata:
     port: '1514'
-    connection: 'secure'
     rids_closing_time: '1h'
 
 - name: Command config wazuh manager for rids closing time
@@ -63,11 +53,9 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     RIDS_CLOSING_TIME: '30h'
   metadata:
     port: '1514'
-    connection: 'secure'
     rids_closing_time: '30h'
 
 - name: Command config wazuh manager for rids closing time
@@ -75,11 +63,9 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     RIDS_CLOSING_TIME: '1d'
   metadata:
     port: '1514'
-    connection: 'secure'
     rids_closing_time: '1d'
 
 - name: Command config wazuh manager for rids closing time
@@ -87,9 +73,7 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     RIDS_CLOSING_TIME: '30d'
   metadata:
     port: '1514'
-    connection: 'secure'
     rids_closing_time: '30d'

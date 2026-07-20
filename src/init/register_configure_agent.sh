@@ -18,23 +18,8 @@ WAZUH_MACOS_AGENT_DEPLOYMENT_VARS="/tmp/wazuh_envs"
 
 # Set default sed alias
 sed="sed -ri"
-# By default, use gnu sed (gsed).
-use_unix_sed="False"
 
-# Special function to use generic sed
-unix_sed() {
-
-    sed_expression="$1"
-    target_file="$2"
-    special_args="$3"
-
-    sed ${special_args} "${sed_expression}" "${target_file}" > "${target_file}.tmp"
-    cat "${target_file}.tmp" > "${target_file}"
-    rm "${target_file}.tmp"
-
-}
-
-# Update the value of a XML tag inside the ossec.conf
+# Update the value of a XML tag inside the wazuh configuration file
 edit_value_tag() {
 
     file=""
@@ -50,15 +35,13 @@ edit_value_tag() {
         end_config="$(grep -n "</$1>" "${file}" | cut -d':' -f 1)"
         if [ -z "${start_config}" ] && [ -z "${end_config}" ] && [ "${file}" = "${TMP_ENROLLMENT}" ]; then
             echo "      <$1>$2</$1>" >> "${file}"
-        elif [ "${use_unix_sed}" = "False" ] ; then
-            ${sed} "s#<$1>.*</$1>#<$1>$2</$1>#g" "${file}"
         else
-            unix_sed "s#<$1>.*</$1>#<$1>$2</$1>#g" "${file}"
+            ${sed} "s#<$1>.*</$1>#<$1>$2</$1>#g" "${file}"
         fi
     fi
-    
+
     if [ "$?" != "0" ]; then
-        echo "$(date '+%Y/%m/%d %H:%M:%S') agent-auth: Error updating $2 with variable $1." >> "${INSTALLDIR}/logs/ossec.log"
+        echo "$(date '+%Y/%m/%d %H:%M:%S') Error updating $2 with variable $1." >> "${INSTALLDIR}/logs/ossec.log"
     fi
 
 }
@@ -66,11 +49,7 @@ edit_value_tag() {
 delete_blank_lines() {
 
     file=$1
-    if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} '/^$/d' "${file}"
-    else
-        unix_sed '/^$/d' "${file}"
-    fi
+    ${sed} '/^$/d' "${file}"
 
 }
 
@@ -78,48 +57,31 @@ delete_auto_enrollment_tag() {
 
     # Delete the configuration tag if its value is empty
     # This will allow using the default value
-    if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "s#.*<$1>.*</$1>.*##g" "${TMP_ENROLLMENT}"
-    else
-        unix_sed "s#.*<$1>.*</$1>.*##g" "${TMP_ENROLLMENT}"
-    fi
+    ${sed} "s#.*<$1>.*</$1>.*##g" "${TMP_ENROLLMENT}"
 
     cat -s "${TMP_ENROLLMENT}" > "${TMP_ENROLLMENT}.tmp"
     mv "${TMP_ENROLLMENT}.tmp" "${TMP_ENROLLMENT}"
 
 }
 
-# Change address block of the ossec.conf
+# Change address block of the wazuh configuration file
 add_adress_block() {
 
-    # Remove the server configuration
-    if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "/<server>/,/\/server>/d" "${CONF_FILE}"
-    else
-        unix_sed "/<server>/,/\/server>/d" "${CONF_FILE}"
-    fi
+    # Remove both manager and legacy server configuration blocks
+    ${sed} "/<manager>/,/\/manager>/d; /<server>/,/\/server>/d" "${CONF_FILE}"
 
     # Write the client configuration block
     for i in "${!ADDRESSES[@]}";
     do
         {
-            echo "    <server>"
+            echo "    <manager>"
             echo "      <address>${ADDRESSES[i]}</address>"
             echo "      <port>1514</port>"
-            if [ -n "${PROTOCOLS[i]}" ]; then
-                echo "      <protocol>${PROTOCOLS[i]}</protocol>"
-            else
-                echo "      <protocol>tcp</protocol>"
-            fi 
-            echo "    </server>"
+            echo "    </manager>"
         } >> "${TMP_SERVER}"
     done
 
-    if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
-    else
-        unix_sed "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
-    fi
+    ${sed} "/<client>/r ${TMP_SERVER}" "${CONF_FILE}"
 
     rm -f "${TMP_SERVER}"
 
@@ -170,7 +132,6 @@ set_vars () {
 
     export WAZUH_MANAGER
     export WAZUH_MANAGER_PORT
-    export WAZUH_PROTOCOL
     export WAZUH_REGISTRATION_SERVER
     export WAZUH_REGISTRATION_PORT
     export WAZUH_REGISTRATION_PASSWORD
@@ -202,7 +163,7 @@ set_vars () {
 
 unset_vars() {
 
-    vars=(WAZUH_MANAGER_IP WAZUH_PROTOCOL WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
+    vars=(WAZUH_MANAGER_IP WAZUH_MANAGER_PORT WAZUH_NOTIFY_TIME \
           WAZUH_TIME_RECONNECT WAZUH_AUTHD_SERVER WAZUH_AUTHD_PORT WAZUH_PASSWORD \
           WAZUH_AGENT_NAME WAZUH_GROUP WAZUH_CERTIFICATE WAZUH_KEY WAZUH_PEM \
           WAZUH_MANAGER WAZUH_REGISTRATION_SERVER WAZUH_REGISTRATION_PORT \
@@ -247,7 +208,7 @@ add_auto_enrollment () {
             echo "      <agent_key_path>/path/to/agent.key</agent_key_path>"
             echo "      <authorization_pass_path>/path/to/authd.pass</authorization_pass_path>"
             echo "      <delay_after_enrollment>20</delay_after_enrollment>"
-            echo "    </enrollment>" 
+            echo "    </enrollment>"
         } >> "${TMP_ENROLLMENT}"
     fi
 
@@ -256,11 +217,7 @@ add_auto_enrollment () {
 # Add the auto_enrollment block to the configuration file
 concat_conf() {
 
-    if [ "${use_unix_sed}" = "False" ] ; then
-        ${sed} "/<\/crypto_method>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
-    else
-        unix_sed "/<\/crypto_method>/r ${TMP_ENROLLMENT}/" "${CONF_FILE}"
-    fi
+    ${sed} "/<\/auto_restart>/r ${TMP_ENROLLMENT}" "${CONF_FILE}"
 
     rm -f "${TMP_ENROLLMENT}"
 
@@ -289,16 +246,9 @@ main () {
     if [ "${uname_s}" = "Darwin" ]; then
         sed="sed -ire"
         set_vars
-    elif [ "${uname_s}" = "AIX" ] || [ "${uname_s}" = "SunOS" ] || [ "${uname_s}" = "HP-UX" ]; then
-        use_unix_sed="True"
     fi
 
     get_deprecated_vars
-
-    if [ -z "${WAZUH_MANAGER}" ] && [ -n "${WAZUH_PROTOCOL}" ]; then
-        PROTOCOLS=( $(tolower "${WAZUH_PROTOCOL//,/ }") )
-        edit_value_tag "protocol" "${PROTOCOLS[0]}"
-    fi
 
     if [ -n "${WAZUH_MANAGER}" ]; then
         if [ ! -f "${INSTALLDIR}/logs/ossec.log" ]; then
@@ -308,13 +258,8 @@ main () {
         fi
 
         # Check if multiples IPs are defined in variable WAZUH_MANAGER
-        ADDRESSES=( ${WAZUH_MANAGER//,/ } ) 
-        PROTOCOLS=( $(tolower "${WAZUH_PROTOCOL//,/ }") )
-        # Get uniques values if all protocols are the same
-        if ( [ "${#PROTOCOLS[@]}" -ge "${#ADDRESSES[@]}" ] && ( ( ! echo "${PROTOCOLS[@]}" | grep -q -w "tcp" ) || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ) ) || [ ${#PROTOCOLS[@]} -eq 0 ] || ( ! echo "${PROTOCOLS[@]}" | grep -q -w "udp" ) ; then
-            ADDRESSES=( $(echo "${ADDRESSES[@]}" |  tr ' ' '\n' | cat -n | sort -uk2 | sort -n | cut -f2- | tr '\n' ' ') ) 
-        fi
-        
+        ADDRESSES=( ${WAZUH_MANAGER//,/ } )
+
         add_adress_block
     fi
 
@@ -335,14 +280,14 @@ main () {
         concat_conf
     fi
 
-            
+
     if [ -n "${WAZUH_REGISTRATION_PASSWORD}" ]; then
         echo "${WAZUH_REGISTRATION_PASSWORD}" > "${INSTALLDIR}/${WAZUH_REGISTRATION_PASSWORD_PATH}"
         chmod 640 "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
         chown root:wazuh "${INSTALLDIR}"/"${WAZUH_REGISTRATION_PASSWORD_PATH}"
     fi
 
-    # Options to be modified in ossec.conf
+    # Options to be modified in wazuh configuration file
     edit_value_tag "notify_time" "${WAZUH_KEEP_ALIVE_INTERVAL}"
     edit_value_tag "time-reconnect" "${WAZUH_TIME_RECONNECT}"
 

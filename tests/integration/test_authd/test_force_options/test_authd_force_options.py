@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the 'wazuh-authd' daemon correctly responds to the enrollment requests
+brief: These tests will check if the 'wazuh-manager-authd' daemon correctly responds to the enrollment requests
        messages respecting the valid option values used in the force configuration block.
 
 components:
@@ -19,8 +19,8 @@ targets:
     - manager
 
 daemons:
-    - wazuh-authd
-    - wazuh-db
+    - wazuh-manager-authd
+    - wazuh-manager-db
 
 os_platform:
     - linux
@@ -60,8 +60,6 @@ from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 # Marks
 pytestmark = [pytest.mark.server, pytest.mark.tier(level=0)]
 
-AUTHD_KEY_REQUEST_TIMEOUT = 10
-
 # Configurations 1
 test_paths_t1 = [Path(TEST_CASES_FOLDER_PATH, 'cases_after_registration_time.yaml'),
                  Path(TEST_CASES_FOLDER_PATH, 'cases_disconnected_time.yaml'),
@@ -81,22 +79,10 @@ for test_path in test_paths_t1:
 test_configuration_path_t1 = Path(CONFIGURATIONS_FOLDER_PATH, 'config_authd_force_options.yaml')
 test_configuration_t1 = load_configuration_template(test_configuration_path_t1, test_configuration_t1, test_metadata_t1)
 
-# Configurations 2
-test_configuration_path_t2 = Path(CONFIGURATIONS_FOLDER_PATH, 'config_force_insert.yaml')
-test_cases_path_t2 = Path(TEST_CASES_FOLDER_PATH, 'cases_force_insert.yaml')
-test_configuration_t2, test_metadata_t2, test_cases_ids_t2 = get_test_cases_data(test_cases_path_t2)
-test_configuration_t2 = load_configuration_template(test_configuration_path_t2, test_configuration_t2, test_metadata_t2)
-
-# Configurations 3
-test_configuration_path_t3 = Path(CONFIGURATIONS_FOLDER_PATH, 'config_force_insert_only.yaml')
-test_cases_path_t3 = Path(TEST_CASES_FOLDER_PATH, 'cases_force_insert_only.yaml')
-test_configuration_t3, test_metadata_t3, test_cases_ids_t3 = get_test_cases_data(test_cases_path_t3)
-test_configuration_t3 = load_configuration_template(test_configuration_path_t3, test_configuration_t3, test_metadata_t3)
-
 # Variables
 local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 receiver_sockets_params = [(('localhost', DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
-monitored_sockets_params = [(AUTHD_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None  # Set in the fixtures
 
 daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': True}
@@ -109,7 +95,7 @@ def check_options(test_metadata):
         # Reopen socket (socket is closed by manager after sending message with client key)
         authd_sock.open()
         authd_sock.send(create_authd_request(stage['input']), size=False)
-        timeout = time.time() + AUTHD_KEY_REQUEST_TIMEOUT
+        timeout = time.time() + 10
         response = ''
         while response == '':
             response = authd_sock.receive().decode()
@@ -135,7 +121,7 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
         Checks that every input message in authd port generates the adequate output.
 
     wazuh_min_version:
-        4.3.0
+        5.0.0
 
     tier: 0
 
@@ -179,135 +165,5 @@ def test_authd_force_options(test_configuration, test_metadata, set_wazuh_config
     expected_output:
         - Registration request responses on Authd socket.
     '''
-
-    check_options(test_metadata)
-
-
-@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t2, test_metadata_t2), ids=test_cases_ids_t2)
-def test_authd_force_insert(test_configuration, test_metadata, set_wazuh_configuration,
-                            configure_local_internal_options, truncate_monitored_files,
-                            insert_pre_existent_agents, daemons_handler,
-                            wait_for_authd_startup, connect_to_sockets):
-    '''
-    description:
-        Checks that every input message in authd port generates the adequate output.
-
-    wazuh_min_version:
-        4.3.0
-
-    tier: 0
-
-    parameters:
-        - test_configuration:
-            type: dict
-            brief: Configuration loaded from `configuration_templates`.
-        - test_metadata:
-            type: dict
-            brief: Test case metadata.
-        - set_wazuh_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
-        - configure_local_internal_options:
-            type: fixture
-            brief: Configure the local internal options file.
-        - insert_pre_existent_agents:
-            type: fixture
-            brief: adds the required agents to the client.keys and global.db
-        - daemons_handler:
-            type: fixture
-            brief: Handler of Wazuh daemons.
-        - wait_for_authd_startup:
-            type: fixture
-            brief: Waits until Authd is accepting connections.
-        - connect_to_sockets:
-            type: fixture
-            brief: Bind to the configured sockets at function scope.
-        - truncate_monitored_files:
-            type: fixture
-            brief: Truncate all the log files and json alerts files before and after the test execution.
-
-
-    assertions:
-        - The received output must match with expected.
-        - Verifies the registration responses.
-
-    input_description:
-        Different test cases are contained in external YAML files (valid_config folder) which includes
-        different possible values for the current authd settings.
-
-    expected_output:
-        - Registration request responses on Authd socket.
-    '''
-
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    for log in test_metadata['log']:
-        log = re.escape(log)
-        wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10, encoding='utf-8')
-        assert wazuh_log_monitor.callback_result, f'Error event not detected'
-
-    check_options(test_metadata)
-
-
-@pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration_t3, test_metadata_t3), ids=test_cases_ids_t3)
-def test_authd_force_insert_only(test_configuration, test_metadata, set_wazuh_configuration,
-                                 configure_local_internal_options, truncate_monitored_files,
-                                 insert_pre_existent_agents, daemons_handler,
-                                 wait_for_authd_startup, connect_to_sockets):
-    '''
-    description:
-        Checks that every input message in authd port generates the adequate output.
-
-    wazuh_min_version:
-        4.3.0
-
-    tier: 0
-
-    parameters:
-        - test_configuration:
-            type: dict
-            brief: Configuration loaded from `configuration_templates`.
-        - test_metadata:
-            type: dict
-            brief: Test case metadata.
-        - set_wazuh_configuration:
-            type: fixture
-            brief: Load basic wazuh configuration.
-        - configure_local_internal_options:
-            type: fixture
-            brief: Configure the local internal options file.
-        - insert_pre_existent_agents:
-            type: fixture
-            brief: adds the required agents to the client.keys and global.db
-        - daemons_handler:
-            type: fixture
-            brief: Handler of Wazuh daemons.
-        - wait_for_authd_startup:
-            type: fixture
-            brief: Waits until Authd is accepting connections.
-        - connect_to_sockets:
-            type: fixture
-            brief: Bind to the configured sockets at function scope.
-        - truncate_monitored_files:
-            type: fixture
-            brief: Truncate all the log files and json alerts files before and after the test execution.
-
-
-    assertions:
-        - The received output must match with expected.
-        - Verifies the registration responses.
-
-    input_description:
-        Different test cases are contained in external YAML files (valid_config folder) which includes
-        different possible values for the current authd settings.
-
-    expected_output:
-        - Registration request responses on Authd socket.
-    '''
-
-    wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
-    for log in test_metadata['log']:
-        log = re.escape(log)
-        wazuh_log_monitor.start(callback=callbacks.generate_callback(fr'{PREFIX}{log}'), timeout=10, encoding='utf-8')
-        assert wazuh_log_monitor.callback_result, f'Error event not detected'
 
     check_options(test_metadata)

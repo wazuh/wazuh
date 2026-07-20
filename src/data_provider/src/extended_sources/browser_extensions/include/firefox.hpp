@@ -13,8 +13,9 @@
 #include <map>
 #include <string>
 #include "json.hpp"
-#include "filesystemHelper.h"
 #include "browser_extensions_wrapper.hpp"
+
+#include <ifilesystem_wrapper.hpp>
 
 /// Each home directory will include custom extensions.
 #if defined(__APPLE__)
@@ -86,9 +87,11 @@ class FirefoxAddonsProvider
         /**
          * @brief Construct a FirefoxAddonsProvider with a custom browser extensions wrapper.
          * @param firefoxAddonsWrapper Shared pointer to a browser extensions wrapper implementation.
+         * @param fileSystemWrapper Unique pointer to a file system wrapper implementation (optional).
          */
         explicit FirefoxAddonsProvider(
-            std::shared_ptr<IBrowserExtensionsWrapper> firefoxAddonsWrapper);
+            std::shared_ptr<IBrowserExtensionsWrapper> firefoxAddonsWrapper,
+            std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
 
         /**
          * @brief Default constructor for FirefoxAddonsProvider.
@@ -138,4 +141,9 @@ class FirefoxAddonsProvider
          * @brief Pointer to the browser extensions wrapper implementation.
          */
         std::shared_ptr<IBrowserExtensionsWrapper> m_firefoxAddonsWrapper;
+
+        /**
+         * @brief Pointer to the file system wrapper implementation.
+         */
+        std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 };

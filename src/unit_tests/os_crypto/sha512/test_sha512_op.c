@@ -12,9 +12,9 @@
 #include <stddef.h>
 #include <cmocka.h>
 
-#include "../../os_crypto/sha512/sha512_op.h"
+#include "sha512_op.h"
 #include "../../wrappers/common.h"
-#include "../headers/shared.h"
+#include "shared.h"
 
 void test_sha512_string() {
     const char *string = "teststring";

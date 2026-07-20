@@ -1,0 +1,127 @@
+#include "parse.hpp"
+
+#include <base/json.hpp>
+
+#include "../utils.hpp"
+#include "syntax.hpp"
+
+namespace builder::builders
+{
+// TODO: QoL error messages
+StageBuilder getParseBuilder(std::shared_ptr<hlp::logpar::Logpar> logpar, size_t debugLvl)
+{
+    if (debugLvl != 0 && debugLvl != 1)
+    {
+        throw std::runtime_error("[builder::opBuilderLogParser] Invalid debug level: expected 0 or 1");
+    }
+
+    if (!logpar)
+    {
+        throw std::runtime_error("[builder::opBuilderLogParser] Invalid logpar");
+    }
+
+    return [logpar, debugLvl](const json::Json& definition,
+                              const std::shared_ptr<const IBuildCtx>& buildCtx) -> base::Expression
+    {
+        // Assert definition is as expected
+        if (!definition.isArray())
+        {
+            throw std::runtime_error(fmt::format(
+                "Stage '{}' expects an array but got '{}'", syntax::asset::PARSE_KEY, definition.typeName()));
+        }
+        if (definition.size() < 1)
+        {
+            throw std::runtime_error(
+                fmt::format("Stage '{}' expects a non-empty array but got an empty array", syntax::asset::PARSE_KEY));
+        }
+
+        auto logparArr = definition.getArray().value();
+        std::vector<base::Expression> parsersExpressions {};
+        for (const json::Json& item : logparArr)
+        {
+            if (!item.isObject())
+            {
+                throw std::runtime_error(
+                    fmt::format(R"(Invalid json item type: Expected an "object" but got "{}")", item.typeName()));
+            }
+            if (item.size() != 1)
+            {
+                throw std::runtime_error(
+                    fmt::format("Invalid json item size: Expected exactly one element but got {}", item.size()));
+            }
+
+            auto itemObj = item.getObject().value();
+            auto field = json::Json::formatJsonPath(std::get<0>(itemObj[0]));
+            std::string logparExpr;
+            if (std::get<1>(itemObj[0]).getString(logparExpr) != json::RetGet::Success)
+            {
+                throw std::runtime_error(
+                    fmt::format(R"(Invalid logpar expression type for field "{}": Expected a "string" but got "{}")",
+                                field,
+                                std::get<1>(itemObj[0]).typeName()));
+            }
+            logparExpr = buildCtx->definitions().replace(logparExpr);
+
+            hlp::parser::Parser parser;
+            try
+            {
+                parser = logpar->build(logparExpr);
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error(fmt::format("An error occurred while parsing a log: {}", e.what()));
+            }
+
+            // Traces
+            const auto name = fmt::format("{}: {}", field, logparExpr);
+            const auto successTrace = fmt::format("[{}] -> Success", name);
+
+            // field to be parsed not exists
+            const std::string failureTrace1 =
+                fmt::format(R"([{}] -> Failure: Parameter "{}" reference not found or is not a string)", name, field);
+            // Parsing failed
+            const std::string failureTrace2 = fmt::format("[{}] -> Failure: Parse operation failed: ", name);
+
+            base::Expression parseExpression;
+            try
+            {
+                parseExpression = base::Term<base::EngineOp>::create(
+                    logparExpr,
+                    [=,
+                     isTestMode = buildCtx->isTestMode(),
+                     parser = std::move(parser),
+                     fieldPP = json::PointerPath(field)](base::Event event)
+                    {
+                        std::string_view ev;
+                        if (event->getString(ev, fieldPP) != json::RetGet::Success)
+                        {
+                            RETURN_FAILURE(isTestMode, event, failureTrace1);
+                        }
+                        // The parser modify the event, but rapidjson use MemoryPoolAllocator,
+                        // so the string_view is still valid after parsing
+                        auto error = hlp::parser::run(parser, ev, *event, isTestMode);
+                        if (error)
+                        {
+                            RETURN_FAILURE(isTestMode, event, failureTrace2 + error.value().message);
+                        }
+
+                        RETURN_SUCCESS(isTestMode, event, successTrace);
+                    });
+            }
+            catch (const std::exception& e)
+            {
+                throw std::runtime_error(
+                    fmt::format("[builder::opBuilderLogParser(json)] Exception creating [{}: {}]: {}",
+                                field,
+                                logparExpr,
+                                e.what()));
+            }
+
+            parsersExpressions.push_back(parseExpression);
+        }
+
+        return base::Or::create("parse", parsersExpressions);
+    };
+}
+
+} // namespace builder::builders

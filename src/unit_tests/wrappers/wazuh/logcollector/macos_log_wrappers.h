@@ -10,7 +10,7 @@
 #ifndef MACOS_LOG_WRAPPERS_H
 #define MACOS_LOG_WRAPPERS_H
 
-#include "../../../logcollector/macos_log.h"
+#include "macos_log.h"
 
 void __wrap_w_macos_create_log_env(logreader * lf, w_sysinfo_helpers_t * global_sysinfo);
 

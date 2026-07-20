@@ -36,8 +36,8 @@ static void getMemory(nlohmann::json& info)
         };
     }
 
-    const auto ramTotal{ram / KByte};
-    info["ram_total"] = ramTotal;
+    const auto ramTotal{ram};
+    info["memory_total"] = ramTotal;
     u_int pageSize{0};
     len = sizeof(pageSize);
     ret = sysctlbyname(vmPageSize, &pageSize, &len, nullptr, 0);
@@ -68,9 +68,9 @@ static void getMemory(nlohmann::json& info)
         };
     }
 
-    const auto ramFree{(vmt.t_free * pageSize) / KByte};
-    info["ram_free"] = ramFree;
-    info["ram_usage"] = 100 - (100 * ramFree / ramTotal);
+    const auto ramFree{(vmt.t_free * pageSize)};
+    info["memory_free"] = ramFree;
+    info["memory_used"] = ramTotal - ramFree;
 }
 
 
@@ -164,10 +164,10 @@ static std::string getCpuName()
 nlohmann::json SysInfo::getHardware() const
 {
     nlohmann::json hardware;
-    hardware["board_serial"] = getSerialNumber();
+    hardware["serial_number"] = getSerialNumber();
     hardware["cpu_name"] = getCpuName();
     hardware["cpu_cores"] = getCpuCores();
-    hardware["cpu_mhz"] = double(getCpuMHz());
+    hardware["cpu_speed"] = double(getCpuMHz());
     getMemory(hardware);
     return hardware;
 }
@@ -203,12 +203,15 @@ nlohmann::json SysInfo::getOsInfo() const
 
     if (uname(&uts) >= 0)
     {
-        ret["sysname"] = uts.sysname;
+        ret["os_kernel_name"] = uts.sysname;
         ret["hostname"] = uts.nodename;
-        ret["version"] = uts.version;
+        ret["os_kernel_version"] = uts.version;
         ret["architecture"] = uts.machine;
-        ret["release"] = uts.release;
+        ret["os_kernel_release"] = uts.release;
     }
+
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "unix";
 
     return ret;
 }
@@ -239,16 +242,16 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 
             package["name"] = data[0];
             package["vendor"] = data[1];
-            package["version"] = data[2];
-            package["install_time"] = UNKNOWN_VALUE;
-            package["location"] = UNKNOWN_VALUE;
+            package["version_"] = data[2];
+            package["installed"] = UNKNOWN_VALUE;
+            package["path"] = UNKNOWN_VALUE;
             package["architecture"] = data[3];
-            package["groups"] = UNKNOWN_VALUE;
+            package["category"] = UNKNOWN_VALUE;
             package["description"] = data[4];
             package["size"] = 0;
             package["priority"] = UNKNOWN_VALUE;
             package["source"] = UNKNOWN_VALUE;
-            package["format"] = "pkg";
+            package["type"] = "pkg";
             // The multiarch field won't have a default value
 
             callback(package);

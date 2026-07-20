@@ -1,8 +1,0 @@
-- name: no configuration block
-  description: EPS Limits disabled
-  configuration_parameters:
-    MAXIMUM: '0'
-    TIMEFRAME: '0'
-  metadata:
-    maximum: 0
-    timeframe: 0

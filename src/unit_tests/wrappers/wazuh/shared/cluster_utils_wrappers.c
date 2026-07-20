@@ -16,3 +16,7 @@
 char* __wrap_get_node_name(void) {
     return mock_type(char*);
 }
+
+char* __wrap_get_cluster_name(void) {
+    return mock_type(char*);
+}

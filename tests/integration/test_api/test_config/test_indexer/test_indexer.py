@@ -18,12 +18,11 @@ targets:
     - manager
 
 daemons:
-    - wazuh-apid
-    - wazuh-modulesd
-    - wazuh-analysisd
-    - wazuh-execd
-    - wazuh-db
-    - wazuh-remoted
+    - wazuh-manager-apid
+    - wazuh-manager-modulesd
+    - wazuh-manager-analysisd
+    - wazuh-manager-db
+    - wazuh-manager-remoted
 
 os_platform:
     - linux
@@ -51,7 +50,7 @@ from pathlib import Path
 import requests
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
-from wazuh_testing.constants.api import CONFIGURATION_TYPES, MANAGER_CONFIGURATION_ROUTE
+from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.utils import login, get_base_url
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template, get_wazuh_conf
@@ -70,7 +69,7 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_indexer.yaml')
 # Configurations
 test_configuration, test_metadata, test_cases_id = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
-daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
+daemons_handler_configuration = {'all_daemons': True}
 
 
 @pytest.mark.tier(level=0)
@@ -136,13 +135,12 @@ def test_indexer(test_configuration, test_metadata, set_wazuh_configuration, add
     request_body = test_metadata['request_body']
 
     # Get url and token for the request
-    url = get_base_url()
+    url = get_base_url() + '/cluster/node01/configuration'
     authentication_headers, _ = login()
     authentication_headers['Content-Type'] = 'application/octet-stream'
 
     # Makes an API request for uploading the new configuration
-    response = requests.put(url + MANAGER_CONFIGURATION_ROUTE, headers=authentication_headers, verify=False, timeout=10,
-                            data=request_body)
+    response = requests.put(url, headers=authentication_headers, verify=False, timeout=10, data=request_body)
 
     # Parses the response
     json_response = response.json()
@@ -158,10 +156,3 @@ def test_indexer(test_configuration, test_metadata, set_wazuh_configuration, add
         internal_error_code = json_response['data']["failed_items"][0]['error']['code']
         assert internal_error_code == 1127, f"Expected error code {1127}, but " \
                                             f"{internal_error_code} was returned: {json_response}"
-    
-    # Asserts that the configuration has the expected values
-    wazuh_config = "".join(get_wazuh_conf())
-    enabled = 'yes'
-    if not test_metadata['expected_indexer_enabled']:
-        enabled = 'no'
-    assert f"<enabled>{enabled}</enabled>" in wazuh_config

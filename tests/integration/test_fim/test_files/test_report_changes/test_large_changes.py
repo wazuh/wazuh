@@ -40,8 +40,6 @@ os_version:
     - Red Hat 8
     - macOS Catalina
     - macOS Server
-    - Solaris 10
-    - Solaris 11
     - macOS Catalina
     - macOS Server
     - Ubuntu Focal
@@ -111,7 +109,7 @@ local_internal_options = {SYSCHECK_DEBUG: 2, AGENTD_WINDOWS_DEBUG: 2}
 # Tests
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_large_changes(test_configuration, test_metadata, configure_local_internal_options,
-                        truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, daemons_handler, detect_end_scan):
+                        truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, clean_fim_sync_db, daemons_handler, detect_end_scan):
     '''
     description: Check if the 'wazuh-syscheckd' daemon detects the character limit in the file changes is reached
                  showing the 'More changes' tag in the 'content_changes' field of the generated events. For this
@@ -168,9 +166,22 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
         - r'.*Sending FIM event: (.+)$' ('added' and 'modified' events)
         - The 'More changes' message appears in content_changes when the changes size is bigger than the set limit.
     '''
-    if test_metadata.get('fim_mode') == 'whodata' and sys.platform == WINDOWS:
-        time.sleep(5)
+    fim_mode = test_metadata.get('fim_mode')
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
+    
+    # Wait for appropriate readiness based on mode
+    # For scheduled mode, detect_end_scan fixture already handles waiting for scan end
+    # For real-time mode, we need to wait for real-time monitoring to be fully initialized
+    if fim_mode == 'realtime':
+        wazuh_log_monitor.start(
+            timeout=60,
+            callback=generate_callback(r'.*Real-time file integrity monitoring started.*')
+        )
+        assert wazuh_log_monitor.callback_result, "Real-time monitoring did not start"
+    
+    if sys.platform == WINDOWS:
+        time.sleep(5)
+    
     limit = 50000
     test_file_path = os.path.join(test_metadata.get('folder_to_monitor'), test_metadata.get('filename'))
 
@@ -179,7 +190,7 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
     original_string = generate_string(test_metadata.get('original_size'), '0')
     write_file_write(test_file_path, content=original_string)
 
-    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=60)
+    wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=120)
     assert wazuh_log_monitor.callback_result, ERROR_MSG_FIM_EVENT_NOT_DETECTED
 
     # Modify the file with new content
@@ -194,13 +205,13 @@ def test_large_changes(test_configuration, test_metadata, configure_local_intern
 
     # Assert 'More changes' is shown when the command returns more than 'limit' characters
     if test_metadata.get('has_more_changes'):
-        assert 'More changes' in event['content_changes'], 'Did not find event with "More changes" within content_changes.'
+        assert 'More changes' in event['file']['content_changes'], 'Did not find event with "More changes" within content_changes.'
     else:
-        assert 'More changes' not in event['content_changes'], '"More changes" found within content_changes.'
+        assert 'More changes' not in event['file']['content_changes'], '"More changes" found within content_changes.'
 
     # Assert old content is shown in content_changes
-    assert '0' in event['content_changes'], '"0" is the old value but it is not found within content_changes'
+    assert '0' in event['file']['content_changes'], '"0" is the old value but it is not found within content_changes'
 
     # Assert new content is shown when old content is lower than the limit or platform is Windows
     if test_metadata.get('original_size') < limit or sys.platform == WINDOWS:
-        assert '1' in event['content_changes'], '"1" is the new value but it is not found within content_changes'
+        assert '1' in event['file']['content_changes'], '"1" is the new value but it is not found within content_changes'

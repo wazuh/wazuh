@@ -1,0 +1,1455 @@
+/*
+ * Wazuh - Indexer connector implementation.
+ * Copyright (C) 2015, Wazuh Inc.
+ * July 2, 2025.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "IURLRequest.hpp"
+#include "external/nlohmann/json.hpp"
+#include "indexerConnector.hpp"
+#include "keyStore.hpp"
+#include "loggerHelper.h"
+#include "reflectiveJson.hpp"
+#include "secureCommunication.hpp"
+#include "shared_modules/utils/certHelper.hpp"
+#include <atomic>
+#include <chrono>
+#include <condition_variable>
+#include <filesystem>
+#include <map>
+#include <mutex>
+#include <span>
+#include <string>
+#include <thread>
+#include <vector>
+
+static std::mutex G_CREDENTIAL_MUTEX;
+
+constexpr auto DEFAULT_PATH {"tmp/root-ca-merged.pem"};
+constexpr auto INDEXER_COLUMN {"indexer"};
+constexpr auto USER_KEY {"username"};
+constexpr auto PASSWORD_KEY {"password"};
+
+constexpr auto HTTP_OK {200};
+constexpr auto HTTP_CREATED {201};
+constexpr auto HTTP_NOT_FOUND {404};
+constexpr auto HTTP_VERSION_CONFLICT {409};
+constexpr auto HTTP_CONTENT_LENGTH {413};
+constexpr auto HTTP_TOO_MANY_REQUESTS {429};
+
+// JSON structure components for bulk operations
+constexpr auto INDEX_OPERATION_PREFIX {20};  // {"index":{"_index":"
+constexpr auto DELETE_OPERATION_PREFIX {21}; // {"delete":{"_index":"
+constexpr auto ID_FIELD_PREFIX {8};          // ","_id":"
+constexpr auto DELETE_ID_FIELD_PREFIX {9};   // ","_id":"
+constexpr auto CLOSING_BRACES {2};           // "}}
+constexpr auto NEWLINE_CHAR {1};             // \n
+
+// Overhead is the fixed JSON scaffolding for one bulk item:
+// {"index":{"_index":"<index>","_id":"<id>"}}
+constexpr auto FORMATTED_LENGTH {INDEX_OPERATION_PREFIX + ID_FIELD_PREFIX + CLOSING_BRACES + CLOSING_BRACES +
+                                 NEWLINE_CHAR};
+// Overhead for delete operations:
+// {"delete":{"_index":"<index>","_id":"<id>"}}
+constexpr auto DELETE_FORMATTED_LENGTH {DELETE_OPERATION_PREFIX + DELETE_ID_FIELD_PREFIX + CLOSING_BRACES +
+                                        NEWLINE_CHAR};
+
+/**
+ * @brief Validates that an index name is safe to embed in a URL path component or
+ *        in a JSON string sent to wazuh-indexer.
+ *
+ * Rejects empty strings and any character outside the conservative allowlist
+ * `[a-zA-Z0-9._*-]`. Blocks `/`, `?`, `#`, `,`, whitespace and quote characters,
+ * which would otherwise enable path traversal, query-string injection in URLs,
+ * or JSON-body escape attacks. `*` is allowed because wazuh-indexer interprets it
+ * as a wildcard and the connector has legitimate callers that use patterns such
+ * as `wazuh-states-*`.
+ *
+ * @param idx Candidate index name.
+ * @return true if the name is non-empty and contains only safe characters.
+ */
+inline bool isSafeIndexName(std::string_view idx) noexcept
+{
+    if (idx.empty())
+    {
+        return false;
+    }
+    for (const char c : idx)
+    {
+        const bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' ||
+                        c == '_' || c == '.' || c == '*';
+        if (!ok)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * @brief Appends an ID to bulkData, escaping special characters if necessary
+ * @param bulkData The string to append the ID to
+ * @param id The ID to append (will be escaped if needed)
+ */
+inline void appendEscapedId(std::string& bulkData, std::string_view id)
+{
+    if (needEscape(id))
+    {
+        std::string escapedId;
+        escapeJSONString(id, escapedId);
+        bulkData.append(escapedId);
+    }
+    else
+    {
+        bulkData.append(id);
+    }
+}
+
+/**
+ * @brief Validates bulk API response at document level
+ * @param response The bulk API response JSON string
+ * @return true if all operations succeeded (or had acceptable version conflicts), false otherwise
+ * @throws std::exception if response parsing fails
+ *
+ * This function validates each document in the bulk response individually.
+ * It treats version conflicts where the same document version already exists as success.
+ * Memory-safe: uses nlohmann::json which handles large documents efficiently.
+ */
+inline bool validateBulkResponse(const std::string& response, const char* tag)
+{
+    try
+    {
+        // Parse response - nlohmann::json handles large documents efficiently
+        auto responseJson = nlohmann::json::parse(response);
+
+        // Check if response has errors flag
+        if (!responseJson.contains("errors"))
+        {
+            logDebug2(tag, "Bulk response missing 'errors' field, treating as success");
+            return true;
+        }
+
+        // If no errors reported, success
+        if (!responseJson["errors"].get<bool>())
+        {
+            logDebug2(tag, "Bulk operation completed with no errors");
+            return true;
+        }
+
+        // Errors were reported, validate each item
+        if (!responseJson.contains("items") || !responseJson["items"].is_array())
+        {
+            logError(tag, "Bulk response has errors but missing 'items' array");
+            return false;
+        }
+
+        size_t totalItems = responseJson["items"].size();
+        size_t successCount = 0;
+        size_t versionConflictAcceptedCount = 0;
+        size_t realFailureCount = 0;
+
+        // Validate each item individually
+        for (const auto& item : responseJson["items"])
+        {
+            // Each item is an object with one key (operation type: index, delete, update, create)
+            if (item.empty())
+            {
+                realFailureCount++;
+                continue;
+            }
+
+            // Get the first (and only) key-value pair
+            auto it = item.begin();
+            const auto& operation = it.key(); // "index", "delete", etc.
+            const auto& result = it.value();
+
+            // Check status code
+            if (!result.contains("status"))
+            {
+                logError(tag, "Item missing status field");
+                realFailureCount++;
+                continue;
+            }
+
+            int status = result["status"].get<int>();
+
+            // Success statuses
+            if (status == HTTP_OK || status == HTTP_CREATED)
+            {
+                successCount++;
+                continue;
+            }
+
+            // Version conflict - check if it's the acceptable type
+            if (status == HTTP_VERSION_CONFLICT)
+            {
+                bool isAcceptableConflict = false;
+
+                // Check if this is a version_conflict_engine_exception
+                if (result.contains("error"))
+                {
+                    const auto& error = result["error"];
+                    if (error.contains("type") && error["type"].is_string())
+                    {
+                        std::string errorType = error["type"].get<std::string>();
+                        // version_conflict_engine_exception means document version already exists
+                        // This is acceptable for inventory sync - treat as success
+                        if (errorType == "version_conflict_engine_exception")
+                        {
+                            isAcceptableConflict = true;
+                            versionConflictAcceptedCount++;
+                            logDebug2(tag,
+                                      "Document version conflict (same version already indexed) for %s operation - "
+                                      "treating as success",
+                                      operation.c_str());
+                        }
+                    }
+                }
+
+                if (!isAcceptableConflict)
+                {
+                    // Version conflict without the expected error type - treat as failure
+                    logWarn(tag,
+                            "Version conflict without version_conflict_engine_exception for %s operation",
+                            operation.c_str());
+                    realFailureCount++;
+                }
+                continue;
+            }
+
+            // Any other error status is a real failure
+            std::string errorMsg = "Unknown error";
+            if (result.contains("error"))
+            {
+                const auto& error = result["error"];
+                if (error.is_string())
+                {
+                    errorMsg = error.get<std::string>();
+                }
+                else if (error.is_object() && error.contains("reason"))
+                {
+                    errorMsg = error["reason"].get<std::string>();
+                }
+            }
+
+            logError(
+                tag, "Indexing failure for %s operation (status %d): %s", operation.c_str(), status, errorMsg.c_str());
+            realFailureCount++;
+        }
+
+        // Log summary
+        logInfo(tag,
+                "Bulk operation summary: %zu total, %zu success, %zu acceptable version conflicts, %zu failures",
+                totalItems,
+                successCount,
+                versionConflictAcceptedCount,
+                realFailureCount);
+
+        // Return success only if no real failures occurred
+        return realFailureCount == 0;
+    }
+    catch (const nlohmann::json::exception& e)
+    {
+        logError(tag, "Failed to parse bulk response: %s", e.what());
+        return false;
+    }
+    catch (const std::exception& e)
+    {
+        logError(tag, "Error validating bulk response: %s", e.what());
+        return false;
+    }
+}
+
+template<typename TSelector,
+         typename THttpRequest,
+         size_t MaxBulkSize = 10 * 1024 * 1024,
+         size_t RetryDelay = 1,
+         size_t FlushInterval = 20>
+class IndexerConnectorSyncImpl final
+{
+    LogFn m_logFn;
+    SecureCommunication m_secureCommunication;
+    std::unique_ptr<TSelector> m_selector;
+    THttpRequest* m_httpRequest;
+    std::string m_bulkData;
+    std::map<std::string, nlohmann::json, std::less<>> m_deleteByQuery;
+    std::vector<std::function<void()>> m_notify;
+    std::chrono::steady_clock::time_point m_lastBulkTime;
+    std::condition_variable m_cv;
+    std::mutex m_mutex;
+    std::thread m_bulkThread;
+    std::atomic<bool> m_stopping {false};
+    std::vector<size_t> m_boundaries;
+    bool m_shouldNotifyAfterBulk {false};
+    size_t m_maxBulkSize {MaxBulkSize};
+    size_t m_flushInterval {FlushInterval};
+
+    void processBulk()
+    {
+        bool needToRetry = false;
+        if (m_bulkData.empty() && m_deleteByQuery.empty())
+        {
+            throw IndexerConnectorException("No data to process");
+        }
+
+        auto serverUrl = m_selector->getNext();
+        const auto onSuccessDeleteByQuery = [this](const std::string& response)
+        {
+            LOG_DEBUG2(m_logFn, "Response: %s", response.c_str());
+        };
+
+        const auto onErrorDeleteByQuery =
+            [this](const std::string& error, const long statusCode, const std::string& responseBody)
+        {
+            if (statusCode == HTTP_NOT_FOUND)
+            {
+                // Index doesn't exist - this is OK, nothing to delete
+                LOG_DEBUG2(m_logFn, "Index not found (404) for deleteByQuery - nothing to delete, continuing.");
+                return;
+            }
+            else if (statusCode == HTTP_VERSION_CONFLICT)
+            {
+                LOG_DEBUG2(m_logFn, "Document version conflict for deleteByQuery - continuing.");
+                // For deleteByQuery, we don't retry - just log and continue
+                return;
+            }
+            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                LOG_DEBUG2(m_logFn, "Too many requests for deleteByQuery - continuing.");
+                // For deleteByQuery, we don't retry - just log and continue
+                return;
+            }
+            else
+            {
+                LOG_ERROR(m_logFn, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
+                m_bulkData.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+                throw IndexerConnectorException(error);
+            }
+        };
+
+        // Track if we have pending deleteByQuery operations that need notification
+        const bool hasDeleteByQuery = !m_deleteByQuery.empty();
+
+        for (const auto& [index, query] : m_deleteByQuery)
+        {
+            std::string url;
+            url += serverUrl;
+            url += "/";
+            url += index;
+            url += "/_delete_by_query";
+            LOG_DEBUG2(m_logFn, "Deleting by query: %s", url.c_str());
+            m_httpRequest->post(
+                RequestParameters {
+                    .url = HttpURL(url), .data = query.dump(), .secureCommunication = m_secureCommunication},
+                PostRequestParameters {.onSuccess = onSuccessDeleteByQuery, .onError = onErrorDeleteByQuery},
+                {});
+        }
+
+        const auto onSuccess = [this, &needToRetry](const std::string& response)
+        {
+            LOG_DEBUG2(m_logFn, "Response: %s", response.c_str());
+
+            // Validate bulk response at document level
+            if (!validateBulkResponse(response, m_logFn.c_str()))
+            {
+                LOG_ERROR(m_logFn, "Bulk operation had indexing failures");
+                m_bulkData.clear();
+                m_boundaries.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+                throw IndexerConnectorException("Bulk operation had indexing failures");
+            }
+
+            m_shouldNotifyAfterBulk = true;
+            needToRetry = false;
+        };
+
+        const auto onError = [this, &needToRetry](const std::string& error,
+                                                  const long statusCode,
+                                                  const std::string& responseBody) -> void
+        {
+            LOG_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
+            if (statusCode == HTTP_CONTENT_LENGTH)
+            {
+                LOG_DEBUG2(m_logFn, "Received 413 error (Payload Too Large). Splitting bulk data.");
+                if (const size_t currentOperations = m_boundaries.size(); currentOperations <= 1)
+                {
+                    LOG_ERROR(m_logFn,
+                              "Unable to send data even with single operation. "
+                              "Consider increasing http.max_content_length in OpenSearch settings. "
+                              "Current data size: %zu bytes.",
+                              m_bulkData.size());
+                    m_bulkData.clear();
+                    m_boundaries.clear();
+                    throw IndexerConnectorException("Single operation exceeds server payload limits");
+                }
+                splitAndProcessBulk();
+            }
+            else if (statusCode == HTTP_VERSION_CONFLICT)
+            {
+                LOG_WARN(m_logFn,
+                         "Bulk request returned 409 version conflict at request level. Document-level conflicts are "
+                         "handled by validateBulkResponse().");
+                m_bulkData.clear();
+                m_boundaries.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+                throw IndexerConnectorException("Bulk version conflict at request level");
+            }
+            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                needToRetry = true;
+                LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+            }
+            else
+            {
+                LOG_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
+                m_bulkData.clear();
+                m_boundaries.clear();
+                m_lastBulkTime = std::chrono::steady_clock::now();
+                throw IndexerConnectorException(error);
+            }
+        };
+
+        // Only process bulk data if there is data to process
+        if (!m_bulkData.empty())
+        {
+            do
+            {
+                if (m_stopping.load())
+                {
+                    LOG_DEBUG2(m_logFn, "Stopping requested, aborting bulk processing");
+                    return;
+                }
+
+                std::string url;
+                url += m_selector->getNext();
+                url += "/_bulk";
+                LOG_DEBUG2(m_logFn, "Sending bulk data to: %s", url.c_str());
+                LOG_DEBUG2(m_logFn, "Bulk data: %s", m_bulkData.c_str());
+
+                m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                                       .data = m_bulkData,
+                                                       .secureCommunication = m_secureCommunication},
+                                    PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                    {});
+                if (needToRetry && RetryDelay > 0)
+                {
+                    std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+                }
+            } while (needToRetry);
+        }
+
+        if (hasDeleteByQuery && m_bulkData.empty())
+        {
+            m_shouldNotifyAfterBulk = true;
+        }
+
+        m_bulkData.clear();
+        m_boundaries.clear();
+        m_deleteByQuery.clear();
+        m_lastBulkTime = std::chrono::steady_clock::now();
+    }
+
+    void splitAndProcessBulk()
+    {
+        const size_t totalOperations = m_boundaries.size();
+        if (totalOperations <= 1)
+        {
+            throw IndexerConnectorException(
+                "Cannot split bulk data with less than two operations. Consider increasing http.max_content_length in "
+                "Wazuh-Indexer settings.");
+        }
+        LOG_DEBUG2(m_logFn, "Splitting %zu operations into two halves", totalOperations);
+
+        const size_t midPoint = totalOperations / 2;
+        std::span<size_t> firstBoundaries(m_boundaries.begin(), m_boundaries.begin() + midPoint);
+        const size_t firstEndPos = m_boundaries[midPoint - 1];
+        std::string_view firstHalf(m_bulkData.data(), firstEndPos);
+        std::span<size_t> secondBoundaries(m_boundaries.begin() + midPoint, m_boundaries.end());
+        const size_t secondStartPos = m_boundaries[midPoint - 1];
+        std::string_view secondHalf(m_bulkData.data() + secondStartPos, m_bulkData.size() - secondStartPos);
+        bool allProcessed = true;
+
+        if (!firstHalf.empty() && !firstBoundaries.empty())
+        {
+            try
+            {
+                processBulkChunk(firstHalf, firstBoundaries);
+            }
+            catch (const IndexerConnectorException& e)
+            {
+                LOG_ERROR(m_logFn, "Failed to process first half: %s", e.what());
+                allProcessed = false;
+                throw;
+            }
+        }
+        if (!secondHalf.empty() && !secondBoundaries.empty())
+        {
+            try
+            {
+                processBulkChunk(secondHalf, secondBoundaries);
+            }
+            catch (const IndexerConnectorException& e)
+            {
+                LOG_ERROR(m_logFn, "Failed to process second half: %s", e.what());
+                allProcessed = false;
+                throw;
+            }
+        }
+        if (allProcessed)
+        {
+            m_shouldNotifyAfterBulk = true;
+        }
+        m_bulkData.clear();
+        m_boundaries.clear();
+        m_lastBulkTime = std::chrono::steady_clock::now();
+    }
+
+    void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries)
+    {
+        std::string url;
+        url += m_selector->getNext();
+        url += "/_bulk";
+        bool needToRetry = false;
+
+        const auto onSuccess = [this](const std::string& response)
+        {
+            LOG_DEBUG2(m_logFn, "Chunk processed successfully: %s", response.c_str());
+
+            // Validate bulk response at document level
+            if (!validateBulkResponse(response, m_logFn.c_str()))
+            {
+                LOG_ERROR(m_logFn, "Bulk chunk operation had indexing failures");
+                throw IndexerConnectorException("Bulk chunk operation had indexing failures");
+            }
+        };
+        const auto onError = [this, &needToRetry, boundaries](
+                                 const std::string& error, const long statusCode, const std::string& responseBody)
+        {
+            LOG_ERROR(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
+            if (statusCode == HTTP_CONTENT_LENGTH)
+            {
+                if (boundaries.size() > 1)
+                {
+                    LOG_DEBUG2(m_logFn, "Chunk still too large, splitting recursively");
+                    const size_t midPoint = boundaries.size() / 2;
+                    std::span<size_t> firstBoundaries(boundaries.begin(),
+                                                      boundaries.begin() + static_cast<long>(midPoint));
+                    const size_t firstEndPos = boundaries[midPoint - 1];
+                    std::string_view firstHalf(m_bulkData.data(), firstEndPos);
+                    std::span<size_t> secondBoundaries(boundaries.begin() + static_cast<long>(midPoint),
+                                                       boundaries.end());
+                    const size_t secondStartPos = boundaries[midPoint - 1];
+                    std::string_view secondHalf(m_bulkData.data() + secondStartPos, m_bulkData.size() - secondStartPos);
+                    processBulkChunk(firstHalf, firstBoundaries);
+                    processBulkChunk(secondHalf, secondBoundaries);
+                    return;
+                }
+                LOG_ERROR(m_logFn, "Single operation too large for server limits");
+                throw IndexerConnectorException("Single operation exceeds server limits");
+            }
+            else if (statusCode == HTTP_VERSION_CONFLICT)
+            {
+                LOG_WARN(m_logFn,
+                         "Bulk chunk returned 409 version conflict at request level. Document-level conflicts are "
+                         "handled by validateBulkResponse().");
+                throw IndexerConnectorException("Bulk version conflict at request level");
+            }
+            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+                needToRetry = true;
+            }
+            else
+            {
+                throw IndexerConnectorException(error);
+            }
+        };
+        do
+        {
+            if (m_stopping.load())
+            {
+                LOG_DEBUG2(m_logFn, "Stopping requested, aborting bulk chunk processing");
+                return;
+            }
+            needToRetry = false;
+            LOG_DEBUG2(m_logFn, "Sending bulk chunk to: %s", url.c_str());
+            m_httpRequest->post(RequestParametersStringView {.url = HttpURL(url),
+                                                             .data = data,
+                                                             .secureCommunication = m_secureCommunication},
+                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                {});
+            if (needToRetry && RetryDelay > 0)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+            }
+        } while (needToRetry);
+    }
+
+public:
+    ~IndexerConnectorSyncImpl()
+    {
+        {
+            std::lock_guard timeoutLock(m_mutex);
+            m_stopping.store(true);
+            m_cv.notify_one();
+        }
+        if (m_bulkThread.joinable())
+        {
+            m_bulkThread.join();
+        }
+    }
+
+    explicit IndexerConnectorSyncImpl(
+        const nlohmann::json& config,
+        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+            logFunction,
+        THttpRequest* httpRequest = nullptr,
+        std::unique_ptr<TSelector> selector = nullptr,
+        std::string callerName = "")
+        : m_logFn {}
+        , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
+    {
+        m_logFn = LogFn {callerName}.compose("indexer-connector");
+        // Install caller context so sub-objects (RocksDB queues, dispatchers) pick up the right base tag
+        // via makeLibLogFn(). Restores the previous TL value when the constructor exits.
+        const Log::ScopedModuleLogFn guard {callerName.empty() ? LogFn {"indexer-connector"} : LogFn {callerName}};
+
+        if (logFunction)
+        {
+            Log::assignLogFunction(logFunction);
+        }
+
+        std::string caRootCertificate;
+        std::string sslCertificate;
+        std::string sslKey;
+        if (config.contains("ssl"))
+        {
+            if (config.at("ssl").contains("certificate_authorities") &&
+                !config.at("ssl").at("certificate_authorities").empty())
+            {
+                std::vector<std::string> filePaths =
+                    config.at("ssl").at("certificate_authorities").get<std::vector<std::string>>();
+                if (filePaths.size() > 1)
+                {
+                    Utils::CertHelper::mergeCaRootCertificates(filePaths, caRootCertificate, DEFAULT_PATH);
+                }
+                else
+                {
+                    if (std::filesystem::exists(filePaths.front()))
+                    {
+                        caRootCertificate = filePaths.front();
+                    }
+                    else
+                    {
+                        throw IndexerConnectorException("The CA root certificate file: '" + filePaths.front() +
+                                                        "' does not exist.");
+                    }
+                }
+            }
+            if (config.at("ssl").contains("certificate"))
+            {
+                sslCertificate = config.at("ssl").at("certificate").get_ref<const std::string&>();
+            }
+            if (config.at("ssl").contains("key"))
+            {
+                sslKey = config.at("ssl").at("key").get_ref<const std::string&>();
+            }
+        }
+
+        if (!config.contains("hosts") || config.at("hosts").empty())
+        {
+            throw IndexerConnectorException("No hosts found in the configuration");
+        }
+
+        std::lock_guard lock(G_CREDENTIAL_MUTEX);
+        static auto username = Keystore::get(INDEXER_COLUMN, USER_KEY);
+        static auto password = Keystore::get(INDEXER_COLUMN, PASSWORD_KEY);
+        if (username.empty() && password.empty())
+        {
+            username = "admin";
+            password = "admin";
+            LOG_WARN(m_logFn, "No username and password found in the keystore, using default values.");
+        }
+        if (username.empty())
+        {
+            username = "admin";
+            LOG_WARN(m_logFn, "No username found in the keystore, using default value.");
+        }
+        m_secureCommunication = SecureCommunication::builder();
+        m_secureCommunication.basicAuth(username + ":" + password)
+            .sslCertificate(sslCertificate)
+            .sslKey(sslKey)
+            .caRootCertificate(caRootCertificate);
+
+        m_selector =
+            selector ? std::move(selector) : std::make_unique<TSelector>(config.at("hosts"), 10, m_secureCommunication);
+
+        m_maxBulkSize = config.contains("max_bulk_size") && config.at("max_bulk_size").is_number_integer()
+                            ? config.at("max_bulk_size").get<size_t>()
+                            : MaxBulkSize;
+
+        m_flushInterval =
+            config.contains("flush_interval_seconds") && config.at("flush_interval_seconds").is_number_integer()
+                ? config.at("flush_interval_seconds").get<size_t>()
+                : FlushInterval;
+
+        m_lastBulkTime = std::chrono::steady_clock::now();
+        m_bulkThread = std::thread(
+            [this]()
+            {
+                std::unique_lock timeoutLock(m_mutex);
+                while (!m_stopping.load())
+                {
+                    auto timeoutResult = m_cv.wait_for(
+                        timeoutLock, std::chrono::seconds(m_flushInterval), [this] { return m_stopping.load(); });
+
+                    // Process bulk data or deleteByQuery if there's data to process
+                    if (!m_bulkData.empty() || !m_deleteByQuery.empty())
+                    {
+                        try
+                        {
+                            processBulk();
+
+                            // Invoke pending callbacks after releasing mutex
+                            if (m_shouldNotifyAfterBulk)
+                            {
+                                std::vector<std::function<void()>> callbacksCopy = std::move(m_notify);
+                                m_notify.clear();
+                                m_shouldNotifyAfterBulk = false;
+
+                                timeoutLock.unlock();
+                                for (const auto& callback : callbacksCopy)
+                                {
+                                    callback();
+                                }
+                                timeoutLock.lock();
+                            }
+                        }
+                        catch (const IndexerConnectorException& e)
+                        {
+                            LOG_ERROR(m_logFn, "Error processing bulk: %s", e.what());
+                        }
+                        catch (const std::exception& e)
+                        {
+                            LOG_DEBUG2(m_logFn, "Cannot process bulk: %s", e.what());
+                        }
+                    }
+
+                    // Exit if stopping was requested
+                    if (timeoutResult || m_stopping.load())
+                    {
+                        break;
+                    }
+                }
+            });
+    }
+
+    void deleteByQuery(const std::string& index, const std::string& agentId, const std::string& clusterName = {})
+    {
+        if (!isSafeIndexName(index))
+        {
+            LOG_WARN(m_logFn,
+                     "Refusing deleteByQuery for unsafe index name '%s' (empty or contains characters outside "
+                     "[a-zA-Z0-9._*-]).",
+                     index.c_str());
+            throw IndexerConnectorException("Unsafe index name");
+        }
+
+        auto [it, success] = m_deleteByQuery.try_emplace(index, nlohmann::json::object());
+        auto& boolQuery = it->second["query"]["bool"];
+
+        if (clusterName.empty())
+        {
+            // No cluster name: filter by agent.id only.
+            boolQuery["filter"]["terms"]["wazuh.agent.id"].push_back(agentId);
+            return;
+        }
+
+        // Filter by agent.id and cluster.name.
+        if (success)
+        {
+            nlohmann::json agentClause;
+            agentClause["terms"]["wazuh.agent.id"] = nlohmann::json::array();
+            nlohmann::json clusterClause;
+            clusterClause["term"]["wazuh.cluster.name"] = clusterName;
+            boolQuery["filter"] = nlohmann::json::array({agentClause, clusterClause});
+        }
+        boolQuery["filter"][0]["terms"]["wazuh.agent.id"].push_back(agentId);
+    }
+
+    void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
+    {
+        // Reject any entry that fails the connector's safe-name check
+        std::string indexList;
+        for (const auto& idx : indices)
+        {
+            if (!isSafeIndexName(idx))
+            {
+                LOG_WARN(m_logFn,
+                         "Skipping index '%s' for update by query: empty or contains characters outside "
+                         "[a-zA-Z0-9._*-].",
+                         idx.c_str());
+                continue;
+            }
+
+            if (!indexList.empty())
+            {
+                indexList.append(",");
+            }
+            indexList.append(idx);
+        }
+
+        if (indexList.empty())
+        {
+            LOG_WARN(m_logFn,
+                     "Update by query skipped: no valid indices after filtering (input had %zu entries)",
+                     indices.size());
+            // No HTTP request needed, but pending notify callbacks (e.g. unlockAgent +
+            // sendEndAck) must still fire so the session terminates cleanly. Treat the
+            // missing/filtered indices as a no-op success.
+            m_shouldNotifyAfterBulk = true;
+            return;
+        }
+
+        bool needToRetry = false;
+
+        const auto onSuccess = [this](const std::string& response)
+        {
+            LOG_DEBUG2(m_logFn, "Update by query response: %s", response.c_str());
+
+            // Parse response to extract update statistics and check for failures
+            try
+            {
+                auto responseJson = nlohmann::json::parse(response);
+
+                // Check for failures first
+                if (responseJson.contains("failures") && !responseJson["failures"].empty())
+                {
+                    auto failures = responseJson["failures"];
+                    LOG_ERROR(m_logFn, "Update by query completed with %zu failures", failures.size());
+
+                    // Log first few failures for debugging
+                    size_t logCount = std::min<size_t>(failures.size(), 3);
+                    for (size_t i = 0; i < logCount; ++i)
+                    {
+                        LOG_ERROR(m_logFn, "Failure %zu: %s", i + 1, failures[i].dump().c_str());
+                    }
+                }
+
+                if (responseJson.contains("updated") && responseJson.contains("total"))
+                {
+                    auto updated = responseJson["updated"].get<int>();
+                    auto total = responseJson["total"].get<int>();
+                    auto noops = responseJson.contains("noops") ? responseJson["noops"].get<int>() : 0;
+                    auto failures = responseJson.contains("failures") ? responseJson["failures"].size() : 0;
+
+                    if (updated > 0)
+                    {
+                        LOG_INFO(m_logFn,
+                                 "Update by query completed: %d documents updated out of %d total (%d unchanged, %zu "
+                                 "failures)",
+                                 updated,
+                                 total,
+                                 noops,
+                                 failures);
+                    }
+                    else
+                    {
+                        LOG_DEBUG2(m_logFn,
+                                   "Update by query completed: no documents needed updating (all %d documents already "
+                                   "up-to-date, %zu failures)",
+                                   total,
+                                   failures);
+                    }
+                }
+            }
+            catch (const std::exception& e)
+            {
+                LOG_DEBUG2(m_logFn, "Could not parse update by query response: %s", e.what());
+            }
+
+            m_shouldNotifyAfterBulk = true;
+        };
+
+        const auto onError =
+            [this, &needToRetry](const std::string& url, const long statusCode, const std::string& error)
+        {
+            if (statusCode == HTTP_VERSION_CONFLICT)
+            {
+                LOG_WARN(m_logFn,
+                         "Update by query returned 409 version conflict. This indicates documents were modified by "
+                         "another process.");
+                m_notify.clear();
+                throw IndexerConnectorException("Update by query version conflict");
+            }
+            else if (statusCode == HTTP_TOO_MANY_REQUESTS)
+            {
+                needToRetry = true;
+                LOG_DEBUG2(m_logFn, "Too many requests, retrying in 1 second.");
+            }
+            else
+            {
+                LOG_ERROR(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
+                m_notify.clear();
+                throw IndexerConnectorException(error);
+            }
+        };
+
+        do
+        {
+            if (m_stopping.load())
+            {
+                LOG_DEBUG2(m_logFn, "Stopping requested, aborting update by query");
+                m_notify.clear();
+                return;
+            }
+
+            needToRetry = false;
+            auto serverUrl = m_selector->getNext();
+            std::string url;
+            url += serverUrl;
+            url += "/";
+            url += indexList;
+            url += "/_update_by_query?conflicts=proceed";
+
+            m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                                   .data = updateQuery.dump(),
+                                                   .secureCommunication = m_secureCommunication},
+                                PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                                {});
+
+            if (needToRetry && RetryDelay > 0)
+            {
+                std::this_thread::sleep_for(std::chrono::seconds(RetryDelay));
+            }
+        } while (needToRetry);
+    }
+
+    nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery)
+    {
+        if (!isSafeIndexName(index))
+        {
+            throw IndexerConnectorException("executeSearchQuery: unsafe index name '" + index +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+        }
+
+        nlohmann::json resultJson;
+
+        const auto onSuccess = [this, &resultJson](const std::string& response)
+        {
+            LOG_DEBUG2(m_logFn, "Search query response: %s", response.c_str());
+            resultJson = nlohmann::json::parse(response);
+        };
+
+        const auto onError = [this](const std::string& error, const long statusCode, const std::string&)
+        {
+            LOG_ERROR(m_logFn, "Search query failed: %s, status code: %ld", error.c_str(), statusCode);
+            throw IndexerConnectorException("Search query failed: " + error);
+        };
+
+        auto serverUrl = m_selector->getNext();
+        std::string url;
+        url += serverUrl;
+        url += "/";
+        url += index;
+        url += "/_search";
+
+        LOG_DEBUG2(m_logFn, "Executing search query on: %s", url.c_str());
+
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                               .data = searchQuery.dump(),
+                                               .secureCommunication = m_secureCommunication},
+                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        return resultJson;
+    }
+
+    void executeSearchQueryWithPagination(const std::string& index,
+                                          const nlohmann::json& query,
+                                          std::function<void(const nlohmann::json&)> onResponse)
+    {
+        if (!isSafeIndexName(index))
+        {
+            throw IndexerConnectorException("executeSearchQueryWithPagination: unsafe index name '" + index +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+        }
+
+        nlohmann::json currentQuery = query;
+        while (true)
+        {
+            nlohmann::json searchResult = executeSearchQuery(index, currentQuery);
+
+            // Always call the callback, even for empty pages, to notify the caller of each page's result (including
+            // empty pages).
+            onResponse(searchResult);
+
+            const auto itHits = searchResult.find("hits");
+            if (itHits == searchResult.end())
+            {
+                LOG_DEBUG2(m_logFn, "No 'hits' object in response, breaking pagination loop");
+                break;
+            }
+
+            const auto itInner = itHits->find("hits");
+            if (itInner == itHits->end() || !itInner->is_array() || itInner->empty())
+            {
+                LOG_DEBUG2(m_logFn, "No 'hits' array in response or it is empty, breaking pagination loop");
+                break;
+            }
+
+            const auto& hits = *itInner;
+
+            // If we got less results than requested, this is the last page
+            if (currentQuery.contains("size") && hits.size() < currentQuery["size"].template get<size_t>())
+            {
+                LOG_DEBUG2(m_logFn, "Fewer results than page size, breaking pagination loop");
+                break;
+            }
+
+            // Advance the search_after cursor using the full sort array of the last hit.
+            // Using the complete array (rather than just the first element) correctly handles
+            // both single-field string sorts (e.g. ["_id"]) and multi-field or non-string
+            // sorts (e.g. [integer_offset, "_id"]).
+            const auto& lastHit = hits.back();
+            const auto itSort = lastHit.find("sort");
+            if (itSort != lastHit.end() && itSort->is_array() && !itSort->empty())
+            {
+                currentQuery["search_after"] = *itSort;
+            }
+            else
+            {
+                LOG_DEBUG2(m_logFn,
+                           "Pagination loop finished: Last hit has no 'sort' field, it is not an array, or it is "
+                           "empty.");
+                break;
+            }
+        }
+    }
+
+    PointInTime
+    createPointInTime(const std::vector<std::string>& indices, std::string_view keepAlive, bool expandWildcards = false)
+    {
+        if (indices.empty())
+        {
+            throw IndexerConnectorException("Indices list cannot be empty for PIT creation");
+        }
+
+        if (keepAlive.empty())
+        {
+            throw IndexerConnectorException("keepAlive parameter cannot be empty for PIT creation");
+        }
+
+        for (const auto& idx : indices)
+        {
+            if (!isSafeIndexName(idx))
+            {
+                throw IndexerConnectorException("createPointInTime: unsafe index name '" + idx +
+                                                "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+            }
+        }
+
+        std::string indicesStr;
+        for (size_t i = 0; i < indices.size(); ++i)
+        {
+            if (i > 0)
+            {
+                indicesStr += ",";
+            }
+            indicesStr += indices[i];
+        }
+
+        std::string url;
+        url += m_selector->getNext();
+        url += "/";
+        url += indicesStr;
+        url += "/_search/point_in_time?keep_alive=";
+        url += keepAlive;
+
+        if (expandWildcards)
+        {
+            url += "&expand_wildcards=all";
+        }
+
+        std::string pitId;
+        uint64_t creationTime = 0;
+        bool success = false;
+        std::string errorMessage;
+
+        const auto onSuccess = [this, &pitId, &creationTime, &success, &errorMessage](const std::string& response)
+        {
+            try
+            {
+                auto jsonResponse = nlohmann::json::parse(response);
+
+                if (!jsonResponse.contains("pit_id"))
+                {
+                    errorMessage = "Response does not contain 'pit_id' field";
+                    return;
+                }
+
+                if (!jsonResponse.contains("creation_time"))
+                {
+                    errorMessage = "Response does not contain 'creation_time' field";
+                    return;
+                }
+
+                pitId = jsonResponse["pit_id"].get<std::string>();
+                creationTime = jsonResponse["creation_time"].get<uint64_t>();
+                success = true;
+
+                LOG_DEBUG2(
+                    m_logFn, "PIT created successfully. PIT ID: %s, Creation time: %lu", pitId.c_str(), creationTime);
+            }
+            catch (const std::exception& e)
+            {
+                errorMessage = std::string("Failed to parse PIT response: ") + e.what();
+                LOG_DEBUG1(m_logFn, "%s", errorMessage.c_str());
+            }
+        };
+
+        const auto onError = [this, &errorMessage](const std::string& error, const long statusCode, const std::string&)
+        {
+            errorMessage = "Failed to create PIT. Error: " + error + ", Status code: " + std::to_string(statusCode);
+            LOG_DEBUG1(m_logFn, "%s", errorMessage.c_str());
+        };
+
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
+                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        if (!success)
+        {
+            throw IndexerConnectorException(errorMessage.empty() ? "Failed to create PIT" : errorMessage);
+        }
+
+        return PointInTime(std::move(pitId), creationTime, keepAlive);
+    }
+
+    void deletePointInTime(const PointInTime& pit)
+    {
+        const std::string& pitId = pit.getPitId();
+        if (pitId.empty())
+        {
+            throw IndexerConnectorException("PIT ID is empty, cannot delete PIT");
+        }
+
+        std::string url;
+        url += m_selector->getNext();
+        url += "/_search/point_in_time";
+
+        nlohmann::json deleteBody;
+        deleteBody["pit_id"] = pitId;
+
+        const auto onSuccess = [this](const std::string& response)
+        {
+            LOG_DEBUG2(m_logFn, "PIT successfully deleted. Response: %s", response.c_str());
+        };
+
+        const auto onError = [&pitId](const std::string& error, const long statusCode, const std::string&)
+        {
+            throw IndexerConnectorException("Failed to delete PIT " + pitId + ". Error: " + error +
+                                            ", Status: " + std::to_string(statusCode));
+        };
+
+        m_httpRequest->delete_(RequestParameters {.url = HttpURL(url),
+                                                  .data = deleteBody.dump(),
+                                                  .secureCommunication = m_secureCommunication},
+                               PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                               {});
+    }
+
+    nlohmann::json search(const PointInTime& pit,
+                          std::size_t size,
+                          const nlohmann::json& query,
+                          const nlohmann::json& sort,
+                          const std::optional<nlohmann::json>& searchAfter = std::nullopt,
+                          const std::optional<nlohmann::json>& source = std::nullopt,
+                          const std::optional<nlohmann::json>& slice = std::nullopt)
+    {
+        nlohmann::json requestBody;
+        requestBody["size"] = size;
+        requestBody["pit"]["id"] = pit.getPitId();
+        requestBody["pit"]["keep_alive"] = pit.getKeepAlive();
+        requestBody["query"] = query;
+        requestBody["sort"] = sort;
+
+        if (source.has_value())
+        {
+            requestBody["_source"] = source.value();
+        }
+
+        if (slice.has_value())
+        {
+            requestBody["slice"] = slice.value();
+        }
+
+        if (!searchAfter.has_value())
+        {
+            requestBody["track_total_hits"] = true;
+        }
+        else
+        {
+            requestBody["search_after"] = searchAfter.value();
+        }
+
+        std::string url;
+        url += m_selector->getNext();
+        url += "/_search";
+
+        nlohmann::json hitsResult;
+        bool success = false;
+        std::string errorMessage;
+
+        const auto onSuccess = [&hitsResult, &success](const std::string& response)
+        {
+            try
+            {
+                auto jsonResponse = nlohmann::json::parse(response);
+
+                if (!jsonResponse.contains("hits"))
+                {
+                    throw IndexerConnectorException("Response does not contain 'hits' field");
+                }
+
+                hitsResult = std::move(jsonResponse["hits"]);
+                success = true;
+            }
+            catch (const nlohmann::json::exception& e)
+            {
+                throw IndexerConnectorException(std::string("Failed to parse search response: ") + e.what());
+            }
+        };
+
+        const auto onError = [](const std::string& error, const long statusCode, const std::string&)
+        {
+            throw IndexerConnectorException("Search request failed with status " + std::to_string(statusCode) + ": " +
+                                            error);
+        };
+
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                               .data = requestBody.dump(),
+                                               .secureCommunication = m_secureCommunication},
+                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        if (!success)
+        {
+            throw IndexerConnectorException("Search request failed");
+        }
+
+        return hitsResult;
+    }
+
+    void bulkDelete(std::string_view id, std::string_view index)
+    {
+        if (!isSafeIndexName(index))
+        {
+            LOG_ERROR(m_logFn,
+                      "Refusing bulkDelete for unsafe index name '%.*s' (empty or contains characters outside "
+                      "[a-zA-Z0-9._*-]) on document '%.*s'",
+                      static_cast<int>(index.size()),
+                      index.data(),
+                      static_cast<int>(id.size()),
+                      id.data());
+            throw IndexerConnectorException("Unsafe index name");
+        }
+
+        // Only flush if there is data already buffered.
+        if (const auto FORMATTED_SIZE {DELETE_FORMATTED_LENGTH};
+            !m_bulkData.empty() && m_bulkData.length() + FORMATTED_SIZE + index.size() + id.size() > m_maxBulkSize)
+        {
+            processBulk();
+        }
+        m_bulkData.append(R"({"delete":{"_index":")");
+        m_bulkData.append(index);
+        m_bulkData.append(R"(","_id":")");
+        appendEscapedId(m_bulkData, id);
+        m_bulkData.append(R"("}})");
+        m_bulkData.append("\n");
+        m_boundaries.push_back(m_bulkData.size());
+    }
+
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
+    {
+        bulkIndex(id, index, data, std::string_view());
+    }
+
+    void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version)
+    {
+        constexpr auto FORMATTED_SIZE {FORMATTED_LENGTH};
+        constexpr auto VERSION_SIZE {32};
+
+        // Validate input parameters
+        if (!isSafeIndexName(index))
+        {
+            LOG_ERROR(m_logFn,
+                      "Refusing bulkIndex for unsafe index name '%.*s' (empty or contains characters outside "
+                      "[a-zA-Z0-9._*-]) on document '%.*s'",
+                      static_cast<int>(index.size()),
+                      index.data(),
+                      static_cast<int>(id.size()),
+                      id.data());
+            throw IndexerConnectorException("Unsafe index name");
+        }
+
+        if (data.empty())
+        {
+            LOG_WARN(m_logFn,
+                     "Empty data provided for document %.*s in index %.*s",
+                     static_cast<int>(id.size()),
+                     id.data(),
+                     static_cast<int>(index.size()),
+                     index.data());
+        }
+
+        const auto totalSize =
+            m_bulkData.length() + FORMATTED_SIZE + VERSION_SIZE + index.size() + id.size() + data.size();
+
+        // Only flush if there is data already buffered.
+        if (!m_bulkData.empty() && totalSize > m_maxBulkSize)
+        {
+            processBulk();
+        }
+        m_bulkData.append(R"({"index":{"_index":")");
+        m_bulkData.append(index);
+        if (!version.empty())
+        {
+            // In case the version is provided, the id must be provided too
+            if (!id.empty())
+            {
+                m_bulkData.append(R"(","_id":")");
+                appendEscapedId(m_bulkData, id);
+            }
+            else
+            {
+                LOG_ERROR(m_logFn, "Id must be provided if version value is provided");
+                throw IndexerConnectorException("Id must be provided if version value is provided");
+            }
+
+            m_bulkData.append(R"(","version":")");
+            m_bulkData.append(version);
+            m_bulkData.append(R"(","version_type":"external_gte)");
+            LOG_DEBUG2(m_logFn,
+                       "Using external version %.*s for document %.*s",
+                       static_cast<int>(version.size()),
+                       version.data(),
+                       static_cast<int>(id.size()),
+                       id.data());
+        }
+        else
+        {
+            if (!id.empty())
+            {
+                m_bulkData.append(R"(","_id":")");
+                appendEscapedId(m_bulkData, id);
+            }
+            LOG_DEBUG2(m_logFn,
+                       "No version specified for document %.*s, using default versioning",
+                       static_cast<int>(id.size()),
+                       id.data());
+        }
+        m_bulkData.append(R"("}})");
+        m_bulkData.append("\n");
+        m_bulkData.append(data);
+        m_bulkData.append("\n");
+        m_boundaries.push_back(m_bulkData.size());
+    }
+
+    void flush()
+    {
+        std::vector<std::function<void()>> callbacksCopy;
+
+        {
+            std::lock_guard lock(m_mutex);
+            m_shouldNotifyAfterBulk = false;
+
+            if (!m_bulkData.empty() || !m_deleteByQuery.empty())
+            {
+                processBulk();
+            }
+
+            if (m_shouldNotifyAfterBulk)
+            {
+                callbacksCopy = std::move(m_notify);
+                m_notify.clear();
+                m_shouldNotifyAfterBulk = false;
+            }
+        }
+
+        for (const auto& callback : callbacksCopy)
+        {
+            callback();
+        }
+    }
+
+    [[nodiscard]] std::unique_lock<std::mutex> scopeLock()
+    {
+        return std::unique_lock<std::mutex> {m_mutex};
+    }
+
+    void invokePendingCallbacks()
+    {
+        std::vector<std::function<void()>> callbacksCopy;
+
+        {
+            std::lock_guard lock(m_mutex);
+            if (m_shouldNotifyAfterBulk)
+            {
+                callbacksCopy = std::move(m_notify);
+                m_notify.clear();
+                m_shouldNotifyAfterBulk = false;
+            }
+        }
+
+        for (const auto& callback : callbacksCopy)
+        {
+            callback();
+        }
+    }
+
+    void registerNotify(std::function<void()> callback)
+    {
+        m_notify.push_back(std::move(callback));
+    }
+
+    void refresh(std::string_view indexPattern)
+    {
+        if (!isSafeIndexName(indexPattern))
+        {
+            throw IndexerConnectorException("refresh: unsafe index pattern '" + std::string(indexPattern) +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+        }
+
+        std::string url;
+        url += m_selector->getNext();
+        url += "/";
+        url += indexPattern;
+        url += "/_refresh";
+        LOG_DEBUG2(m_logFn, "Forcing index refresh: %s", url.c_str());
+
+        const auto onSuccess = [this](const std::string& response)
+        {
+            LOG_DEBUG2(m_logFn, "Index refresh response: %s", response.c_str());
+        };
+        const auto onError = [this](const std::string& error, const long statusCode, const std::string&)
+        {
+            LOG_WARN(m_logFn, "Index refresh failed: %s, status code: %ld", error.c_str(), statusCode);
+        };
+
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url), .secureCommunication = m_secureCommunication},
+                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                            {});
+    }
+
+    bool isAvailable() const
+    {
+        return m_selector->isAvailable();
+    }
+};

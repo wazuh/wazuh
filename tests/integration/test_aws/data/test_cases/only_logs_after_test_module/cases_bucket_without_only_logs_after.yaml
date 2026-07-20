@@ -107,18 +107,6 @@
     bucket_name: wazuh-trusted-advisor-integration-tests
     expected_results: 1
 
-- name: guardduty_without_only_logs_after
-  description: GuardDuty only logs after configurations
-  configuration_parameters:
-    BUCKET_TYPE: guardduty
-    BUCKET_NAME: wazuh-guardduty-integration-tests
-    PATH: ''
-  metadata:
-    resource_type: bucket
-    bucket_type: guardduty
-    bucket_name: wazuh-guardduty-integration-tests
-    expected_results: 1
-
 - name: native_guardduty_without_only_logs_after
   description: Native GuardDuty only logs after configurations
   configuration_parameters:

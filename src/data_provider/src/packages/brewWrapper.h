@@ -15,8 +15,8 @@
 #include "ipackageWrapper.h"
 #include "sharedDefs.h"
 #include "stringHelper.h"
-#include "filesystemHelper.h"
-#include "json.hpp"
+#include <filesystem_wrapper.hpp>
+#include <file_io_utils.hpp>
 
 class BrewWrapper final : public IPackageWrapper
 {
@@ -39,12 +39,15 @@ class BrewWrapper final : public IPackageWrapper
             const std::string installReceiptPath = packagePath + "/INSTALL_RECEIPT.json";
             const std::string legacyBrewPath = packagePath + "/.brew/" + ctx.package + ".rb";
 
+            const file_system::FileSystemWrapper fs;
+            const file_io::FileIOUtils ioUtils;
+
             // Try modern INSTALL_RECEIPT.json format first (Homebrew 2.0+)
-            if (Utils::existsRegular(installReceiptPath))
+            if (fs.is_regular_file(installReceiptPath))
             {
                 try
                 {
-                    const auto jsonContent = Utils::getFileContent(installReceiptPath);
+                    const auto jsonContent { ioUtils.getFileContent(installReceiptPath) };
                     const auto jsonData = nlohmann::json::parse(jsonContent);
 
                     // Extract architecture (e.g., "arm64", "x86_64")
@@ -82,9 +85,9 @@ class BrewWrapper final : public IPackageWrapper
                 }
             }
             // Fallback to legacy .brew/*.rb format for older Homebrew versions
-            else if (Utils::existsRegular(legacyBrewPath))
+            else if (fs.is_regular_file(legacyBrewPath))
             {
-                const auto rows { Utils::split(Utils::getFileContent(legacyBrewPath), '\n')};
+                const auto rows { Utils::split(ioUtils.getFileContent(legacyBrewPath), '\n')};
 
                 for (const auto& row : rows)
                 {

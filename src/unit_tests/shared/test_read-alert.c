@@ -15,8 +15,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../headers/shared.h"
-#include "../../headers/read-alert.h"
+#include "shared.h"
+#include "read-alert.h"
 
 static alert_data* parse_alert_from_string(const char *input) {
     FILE *fp = tmpfile();

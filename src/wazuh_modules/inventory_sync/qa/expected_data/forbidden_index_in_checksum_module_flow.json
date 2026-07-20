@@ -1,0 +1,46 @@
+{
+    "description": "Expected results for forbidden index in ChecksumModule test",
+    "expected_message_count": 3,
+    "validate_session_consistency": true,
+    "expected_messages": [
+      {
+        "type": "start",
+        "expected_status": "sent",
+        "description": "ModuleCheck Start accepted (size=0 is valid for ModuleCheck mode)",
+        "expected_response": {
+          "type": "flatbuffer",
+          "data": {
+            "type": "start_ack",
+            "status": 0
+          },
+          "validate_session": true,
+          "timeout": 5.0
+        }
+      },
+      {
+        "type": "checksum_module",
+        "expected_status": "sent",
+        "description": "ChecksumModule with bad index dropped silently (no response expected)",
+        "expected_response": null
+      },
+      {
+        "type": "end",
+        "expected_status": "sent",
+        "description": "Final end_ack must be Status_Error because checksumIndex stayed empty after the filter rejected the bad index",
+        "expected_response": {
+          "type": "flatbuffer",
+          "data": {
+            "type": "end_ack",
+            "status": 1
+          },
+          "validate_session": true,
+          "timeout": 30.0
+        }
+      }
+    ],
+    "validation_rules": {
+      "session_consistency": "All messages share the same session ID",
+      "message_order": "start -> checksum_module -> end",
+      "response_format": "End_ack status=1 (Status_Error) confirms the ChecksumModule filter is applied AND that the ModuleCheck downstream branch reacts correctly to an empty checksumIndex"
+    }
+  }

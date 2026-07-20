@@ -13,8 +13,8 @@ list(APPEND tests_names "test_wm_ms_graph")
 list(APPEND tests_flags "-Wl,--wrap=_merror -Wl,--wrap=_mtinfo -Wl,--wrap=_mtwarn -Wl,--wrap,_mtdebug1 -Wl,--wrap=_mterror -Wl,--wrap,wurl_http_request \
                         -Wl,--wrap,atexit -Wl,--wrap,time -Wl,--wrap,wm_state_io -Wl,--wrap,StartMQ -Wl,--wrap,gmtime_r -Wl,--wrap,isDebug \
                         -Wl,--wrap,sched_scan_get_time_until_next_scan -Wl,--wrap,is_fim_shutdown -Wl,--wrap,fim_db_teardown -Wl,--wrap,Start_win32_Syscheck \
-                        -Wl,--wrap,strftime -Wl,--wrap,_mtdebug2 -Wl,--wrap,wm_sendmsg -Wl,--wrap,strerror -Wl,--wrap,_imp__rsync_initialize \
-                        -Wl,--wrap,syscom_dispatch -Wl,--wrap,_imp__dbsync_initialize -Wl,--wrap,w_get_timestamp -Wl,--wrap,os_random -Wl,--wrap,FOREVER \
+                        -Wl,--wrap,strftime -Wl,--wrap,_mtdebug2 -Wl,--wrap,wm_sendmsg -Wl,--wrap,strerror \
+                        -Wl,--wrap,syscom_dispatch -Wl,--wrap,_imp__dbsync_initialize -Wl,--wrap,w_get_timestamp -Wl,--wrap,os_random -Wl,--wrap,FOREVER -Wl,--wrap,wm_sleep_until_interruptible -Wl,--wrap,w_query_agentd \
                         -Wl,--wrap,w_sleep_until")
 
 
@@ -24,8 +24,13 @@ list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.c")
 
 # Generate wazuh modules library
-file(GLOB ms_graph ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM ms_graph ../../../wazuh_modules/main.o)
+if(${TARGET} STREQUAL "winagent")
+    file(GLOB_RECURSE ms_graph ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.obj)
+    list(REMOVE_ITEM ms_graph ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.obj)
+else()
+    file(GLOB_RECURSE ms_graph ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+    list(REMOVE_ITEM ms_graph ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+endif()
 
 add_library(MS_GRAPH_O STATIC ${ms_graph})
 
@@ -57,12 +62,14 @@ foreach(counter RANGE ${count})
       add_executable(${test_name} ${test_name}.c)
     endif()
 
-    if(${TARGET} STREQUAL "server")
+    if(${TARGET} STREQUAL "manager")
         target_link_libraries(
             ${test_name}
+            -Wl,--start-group
             ${WAZUHLIB}
             ${WAZUHEXT}
             MS_GRAPH_O
+            -Wl,--end-group
             -lcmocka
             -ldl
             -fprofile-arcs

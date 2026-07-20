@@ -1,0 +1,1377 @@
+#include "channel.hpp"
+
+#include <sys/stat.h>
+
+#include <zlibHelper.hpp>
+
+#include <base/process.hpp>
+
+namespace streamlog
+{
+
+constexpr const char* STORE_POSFIX_PATH_TO_CURRENT = "/last_current"; ///< JSON path to the last current file path
+constexpr const char* STORE_POSFIX_COUNTER = "/last_counter";         ///< JSON path to the last counter value
+constexpr const char* MONTHS[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+constexpr size_t MONTHS_COUNT = sizeof(MONTHS) / sizeof(MONTHS[0]);
+
+/**
+ * @brief Replaces placeholders in the log pattern with actual values based on the provided time point and channel
+ * configuration.
+ *
+ * This function processes the pattern string defined in the channel configuration (`m_config.pattern`)
+ * and replaces the following placeholders with their corresponding values:
+ * - `${YYYY}`: 4-digit year (e.g., 2024)
+ * - `${YY}`: 2-digit year (e.g., 24)
+ * - `${MM}`: 2-digit month (01-12)
+ * - `${MMM}`: 3-letter month abbreviation (Jan, Feb, etc.)
+ * - `${DD}`: 2-digit day of the month (01-31)
+ * - `${HH}`: 2-digit hour (00-23)
+ * - `${name}`: Channel name (`m_channelName`)
+ * - `${counter}`: Counter value (`m_config.counter`), only if `m_config.maxSize > 0`
+ *
+ * @param timePoint The time point to use for formatting date and time placeholders.
+ * @return A string with all placeholders replaced by their corresponding values.
+ * @throws std::runtime_error If conversion of timePoint to local time fails.
+ */
+std::string ChannelHandler::replacePlaceholders(const std::chrono::system_clock::time_point& timePoint) const
+{
+    const auto time_t = std::chrono::system_clock::to_time_t(timePoint);
+    const auto tmPtr = std::localtime(&time_t);
+    if (!tmPtr)
+    {
+        throw std::runtime_error("Error remplacing placeholders: localtime failed");
+    }
+    const auto& tm = *tmPtr;
+
+    auto result = m_config.pattern;
+
+    // Replace time placeholders
+    result = std::regex_replace(result, std::regex(R"(\$\{YYYY\})"), std::to_string(tm.tm_year + 1900));
+    result = std::regex_replace(result, std::regex(R"(\$\{YY\})"), std::to_string((tm.tm_year + 1900) % 100));
+    result = std::regex_replace(
+        result, std::regex(R"(\$\{MM\})"), (tm.tm_mon + 1 < 10 ? "0" : "") + std::to_string(tm.tm_mon + 1));
+    result = std::regex_replace(
+        result, std::regex(R"(\$\{DD\})"), (tm.tm_mday < 10 ? "0" : "") + std::to_string(tm.tm_mday));
+    result = std::regex_replace(
+        result, std::regex(R"(\$\{HH\})"), (tm.tm_hour < 10 ? "0" : "") + std::to_string(tm.tm_hour));
+
+    if (tm.tm_mon >= 0 && static_cast<size_t>(tm.tm_mon) < MONTHS_COUNT)
+    {
+        result = std::regex_replace(result, std::regex(R"(\$\{MMM\})"), MONTHS[tm.tm_mon]);
+    }
+
+    // Replace channel name
+    result = std::regex_replace(result, std::regex(R"(\$\{name\})"), m_channelName);
+
+    // Replace counter if maxSize is set
+    if (m_config.maxSize > 0)
+    {
+        result = std::regex_replace(result, std::regex(R"(\$\{counter\})"), std::to_string(m_stateData.counter));
+    }
+
+    // Append the file extension configured in the constructor
+    result += "." + m_fileExtension;
+
+    return result;
+}
+
+/**
+ * @brief Determines whether the log channel requires rotation based on size or time.
+ *
+ * This function checks if the log file needs to be rotated. Rotation is triggered if:
+ * - The new log file size (current size plus incoming message size) exceeds the configured maximum size.
+ * - The hour boundary has changed since the last rotation, and the log file path pattern (based on time) has
+ * changed.
+ *
+ * @param messageSize The size of the incoming log message to be written.
+ * @return `RotationRequirement` indicating whether rotation is needed and what type (size or time).
+ */
+ChannelHandler::RotationRequirement ChannelHandler::needsRotation(const size_t messageSize) const
+{
+    try
+    {
+        m_stateData.lastRotationCheck = std::chrono::system_clock::now();
+        const auto& now = m_stateData.lastRotationCheck;
+
+        // Fast path: check size first
+        const size_t newSize = m_stateData.currentSize + messageSize;
+        if (m_config.maxSize > 0 && newSize >= m_config.maxSize)
+        {
+            LOG_DEBUG("[Stream logger] Channel '{}' needs rotation due to size: {} > {}",
+                      m_channelName,
+                      newSize,
+                      m_config.maxSize);
+            return RotationRequirement::Size;
+        }
+
+        // Check if date pattern actually changed by comparing hour boundaries
+        const auto nowHour = std::chrono::duration_cast<std::chrono::hours>(now.time_since_epoch());
+        const auto lastHour =
+            std::chrono::duration_cast<std::chrono::hours>(m_stateData.lastRotation.time_since_epoch());
+
+        if (nowHour != lastHour)
+        {
+            auto candidatePath = m_config.basePath / replacePlaceholders(now);
+            return (m_stateData.currentFile != candidatePath) ? RotationRequirement::Time : RotationRequirement::No;
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("[Stream logger] Error checking rotation for channel '{}': {}. "
+                  "Closing channel and discarding messages",
+                  m_channelName,
+                  e.what());
+        m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
+    }
+
+    return RotationRequirement::No;
+}
+
+/**
+ * @brief Rotates the log file for the current channel based on size or date criteria.
+ *
+ * This function handles log file rotation by generating a new file path according to the configured pattern,
+ * updating counters for size-based rotation, creating necessary directories, and managing file handles.
+ * It also updates the symbolic or hard link to the latest log file and resets internal state data.
+ *
+ * Rotation is triggered when the current file size exceeds the configured maximum size.
+ * The function ensures that the new log file is opened for writing and logs any errors encountered during
+ * directory creation, file opening, or link updates.
+ *
+ * @param rotationType The type of rotation needed (size or time).
+ * @throws std::runtime_error If an error occurs during file path generation, file opening, or link creation.
+ * @throws std::logic_error If an invalid rotation type is provided.
+ * @note The function assumes that m_config, m_stateData, and m_channelName are properly initialized.
+ *       Error handling is performed via logging, but some TODOs remain for more robust error management.
+ */
+bool ChannelHandler::rotateFile(RotationRequirement rotationType)
+{
+    const auto& now = m_stateData.lastRotationCheck;
+
+    // Compute the new counter value
+    const size_t newCounter = [&]() -> size_t
+    {
+        switch (rotationType)
+        {
+            case RotationRequirement::Size: return m_stateData.counter + 1; // Increment counter for size-based rotation
+            case RotationRequirement::Time: return 0;                       // Reset counter for time-based rotation
+            default: throw std::logic_error("Invalid rotation type for counter update");
+        }
+    }();
+
+    // Save previous state so we can restore on failure
+    const auto previousFile = m_stateData.currentFile;
+    const auto previousCounter = m_stateData.counter;
+
+    // Apply new counter for path generation
+    m_stateData.counter = newCounter;
+
+    // Try update the file path with the current time and counter
+    std::filesystem::path newFilePath;
+    try
+    {
+        newFilePath = m_config.basePath / replacePlaceholders(now);
+        // Only create directories if path changed and they don't exist
+        auto newParentPath = newFilePath.parent_path();
+        if (newParentPath != previousFile.parent_path() && !std::filesystem::exists(newParentPath))
+        {
+            std::error_code ec;
+            std::filesystem::create_directories(newParentPath, ec);
+            if (ec)
+            {
+                LOG_WARNING("[Stream logger] Failed to create directories for "
+                            "{}: {}",
+                            newParentPath.string(),
+                            ec.message());
+            }
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_ERROR("[Stream logger] Failed to generate new file path for channel '{}': {}."
+                  "Closing channel and discarding messages.",
+                  m_channelName,
+                  e.what());
+        // Restore previous state — nothing changed on disk
+        m_stateData.counter = previousCounter;
+        m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
+        return false;
+    }
+
+    // if the resolved path is identical to the current file, no actual rotation is needed
+    if (previousFile == newFilePath)
+    {
+        // Restore counter since no rotation happened
+        m_stateData.counter = previousCounter;
+        LOG_DEBUG("[Stream logger] Channel '{}' time boundary crossed but file path unchanged, skipping rotation",
+                  m_channelName);
+        return false;
+    }
+
+    // Commit the new file path
+    m_stateData.currentFile = newFilePath;
+    m_stateData.lastRotation = now;
+
+    // Rotate the file by closing the current output file and opening a new one
+    try
+    {
+        updateOutputFileAndLink();
+    }
+    catch (const std::runtime_error& e)
+    {
+        LOG_ERROR("[Stream logger] Failed to rotate file for channel '{}': {}. "
+                  "Closing channel and discarding messages.",
+                  m_channelName,
+                  e.what());
+        // Restore previous state — the old file is still the active one on disk
+        m_stateData.currentFile = previousFile;
+        m_stateData.counter = previousCounter;
+        m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
+        return false;
+    }
+
+    // Persist rotation state immediately after the new file is active, before
+    // compression scheduling or retention cleanup. This closes the crash window
+    // where the store could still point to the old file after a successful rotation.
+    saveCurrentRotationStateToStore();
+
+    // Schedule compression of the previous file if needed
+    if (previousFile != m_stateData.currentFile && m_config.shouldCompress)
+    {
+        // Schedule compression of the previous file if needed
+        if (auto schedulerPtr = m_scheduler.lock())
+        {
+            // Register both source and destination as in-flight before scheduling
+            m_inFlightFiles->add(previousFile);
+            m_inFlightFiles->add(std::filesystem::path(previousFile.string() + ".gz"));
+
+            const auto taskName = "CompressLog-" + m_channelName + "-" + previousFile.filename().string();
+            auto config = createCompressionTaskConfig(previousFile);
+            try
+            {
+                schedulerPtr->scheduleTask(taskName, std::move(config));
+                LOG_DEBUG("[Stream logger] Scheduled compression for rotated log file: {}", previousFile.string());
+            }
+            catch (...)
+            {
+                // Scheduling failed — unregister immediately
+                m_inFlightFiles->remove(previousFile);
+                m_inFlightFiles->remove(std::filesystem::path(previousFile.string() + ".gz"));
+                LOG_WARNING("[Stream logger] Failed to schedule compression for '{}'; unregistered in-flight entries",
+                            previousFile.string());
+            }
+        }
+        else
+        {
+            LOG_WARNING("[Stream logger] Scheduler is no longer available; "
+                        "cannot schedule compression for channel '{}'",
+                        m_channelName);
+        }
+    }
+    if (previousFile != m_stateData.currentFile)
+    {
+        LOG_INFO("[Stream logger] Rotated the channel '{}' to new file: {}",
+                 m_channelName,
+                 m_stateData.currentFile.string());
+    }
+
+    // Retention cleanup strategy depends on whether compression is enabled:
+    //
+    // - Compression DISABLED: run cleanup here, inside rotateFile().
+    //   All channel directory files (non-active) are in their final state (uncompressed),
+    //   so sizes and file counts are accurate.
+    //
+    // - Compression ENABLED: cleanup is deferred to the compression
+    //   task callback (see createCompressionTaskConfig). Running it
+    //   here would race with the background compressor: the newly
+    //   rotated file is still uncompressed (larger), so size-based
+    //   retention would be over-aggressive.
+    if (!m_config.shouldCompress && (m_config.maxFiles > 0 || m_config.maxAccumulatedSize > 0))
+    {
+        deleteOldFiles();
+    }
+
+    return true;
+}
+
+/**
+ * @brief Opens the output file for the current channel and creates or updates a hard link to the latest file.
+ *
+ * This function checks if the output file is already open for the channel and closes it if necessary.
+ * It then attempts to open the output file in append mode. If the file cannot be opened, an exception is thrown.
+ * After successfully opening the file, the function creates or updates a hard link pointing to the current file.
+ * If the hard link cannot be created, the output file is closed and an exception is thrown.
+ * Debug and error messages are logged throughout the process.
+ *
+ * @throws std::runtime_error If the output file cannot be opened or the hard link cannot be created.
+ */
+void ChannelHandler::updateOutputFileAndLink()
+{
+    if (m_stateData.outputFile.is_open())
+    {
+        m_stateData.outputFile.flush();
+        m_stateData.outputFile.close();
+    }
+
+    // Open the output file in append mode, if not existing, it will be created
+    m_stateData.outputFile.clear();
+    m_stateData.outputFile.open(m_stateData.currentFile, std::ios::out | std::ios::app);
+
+    // Check if any error occurred while opening the file
+    if (!m_stateData.outputFile.is_open() || m_stateData.outputFile.fail())
+    {
+        throw std::runtime_error(fmt::format("Failed to open output file for channel '{}' ({}) due to: {}",
+                                             m_channelName,
+                                             m_stateData.currentFile.string(),
+                                             std::strerror(errno)));
+    }
+    m_stateData.currentSize = std::filesystem::file_size(m_stateData.currentFile);
+
+    // Create or update the latest link to the current file
+    std::error_code ec;
+
+    // Remove existing hard link if it exists
+    if (std::filesystem::exists(m_stateData.latestLink, ec))
+    {
+        std::filesystem::remove(m_stateData.latestLink, ec);
+        if (ec)
+        {
+            LOG_WARNING("[Stream logger] Failed to remove existing hard link {}: {}",
+                        m_stateData.latestLink.string(),
+                        ec.message());
+        }
+    }
+
+    // Create new hard link
+    std::filesystem::create_hard_link(m_stateData.currentFile, m_stateData.latestLink, ec);
+    if (ec)
+    {
+        m_stateData.outputFile.close();
+        throw std::runtime_error("Failed to create hard link for latest file: " + m_stateData.latestLink.string() + ": "
+                                 + ec.message());
+    }
+    LOG_DEBUG(
+        "[Stream logger] Opened output file for channel: {} at {}", m_channelName, m_stateData.currentFile.string());
+}
+
+/**
+ * @brief Worker thread function for processing log messages in a channel.
+ *
+ * This function runs in a dedicated thread and continuously processes messages from the channel's queue.
+ * It performs the following tasks in a loop:
+ *   - Checks if a stop has been requested and exits if so.
+ *   - Waits for new messages to arrive in the queue with a timeout.
+ *   - Checks if log file rotation is needed based on the incoming message size and rotates the file if necessary.
+ *   - Skips writing messages if the channel has been closed due to an error, and requests the thread to stop.
+ *   - Writes valid messages to the log file.
+ *
+ */
+void ChannelHandler::workerThreadFunc()
+{
+
+    LOG_DEBUG("[Stream logger] Starting writer thread for channel: {}", m_channelName);
+
+    base::process::setThreadName("ChannelWriter-" + m_channelName);
+
+    std::string message;
+    while (m_stateData.channelState->load(std::memory_order_relaxed) == ChannelState::Running)
+    {
+        // Check if we need to rotate the file
+        if (m_stateData.queue->waitPop(message, 1000) && !message.empty())
+        {
+            if (const auto rType = needsRotation(message.size()); rType != RotationRequirement::No)
+            {
+                rotateFile(rType);
+            }
+            if (m_stateData.channelState->load(std::memory_order_relaxed) != ChannelState::Running)
+            {
+                // Skip writing if channel is closed due to error
+                break;
+            }
+            writeMessage(message);
+        }
+    }
+
+    LOG_DEBUG("[Stream logger] Stopping writer thread for channel: {}", m_channelName);
+}
+
+void ChannelHandler::stopWorkerThread()
+{
+    if (m_stateData.workerThread.joinable())
+    {
+        // Request the worker thread to stop
+        m_stateData.channelState->store(ChannelState::StopRequested, std::memory_order_relaxed);
+        m_stateData.workerThread.join();
+
+        // Reset the state back to Running for potential future use
+        m_stateData.channelState->store(ChannelState::Running, std::memory_order_relaxed);
+
+        // Discard any pending messages in the queue
+        std::string discardedMessage;
+        size_t discardedCount = 0;
+        while (m_stateData.queue->tryPop(discardedMessage))
+        {
+            discardedCount++;
+        }
+
+        if (discardedCount > 0)
+        {
+            LOG_WARNING("[Stream logger] Discarded {} pending messages for channel: {}", discardedCount, m_channelName);
+        }
+
+        LOG_DEBUG("[Stream logger] Worker thread stopped for channel: {}", m_channelName);
+    }
+}
+
+void ChannelHandler::startWorkerThread()
+{
+    m_stateData.channelState->store(ChannelState::Running, std::memory_order_relaxed);
+    m_stateData.workerThread = std::thread(&ChannelHandler::workerThreadFunc, this);
+}
+
+/**
+ * @brief Writes a message to the output file associated with the channel.
+ *
+ * This function appends the given message, followed by a newline character, to the output file.
+ * It updates the current size of the written data accordingly. If writing to the file fails,
+ * an error is logged, the channel is marked as closed due to error, and the function returns early.
+ * After writing, the output file is flushed to ensure data is written to disk.
+ *
+ * @param message The message string to be written to the output file.
+ */
+void ChannelHandler::writeMessage(const std::string& message)
+{
+    m_stateData.currentSize += message.size() + 1; // +1 for newline character
+    m_stateData.outputFile << message << "\n";
+    if (m_stateData.outputFile.fail())
+    {
+        LOG_ERROR("[Stream logger] Failed to write message to output file for channel: {}", m_channelName);
+        m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
+        return;
+    }
+    m_stateData.outputFile.flush();
+}
+
+/**
+ * @brief Validates the channel name according to naming rules
+ * @param channelName The channel name to validate
+ * @throws std::runtime_error if the name is invalid
+ */
+void ChannelHandler::validateChannelName(const std::string& channelName)
+{
+    // Validate length
+    if (channelName.empty())
+    {
+        throw std::runtime_error("Channel name cannot be empty");
+    }
+    else if (channelName.length() > 255)
+    {
+        throw std::runtime_error("Channel name cannot exceed 255 characters");
+    }
+
+    // Only allow alphanumeric characters, underscores, and dashes in channel names
+    if (!std::regex_match(channelName, std::regex("^[a-zA-Z0-9_-]+$")))
+    {
+        throw std::runtime_error("Channel name can only contain alphanumeric characters, underscores, and dashes");
+    }
+}
+
+/**
+ * @brief Validates and normalizes the rotation configuration
+ * @param config The configuration to validate and modify
+ * @throws std::runtime_error if the configuration is invalid
+ */
+void ChannelHandler::validateAndNormalizeConfig(RotationConfig& config)
+{
+    // Validate the base path
+    if (!config.basePath.is_absolute() || config.basePath.empty())
+    {
+        throw std::runtime_error("Base path must be an absolute path");
+    }
+    if (!std::filesystem::exists(config.basePath) || !std::filesystem::is_directory(config.basePath))
+    {
+        throw std::runtime_error("Base path must exist and be a directory: " + config.basePath.string());
+    }
+    // Check if the base path is writable, avoiding check mode_t
+    {
+        // File test
+        auto testPath = config.basePath / ".wazuh_test_write_permission";
+        std::ofstream testFile(testPath);
+        if (!testFile)
+        {
+            throw std::runtime_error("Cannot write to base path: " + config.basePath.string() + ": "
+                                     + std::strerror(errno));
+        }
+        testFile.close();
+        std::filesystem::remove(testPath);
+
+        // Dir test
+        auto testDirPath = config.basePath / ".wazuh_test_dir_permission";
+        std::error_code ec;
+        std::filesystem::create_directory(testDirPath, ec);
+        if (ec)
+        {
+            throw std::runtime_error("Cannot create directory in base path: " + config.basePath.string() + ": "
+                                     + ec.message());
+        }
+        std::filesystem::remove(testDirPath, ec);
+    }
+
+    // Validate compression level
+    if (config.shouldCompress && (config.compressionLevel < 1 || config.compressionLevel > 9))
+    {
+        throw std::runtime_error("Compression level must be between 1 (fastest) and 9 (best)");
+    }
+
+    // Validate the pattern
+    if (config.pattern.empty())
+    {
+        throw std::runtime_error("Log pattern cannot be empty");
+    }
+    else if (config.pattern.size() > 255)
+    {
+        throw std::runtime_error("Log pattern cannot exceed 255 characters");
+    }
+    else if (config.pattern.find("../") != std::string::npos)
+    {
+        throw std::runtime_error("Log pattern cannot contain parent directory references (../): " + config.pattern);
+    }
+
+    // Add counter placeholder if maxSize is set and not already present
+    if (config.maxSize > 0 && config.pattern.find("${counter}") == std::string::npos)
+    {
+        config.pattern += "-${counter}";
+    }
+
+    // Ensure the pattern contains at least one time placeholder or maxSize placeholder if maxSize is set
+    if (config.pattern.find("${YYYY}") == std::string::npos && config.pattern.find("${YY}") == std::string::npos
+        && config.pattern.find("${MM}") == std::string::npos && config.pattern.find("${DD}") == std::string::npos
+        && config.pattern.find("${HH}") == std::string::npos && config.maxSize == 0)
+    {
+        throw std::runtime_error("Log pattern must contain at least one time placeholder (${YYYY}, ${YY}, ${MM}, "
+                                 "${DD}, or ${HH}) or a counter placeholder if maxSize is set");
+    }
+
+    // Assign default bufferSize if not set
+    if (config.bufferSize == 0)
+    {
+        config.bufferSize = 0x1 << 20; // Default to 1 MiB events if not specified
+    }
+
+    // Adjust maxSize if too small
+    if (config.maxSize > 0 && config.maxSize < 0x1 << 20)
+    {
+        // Default to 1 MiB if maxSize is too small
+        config.maxSize = 0x1 << 20;
+    }
+}
+
+ChannelHandler::ChannelHandler(RotationConfig config,
+                               std::string channelName,
+                               const std::shared_ptr<store::IStore>& store,
+                               std::weak_ptr<scheduler::IScheduler> scheduler,
+                               std::string_view ext,
+                               std::shared_ptr<const std::atomic<bool>> compressionShouldRun)
+    : m_config(
+          [&config]()
+          {
+              validateAndNormalizeConfig(config);
+              return std::move(config);
+          }())
+    , m_channelName(
+          [&channelName]()
+          {
+              validateChannelName(channelName);
+              return std::move(channelName);
+          }())
+    , m_stateData()
+    , m_store(store)
+    , m_scheduler(std::move(scheduler))
+    , m_fileExtension(ext)
+    , m_compressionShouldRun(std::move(compressionShouldRun))
+{
+
+    // Initial state data: File paths
+    m_stateData.latestLink = m_config.basePath / (m_channelName + "." + m_fileExtension);
+    m_stateData.currentFile = [&]() -> std::filesystem::path
+    {
+        const auto now = std::chrono::system_clock::now();
+        if (m_config.maxSize > 0)
+        {
+            auto storedState = loadCurrentRotationStateFromStore();
+
+            if (storedState.has_value())
+            {
+                // Reconstruct the candidate using the stored counter
+                m_stateData.counter = storedState->counter;
+                auto candidate = m_config.basePath / replacePlaceholders(now);
+
+                // If the candidate matches the stored path AND still exists on disk → resume writing
+                if (candidate == storedState->currentFile && std::filesystem::exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            // New time period, file deleted by retention, or no store data → start fresh at counter 0
+            m_stateData.counter = 0;
+            auto candidate = m_config.basePath / replacePlaceholders(now);
+            std::optional<std::filesystem::path> gzCandidate =
+                m_config.shouldCompress ? std::optional(candidate.string() + ".gz") : std::nullopt;
+
+            // Skip over any existing files (from a prior run in the same time window)
+            while (std::filesystem::exists(candidate) || (gzCandidate && std::filesystem::exists(*gzCandidate)))
+            {
+                m_stateData.counter++;
+                candidate = m_config.basePath / replacePlaceholders(now);
+                if (gzCandidate)
+                {
+                    gzCandidate = candidate.string() + ".gz";
+                }
+            }
+
+            return candidate;
+        }
+        return m_config.basePath / replacePlaceholders(now);
+    }();
+    m_stateData.queue = std::make_shared<FastQueueType>(m_config.bufferSize);
+    m_stateData.lastRotation = std::chrono::system_clock::now();
+    m_stateData.lastRotationCheck = m_stateData.lastRotation;
+
+    // Check if need to create the directories
+    auto parentPath = m_stateData.currentFile.parent_path();
+    if (!std::filesystem::exists(parentPath))
+    {
+        std::error_code ec;
+        std::filesystem::create_directories(parentPath, ec);
+        if (ec)
+        {
+            throw std::runtime_error("Failed to create directories for " + parentPath.string() + ": " + ec.message());
+        }
+    }
+
+    // Open the output file and create the latest link
+    try
+    {
+        updateOutputFileAndLink();
+    }
+    catch (const std::runtime_error& e)
+    {
+        throw std::runtime_error("Failed to initialize channel '" + m_channelName + "': " + e.what());
+    }
+
+    LOG_DEBUG("[Stream logger] ChannelHandler '{}' initialized. Worker thread will start on first writer creation.",
+              m_channelName);
+
+    // Check for previous current file in the store, to schedule compression if needed
+    if (m_config.shouldCompress)
+    {
+        if (auto storedState = loadCurrentRotationStateFromStore(); storedState)
+        {
+            // If the previous current file is different from the current one, schedule compression
+            if (storedState->currentFile != m_stateData.currentFile)
+            {
+                if (std::filesystem::exists(storedState->currentFile))
+                {
+                    if (auto schedulerPtr = m_scheduler.lock())
+                    {
+                        // Register both source and destination as in-flight before scheduling
+                        m_inFlightFiles->add(storedState->currentFile);
+                        m_inFlightFiles->add(std::filesystem::path(storedState->currentFile.string() + ".gz"));
+
+                        const auto taskName =
+                            "CompressLog-" + m_channelName + "-" + storedState->currentFile.filename().string();
+                        auto config = createCompressionTaskConfig(storedState->currentFile);
+                        try
+                        {
+                            schedulerPtr->scheduleTask(taskName, std::move(config));
+                            LOG_DEBUG("[Stream logger] Scheduled compression for previous log file from store: {}",
+                                      storedState->currentFile.string());
+                        }
+                        catch (...)
+                        {
+                            m_inFlightFiles->remove(storedState->currentFile);
+                            m_inFlightFiles->remove(std::filesystem::path(storedState->currentFile.string() + ".gz"));
+                            LOG_WARNING("[Stream logger] Failed to schedule compression for '{}'; unregistered "
+                                        "in-flight entries",
+                                        storedState->currentFile.string());
+                        }
+                    }
+                    else
+                    {
+                        LOG_WARNING("[Stream logger] Scheduler is no longer available; cannot schedule compression for "
+                                    "channel '{}'",
+                                    m_channelName);
+                    }
+                }
+                else
+                {
+                    LOG_DEBUG("[Stream logger] Previous current file from store does not exist on disk: {}",
+                              storedState->currentFile.string());
+                }
+            }
+        }
+    }
+
+    // Always persist current file path and counter so that on restart the counter
+    // can be recovered regardless of whether compression is enabled or not.
+    saveCurrentRotationStateToStore();
+}
+
+/**
+ * @brief Factory method to create a ChannelHandler as a shared_ptr
+ */
+std::shared_ptr<ChannelHandler> ChannelHandler::create(RotationConfig config,
+                                                       std::string channelName,
+                                                       const std::shared_ptr<store::IStore>& store,
+                                                       std::weak_ptr<scheduler::IScheduler> scheduler,
+                                                       std::string_view ext,
+                                                       std::shared_ptr<const std::atomic<bool>> compressionShouldRun)
+{
+    return std::shared_ptr<ChannelHandler>(new ChannelHandler(
+        std::move(config), std::move(channelName), store, std::move(scheduler), ext, std::move(compressionShouldRun)));
+}
+
+/**
+ * @brief Destructor - ensures worker thread is properly stopped
+ */
+ChannelHandler::~ChannelHandler()
+{
+    LOG_DEBUG("[Stream logger] Destroying ChannelHandler for channel: {}", m_channelName);
+
+    if (m_stateData.workerThread.joinable())
+    {
+        LOG_WARNING("[Stream logger] ChannelHandler '{}' being destroyed with active worker thread. Forcing stop.",
+                    m_channelName);
+        stopWorkerThread();
+    }
+
+    if (m_stateData.outputFile.is_open())
+    {
+        m_stateData.outputFile.flush();
+        m_stateData.outputFile.close();
+    }
+
+    LOG_DEBUG("[Stream logger] ChannelHandler '{}' destroyed", m_channelName);
+}
+
+/**
+ * @brief Creates a new ChannelWriter instance for the channel.
+ *
+ * This method is thread-safe and ensures that the worker thread is started if this is the first writer.
+ *
+ * @return A shared pointer to the newly created ChannelWriter.
+ */
+std::shared_ptr<ChannelWriter> ChannelHandler::createWriter()
+{
+    std::lock_guard<std::mutex> lock(m_activeWriters.mutex);
+
+    const auto currentState = m_stateData.channelState->load(std::memory_order_relaxed);
+    if (currentState == ChannelState::ErrorClosed)
+    {
+        throw std::runtime_error("Cannot create writer for channel '" + m_channelName
+                                 + "' - channel is in error state");
+    }
+
+    // Check if we need to start the worker thread (first writer)
+    if (m_activeWriters.count == 0)
+    {
+        LOG_DEBUG("[Stream logger] Starting worker thread for channel '{}' - first writer created", m_channelName);
+        startWorkerThread();
+    }
+
+    // Increment the active writers count
+    ++m_activeWriters.count;
+
+    auto writer = std::make_shared<ChannelWriter>(m_stateData.queue, m_stateData.channelState, weak_from_this());
+
+    LOG_DEBUG("[Stream logger] Created ChannelWriter for channel '{}'. Active writers: {}",
+              m_channelName,
+              m_activeWriters.count);
+
+    return writer;
+}
+
+/**
+ * @brief Called when a ChannelWriter is destroyed.
+ *
+ * This method updates the active writers count and stops the worker thread if there are no more active writers.
+ */
+void ChannelHandler::onWriterDestroyed()
+{
+    std::lock_guard<std::mutex> lock(m_activeWriters.mutex);
+
+    --m_activeWriters.count;
+    size_t currentWriters = m_activeWriters.count;
+
+    LOG_DEBUG(
+        "[Stream logger] ChannelWriter destroyed for channel '{}'. Active writers: {}", m_channelName, currentWriters);
+
+    // If this was the last writer, stop the worker thread
+    if (currentWriters == 0)
+    {
+        LOG_DEBUG("[Stream logger] Stopping worker thread for channel '{}' - no more active writers", m_channelName);
+        stopWorkerThread();
+    }
+}
+
+// CompressLogFile static method
+void ChannelHandler::compressLogFile(const std::filesystem::path& filePath,
+                                     int compressionLevel,
+                                     std::shared_ptr<const std::atomic<bool>> shouldRun)
+{
+    // Fallback: if no cancellation flag was wired, compress unconditionally.
+    static const auto alwaysRun = std::make_shared<const std::atomic<bool>>(true);
+    const auto& flag = shouldRun ? shouldRun : alwaysRun;
+
+    try
+    {
+        LOG_INFO("[Stream logger] Compressing log file '{}'", filePath.string());
+        Utils::ZlibHelper::gzipCompress(filePath, filePath.string() + ".gz", compressionLevel, *flag);
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("[Stream logger] Failed to compress log file '{}': {}", filePath.string(), e.what());
+        return;
+    }
+    // Remove the original
+    std::error_code ec;
+    std::filesystem::remove(filePath, ec);
+    if (ec)
+    {
+        LOG_WARNING("[Stream logger] Failed to remove original log file '{}' after compression: {}",
+                    filePath.string(),
+                    ec.message());
+    }
+    else
+    {
+        LOG_INFO("[Stream logger] Successfully compressed log file '{}'", filePath.string());
+    }
+}
+
+scheduler::TaskConfig ChannelHandler::createCompressionTaskConfig(const std::filesystem::path& filePath) const
+{
+    // Capture config fields needed for retention after compression
+    auto basePath = m_config.basePath;
+    auto maxFiles = m_config.maxFiles;
+    auto maxAccumulatedSize = m_config.maxAccumulatedSize;
+    auto latestLink = m_stateData.latestLink;
+    auto channelName = m_channelName;
+    auto gzPath = std::filesystem::path(filePath.string() + ".gz");
+
+    return scheduler::TaskConfig {
+        .interval = 0, // One-time task
+        .runImmediately = false,
+        .CPUPriority = 0,
+        .taskFunction = [filePath,
+                         gzPath = std::move(gzPath),
+                         compressionLevel = m_config.compressionLevel,
+                         basePath = std::move(basePath),
+                         maxFiles,
+                         maxAccumulatedSize,
+                         latestLink = std::move(latestLink),
+                         channelName = std::move(channelName),
+                         retentionMutex = m_retentionMutex,
+                         inFlightFiles = m_inFlightFiles,
+                         shouldRun = m_compressionShouldRun]()
+        {
+            compressLogFile(filePath, compressionLevel, shouldRun);
+
+            // Unregister in-flight paths now that compression (and source removal) is done
+            inFlightFiles->remove(filePath);
+            inFlightFiles->remove(gzPath);
+
+            // Run retention cleanup after compression.  In the success path
+            // this ensures cleanup sees files in their final (compressed) size.
+            // If compression failed, cleanup still runs in best-effort mode on
+            // whatever state remains on disk (original file and/or partial .gz).
+            if (maxFiles > 0 || maxAccumulatedSize > 0)
+            {
+                std::lock_guard<std::mutex> lock(*retentionMutex);
+                deleteOldFilesStatic(basePath, latestLink, maxFiles, maxAccumulatedSize, channelName, inFlightFiles);
+            }
+        }};
+}
+
+void ChannelHandler::deleteOldFiles()
+{
+    std::lock_guard<std::mutex> lock(*m_retentionMutex);
+    deleteOldFilesStatic(m_config.basePath,
+                         m_stateData.latestLink,
+                         m_config.maxFiles,
+                         m_config.maxAccumulatedSize,
+                         m_channelName,
+                         m_inFlightFiles);
+}
+
+void ChannelHandler::deleteOldFilesStatic(const std::filesystem::path& basePath,
+                                          const std::filesystem::path& latestLink,
+                                          size_t maxFiles,
+                                          size_t maxAccumulatedSize,
+                                          const std::string& channelName,
+                                          const std::shared_ptr<InFlightRegistry>& inFlightFiles)
+{
+    if (maxFiles == 0 && maxAccumulatedSize == 0)
+    {
+        return;
+    }
+
+    struct FileInfo
+    {
+        std::filesystem::path path;
+        struct timespec mtime;
+        std::int64_t size;
+        ino_t inode;
+        bool valid;
+
+        bool operator<(const FileInfo& other) const
+        {
+            return mtime.tv_sec < other.mtime.tv_sec
+                   || (mtime.tv_sec == other.mtime.tv_sec && mtime.tv_nsec < other.mtime.tv_nsec);
+        }
+    };
+
+    auto statInode = [](const std::filesystem::path& path, ino_t& inode, struct stat* stOut = nullptr) -> bool
+    {
+        struct stat st {};
+        if (::stat(path.c_str(), &st) != 0)
+        {
+            return false;
+        }
+
+        inode = st.st_ino;
+
+        if (stOut != nullptr)
+        {
+            *stOut = st;
+        }
+
+        return true;
+    };
+
+    auto countValidFiles = [](const std::vector<FileInfo>& files) -> size_t
+    {
+        return static_cast<size_t>(std::count_if(files.begin(), files.end(), [](const auto& f) { return f.valid; }));
+    };
+
+    constexpr size_t MAX_SCAN_ATTEMPTS = 2;
+    std::vector<FileInfo> rotatedFiles;
+    std::int64_t totalSize = 0;
+    bool stableSnapshot = false;
+
+    for (size_t attempt = 0; attempt < MAX_SCAN_ATTEMPTS; ++attempt)
+    {
+        rotatedFiles.clear();
+        totalSize = 0;
+
+        ino_t activeStart {};
+        if (!statInode(latestLink, activeStart))
+        {
+            LOG_WARNING(
+                "[Stream logger] Cannot stat latestLink '{}' for channel '{}'; aborting retention cleanup to avoid "
+                "deleting the active file with stale path information",
+                latestLink.string(),
+                channelName);
+            return;
+        }
+
+        try
+        {
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(
+                     basePath, std::filesystem::directory_options::skip_permission_denied))
+            {
+                if (!entry.is_regular_file())
+                {
+                    continue;
+                }
+
+                const auto& filePath = entry.path();
+
+                struct stat fileStat {};
+                ino_t fileInode {};
+                if (!statInode(filePath, fileInode, &fileStat))
+                {
+                    continue;
+                }
+
+                if (fileInode == activeStart)
+                {
+                    continue;
+                }
+
+                // Skip files currently being compressed (in-flight)
+                if (inFlightFiles && inFlightFiles->contains(filePath))
+                {
+                    continue;
+                }
+
+                const auto fileSize = static_cast<std::int64_t>(fileStat.st_size);
+                if (fileSize < 0)
+                {
+                    continue;
+                }
+
+                rotatedFiles.push_back({filePath, fileStat.st_mtim, fileSize, fileInode, true});
+                totalSize += fileSize;
+            }
+        }
+        catch (const std::filesystem::filesystem_error& e)
+        {
+            LOG_WARNING("[Stream logger] Failed to scan basePath for retention cleanup of channel '{}': {}",
+                        channelName,
+                        e.what());
+            return;
+        }
+
+        ino_t activeEnd {};
+        if (!statInode(latestLink, activeEnd))
+        {
+            LOG_WARNING("[Stream logger] Cannot stat latestLink '{}' for channel '{}' after scan; aborting retention "
+                        "cleanup to avoid "
+                        "deleting the active file with stale path information",
+                        latestLink.string(),
+                        channelName);
+            return;
+        }
+
+        if (activeStart == activeEnd)
+        {
+            stableSnapshot = true;
+            break;
+        }
+
+        LOG_DEBUG("[Stream logger] Retention cleanup for channel '{}': active file changed while scanning '{}'; "
+                  "retrying snapshot",
+                  channelName,
+                  basePath.string());
+    }
+
+    if (!stableSnapshot)
+    {
+        LOG_DEBUG("[Stream logger] Retention cleanup for channel '{}': proceeding with best-effort snapshot after "
+                  "active file changed "
+                  "during scan",
+                  channelName);
+    }
+
+    if (rotatedFiles.empty())
+    {
+        return;
+    }
+
+    std::sort(rotatedFiles.begin(), rotatedFiles.end());
+
+    enum class DeleteResult
+    {
+        Deleted,
+        Skipped,
+        Abort
+    };
+
+    auto tryDeleteFile = [&](FileInfo& file) -> DeleteResult
+    {
+        if (!file.valid)
+        {
+            return DeleteResult::Skipped;
+        }
+
+        ino_t activeNow {};
+        if (!statInode(latestLink, activeNow))
+        {
+            LOG_WARNING("[Stream logger] Cannot stat latestLink '{}' for channel '{}'; aborting retention cleanup "
+                        "before deleting "
+                        "'{}' to avoid deleting the active file",
+                        latestLink.string(),
+                        channelName,
+                        file.path.string());
+            return DeleteResult::Abort;
+        }
+
+        ino_t candidateNow {};
+        if (!statInode(file.path, candidateNow))
+        {
+            file.valid = false;
+            return DeleteResult::Skipped;
+        }
+
+        if (candidateNow != file.inode)
+        {
+            LOG_DEBUG("[Stream logger] Retention cleanup for channel '{}': skipping '{}' because its identity changed "
+                      "during cleanup",
+                      channelName,
+                      file.path.string());
+            file.valid = false;
+            return DeleteResult::Skipped;
+        }
+
+        if (candidateNow == activeNow)
+        {
+            LOG_DEBUG(
+                "[Stream logger] Retention cleanup for channel '{}': skipping '{}' because it is now the active file",
+                channelName,
+                file.path.string());
+            file.valid = false;
+            return DeleteResult::Skipped;
+        }
+
+        // Revalidate that the file hasn't become in-flight between scan and deletion
+        if (inFlightFiles && inFlightFiles->contains(file.path))
+        {
+            LOG_DEBUG("[Stream logger] Retention cleanup for channel '{}': skipping '{}' because it is now in-flight",
+                      channelName,
+                      file.path.string());
+            file.valid = false;
+            return DeleteResult::Skipped;
+        }
+
+        std::error_code ec;
+        if (std::filesystem::remove(file.path, ec) && !ec)
+        {
+            file.valid = false;
+            return DeleteResult::Deleted;
+        }
+
+        return DeleteResult::Skipped;
+    };
+
+    size_t filesDeleted = 0;
+
+    if (maxAccumulatedSize > 0 && totalSize > static_cast<std::int64_t>(maxAccumulatedSize))
+    {
+        const auto sizeToFree = totalSize - static_cast<std::int64_t>(maxAccumulatedSize);
+        std::int64_t freedSize = 0;
+
+        for (auto& file : rotatedFiles)
+        {
+            if (freedSize >= sizeToFree)
+            {
+                break;
+            }
+
+            const auto result = tryDeleteFile(file);
+            if (result == DeleteResult::Abort)
+            {
+                return;
+            }
+
+            if (result == DeleteResult::Deleted)
+            {
+                freedSize += file.size;
+                totalSize -= file.size;
+                ++filesDeleted;
+                LOG_DEBUG(
+                    "[Stream logger] Retention (size): deleted '{}' for channel '{}'", file.path.string(), channelName);
+            }
+        }
+    }
+
+    if (maxFiles > 0)
+    {
+        const size_t remainingFiles = countValidFiles(rotatedFiles);
+        if (remainingFiles > maxFiles)
+        {
+            const size_t filesToDelete = remainingFiles - maxFiles;
+            size_t deletedCount = 0;
+
+            for (auto& file : rotatedFiles)
+            {
+                if (deletedCount >= filesToDelete)
+                {
+                    break;
+                }
+
+                const auto result = tryDeleteFile(file);
+                if (result == DeleteResult::Abort)
+                {
+                    return;
+                }
+
+                if (result == DeleteResult::Deleted)
+                {
+                    ++deletedCount;
+                    ++filesDeleted;
+                    LOG_DEBUG("[Stream logger] Retention (count): deleted '{}' for channel '{}'",
+                              file.path.string(),
+                              channelName);
+                }
+            }
+        }
+    }
+
+    if (filesDeleted > 0)
+    {
+        LOG_INFO("[Stream logger] Retention cleanup for channel '{}': deleted {} file(s)", channelName, filesDeleted);
+
+        // Remove empty subdirectories left behind after file deletion.
+        // Collect directories deepest-first so that removing a leaf may allow
+        // its parent to be removed in the same pass.
+        std::vector<std::filesystem::path> dirs;
+        try
+        {
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(
+                     basePath, std::filesystem::directory_options::skip_permission_denied))
+            {
+                if (entry.is_directory())
+                {
+                    dirs.push_back(entry.path());
+                }
+            }
+        }
+        catch (const std::filesystem::filesystem_error& e)
+        {
+            LOG_DEBUG("[Stream logger] Could not scan for empty directories in '{}': {}", basePath.string(), e.what());
+        }
+
+        // Sort by path length descending (deepest first)
+        std::sort(dirs.begin(),
+                  dirs.end(),
+                  [](const auto& a, const auto& b) { return a.native().size() > b.native().size(); });
+
+        for (const auto& dir : dirs)
+        {
+            std::error_code ec;
+            if (std::filesystem::is_empty(dir, ec) && !ec)
+            {
+                std::filesystem::remove(dir, ec);
+                if (!ec)
+                {
+                    LOG_DEBUG("[Stream logger] Retention: removed empty directory '{}' for channel '{}'",
+                              dir.string(),
+                              channelName);
+                }
+            }
+        }
+    }
+}
+
+std::optional<ChannelHandler::RotationState> ChannelHandler::loadCurrentRotationStateFromStore() const
+{
+    if (!m_store)
+    {
+        LOG_ERROR("[Stream logger] Store is not available for channel '{}'", m_channelName);
+        return std::nullopt;
+    }
+
+    try
+    {
+        const auto state = m_store->readDoc(getStoreBaseName());
+        if (base::isError(state))
+        {
+            LOG_DEBUG("[Stream logger] Failed to read rotation state for channel '{}' from store: {}",
+                      m_channelName,
+                      base::getError(state).message);
+            return std::nullopt;
+        }
+
+        const auto& jState = base::getResponse(state);
+        std::string pathStr;
+        if (jState.getString(pathStr, STORE_POSFIX_PATH_TO_CURRENT) != json::RetGet::Success)
+        {
+            LOG_DEBUG("[Stream logger] No rotation state found in store for channel '{}'", m_channelName);
+            return std::nullopt;
+        }
+
+        RotationState result;
+        result.currentFile = std::filesystem::path(pathStr);
+
+        auto counterOpt = jState.getUint64(STORE_POSFIX_COUNTER);
+        if (counterOpt.has_value())
+        {
+            result.counter = static_cast<size_t>(counterOpt.value());
+        }
+
+        return result;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("[Stream logger] Failed to load rotation state for channel '{}': {}", m_channelName, e.what());
+    }
+    return std::nullopt;
+}
+
+void ChannelHandler::saveCurrentRotationStateToStore() const
+{
+    if (!m_store)
+    {
+        LOG_ERROR("[Stream logger] Store is not available for channel '{}'", m_channelName);
+        return;
+    }
+
+    try
+    {
+        auto state = m_store->readDoc(getStoreBaseName());
+
+        if (base::isError(state))
+        {
+            LOG_DEBUG("[Stream logger] Failed to read rotation state for channel '{}' from store: {}. Creating new.",
+                      m_channelName,
+                      base::getError(state).message);
+            state = json::Json();
+        }
+
+        auto jState = base::getResponse(state);
+        jState.setString(m_stateData.currentFile.string(), STORE_POSFIX_PATH_TO_CURRENT);
+        jState.setUint64(static_cast<uint64_t>(m_stateData.counter), STORE_POSFIX_COUNTER);
+
+        const auto res = m_store->upsertDoc(getStoreBaseName(), jState);
+        if (base::isError(res))
+        {
+            LOG_WARNING("[Stream logger] Failed to save rotation state for channel '{}' to store: {}",
+                        m_channelName,
+                        base::getError(res).message);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("[Stream logger] Failed to save rotation state for channel '{}': {}", m_channelName, e.what());
+    }
+}
+
+void ChannelHandler::clearCurrentRotationStateFromStore() const
+{
+    if (!m_store)
+    {
+        LOG_ERROR("[Stream logger] Store is not available for channel '{}'", m_channelName);
+        return;
+    }
+
+    try
+    {
+        auto state = m_store->readDoc(getStoreBaseName());
+
+        if (base::isError(state))
+        {
+            LOG_DEBUG("[Stream logger] Failed to read rotation state for channel '{}' from store: {}. Nothing to clear",
+                      m_channelName,
+                      base::getError(state).message);
+            return;
+        }
+
+        auto jState = base::getResponse(state);
+        jState.erase(STORE_POSFIX_PATH_TO_CURRENT);
+        jState.erase(STORE_POSFIX_COUNTER);
+
+        const auto res = m_store->upsertDoc(getStoreBaseName(), jState);
+        if (base::isError(res))
+        {
+            LOG_WARNING("[Stream logger] Failed to clear rotation state for channel '{}' in store: {}",
+                        m_channelName,
+                        base::getError(res).message);
+        }
+    }
+    catch (const std::exception& e)
+    {
+        LOG_WARNING("[Stream logger] Failed to clear rotation state for channel '{}': {}", m_channelName, e.what());
+    }
+}
+
+// Implementation of ChannelWriter destructor
+ChannelWriter::~ChannelWriter()
+{
+    if (auto handler = m_channelHandler.lock())
+    {
+        handler->onWriterDestroyed();
+    }
+}
+
+} // namespace streamlog

@@ -8,9 +8,9 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 type: integration
 
 brief: These tests will check if the 'SSL' (Secure Socket Layer) protocol-related settings of
-       the 'wazuh-authd' daemon are working correctly. The 'wazuh-authd' daemon can
+       the 'wazuh-manager-authd' daemon are working correctly. The 'wazuh-manager-authd' daemon can
        automatically add a Wazuh agent to a Wazuh manager and provide the key
-       to the agent. It is used along with the 'agent-auth' application.
+       to the agent.
 
 components:
     - authd
@@ -19,9 +19,9 @@ targets:
     - manager
 
 daemons:
-    - wazuh-authd
-    - wazuh-db
-    - wazuh-modulesd
+    - wazuh-manager-authd
+    - wazuh-manager-db
+    - wazuh-manager-modulesd
 
 os_platform:
     - linux
@@ -38,7 +38,7 @@ os_version:
     - Ubuntu Bionic
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-authd.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-authd.html
     - https://documentation.wazuh.com/current/user-manual/reference/ossec-conf/auth.html
 
 tags:
@@ -68,7 +68,7 @@ test_configuration = load_configuration_template(test_configuration_path, test_c
 
 # Variables
 receiver_sockets_params = [(("localhost", DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
-monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (MODULES_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 receiver_sockets, monitored_sockets = None, None
 
 daemons_handler_configuration = {'all_daemons': True}
@@ -81,13 +81,13 @@ def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_
                                    configure_sockets_environment, wait_for_authd_startup):
     '''
     description:
-        Checks if the 'SSL' settings of the 'wazuh-authd' daemon work correctly by enrolling agents
+        Checks if the 'SSL' settings of the 'wazuh-manager-authd' daemon work correctly by enrolling agents
         that use different values for these settings. Different types of encryption and secure
         connection protocols are tested, in addition to the 'ssl_auto_negotiate' option
         that automatically chooses the protocol to be used.
 
     wazuh_min_version:
-        4.2.0
+        5.0.0
 
     tier: 0
 
@@ -128,9 +128,6 @@ def test_ossec_auth_configurations(test_configuration, test_metadata, set_wazuh_
     ciphers = test_metadata['ciphers']
     protocol = test_metadata['protocol']
     expect = test_metadata['expect']
-
-    if protocol == 'ssl_tlsv1_1':
-        pytest.skip('TLS 1.1 is deprecated and not working on several pyOpenSSL versions.')
 
 
     address, family, connection_protocol = receiver_sockets_params[0]

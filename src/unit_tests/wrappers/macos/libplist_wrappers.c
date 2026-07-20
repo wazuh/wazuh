@@ -12,9 +12,9 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include <cmocka.h>
-#include "external/libplist/include/plist/plist.h"
+#include <plist/plist.h>
 #include "../common.h"
-#include "../headers/shared.h"
+#include "shared.h"
 
 void wrap_plist_from_bin (char * bin, size_t size, plist_t *node) {
     if (test_mode) {

@@ -171,3 +171,10 @@ def test_extract_message_info(sqs_processor, sqs_messages, expected):
         sqs_messages[i]["Body"] = json.dumps(message["Body"])
     result = processor.extract_message_info(sqs_messages)
     assert result == expected
+
+
+def test_aws_queue_message_processor_parse_message_raises_not_implemented():
+    """Test that AWSQueueMessageProcessor.parse_message raises NotImplementedError."""
+    processor = sqs.AWSQueueMessageProcessor()
+    with pytest.raises(NotImplementedError):
+        processor.parse_message({})

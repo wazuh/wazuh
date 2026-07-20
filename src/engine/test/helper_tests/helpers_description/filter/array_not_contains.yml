@@ -1,0 +1,122 @@
+# Name of the helper function
+name: array_not_contains
+
+metadata:
+  description: |
+    Determines whether one or more elements are absent from a given array.
+    It supports multiple data types, including objects, arrays, numbers, strings, and boolean values.
+    As a variadic function, it accepts multiple elements as search arguments.
+    A test passes if none of the provided elements exist in the target array.
+    If all elements in the array are found, validation fails.
+    This behavior is useful for filtering lists by excluding specific values.
+
+  keywords:
+    - array
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  element:
+    type:
+      - object
+      - array
+      - number
+      - string
+      - boolean
+    source: both # includes values or references (their names start with $)
+
+# do not compare with target field to avoid failure
+skipped:
+  - success_cases
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      element: dracut
+      element_1: vz-start
+      element_2: thin-provisioning-tools
+    target_field:
+      - mkinitramfs
+      - cryptroot
+      - framebuffer
+      - dracut
+      - thin-provisioning-tools
+      - lvm2
+      - vz-start
+    should_pass: false
+    description: All specified elements are present in the target array.
+
+  - arguments:
+      element: dracut
+      element_1: vz-start
+      element_2: iscsi
+    target_field:
+      - mkinitramfs
+      - cryptroot
+      - framebuffer
+      - dracut
+      - thin-provisioning-tools
+      - lvm2
+      - vz-start
+    should_pass: true
+    description: At least one specified element ("iscsi") is missing from the target array.
+
+  - arguments:
+      element: 2
+      element_1: 1
+      element_2: 5
+    target_field:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+    should_pass: false
+    description: All specified numbers are present in the target array.
+
+  - arguments:
+      element:
+        key: value
+      element_1:
+        key1: value1
+      element_2:
+        key2: value2
+    target_field:
+      - key: value
+      - key1: value1
+      - key2: value2
+    should_pass: false
+    description: All specified objects are present in the target array, causing the test to fail.
+
+  - arguments:
+      element:
+        key: value
+      element_1:
+        key-non-exists: value-non-exists
+      element_2:
+        keyn: valuen
+    target_field:
+      - key: value
+      - key1: value1
+      - key2: value2
+    should_pass: true
+    description: At least one specified object is missing from the target array.
+
+  - arguments:
+      element:
+        key: value
+      element_1: 1
+      element_2: value
+    target_field:
+      - key: value
+      - 1
+      - value
+    should_pass: false
+    description: The specified object, number, and string are all present in the target array.

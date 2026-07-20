@@ -5,14 +5,13 @@ This script automates the process of building Wazuh packages (manager or agent) 
 **Features:**
 
 - Supports building packages for different targets (manager/agent).
-- Selectable architectures (amd64, i386, **ppc64le, arm64, armhf*).
+- Selectable architectures (amd64, arm64).
 - Optional debug builds.
 - Generates checksums for built packages.
-- Builds legacy packages for CentOS 5 (RPM only).
 - Uses local source code or downloads from GitHub.
 - Builds future test packages (x.30.0).
 
-***Note:** Support for *ppc64le, arm64, and armhf* architectures **is not** currently **available** in the **workflow**.
+***Note:** Only *amd64* and *arm64* architectures are supported.
 
 **Requirements:**
 
@@ -30,25 +29,31 @@ wazuh# cd packages
 |----------------------|---------------------------------------------------------------------|-------------------------|
 | -b, --branch         | Git branch to use (optional)                                        | main                    |
 | -t, --target         | Target package to build (required): manager or agent                | -                       |
-| -a, --architecture   | Target architecture (optional): amd64, i386, etc.                   | -                       |
+| -a, --architecture   | Target architecture (optional): amd64, arm64                        | -                       |
 | -j, --jobs           | Number of parallel jobs (optional)                                  | 2                       |
 | -r, --revision       | Package revision (optional)                                         | 0                       |
 | -s, --store          | Destination path for the package (optional)                         | (output folder created) |
-| -p, --path           | Installation path for the package (optional)                        | /var/ossec              |
+| -p, --path           | Installation path for the package (optional)                        | /var/wazuh-manager (manager) or /var/ossec (agent) |
 | -d, --debug          | Build binaries with debug symbols (optional)                        | no                      |
 | -c, --checksum       | Generate checksum on the same directory (optional)                  | no                      |
-| -l, --legacy         | Build package for CentOS 5 (RPM only) (optional)                    | no                      |
 | --dont-build-docker  | Use a locally built Docker image (optional)                         | no                      |
 | --tag                | Tag to use with the Docker image (optional)                         | -                       |
-| *--sources           | Path containing local Wazuh source code (optional)                  | script path            |
+| *--sources           | Path containing local Wazuh source code (optional)                  | script path             |
 | **--is_stage         | Use release name in package (optional)                              | no                      |
 | --src                | Generate the source package (optional)                              | no                      |
 | --system             | Package format to build (optional): rpm, deb (default)              | deb                     |
+| --force              | Force building manager package with /var/ossec path (not recommended) | no                    |
 | -h, --help           | Show this help message                                              | -                       |
 
 ***Note1:** If we don't use this flag, will the script use the current directory where *generate_package.sh* is located.
 
 ****Note 2:** If the package is not a release package, a short hash commit based on the git command `git rev-parse --short HEAD` will be appended to the end of the name. The default length of the short hash is determined by the Git command [git rev-parse --short[=length]](https://git-scm.com/docs/git-rev-parse#Documentation/git-rev-parse.txt---shortlength:~:text=interpreted%20as%20usual.-,%2D%2Dshort%5B%3Dlength%5D,-Same%20as%20%2D%2Dverify).
+
+**Manager Package Notes:**
+
+- **Default installation path:** Manager packages install to `/var/wazuh-manager` by default.
+- **Soft block:** Building a manager package with `-p /var/ossec` requires the `--force` flag.
+- **Hard block:** Installing a 5.x manager package will fail if a 4.x manager is already installed. Direct upgrades from 4.x to 5.x are not supported.
 
 
 **Example Usage:**
@@ -56,13 +61,10 @@ wazuh# cd packages
 1. Build a manager package for amd64 architecture:
 ./wazuh_package_builder.sh -t manager -a amd64 -s /tmp --system rpm
 
-2. Build a debug agent package for i386 architecture with checksum generation:
-./wazuh_package_builder.sh -t agent -a i386 -s /tmp -d -c --system rpm
+2. Build a debug agent package for arm64 architecture with checksum generation:
+./wazuh_package_builder.sh -t agent -a arm64 -s /tmp -d -c --system rpm
 
-3. Build a legacy RPM package for CentOS 5 (agent):
-./wazuh_package_builder.sh -t agent -l -s /tmp --system rpm
-
-4. Build a package using local Wazuh source code:
+3. Build a package using local Wazuh source code:
 ./wazuh_package_builder.sh -t manager -a amd64 --sources /path/to/wazuh/source --system rpm
 
 
@@ -71,7 +73,6 @@ wazuh# cd packages
 - For RPM packages, we use the following architecture equivalences:
     * amd64 -> x86_64
     * arm64 -> aarch64
-    * armhf -> armv7hl
 
 # Workflow
 
@@ -86,7 +87,7 @@ Where the JSON looks like this:
 ```json
 # cat wazuh-agent-test-amd64-rpm.json
 {
-    "ref":"4.9.0",
+    "ref":"5.0.0",
     "inputs":
         {
          "tag":"auto",
@@ -94,7 +95,6 @@ Where the JSON looks like this:
          "system":"rpm",
          "revision":"test",
          "is_stage":"false",
-         "legacy":"false"
         }
 }
 ```
@@ -109,7 +109,7 @@ Where the JSON looks like this:
 ```json
 # cat wazuh-agent-test-amd64-rpm.json
 {
-    "ref":"4.9.0",
+    "ref":"5.0.0",
     "inputs":
         {
          "docker_image_tag":"auto",
@@ -117,7 +117,6 @@ Where the JSON looks like this:
          "system":"deb",
          "revision":"test",
          "is_stage":"false",
-         "legacy":"false",
          "checksum":"false",
      }
 }

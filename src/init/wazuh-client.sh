@@ -2,7 +2,7 @@
 
 # Copyright (C) 2015, Wazuh Inc.
 # wazuh-control        This shell script takes care of starting
-#                      or stopping ossec-hids
+#                      or stopping Wazuh
 # Author: Daniel B. Cid <daniel.cid@gmail.com>
 
 LOCAL=`dirname $0`;
@@ -11,8 +11,8 @@ PWD=`pwd`
 DIR=`dirname $PWD`;
 
 # Installation info
-VERSION="v4.14.6"
-REVISION="rc2"
+VERSION="v5.1.0"
+REVISION="alpha0"
 TYPE="agent"
 
 ###  Do not modify below here ###
@@ -129,15 +129,15 @@ testconfig()
 # Check folders
 check_folders()
 {
-    ALERTS_FOLDER="../queue/alerts"
+    SOCKETS_FOLDER="../queue/sockets"
 
-    if [ ! -d $ALERTS_FOLDER ]
+    if [ ! -d $SOCKETS_FOLDER ]
     then
-        if rm -rf $ALERTS_FOLDER && mkdir -p $ALERTS_FOLDER && chown wazuh:wazuh $ALERTS_FOLDER && chmod 770 $ALERTS_FOLDER
+        if rm -rf $SOCKETS_FOLDER && mkdir -p $SOCKETS_FOLDER && chown wazuh:wazuh $SOCKETS_FOLDER && chmod 770 $SOCKETS_FOLDER
         then
-            echo "WARNING: missing folder 'queue/alerts'. Restored back."
+            echo "WARNING: missing folder 'queue/sockets'. Restored back."
         else
-            echo "ERROR: missing folder 'queue/alerts', and could not restore back."
+            echo "ERROR: missing folder 'queue/sockets', and could not restore back."
             exit 1
         fi
     fi
@@ -241,6 +241,7 @@ start_service()
 pstatus()
 {
     pfile=$1;
+    _pstatus_quiet=${2:-""}
 
     # pfile must be set
     if [ "X${pfile}" = "X" ]; then
@@ -252,7 +253,9 @@ pstatus()
         for pid in `cat ${DIR}/var/run/${pfile}-*.pid 2>/dev/null`; do
             ps -p ${pid} > /dev/null 2>&1
             if [ ! $? = 0 ]; then
-                echo "${pfile}: Process ${pid} not used by Wazuh, removing .."
+                if [ "X${_pstatus_quiet}" = "X" ]; then
+                    echo "${pfile}: Process ${pid} not used by Wazuh, removing .."
+                fi
                 rm -f ${DIR}/var/run/${pfile}-${pid}.pid
                 continue;
             fi
@@ -302,7 +305,7 @@ stop_service()
 
     # Second pass: wait for all processes that are still alive
     for i in ${DAEMONS}; do
-        pstatus ${i};
+        pstatus ${i} "quiet";
         if [ $? = 1 ]; then
             pid=`cat ${DIR}/var/run/${i}-*.pid`
 

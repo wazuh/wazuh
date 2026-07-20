@@ -134,6 +134,7 @@ def test_file_size_default(
     set_wazuh_configuration,
     folder_to_monitor,
     file_to_monitor,
+    clean_fim_sync_db,
     daemons_handler,
     detect_end_scan,
 ):

@@ -38,7 +38,7 @@ def test_big_queue_size(test_configuration, test_metadata, configure_local_inter
                             set_wazuh_configuration, restart_wazuh_expect_error, get_real_configuration):
 
     '''
-    description: Check that when 'wazuh-remoted' sets the queue size too big(greater than 262144), a warning message
+    description: Check that when 'wazuh-manager-remoted' sets the queue size too big(greater than 262144), a warning message
                  appears. For this purpose, it uses the configuration from test cases, check if the warning has been
                  logged and the configuration is the same as the API respnse.
 

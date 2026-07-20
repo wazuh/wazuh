@@ -31,11 +31,6 @@ constexpr auto DPKG_INFO_PATH {"/var/lib/dpkg/info/"};
 constexpr auto DPKG_STATUS_PATH {"/var/lib/dpkg/status"};
 
 constexpr auto RPM_PATH {"/var/lib/rpm/"};
-
-constexpr auto PACMAN_PATH {"/var/lib/pacman"};
-
-constexpr auto APK_PATH {"/lib/apk/db"};
-constexpr auto APK_DB_PATH {"/lib/apk/db/installed"};
 constexpr auto SNAP_PATH {"/var/lib/snapd"};
 
 constexpr auto UNKNOWN_VALUE {" "};
@@ -51,13 +46,6 @@ enum OSPlatformType
     LINUX,
     BSDBASED,
     WINDOWS,
-    SOLARIS
-};
-
-enum LinuxType
-{
-    STANDARD,
-    LEGACY
 };
 
 enum PortType
@@ -120,7 +108,6 @@ static const std::set<std::string> UNIX_PYPI_DEFAULT_BASE_DIRS
     "/home/*/.local/lib/python*/*-packages",
     "/root/.local/lib/python*/*-packages",
     "/opt/homebrew/lib",
-    "/Library/Python",
     "/Library/Frameworks/Python.framework/Versions/*/lib/python*/*-packages",
     "/root/.pyenv/versions/*/lib/python*/*-packages",
     "/home/*/.pyenv/versions/*/lib/python*/*-packages"

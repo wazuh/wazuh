@@ -5,13 +5,13 @@ import time
 import yaml
 
 output_file = '/tmp_volume/configuration_files/agent_info_output'
-ADDR = '/var/ossec/queue/db/wdb'
+ADDR = '/var/wazuh-manager/queue/db/wdb'
 sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
 sock.connect(ADDR)
 
 
 def send_msg(msg):
-    """Send message to wazuh-db socket
+    """Send message to wazuh-manager-db socket
 
     Parameters
     ----------
@@ -55,15 +55,6 @@ def create_and_send_query(agent_info_file):
             except KeyError:
                 pass
 
-            # Insert fields of labels table
-            try:
-                for key, value in agent['labels'].items():
-                    query = f"INSERT INTO labels ('id', 'key', 'value') VALUES " \
-                            f"({agent['extra_params']['agent_id']}, '{key}', '{value}')"
-                    # Send query to wdb
-                    f.write(str(send_msg("global sql " + query)) + '\n')
-            except KeyError:
-                pass
 
 
 def add_agent_group_relationships(agent_groups_file: str) -> None:

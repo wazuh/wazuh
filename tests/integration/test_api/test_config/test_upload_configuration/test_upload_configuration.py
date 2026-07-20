@@ -18,12 +18,11 @@ targets:
     - manager
 
 daemons:
-    - wazuh-apid
-    - wazuh-modulesd
-    - wazuh-analysisd
-    - wazuh-execd
-    - wazuh-db
-    - wazuh-remoted
+    - wazuh-manager-apid
+    - wazuh-manager-modulesd
+    - wazuh-manager-analysisd
+    - wazuh-manager-db
+    - wazuh-manager-remoted
 
 os_platform:
     - linux
@@ -51,14 +50,19 @@ import requests
 from pathlib import Path
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
-from wazuh_testing.constants.api import CONFIGURATION_TYPES, MANAGER_CONFIGURATION_ROUTE
+from wazuh_testing.constants.api import CONFIGURATION_TYPES
 from wazuh_testing.constants.daemons import API_DAEMONS_REQUIREMENTS
 from wazuh_testing.modules.api.utils import login, get_base_url
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 
 
 # Marks
-pytestmark = pytest.mark.server
+pytestmark = [
+    pytest.mark.server,
+    pytest.mark.skip(
+        reason='Configuration upload success path depends on manager execd/wcom socket removed in manager-agent separation'
+    )
+]
 
 # Variables
 # Used by add_configuration to select the target configuration file
@@ -71,7 +75,7 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_upload_configuration.yaml'
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
-daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
+daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
 @pytest.mark.tier(level=0)
@@ -81,7 +85,7 @@ def test_upload_configuration(test_configuration, test_metadata, backup_wazuh_co
     """
     description: Check if the API works when uploading configurations.
 
-    wazuh_min_version: 4.4.0
+    wazuh_min_version: 5.0.0
 
     test_phases:
         - setup:
@@ -134,11 +138,11 @@ def test_upload_configuration(test_configuration, test_metadata, backup_wazuh_co
     expected_code = test_metadata['expected_code']
     body = test_metadata['body']
 
-    url = get_base_url()
+    url = get_base_url() + '/cluster/node01/configuration'
     authentication_headers, _ = login()
     authentication_headers['Content-Type'] = 'application/octet-stream'
 
-    response = requests.put(url + MANAGER_CONFIGURATION_ROUTE, headers=authentication_headers, verify=False, timeout=10,
+    response = requests.put(url, headers=authentication_headers, verify=False, timeout=10,
                              data=body)
     assert response.status_code == expected_code, f"Expected status code {expected_code}, but " \
                                                   f"{response.status_code} was returned: {response.json()}"

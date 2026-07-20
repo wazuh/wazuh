@@ -41,7 +41,6 @@ def mock_wazuh_path():
     ({'new': [None]}, None, 'new', [1]),
     ({}, None, 'new', 1),
     ({}, None, 'new', False),
-    ({'old': [None]}, 'ruleset', 'include', [1]),
 ])
 def test_insert(json_dst, section_name, option, value):
     """Checks insert function."""
@@ -56,11 +55,7 @@ def test_insert(json_dst, section_name, option, value):
 
 
 @pytest.mark.parametrize("json_dst, section_name, section_data", [
-    ({'old': []}, 'ruleset', 'include'),
-    ({'labels': []}, 'labels', ['label']),
-    ({'ruleset': []}, 'labels', ['label']),
     ({'global': {'label': 5}}, 'global', {'label': 4}),
-    ({'global': {'white_list': []}}, 'global', {'white_list': [4], 'label2': 5}),
     ({'cluster': {'label': 5}}, 'cluster', {'label': 4})
 ])
 def test_insert_section(json_dst, section_name, section_data):
@@ -75,24 +70,20 @@ def test_read_option():
     """Checks insert_section function."""
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options.conf')) as f:
         data = fromstring(f.read())
-        assert configuration._read_option('open-scap', data)[0] == 'directories'
         assert configuration._read_option('syscheck', data)[0] == 'directories'
-        assert configuration._read_option('labels', data)[0] == 'directories'
 
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/options1.conf')) as f:
         data = fromstring(f.read())
-        assert configuration._read_option('labels', data)[0] == 'label'
         assert configuration._read_option('test', data) == ('label', {'name': 'first', 'item': 'test'})
 
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/synchronization.conf')) as f:
         data = fromstring(f.read())
-        assert configuration._read_option('open-scap', data)[0] == 'synchronization'
         assert configuration._read_option('syscheck', data)[0] == 'synchronization'
 
     with open(os.path.join(parent_directory, tmp_path, 'configuration/default/vulnerability_detection.conf')) as f:
         data = fromstring(f.read())
         EXPECTED_VALUES = MappingProxyType(
-            {'enabled': 'no', 'feed-update-interval': '60m', 'index-status': 'yes'}
+            {'enabled': 'no', 'feed-update-interval': '60m'}
         )
         for section in data:
             assert configuration._read_option('vulnerability-detection', section) == (section.tag,
@@ -102,7 +93,6 @@ def test_read_option():
         data = fromstring(f.read())
         EXPECTED_VALUES = MappingProxyType(
             {
-                'enabled': 'yes',
                 'hosts': ['http://127.0.0.1:9200', 'http://127.0.0.2:9200'],
                 'username': 'admin',
                 'password': 'admin',
@@ -173,26 +163,6 @@ def test_rcl2json():
         parent_directory, tmp_path, 'configuration/trojan.txt'))['vars'] == {'trojan': 'trojan'}
 
 
-def test_rootkit_files2json():
-    with patch('builtins.open', return_value=Exception):
-        with pytest.raises(WazuhError, match=".* 1101 .*"):
-            configuration._rootkit_files2json(filepath=os.path.join(
-                parent_directory, tmp_path, 'configuration/trojan.txt'))
-
-    assert configuration._rootkit_files2json(filepath=os.path.join(
-        parent_directory, tmp_path, 'configuration/trojan.txt'))[0]['filename'] == 'trojan'
-
-
-def test_rootkit_trojans2json():
-    with patch('builtins.open', return_value=Exception):
-        with pytest.raises(WazuhError, match=".* 1101 .*"):
-            configuration._rootkit_trojans2json(filepath=os.path.join(
-                parent_directory, tmp_path, 'configuration/trojan.txt'))
-
-    assert configuration._rootkit_trojans2json(filepath=os.path.join(
-        parent_directory, tmp_path, 'configuration/trojan.txt'))[0]['filename'] == 'trojan'
-
-
 def test_merged_mg2json():
     """Checks that _merged_mg2json parses the file content correctly."""
     with patch('builtins.open', return_value=Exception):
@@ -203,9 +173,8 @@ def test_merged_mg2json():
     item = configuration._merged_mg2json(file_path=os.path.join(
         parent_directory, tmp_path, 'configuration/default/merged.mg'))[0]
 
-    assert item['file_name'] == 'ar.conf'
-    assert item['file_size'] == 77
-    assert item['file_content'] == 'restart-ossec0 - restart-ossec.sh - 0\nrestart-ossec0 - restart-ossec.cmd - 0\n'
+    assert item['file_name'] == 'agent.conf'
+    assert item['file_size'] == 76
 
 
 def test_get_ossec_conf():
@@ -221,46 +190,24 @@ def test_get_ossec_conf():
 
     with pytest.raises(WazuhError, match=".* 1102 .*"):
         configuration.get_ossec_conf(section='noexists',
-                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
+                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))
 
     with pytest.raises(WazuhError, match=".* 1106 .*"):
         configuration.get_ossec_conf(section='remote',
-                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
-
-    with pytest.raises(WazuhError, match=".* 1103 .*"):
-        configuration.get_ossec_conf(
-            section='integration', field='error',
-            conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'))
+                                     conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))
 
     assert configuration.get_ossec_conf(conf_file=os.path.join(
-        parent_directory, tmp_path, 'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
+        parent_directory, tmp_path, 'configuration/wazuh-manager.conf'))['cluster']['name'] == 'wazuh'
 
     assert configuration.get_ossec_conf(
         section='cluster',
         conf_file=os.path.join(parent_directory, tmp_path,
-                               'configuration/ossec.conf'))['cluster']['name'] == 'wazuh'
+                               'configuration/wazuh-manager.conf'))['cluster']['name'] == 'wazuh'
 
     assert configuration.get_ossec_conf(
         section='cluster', field='name',
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
+        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager.conf')
     )['cluster']['name'] == 'wazuh'
-
-    assert configuration.get_ossec_conf(
-        section='integration', field='node',
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf')
-    )['integration'][0]['node'] == 'wazuh-worker'
-
-    assert configuration.get_ossec_conf(
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'),
-        section='ruleset',
-        field='rule_dir',
-        distinct=False)['ruleset']['rule_dir'] == ['ruleset/rules', 'ruleset/rules', 'etc/rules']
-
-    assert configuration.get_ossec_conf(
-        conf_file=os.path.join(parent_directory, tmp_path, 'configuration/ossec.conf'),
-        section='ruleset',
-        field='rule_dir',
-        distinct=True)['ruleset']['rule_dir'] == ['ruleset/rules', 'etc/rules']
 
 
 def test_get_agent_conf():
@@ -280,28 +227,10 @@ def test_get_agent_conf():
         assert configuration.get_agent_conf(group_id='default', filename='agent1.conf')['total_affected_items'] == 1
 
 
-def test_get_agent_conf_multigroup():
-    with pytest.raises(WazuhError, match=".* 1710 .*"):
-        configuration.get_agent_conf_multigroup()
-
-    with patch('wazuh.core.common.MULTI_GROUPS_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with pytest.raises(WazuhError, match=".* 1006 .*"):
-            configuration.get_agent_conf_multigroup(multigroup_id='multigroup', filename='noexists.conf')
-
-    with patch('wazuh.core.common.MULTI_GROUPS_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        with patch('wazuh.core.configuration.load_wazuh_xml', return_value=Exception):
-            with pytest.raises(WazuhError, match=".* 1101 .*"):
-                configuration.get_agent_conf_multigroup(multigroup_id='multigroup')
-
-    with patch('wazuh.core.common.MULTI_GROUPS_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
-        result = configuration.get_agent_conf_multigroup(multigroup_id='multigroup')
-        assert set(result.keys()) == {'totalItems', 'items'}
-
-
 def test_get_file_conf():
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'noexists')):
         with pytest.raises(WazuhError, match=".* 1710 .*"):
-            configuration.get_file_conf(filename='ossec.conf', group_id='default', type_conf='conf',
+            configuration.get_file_conf(filename='wazuh-manager.conf', group_id='default', type_conf='conf',
                                         raw=True)
 
     with patch('wazuh.core.common.SHARED_PATH', new=os.path.join(parent_directory, tmp_path, 'configuration')):
@@ -316,14 +245,6 @@ def test_get_file_conf():
                           dict)
         assert isinstance(configuration.get_file_conf(filename='agent.conf', group_id='default',
                                                       raw=True), str)
-        rootkit_files = [{'filename': 'NEW_ELEMENT', 'name': 'FOR', 'link': 'TESTING'}]
-        assert configuration.get_file_conf(filename='rootkit_files.txt', group_id='default') == rootkit_files
-        rootkit_trojans = [{'filename': 'NEW_ELEMENT', 'name': 'FOR', 'description': 'TESTING'}]
-        assert configuration.get_file_conf(filename='rootkit_trojans.txt', group_id='default',) == rootkit_trojans
-        ar_list = ['restart-ossec0 - restart-ossec.sh - 0', 'restart-ossec0 - restart-ossec.cmd - 0',
-                   'restart-wazuh0 - restart-ossec.sh - 0', 'restart-wazuh0 - restart-ossec.cmd - 0',
-                   'restart-wazuh0 - restart-wazuh - 0', 'restart-wazuh0 - restart-wazuh.exe - 0']
-        assert configuration.get_file_conf(filename='ar.conf', group_id='default') == ar_list
         rcl = {'vars': {}, 'controls': [{}, {'name': 'NEW_ELEMENT', 'cis': [], 'pci': [], 'condition': 'FOR',
                                              'reference': 'TESTING', 'checks': []}]}
         assert configuration.get_file_conf(filename='rcl.conf', group_id='default') == rcl
@@ -338,11 +259,9 @@ def test_parse_internal_options():
             configuration.parse_internal_options('ossec', 'python')
 
     with patch('wazuh.core.common.INTERNAL_OPTIONS_CONF',
-               new=os.path.join(parent_directory, tmp_path, 'configuration/local_internal_options.conf')):
-        with patch('wazuh.core.common.LOCAL_INTERNAL_OPTIONS_CONF',
-                   new=os.path.join(parent_directory, tmp_path, 'configuration/local_internal_options.conf')):
-            with pytest.raises(WazuhInternalError, match=".* 1108 .*"):
-                configuration.parse_internal_options('ossec', 'python')
+               new=os.path.join(parent_directory, tmp_path, 'configuration/wazuh-manager-internal-options.conf')):
+        with pytest.raises(WazuhInternalError, match=".* 1108 .*"):
+            configuration.parse_internal_options('ossec', 'python')
 
 
 def test_get_internal_options_value():
@@ -426,32 +345,27 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
         with pytest.raises(WazuhError, match=".* 1111 .*"):
             configuration.upload_group_file('default', [], 'a.conf')
 
-
 @pytest.mark.parametrize("agent_id, component, socket, socket_dir, rec_msg", [
-    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
-    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
-    ('000', 'auth', 'auth', 'sockets', 'ok {"auth": {}}'),
-    ('000', 'agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'agentless', 'agentless', 'sockets', 'ok {"agentless": {"enabled": "yes"}}'),
-    ('000', 'analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
-    ('000', 'csyslog', 'csyslog', 'sockets', 'ok {"csyslog": {"enabled": "yes"}}'),
-    ('000', 'integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
-    ('000', 'logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
-    ('000', 'mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
-    ('000', 'monitor', 'monitor', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
-    ('000', 'request', 'remote', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
-    ('000', 'wazuh-db', 'wdb', 'db', {"error": 0, "data": {"enabled": "yes"}}),
-    ('000', 'wmodules', 'wmodules', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
+    (None, 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
+    (None, 'auth', 'auth', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
+    (None, 'auth', 'auth', 'sockets', 'ok {"auth": {}}'),
+    (None, 'agent', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    (None, 'analysis', 'analysis', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    (None, 'com', 'com', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
+    (None, 'integrator', 'integrator', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
+    (None, 'logcollector', 'logcollector', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
+    (None, 'mail', 'mail', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
+    (None, 'monitor', 'monitor', 'sockets', 'ok {"monitor": {"enabled": "yes"}}'),
+    (None, 'request', 'remote', 'sockets', {"error": 0, "data": {"enabled": "yes"}}),
+    (None, 'syscheck', 'syscheck', 'sockets', 'ok {"syscheck": {"enabled": "yes"}}'),
+    (None, 'wazuh-manager-db', 'wdb', 'db', {"error": 0, "data": {"enabled": "yes"}}),
+    (None, 'wmodules', 'wmodules', 'sockets', 'ok {"wmodules": {"enabled": "yes"}}'),
     ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "yes"}}'),
     ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {"use_password": "no"}}'),
     ('001', 'auth', 'remote', 'sockets', 'ok {"auth": {}}'),
     ('001', 'agent', 'remote', 'sockets', 'ok {"agent": {"enabled": "yes"}}'),
-    ('001', 'agentless', 'remote', 'sockets', 'ok {"agentless": {"enabled": "yes"}}'),
     ('001', 'analysis', 'remote', 'sockets', 'ok {"analysis": {"enabled": "yes"}}'),
     ('001', 'com', 'remote', 'sockets', 'ok {"com": {"enabled": "yes"}}'),
-    ('001', 'csyslog', 'remote', 'sockets', 'ok {"csyslog": {"enabled": "yes"}}'),
     ('001', 'integrator', 'remote', 'sockets', 'ok {"integrator": {"enabled": "yes"}}'),
     ('001', 'logcollector', 'remote', 'sockets', 'ok {"logcollector": {"enabled": "yes"}}'),
     ('001', 'mail', 'remote', 'sockets', 'ok {"mail": {"enabled": "yes"}}'),
@@ -463,31 +377,36 @@ def test_upload_group_file(mock_safe_move, mock_open, mock_wazuh_uid, mock_wazuh
 @patch('builtins.open', mock_open(read_data='test_password'))
 @patch('wazuh.core.wazuh_socket.create_wazuh_socket_message')
 @patch('os.path.exists')
-@patch('wazuh.core.common.WAZUH_PATH', new='/var/ossec')
+@patch('wazuh.core.common.WAZUH_PATH', new='/var/wazuh-manager')
 def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message, agent_id, component, socket,
                                   socket_dir, rec_msg):
     """This test checks the proper working of get_active_configuration function."""
     sockets_json_protocol = {'remote', 'analysis', 'wdb'}
     config = MagicMock()
 
-    socket_class = "WazuhSocket" if socket not in sockets_json_protocol or agent_id != '000' else "WazuhSocketJSON"
+    socket_class = "WazuhSocket" if socket not in sockets_json_protocol or agent_id is not None else "WazuhSocketJSON"
     with patch(f'wazuh.core.wazuh_socket.{socket_class}.close') as mock_close:
         with patch(f'wazuh.core.wazuh_socket.{socket_class}.send') as mock_send:
             with patch(f'wazuh.core.wazuh_socket.{socket_class}.__init__', return_value=None) as mock__init__:
                 with patch(f'wazuh.core.wazuh_socket.{socket_class}.receive',
                            return_value=rec_msg.encode() if socket_class == "WazuhSocket" else rec_msg) as mock_receive:
-                    result = configuration.get_active_configuration(agent_id, component, config)
 
+                    result = configuration.get_active_configuration(
+                        agent_id=agent_id, component=component, configuration=config
+                    )
                     mock__init__.assert_called_with(
-                        f"/var/ossec/queue/{socket_dir}/{socket}" if agent_id == '000' else REMOTED_SOCKET)
+                        f"/var/wazuh-manager/queue/{socket_dir}/{socket}" if agent_id is None else REMOTED_SOCKET
+                    )
 
                     if socket_class == "WazuhSocket":
-                        mock_send.assert_called_with(f"getconfig {config}".encode() if agent_id == '000' else \
-                                                         f"{agent_id} {component} getconfig {config}".encode())
+                        mock_send.assert_called_with(
+                            f"getconfig {config}".encode() if agent_id is None else \
+                                f"{agent_id} {component} getconfig {config}".encode()
+                        )
                     else:  # socket_class == "WazuhSocketJSON"
-                        mock_create_wazuh_socket_message.assert_called_with(origin={'module': ANY},
-                                                                            command="getconfig",
-                                                                            parameters={'section': config})
+                        mock_create_wazuh_socket_message.assert_called_with(
+                            origin={'module': ANY}, command="getconfig", parameters={'section': config}
+                        )
                         mock_send.assert_called_with(mock_create_wazuh_socket_message.return_value)
 
                     mock_receive.assert_called_once()
@@ -501,21 +420,21 @@ def test_get_active_configuration(mock_exists, mock_create_wazuh_socket_message,
 
 @pytest.mark.parametrize('agent_id, component, config, socket_exist, socket_class, expected_error, expected_id', [
     # Checks for 000 or any other agent
-    ('000', 'test_component', None, ANY, 'WazuhSocket', WazuhError, 1307),  # No configuration
-    ('000', None, 'test_config', ANY, 'WazuhSocket', WazuhError, 1307),  # No component
-    ('000', 'test_component', 'test_config', ANY, 'WazuhSocket', WazuhError, 1101),  # Component not in components
+    (None, 'test_component', None, ANY, 'WazuhSocket', WazuhError, 1307),  # No configuration
+    (None, None, 'test_config', ANY, 'WazuhSocket', WazuhError, 1307),  # No component
+    (None, 'test_component', 'test_config', ANY, 'WazuhSocket', WazuhError, 1101),  # Component not in components
     ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhError, 1116),  # Cannot send request
     ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhError, 1117),  # No such file or directory
 
     # Checks for 000 - Simple messages
-    ('000', 'syscheck', 'syscheck', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
-    ('000', 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
-    ('000', 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
+    (None, 'syscheck', 'syscheck', False, 'WazuhSocket', WazuhError, 1121),  # Socket does not exist
+    (None, 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
+    (None, 'syscheck', 'syscheck', True, 'WazuhSocket', WazuhInternalError, 1118),  # Data could not be received
 
     # Checks for 000 - JSON messages
-    ('000', 'request', 'global', False, 'WazuhSocketJSON', WazuhError, 1121),  # Socket does not exist
-    ('000', 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1121),  # Error connecting with socket
-    ('000', 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1118),  # Data could not be received
+    (None, 'request', 'global', False, 'WazuhSocketJSON', WazuhError, 1121),  # Socket does not exist
+    (None, 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1121),  # Error connecting with socket
+    (None, 'request', 'global', True, 'WazuhSocketJSON', WazuhInternalError, 1118),  # Data could not be received
 
     # Checks for 001
     ('001', 'syscheck', 'syscheck', ANY, 'WazuhSocket', WazuhInternalError, 1121),  # Error connecting with socket
@@ -535,7 +454,9 @@ def test_get_active_configuration_ko(mock_exists, agent_id, component, config, s
                        return_value=b'test 1' if expected_id == 1116 else b'test No such file or directory'):
                 with patch(f'wazuh.core.wazuh_socket.{socket_class}.close'):
                     with pytest.raises(expected_error, match=f'.* {expected_id} .*'):
-                        configuration.get_active_configuration(agent_id, component, config)
+                        configuration.get_active_configuration(
+                            agent_id=agent_id, component=component, configuration=config
+                        )
 
 
 def test_write_ossec_conf():
@@ -550,75 +471,3 @@ def test_write_ossec_conf_exceptions():
     with patch('wazuh.core.configuration.open', return_value=Exception):
         with pytest.raises(WazuhError, match=".* 1126 .*"):
             configuration.write_ossec_conf(new_conf="placeholder")
-
-
-@pytest.mark.parametrize(
-    'update_check_config,expected',
-    (
-        [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'yes'}}, True],
-        [{configuration.GLOBAL_KEY: {configuration.UPDATE_CHECK_OSSEC_FIELD: 'no'}}, False],
-        [{configuration.GLOBAL_KEY: {}}, True],
-        [{}, True],
-        [{'ossec_config': {}}, True]
-    )
-)
-@patch('wazuh.core.configuration.get_ossec_conf')
-def test_update_check_is_enabled(get_ossec_conf_mock, update_check_config, expected):
-    """
-    Test that update_check_is_enabled function returns the expected value,
-    based on the value of UPDATE_CHECK_OSSEC_FIELD.
-    """
-    get_ossec_conf_mock.return_value = update_check_config
-
-    assert configuration.update_check_is_enabled() == expected
-
-
-@pytest.mark.parametrize("error_id, value", [
-    (1101, None),
-    (1102, None),
-    (1103, None),
-    (1106, True)
-])
-def test_update_check_is_enabled_exceptions(error_id, value):
-    """Test update_check_is_enabled exception handling."""
-    with patch('wazuh.core.configuration.get_ossec_conf', side_effect=WazuhError(error_id), return_value=value):
-        if value is not None:
-            assert configuration.update_check_is_enabled() == value
-        else:
-            with pytest.raises(WazuhError, match=f'.* {error_id} .*'):
-                configuration.update_check_is_enabled()
-
-
-@pytest.mark.parametrize(
-    'config, expected',
-    (
-        [{configuration.GLOBAL_KEY: {configuration.CTI_URL_FIELD: configuration.DEFAULT_CTI_URL}},
-         configuration.DEFAULT_CTI_URL],
-        [{configuration.GLOBAL_KEY: {configuration.CTI_URL_FIELD: 'https://test-cti.com'}}, 'https://test-cti.com'],
-        [{configuration.GLOBAL_KEY: {}}, configuration.DEFAULT_CTI_URL],
-        [{}, configuration.DEFAULT_CTI_URL],
-        [{'ossec_config': {}}, configuration.DEFAULT_CTI_URL]
-    )
-)
-@patch('wazuh.core.configuration.get_ossec_conf')
-def test_get_cti_url(get_ossec_conf_mock, config, expected):
-    """Check that get_cti_url function returns the expected value, based on the CTI_URL_FIELD."""
-    get_ossec_conf_mock.return_value = config
-
-    assert configuration.get_cti_url() == expected
-
-
-@pytest.mark.parametrize("error_id, value", [
-    (1101, None),
-    (1102, None),
-    (1103, None),
-    (1106, configuration.DEFAULT_CTI_URL)
-])
-def test_get_cti_url_exceptions(error_id, value):
-    """Test get_cti_url exception handling."""
-    with patch('wazuh.core.configuration.get_ossec_conf', side_effect=WazuhError(error_id), return_value=value):
-        if value is not None:
-            assert configuration.get_cti_url() == value
-        else:
-            with pytest.raises(WazuhError, match=f'.* {error_id} .*'):
-                configuration.get_cti_url()

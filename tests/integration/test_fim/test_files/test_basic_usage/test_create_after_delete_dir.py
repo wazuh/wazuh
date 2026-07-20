@@ -104,7 +104,7 @@ if sys.platform == WINDOWS: local_internal_options.update({AGENTD_WINDOWS_DEBUG:
 
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_create_after_delete(test_configuration, test_metadata, configure_local_internal_options,
-                             truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, file_to_monitor, daemons_handler):
+                             truncate_monitored_files, set_wazuh_configuration, folder_to_monitor, file_to_monitor, daemons_handler, start_monitoring):
     '''
     description: Check if a monitored directory keeps reporting FIM events after deleting and creating it again.
                  Under Windows systems, it verifies that the directory watcher is refreshed (checks the SACLs)
@@ -175,11 +175,11 @@ def test_create_after_delete(test_configuration, test_metadata, configure_local_
     file.delete_path_recursively(folder_to_delete)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED), timeout=60)
     assert wazuh_log_monitor.callback_result
-    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
+    assert get_fim_event_data(wazuh_log_monitor.callback_result)['file']['mode'] == fim_mode
 
     file.recursive_directory_creation(folder_to_delete)
     time.sleep(2)
     file.write_file(filename, 'content')
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED), timeout=60)
     assert wazuh_log_monitor.callback_result
-    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
+    assert get_fim_event_data(wazuh_log_monitor.callback_result)['file']['mode'] == fim_mode

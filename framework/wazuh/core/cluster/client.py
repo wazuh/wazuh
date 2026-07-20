@@ -7,7 +7,7 @@ import itertools
 import logging
 import traceback
 from time import perf_counter
-from typing import Tuple, Dict, List
+from typing import Awaitable, Any, Tuple, Dict, List
 
 import uvloop
 
@@ -61,7 +61,7 @@ class AbstractClientManager:
         self.extra_args = {}
         self.loop = asyncio.get_running_loop()
 
-    def add_tasks(self) -> List[Tuple[asyncio.coroutine, Tuple]]:
+    def add_tasks(self) -> List[Tuple[Awaitable[Any], Tuple]]:
         """Add client tasks to the task list.
 
         The client tasks are just test functions made to test the protocol.
@@ -198,6 +198,7 @@ class AbstractClient(common.Handler):
             'None' means a regular EOF is received, or the connection was aborted or closed
             by this side of the connection.
         """
+        self._cancel_payload_deadline()
         if exc is None:
             self.logger.info('The master closed the connection')
         else:

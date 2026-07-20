@@ -11,10 +11,12 @@
 /* Syscheck
  * Copyright (C) 2003 Daniel B. Cid <daniel@underlinux.com.br>
  */
+#include "rootcheck.h"
+#include "agent_sync_protocol_c_interface.h"
+#include "db.h"
 #include "shared.h"
 #include "syscheck.h"
-#include "../rootcheck/rootcheck.h"
-#include "db.h"
+#include "startup_gate_op.h"
 
 #ifndef WIN32
 
@@ -35,19 +37,28 @@ __attribute__((noreturn)) static void help_syscheckd()
     print_out("                to increase the debug level.");
     print_out("    -t          Test configuration");
     print_out("    -f          Run in foreground");
-    print_out("    -c <config> Configuration file to use (default: %s)", OSSECCONF);
+    print_out("    -c <config> Configuration file to use (default: %s)", WAZUHCONF);
     print_out(" ");
     exit(1);
 }
 
 extern bool is_fim_shutdown;
+extern volatile int fim_sync_module_running;
 
 /* Shut down syscheckd properly */
 static void fim_shutdown(int sig)
 {
-    /* Close sync thread and release dbsync and rsync */
+    /* Close sync thread and release dbsync */
     minfo(SK_SHUTDOWN);
     is_fim_shutdown = true;
+    fim_sync_module_running = 0;
+
+    /* Stop sync protocol */
+    if (syscheck.sync_handle)
+    {
+        asp_stop(syscheck.sync_handle);
+    }
+
     fim_db_teardown();
     HandleSIG(sig);
 }
@@ -58,7 +69,7 @@ int main(int argc, char **argv)
     int c, r;
     int debug_level = 0;
     int test_config = 0, run_foreground = 0;
-    const char *cfg = OSSECCONF;
+    const char *cfg = WAZUHCONF;
     gid_t gid;
     const char *group = QUOTE(GROUPGLOBAL);
     directory_t *dir_it = NULL;
@@ -120,7 +131,6 @@ int main(int argc, char **argv)
 
     /* Initialize error logging for shared modulesd */
     dbsync_initialize(loggingErrorFunction);
-    rsync_initialize(loggingErrorFunction);
 
     /* Read internal options */
     read_internal(debug_level);
@@ -152,15 +162,11 @@ int main(int argc, char **argv)
         }
     }
 
-    /* Rootcheck config */
-    if (rootcheck_init(test_config) == 0) {
-        syscheck.rootcheck = 1;
-    } else {
-        syscheck.rootcheck = 0;
-    }
-
     /* Exit if testing config */
     if (test_config) {
+        // Validate rootcheck config too; rootcheck_init() with test_config=1
+        // only parses and exits without emitting STARTUP_MSG.
+        rootcheck_init(test_config);
         exit(0);
     }
 
@@ -185,6 +191,19 @@ int main(int argc, char **argv)
         merror_exit(PID_ERROR);
     }
 
+    startup_gate_wait_for_ready(ARGV0);
+
+    // Rootcheck initialization is deferred until after the startup hash
+    // gate releases. rootcheck_init() emits STARTUP_MSG ("wazuh-rootcheck:
+    // INFO: Started"); running it before the gate would make rootcheck
+    // appear as "Started" while every module is in fact still blocked
+    // waiting for the manager's merged.mg hash to validate (issue 36239).
+    if (rootcheck_init(0) == 0) {
+        syscheck.rootcheck = 1;
+    } else {
+        syscheck.rootcheck = 0;
+    }
+
     if (syscheck.rootcheck) {
         rootcheck_connect();
     }
@@ -207,10 +226,10 @@ int main(int argc, char **argv)
             char optstr[ 1024 ];
 
             if (dir_it->symbolic_links == NULL) {
-                minfo(FIM_MONITORING_DIRECTORY, dir_it->path,
+                mdebug1(FIM_MONITORING_DIRECTORY, dir_it->path,
                       syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
             } else {
-                minfo(FIM_MONITORING_LDIRECTORY, dir_it->path, dir_it->symbolic_links,
+                mdebug1(FIM_MONITORING_LDIRECTORY, dir_it->path, dir_it->symbolic_links,
                       syscheck_opts2str(optstr, sizeof(optstr), dir_it->options));
             }
 
@@ -238,18 +257,18 @@ int main(int argc, char **argv)
         /* Print ignores. */
         if(syscheck.ignore)
             for (r = 0; syscheck.ignore[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
+                mdebug1(FIM_PRINT_IGNORE_ENTRY, "file", syscheck.ignore[r]);
 
         /* Print sregex ignores. */
         if(syscheck.ignore_regex)
             for (r = 0; syscheck.ignore_regex[r] != NULL; r++)
-                minfo(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
+                mdebug1(FIM_PRINT_IGNORE_SREGEX, "file", syscheck.ignore_regex[r]->raw);
 
         /* Print files with no diff. */
         if (syscheck.nodiff){
             r = 0;
             while (syscheck.nodiff[r] != NULL) {
-                minfo(FIM_NO_DIFF, syscheck.nodiff[r]);
+                mdebug1(FIM_NO_DIFF, syscheck.nodiff[r]);
                 r++;
             }
         }

@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 
 int __wrap_audit_add_rule(__attribute__((unused)) const char *path,

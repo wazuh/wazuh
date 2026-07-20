@@ -41,6 +41,11 @@ private:
 
 public:
     /**
+     * @brief OnDemandManager destructor.
+     */
+    ~OnDemandManager();
+
+    /**
      * @brief Add an endpoint to the server and start it if it's not running
      *
      * @param endpoint Endpoint to add

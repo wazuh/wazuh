@@ -11,199 +11,51 @@
 
 #include "fimDB.hpp"
 #include "fimDBSpecialization.h"
-#include "promiseFactory.h"
 #include <future>
 
-
-void FIMDB::registerRSync()
-{
-    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
-
-    if (!m_stopping)
-    {
-        FIMDBCreator<OS_TYPE>::registerRsync(m_rsyncHandler,
-                                             m_dbsyncHandler->handle(),
-                                             m_syncFileMessageFunction,
-                                             m_syncRegistryMessageFunction,
-                                             m_syncRegistryEnabled);
-    }
-}
-
-void FIMDB::sync()
-{
-    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
-
-    if (!m_stopping)
-    {
-        m_loggingFunction(LOG_DEBUG, "Executing FIM sync.");
-
-        try
-        {
-            FIMDBCreator<OS_TYPE>::sync(m_rsyncHandler,
-                                        m_dbsyncHandler->handle(),
-                                        m_syncFileMessageFunction,
-                                        m_syncRegistryMessageFunction,
-                                        m_syncRegistryEnabled);
-
-            m_loggingFunction(LOG_DEBUG, "Finished FIM sync.");
-        }
-        catch (const std::exception& e)
-        {
-            auto message = std::string("Cannot sync database:") + e.what();
-            m_loggingFunction(LOG_ERROR, message);
-        }
-    }
-}
-
-void FIMDB::syncAlgorithm()
-{
-    char debugmsg[1024];
-
-    if ((uint32_t)(getCurrentTime() - m_timeLastSyncMsg) > m_syncResponseTimeout)
-    {
-        if (m_syncSuccessful && m_currentSyncInterval > m_syncInterval)
-        {
-            m_currentSyncInterval = m_syncInterval;
-
-            snprintf(debugmsg, 1024, "Previous sync was successful. Sync interval is reset to: '%ds'", m_currentSyncInterval);
-            m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
-        }
-
-        m_syncSuccessful = true;
-
-        sync();
-    }
-    else
-    {
-        m_currentSyncInterval *= 2;
-
-        if (m_currentSyncInterval > m_syncMaxInterval)
-        {
-            m_currentSyncInterval = m_syncMaxInterval;
-        }
-
-        snprintf(debugmsg, 1024, "Sync still in progress. Skipped next sync and increased interval to '%ds'", m_currentSyncInterval);
-        m_loggingFunction(LOG_DEBUG_VERBOSE, debugmsg);
-    }
-}
-
-time_t FIMDB::getCurrentTime() const
-{
-    return std::time(nullptr);
-}
-
-void FIMDB::init(unsigned int syncInterval,
-                 const uint32_t syncMaxInterval,
-                 const uint32_t syncResponseTimeout,
-                 std::function<void(const std::string&)> callbackSyncFileWrapper,
-                 std::function<void(const std::string&)> callbackSyncRegistryWrapper,
-                 std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
+void FIMDB::init(std::function<void(modules_log_level_t, const std::string&)> callbackLogWrapper,
                  std::shared_ptr<DBSync> dbsyncHandler,
-                 std::shared_ptr<RemoteSync> rsyncHandler,
                  const int fileLimit,
-                 const int registryLimit,
-                 const bool syncRegistryEnabled)
+                 const int registryLimit)
 {
-    m_syncInterval = syncInterval;
-    m_dbsyncHandler = dbsyncHandler;
-    m_rsyncHandler = rsyncHandler;
-    m_syncFileMessageFunction = callbackSyncFileWrapper;
-    m_syncRegistryMessageFunction = callbackSyncRegistryWrapper;
-    m_loggingFunction = callbackLogWrapper;
+    std::lock_guard<std::shared_timed_mutex> lock(m_handlersMutex);
+    m_dbsyncHandler = std::move(dbsyncHandler);
+    m_loggingFunction = std::move(callbackLogWrapper);
     m_stopping = false;
-    m_runIntegrity = false;
-    std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
     FIMDBCreator<OS_TYPE>::setLimits(m_dbsyncHandler, fileLimit, registryLimit);
-    m_syncRegistryEnabled = syncRegistryEnabled;
-    m_syncResponseTimeout = syncResponseTimeout;
-    m_syncMaxInterval = syncMaxInterval;
-    m_currentSyncInterval = m_syncInterval;
-    m_syncSuccessful = true;
 }
 
 void FIMDB::removeItem(const nlohmann::json& item)
 {
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
-    if (!m_stopping)
+    if (!m_stopping && m_dbsyncHandler)
     {
         m_dbsyncHandler->deleteRows(item);
     }
 }
 
-void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData callbackData)
+void FIMDB::updateItem(const nlohmann::json& item, ResultCallbackData& callbackData)
 {
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
-    if (!m_stopping)
+    if (!m_stopping && m_dbsyncHandler)
     {
         m_dbsyncHandler->syncRow(item, callbackData);
     }
 }
 
-void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData callbackData)
-{
-    m_dbsyncHandler->selectRows(item, callbackData);
-}
-
-void FIMDB::runIntegrity()
-{
-    std::lock_guard<std::mutex> lock{m_fimSyncMutex};
-
-    if (!m_runIntegrity)
-    {
-        m_runIntegrity = true;
-        registerRSync();
-        auto promise { PromiseFactory<PROMISE_TYPE>::getPromiseObject() };
-        m_integrityThread = std::thread([&]()
-        {
-            m_loggingFunction(LOG_INFO, "FIM sync module started.");
-            sync();
-            promise->set_value();
-            std::unique_lock<std::mutex> lockCv{m_fimSyncMutex};
-
-            while (!m_cv.wait_for(lockCv, std::chrono::seconds{m_currentSyncInterval}, [&]()
-        {
-            return m_stopping;
-        }))
-            {
-                // LCOV_EXCL_START
-                syncAlgorithm();
-                // LCOV_EXCL_STOP
-            }
-        });
-        promise->wait();
-
-    }
-    else
-    {
-        throw std::runtime_error("FIM integrity thread already running.");
-    }
-}
-
-void FIMDB::pushMessage(const std::string& data)
+void FIMDB::executeQuery(const nlohmann::json& item, ResultCallbackData& callbackData)
 {
     std::shared_lock<std::shared_timed_mutex> lock(m_handlersMutex);
 
-    if (!m_stopping)
+    if (!m_stopping && m_dbsyncHandler)
     {
-        auto rawData{data};
-        Utils::replaceFirst(rawData, "dbsync ", "");
-        const auto buff{reinterpret_cast<const uint8_t*>(rawData.c_str())};
-        setTimeLastSyncMsg();
-        m_syncSuccessful = false;
-
-        try
-        {
-            m_rsyncHandler->pushMessage(std::vector<uint8_t> {buff, buff + rawData.size()});
-        }
-        // LCOV_EXCL_START
-        catch (const std::exception& ex)
-        {
-            m_loggingFunction(LOG_ERROR, ex.what());
-        }
-
-        // LCOV_EXCL_STOP
+        m_dbsyncHandler->selectRows(item, callbackData);
+    }
+    else if (m_loggingFunction)
+    {
+        m_loggingFunction(LOG_DEBUG, "Query not executed: FIMDB is not initialized or is shutting down");
     }
 }
 
@@ -212,15 +64,37 @@ void FIMDB::teardown()
 
     try
     {
-        stopIntegrity();
+        m_stopping = true;
         std::lock_guard<std::shared_timed_mutex> lock(m_handlersMutex);
-        m_rsyncHandler = nullptr;
         m_dbsyncHandler = nullptr;
     }
     // LCOV_EXCL_START
     catch (const std::exception& ex)
     {
-        auto errmsg { "There is a problem to close FIMDB " + std::string(ex.what()) };
+        auto errmsg {"There is a problem to close FIMDB " + std::string(ex.what())};
+        m_loggingFunction(LOG_ERROR, errmsg);
+    }
+
+    // LCOV_EXCL_STOP
+}
+
+void FIMDB::closeAndDeleteDatabase()
+{
+    try
+    {
+        m_stopping = true;
+        std::lock_guard<std::shared_timed_mutex> lock(m_handlersMutex);
+
+        if (m_dbsyncHandler)
+        {
+            m_dbsyncHandler->closeAndDeleteDatabase();
+            m_dbsyncHandler = nullptr;
+        }
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& ex)
+    {
+        auto errmsg {"There is a problem to close and delete FIMDB " + std::string(ex.what())};
         m_loggingFunction(LOG_ERROR, errmsg);
     }
 

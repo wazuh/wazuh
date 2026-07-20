@@ -1,0 +1,44 @@
+# Name of the helper function
+name: syslog_extract_facility
+
+metadata:
+  description: |
+    Derives the syslog facility `code` and `name` from a priority value following RFC 5424.
+    Valid priorities range from 0 to 191 (facility*8 + severity).
+    The helper returns an object so it can be stored under `log.syslog.facility`.
+  keywords:
+    - syslog
+    - facility name
+    - facility code
+
+helper_type: map
+
+arguments:
+  priority:
+    type: number
+    generate: integer
+    source: reference
+
+is_variadic: false
+
+output:
+  type: object
+
+test:
+  - arguments:
+      priority: 165
+    should_pass: true
+    expected:
+      code: 20
+      name: local4
+    description: Facility derived from priority 165 (local4).
+
+  - arguments:
+      priority: 255
+    should_pass: false
+    description: Reject priority above 191.
+
+  - arguments:
+      priority: -1
+    should_pass: false
+    description: Reject negative priority values.

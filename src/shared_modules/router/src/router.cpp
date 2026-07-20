@@ -9,11 +9,18 @@
  * Foundation.
  */
 
+#include "router.h"
+#include "flatbuffers/include/inventorySync_generated.h"
 #include "logging_helper.h"
+#include <algorithm>
+#include <cctype>
+#include <cstring>
+#include <fmt/format.h>
 #include <functional>
 #include <iostream>
 #include <string>
-static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION;
+
+static std::function<void(const modules_log_level_t, const std::string&)> GS_LOG_FUNCTION = nullptr;
 
 void logMessage(const modules_log_level_t level, const std::string& msg)
 {
@@ -24,17 +31,12 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
 }
 
 #include "external/cpp-httplib/httplib.h"
-#include "flatbuffers/idl.h"
 #include "router.h"
 #include "routerFacade.hpp"
 #include "routerModule.hpp"
 #include "routerModuleGateway.hpp"
 #include "routerProvider.hpp"
 #include "routerSubscriber.hpp"
-#include "schemaAdapter.hpp"
-#include "shared_modules/utils/flatbuffers/include/rsync_schema.h"
-#include "shared_modules/utils/flatbuffers/include/syscheck_deltas_schema.h"
-#include "shared_modules/utils/flatbuffers/include/syscollector_deltas_schema.h"
 #include <filesystem>
 #include <malloc.h>
 #include <utility>
@@ -42,29 +44,8 @@ void logMessage(const modules_log_level_t level, const std::string& msg)
 std::map<ROUTER_PROVIDER_HANDLE, std::shared_ptr<RouterProvider>> PROVIDERS;
 std::shared_mutex PROVIDERS_MUTEX;
 
-std::map<msg_type, flatbuffers::Parser> initSchemaParsers()
-{
-    std::map<msg_type, flatbuffers::Parser> SCHEMA_PARSERS;
-    std::map<msg_type, const char*> SCHEMA_MAP = {
-        {MT_SYS_DELTAS, syscollector_deltas_SCHEMA},
-        {MT_SYNC, rsync_SCHEMA},
-        {MT_SYSCHECK_DELTAS, syscheck_deltas_SCHEMA},
-    };
-
-    for (const auto& [type, schema] : SCHEMA_MAP)
-    {
-        SCHEMA_PARSERS[type] = flatbuffers::Parser();
-        SCHEMA_PARSERS[type].opts.skip_unexpected_fields_in_json = true;
-        SCHEMA_PARSERS[type].opts.zero_on_float_to_int =
-            true; // Avoids issues with float to int conversion, custom option made for Wazuh.
-
-        if (!SCHEMA_PARSERS[type].Parse(schema))
-        {
-            throw std::runtime_error("Error parsing schema, " + std::string(SCHEMA_PARSERS[type].error_));
-        }
-    }
-    return SCHEMA_PARSERS;
-}
+std::map<ROUTER_SUBSCRIBER_HANDLE, std::shared_ptr<RouterSubscriber>> SUBSCRIBERS;
+std::shared_mutex SUBSCRIBERS_MUTEX;
 
 /**
  * @brief Struct to hold the server instance and its thread.
@@ -78,12 +59,9 @@ struct ServerInstance final
 
 std::map<std::string, std::shared_ptr<ServerInstance>> G_HTTPINSTANCES;
 
-void RouterModule::initialize(const std::function<void(const modules_log_level_t, const std::string&)>& logFunction)
+void RouterModule::initialize(std::function<void(const modules_log_level_t, const std::string&)> logFunction)
 {
-    if (!GS_LOG_FUNCTION)
-    {
-        GS_LOG_FUNCTION = logFunction;
-    }
+    GS_LOG_FUNCTION = std::move(logFunction);
 }
 
 void RouterModule::start()
@@ -206,13 +184,23 @@ extern "C"
 {
 #endif
 
-    int router_initialize(log_callback_t callbackLog)
+    int router_initialize(log_callback_t callbackLog, const char* processTag)
     {
         int retVal = 0;
         try
         {
-            RouterModule::initialize([callbackLog](const modules_log_level_t level, const std::string& msg)
-                                     { callbackLog(level, msg.c_str(), ":router"); });
+            // Set the module context so all shared-library objects created on this
+            // thread (Publisher, FilterMsgDispatcher, …) pick up the right base tag.
+            Log::setModuleLogFn(LogFn {processTag ? processTag : ""});
+            const LogFn routerLogFn = makeLibLogFn("router");
+            RouterModule::initialize(
+                [callbackLog, routerLogFn](const modules_log_level_t level, const std::string& msg)
+                {
+                    if (callbackLog)
+                    {
+                        callbackLog(level, msg.c_str(), routerLogFn.c_str());
+                    }
+                });
             logMessage(modules_log_level_t::LOG_DEBUG, "Router initialized successfully.");
         }
         catch (...)
@@ -303,93 +291,131 @@ extern "C"
         return retVal;
     }
 
-    int router_provider_send_fb(ROUTER_PROVIDER_HANDLE handle, const char* message, const char* schema)
+    int router_provider_send_sync(ROUTER_PROVIDER_HANDLE handle,
+                                  const char* message,
+                                  unsigned int message_size,
+                                  const char* authenticated_agent_id,
+                                  const char* manager_cluster_name)
     {
-        int retVal = -1;
         try
         {
-            if (!message)
+            if (!message || message_size == 0)
             {
-                throw std::runtime_error("Error sending message to provider. Message is empty");
+                throw std::runtime_error("Message is empty");
             }
-            else
-            {
-                flatbuffers::Parser parser;
-                parser.opts.skip_unexpected_fields_in_json = true;
-                parser.opts.zero_on_float_to_int =
-                    true; // Avoids issues with float to int conversion, custom option made for Wazuh.
 
-                if (!parser.Parse(schema))
+            if (!authenticated_agent_id || strlen(authenticated_agent_id) == 0)
+            {
+                throw std::runtime_error("Authenticated agent ID is empty");
+            }
+
+            if (!manager_cluster_name || strlen(manager_cluster_name) == 0)
+            {
+                throw std::runtime_error("Manager cluster name is empty");
+            }
+
+            // Verify flatbuffer structure
+            flatbuffers::Verifier verifier(reinterpret_cast<const uint8_t*>(message), message_size);
+            if (!Wazuh::SyncSchema::VerifyMessageBuffer(verifier))
+            {
+                throw std::runtime_error("Invalid flatbuffer message structure");
+            }
+
+            auto syncMessage = Wazuh::SyncSchema::GetMessage(message);
+
+            // Anti-spoofing validation: only validate Start messages (which contain agent ID)
+            if (syncMessage->content_type() == Wazuh::SyncSchema::MessageType_Start)
+            {
+                const auto startMsg = syncMessage->content_as_Start();
+                if (!startMsg)
                 {
-                    throw std::runtime_error("Error parsing schema, " + std::string(parser.error_));
+                    logMessage(modules_log_level_t::LOG_ERROR, "Invalid Start message");
+                    return -1;
                 }
 
-                if (!parser.Parse(message))
+                // Start message MUST have an agent ID
+                if (!startMsg->agentid() || startMsg->agentid()->size() == 0)
                 {
-                    throw std::runtime_error("Error parsing message, " + std::string(parser.error_));
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Agent ID validation failed: Start message missing agent ID");
+                    return -1;
                 }
 
-                std::vector<char> data(parser.builder_.GetBufferPointer(),
-                                       parser.builder_.GetBufferPointer() + parser.builder_.GetSize());
-                std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
-                PROVIDERS.at(handle)->send(data);
-                retVal = 0;
+                auto claimedAgentId = startMsg->agentid()->string_view();
+
+                // Validate that both IDs contain only digits
+                auto isNumeric = [](std::string_view str)
+                {
+                    return !str.empty() && std::all_of(str.begin(), str.end(), ::isdigit);
+                };
+
+                if (!isNumeric(authenticated_agent_id) || !isNumeric(claimedAgentId))
+                {
+                    logMessage(
+                        modules_log_level_t::LOG_ERROR,
+                        fmt::format("Agent ID validation failed: non-numeric ID. Authenticated: '{}', Claimed: '{}'",
+                                    authenticated_agent_id,
+                                    claimedAgentId));
+                    return -1;
+                }
+
+                // Compare agent IDs as integers to handle leading zeros
+                int authIdInt = std::atoi(authenticated_agent_id);
+                int claimIdInt = std::atoi(claimedAgentId.data());
+
+                if (authIdInt != claimIdInt)
+                {
+                    logMessage(modules_log_level_t::LOG_WARNING,
+                               fmt::format("Agent ID spoofing detected! Authenticated agent '{}' claimed to be '{}'. "
+                                           "Connection rejected.",
+                                           authenticated_agent_id,
+                                           claimedAgentId));
+                    return -1;
+                }
+
+                logMessage(modules_log_level_t::LOG_DEBUG,
+                           fmt::format("Agent ID validation passed for agent '{}'", authenticated_agent_id));
+
+                // Start message MUST have a cluster name
+                if (!startMsg->cluster_name() || startMsg->cluster_name()->size() == 0)
+                {
+                    logMessage(modules_log_level_t::LOG_ERROR,
+                               "Cluster name validation failed: Start message missing cluster name");
+                    return -1;
+                }
+
+                auto claimedClusterName = startMsg->cluster_name()->string_view();
+                size_t managerClusterNameLen = strlen(manager_cluster_name);
+
+                if (claimedClusterName.size() != managerClusterNameLen ||
+                    strncmp(claimedClusterName.data(), manager_cluster_name, managerClusterNameLen) != 0)
+                {
+                    logMessage(modules_log_level_t::LOG_WARNING,
+                               fmt::format("Cluster name spoofing detected! Agent '{}' claimed cluster name '{}' but "
+                                           "manager cluster name is '{}'. Connection rejected.",
+                                           authenticated_agent_id,
+                                           claimedClusterName,
+                                           manager_cluster_name));
+                    return -1;
+                }
+
+                logMessage(modules_log_level_t::LOG_DEBUG,
+                           fmt::format("Cluster name validation passed for agent '{}' in cluster '{}'",
+                                       authenticated_agent_id,
+                                       manager_cluster_name));
             }
+
+            // Validation passed, send the message
+            std::vector<char> data(message, message + message_size);
+            std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
+            PROVIDERS.at(handle)->send(data);
+            return 0;
         }
         catch (const std::exception& e)
         {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error in router_provider_send_sync: ") + e.what());
+            return -1;
         }
-        return retVal;
-    }
-
-    int router_provider_send_fb_json(ROUTER_PROVIDER_HANDLE handle,
-                                     const char* message,
-                                     const agent_ctx* agent_ctx,
-                                     const msg_type schema)
-    {
-        int retVal = -1;
-        try
-        {
-            if (!message)
-            {
-                throw std::runtime_error("Error sending message to provider. Message is empty");
-            }
-            else
-            {
-                static thread_local auto parserMap = initSchemaParsers();
-                static thread_local std::string buffer;
-
-                auto& parser = parserMap.at(schema);
-                parser.builder_.Clear();
-
-                buffer.clear();
-
-                SchemaAdapter::adaptJsonMessage(message, schema, agent_ctx, buffer);
-
-                if (buffer.empty())
-                {
-                    return 0;
-                }
-
-                if (!parser.Parse(buffer.c_str()))
-                {
-                    logMessage(modules_log_level_t::LOG_ERROR, "JSON message: " + buffer);
-                    throw std::runtime_error("Error parsing message, " + std::string(parser.error_));
-                }
-
-                std::vector<char> data(parser.builder_.GetBufferPointer(),
-                                       parser.builder_.GetBufferPointer() + parser.builder_.GetSize());
-                std::shared_lock<std::shared_mutex> lock(PROVIDERS_MUTEX);
-                PROVIDERS.at(handle)->send(data);
-                retVal = 0;
-            }
-        }
-        catch (const std::exception& e)
-        {
-            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error sending message to provider: ") + e.what());
-        }
-        return retVal;
     }
 
     void router_provider_destroy(ROUTER_PROVIDER_HANDLE handle)
@@ -429,6 +455,7 @@ extern "C"
 
         if (methodStr.compare("GET") == 0)
         {
+            // LCOV_EXCL_START
             logMessage(modules_log_level_t::LOG_INFO, "Registering GET endpoint: " + endpointStr);
             instance->server->Get(
                 endpoint,
@@ -445,9 +472,11 @@ extern "C"
                                "GET: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
                 });
+            // LCOV_EXCL_STOP
         }
         else if (methodStr.compare("POST") == 0)
         {
+            // LCOV_EXCL_START
             logMessage(modules_log_level_t::LOG_INFO, "Registering POST endpoint: " + endpointStr);
             instance->server->Post(
                 endpoint,
@@ -462,6 +491,7 @@ extern "C"
                                "POST: " + endpointStr + " request processed in " + std::to_string(duration.count()) +
                                    " us");
                 });
+            // LCOV_EXCL_STOP
         }
         else
         {
@@ -495,6 +525,7 @@ extern "C"
                 std::filesystem::path path {SOCKETPATH + socketPathStr};
                 std::filesystem::create_directories(path.parent_path());
                 instance->server->set_address_family(AF_UNIX);
+                // LCOV_EXCL_START
                 instance->server->set_exception_handler(
                     [](const auto& req, auto& res, std::exception_ptr ep)
                     {
@@ -513,26 +544,27 @@ extern "C"
                         }
                         res.status = 500;
                     });
-                instance->running = instance->server->listen(path.c_str(), true);
+                // LCOV_EXCL_STOP
 
+                // Set umask to create socket with 0660 permissions
+                mode_t oldMask = umask(0117); // umask 0117 creates files with 0660
+
+                // Bind to socket and listen
+                instance->server->bind_to_port(path.c_str(), true);
+
+                // Listen
+                instance->running = instance->server->listen_after_bind();
+
+                umask(oldMask); // Restore original umask
                 if (instance->running == false)
                 {
                     logMessage(modules_log_level_t::LOG_ERROR, "Error starting API. Failed to listen on socket");
                     return;
                 }
-
-                if (chmod(path.c_str(), 0660) == 0)
-                {
-                    logMessage(modules_log_level_t::LOG_DEBUG_VERBOSE, "API socket permissions set to 0660");
-                }
-                else
-                {
-                    logMessage(modules_log_level_t::LOG_ERROR,
-                               "Error setting API socket permissions: " + std::string(strerror(errno)));
-                }
             });
-        // Spin lock until server is ready
-        while (!instance->server->is_running() && instance->running)
+
+        // Spin lock until server is ready or thread finishes
+        while (!instance->server->is_running() && instance->serverThread.joinable())
         {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
@@ -557,6 +589,80 @@ extern "C"
                 it->second->serverThread.join();
             }
             G_HTTPINSTANCES.erase(it);
+        }
+    }
+
+    ROUTER_SUBSCRIBER_HANDLE router_subscriber_create(const char* topic_name, const char* subscriber_id, bool isLocal)
+    {
+        ROUTER_SUBSCRIBER_HANDLE retVal = nullptr;
+        try
+        {
+            if (!topic_name || !subscriber_id)
+            {
+                logMessage(modules_log_level_t::LOG_ERROR,
+                           "Error creating subscriber. Topic name or subscriber ID is empty");
+            }
+            else
+            {
+                std::shared_ptr<RouterSubscriber> subscriber =
+                    std::make_shared<RouterSubscriber>(topic_name, subscriber_id, isLocal);
+                std::unique_lock<std::shared_mutex> lock(SUBSCRIBERS_MUTEX);
+                SUBSCRIBERS[subscriber.get()] = subscriber;
+                retVal = subscriber.get();
+            }
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error creating subscriber: ") + e.what());
+        }
+
+        return retVal;
+    }
+
+    int router_subscriber_subscribe(ROUTER_SUBSCRIBER_HANDLE handle, router_subscriber_callback_t callback)
+    {
+        int retVal = -1;
+        try
+        {
+            if (!callback)
+            {
+                throw std::runtime_error("Error subscribing. Callback is null");
+            }
+            else
+            {
+                std::unique_lock<std::shared_mutex> lock(SUBSCRIBERS_MUTEX);
+                SUBSCRIBERS.at(handle)->subscribe([callback](const std::vector<char>& message)
+                                                  { callback(message.data()); });
+                retVal = 0;
+            }
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error subscribing: ") + e.what());
+        }
+        return retVal;
+    }
+
+    void router_subscriber_unsubscribe(ROUTER_SUBSCRIBER_HANDLE handle)
+    {
+        try
+        {
+            std::unique_lock<std::shared_mutex> lock(SUBSCRIBERS_MUTEX);
+            SUBSCRIBERS.at(handle).reset();
+        }
+        catch (const std::exception& e)
+        {
+            logMessage(modules_log_level_t::LOG_ERROR, std::string("Error unsubscribing: ") + e.what());
+        }
+    }
+
+    void router_subscriber_destroy(ROUTER_SUBSCRIBER_HANDLE handle)
+    {
+        std::unique_lock<std::shared_mutex> lock(SUBSCRIBERS_MUTEX);
+        auto it = SUBSCRIBERS.find(handle);
+        if (it != SUBSCRIBERS.end())
+        {
+            SUBSCRIBERS.erase(it);
         }
     }
 

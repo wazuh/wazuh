@@ -16,6 +16,8 @@
 #include "dbsync_implementation.h"
 #include "dbsyncPipelineFactory.h"
 #include "cjsonSmartDeleter.hpp"
+#include "hashHelper.h"
+#include "stringHelper.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -677,6 +679,41 @@ void dbsync_free_result(cJSON** js_data)
     }
 }
 
+int dbsync_close_and_delete_db(const DBSYNC_HANDLE handle,
+                               const char*         path)
+{
+    auto retVal { -1 };
+    std::string errorMessage;
+
+    if (!handle || !path)
+    {
+        errorMessage += "Invalid parameters.";
+    }
+    else
+    {
+        try
+        {
+            DBSyncImplementation::instance().closeAndDeleteDatabase(handle, path);
+            retVal = 0;
+        }
+        catch (const DbSync::dbsync_error& ex)
+        {
+            errorMessage += "DB error, id: " + std::to_string(ex.id()) + ". " + ex.what();
+            retVal = ex.id();
+        }
+        // LCOV_EXCL_START
+        catch (...)
+        {
+            errorMessage += "Unrecognized error.";
+        }
+
+        // LCOV_EXCL_STOP
+    }
+
+    log_message(errorMessage);
+    return retVal;
+}
+
 #ifdef __cplusplus
 }
 #endif
@@ -698,6 +735,7 @@ DBSync::DBSync(const HostType                  hostType,
                const std::vector<std::string>& upgradeStatements)
     : m_dbsyncHandle { DBSyncImplementation::instance().initialize(hostType, dbType, path, sqlStatement, dbManagement, upgradeStatements) }
     , m_shouldBeRemoved{ true }
+    , m_dbPath{ path }
 { }
 
 DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
@@ -707,7 +745,9 @@ DBSync::DBSync(const DBSYNC_HANDLE dbsyncHandle)
 
 DBSync::~DBSync()
 {
-    if (m_shouldBeRemoved)
+    // Only release context if we own it AND the singleton is not being destroyed
+    // This prevents use-after-free during static destruction order issues
+    if (m_shouldBeRemoved && !DBSyncImplementation::isShuttingDown())
     {
         DBSyncImplementation::instance().releaseContext(m_dbsyncHandle);
     }
@@ -801,6 +841,118 @@ void DBSync::updateWithSnapshot(const nlohmann::json&     jsInput,
     DBSyncImplementation::instance().updateSnapshotData(m_dbsyncHandle, jsInput, callbackWrapper);
 }
 
+void DBSync::closeAndDeleteDatabase()
+{
+    DBSyncImplementation::instance().closeAndDeleteDatabase(m_dbsyncHandle, m_dbPath);
+}
+
+std::string DBSync::getConcatenatedChecksums(const std::string& tableName)
+{
+    return getConcatenatedChecksums(tableName, "");
+}
+
+std::string DBSync::getConcatenatedChecksums(const std::string& tableName, const std::string& rowFilter)
+{
+    std::string concatenatedChecksums;
+
+    auto callback = [&concatenatedChecksums](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (type == ReturnTypeCallback::SELECTED)
+        {
+            concatenatedChecksums += jsonResult.at("checksum").get<std::string>();
+        }
+    };
+
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList({"checksum"})
+                      .orderByOpt("checksum")
+                      .rowFilter(rowFilter)
+                      .distinctOpt(false)
+                      .build()};
+
+    selectRows(selectQuery.query(), callback);
+
+    return concatenatedChecksums;
+}
+
+std::string DBSync::calculateTableChecksum(const std::string& tableName)
+{
+    return calculateTableChecksum(tableName, "");
+}
+
+std::string DBSync::calculateTableChecksum(const std::string& tableName, const std::string& rowFilter)
+{
+    std::string concatenated_checksums = getConcatenatedChecksums(tableName, rowFilter);
+
+    // Build checksum-of-checksums
+    Utils::HashData hash(Utils::HashType::Sha1);
+    std::string final_checksum;
+
+    hash.update(concatenated_checksums.c_str(), concatenated_checksums.length());
+    const std::vector<unsigned char> hashResult = hash.hash();
+    final_checksum = Utils::asciiToHex(hashResult);
+
+    return final_checksum;
+}
+
+void DBSync::increaseEachEntryVersion(const std::string& tableName)
+{
+    std::vector<nlohmann::json> rows;
+    auto callback {[&rows](ReturnTypeCallback type, const nlohmann::json & jsonResult)
+    {
+        if (ReturnTypeCallback::SELECTED == type)
+        {
+            rows.push_back(jsonResult);
+        }
+    }};
+
+    auto selectQuery {SelectQuery::builder()
+                      .table(tableName)
+                      .columnList({"*"})
+                      .orderByOpt("")
+                      .distinctOpt(false)
+                      .build()};
+
+    selectRows(selectQuery.query(), callback);
+
+    size_t processed = 0;
+
+    for (auto& row : rows)
+    {
+        try
+        {
+            row["version"] = row["version"].get<int>() + 1;
+
+            auto updateCallback {[](ReturnTypeCallback, const nlohmann::json&) {}};
+
+            auto syncQuery {SyncRowQuery::builder()
+                            .table(tableName)
+                            .data(row)
+                            .build()};
+
+            syncRow(syncQuery.query(), updateCallback);
+            processed++;
+        }
+        catch (const std::exception& ex)
+        {
+            // Log which entry failed with as much context as possible
+            std::string entryInfo = "entry " + std::to_string(processed + 1) + "/" + std::to_string(rows.size());
+
+            // Try to get primary key info if available
+            if (row.contains("id"))
+            {
+                entryInfo += " (id: " + row["id"].dump() + ")";
+            }
+
+            log_message("Failed to update version for " + entryInfo + " in table " + tableName + ": " + ex.what());
+
+            // Re-throw to stop the recovery process
+            throw;
+        }
+    }
+
+}
 
 DBSyncTxn::DBSyncTxn(const DBSYNC_HANDLE   handle,
                      const nlohmann::json& tables,

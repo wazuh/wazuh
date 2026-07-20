@@ -249,12 +249,8 @@ bool isSingleSpace(const T& obj)
     {
         constexpr auto fields = T::fields();
         bool allSpaces = true;
-        std::apply(
-            [&](auto&&... field) {
-                ((allSpaces = allSpaces && isSingleSpace(obj.*(std::get<2>(field)))), ...);
-            },
-            fields
-    );
+        std::apply([&](auto&&... field) { ((allSpaces = allSpaces && isSingleSpace(obj.*(std::get<2>(field)))), ...); },
+                   fields);
         return allSpaces;
     }
     else if constexpr (std::is_same_v<std::decay_t<T>, std::string> ||

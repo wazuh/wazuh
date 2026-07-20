@@ -33,8 +33,8 @@
 #include "../wrappers/wazuh/syscheckd/run_check_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/win_whodata_wrappers.h"
 
-#include "../syscheckd/include/syscheck.h"
-#include "../config/syscheck-config.h"
+#include "syscheck.h"
+#include "syscheck-config.h"
 
 #ifdef TEST_WINAGENT
 // This struct should always reflect the one defined in run_realtime.c
@@ -333,7 +333,7 @@ void test_realtime_start_success(void **state) {
     expect_function_call(__wrap_OSHash_SetFreeDataPointer);
     will_return(__wrap_OSHash_SetFreeDataPointer, 0);
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
     will_return(__wrap_inotify_init, 0);
 #else
     expect_value(wrap_CreateEvent, lpEventAttributes, NULL);
@@ -368,7 +368,7 @@ void test_realtime_start_failure_hash(void **state) {
     assert_int_equal(ret, -1);
 }
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
 
 void test_realtime_start_failure_inotify(void **state) {
     OSHash *hash = *state;
@@ -722,7 +722,7 @@ void test_realtime_process_overflow(void **state) {
     expect_string(__wrap__mwarn, formatted_msg, "Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     expect_function_call(__wrap_pthread_mutex_lock);
     expect_function_call(__wrap_pthread_mutex_unlock);
-    expect_string(__wrap_send_log_msg, msg, "ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+    expect_string(__wrap_send_log_msg, msg, "wazuh: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
     will_return(__wrap_send_log_msg, 1);
 
     char **paths = NULL;
@@ -1968,7 +1968,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_realtime_start_success, setup_realtime_start, teardown_realtime_start),
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_hash, setup_realtime_start, teardown_realtime_start),
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
         cmocka_unit_test_setup_teardown(test_realtime_start_failure_inotify, setup_realtime_start, teardown_realtime_start),
 
         /* realtime_adddir */

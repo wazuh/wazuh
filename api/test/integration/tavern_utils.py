@@ -8,7 +8,7 @@ import re
 import subprocess
 import time
 from base64 import b64decode
-from datetime import datetime
+from datetime import datetime, timezone
 from json import loads
 
 from box import Box
@@ -65,8 +65,7 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
     select_key : str
         Keys requested in select parameter. Lists and nested fields accepted e.g: id,cpu.mhz,json
     flag_nested_key_list : bool
-        Flag used to indicate that the nested key contains a list. Used to test endpoints like
-        GET /sca/{agent_id}/checks/{policy_id}.
+        Flag used to indicate that the nested key contains a list.
     """
     main_keys = set()
     nested_keys = dict()
@@ -98,41 +97,12 @@ def test_select_key_affected_items(response, select_key, flag_nested_key_list=Fa
             try:
                 if not flag_nested_key_list:
                     set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]].keys()))
-
-                # If we are using select in endpoints like GET /sca/{agent_id}/checks/{policy_id},
-                # the nested field contains a list
                 else:
                     set2 = nested_key[1].symmetric_difference(set(item[nested_key[0]][0].keys()))
 
                 assert set2 == set(), f'Nested select keys are {nested_key[1]}, but this one is different {set2}'
             except KeyError:
                 assert nested_key[0] in main_keys
-
-
-def test_select_distinct_nested_sca_checks(response, select_key):
-    """Check that all items in response have no other keys than those specified in 'select_key'.
-
-    This function is specifically used for the SCA checks endpoint, when distinct=True and select contains a nested
-    field.
-
-    This function does not take into account min select fields.
-
-    Absence of 'select_key' in response does not raise any error. However, extra keys in response (not specified
-    in 'select_key') will raise assertion error.
-
-    Parameters
-    ----------
-    response : Request response
-    select_key : str
-        Keys requested in select parameter. Lists and nested fields accepted e.g: id,cpu.mhz,json
-    """
-    main_keys = set(select_key.split(','))
-
-    for item in response.json()['data']['affected_items']:
-        # Check that there are no keys in the item that are not specified in 'select_keys'
-        set1 = main_keys.symmetric_difference(set(item.keys()))
-        assert set1 == set() or set1 == set1.intersection(main_keys), \
-            f'Select keys are {main_keys}, but an item contains the keys: {set(item.keys())}'
 
 
 def test_select_key_affected_items_with_agent_id(response, select_key):
@@ -314,15 +284,20 @@ def test_validate_mitre(response, data, index=0):
             assert v == response.json()['data']['affected_items'][index][k]
 
 
-def test_validate_restart_by_node(response, data):
-    data = json.loads(data.replace("'", '"'))
-    affected_items = list()
-    for item in data['affected_items']:
-        if item['status'] == 'active':
-            affected_items.append(item['id'])
-    assert response.json()['data']['affected_items'] == affected_items
-    assert not response.json()['data']['failed_items']
-    healthcheck_agent_restart(response, affected_items)
+def test_validate_restart_by_node(response, node_connected_agents_response , non_restartable_agents : list = None):
+
+    non_restartable_agents = non_restartable_agents or []
+
+    node_connected_agents_response = json.loads(node_connected_agents_response.replace("'", '"'))
+
+    expected_affected_items = list()
+    for item in node_connected_agents_response['affected_items']:
+        if item['status'] == 'active' and item['id'] not in non_restartable_agents:
+            expected_affected_items.append(item['id'])
+
+    assert response.json()['data']['affected_items'] == expected_affected_items
+
+    healthcheck_agent_restart(response, expected_affected_items)
 
 
 def test_validate_restart_by_node_rbac(response, permitted_agents):
@@ -352,18 +327,6 @@ def test_validate_auth_context(response, expected_roles=None):
     token = response.json()['data']['token'].split('.')[1]
     payload = loads(b64decode(token + '===').decode())
     assert payload['rbac_roles'] == expected_roles
-
-
-def test_validate_syscollector_hotfix(response, hotfix_filter=None, experimental=False):
-    hotfixes_keys = {'hotfix', 'scan_id', 'scan_time'}
-    if experimental:
-        hotfixes_keys.add('agent_id')
-    affected_items = response.json()['data']['affected_items']
-    if affected_items:
-        for item in affected_items:
-            assert set(item.keys()) == hotfixes_keys
-            if hotfix_filter:
-                assert item['hotfix'] == hotfix_filter
 
 
 def test_validate_group_configuration(response, expected_field, expected_value):
@@ -439,14 +402,14 @@ def check_agentd_started(response, agents_list, restarted=True):
         return datetime.strptime(timestamp, "%Y/%m/%d %H:%M:%S")
 
     # Save the time when the restart command was sent
-    restart_request_time = datetime.utcnow().replace(microsecond=0) - response.elapsed
+    restart_request_time = datetime.now(timezone.utc).replace(microsecond=0) - response.elapsed
 
     for agent_id in agents_list:
         tries = 0
         agentd_started_regex = (
             re.compile(r"agentd.+Started")
-            if restarted or agent_id in ["005", "006", "007", "008"]
-            else re.compile(r"agentd.+(Reload|Started)")
+            if restarted
+            else re.compile(r"agentd.+(Reload|reloading|Started)")
         )
         while tries < 80:
             try:
@@ -460,7 +423,7 @@ def check_agentd_started(response, agents_list, restarted=True):
             logs_after_restart = [agentd_log for agentd_log in output if
                                   get_timestamp(agentd_log).timestamp() >= restart_request_time.timestamp()]
 
-            # Check the log indicating agentd started is in the agent's ossec.log (after the restart request)
+            # Check the log indicating agentd started is in the agent's wazuh log file (after the restart request)
             if any(agentd_started_regex.search(string=agentd_log) for agentd_log in logs_after_restart):
                 break
 
@@ -485,7 +448,7 @@ def check_agent_active_status(agents_list):
     while tries < 25:
         try:
             # Get active agents
-            output = subprocess.check_output(f"docker exec env-wazuh-master-1 /var/ossec/framework/python/bin/python3 "
+            output = subprocess.check_output(f"docker exec env-wazuh-master-1 /var/wazuh-manager/framework/python/bin/python3 "
                                              f"{active_agents_script_path}".split()).decode().strip()
         except subprocess.SubprocessError as exc:
             raise subprocess.SubprocessError("Error while trying to get agents") from exc
@@ -520,63 +483,3 @@ def healthcheck_agent_restart(response, agents_list, restarted=True):
     time.sleep(20)
     # Wait for active agent status (up to 25 seconds)
     check_agent_active_status(agents_list)
-
-
-def validate_update_check_response(response, current_version, update_check):
-    """Check that the update check response contains the expected fields, and verify if the 'last_available_*'
-    dictionaries have the correct keys and values.
-
-    Parameters
-    ----------
-    response : Request response
-    """
-    error_code = response.json()['error']
-    if response.status_code == 500:
-        assert error_code == 2100
-        return
-
-    available_update_keys = ["last_available_major", "last_available_minor", "last_available_patch"]
-    keys_to_check = [
-        ("tag", str), ("description", (str, type(None))), ("title", str), ("published_date", str), ("semver", dict)
-    ]
-
-    data = response.json()['data']
-
-    assert error_code == 0
-    assert data['current_version'] == current_version
-    assert data['update_check'] == update_check
-    assert data['uuid'] is not None
-    last_check_date = data['last_check_date']
-    if update_check:
-        assert last_check_date is not None
-    else:
-        assert last_check_date == ''
-
-    for available_update in available_update_keys:
-        available_update_data = data[available_update]
-
-        assert isinstance(available_update_data, dict)
-
-        if available_update_data != {}:
-            for key, value_type in keys_to_check:
-                assert isinstance(available_update_data[key], value_type)
-
-
-def test_agent_ports(response, agents_list):
-    """Check that syscollector ports results belongs to certain agents.
-
-    Parameters
-    ----------
-    response : Request response.
-    agents_list : list
-        List of expected agents that should have port information.
-    """
-
-    data = response.json()['data']
-
-    expected_agents_with_ports =  set(agents_list.split(","))
-    current_agents_with_ports = { port_info["agent_id"] for port_info in data.get('affected_items', []) }
-
-    assert expected_agents_with_ports == current_agents_with_ports, \
-        f'Current agents listing ports ({current_agents_with_ports})  \
-            is different than expected ({expected_agents_with_ports}).'

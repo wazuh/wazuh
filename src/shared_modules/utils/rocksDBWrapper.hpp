@@ -25,6 +25,7 @@
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
+#include <rocksdb/write_batch.h>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -46,9 +47,18 @@ namespace Utils
         virtual void createColumn(const std::string& columnName) = 0;
         virtual bool columnExists(const std::string& columnName) const = 0;
         virtual void deleteAll() = 0;
+        virtual void deleteByPrefix(const std::string& prefix) = 0;
         virtual void flush() = 0;
         virtual std::vector<std::string> getAllColumns() = 0;
         virtual RocksDBIterator seek(std::string_view key, const std::string& columnName = "") = 0; // NOLINT
+        virtual void batchPut(rocksdb::WriteBatch& batch,
+                              const std::string& key,
+                              const rocksdb::Slice& value,
+                              const std::string& columnName = "") = 0;
+        virtual void batchDelete(rocksdb::WriteBatch& batch,
+                                 const std::string& key,
+                                 const std::string& columnName = "") = 0; // NOLINT
+        virtual void commitBatch(rocksdb::WriteBatch& batch) = 0;
 
         virtual ~IRocksDBWrapper() = default;
     };
@@ -76,6 +86,7 @@ namespace Utils
                                  const bool useSharedBuffers = false)
             : m_enableWal {enableWal}
             , m_path {std::move(dbPath)}
+            , m_logFn(makeLibLogFn("rocksdb"))
         {
 
             if (useSharedBuffers)
@@ -340,6 +351,39 @@ namespace Utils
         void delete_(const std::string& key) override // NOLINT
         {
             delete_(key, "");
+        }
+
+        void batchPut(rocksdb::WriteBatch& batch,
+                      const std::string& key,
+                      const rocksdb::Slice& value,
+                      const std::string& columnName = "") override
+        {
+            if (key.empty())
+            {
+                throw std::invalid_argument("Key is empty");
+            }
+            batch.Put(getColumnFamilyBasedOnName(columnName).handle(), key, value);
+        }
+
+        void batchDelete(rocksdb::WriteBatch& batch,
+                         const std::string& key,
+                         const std::string& columnName = "") override // NOLINT
+        {
+            if (key.empty())
+            {
+                throw std::invalid_argument("Key is empty");
+            }
+            batch.Delete(getColumnFamilyBasedOnName(columnName).handle(), key);
+        }
+
+        void commitBatch(rocksdb::WriteBatch& batch) override
+        {
+            rocksdb::WriteOptions writeOptions;
+            writeOptions.disableWAL = !m_enableWal;
+            if (const auto status = m_db->Write(writeOptions, &batch); !status.ok())
+            {
+                throw std::runtime_error("Error committing batch: " + status.ToString());
+            }
         }
 
         /**
@@ -698,6 +742,18 @@ namespace Utils
             }
         }
 
+        /**
+         * @brief Deletes by prefix
+         */
+        void deleteByPrefix(const std::string& prefix) override
+        {
+            rocksdb::WriteOptions write_options;
+            m_db->DeleteRange(write_options,
+                              getColumnFamilyBasedOnName(rocksdb::kDefaultColumnFamilyName).handle(),
+                              rocksdb::Slice(prefix),
+                              rocksdb::Slice(prefix + "\xFF"));
+        }
+
     private:
         std::shared_ptr<T> m_db;                                     ///< RocksDB instance.
         std::vector<ColumnFamilyRAII> m_columnsInstances;            ///< List of column family.
@@ -705,6 +761,7 @@ namespace Utils
         const std::string m_path;                                    ///< Location of the DB.
         std::shared_ptr<rocksdb::Cache> m_readCache;                 ///< Cache for read operations.
         std::shared_ptr<rocksdb::WriteBufferManager> m_writeManager; ///< Write buffer manager.
+        LogFn m_logFn;
 
         /**
          * @brief Will try to repair the database if it is corrupt or throw exception if something failed.
@@ -721,7 +778,7 @@ namespace Utils
                     throw std::runtime_error("Failed to repair RocksDB database. Reason: " +
                                              std::string {repairStatus.getState()});
                 }
-                logWarn(LOGGER_DEFAULT_TAG, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
+                LOG_WARN(m_logFn, "Database '%s' was repaired because it was corrupt.", m_path.c_str());
             }
             else
             {
@@ -970,6 +1027,14 @@ namespace Utils
         }
 
         /**
+         * @brief Deletes by prefix
+         */
+        void deleteByPrefix(const std::string& prefix) override
+        {
+            m_dbWrapper->deleteByPrefix(prefix);
+        }
+
+        /**
          * @brief Seek to specific key
          *
          * @param key Key to seek.
@@ -988,6 +1053,26 @@ namespace Utils
         {
             // This is only permited for atomic operations.
             throw std::runtime_error("Not implemented");
+        }
+
+        void batchPut(rocksdb::WriteBatch& /*batch*/,
+                      const std::string& key,
+                      const rocksdb::Slice& value,
+                      const std::string& columnName = "") override
+        {
+            put(key, value, columnName);
+        }
+
+        void batchDelete(rocksdb::WriteBatch& /*batch*/,
+                         const std::string& key,
+                         const std::string& columnName = "") override // NOLINT
+        {
+            delete_(key, columnName);
+        }
+
+        void commitBatch(rocksdb::WriteBatch& /*batch*/) override
+        {
+            // No-op: RocksDBTransaction provides atomicity via commit().
         }
 
     private:

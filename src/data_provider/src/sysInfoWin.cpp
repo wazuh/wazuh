@@ -29,6 +29,8 @@
 #include "stringHelper.h"
 #include "registryHelper.h"
 #include "defs.h"
+#include "sharedDefs.h"
+#include "timeHelper.h"
 #include "osinfo/sysOsInfoWin.h"
 #include "windowsHelper.h"
 #include "encodingWindowsHelper.h"
@@ -257,13 +259,12 @@ class SysInfoProcess final
             // At least one logical drive couldn't be mapped, trying another use of QueryDosDevice
             if (logicalDrives.size() != ret.size())
             {
-                // We avoid using OS_MAXSTR on Windows XP
-                const auto spPhysicalDevices { std::make_unique<char[]>(OS_SIZE_32768) };
+                const auto spPhysicalDevices { std::make_unique<char[]>(OS_MAXSTR) };
 
-                if (QueryDosDevice(nullptr, spPhysicalDevices.get(), OS_SIZE_32768))
+                if (QueryDosDevice(nullptr, spPhysicalDevices.get(), OS_MAXSTR))
                 {
                     const auto tokens = Utils::splitNullTerminatedStrings(spPhysicalDevices.get());
-                    const auto spDosDevice { std::make_unique<char[]>(OS_SIZE_32768) };
+                    const auto spDosDevice { std::make_unique<char[]>(OS_MAXSTR) };
 
                     for (const auto& token : tokens)
                     {
@@ -381,22 +382,18 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
         SysInfoProcess process(pId, processHandle);
 
         // Current process information
-        jsProcessInfo["name"]       = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
-        jsProcessInfo["stime"]      = process.kernelModeTime();
-        jsProcessInfo["size"]       = process.pageFileUsage();
-        jsProcessInfo["ppid"]       = processEntry.th32ParentProcessID;
-        jsProcessInfo["priority"]   = processEntry.pcPriClassBase;
-        jsProcessInfo["pid"]        = std::to_string(pId);
-        jsProcessInfo["session"]    = process.sessionId();
-        jsProcessInfo["nlwp"]       = processEntry.cntThreads;
-        jsProcessInfo["utime"]      = process.userModeTime();
-        jsProcessInfo["vm_size"]    = process.virtualSize();
-        jsProcessInfo["start_time"] = process.creationTime();
+        jsProcessInfo["name"]         = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(processName(processEntry));
+        jsProcessInfo["stime"]        = process.kernelModeTime();
+        jsProcessInfo["parent_pid"]   = processEntry.th32ParentProcessID;
+        jsProcessInfo["pid"]          = std::to_string(pId);
+        jsProcessInfo["utime"]        = process.userModeTime();
+        jsProcessInfo["start"]        = Utils::rawTimestampToISO8601(static_cast<uint32_t>(process.creationTime()));
 
         if (isSystemProcess(pId))
         {
-            jsProcessInfo["cmd"]    = "none";
-            jsProcessInfo["argvs"]  = "";
+            jsProcessInfo["command_line"]    = "none";
+            jsProcessInfo["args"]  = "";
+            jsProcessInfo["args_count"]  = 0;
         }
         else
         {
@@ -405,13 +402,15 @@ static nlohmann::json getProcessInfo(const PROCESSENTRY32& processEntry)
 
             if (!parsed.cmd.empty())
             {
-                jsProcessInfo["cmd"]   = parsed.cmd;
-                jsProcessInfo["argvs"] = parsed.argvs;
+                jsProcessInfo["command_line"]   = parsed.cmd;
+                jsProcessInfo["args"] = parsed.argvs;
+                jsProcessInfo["args_count"] = parsed.argvs.size();
             }
             else
             {
-                jsProcessInfo["cmd"]   = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(process.cmd());
-                jsProcessInfo["argvs"] = "";
+                jsProcessInfo["command_line"]   = Utils::EncodingWindowsHelper::stringAnsiToStringUTF8(process.cmd());
+                jsProcessInfo["args"] = "";
+                jsProcessInfo["args_count"]  = 0;
             }
         }
 
@@ -459,16 +458,16 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
                 {
                     try
                     {
-                        install_time = Utils::normalizeTimestamp(value, packageReg.keyModificationDate());
+                        install_time = Utils::timestampToISO8601(Utils::normalizeTimestamp(value, packageReg.keyModificationDate()));
                     }
                     catch (const std::exception& e)
                     {
-                        install_time = packageReg.keyModificationDate();
+                        install_time = Utils::timestampToISO8601(packageReg.keyModificationDate());
                     }
                 }
                 else
                 {
-                    install_time = packageReg.keyModificationDate();
+                    install_time = Utils::timestampToISO8601(packageReg.keyModificationDate());
                 }
 
                 if (packageReg.string("InstallLocation", value))
@@ -497,16 +496,16 @@ static void getPackagesFromReg(const HKEY key, const std::string& subKey, std::f
 
                     packageJson["name"]         = std::move(name);
                     packageJson["description"]  = UNKNOWN_VALUE;
-                    packageJson["version"]      = version.empty() ? UNKNOWN_VALUE : std::move(version);
-                    packageJson["groups"]       = UNKNOWN_VALUE;
-                    packageJson["priority"]       = UNKNOWN_VALUE;
-                    packageJson["size"]           = 0;
+                    packageJson["version_"]     = version.empty() ? UNKNOWN_VALUE : std::move(version);
+                    packageJson["category"]     = UNKNOWN_VALUE;
+                    packageJson["priority"]     = UNKNOWN_VALUE;
+                    packageJson["size"]         = 0;
                     packageJson["vendor"]       = vendor.empty() ? UNKNOWN_VALUE : std::move(vendor);
                     packageJson["source"]       = UNKNOWN_VALUE;
-                    packageJson["install_time"] = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);
-                    packageJson["location"]     = location.empty() ? UNKNOWN_VALUE : std::move(location);
+                    packageJson["installed"]    = install_time.empty() ? UNKNOWN_VALUE : std::move(install_time);
+                    packageJson["path"]         = location.empty() ? UNKNOWN_VALUE : std::move(location);
                     packageJson["architecture"] = std::move(architecture);
-                    packageJson["format"]       = "win";
+                    packageJson["type"]         = "win";
 
                     returnCallback(packageJson);
                 }
@@ -559,43 +558,26 @@ static std::string getSerialNumber()
 {
     std::string ret;
 
-    if (Utils::isVistaOrLater())
+    static auto pfnGetSystemFirmwareTable{Utils::getSystemFirmwareTableFunctionAddress()};
+
+    if (pfnGetSystemFirmwareTable)
     {
-        static auto pfnGetSystemFirmwareTable{Utils::getSystemFirmwareTableFunctionAddress()};
+        const auto size {pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, nullptr, 0)};
 
-        if (pfnGetSystemFirmwareTable)
+        if (size)
         {
-            const auto size {pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, nullptr, 0)};
+            const auto spBuff{std::make_unique<unsigned char[]>(size)};
 
-            if (size)
+            if (spBuff)
             {
-                const auto spBuff{std::make_unique<unsigned char[]>(size)};
-
-                if (spBuff)
+                // Get raw SMBIOS firmware table
+                if (pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, spBuff.get(), size) == size)
                 {
-                    // Get raw SMBIOS firmware table
-                    if (pfnGetSystemFirmwareTable(gs_firmwareTableProviderSignature.at("RSMB"), 0, spBuff.get(), size) == size)
-                    {
-                        PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
-                        // Parse SMBIOS structures
-                        ret = Utils::getSerialNumberFromSmbios(smbios->SMBIOSTableData, smbios->Length);
-                    }
+                    PRawSMBIOSData smbios{reinterpret_cast<PRawSMBIOSData>(spBuff.get())};
+                    // Parse SMBIOS structures
+                    ret = Utils::getSerialNumberFromSmbios(smbios->SMBIOSTableData, smbios->Length);
                 }
             }
-        }
-    }
-    else
-    {
-        const auto rawData{Utils::exec("wmic baseboard get SerialNumber")};
-        const auto pos{rawData.find("\r\n")};
-
-        if (pos != std::string::npos)
-        {
-            ret = Utils::trim(rawData.substr(pos), " \t\r\n");
-        }
-        else
-        {
-            ret = UNKNOWN_VALUE;
         }
     }
 
@@ -628,9 +610,9 @@ static void getMemory(nlohmann::json& info)
 
     if (GlobalMemoryStatusEx(&statex))
     {
-        info["ram_total"] = statex.ullTotalPhys / KByte;
-        info["ram_free"] = statex.ullAvailPhys / KByte;
-        info["ram_usage"] = statex.dwMemoryLoad;
+        info["memory_total"] = statex.ullTotalPhys;
+        info["memory_free"] = statex.ullAvailPhys;
+        info["memory_used"] = statex.ullTotalPhys - statex.ullAvailPhys;
     }
     else
     {
@@ -646,10 +628,10 @@ static void getMemory(nlohmann::json& info)
 nlohmann::json SysInfo::getHardware() const
 {
     nlohmann::json hardware;
-    hardware["board_serial"] = getSerialNumber();
+    hardware["serial_number"] = getSerialNumber();
     hardware["cpu_name"] = getCpuName();
     hardware["cpu_cores"] = getCpuCores();
-    hardware["cpu_mhz"] = double(getCpuMHz());
+    hardware["cpu_speed"] = double(getCpuMHz());
     getMemory(hardware);
     return hardware;
 }
@@ -725,6 +707,8 @@ nlohmann::json SysInfo::getOsInfo() const
         std::make_shared<SysOsInfoProviderWindows>()
     };
     SysOsInfo::setOsInfo(spOsInfoProvider, ret);
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "windows";
     return ret;
 }
 
@@ -734,12 +718,6 @@ nlohmann::json SysInfo::getNetworks() const
     std::unique_ptr<IP_ADAPTER_INFO, Utils::IPAddressSmartDeleter> adapterInfo;
     std::unique_ptr<IP_ADAPTER_ADDRESSES, Utils::IPAddressSmartDeleter> adaptersAddresses;
     Utils::NetworkWindowsHelper::getAdapters(adaptersAddresses);
-
-    if (!Utils::isVistaOrLater())
-    {
-        // Get additional IPv4 info - Windows XP only
-        Utils::NetworkWindowsHelper::getAdapterInfo(adapterInfo);
-    }
 
     auto rawAdapterAddresses { adaptersAddresses.get() };
 
@@ -971,7 +949,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
     auto fillList {[&callback, &set](nlohmann::json & data)
     {
         const std::string key {data.at("name").get_ref<const std::string&>() +
-                               data.at("version").get_ref<const std::string&>()};
+                               data.at("version_").get_ref<const std::string&>()};
         const auto result {set.insert(key)};
 
         if (result.second)
@@ -995,7 +973,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {"NPM", getNodeDirectories()}
     };
 
-    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
+    ModernFactoryPackagesCreator::getPackages(searchPaths, callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const
@@ -1046,7 +1024,7 @@ nlohmann::json SysInfo::getHotfixes() const
         if (!hotfix.empty())
         {
             nlohmann::json hotfixValue;
-            hotfixValue["hotfix"] = std::move(hotfix);
+            hotfixValue["hotfix_name"] = std::move(hotfix);
             ret.push_back(std::move(hotfixValue));
         }
     }
@@ -1166,9 +1144,9 @@ nlohmann::json SysInfo::getUsers() const
 
         // Only Macos
         userItem["user_is_hidden"] = 0;
-        userItem["user_created"] = 0;
+        userItem["user_created"] = UNKNOWN_VALUE;
         userItem["user_auth_failed_count"] = 0;
-        userItem["user_auth_failed_timestamp"] = 0;
+        userItem["user_auth_failed_timestamp"] = UNKNOWN_VALUE;
 
         auto matched = false;
         auto lastLogin = 0;
@@ -1192,7 +1170,7 @@ nlohmann::json SysInfo::getUsers() const
                 if (newDate > lastLogin)
                 {
                     lastLogin = newDate;
-                    userItem["user_last_login"] = newDate;
+                    userItem["user_last_login"] = Utils::rawTimestampToISO8601(static_cast<uint32_t>(newDate));
                     userItem["login_tty"] = item["tty"].get<std::string>();
                     userItem["login_type"] = item["type"].get<std::string>();
                     userItem["process_pid"] = item["pid"].get<int32_t>();
@@ -1202,9 +1180,26 @@ nlohmann::json SysInfo::getUsers() const
 
                 if (!hostStr.empty())
                 {
-                    userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
-                                          ? hostStr
-                                          : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                    // Validate IP address before assigning to host_ip field
+                    static auto pfnInetPton { Utils::getInetPtonFunctionAddress() };
+
+                    bool isValidIp = false;
+
+                    if (pfnInetPton)
+                    {
+                        struct in_addr ipv4;
+                        struct in6_addr ipv6;
+                        isValidIp = (pfnInetPton(AF_INET, hostStr.c_str(), &ipv4) == 1) ||
+                                    (pfnInetPton(AF_INET6, hostStr.c_str(), &ipv6) == 1);
+                    }
+
+                    // Only assign if valid IP, otherwise keep UNKNOWN_VALUE
+                    if (isValidIp)
+                    {
+                        userItem["host_ip"] = userItem["host_ip"].get<std::string>() == UNKNOWN_VALUE
+                                              ? hostStr
+                                              : (userItem["host_ip"].get<std::string>() + primaryArraySeparator + hostStr);
+                    }
                 }
             }
         }
@@ -1215,10 +1210,10 @@ nlohmann::json SysInfo::getUsers() const
             userItem["login_tty"] = UNKNOWN_VALUE;
             userItem["login_type"] = UNKNOWN_VALUE;
             userItem["process_pid"] = 0;
-            userItem["user_last_login"] = 0;
+            userItem["user_last_login"] = UNKNOWN_VALUE;
         }
 
-        userItem["user_password_expiration_date"] = 0;
+        userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
         userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
         userItem["user_password_inactive_days"] = 0;
         userItem["user_password_last_change"] = 0;
@@ -1320,7 +1315,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("author",              UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
@@ -1354,7 +1349,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("creator",             UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
@@ -1388,7 +1383,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = UNKNOWN_VALUE;
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = UNKNOWN_VALUE;
             extensionItem["package_vendor"]            = UNKNOWN_VALUE;
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;

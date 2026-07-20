@@ -11,18 +11,18 @@
 
 #ifndef _FILEITEM_TEST_H
 #define _FILEITEM_TEST_H
-#include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
-class FileItemTest : public testing::Test {
+class FileItemTest : public testing::Test
+{
     protected:
         FileItemTest() = default;
         virtual ~FileItemTest() = default;
 
         void SetUp() override;
         void TearDown() override;
-        fim_entry * fimEntryTest;
-        nlohmann::json json;
+        fim_entry* fimEntryTest;
 };
 
 #endif //_FILEITEM_TEST_H

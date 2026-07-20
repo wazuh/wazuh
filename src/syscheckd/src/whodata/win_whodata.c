@@ -10,6 +10,7 @@
 #include "shared.h"
 #include "hash_op.h"
 #include "syscheck.h"
+#include "file.h"
 #include "syscheck_op.h"
 
 #ifdef WIN_WHODATA
@@ -788,10 +789,8 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
                 }
 
                 w_rwlock_rdlock(&syscheck.directories_lock);
-                configuration = fim_configuration_directory(w_evt->path);
+                configuration = fim_configuration_directory(w_evt->path, true, syscheck.directories);
                 if (configuration == NULL) {
-                    mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", w_evt->path);
-
                     if (!(mask & (FILE_APPEND_DATA | FILE_WRITE_DATA))) {
                         // Discard the file or directory if its monitoring has not been activated
                         mdebug2(FIM_WHODATA_NOT_ACTIVE, w_evt->path);
@@ -901,8 +900,7 @@ unsigned long WINAPI whodata_callback(EVT_SUBSCRIBE_NOTIFY_ACTION action, __attr
 
                 // Check if is a valid directory
                 w_rwlock_rdlock(&syscheck.directories_lock);
-                if (fim_configuration_directory(w_evt->path) == NULL) {
-                    mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", w_evt->path);
+                if (fim_configuration_directory(w_evt->path, false, syscheck.directories) == NULL) {
                     mdebug2(FIM_WHODATA_DIRECTORY_DISCARDED, w_evt->path);
                     w_evt->scan_directory = 2;
                     w_rwlock_unlock(&syscheck.directories_lock);
@@ -1454,7 +1452,7 @@ int whodata_hash_add(OSHash *table, char *id, void *data, char *tag) {
 
 void notify_SACL_change(char *dir) {
     char msg_alert[OS_SIZE_1024 + 1];
-    snprintf(msg_alert, OS_SIZE_1024, "ossec: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
+    snprintf(msg_alert, OS_SIZE_1024, "wazuh: Audit: The SACL of '%s' has been modified and can no longer be scanned in whodata mode.", dir);
     SendMSG(syscheck.queue, msg_alert, "syscheck", LOCALFILE_MQ);
 }
 

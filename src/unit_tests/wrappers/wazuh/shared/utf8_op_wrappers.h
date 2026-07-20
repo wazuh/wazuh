@@ -10,7 +10,7 @@
 #ifndef UTF8_OP_WRAPPERS_H
 #define UTF8_OP_WRAPPERS_H
 
-#include "../../../../headers/utf8_op.h"
+#include "utf8_op.h"
 
 bool __wrap_w_utf8_valid(const char* string);
 

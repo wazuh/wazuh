@@ -1,0 +1,19 @@
+name: output/indexer/0
+enabled: true
+
+metadata:
+  module: wazuh
+  title: Indexer data stream outputs
+  description: Output integrations events to wazuh-indexer
+
+outputs:
+  - first_of:
+    - check: index_unclassified_events($wazuh.integration.category)
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-unclassified"
+
+    - check: string_not_equal($wazuh.integration.category, "unclassified")
+      then:
+        - wazuh-indexer:
+            index: "wazuh-events-v5-${wazuh.integration.category}"

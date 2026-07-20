@@ -3,7 +3,7 @@
    - Standardmäßig kann 'host-deny' und 'firewall-drop'
      aktiviert werden. 'host-deny' fügt eine IP in die
      Datei /etc/hosts.deny ein. 'firewall-response' fügt
-     eine IP per iptables (Linux) oder ipfilter (Solaris,
+     eine IP per iptables (Linux) oder ipfilter (
      FreeBSD usw) in die Firewall Regeln ein.
 
    - Beide können benutzt werden um SSH Brute-Force scans,

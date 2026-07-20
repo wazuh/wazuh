@@ -14,6 +14,8 @@
 #include "json.hpp"
 #include "browser_extensions_wrapper.hpp"
 
+#include <ifilesystem_wrapper.hpp>
+
 #define APP_PLUGINS_PATH "Contents/PlugIns/"
 #define APP_PLUGIN_PLIST_PATH "Contents/Info.plist"
 #define SAFARI_FILTER_STRING "com.apple.Safari"
@@ -43,6 +45,7 @@ class SafariExtensionsProvider
     public:
         /// @brief Constructs a SafariExtensionsProvider with the given browser extensions wrapper.
         /// @param browserExtensionsWrapper A shared pointer to an IBrowserExtensionsWrapper instance.
+        /// @param fileSystemWrapper Unique pointer to a file system wrapper implementation (optional).
         /// This constructor initializes the SafariExtensionsProvider with a specific IBrowserExtensionsWrapper,
         /// allowing it to interact with the browser extensions data source. The wrapper is expected to provide
         /// methods for accessing browser extensions information, such as retrieving paths, identifiers, and other
@@ -52,7 +55,8 @@ class SafariExtensionsProvider
         /// implementation of the browser extensions wrapper, enabling the provider to work with different browser
         /// extensions sources or configurations as needed.
         explicit SafariExtensionsProvider(
-            std::shared_ptr<IBrowserExtensionsWrapper> browserExtensionsWrapper);
+            std::shared_ptr<IBrowserExtensionsWrapper> browserExtensionsWrapper,
+            std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
         /// @brief Default constructor for SafariExtensionsProvider, initializes with a default IBrowserExtensionsWrapper.
         /// This constructor creates a SafariExtensionsProvider instance using a default-constructed shared pointer to an
         /// IBrowserExtensionsWrapper, allowing the provider to function without requiring an explicit wrapper instance.
@@ -90,4 +94,9 @@ class SafariExtensionsProvider
         bool isValidPath(const std::string& path);
 
         std::shared_ptr<IBrowserExtensionsWrapper> m_browserExtensionsWrapper;
+
+        /**
+         * @brief Pointer to the file system wrapper implementation.
+         */
+        std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 };

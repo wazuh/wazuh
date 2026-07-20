@@ -137,18 +137,17 @@ namespace PackageLinuxHelper
             }
 
             ret["priority"]     = priority;
-            ret["groups"]       = groups;
+            ret["category"]     = groups;
             ret["size"]         = size;
             ret["multiarch"]    = multiarch;
             ret["architecture"] = architecture;
             ret["source"]       = source;
-            ret["version"]      = version;
-            ret["format"]       = "deb";
-            ret["location"]     = UNKNOWN_VALUE;
+            ret["version_"]     = version;
+            ret["type"]         = "deb";
+            ret["path"]         = UNKNOWN_VALUE;
             ret["vendor"]       = vendor;
-            ret["install_time"] = UNKNOWN_VALUE;
+            ret["installed"]    = UNKNOWN_VALUE;
             ret["description"]  = description;
-            ret["location"]     = UNKNOWN_VALUE;
         }
 
         return ret;
@@ -205,12 +204,20 @@ namespace PackageLinuxHelper
 
         if (info.contains("install-date"))
         {
-            struct std::tm tm;
+            struct std::tm tm = {};
             std::istringstream iss(info.at("install-date").get<std::string>());
             iss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
-            std::ostringstream oss;
-            oss << std::put_time(&tm, "%Y/%m/%d %H:%M:%S");
-            install_time = oss.str();
+
+            if (!iss.fail())
+            {
+                // timegm converts tm to UTC epoch (not affected by local timezone)
+                time_t epoch = timegm(&tm);
+
+                if (epoch >= 0)
+                {
+                    install_time = std::to_string(static_cast<uint32_t>(epoch));
+                }
+            }
         }
 
         if (info.contains("summary"))
@@ -245,19 +252,19 @@ namespace PackageLinuxHelper
         }
 
         ret["name"]             = name;
-        ret["location"]         = "/snap/" + name;
-        ret["version"]          = version;
+        ret["path"]             = "/snap/" + name;
+        ret["version_"]         = version;
         ret["vendor"]           = vendor;
-        ret["install_time"]     = install_time;
+        ret["installed"]        = install_time == UNKNOWN_VALUE ? UNKNOWN_VALUE : Utils::rawTimestampToISO8601(static_cast<uint32_t>(std::stoll(install_time)));
         ret["description"]      = description;
         ret["size"]             = size;
         ret["source"]           = "snapcraft";
-        ret["format"]           = "snap";
+        ret["type"]             = "snap";
 
         ret["priority"]         = UNKNOWN_VALUE;
         ret["multiarch"]        = UNKNOWN_VALUE;
         ret["architecture"]     = UNKNOWN_VALUE;
-        ret["groups"]           = UNKNOWN_VALUE;
+        ret["category"]         = UNKNOWN_VALUE;
 
         return ret;
     }

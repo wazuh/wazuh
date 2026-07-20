@@ -1,0 +1,35 @@
+name: 'Test upgrade Wazuh agent package'
+description: 'Test upgrade Wazuh agent package'
+
+inputs:
+  old_package_url:
+    description: 'Package url to update from'
+    required: true
+  expected_upgrade_version:
+    description: 'Expected package version after upgrading'
+    required: true
+  tested_docker:
+    description: 'image:tag of tested Docker'
+    required: true
+  package_path:
+    description: 'Path to mount inside container for the new package'
+    required: false
+    default: '/tmp'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run test upgrade Wazuh agent package
+      shell: bash
+      env:
+        INPUT_OLD_PACKAGE_URL: ${{ inputs.old_package_url }}
+        INPUT_EXPECTED_UPGRADE_VERSION: ${{ inputs.expected_upgrade_version }}
+        INPUT_TESTED_DOCKER: ${{ inputs.tested_docker }}
+        INPUT_PACKAGE_PATH: ${{ inputs.package_path }}
+      run: |
+        sudo docker run \
+          -v "${{ github.action_path }}/:/tests" \
+          -v "${INPUT_PACKAGE_PATH}:/packages" \
+          --entrypoint '/tests/smoke_upgrade_test.sh' \
+          "${INPUT_TESTED_DOCKER}" \
+          "${INPUT_OLD_PACKAGE_URL}" "${INPUT_EXPECTED_UPGRADE_VERSION}"

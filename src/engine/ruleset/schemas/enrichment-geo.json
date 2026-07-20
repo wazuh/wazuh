@@ -1,0 +1,27 @@
+{
+  "client.ip": {
+    "as_field": "client.as",
+    "geo_field": "client.geo"
+  },
+  "destination.ip": {
+    "as_field": "destination.as",
+    "geo_field": "destination.geo"
+  },
+  "host.ip": {
+    "geo_field": "host.geo"
+  },
+  "observer.ip": {
+    "geo_field": "observer.geo"
+  },
+  "server.ip": {
+    "as_field": "server.as",
+    "geo_field": "server.geo"
+  },
+  "source.ip": {
+    "as_field": "source.as",
+    "geo_field": "source.geo"
+  },
+  "wazuh.agent.host.ip": {
+    "geo_field": "wazuh.agent.host.geo"
+  }
+}

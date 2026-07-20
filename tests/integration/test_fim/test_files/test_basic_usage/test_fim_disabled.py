@@ -64,7 +64,7 @@ from pathlib import Path
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG
-from wazuh_testing.modules.fim.patterns import SENDING_FIM_EVENT
+from wazuh_testing.modules.fim.patterns import FIM_EVENT_JSON
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
@@ -141,5 +141,5 @@ def test_fim_disabled(test_configuration, test_metadata, set_wazuh_configuration
     '''
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    wazuh_log_monitor.start(generate_callback(SENDING_FIM_EVENT))
+    wazuh_log_monitor.start(generate_callback(FIM_EVENT_JSON))
     assert not wazuh_log_monitor.callback_result

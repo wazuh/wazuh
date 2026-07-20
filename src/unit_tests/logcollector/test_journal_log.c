@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <time.h>
 
-#include "../../logcollector/journal_log.h"
+#include "journal_log.h"
 
 #include "../wrappers/posix/stat_wrappers.h"
 #include "../wrappers/common.h"

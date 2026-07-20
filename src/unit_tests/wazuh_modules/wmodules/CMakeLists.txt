@@ -6,9 +6,9 @@
 # Foundation.
 
 # Generate wmodules library
-file(GLOB wmodules_files
-    ${SRC_FOLDER}/wazuh_modules/*.o)
-list(REMOVE_ITEM wmodules_files ${SRC_FOLDER}/wazuh_modules/main.o)
+file(GLOB_RECURSE wmodules_files
+    ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+list(REMOVE_ITEM wmodules_files ${SRC_FOLDER}/build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
 
 add_library(WMODULES_O STATIC ${wmodules_files})
 
@@ -32,7 +32,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate wmodules tests
 list(APPEND wmodules_names "test_wmodules")
-list(APPEND wmodules_flags " ")
+list(APPEND wmodules_flags "-Wl,--wrap,w_query_agentd")
 
 # Compilig tests
 list(LENGTH wmodules_names count)

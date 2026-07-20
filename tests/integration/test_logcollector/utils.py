@@ -64,7 +64,7 @@ def assert_list_logs(regex_messages: list):
         return int(datetime.strptime(date_str, '%Y/%m/%d %H:%M:%S').timestamp())
 
 
-    # Monitor the ossec.log file
+    # Monitor the wazuh log file
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     last_log_timestamp = 0
@@ -88,7 +88,7 @@ def assert_not_list_logs(regex_messages: list):
         regex_messages (list): List of regular expressions to search in the log file.
     '''
 
-    # Monitor the ossec.log file
+    # Monitor the wazuh log file
     log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
     for regex in regex_messages:

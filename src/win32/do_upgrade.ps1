@@ -125,9 +125,9 @@ function get_msi_version {
     write-output "$(Get-Date -format u) - Extracting the version from MSI file." >> .\upgrade\upgrade.log
     try {
         # Extracting the version using msiexec and waiting for it to complete
-        Start-Process -FilePath "msiexec.exe" -ArgumentList "/a", "`"$msiPath`"", "/qn", "TARGETDIR=$env:TEMP", "/lv*", "`".\upgrade\msi_output.txt`"" -Wait
+        Start-Process -FilePath "msiexec.exe" -ArgumentList "/a", "`"$msiPath`"", "/qn", "TARGETDIR=$env:TEMP", "/lv*", "`".\upgrade\msi_output.log`"" -Wait
 
-        $msi_version = Get-MSIProductVersion ".\upgrade\msi_output.txt"
+        $msi_version = Get-MSIProductVersion ".\upgrade\msi_output.log"
         return $msi_version
 
     } catch {
@@ -177,16 +177,32 @@ function install {
         [string]$installDir
     )
 
-    kill -processname win32ui -ErrorAction SilentlyContinue -Force
-    Stop-Service -Name "Wazuh"
+    # Try to stop win32ui
+    try {
+        Write-Output "$(Get-Date -format u) - Stopping win32ui process." >> .\upgrade\upgrade.log
+        Stop-Process -Name "win32ui" -Force -ErrorAction Stop
+    } catch {
+        Write-Output "$(Get-Date -format u) - Tried to stop process win32ui: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+    }
+
+    # Try to stop Wazuh service
+    try {
+        Write-Output "$(Get-Date -format u) - Stopping Wazuh service." >> .\upgrade\upgrade.log
+        Stop-Service -Name "Wazuh" -Force -ErrorAction Stop
+    } catch {
+        Write-Output "$(Get-Date -format u) - Tried to stop Wazuh service: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+    }
+
+    # Wait for Wazuh service to fully stop
+    Start-Sleep -Seconds 5
     Remove-Item .\upgrade\upgrade_result -ErrorAction SilentlyContinue
-    write-output "$(Get-Date -format u) - Starting upgrade process." >> .\upgrade\upgrade.log
+    Write-Output "$(Get-Date -format u) - Starting upgrade process." >> .\upgrade\upgrade.log
 
     try {
         $msiPath = (Get-Item ".\wazuh-agent*.msi").Name
 
         if ($msi_new_version -ne $null -and $msi_new_version -eq $current_version) {
-            write-output "$(Get-Date -format u) - Reinstalling the same version." >> .\upgrade\upgrade.log
+            Write-Output "$(Get-Date -format u) - Reinstalling the same version." >> .\upgrade\upgrade.log
         }
 
         # Build msiexec arguments with explicit APPLICATIONFOLDER
@@ -206,7 +222,7 @@ function install {
         Start-Process -FilePath "msiexec.exe" -ArgumentList $msiArgs -Wait -NoNewWindow
 
     } catch {
-        write-output "$(Get-Date -format u) - Installation failed: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        Write-Output "$(Get-Date -format u) - Installation failed: $($_.Exception.Message)" >> .\upgrade\upgrade.log
         return $false
     }
 
@@ -238,8 +254,35 @@ if ($msi_new_version -ne $null) {
 }
 
 
+# Check version compatibility: direct upgrade to 5.x requires agent >= 4.14
+if ($msi_new_version -ne $null) {
+    try {
+        $target_ver = [Version]($msi_new_version -replace '^v', '')
+        $current_ver = [Version]($current_version -replace '^v', '')
+        if ($target_ver -ge [Version]"5.0.0" -and $current_ver -lt [Version]"4.14.0") {
+            write-output "$(Get-Date -format u) - Upgrade failed: direct upgrade to v5.0.0 is not supported from version $($current_version). Please upgrade to v4.14.x first." >> .\upgrade\upgrade.log
+            write-output "1" | out-file ".\upgrade\upgrade_result" -encoding ascii
+            remove_upgrade_files
+            Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
+            exit 1
+        }
+    } catch {
+        write-output "$(Get-Date -format u) - Could not compare versions for compatibility check: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+        write-output "2" | out-file ".\upgrade\upgrade_result" -encoding ascii
+        remove_upgrade_files
+        Restart-Service -Name "Wazuh" -Force -ErrorAction SilentlyContinue
+        exit 1
+    }
+}
+
 # Ensure no other instance of msiexec is running by stopping them
-Get-Process msiexec | Stop-Process -ErrorAction SilentlyContinue -Force
+try {
+    $proc = Get-Process -Name "msiexec" -ErrorAction Stop
+    Stop-Process -InputObject $proc -Force -ErrorAction Stop
+    Write-Output "$(Get-Date -Format u) - Killed msiexec process(es)." >> .\upgrade\upgrade.log
+} catch {
+    Write-Output "$(Get-Date -Format u) - Tried to stop msiexec process: $($_.Exception.Message)" >> .\upgrade\upgrade.log
+}
 
 # Install with explicit INSTALLDIR
 install -installDir $wazuhDir

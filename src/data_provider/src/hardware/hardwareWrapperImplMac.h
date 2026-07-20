@@ -126,7 +126,7 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
                 };
             }
 
-            return ramTotal / KByte;
+            return ramTotal;
         }
 
         uint64_t ramFree() const
@@ -159,20 +159,20 @@ class OSHardwareWrapperMac final : public IOSHardwareWrapper, public TOsPrimitiv
                 };
             }
 
-            return (freePages * pageSize) / KByte;
+            return (freePages * pageSize);
         }
 
         uint64_t ramUsage() const
         {
-            uint64_t ret{0};
             const auto ramTotal{this->ramTotal()};
 
-            if (ramTotal)
+            if (ramTotal == 0)
             {
-                ret = 100 - (100 * ramFree() / ramTotal);
+                return 0;
             }
 
-            return ret;
+            const auto ramFreeValue{this->ramFree()};
+            return ramTotal > ramFreeValue ? ramTotal - ramFreeValue : 0;
         }
 };
 

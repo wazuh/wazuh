@@ -11,7 +11,6 @@
 
 #include "osinfo/sysOsParsers.h"
 #include "stringHelper.h"
-#include "filesystemHelper.h"
 #include "sharedDefs.h"
 
 static bool parseUnixFile(const std::vector<std::pair<std::string, std::string>>& keyMapping,
@@ -106,7 +105,7 @@ static bool findVersionInStream(std::istream& in,
         line = Utils::trim(line);
         ret |= Utils::findRegexInString(line, data, pattern, matchIndex, start);
 
-        if (ret)
+        if (ret && !output.contains("os_version"))
         {
             output["os_version"] = data;
             findMajorMinorVersionInString(data, output);
@@ -195,7 +194,10 @@ bool UbuntuOsParser::parseFile(std::istream& in, nlohmann::json& output)
 
 bool CentosOsParser::parseFile(std::istream& in, nlohmann::json& output)
 {
-    constexpr auto PATTERN_MATCH{R"([0-9].*\.[0-9]*)"};
+    // Matches "major.minor[.patch]" optionally followed by " (Codename)", e.g.
+    // "8.10 (Cerulean Leopard)" or "8.2.2004 (Core)".
+    // The dot is required so CentOS Stream versions like "9" are not matched.
+    constexpr auto PATTERN_MATCH{R"([0-9][0-9]*\.[0-9.]*(?:\s+\([^)]+\))?)"};
 
     if (!output.contains("os_name")) output["os_name"] = "Centos Linux";
 
@@ -328,55 +330,6 @@ bool FedoraOsParser::parseFile(std::istream& in, nlohmann::json& output)
         findMajorMinorVersionInString(output["os_version"], output);
     }
 
-    return ret;
-}
-
-bool SolarisOsParser::parseFile(std::istream& in, nlohmann::json& output)
-{
-    const std::string HEADER_STRING{"Solaris "};
-    output["os_name"] = "SunOS";
-    output["os_platform"] = "sunos";
-    std::string line;
-    size_t pos{std::string::npos};
-
-    while (pos == std::string::npos && std::getline(in, line))
-    {
-        line = Utils::trim(line);
-        pos = line.find(HEADER_STRING);
-
-        if (std::string::npos != pos)
-        {
-            line = line.substr(pos + HEADER_STRING.size());
-            pos = line.find(" ");
-
-            if (pos != std::string::npos)
-            {
-                line = line.substr(0, pos);
-            }
-
-            output["os_version"] = Utils::trim(line);
-            findMajorMinorVersionInString(Utils::trim(line), output);
-        }
-    }
-
-    return std::string::npos == pos ? false : true;
-}
-
-bool HpUxOsParser::parseUname(const std::string& in, nlohmann::json& output)
-{
-    constexpr auto PATTERN_MATCH{R"(B\.([0-9].*\.[0-9]*))"};
-    std::string match;
-    std::regex pattern{PATTERN_MATCH};
-    const auto ret {Utils::findRegexInString(in, match, pattern, 1)};
-
-    if (ret)
-    {
-        output["os_version"] = match;
-        findMajorMinorVersionInString(match, output);
-    }
-
-    output["os_name"] = "HP-UX";
-    output["os_platform"] = "hp-ux";
     return ret;
 }
 

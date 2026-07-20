@@ -9,7 +9,11 @@
             "flags": "-r"
         },
         {
-            "name": "shared_modules/rsync",
+            "name": "shared_modules/sync_protocol",
+            "flags": "-r"
+        },
+        {
+            "name": "shared_modules/agent_metadata",
             "flags": "-r"
         },
         {
@@ -33,6 +37,14 @@
         },
         {
             "name": "syscheckd",
+            "flags": "-r"
+        },
+        {
+            "name": "wazuh_modules/sca",
+            "flags": "-r"
+        },
+        {
+            "name": "wazuh_modules/agent_info",
             "flags": "-r"
         }
     ]

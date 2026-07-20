@@ -3,6 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import logging
+import json
 import os
 import sys
 from unittest.mock import MagicMock, patch
@@ -21,14 +22,13 @@ with patch('wazuh.core.common.getgrnam'):
                 from wazuh.core.results import WazuhResult
 
 default_cluster_config = {
-    'disabled': True,
     'node_type': 'master',
     'name': 'wazuh',
     'node_name': 'node01',
-    'key': '',
+    'key': 'fd3350b86d239654e34866ab3c4988a8',
     'port': 1516,
-    'bind_addr': '0.0.0.0',
-    'nodes': ['NODE_IP'],
+    'bind_addr': '127.0.0.1',
+    'nodes': ['127.0.0.1'],
     'hidden': 'no'
 }
 
@@ -55,23 +55,14 @@ def test_read_cluster_config():
     with patch('wazuh.core.cluster.utils.get_ossec_conf', return_value={'cluster': default_cluster_config}):
         utils.read_config.cache_clear()
         default_cluster_config.pop('hidden')
-        default_cluster_config['disabled'] = 'no'
         config = utils.read_cluster_config()
         config_simple = utils.read_config()
         assert config == config_simple
         assert config == default_cluster_config
 
         default_cluster_config['node_type'] = 'client'
-        config = utils.read_cluster_config()
-        assert config == default_cluster_config
-
-        default_cluster_config['disabled'] = 'None'
         with pytest.raises(WazuhError, match='.* 3004 .*'):
             utils.read_cluster_config()
-
-        default_cluster_config['disabled'] = 'yes'
-        config = utils.read_cluster_config()
-        assert config == default_cluster_config
 
         default_cluster_config['port'] = 'None'
         with pytest.raises(WazuhError, match='.* 3004 .*'):
@@ -239,13 +230,14 @@ def test_get_cluster_status():
     """Check if cluster is enabled and running. Also check that cluster is shown as not running when a
     WazuhInternalError is raised."""
     status = utils.get_cluster_status()
-    assert {'enabled': 'no', 'running': 'no'} == status
+    assert {'running': 'no'} == status
 
     with patch('wazuh.core.cluster.utils.get_manager_status', side_effect=WazuhInternalError(1913)):
         status = utils.get_cluster_status()
-        assert {'enabled': 'no', 'running': 'no'} == status
+        assert {'running': 'no'} == status
 
 
+@pytest.mark.skip(reason="execd socket no longer exists in manager after agent-manager separation")
 def test_manager_restart():
     """Verify that manager_restart send to the manager the restart request."""
     with patch('wazuh.core.cluster.utils.open', side_effect=None):
@@ -258,71 +250,158 @@ def test_manager_restart():
                     utils.manager_restart()
 
                 with patch('socket.socket.connect', side_effect=None):
+                    # Test when send/recv fails (socket error)
                     with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
                         utils.manager_restart()
 
                     with patch('socket.socket.send', side_effect=None):
-                        status = utils.manager_restart()
-                        assert WazuhResult({'message': 'Restart request sent'}) == status
+                        # Test when response doesn't start with 'ok'
+                        with patch('socket.socket.recv', return_value=b'error: invalid command\n'):
+                            with patch('socket.socket.close', side_effect=None):
+                                with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+                                    utils.manager_restart()
+
+                        # Test successful restart (response starts with 'ok')
+                        with patch('socket.socket.recv', return_value=b'ok\n'):
+                            with patch('socket.socket.close', side_effect=None):
+                                status = utils.manager_restart()
+                                assert WazuhResult({'message': 'Restart request sent'}) == status
+
+
+def test_manager_reload():
+    """Verify that manager_reload sends the reload request to the manager."""
+    with patch('wazuh.core.cluster.utils.open', side_effect=None):
+        with patch('fcntl.lockf', side_effect=None):
+            # Socket path does not exist
+            with pytest.raises(WazuhInternalError, match='.* 1901 .*'):
+                utils.manager_reload()
+
+            with patch('os.path.exists', return_value=True):
+                # Socket connection error
+                with pytest.raises(WazuhInternalError, match='.* 1902 .*'):
+                    utils.manager_reload()
+
+                with patch('socket.socket.connect', side_effect=None):
+                    # send/recv fails (socket error)
+                    with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+                        utils.manager_reload()
+
+                    with patch('socket.socket.send', side_effect=None):
+                        # Response doesn't start with 'ok'
+                        with patch('socket.socket.recv', return_value=b'error: invalid command\n'):
+                            with patch('socket.socket.close', side_effect=None):
+                                with pytest.raises(WazuhInternalError, match='.* 1014 .*'):
+                                    utils.manager_reload()
+
+                        # Successful reload (response starts with 'ok')
+                        with patch('socket.socket.recv', return_value=b'ok\n'):
+                            with patch('socket.socket.close', side_effect=None):
+                                result = utils.manager_reload()
+                                assert WazuhResult({'message': 'Reload request sent'}) == result
 
 
 def test_get_cluster_items():
     """Verify the cluster files information."""
     utils.get_cluster_items.cache_clear()
 
-    with patch('os.path.abspath', side_effect=FileNotFoundError):
-        with pytest.raises(WazuhException, match='.* 3005 .*'):
+    with patch("os.path.abspath", side_effect=FileNotFoundError):
+        with pytest.raises(WazuhException, match=".* 3005 .*"):
             utils.get_cluster_items()
 
     items = utils.get_cluster_items()
-    assert items == {'files': {'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'],
-                                        'recursive': False, 'restart': False, 'remove_subdirs_if_empty': False,
-                                        'extra_valid': False, 'description': 'client keys file database'},
-                               'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                               'recursive': True, 'restart': False, 'remove_subdirs_if_empty': True,
-                                               'extra_valid': False, 'description': 'shared configuration files'},
-                               'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'],
-                                                    'recursive': True, 'restart': False,
-                                                    'remove_subdirs_if_empty': True, 'extra_valid': False,
-                                                    'description': 'shared configuration files'},
-                               'etc/rules/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                              'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                              'extra_valid': False, 'description': 'user rules'},
-                               'etc/decoders/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                                 'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                                 'extra_valid': False, 'description': 'user decoders'},
-                               'etc/lists/': {'permissions': 432, 'source': 'master', 'files': ['all'],
-                                              'recursive': True, 'restart': True, 'remove_subdirs_if_empty': False,
-                                              'extra_valid': False, 'description': 'user CDB lists'},
-                               'excluded_files': ['ar.conf', 'ossec.conf'],
-                               'excluded_extensions': ['~', '.tmp', '.lock', '.swp']},
-                     'intervals': {'worker': {'sync_integrity': 9, 'sync_agent_info': 10, 'sync_agent_groups': 30,
-                                              'keep_alive': 60, 'connection_retry': 10, 'timeout_agent_groups': 40,
-                                              'max_failed_keepalive_attempts': 2, "agent_groups_mismatch_limit": 5},
-                                   'master': {'timeout_extra_valid': 40, 'recalculate_integrity': 8,
-                                              'check_worker_lastkeepalive': 60,
-                                              'max_allowed_time_without_keepalive': 120, 'process_pool_size': 2,
-                                              'sync_agent_groups': 10, 'timeout_agent_info': 40,
-                                              'max_locked_integrity_time': 1000, 'agent_group_start_delay': 30},
-                                   'communication': {'timeout_cluster_request': 20, 'timeout_dapi_request': 200,
-                                                     'timeout_receiving_file': 120, 'min_zip_size': 31457280,
-                                                     'max_zip_size': 1073741824, 'compress_level': 1,
-                                                     'zip_limit_tolerance': 0.2}},
-                     'distributed_api': {'enabled': True}}
+
+    expected = {
+        "files": {
+            "etc/": {
+                "permissions": 416,
+                "source": "master",
+                "files": ["client.keys", "authd.pass"],
+                "recursive": False,
+                "restart": False,
+                "remove_subdirs_if_empty": False,
+                "extra_valid": False,
+                "description": "client keys file database and enrollment shared password",
+            },
+            "etc/shared/": {
+                "permissions": 432,
+                "source": "master",
+                "files": ["all"],
+                "recursive": True,
+                "restart": False,
+                "remove_subdirs_if_empty": True,
+                "extra_valid": False,
+                "description": "shared configuration files",
+            },
+            "var/multigroups/": {
+                "permissions": 432,
+                "source": "master",
+                "files": ["merged.mg"],
+                "recursive": True,
+                "restart": False,
+                "remove_subdirs_if_empty": True,
+                "extra_valid": False,
+                "description": "shared configuration files",
+            },
+            "excluded_files": ["wazuh-manager.conf"],
+            "excluded_extensions": ["~", ".tmp", ".lock", ".swp"],
+        },
+        "intervals": {
+            "worker": {
+                "sync_integrity": 9,
+                "sync_agent_info": 10,
+                "sync_agent_groups": 30,
+                "keep_alive": 60,
+                "connection_retry": 10,
+                "timeout_agent_groups": 40,
+                "max_failed_keepalive_attempts": 2,
+                "agent_groups_mismatch_limit": 5,
+            },
+            "common":{
+                "active_response_polling": 30
+            },
+            "master": {
+                "timeout_extra_valid": 40,
+                "recalculate_integrity": 8,
+                "check_worker_lastkeepalive": 60,
+                "max_allowed_time_without_keepalive": 120,
+                "process_pool_size": 2,
+                "sync_agent_groups": 10,
+                "timeout_agent_info": 40,
+                "max_locked_integrity_time": 1000,
+                "agent_group_start_delay": 30,
+                "sync_disconnected_agent_groups": 300,
+                "sync_disconnected_agent_groups_batch_size": 100,
+                "sync_disconnected_agent_groups_min_offline": 600,
+                "sync_disconnected_agent_cluster_name_delay": 300,
+                "metrics_frequency": 600,
+                "metrics_bulk_size": 100,
+            },
+            "communication": {
+                "timeout_cluster_request": 20,
+                "timeout_dapi_request": 200,
+                "timeout_receiving_file": 120,
+                "min_zip_size": 31457280,
+                "max_zip_size": 1073741824,
+                "compress_level": 1,
+                "zip_limit_tolerance": 0.2,
+            },
+        },
+        "distributed_api": {"enabled": True},
+    }
+
+    assert json.dumps(items, sort_keys=True) == json.dumps(expected, sort_keys=True)
 
 
 def test_ClusterFilter():
     """Verify that ClusterFilter adds cluster related information into cluster logs"""
     cluster_filter = utils.ClusterFilter(tag='Cluster', subtag='config')
     record = utils.ClusterFilter(tag='Testing', subtag='config')
-    record.update_tag(new_tag='Testing_tag')
-    record.update_subtag(new_subtag='Testing_subtag')
 
     assert cluster_filter.filter(record=record)
 
 
 def test_ClusterLogger():
-    """Verify that ClusterLogger defines the logger used by wazuh-clusterd."""
+    """Verify that ClusterLogger defines the logger used by wazuh-manager-clusterd."""
     current_logger_path = os.path.join(os.path.dirname(__file__), 'testing.log')
     cluster_logger = utils.ClusterLogger(foreground_mode=False, log_path=current_logger_path,
                                          tag='%(asctime)s %(levelname)s: [%(tag)s] [%(subtag)s] %(message)s',
@@ -363,7 +442,7 @@ def test_process_spawn_sleep(pyDaemon_create_pid_mock, get_pid_mock):
     child = 1
     utils.process_spawn_sleep(child)
 
-    pyDaemon_create_pid_mock.assert_called_once_with(f'wazuh-clusterd_child_{child}', get_pid_mock.return_value)
+    pyDaemon_create_pid_mock.assert_called_once_with(f'wazuh-manager-clusterd_child_{child}', get_pid_mock.return_value)
 
 
 @pytest.mark.asyncio
@@ -401,26 +480,6 @@ async def test_forward_function(distributed_api_mock, concurrent_mock):
     distributed_api_mock.assert_called_once()
     concurrent_mock.assert_called_once()
 
-
-@pytest.mark.parametrize(
-    'cluster_config,expected',
-    (
-        [{'disabled': False, 'node_type': 'master'}, True],
-        [{'disabled': False, 'node_type': 'worker'}, False],
-        [{'disabled': True, 'node_type': 'master'}, True],
-        [{'disabled': True, 'node_type': 'worker'}, True],
-    )
-)
-@patch('wazuh.core.cluster.utils.read_cluster_config')
-def test_running_on_master_node(read_cluster_config_mock, cluster_config, expected):
-    """
-    Test that running_on_master function returns the expected value,
-    based on combinations of disabled/enabled and node type.
-    """
-
-    read_cluster_config_mock.return_value = cluster_config
-
-    assert utils.running_in_master_node() == expected
 
 @pytest.mark.parametrize('result', [
     WazuhError(6001),

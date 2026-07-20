@@ -29,9 +29,6 @@ from api.authentication import generate_keypair, JWT_ALGORITHM
 from api.api_exception import BlockedIPException, MaxRequestsException, ExpectFailedException
 from api.controllers.util import build_recursion_error_response
 
-# Default of the max event requests allowed per minute
-MAX_REQUESTS_EVENTS_DEFAULT = 30
-
 # Variable used to specify an unknown user
 UNKNOWN_USER_STRING = "unknown_user"
 
@@ -56,8 +53,6 @@ ip_block = set()
 ip_lock = asyncio.Lock()
 general_request_counter = 0
 general_current_time = None
-events_request_counter = 0
-events_current_time = None
 
 
 async def access_log(request: ConnexionRequest, response: Response, prev_time: time):
@@ -212,14 +207,6 @@ class CheckRateLimitsMiddleware(BaseHTTPMiddleware):
             'general_current_time',
             max_request_per_minute,
             6001)
-
-        if not error_code and request.url.path == '/events':
-            events_limit = min(max_request_per_minute, MAX_REQUESTS_EVENTS_DEFAULT)
-            error_code = check_rate_limit(
-                'events_request_counter',
-                'events_current_time',
-                events_limit,
-                6005)
 
         if error_code:
             raise MaxRequestsException(code=error_code)

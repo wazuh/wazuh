@@ -17,7 +17,7 @@
 
 #include "../wrappers/posix/grp_wrappers.h"
 #include "../wrappers/posix/pwd_wrappers.h"
-#include "../headers/privsep_op.h"
+#include "privsep_op.h"
 
 static void test_GetUser_success(void ** state) {
     will_return(__wrap_sysconf, 1024);

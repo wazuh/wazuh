@@ -5,16 +5,45 @@ set -e
 case "$1" in
     configure)
 
-    OS=$(lsb_release -si)
-    VER=$(lsb_release -sr)
-    DIR="/var/ossec"
-    USER="wazuh"
-    GROUP="wazuh"
+    if command -v lsb_release > /dev/null 2>&1; then
+        OS=$(lsb_release -si)
+        VER=$(lsb_release -sr)
+    elif [ -r /etc/os-release ]; then
+        . /etc/os-release
+        OS=${ID:-linux}
+        VER=${VERSION_ID:-0}
+    else
+        OS="linux"
+        VER="0"
+    fi
+    DIR="/var/wazuh-manager"
+    USER="wazuh-manager"
+    GROUP="wazuh-manager"
     WAZUH_GLOBAL_TMP_DIR="${DIR}/packages_files"
     WAZUH_TMP_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_config_files"
+    WAZUH_PRESERVE_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_upgrade_preserve"
     OSMYSHELL="/sbin/nologin"
     SCRIPTS_DIR="${WAZUH_GLOBAL_TMP_DIR}/manager_installation_scripts"
-    SCA_BASE_DIR="${SCRIPTS_DIR}/sca"
+
+    restore_upgrade_preserve() {
+        if [ -d "${WAZUH_PRESERVE_DIR}/etc" ]; then
+            mkdir -p "${DIR}/etc"
+            cp -a "${WAZUH_PRESERVE_DIR}/etc/." "${DIR}/etc/"
+        fi
+
+        if [ -d "${WAZUH_PRESERVE_DIR}/data" ]; then
+            mkdir -p "${DIR}/data"
+
+            for DATA_ENTRY in "${WAZUH_PRESERVE_DIR}/data/"* "${WAZUH_PRESERVE_DIR}/data/."[!.]* "${WAZUH_PRESERVE_DIR}/data/"..?*; do
+                [ -e "${DATA_ENTRY}" ] || continue
+                cp -a "${DATA_ENTRY}" "${DIR}/data/"
+            done
+        fi
+
+        if [ -d "${WAZUH_PRESERVE_DIR}" ]; then
+            rm -rf "${WAZUH_PRESERVE_DIR}"
+        fi
+    }
 
     if [ -d /run/systemd/system ]; then
         rm -f /etc/init.d/wazuh-manager
@@ -35,8 +64,7 @@ case "$1" in
 
     if [ -z "$2" ] || [ -f ${WAZUH_TMP_DIR}/create_conf ] ; then
 
-        ${SCRIPTS_DIR}/gen_ossec.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf
-        ${SCRIPTS_DIR}/add_localfiles.sh ${DIR} >> ${DIR}/etc/ossec.conf
+        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf
 
         passlist="${DIR}/agentless/.passlist"
 
@@ -51,8 +79,9 @@ case "$1" in
             fi
         fi
     else
-        ${SCRIPTS_DIR}/gen_ossec.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/ossec.conf.new
-        chmod 660 ${DIR}/etc/ossec.conf.new
+        ${SCRIPTS_DIR}/src/init/gen_wazuh.sh conf manager ${OS} ${VER} ${DIR} > ${DIR}/etc/wazuh-manager.conf.new
+        chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf.new
+        chmod 660 ${DIR}/etc/wazuh-manager.conf.new
     fi
 
     # Remove/relocate existing SQLite databases
@@ -67,7 +96,7 @@ case "$1" in
     fi
 
     if [ -f ${DIR}/queue/db/global.db ]; then
-        chmod 640 ${DIR}/queue/db/global.db*
+        chmod 660 ${DIR}/queue/db/global.db*
         chown ${USER}:${GROUP} ${DIR}/queue/db/global.db*
     fi
 
@@ -89,64 +118,53 @@ case "$1" in
     # Remove Vuln-detector database
     rm -f ${DIR}/queue/vulnerabilities/cve.db || true
 
-    # Remove groups backup files
-    rm -rf ${DIR}/backup/groups
-
     # Generation auto-signed certificate if not exists
     if [ ! -f "${DIR}/etc/sslmanager.key" ] && [ ! -f "${DIR}/etc/sslmanager.cert" ]; then
-        ${DIR}/bin/wazuh-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/sslmanager.key -X ${DIR}/etc/sslmanager.cert 2>/dev/null
+        ${DIR}/bin/wazuh-manager-authd -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K ${DIR}/etc/sslmanager.key -X ${DIR}/etc/sslmanager.cert 2>/dev/null
     fi
 
     chmod 640 ${DIR}/etc/sslmanager.cert ${DIR}/etc/sslmanager.key > /dev/null 2>&1 || true
 
-    # For the etc dir
-    if [ -f /etc/localtime ]; then
-        cp -pL /etc/localtime ${DIR}/etc/;
-        chmod 640 ${DIR}/etc/localtime
-        chown root:${GROUP} ${DIR}/etc/localtime
+    if [ -z "$2" ]; then
+        # For the etc dir
+        if [ -f /etc/localtime ]; then
+            cp -pL /etc/localtime ${DIR}/etc/;
+            chmod 640 ${DIR}/etc/localtime
+            chown root:${GROUP} ${DIR}/etc/localtime
+        fi
+
+        if [ -f /etc/TIMEZONE ]; then
+            cp -p /etc/TIMEZONE ${DIR}/etc/;
+            chmod 640 ${DIR}/etc/TIMEZONE
+            chown root:root ${DIR}/etc/TIMEZONE
+        fi
     fi
 
-    if [ -f /etc/TIMEZONE ]; then
-        cp -p /etc/TIMEZONE ${DIR}/etc/;
-        chmod 640 ${DIR}/etc/TIMEZONE
-        chown root:${GROUP} ${DIR}/etc/localtime
+    for BIN in agent_groups agent_upgrade cluster_control rbac_control \
+        wazuh-manager-analysisd wazuh-manager-apid wazuh-manager-authd \
+        wazuh-manager-clusterd wazuh-manager-control wazuh-manager-db \
+        wazuh-manager-keystore wazuh-manager-modulesd \
+        wazuh-manager-monitord wazuh-manager-remoted; do
+        if [ -f "${DIR}/bin/${BIN}" ]; then
+            case "${BIN}" in
+                agent_groups|agent_upgrade|cluster_control|rbac_control|wazuh-manager-apid|wazuh-manager-clusterd)
+                    chown root:${GROUP} "${DIR}/bin/${BIN}"
+                    ;;
+                *)
+                    chown root:root "${DIR}/bin/${BIN}"
+                    ;;
+            esac
+        fi
+    done
+
+    if [ -f "${DIR}/bin/verify-agent-conf" ]; then
+        chown root:${GROUP} "${DIR}/bin/verify-agent-conf"
     fi
 
-    # Restore client.keys configuration
-    if [ -f ${WAZUH_TMP_DIR}/client.keys ]; then
-        mv ${WAZUH_TMP_DIR}/client.keys ${DIR}/etc/client.keys
-    fi
-    # Restore local insternal options configuration
-    if [ -f ${WAZUH_TMP_DIR}/local_internal_options.conf ]; then
-        mv ${WAZUH_TMP_DIR}/local_internal_options.conf ${DIR}/etc/local_internal_options.conf
-    fi
-    # Restore lists
-    if [ -d ${WAZUH_TMP_DIR}/lists ]; then
-        cp -rp ${WAZUH_TMP_DIR}/lists  ${DIR}/etc/
-    fi
-    # Restore ossec.conf configuration
-    if [ -f ${WAZUH_TMP_DIR}/ossec.conf ]; then
-        mv ${WAZUH_TMP_DIR}/ossec.conf ${DIR}/etc/ossec.conf
-    fi
-    # Restore local_rules.xml configuration
-    if [ -f ${WAZUH_TMP_DIR}/local_rules.xml ]; then
-        mv ${WAZUH_TMP_DIR}/local_rules.xml ${DIR}/etc/rules/local_rules.xml
-    fi
-    # Restore local_decoders.xml configuration
-    if [ -f ${WAZUH_TMP_DIR}/local_decoder.xml ]; then
-        mv ${WAZUH_TMP_DIR}/local_decoder.xml ${DIR}/etc/decoders/local_decoder.xml
-    fi
-
-    # Restore group files
-    if [ -d ${WAZUH_TMP_DIR}/group ]; then
-        cp -rfp ${WAZUH_TMP_DIR}/group/* ${DIR}/etc/shared
-        rm -rf ${WAZUH_TMP_DIR}/group/
-    fi
-
-    # Restore agent-groups files
-    if [ -d ${WAZUH_TMP_DIR}/agent-groups ]; then
-        mv ${WAZUH_TMP_DIR}/agent-groups ${DIR}/queue/
-    fi
+    chown root:${GROUP} ${DIR}/etc/wazuh-manager.conf > /dev/null 2>&1 || true
+    chmod 660 ${DIR}/etc/wazuh-manager.conf > /dev/null 2>&1 || true
+    chown root:${GROUP} ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
+    chmod 640 ${DIR}/etc/wazuh-manager-internal-options.conf > /dev/null 2>&1 || true
 
     # Restore RBAC database
     if [ -f ${WAZUH_TMP_DIR}/rbac.db ]; then
@@ -163,81 +181,19 @@ case "$1" in
     # More files
     touch ${DIR}/etc/client.keys
 
-    touch ${DIR}/logs/active-responses.log
-    touch ${DIR}/logs/integrations.log
-    chown ${USER}:${GROUP} ${DIR}/logs/active-responses.log
-    chown ${USER}:${GROUP} ${DIR}/logs/integrations.log
-    chmod 0660 ${DIR}/logs/active-responses.log
-    chmod 0640 ${DIR}/logs/integrations.log
+    touch ${DIR}/logs/wazuh-manager.log
+    chown ${USER}:${GROUP} ${DIR}/logs/wazuh-manager.log
+    chmod 0660 ${DIR}/logs/wazuh-manager.log
 
-    # Set merged.mg permissions to new ones
-    find ${DIR}/etc/shared/ -type f -name 'merged.mg' -exec chmod 644 {} \;
+    touch ${DIR}/logs/wazuh-manager.json
+    chown ${USER}:${GROUP} ${DIR}/logs/wazuh-manager.json
+    chmod 0660 ${DIR}/logs/wazuh-manager.json
 
-    if [ -f ${DIR}/etc/shared/ar.conf ]; then
-        chown root:wazuh ${DIR}/etc/shared/ar.conf
-    fi
+    # Restore preserved etc/ and data/ as the last content-restore/overwrite
+    # step for those trees, matching the RPM %posttrans ordering and the
+    # strict "etc/ MUST NOT be overwritten" contract from the upgrade rules.
+    restore_upgrade_preserve
 
-    # Check if SELinux is installed and enabled
-    if command -v getenforce > /dev/null 2>&1 && command -v semodule > /dev/null 2>&1; then
-        if [ $(getenforce) !=  "Disabled" ]; then
-            semodule -i ${DIR}/var/selinux/wazuh.pp
-            semodule -e wazuh
-        fi
-    fi
-
-    # Install the SCA files
-    if [ -d "${SCA_BASE_DIR}" ]; then
-
-        . ${SCRIPTS_DIR}/src/init/dist-detect.sh
-
-        SCA_DIR="${DIST_NAME}/${DIST_VER}"
-
-        SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}"
-        mkdir -p ${DIR}/ruleset/sca
-
-        # Install the configuration files needed for this hosts
-        if [ -r "${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/${DIST_SUBVER}/sca.files" ]; then
-            SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/${DIST_SUBVER}"
-        elif [ -r "${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}/sca.files" ]; then
-            SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}/${DIST_VER}"
-        elif [ -r "${SCA_BASE_DIR}/${DIST_NAME}/sca.files" ]; then
-            SCA_TMP_DIR="${SCA_BASE_DIR}/${DIST_NAME}"
-        else
-            SCA_TMP_DIR="${SCA_BASE_DIR}/generic"
-        fi
-
-        SCA_TMP_FILE="${SCA_TMP_DIR}/sca.files"
-
-        if [ -r ${SCA_TMP_FILE} ] && [ -r ${SCA_BASE_DIR}/generic/sca.manager.files ]; then
-
-            rm -f ${DIR}/ruleset/sca/* || true
-
-            for sca_file in $(cat ${SCA_TMP_FILE}); do
-                mv ${SCA_BASE_DIR}/${sca_file} ${DIR}/ruleset/sca
-            done
-
-            for sca_file in $(cat ${SCA_BASE_DIR}/generic/sca.manager.files); do
-                filename=$(basename ${sca_file})
-                if [ -f "${SCA_BASE_DIR}/${sca_file}" ] && [ ! -f "${DIR}/ruleset/sca/${filename}" ]; then
-                    mv ${SCA_BASE_DIR}/${sca_file} ${DIR}/ruleset/sca/${filename}.disabled
-                fi
-            done
-        fi
-
-        # Set correct permissions, owner and group. ruleset directory may be empty.
-        if [ -n "$(ls -A ${DIR}/ruleset/sca/)" ]; then
-            chmod --recursive u=rwX,g=rX,o= ${DIR}/ruleset/sca/
-            chown --recursive root:${GROUP} ${DIR}/ruleset/sca/
-        fi
-        # Delete the temporary directory
-        rm -rf ${SCA_BASE_DIR}
-
-    fi
-
-    # Ensure that the 'Indexer' is configured
-    CONFIG_INDEXER_TEMPLATE="${SCRIPTS_DIR}/etc/templates/config/generic/wodle-indexer.manager.template"
-    . ${SCRIPTS_DIR}/src/init/update-indexer.sh
-    updateIndexerTemplate "${DIR}/etc/ossec.conf" $CONFIG_INDEXER_TEMPLATE
 
     # Restoring file permissions
     ${SCRIPTS_DIR}/restore-permissions.sh > /dev/null 2>&1 || true
@@ -253,7 +209,7 @@ case "$1" in
     # Remove old ossec user and group if exists and change ownwership of files
 
     if getent group ossec > /dev/null 2>&1; then
-        find ${DIR}/ -group ossec -user root -print0 | xargs -0 chown root:wazuh > /dev/null 2>&1 || true
+        find ${DIR}/ -group ossec -user root -print0 | xargs -0 chown root:${GROUP} > /dev/null 2>&1 || true
         if getent passwd ossec > /dev/null 2>&1; then
             find ${DIR}/ -group ossec -user ossec -print0 | xargs -0 chown ${USER}:${GROUP} > /dev/null 2>&1 || true
             deluser ossec > /dev/null 2>&1
@@ -279,14 +235,14 @@ case "$1" in
             elif command -v service > /dev/null 2>&1 ; then
                 service wazuh-manager restart > /dev/null 2>&1
             else
-                ${DIR}/bin/wazuh-control restart > /dev/null 2>&1
+                ${DIR}/bin/wazuh-manager-control restart > /dev/null 2>&1
             fi
         fi
     fi
 
-    #Delete obsolete files
-    if [ -f /etc/ossec-init.conf ]; then
-        rm -f /etc/ossec-init.conf
+    # Delete deprecated manage_agents binary
+    if [ -f ${DIR}/bin/manage_agents ]; then
+        rm -f ${DIR}/bin/manage_agents
     fi
 
     # Delete installation scripts

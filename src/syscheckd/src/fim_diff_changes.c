@@ -8,7 +8,7 @@
  */
 
 #include "shared.h"
-#include "../os_crypto/md5/md5_op.h"
+#include "md5_op.h"
 #include "syscheck.h"
 
 
@@ -16,7 +16,7 @@
 #ifdef WAZUH_UNIT_TESTING
 
 #ifdef WIN32
-#include "../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
+#include "../../unit_tests/wrappers/windows/libc/stdio_wrappers.h"
 #endif
 
 #define static
@@ -643,13 +643,13 @@ int fim_diff_create_compress_file(const diff_data *diff) {
 }
 
 void fim_diff_modify_compress_estimation(float compressed_size, float uncompressed_size) {
-    float compression_rate = 1 - (compressed_size / uncompressed_size);
+    float compression_rate = 1.0f - (compressed_size / uncompressed_size);
 
-    if (compression_rate < 0.1) {
+    if (compression_rate < 0.1f - 0.0001f) {
         return;     // Small compression rates won't update the estimation value
     }
 
-    syscheck.comp_estimation_perc = (compression_rate + syscheck.comp_estimation_perc) / 2;
+    syscheck.comp_estimation_perc = (compression_rate + syscheck.comp_estimation_perc) / 2.0f;
 
     if (syscheck.comp_estimation_perc < MIN_COMP_ESTIM) {
         syscheck.comp_estimation_perc = MIN_COMP_ESTIM;
@@ -1010,29 +1010,6 @@ void fim_diff_process_delete_file(const char *filename){
 }
 
 #ifdef WIN32
-void fim_diff_process_delete_registry(const char *key_name, int arch){
-    char full_path[PATH_MAX];
-    os_sha1 encoded_key;
-    int ret;
-
-    OS_SHA1_Str(key_name, strlen(key_name), encoded_key);
-
-    if (arch){
-        snprintf(full_path, PATH_MAX, "%s/registry/[x64] %s", DIFF_DIR, encoded_key);
-    } else {
-        snprintf(full_path, PATH_MAX, "%s/registry/[x32] %s", DIFF_DIR, encoded_key);
-    }
-
-    ret = fim_diff_delete_compress_folder(full_path);
-    if(ret == -1){
-        merror(FIM_DIFF_DELETE_DIFF_FOLDER_ERROR, full_path);
-    } else if (ret == -2){
-        mdebug2(FIM_DIFF_FOLDER_NOT_EXIST, full_path);
-    }
-
-    return;
-}
-
 void fim_diff_process_delete_value(const char *key_name, const char *value_name, int arch){
     char full_path[PATH_MAX];
     os_sha1 encoded_key;

@@ -4,57 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       generate_report:
-        description: 'Generate test report'
+        description: "Generate test report"
         required: false
         type: boolean
         default: false
       qa_branch:
-        description: 'QA repository branch'
+        description: "QA repository branch"
         required: false
-        default: 'main'
-  pull_request:
-    paths:
-      - '.github/workflows/4_testunit_api.yml'
-      - 'api/**'
-      - 'framework/wazuh/**'
-      - 'framework/requirements.txt'
-      - 'framework/requirements-dev.txt'
+        default: "main"
 
 jobs:
-  build: 
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ['3.10']
-    env:
-      PYTHONPATH: ${{ github.workspace }}/api:${{ github.workspace }}/framework
+  deprecated:
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-          cache-dependency-path: 'framework/requirements-dev.txt'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip wheel
-          pip install -r framework/requirements-dev.txt --no-build-isolation
-
-      - name: Run API tests
-        env:
-          TEST_REPORT_PATH: ${{ runner.temp }}/test_report.txt
-        run: |
-          set -o pipefail
-          python -m pytest api/api -vv --ignore=test --cov=api | tee "${TEST_REPORT_PATH}"
-      
-      - name: Generate test report
-        if: inputs.generate_report
-        env:
-          TEST_REPORT_PATH: ${{ runner.temp }}/test_report.txt
-        run: |
-          git clone -b ${{ inputs.qa_branch }} --single-branch https://github.com/wazuh/qa-integration-framework.git
-          python qa-integration-framework/src/wazuh_testing/scripts/pytest_results_parser.py -f "${TEST_REPORT_PATH}"
+      - name: Warning
+        run: echo "This workflow is deprecated. Be careful, you have just run it from main."

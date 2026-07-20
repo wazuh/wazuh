@@ -457,12 +457,12 @@ public:
             constexpr uint32_t UI_OPT {BUFFER_MAX_SIZE};
             if (T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT)) < 0)
             {
-                std::cerr << "Failed to set socket options" << std::endl;
+                // TODO: Handle error
             }
 
             if (T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&UI_OPT, sizeof(UI_OPT)) < 0)
             {
-                std::cerr << "Failed to set socket options" << std::endl;
+                // TODO: Handle error
             }
         }
         else
@@ -606,12 +606,12 @@ public:
 
         if (T::setsockopt(sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
         {
-            std::cerr << "Failed to set socket options" << std::endl;
+            // TODO: Handle error
         }
 
         if (T::setsockopt(sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
         {
-            std::cerr << "Failed to set socket options" << std::endl;
+            // TODO: Handle error
         }
 
         // Set socket to non-blocking.
@@ -651,7 +651,7 @@ public:
             }
             else
             {
-                if (ret != packet.m_size)
+                if (ret != static_cast<ssize_t>(packet.m_size - packet.m_offset))
                 {
                     // In this case we need to send the rest of the data, when the next send is called.
                     packet.m_offset += ret;
@@ -733,7 +733,7 @@ public:
 
             if (connectInfo.type == SocketType::UNIX)
             {
-                if (T::fchmod(m_sock, 0666) != 0)
+                if (T::fchmod(m_sock, 0660) != 0)
                 {
                     closeSocket();
                     throw std::runtime_error {"Failed to fchmod socket " + std::string(std::strerror(errno))};
@@ -749,7 +749,7 @@ public:
             if (connectInfo.type == SocketType::UNIX)
             {
                 auto sunAddr = reinterpret_cast<const sockaddr_un*>(connectInfo.addr);
-                if (T::chmod(sunAddr->sun_path, 0666) != 0)
+                if (T::chmod(sunAddr->sun_path, 0660) != 0)
                 {
                     closeSocket();
                     throw std::runtime_error {"Failed to chmod socket " + std::string(std::strerror(errno))};
@@ -765,12 +765,12 @@ public:
             const uint32_t uiOpt {BUFFER_MAX_SIZE};
             if (T::setsockopt(m_sock, SOL_SOCKET, SO_RCVBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
             {
-                std::cerr << "Failed to set socket options" << std::endl;
+                // TODO: Handle error
             }
 
             if (T::setsockopt(m_sock, SOL_SOCKET, SO_SNDBUFFORCE, (const char*)&uiOpt, sizeof(uiOpt)) < 0)
             {
-                std::cerr << "Failed to set socket options" << std::endl;
+                // TODO: Handle error
             }
         }
         else

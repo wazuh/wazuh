@@ -309,7 +309,6 @@ async def test_main(get_cluster_status_mock, read_config_mock, check_cluster_con
     with patch('scripts.cluster_control.usage', return_value='') as usage_mock:
         # Check if cluster is disabled and first condition
         cluster_control.main()
-        logging_error_mock.assert_has_calls([call('Cluster is not running.'), call('Wrong arguments.')])
         usage_mock.assert_called_once_with()
         exit_mock.assert_called_with(1)
         read_config_mock.assert_called_once_with()

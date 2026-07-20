@@ -23,50 +23,28 @@ static std::string getVersion(const bool isMinor = false)
 {
     std::string version;
 
-    if (IsWindowsVistaOrGreater())
+    DWORD versionNumber {};
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+
+    if (IsWindows8OrGreater()
+            && currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber", versionNumber))
     {
-        DWORD versionNumber {};
-        Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
-
-        if (IsWindows8OrGreater()
-                && currentVersion.dword(isMinor ? "CurrentMinorVersionNumber" : "CurrentMajorVersionNumber", versionNumber))
-        {
-            version = std::to_string(versionNumber);
-        }
-        else
-        {
-            enum OS_VERSION
-            {
-                MAJOR_VERSION,
-                MINOR_VERSION,
-                MAX_VERSION
-            };
-            const auto fullVersion{currentVersion.string("CurrentVersion")};
-            const auto majorAndMinor{Utils::split(fullVersion, '.')};
-
-            if (majorAndMinor.size() == MAX_VERSION)
-            {
-                version = isMinor ? majorAndMinor[MINOR_VERSION] : majorAndMinor[MAJOR_VERSION];
-            }
-        }
+        version = std::to_string(versionNumber);
     }
     else
     {
-        OSVERSIONINFOEX osvi{};
-        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-
-        if (GetVersionEx (reinterpret_cast<OSVERSIONINFO*>(&osvi)))
+        enum OS_VERSION
         {
-            version = std::to_string(isMinor ? osvi.dwMinorVersion : osvi.dwMajorVersion);
-        }
-        else
-        {
-            osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+            MAJOR_VERSION,
+            MINOR_VERSION,
+            MAX_VERSION
+        };
+        const auto fullVersion{currentVersion.string("CurrentVersion")};
+        const auto majorAndMinor{Utils::split(fullVersion, '.')};
 
-            if (GetVersionEx (reinterpret_cast<OSVERSIONINFO*>(&osvi)))
-            {
-                version = std::to_string(isMinor ? osvi.dwMinorVersion : osvi.dwMajorVersion);
-            }
+        if (majorAndMinor.size() == MAX_VERSION)
+        {
+            version = isMinor ? majorAndMinor[MINOR_VERSION] : majorAndMinor[MAJOR_VERSION];
         }
     }
 
@@ -77,30 +55,8 @@ static std::string getBuild()
 {
     std::string build;
 
-    if (IsWindowsVistaOrGreater())
-    {
-        Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
-        build = currentVersion.string("CurrentBuildNumber");
-    }
-    else
-    {
-        OSVERSIONINFOEX osvi{};
-        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-
-        if (GetVersionEx (reinterpret_cast<OSVERSIONINFO*>(&osvi)))
-        {
-            build = std::to_string(osvi.dwBuildNumber & 0xFFFF);
-        }
-        else
-        {
-            osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-
-            if (GetVersionEx (reinterpret_cast<OSVERSIONINFO*>(&osvi)))
-            {
-                build = std::to_string(osvi.dwBuildNumber & 0xFFFF);
-            }
-        }
-    }
+    Utils::Registry currentVersion{HKEY_LOCAL_MACHINE, R"(SOFTWARE\Microsoft\Windows NT\CurrentVersion)"};
+    build = currentVersion.string("CurrentBuildNumber");
 
     return build;
 }
@@ -232,50 +188,9 @@ static std::string getName()
 
         }
     }
-    else if (IsWindowsVistaOrGreater())
-    {
-        name = "Windows undefined version";
-    }
     else
     {
-        OSVERSIONINFOEX osvi{};
-        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-        auto result{GetVersionEx (reinterpret_cast<OSVERSIONINFO*>(&osvi))};
-
-        if (!result)
-        {
-            osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
-            result = GetVersionEx (reinterpret_cast<OSVERSIONINFO*>(&osvi));
-        }
-
-        if (result)
-        {
-            if (osvi.dwMajorVersion == 5)
-            {
-                if (osvi.dwMajorVersion <= 1)
-                {
-                    name = osvi.dwMajorVersion == 0 ? "Microsoft Windows 2000" : "Microsoft Windows XP";
-                }
-                else
-                {
-                    SYSTEM_INFO si{};
-                    GetNativeSystemInfo(&si);
-
-                    if (osvi.wProductType == VER_NT_WORKSTATION && si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)
-                    {
-                        name = "Microsoft Windows XP Professional x64 Edition";
-                    }
-                    else if (GetSystemMetrics(SM_SERVER32_VALUE))
-                    {
-                        name = "Microsoft Windows Server 2003 R2";
-                    }
-                    else
-                    {
-                        name = "Microsoft Windows Server 2003";
-                    }
-                }
-            }
-        }
+        name = "Windows undefined version";
     }
 
     return name.empty() ? "Microsoft Windows" : name;

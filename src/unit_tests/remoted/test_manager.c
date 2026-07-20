@@ -18,21 +18,34 @@
 #include "../wrappers/wazuh/os_crypto/sha256_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/agent_op_wrappers.h"
-#include "../wrappers/wazuh/remoted/shared_download_wrappers.h"
 #include "../wrappers/posix/dirent_wrappers.h"
 #include "../wrappers/posix/unistd_wrappers.h"
 #include "../wrappers/wazuh/remoted/request_wrappers.h"
 #include "../wrappers/wazuh/remoted/remoted_op_wrappers.h"
-#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 
-#include "../wazuh_db/wdb.h"
-#include "../remoted/remoted.h"
-#include "../remoted/shared_download.h"
-#include "../../remoted/manager.c"
+#ifdef TEST_SERVER
+#define ARGV0 "wazuh-manager-remoted"
+#endif
+
+#include "wdb.h"
+#include "remoted.h"
+#include "module_limits.h"
+#include "manager.c"
 
 int lookfor_agent_group(const char *agent_id, char *msg, char **r_group, int* wdb_sock);
 extern OSHash *agent_data_hash;
+
+/* Wrapper for get_cluster_name */
+char* __wrap_get_cluster_name(void) {
+    return mock_ptr_type(char *);
+}
+
+/* Wrapper for get_node_name */
+char* __wrap_get_node_name(void) {
+    return mock_ptr_type(char *);
+}
 
 /* tests */
 
@@ -101,6 +114,22 @@ static int setup_test_mode(void ** state) {
 }
 
 static int teardown_test_mode(void ** state) {
+    test_mode = 0;
+
+    return 0;
+}
+
+static int setup_cluster_globals(void ** state) {
+    cluster_name = strdup("test_cluster");
+    node_name = strdup("test_node");
+    test_mode = 1;
+
+    return 0;
+}
+
+static int teardown_cluster_globals(void ** state) {
+    os_free(cluster_name);
+    os_free(node_name);
     test_mode = 0;
 
     return 0;
@@ -584,11 +613,7 @@ void test_lookfor_agent_group_set_default_group()
 
     expect_string(__wrap__mdebug2, formatted_msg, "Agent '001' with file 'merged.mg' MD5 'c2305e0ac17e7176e924294c69cc7a24'");
 
-    expect_function_call(__wrap_pthread_mutex_lock);
-
     will_return(__wrap_w_is_single_node, 0);
-
-    expect_function_call(__wrap_pthread_mutex_unlock);
 
     expect_value(__wrap_wdb_set_agent_groups_csv, id, agent_id);
     will_return(__wrap_wdb_set_agent_groups_csv, 0);
@@ -780,9 +805,6 @@ void test_c_group_no_changes(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
-
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
     will_return(__wrap_open_memstream, (FILE *)1);
@@ -790,10 +812,6 @@ void test_c_group_no_changes(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -849,9 +867,6 @@ void test_c_group_no_changes_disk(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
-
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, (FILE *)1);
@@ -859,10 +874,6 @@ void test_c_group_no_changes_disk(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -921,9 +932,6 @@ void test_c_group_changes(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
-
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
     will_return(__wrap_open_memstream, (FILE *)1);
@@ -931,10 +939,6 @@ void test_c_group_changes(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -994,9 +998,6 @@ void test_c_group_changes_disk(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
-
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, (FILE *)1);
@@ -1004,10 +1005,6 @@ void test_c_group_changes_disk(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -1062,9 +1059,6 @@ void test_c_group_fail(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
-
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
     will_return(__wrap_open_memstream, (FILE *)1);
@@ -1072,10 +1066,6 @@ void test_c_group_fail(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -1131,9 +1121,6 @@ void test_c_group_fail_disk(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
-
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, (FILE *)1);
@@ -1141,10 +1128,6 @@ void test_c_group_fail_disk(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -1170,255 +1153,6 @@ void test_c_group_fail_disk(void **state)
     assert_non_null(group->f_time);
 }
 
-void test_c_group_downloaded_file(void **state)
-{
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 1;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, r_group);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Downloading shared file 'etc/shared/test_default/merged.mg' from 'r_group->files_url'");
-
-    expect_string(__wrap_wurl_request, url, r_group->files->url);
-    expect_string(__wrap_wurl_request, dest, "var/download/merged.mg");
-    will_return(__wrap_wurl_request, 0);
-
-    expect_string(__wrap_TestUnmergeFiles, finalpath, "var/download/merged.mg");
-    will_return(__wrap_TestUnmergeFiles, 1);
-
-    expect_string(__wrap_OS_MoveFile, src, "var/download/merged.mg");
-    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/merged.mg");
-    will_return(__wrap_OS_MoveFile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-}
-
-void test_c_group_downloaded_file_no_poll(void **state)
-{
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 1;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 1;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, r_group);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-}
-
-void test_c_group_downloaded_file_is_corrupted(void **state)
-{
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 1;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, r_group);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Downloading shared file 'etc/shared/test_default/merged.mg' from 'r_group->files_url'");
-
-    expect_string(__wrap_wurl_request, url, r_group->files->url);
-    expect_string(__wrap_wurl_request, dest, "var/download/merged.mg");
-    will_return(__wrap_wurl_request, 0);
-
-    expect_string(__wrap_TestUnmergeFiles, finalpath, "var/download/merged.mg");
-    will_return(__wrap_TestUnmergeFiles, 0);
-
-    expect_string(__wrap_unlink, file, "var/download/merged.mg");
-    will_return(__wrap_unlink, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "The downloaded file 'var/download/merged.mg' is corrupted.");
-    expect_string(__wrap__merror, formatted_msg, "Failed to delete file 'var/download/merged.mg'");
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-}
-
-void test_c_group_download_all_files(void **state)
-{
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-
-    os_calloc(1, (2) * sizeof(file), r_group->files);
-    r_group->files[0].name = strdup("r_group->files_name");
-    r_group->files[0].url = strdup("r_group->files_url");;
-
-    r_group->files[1].name = NULL;
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = -1;
-    r_group->merged_is_downloaded = 1;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, r_group);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Downloading shared file 'etc/shared/test_default/r_group->files_name' from 'r_group->files_url'");
-
-    expect_string(__wrap_wurl_request, url, r_group->files->url);
-    expect_string(__wrap_wurl_request, dest, "var/download/r_group->files_name");
-    will_return(__wrap_wurl_request, 0);
-
-    expect_string(__wrap_OS_MoveFile, src, "var/download/r_group->files_name");
-    expect_string(__wrap_OS_MoveFile, dst, "etc/shared/test_default/r_group->files_name");
-    will_return(__wrap_OS_MoveFile, 0);
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
-
-    expect_string(__wrap__merror, formatted_msg, "Accessing file 'etc/shared/test_default/merged.mg'");
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-}
-
-void test_c_group_no_create_shared_file(void **state)
-{
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
-
-    // Start validate_shared_files function
-    expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
-    will_return(__wrap_wreaddir, NULL);
-
-    expect_string(__wrap__mdebug1, formatted_msg, "Could not open directory 'etc/shared/test_default'");
-    // End validate_shared_files function
-
-    expect_string(__wrap_OS_MD5_File, fname, "etc/shared/test_default/merged.mg");
-    expect_value(__wrap_OS_MD5_File, mode, OS_TEXT);
-    will_return(__wrap_OS_MD5_File, "md5_test");
-    will_return(__wrap_OS_MD5_File, -1);
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, false, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-
-    assert_string_equal(group->name, "test_default");
-    assert_string_equal(group->merged_sum, "");
-    assert_non_null(group->f_time);
-}
-
 void test_c_group_invalid_share_file(void **state)
 {
     disk_storage = 0;
@@ -1427,24 +1161,8 @@ void test_c_group_invalid_share_file(void **state)
 
     const char *group_name = "test_default";
 
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -1453,22 +1171,6 @@ void test_c_group_invalid_share_file(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    struct stat stat_buf = { .st_mtime = 123456788 };
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, 0);
-
-    expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 1);
-
-    OSHash_Add_ex_check_data = 0;
-    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "ar.conf");
-    will_return(__wrap_OSHash_Add_ex, 1);
-
-    expect_string(__wrap__merror, formatted_msg, "Couldn't add file 'ar.conf' to group hash table.");
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -1492,6 +1194,7 @@ void test_c_group_invalid_share_file(void **state)
 
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
+    errno = 0;
     will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
@@ -1499,12 +1202,6 @@ void test_c_group_invalid_share_file(void **state)
     expect_string(__wrap__merror, formatted_msg, "Unable to open file: 'etc/shared/test_default/merged.mg' due to [(0)-(No such file or directory)].");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
 }
 
 void test_c_group_append_file_error(void **state)
@@ -1515,24 +1212,8 @@ void test_c_group_append_file_error(void **state)
 
     const char *group_name = "test_default";
 
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -1541,22 +1222,6 @@ void test_c_group_append_file_error(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    struct stat stat_buf = { .st_mtime = 123456788 };
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, 0);
-
-    expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 1);
-
-    OSHash_Add_ex_check_data = 0;
-    expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
-    expect_string(__wrap_OSHash_Add_ex, key, "ar.conf");
-    will_return(__wrap_OSHash_Add_ex, 0);
-
-    expect_string(__wrap__merror, formatted_msg, "Couldn't add file 'ar.conf' to group hash table.");
 
     // Start validate_shared_files function
     char ** files = NULL;
@@ -1592,68 +1257,6 @@ void test_c_group_append_file_error(void **state)
     will_return(__wrap_fclose, 0);
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
-}
-
-void test_c_group_append_ar_error(void **state)
-{
-    disk_storage = 0;
-
-    group_t *group = (group_t *)state[0];
-
-    const char *group_name = "test_default";
-
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
-    expect_function_call(__wrap_OSHash_Create);
-    will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
-
-    will_return(__wrap_open_memstream, strdup("buffer stream"));
-    will_return(__wrap_open_memstream, 13);
-    will_return(__wrap_open_memstream, (FILE *)1);
-
-    expect_value(__wrap_fprintf, __stream, (FILE *)1);
-    expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
-    will_return(__wrap_fprintf, 0);
-
-    struct stat stat_buf = { .st_mtime = 123456788 };
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, &stat_buf);
-    will_return(__wrap_stat, 0);
-
-    expect_value(__wrap_MergeAppendFile, finalfp, (FILE *)1);
-    expect_value(__wrap_MergeAppendFile, path_offset, -1);
-    will_return(__wrap_MergeAppendFile, 0);
-
-    expect_value(__wrap_fclose, _File, (FILE *)1);
-    will_return(__wrap_fclose, 0);
-
-    c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
 }
 
 void test_c_group_truncate_error(void **state)
@@ -1664,24 +1267,8 @@ void test_c_group_truncate_error(void **state)
 
     const char *group_name = "test_default";
 
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
@@ -1692,12 +1279,6 @@ void test_c_group_truncate_error(void **state)
     expect_string(__wrap__merror, formatted_msg, "Unable to open memory stream due to [(0)-(No such file or directory)].");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
 }
 
 void test_c_group_truncate_error_disk(void **state)
@@ -1708,24 +1289,8 @@ void test_c_group_truncate_error_disk(void **state)
 
     const char *group_name = "test_default";
 
-    // Initialize r_group structure
-    remote_files_group *r_group = NULL;
-    os_malloc(sizeof(remote_files_group), r_group);
-    os_strdup("r_group_name", r_group->name);
-    os_malloc(sizeof(file), r_group->files);
-    os_strdup("r_group->files_name", r_group->files->name);
-    os_strdup("r_group->files_url", r_group->files->url);
-
-    r_group->poll = 0;
-    r_group->current_polling_time = 0;
-    r_group->merge_file_index = 0;
-    r_group->merged_is_downloaded = 0;
-
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_w_parser_get_group, name, group->name);
-    will_return(__wrap_w_parser_get_group, NULL);
 
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg.tmp");
     expect_string(__wrap_wfopen, mode, "w");
@@ -1736,12 +1301,6 @@ void test_c_group_truncate_error_disk(void **state)
     expect_string(__wrap__merror, formatted_msg, "Unable to create merged file: 'etc/shared/test_default/merged.mg.tmp' due to [(0)-(No such file or directory)].");
 
     c_group(group_name, &group->f_time, &group->merged_sum, SHAREDCFG_DIR, true, false);
-
-    os_free(r_group->name)
-    os_free(r_group->files->name);
-    os_free(r_group->files->url);
-    os_free(r_group->files);
-    os_free(r_group);
 }
 
 void test_c_multi_group_hash_multigroup_null(void **state)
@@ -1990,9 +1549,6 @@ void test_c_multi_group_call_c_group(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, "hash_multi_group_test");
-    will_return(__wrap_w_parser_get_group, NULL);
-
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
     will_return(__wrap_open_memstream, NULL);
@@ -2011,114 +1567,6 @@ void test_c_multi_group_call_c_group(void **state)
 
     os_free(hash_multigroup);
     os_free(multi_group);
-}
-
-void test_find_group_from_file_found(void **state)
-{
-    char group_name[OS_SIZE_65536] = {0};
-
-    OSHashNode* node = NULL;
-    os_calloc(1, sizeof(OSHashNode), node);
-    node->data = state[0];
-
-    expect_value(__wrap_OSHash_Begin, self, groups);
-    will_return(__wrap_OSHash_Begin, node);
-
-    group_t *group = find_group_from_sum("ABCDEF1234567890", group_name);
-
-    assert_string_equal(group_name, "test_default");
-    assert_non_null(group);
-    assert_string_equal(group->name, "test_default");
-
-    os_free(node);
-}
-
-void test_find_group_from_file_not_found(void **state)
-{
-    char group_name[OS_SIZE_65536] = {0};
-
-    OSHashNode* node1 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node1);
-    node1->data = state[0];
-
-    OSHashNode* node2 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node2);
-    node2->data = state[1];
-
-    expect_value(__wrap_OSHash_Begin, self, groups);
-    will_return(__wrap_OSHash_Begin, node1);
-
-    expect_value(__wrap_OSHash_Next, self, groups);
-    will_return(__wrap_OSHash_Next, node2);
-
-    expect_value(__wrap_OSHash_Next, self, groups);
-    will_return(__wrap_OSHash_Next, NULL);
-
-    group_t *group = find_group_from_sum("2121212121", group_name);
-
-    assert_string_equal(group_name, "\0");
-    assert_null(group);
-
-    os_free(node1);
-    os_free(node2);
-}
-
-void test_find_multi_group_from_file_found(void **state)
-{
-    char multi_group_name[OS_SIZE_65536] = {0};
-
-    OSHashNode* node1 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node1);
-    node1->data = state[0];
-
-    OSHashNode* node2 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node2);
-    node2->data = state[1];
-
-    expect_value(__wrap_OSHash_Begin, self, multi_groups);
-    will_return(__wrap_OSHash_Begin, node1);
-
-    expect_value(__wrap_OSHash_Next, self, multi_groups);
-    will_return(__wrap_OSHash_Next, node2);
-
-    group_t *multi_group = find_multi_group_from_sum("1234567890ABCDFE", multi_group_name);
-
-    assert_string_equal(multi_group_name, "test_test_default2");
-    assert_non_null(multi_group);
-    assert_string_equal(multi_group->name, "test_test_default2");
-
-    os_free(node1);
-    os_free(node2);
-}
-
-void test_find_multi_group_from_file_not_found(void **state)
-{
-    char multi_group_name[OS_SIZE_65536] = {0};
-
-    OSHashNode* node1 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node1);
-    node1->data = state[0];
-
-    OSHashNode* node2 = NULL;
-    os_calloc(1, sizeof(OSHashNode), node2);
-    node2->data = state[1];
-
-    expect_value(__wrap_OSHash_Begin, self, multi_groups);
-    will_return(__wrap_OSHash_Begin, node1);
-
-    expect_value(__wrap_OSHash_Next, self, multi_groups);
-    will_return(__wrap_OSHash_Next, node2);
-
-    expect_value(__wrap_OSHash_Next, self, multi_groups);
-    will_return(__wrap_OSHash_Next, NULL);
-
-    group_t *multi_group = find_multi_group_from_sum("4545454545", multi_group_name);
-
-    assert_string_equal(multi_group_name, "\0");
-    assert_null(multi_group);
-
-    os_free(node1);
-    os_free(node2);
 }
 
 void test_ftime_changed_same_fsum(void **state)
@@ -2699,9 +2147,6 @@ void test_process_groups_find_group_null(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_w_parser_get_group, name, "test");
-    will_return(__wrap_w_parser_get_group, NULL);
-
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
     will_return(__wrap_open_memstream, (FILE *)1);
@@ -2709,10 +2154,6 @@ void test_process_groups_find_group_null(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test");
@@ -2736,6 +2177,7 @@ void test_process_groups_find_group_null(void **state)
 
     expect_string(__wrap_wfopen, path, "etc/shared/test/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
+    errno = 0;
     will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
@@ -2781,10 +2223,6 @@ void test_process_groups_find_group_changed(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
 
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
-
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
     will_return(__wrap_wreaddir, NULL);
@@ -2812,9 +2250,6 @@ void test_process_groups_find_group_changed(void **state)
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)11);
 
-    expect_string(__wrap_w_parser_get_group, name, "test_default");
-    will_return(__wrap_w_parser_get_group, NULL);
-
     will_return(__wrap_open_memstream, strdup("buffer stream"));
     will_return(__wrap_open_memstream, 13);
     will_return(__wrap_open_memstream, (FILE *)1);
@@ -2822,10 +2257,6 @@ void test_process_groups_find_group_changed(void **state)
     expect_value(__wrap_fprintf, __stream, (FILE *)1);
     expect_string(__wrap_fprintf, formatted_msg, "#test_default\n");
     will_return(__wrap_fprintf, 0);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -2849,6 +2280,7 @@ void test_process_groups_find_group_changed(void **state)
 
     expect_string(__wrap_wfopen, path, "etc/shared/test_default/merged.mg");
     expect_string(__wrap_wfopen, mode, "w");
+    errno = 0;
     will_return(__wrap_wfopen, NULL);
 
     will_return(__wrap_strerror, "No such file or directory");
@@ -2901,10 +2333,6 @@ void test_process_groups_find_group_not_changed(void **state)
     // Start c_group function
     expect_function_call(__wrap_OSHash_Create);
     will_return(__wrap_OSHash_Create, (OSHash *)10);
-
-    expect_string(__wrap_stat, __file, "etc/shared/ar.conf");
-    will_return(__wrap_stat, 0);
-    will_return(__wrap_stat, -1);
 
     // Start validate_shared_files function
     expect_string(__wrap_wreaddir, name, "etc/shared/test_default");
@@ -3283,7 +2711,7 @@ void test_process_multi_groups_changed_outside(void **state)
     will_return(__wrap_strerror, "No such file or directory");
     expect_string(__wrap__mdebug2, formatted_msg, "Opening directory: 'etc/shared': No such file or directory");
 
-    expect_string(__wrap__mwarn, formatted_msg, "Multigroup 'group1,group2' was modified from outside, so it was regenerated.");
+    expect_string(__wrap__mdebug2, formatted_msg, "Multigroup 'group1,group2' was modified from outside, so it was regenerated.");
 
     expect_value(__wrap_OSHash_Next, self, m_hash);
     will_return(__wrap_OSHash_Next, NULL);
@@ -3626,7 +3054,7 @@ void test_validate_shared_files_valid_now(void **state)
     expect_string(__wrap_OSHash_Delete, key, "etc/shared/test_default/test-file");
     will_return(__wrap_OSHash_Delete, NULL);
 
-    expect_string(__wrap__minfo, formatted_msg, "File 'etc/shared/test_default/test-file' is valid after last modification.");
+    expect_string(__wrap__mdebug1, formatted_msg, "File 'etc/shared/test_default/test-file' is valid after last modification.");
 
     OSHash_Add_ex_check_data = 0;
     expect_value(__wrap_OSHash_Add_ex, self, (OSHash *)10);
@@ -4670,28 +4098,8 @@ void test_validate_control_msg_shutdown_success(void** state)
     expect_string(__wrap_OSHash_Delete_ex, key, "001");
     expect_value(__wrap_OSHash_Delete_ex, self, agent_data_hash);
 
-    // Now expect SendMSG calls in validate_control_msg
-    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'agent1->192.168.1.1'.");
-    expect_string(__wrap_SendMSG, locmsg, "[001] (agent1) 192.168.1.1");
-    expect_any(__wrap_SendMSG, loc);
-    will_return(__wrap_SendMSG, -1);
-
-    will_return(__wrap_strerror, "fail");
-    expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
-
-    expect_string(__wrap_StartMQ, path, DEFAULTQUEUE);
-    expect_value(__wrap_StartMQ, type, WRITE);
-    will_return(__wrap_StartMQ, -1);
-
-    expect_string(__wrap__minfo, formatted_msg, "Successfully reconnected to 'queue/sockets/queue'");
-
-    expect_string(__wrap_SendMSG, message, "1:wazuh-remoted:ossec: Agent stopped: 'agent1->192.168.1.1'.");
-    expect_string(__wrap_SendMSG, locmsg, "[001] (agent1) 192.168.1.1");
-    expect_any(__wrap_SendMSG, loc);
-    will_return(__wrap_SendMSG, -1);
-
-    will_return(__wrap_strerror, "fail");
-    expect_string(__wrap__merror, formatted_msg, "(1210): Queue 'queue/sockets/queue' not accessible: 'fail'");
+    // Expect minfo to be called with OS_AG_STOPPED format
+    expect_string(__wrap__minfo, formatted_msg, "wazuh: Agent stopped: [001] (agent1).");
 
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
@@ -4723,7 +4131,7 @@ void test_validate_control_msg_startup_success(void** state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent agent1 sent HC_STARTUP from '192.168.1.1'");
 
-    expect_string(__wrap_compare_wazuh_versions, version1, __ossec_version);
+    expect_string(__wrap_compare_wazuh_versions, version1, __wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, "v4.6.0");
     expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, -1);
@@ -4829,7 +4237,7 @@ void test_validate_control_msg_invalid_agent_version(void** state)
 
     expect_string(__wrap__mdebug1, formatted_msg, "Agent agent1 sent HC_STARTUP from ''");
 
-    expect_string(__wrap_compare_wazuh_versions, version1, __ossec_version);
+    expect_string(__wrap_compare_wazuh_versions, version1, __wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, "v4.6.0");
     expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, -1);
@@ -4865,7 +4273,7 @@ void test_validate_control_msg_get_agent_version_fail(void** state)
     int result = validate_control_msg(&key, r_msg, msg_length, &cleaned_msg, &is_startup, &is_shutdown);
 
     // We store the message for later processing, if the version cannot be retrieved
-    // but we need to queue it for wazuh-db processing
+    // but we need to queue it for wazuh-manager-db processing
     assert_int_equal(result, 1);
     assert_int_equal(is_startup, 1);
     assert_int_equal(is_shutdown, 0);
@@ -4903,7 +4311,7 @@ void test_save_controlmsg_agent_invalid_version(void** state)
     keyentry_init(&key, "NEW_AGENT", "001", "192.168.1.1", "test_key");
     memset(&key.peer_info, 0, sizeof(struct sockaddr_storage));
 
-    expect_string(__wrap_compare_wazuh_versions, version1, __ossec_version);
+    expect_string(__wrap_compare_wazuh_versions, version1, __wazuh_version);
     expect_string(__wrap_compare_wazuh_versions, version2, "v4.6.0");
     expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, -1);
@@ -5177,7 +4585,6 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void** state)
     agent_info_data* agent_data;
     os_calloc(1, sizeof(agent_info_data), agent_data);
     agent_data->id = 1;
-    os_strdup("managerHost", agent_data->manager_host);
     os_strdup("10.2.2.2", agent_data->agent_ip);
     os_strdup("version 4.3", agent_data->version);
     os_strdup("112358", agent_data->merged_sum);
@@ -5206,7 +4613,6 @@ void test_save_controlmsg_update_msg_unable_to_update_information(void** state)
     os_free(group->name);
     os_free(group);
 
-    os_free(agent_data->manager_host);
     os_free(agent_data);
 
     os_free(node_name);
@@ -5258,7 +4664,6 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
     agent_info_data *agent_data;
     os_calloc(1, sizeof(agent_info_data), agent_data);
     agent_data->id = 1;
-    os_strdup("manager_host", agent_data->manager_host);
     os_strdup("10.2.2.2", agent_data->agent_ip);
     os_strdup("version 4.3", agent_data->version);
     os_strdup("112358", agent_data->merged_sum);
@@ -5277,7 +4682,6 @@ void test_save_controlmsg_update_msg_lookfor_agent_group_fail(void **state)
 
     save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
 
-    os_free(agent_data->manager_host);
     os_free(agent_data);
 
     free_keyentry(&key);
@@ -5291,7 +4695,7 @@ void test_save_controlmsg_startup(void **state)
 {
     int wdb_sock = -1;
     char r_msg[OS_SIZE_128] = {0};
-    strcpy(r_msg, "agent startup {\"version\":\"v4.5.0\"}");
+    strcpy(r_msg, "agent startup {\"version\":\"v5.0.0\"}");
 
     bool is_startup = true;
     bool is_shutdown = false;
@@ -5300,8 +4704,8 @@ void test_save_controlmsg_startup(void **state)
     keyentry key;
     keyentry_init(&key, "NEW_AGENT", "001", "192.168.1.1", "test_key");
 
-    expect_string(__wrap_compare_wazuh_versions, version1, "v4.5.0");
-    expect_string(__wrap_compare_wazuh_versions, version2, "v4.5.0");
+    expect_string(__wrap_compare_wazuh_versions, version1, "v5.0.0");
+    expect_string(__wrap_compare_wazuh_versions, version2, "v5.0.0");
     expect_value(__wrap_compare_wazuh_versions, compare_patch, false);
     will_return(__wrap_compare_wazuh_versions, 0);
 
@@ -5427,6 +4831,514 @@ void test_save_controlmsg_shutdown_wdb_fail(void **state)
     os_free(message);
 }
 
+void test_save_controlmsg_json_keepalive_incomplete(void **state)
+{
+    int wdb_sock = -1;
+    // Minimal/incomplete JSON keepalive without host metadata
+    char r_msg[OS_SIZE_512] = {0};
+    strcpy(r_msg, "{\"version\":\"1.0\",\"agent\":{\"merged_sum\":\"112359\"}}");
+
+    bool is_startup = false;
+    bool is_shutdown = false;
+    bool post_startup = true; // Simulating post_startup
+
+    keyentry key;
+    keyentry_init(&key, "TEST_AGENT", "003", "172.18.0.5", "test_key");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t* data;
+    os_calloc(1, sizeof(struct pending_data_t), data);
+    char* message = strdup("different message");
+    data->changed = false;
+    data->message = message;
+    memset(&data->merged_sum, 0, sizeof(os_md5));
+    snprintf(data->merged_sum, 7, "112359");
+
+    groups = (OSHash*)10;
+    multi_groups = (OSHash*)10;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "003");
+    will_return(__wrap_OSHash_Get, data);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Processing JSON keepalive from agent '003'");
+    expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting '{\"version\":\"1.0\",\"agent\":{\"merged_sum\":\"112359\"}}'");
+
+    char* group_name = NULL;
+    w_strdup("default", group_name);
+    expect_value(__wrap_wdb_get_agent_group, id, 3);
+    will_return(__wrap_wdb_get_agent_group, group_name);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '003' group is 'default'");
+
+    group_t* group = NULL;
+    os_calloc(1, sizeof(group_t), group);
+    group->name = strdup("default");
+    snprintf(group->merged_sum, 7, "112359");
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "default");
+    will_return(__wrap_OSHash_Get_ex, group);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    agent_info_data* agent_data;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    agent_data->id = 3;
+    os_strdup("112359", agent_data->merged_sum);  // Match the group merged_sum
+
+    expect_string(__wrap_parse_json_keepalive, json_str, "{\"version\":\"1.0\",\"agent\":{\"merged_sum\":\"112359\"}}");
+    will_return(__wrap_parse_json_keepalive, agent_data);
+    will_return(__wrap_parse_json_keepalive, OS_SUCCESS);
+
+    // Expect incomplete keepalive debug message
+    expect_string(__wrap__mdebug1, formatted_msg, "Agent '003' sent incomplete keepalive, deferring cluster sync (syncreq) until complete metadata is received");
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_any(__wrap_wdb_update_agent_data, agent_data);
+    will_return(__wrap_wdb_update_agent_data, OS_SUCCESS);
+
+    os_strdup("worker1", node_name);
+    logr.worker_node = true;
+
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
+
+    // post_startup should still be true because keepalive was incomplete
+    assert_true(post_startup);
+
+    logr.worker_node = false;
+    os_free(node_name);
+    os_free(group->name);
+    os_free(group);
+    os_free(agent_data);
+    free_keyentry(&key);
+    os_free(data->message);
+    os_free(data->group);
+    os_free(data);
+}
+
+void test_save_controlmsg_json_keepalive_complete(void **state)
+{
+    int wdb_sock = -1;
+    // Complete JSON keepalive with host metadata
+    char r_msg[OS_SIZE_1024] = {0};
+    strcpy(r_msg, "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"merged_sum\":\"abc123\"},"
+                  "\"host\":{\"hostname\":\"wazuh-agent3\",\"os\":{\"name\":\"Ubuntu\"}}}");
+
+    bool is_startup = false;
+    bool is_shutdown = false;
+    bool post_startup = true; // Simulating post_startup after HC_STARTUP
+
+    keyentry key;
+    keyentry_init(&key, "TEST_AGENT", "003", "172.18.0.5", "test_key");
+
+    expect_function_call(__wrap_OSHash_Create);
+    will_return(__wrap_OSHash_Create, 1);
+    pending_data = OSHash_Create();
+
+    pending_data_t* data;
+    os_calloc(1, sizeof(struct pending_data_t), data);
+    char* message = strdup("different message");
+    data->changed = false;
+    data->message = message;
+    memset(&data->merged_sum, 0, sizeof(os_md5));
+    snprintf(data->merged_sum, 7, "abc123");
+
+    groups = (OSHash*)10;
+    multi_groups = (OSHash*)10;
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get, self, pending_data);
+    expect_string(__wrap_OSHash_Get, key, "003");
+    will_return(__wrap_OSHash_Get, data);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Processing JSON keepalive from agent '003'");
+    expect_string(__wrap__mdebug2, formatted_msg, "save_controlmsg(): inserting '{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"merged_sum\":\"abc123\"},\"host\":{\"hostname\":\"wazuh-agent3\",\"os\":{\"name\":\"Ubuntu\"}}}'");
+
+    char* group_name = NULL;
+    w_strdup("default", group_name);
+    expect_value(__wrap_wdb_get_agent_group, id, 3);
+    will_return(__wrap_wdb_get_agent_group, group_name);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Agent '003' group is 'default'");
+
+    group_t* group = NULL;
+    os_calloc(1, sizeof(group_t), group);
+    group->name = strdup("default");
+    snprintf(group->merged_sum, 7, "abc123");
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_value(__wrap_OSHash_Get_ex, self, groups);
+    expect_string(__wrap_OSHash_Get_ex, key, "default");
+    will_return(__wrap_OSHash_Get_ex, group);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    agent_info_data* agent_data;
+    os_calloc(1, sizeof(agent_info_data), agent_data);
+    agent_data->id = 3;
+    os_strdup("v5.0.0", agent_data->version);
+    os_strdup("abc123", agent_data->merged_sum);
+
+    expect_string(__wrap_parse_json_keepalive, json_str, "{\"version\":\"1.0\",\"agent\":{\"version\":\"v5.0.0\",\"merged_sum\":\"abc123\"},\"host\":{\"hostname\":\"wazuh-agent3\",\"os\":{\"name\":\"Ubuntu\"}}}");
+    will_return(__wrap_parse_json_keepalive, agent_data);
+    will_return(__wrap_parse_json_keepalive, OS_SUCCESS);
+
+    expect_function_call(__wrap_pthread_mutex_lock);
+    expect_function_call(__wrap_pthread_mutex_unlock);
+
+    expect_any(__wrap_wdb_update_agent_data, agent_data);
+    will_return(__wrap_wdb_update_agent_data, OS_SUCCESS);
+
+    os_strdup("worker1", node_name);
+    logr.worker_node = true;
+
+    save_controlmsg(&key, r_msg, &wdb_sock, &post_startup, is_startup, is_shutdown);
+
+    // post_startup should be false because complete keepalive was processed
+    assert_false(post_startup);
+
+    logr.worker_node = false;
+    os_free(node_name);
+    os_free(group->name);
+    os_free(group);
+    os_free(agent_data);
+    free_keyentry(&key);
+    os_free(data->message);
+    os_free(data->group);
+    os_free(data);
+}
+
+/* build_handshake_json tests */
+
+static void test_build_handshake_json_default_values(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *limits_obj = NULL;
+    cJSON *fim = NULL;
+    cJSON *syscollector = NULL;
+    cJSON *sca = NULL;
+    cJSON *cluster = NULL;
+
+    module_limits_init(&limits);
+
+    /* Pass NULL for agent_id to skip groups lookup */
+    json_str = build_handshake_json(&limits, NULL);
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    limits_obj = cJSON_GetObjectItem(root, "limits");
+    assert_non_null(limits_obj);
+
+    /* Verify FIM limits */
+    fim = cJSON_GetObjectItem(limits_obj, "fim");
+    assert_non_null(fim);
+    assert_int_equal(cJSON_GetObjectItem(fim, "file")->valueint, DEFAULT_FIM_FILE_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(fim, "registry_key")->valueint, DEFAULT_FIM_REGISTRY_KEY_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(fim, "registry_value")->valueint, DEFAULT_FIM_REGISTRY_VALUE_LIMIT);
+
+    /* Verify Syscollector limits */
+    syscollector = cJSON_GetObjectItem(limits_obj, "syscollector");
+    assert_non_null(syscollector);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "hotfixes")->valueint, DEFAULT_SYSCOLLECTOR_HOTFIXES_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "packages")->valueint, DEFAULT_SYSCOLLECTOR_PACKAGES_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "processes")->valueint, DEFAULT_SYSCOLLECTOR_PROCESSES_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "ports")->valueint, DEFAULT_SYSCOLLECTOR_PORTS_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "network_iface")->valueint, DEFAULT_SYSCOLLECTOR_NETWORK_IFACE_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "network_protocol")->valueint, DEFAULT_SYSCOLLECTOR_NETWORK_PROTO_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "network_address")->valueint, DEFAULT_SYSCOLLECTOR_NETWORK_ADDR_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "hardware")->valueint, DEFAULT_SYSCOLLECTOR_HARDWARE_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "os_info")->valueint, DEFAULT_SYSCOLLECTOR_OS_INFO_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "users")->valueint, DEFAULT_SYSCOLLECTOR_USERS_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "groups")->valueint, DEFAULT_SYSCOLLECTOR_GROUPS_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "services")->valueint, DEFAULT_SYSCOLLECTOR_SERVICES_LIMIT);
+    assert_int_equal(cJSON_GetObjectItem(syscollector, "browser_extensions")->valueint, DEFAULT_SYSCOLLECTOR_BROWSER_EXTENSIONS_LIMIT);
+
+    /* Verify SCA limits */
+    sca = cJSON_GetObjectItem(limits_obj, "sca");
+    assert_non_null(sca);
+    assert_int_equal(cJSON_GetObjectItem(sca, "checks")->valueint, DEFAULT_SCA_CHECKS_LIMIT);
+
+    /* Verify cluster_name uses default when get_cluster_name returns NULL */
+    cluster = cJSON_GetObjectItem(root, "cluster_name");
+    assert_non_null(cluster);
+    assert_string_equal(cluster->valuestring, DEFAULT_CLUSTER_NAME);
+
+    /* Verify cluster_node uses default when get_node_name returns NULL */
+    cJSON *cluster_node = cJSON_GetObjectItem(root, "cluster_node");
+    assert_non_null(cluster_node);
+    assert_string_equal(cluster_node->valuestring, DEFAULT_NODE_NAME);
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_custom_values(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *limits_obj = NULL;
+    cJSON *fim = NULL;
+    cJSON *sca = NULL;
+
+    module_limits_init(&limits);
+
+    /* Set custom values */
+    limits.fim.file = 200000;
+    limits.fim.registry_key = 150000;
+    limits.fim.registry_value = 100000;
+    limits.sca.checks = 20000;
+
+    /* Pass NULL for agent_id to skip groups lookup */
+    json_str = build_handshake_json(&limits, NULL);
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    limits_obj = cJSON_GetObjectItem(root, "limits");
+    assert_non_null(limits_obj);
+
+    /* Verify custom FIM limits */
+    fim = cJSON_GetObjectItem(limits_obj, "fim");
+    assert_non_null(fim);
+    assert_int_equal(cJSON_GetObjectItem(fim, "file")->valueint, 200000);
+    assert_int_equal(cJSON_GetObjectItem(fim, "registry_key")->valueint, 150000);
+    assert_int_equal(cJSON_GetObjectItem(fim, "registry_value")->valueint, 100000);
+
+    /* Verify custom SCA limits */
+    sca = cJSON_GetObjectItem(limits_obj, "sca");
+    assert_non_null(sca);
+    assert_int_equal(cJSON_GetObjectItem(sca, "checks")->valueint, 20000);
+
+    /* Verify custom cluster_name */
+    cJSON *cluster = cJSON_GetObjectItem(root, "cluster_name");
+    assert_non_null(cluster);
+    assert_string_equal(cluster->valuestring, "test_cluster");
+
+    /* Verify custom cluster_node */
+    cJSON *cluster_node = cJSON_GetObjectItem(root, "cluster_node");
+    assert_non_null(cluster_node);
+    assert_string_equal(cluster_node->valuestring, "test_node");
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_null_limits(void **state) {
+    (void)state;
+    char *json_str = NULL;
+
+    json_str = build_handshake_json(NULL, NULL);
+
+    assert_null(json_str);
+}
+
+static void test_build_handshake_json_verifies_structure(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *limits_obj = NULL;
+
+    module_limits_init(&limits);
+
+    /* Pass NULL for agent_id to skip groups lookup */
+    json_str = build_handshake_json(&limits, NULL);
+
+    assert_non_null(json_str);
+
+    /* Parse and verify complete structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Check top-level structure */
+    limits_obj = cJSON_GetObjectItem(root, "limits");
+    assert_non_null(limits_obj);
+    assert_true(cJSON_IsObject(limits_obj));
+
+    cJSON *cluster_name = cJSON_GetObjectItem(root, "cluster_name");
+    assert_non_null(cluster_name);
+    assert_true(cJSON_IsString(cluster_name));
+    assert_string_equal(cluster_name->valuestring, "test_cluster");
+
+    /* Verify cluster_node exists and is a string */
+    cJSON *cluster_node = cJSON_GetObjectItem(root, "cluster_node");
+    assert_non_null(cluster_node);
+    assert_true(cJSON_IsString(cluster_node));
+    assert_string_equal(cluster_node->valuestring, "test_node");
+
+    /* Check limits sub-objects exist and are objects */
+    cJSON *fim = cJSON_GetObjectItem(limits_obj, "fim");
+    assert_non_null(fim);
+    assert_true(cJSON_IsObject(fim));
+
+    cJSON *syscollector = cJSON_GetObjectItem(limits_obj, "syscollector");
+    assert_non_null(syscollector);
+    assert_true(cJSON_IsObject(syscollector));
+
+    cJSON *sca = cJSON_GetObjectItem(limits_obj, "sca");
+    assert_non_null(sca);
+    assert_true(cJSON_IsObject(sca));
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_with_agent_groups(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *groups_array = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock wdb_get_agent_group to return multiple groups */
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, strdup("group1,group2,group3"));
+
+    /* Pass agent_id to trigger groups lookup */
+    json_str = build_handshake_json(&limits, "001");
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Verify agent_groups is an array with 3 elements */
+    groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    assert_non_null(groups_array);
+    assert_true(cJSON_IsArray(groups_array));
+    assert_int_equal(cJSON_GetArraySize(groups_array), 3);
+
+    /* Verify each group */
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 0)->valuestring, "group1");
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 1)->valuestring, "group2");
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 2)->valuestring, "group3");
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_with_single_agent_group(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *groups_array = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock wdb_get_agent_group to return a single group (no comma) */
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, strdup("default"));
+
+    /* Pass agent_id to trigger groups lookup */
+    json_str = build_handshake_json(&limits, "001");
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Verify agent_groups is an array with 1 element */
+    groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    assert_non_null(groups_array);
+    assert_true(cJSON_IsArray(groups_array));
+    assert_int_equal(cJSON_GetArraySize(groups_array), 1);
+
+    /* Verify the single group */
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 0)->valuestring, "default");
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_with_no_agent_groups(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *groups_array = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock wdb_get_agent_group to return NULL (no groups) */
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, NULL);
+
+    /* Pass agent_id to trigger groups lookup */
+    json_str = build_handshake_json(&limits, "001");
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Verify agent_groups field falls back to default */
+    groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    assert_non_null(groups_array);
+    assert_true(cJSON_IsArray(groups_array));
+    assert_int_equal(cJSON_GetArraySize(groups_array), 1);
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 0)->valuestring, "default");
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
+static void test_build_handshake_json_with_empty_agent_groups(void **state) {
+    (void)state;
+    module_limits_t limits;
+    char *json_str = NULL;
+    cJSON *root = NULL;
+    cJSON *groups_array = NULL;
+
+    module_limits_init(&limits);
+
+    /* Mock wdb_get_agent_group to return empty string */
+    expect_value(__wrap_wdb_get_agent_group, id, 1);
+    will_return(__wrap_wdb_get_agent_group, strdup(""));
+
+    /* Pass agent_id to trigger groups lookup */
+    json_str = build_handshake_json(&limits, "001");
+
+    assert_non_null(json_str);
+
+    /* Parse and verify structure */
+    root = cJSON_Parse(json_str);
+    assert_non_null(root);
+
+    /* Verify agent_groups field falls back to default */
+    groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    assert_non_null(groups_array);
+    assert_true(cJSON_IsArray(groups_array));
+    assert_int_equal(cJSON_GetArraySize(groups_array), 1);
+    assert_string_equal(cJSON_GetArrayItem(groups_array, 0)->valuestring, "default");
+
+    cJSON_Delete(root);
+    os_free(json_str);
+}
+
 
 int main(void)
 {
@@ -5446,14 +5358,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_c_group_changes_disk, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_fail, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_fail_disk, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_downloaded_file, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_downloaded_file_no_poll, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_downloaded_file_is_corrupted, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_download_all_files, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_no_create_shared_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_invalid_share_file, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_append_file_error, test_c_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_c_group_append_ar_error, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_truncate_error, test_c_group_setup, test_c_group_teardown),
         cmocka_unit_test_setup_teardown(test_c_group_truncate_error_disk, test_c_group_setup, test_c_group_teardown),
         // Tests c_multi_group
@@ -5464,12 +5370,6 @@ int main(void)
         cmocka_unit_test(test_c_multi_group_Ignore_hidden_files),
         cmocka_unit_test(test_c_multi_group_subdir_fail),
         cmocka_unit_test(test_c_multi_group_call_c_group),
-        // Test find_group_from_sum
-        cmocka_unit_test_setup_teardown(test_find_group_from_file_found, test_find_group_setup, test_c_group_teardown),
-        cmocka_unit_test_setup_teardown(test_find_group_from_file_not_found, test_find_group_setup, test_c_group_teardown),
-        // Test find_multi_group_from_sum
-        cmocka_unit_test_setup_teardown(test_find_multi_group_from_file_found, test_find_multi_group_setup, test_c_multi_group_teardown),
-        cmocka_unit_test_setup_teardown(test_find_multi_group_from_file_not_found, test_find_multi_group_setup, test_c_multi_group_teardown),
         // Test ftime_changed
         cmocka_unit_test_setup_teardown(test_ftime_changed_same_fsum, test_ftime_changed_setup, test_ftime_changed_teardown),
         cmocka_unit_test_setup_teardown(test_ftime_changed_different_fsum_sum, test_ftime_changed_setup, test_ftime_changed_teardown),
@@ -5568,6 +5468,17 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_save_controlmsg_startup, setup_globals, teardown_globals),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown, setup_globals, teardown_globals),
         cmocka_unit_test_setup_teardown(test_save_controlmsg_shutdown_wdb_fail, setup_globals, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_json_keepalive_incomplete, setup_globals, teardown_globals),
+        cmocka_unit_test_setup_teardown(test_save_controlmsg_json_keepalive_complete, setup_globals, teardown_globals),
+        // Tests build_handshake_json
+        cmocka_unit_test(test_build_handshake_json_default_values),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_custom_values, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_null_limits, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_verifies_structure, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_with_agent_groups, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_with_single_agent_group, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_with_no_agent_groups, setup_cluster_globals, teardown_cluster_globals),
+        cmocka_unit_test_setup_teardown(test_build_handshake_json_with_empty_agent_groups, setup_cluster_globals, teardown_cluster_globals),
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }

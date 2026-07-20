@@ -11,7 +11,8 @@
 #include "chrome.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
-#include "filesystemHelper.h"
+
+#include <filesystem>
 
 class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 {
@@ -24,7 +25,7 @@ class MockBrowserExtensionsWrapper : public IBrowserExtensionsWrapper
 TEST(ChromeExtensionsTests, NumberOfExtensions)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "windows");
+    std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "windows").string();
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
@@ -37,7 +38,7 @@ TEST(ChromeExtensionsTests, NumberOfExtensions)
 TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
 {
     auto mockExtensionsWrapper = std::make_shared<MockBrowserExtensionsWrapper>();
-    std::string mockHomePath = Utils::joinPaths(Utils::getParentPath((__FILE__)), "windows");
+    std::string mockHomePath = (std::filesystem::path(__FILE__).parent_path() / "windows").string();
 
     EXPECT_CALL(*mockExtensionsWrapper, getHomePath()).WillRepeatedly(::testing::Return(mockHomePath));
     EXPECT_CALL(*mockExtensionsWrapper, getUserId(::testing::StrEq("mock-user"))).WillOnce(::testing::Return("123"));
@@ -61,12 +62,12 @@ TEST(ChromeExtensionsTests, CollectReturnsExpectedJson)
             EXPECT_EQ(jsonElement["manifest_hash"], "ac233e626b47562d9ae982f21deea7a8367105b4784b69d62c807b54f072e89f");
             EXPECT_EQ(jsonElement["name"], "Adobe Acrobat: PDF edit, convert, sign tools");
             EXPECT_EQ(jsonElement["optional_permissions"], "history, bookmarks");
-            EXPECT_EQ(jsonElement["path"], Utils::joinPaths(mockHomePath, R"(mock-user\AppData\Local\Google\Chrome\User Data\Default\Extensions\ext1\1.2.3)"));
+            EXPECT_EQ(jsonElement["path"], (std::filesystem::path(mockHomePath) / "mock-user" / "AppData" / "Local" / "Google" / "Chrome" / "User Data" / "Default" / "Extensions" / "ext1" / "1.2.3").string());
             EXPECT_EQ(jsonElement["permissions"],
                       "contextMenus, tabs, downloads, nativeMessaging, webRequest, webNavigation, storage, scripting, alarms, offscreen, cookies, sidePanel");
             EXPECT_EQ(jsonElement["persistent"], "0");
             EXPECT_EQ(jsonElement["profile"], "Seu Chrome");
-            EXPECT_EQ(jsonElement["profile_path"], Utils::joinPaths(mockHomePath, R"(mock-user\AppData\Local\Google\Chrome\User Data\Default)"));
+            EXPECT_EQ(jsonElement["profile_path"], (std::filesystem::path(mockHomePath) / "mock-user" / "AppData" / "Local" / "Google" / "Chrome" / "User Data" / "Default").string());
             EXPECT_EQ(jsonElement["referenced"], "1");
             EXPECT_EQ(jsonElement["referenced_identifier"], "efaidnbmnnnibpcajpcglclefindmkaj");
             EXPECT_EQ(jsonElement["state"], "1");

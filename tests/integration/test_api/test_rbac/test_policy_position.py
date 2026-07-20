@@ -21,12 +21,11 @@ targets:
     - manager
 
 daemons:
-    - wazuh-apid
-    - wazuh-db
-    - wazuh-execd
-    - wazuh-analysisd
-    - wazuh-remoted
-    - wazuh-modulesd
+    - wazuh-manager-apid
+    - wazuh-manager-db
+    - wazuh-manager-analysisd
+    - wazuh-manager-remoted
+    - wazuh-manager-modulesd
 
 os_platform:
     - linux
@@ -72,7 +71,7 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, "cases_policy_position.yaml")
 
 # Configurations
 _, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
-daemons_handler_configuration = {"daemons": API_DAEMONS_REQUIREMENTS}
+daemons_handler_configuration = {'all_daemons': True}
 
 
 def get_policies_from_resource(origin_resource: dict) -> list:

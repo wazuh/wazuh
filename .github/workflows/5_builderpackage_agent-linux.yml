@@ -1,0 +1,868 @@
+run-name: Build Wazuh agent Linux - ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }} - ${{ inputs.system || 'deb,rpm' }} - ${{ inputs.architecture || 'amd64' }}
+name: 5.X - Build Wazuh agent Linux (DEB/RPM)
+
+on:
+  pull_request:
+    types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - "src/**"
+      - "packages/**"
+      - "ruleset/**"
+      - ".github/actions/check_files/**"
+      - ".github/workflows/5_builderpackage_agent-linux.yml"
+      - ".github/workflows/5_testintegration_agent-start.yml"
+      - ".github/workflows/5_testintegration_linux-integration-tests.yml"
+      - ".github/test_modules_linux.json"
+      - ".github/actions/5_builderpackage_get-last-stable-version/**"
+      - ".github/actions/5_builderpackage_get-upgrade-test-package-url/**"
+      - ".github/actions/5_builderpackage_linux-smoke-uninstall-test/**"
+      - ".github/actions/5_builderpackage_linux-smoke-upgrade-test/**"
+      - ".github/actions/5_testintegration_detect-changes/**"
+  workflow_dispatch:
+    inputs:
+      architecture:
+        type: choice
+        description: Package architecture [x86_64, amd64].
+        required: true
+        default: amd64
+        options:
+          - x86_64
+          - amd64
+      system:
+        type: choice
+        description: Package OS [deb, rpm].
+        required: true
+        default: deb
+        options:
+          - deb
+          - rpm
+      revision:
+        description: |
+          Package revision (name and metadata).
+          Default is '0'.
+        required: false
+        default: '0'
+      debug:
+        type: boolean
+        description: |
+          Build the binaries as debug (without optimizations).
+          Default is 'false'.
+        required: false
+        default: false
+      checksum:
+        type: boolean
+        description: |
+          Generate package checksum.
+          Default is 'false'.
+        required: false
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+# Granted at the workflow level so the reusable smoke-test / integration-test
+# calls (which run S3 uploads/downloads over OIDC) can request id-token.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # ===================== DEB JOBS =====================
+  build-deb:
+    permissions:
+      id-token: write
+      contents: read
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'deb'
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 30
+    name: Build DEB ${{ matrix.arch }} package
+    strategy:
+      matrix:
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set ARCH
+        id: set-arch
+        run: |
+          arch="${{ matrix.arch }}"
+          echo "ARCH=$arch" >> $GITHUB_ENV
+          echo "arch=$arch" >> $GITHUB_OUTPUT
+
+      - name: Set VERSION and CONTAINER_NAME
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_deb_agent_builder_${ARCH}" >> $GITHUB_ENV
+          echo "SYSTEM=deb" >> $GITHUB_ENV
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # Install uuidgen
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
+          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
+          #    install requests/packaging via pip, which the CodeBuild image lacks.
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            sudo apt-get install -y python3-pip
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
+
+      - name: Download docker image for package building
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "$CONTAINER_NAME" "$TAG"
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Build DEB ${{ env.ARCH }} package
+        id: build
+        env:
+          INPUT_REVISION: ${{ inputs.revision || '0' }}
+        run: |
+          REVISION="$INPUT_REVISION"
+          FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
+          FLAGS+="-r $REVISION "
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_package.sh -a $ARCH --tag $TAG --system $SYSTEM $FLAGS"
+          bash packages/generate_package.sh -a "$ARCH" --tag "$TAG" --system "$SYSTEM" $FLAGS
+
+          PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.deb -exec basename {} 2>/dev/null \;| grep -v -E "^wazuh-agent-dbg")
+          PACKAGE_SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.deb -exec basename {} 2>/dev/null \;| grep -E "^wazuh-agent-dbg")
+
+          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "container-name=$CONTAINER_NAME" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Upload package as artifact
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: ${{ steps.build.outputs.package-name }}
+          path: /tmp/${{ steps.build.outputs.package-name }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload debug symbols as artifact
+        if: steps.build.outputs.package-symbols-name != ''
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: ${{ steps.build.outputs.package-symbols-name }}
+          path: /tmp/${{ steps.build.outputs.package-symbols-name }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload checksums as artifacts
+        if: inputs.checksum == true
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: ${{ steps.build.outputs.package-name }}-checksums
+          path: |
+            /tmp/${{ steps.build.outputs.package-name }}.sha512
+            /tmp/${{ steps.build.outputs.package-symbols-name }}.sha512
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  test-deb:
+    permissions:
+      id-token: write
+      contents: read
+    needs: build-deb
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 30
+    name: Test DEB ${{ matrix.arch }} package
+    strategy:
+      matrix:
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get build outputs
+        id: build-info
+        run: |
+          # Los outputs de jobs con matriz no están disponibles directamente
+          # Usamos los nombres de artefactos construidos dinámicamente
+          echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+          echo "SYSTEM=deb" >> $GITHUB_ENV
+
+      - name: Download package artifacts
+        uses: ./.github/actions/download_package
+        with:
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: 'wazuh-agent.*${{ matrix.arch }}.*\.deb'
+          path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Set PACKAGE_NAME from downloaded files
+        run: |
+          PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent*${{ matrix.arch }}*.deb" -exec basename {} \; | grep -v -E "^wazuh-agent-dbg" | head -n 1)
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "No package found for ${{ matrix.arch }}!"
+            exit 1
+          fi
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+          VERSION=$(echo $PACKAGE_NAME | grep -oP '\d+\.\d+\.\d+' | head -n 1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_deb_agent_builder_${{ matrix.arch }}" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # Install uuidgen
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
+          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
+          #    install requests/packaging via pip, which the CodeBuild image lacks.
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            sudo apt-get install -y python3-pip
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
+
+      - name: Download docker image for testing
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "$CONTAINER_NAME" "$TAG"
+
+      - name: Test install package
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "No package found!"
+            exit 1
+          fi
+          sudo docker run \
+            -v $TESTS_PATH/:/tests \
+            -v /tmp/:/packages \
+            -v /var/ossec:/var/ossec \
+            -e ARCH="$ARCH" \
+            -e SYSTEM="$SYSTEM" \
+            --entrypoint '/tests/install_component.sh' \
+            "$CONTAINER_NAME:$TAG" \
+            "$PACKAGE_NAME" agent
+          if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
+
+      - name: CSV filename Formation
+        run: |
+          echo "CSV_FILENAME=${SYSTEM}_linux_agent_${{ matrix.arch }}.csv" | tee -a $GITHUB_ENV
+
+      - name: Check installed files
+        uses: ./.github/actions/check_files
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          expected_files: ${{ env.CSV_FILENAME }}
+          installation_directory: /var/ossec
+          wazuh_uid: ${{ env.WAZUH_UID }}
+          wazuh_gid: ${{ env.WAZUH_GID }}
+
+      - name: Test uninstall package
+        uses: ./.github/actions/5_builderpackage_linux-smoke-uninstall-test
+        with:
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: linux
+          system: ${{ env.SYSTEM }}
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+          architecture: ${{ env.ARCH }}
+
+      - name: Prepare package for upgrade test
+        run: |
+          mkdir -p /tmp/upgrade_test
+          cp "/tmp/$PACKAGE_NAME" /tmp/upgrade_test/
+
+      - name: Test upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_linux-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+          package_path: /tmp/upgrade_test
+
+  upload-deb-to-s3:
+    permissions:
+      id-token: write
+      contents: read
+    needs: [build-deb, test-deb]
+    if: success()
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 15
+    name: Upload DEB ${{ matrix.arch }} to S3
+    strategy:
+      matrix:
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts for this architecture
+        uses: ./.github/actions/download_package
+        with:
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: '.*${{ matrix.arch }}.*'
+          path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Find and upload packages to S3
+        run: |
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+
+          # Find and upload main package
+          PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent*${{ matrix.arch }}*.deb" -exec basename {} \; | grep -v -E "^wazuh-agent-dbg" | head -n 1)
+          if [ -n "$PACKAGE_NAME" ] && [ -s "/tmp/$PACKAGE_NAME" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
+            echo "S3 URI: $S3_URI/$PACKAGE_NAME"
+
+            # Upload checksum if exists
+            if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
+              aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
+            fi
+          else
+            echo "Package file not found or empty."
+            exit 1
+          fi
+
+          # Find and upload debug symbols
+          SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent-dbg*${{ matrix.arch }}*.deb" -exec basename {} \; | head -n 1)
+          if [ -n "$SYMBOLS_NAME" ] && [ -s "/tmp/$SYMBOLS_NAME" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
+            echo "Uploaded debug symbols: $SYMBOLS_NAME"
+
+            # Upload debug symbols checksum if exists
+            if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+              aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
+            fi
+          fi
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
+          else
+            echo "Warning: Debug symbols checksum file not found, skipping"
+          fi
+
+  # ===================== RPM JOBS =====================
+  build-rpm:
+    permissions:
+      id-token: write
+      contents: read
+    if: (github.event_name == 'pull_request' && !github.event.pull_request.draft) || inputs.system == 'rpm'
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 30
+    name: Build RPM ${{ matrix.arch }} package
+    strategy:
+      matrix:
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set ARCH
+        id: set-arch
+        run: |
+          arch="${{ matrix.arch }}"
+          # Map to RPM architecture naming (only amd64→x86_64)
+          rpm_arch="$arch"
+          if [ "$arch" = "amd64" ]; then
+            rpm_arch="x86_64"
+          fi
+          echo "ARCH=$arch" >> $GITHUB_ENV
+          echo "RPM_ARCH=$rpm_arch" >> $GITHUB_ENV
+          echo "arch=$arch" >> $GITHUB_OUTPUT
+          echo "rpm_arch=$rpm_arch" >> $GITHUB_OUTPUT
+
+      - name: Set VERSION and CONTAINER_NAME
+        run: |
+          VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' VERSION.json)"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_rpm_agent_builder_${ARCH}" >> $GITHUB_ENV
+          echo "SYSTEM=rpm" >> $GITHUB_ENV
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # Install uuidgen
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
+          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
+          #    install requests/packaging via pip, which the CodeBuild image lacks.
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            sudo apt-get install -y python3-pip
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
+
+      - name: Download docker image for package building
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "$CONTAINER_NAME" "$TAG"
+
+      - name: Append short commit to VERSION file
+        run: |
+          SHORT_COMMIT=$(git rev-parse --short=7 HEAD)
+          if [ -z "$SHORT_COMMIT" ]; then echo "No commit found"; exit 1; fi
+          echo "Found commit: $SHORT_COMMIT"
+          sed -i '/"stage":/s/$/,/; /"stage":/a \    "commit": "'"$SHORT_COMMIT"'"' VERSION.json || exit 1
+          cat VERSION.json
+
+      - name: Build RPM ${{ env.ARCH }} package
+        id: build
+        env:
+          INPUT_REVISION: ${{ inputs.revision || '0' }}
+        run: |
+          REVISION="$INPUT_REVISION"
+          FLAGS="--verbose -t agent -s /tmp --dont-build-docker -j $(nproc) "
+          FLAGS+="-r $REVISION "
+          if [ "${{ inputs.checksum }}" == "true" ]; then FLAGS+="--checksum "; fi
+          if [ "${{ inputs.debug }}" == "true" ]; then FLAGS+="--debug "; fi
+          echo "generate_package.sh -a $ARCH --tag $TAG --system $SYSTEM $FLAGS"
+          bash packages/generate_package.sh -a "$ARCH" --tag "$TAG" --system "$SYSTEM" $FLAGS
+
+          PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.rpm -exec basename {} 2>/dev/null \;| grep -v -E "^wazuh-agent-debuginfo")
+          PACKAGE_SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name *agent*.rpm -exec basename {} 2>/dev/null \;| grep -E "^wazuh-agent-debuginfo")
+
+          echo "package-name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package-symbols-name=$PACKAGE_SYMBOLS_NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "container-name=$CONTAINER_NAME" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Upload package as artifact
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: ${{ steps.build.outputs.package-name }}
+          path: /tmp/${{ steps.build.outputs.package-name }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload debug symbols as artifact
+        if: steps.build.outputs.package-symbols-name != ''
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: ${{ steps.build.outputs.package-symbols-name }}
+          path: /tmp/${{ steps.build.outputs.package-symbols-name }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Upload checksums as artifacts
+        if: inputs.checksum == true
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: ${{ steps.build.outputs.package-name }}-checksums
+          path: |
+            /tmp/${{ steps.build.outputs.package-name }}.sha512
+            /tmp/${{ steps.build.outputs.package-symbols-name }}.sha512
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  test-rpm:
+    permissions:
+      id-token: write
+      contents: read
+    needs: build-rpm
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 30
+    name: Test RPM ${{ matrix.arch }} package
+    strategy:
+      matrix:
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get build outputs
+        id: build-info
+        run: |
+          echo "ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+          echo "SYSTEM=rpm" >> $GITHUB_ENV
+
+      - name: Map architecture for RPM
+        id: map-arch
+        run: |
+          RPM_ARCH="${{ matrix.arch }}"
+          if [ "$RPM_ARCH" = "amd64" ]; then
+            RPM_ARCH="x86_64"
+          fi
+          echo "rpm_arch=$RPM_ARCH" >> $GITHUB_OUTPUT
+
+      - name: Download package artifacts
+        uses: ./.github/actions/download_package
+        with:
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: '.*${{ steps.map-arch.outputs.rpm_arch }}.*\.rpm'
+          path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Set PACKAGE_NAME from downloaded files
+        run: |
+          RPM_ARCH="${{ steps.map-arch.outputs.rpm_arch }}"
+          PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent*${RPM_ARCH}*.rpm" -exec basename {} \; | grep -v -E "^wazuh-agent-debuginfo" | head -n 1)
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "No package found for ${{ matrix.arch }} (searched for ${RPM_ARCH})!"
+            exit 1
+          fi
+          echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+          VERSION=$(echo $PACKAGE_NAME | grep -oP '\d+\.\d+\.\d+' | head -n 1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "CONTAINER_NAME=pkg_rpm_agent_builder_${{ matrix.arch }}" >> $GITHUB_ENV
+          echo "TAG=$VERSION" >> $GITHUB_ENV
+
+      - name: CodeBuild workarounds
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
+        run: |
+          # 1. Docker daemon: CodeBuild has no systemd so dockerd never starts.
+          #    VFS storage driver avoids overlay-on-overlay which is not supported inside containers.
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
+          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
+          #    which the older git inside builder Docker images cannot read.
+          git config core.repositoryformatversion 0
+          # Install uuidgen
+          if ! command -v uuidgen >/dev/null 2>&1; then
+            sudo apt-get install -y uuid-runtime
+          fi
+          # 3. pip: the get-last-stable-version / get-upgrade-test-package-url actions
+          #    install requests/packaging via pip, which the CodeBuild image lacks.
+          if ! python3 -m pip --version >/dev/null 2>&1; then
+            sudo apt-get install -y python3-pip
+          fi
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.CI_WAZUHCI_DOCKERHUB_USER }}
+          password: ${{ secrets.CI_WAZUHCI_DOCKERHUB_TOKEN }}
+
+      - name: Download docker image for testing
+        run: |
+          bash .github/actions/ghcr-pull-and-push/pull_image_from_ghcr.sh "${{ secrets.CI_WAZUH_AGENT_PACKAGES_CLASSIC }}" "${{ github.actor }}" "$CONTAINER_NAME" "$TAG"
+
+      - name: Test install package
+        run: |
+          TESTS_PATH=$GITHUB_WORKSPACE/.github/actions/test-install-components/
+          if [ -z "$PACKAGE_NAME" ]; then
+            echo "No package found!"
+            exit 1
+          fi
+          sudo docker run \
+            -v $TESTS_PATH/:/tests \
+            -v /tmp/:/packages \
+            -v /var/ossec:/var/ossec \
+            -e ARCH="$ARCH" \
+            -e SYSTEM="$SYSTEM" \
+            --entrypoint '/tests/install_component.sh' \
+            "$CONTAINER_NAME:$TAG" \
+            "$PACKAGE_NAME" agent
+          if grep -iq " installed.*wazuh-agent" /tmp/status.log ; then
+            echo "Installation successfully."
+          else
+            echo "The installation could not be completed."
+            exit 1
+          fi
+          echo "WAZUH_UID=$(cat $TESTS_PATH/wazuh_uid)" | tee -a $GITHUB_ENV
+          echo "WAZUH_GID=$(cat $TESTS_PATH/wazuh_gid)" | tee -a $GITHUB_ENV
+
+      - name: CSV filename Formation
+        run: |
+          echo "CSV_FILENAME=${SYSTEM}_linux_agent_${{ matrix.arch }}.csv" | tee -a $GITHUB_ENV
+
+      - name: Check installed files
+        uses: ./.github/actions/check_files
+        with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          expected_files: ${{ env.CSV_FILENAME }}
+          installation_directory: /var/ossec
+          wazuh_uid: ${{ env.WAZUH_UID }}
+          wazuh_gid: ${{ env.WAZUH_GID }}
+
+      - name: Test uninstall package
+        uses: ./.github/actions/5_builderpackage_linux-smoke-uninstall-test
+        with:
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+
+      - name: Get last stable version
+        id: last-stable-version
+        uses: ./.github/actions/5_builderpackage_get-last-stable-version
+        with:
+          repo_owner: wazuh
+          repo_name: wazuh
+          testing_version: ${{ env.VERSION }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get package url of the last stable version
+        id: upgrade-package-url
+        uses: ./.github/actions/5_builderpackage_get-upgrade-test-package-url
+        with:
+          component: agent
+          os: linux
+          system: ${{ env.SYSTEM }}
+          version: ${{ steps.last-stable-version.outputs.latest_stable_version }}
+          architecture: ${{ env.ARCH }}
+
+      - name: Prepare package for upgrade test
+        run: |
+          mkdir -p /tmp/upgrade_test
+          cp "/tmp/$PACKAGE_NAME" /tmp/upgrade_test/
+
+      - name: Test upgrade from ${{ steps.last-stable-version.outputs.latest_stable_version }} to ${{ env.VERSION }}
+        uses: ./.github/actions/5_builderpackage_linux-smoke-upgrade-test
+        with:
+          old_package_url: ${{ steps.upgrade-package-url.outputs.testing_package_url }}
+          expected_upgrade_version: ${{ env.VERSION }}
+          tested_docker: "${{ env.CONTAINER_NAME }}:${{ env.TAG }}"
+          package_path: /tmp/upgrade_test
+
+  upload-rpm-to-s3:
+    permissions:
+      id-token: write
+      contents: read
+    needs: [build-rpm, test-rpm]
+    if: success()
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 15
+    name: Upload RPM ${{ matrix.arch }} to S3
+    strategy:
+      matrix:
+        arch: ${{ github.event_name == 'pull_request' && fromJSON('["amd64"]') || fromJSON(format('["{0}"]', inputs.architecture == 'x86_64' && 'amd64' || inputs.architecture)) }}
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Map architecture for artifact download
+        id: map-arch
+        run: |
+          RPM_ARCH="${{ matrix.arch }}"
+          if [ "$RPM_ARCH" = "amd64" ]; then
+            RPM_ARCH="x86_64"
+          fi
+          echo "rpm_arch=$RPM_ARCH" >> $GITHUB_OUTPUT
+
+      - name: Download all artifacts for this architecture
+        uses: ./.github/actions/download_package
+        with:
+          build_run_id: ${{ github.run_id }}
+          producer_workflow: 5_builderpackage_agent-linux
+          name_regexp: '.*${{ steps.map-arch.outputs.rpm_arch }}.*'
+          path: /tmp
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.CI_INTERNAL_DEVELOPMENT_BUCKET_USER_SECRET_KEY }}
+          aws-region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: Find and upload packages to S3
+        run: |
+          S3_URI="s3://xdrsiem-packages-dev-internal/development/wazuh/5.x/main/packages"
+          RPM_ARCH="${{ steps.map-arch.outputs.rpm_arch }}"
+
+          # Find and upload main package
+          PACKAGE_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent*${RPM_ARCH}*.rpm" -exec basename {} \; | grep -v -E "^wazuh-agent-debuginfo" | head -n 1)
+          if [ -n "$PACKAGE_NAME" ] && [ -s "/tmp/$PACKAGE_NAME" ]; then
+            aws s3 cp /tmp/$PACKAGE_NAME $S3_URI/
+            echo "S3 URI: $S3_URI/$PACKAGE_NAME"
+
+            # Upload checksum if exists
+            if [ -s "/tmp/$PACKAGE_NAME.sha512" ]; then
+              aws s3 cp /tmp/$PACKAGE_NAME.sha512 $S3_URI/
+            fi
+          else
+            echo "Package file not found or empty."
+            exit 1
+          fi
+
+          # Find and upload debug symbols
+          SYMBOLS_NAME=$(find /tmp -maxdepth 1 -type f -name "wazuh-agent-debuginfo*${RPM_ARCH}*.rpm" -exec basename {} \; | head -n 1)
+          if [ -n "$SYMBOLS_NAME" ] && [ -s "/tmp/$SYMBOLS_NAME" ]; then
+            aws s3 cp /tmp/$SYMBOLS_NAME $S3_URI/
+            echo "Uploaded debug symbols: $SYMBOLS_NAME"
+
+            # Upload debug symbols checksum if exists
+            if [ -s "/tmp/$SYMBOLS_NAME.sha512" ]; then
+              aws s3 cp /tmp/$SYMBOLS_NAME.sha512 $S3_URI/
+            fi
+          fi
+
+  smoke-test-linux:
+    needs: [upload-deb-to-s3, upload-rpm-to-s3]
+    if: success()
+    uses: ./.github/workflows/5_testintegration_agent-start.yml
+    with:
+      base_branch: ''
+      platform: 'linux'
+    secrets: inherit
+
+  detect-changes:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: codebuild-github-actions-codebuild-runner-agent-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 10
+    name: Detect changed Linux test modules
+    permissions:
+      contents: read
+    outputs:
+      matrix: ${{ steps.detect.outputs.matrix }}
+      any_matched: ${{ steps.detect.outputs.any_matched }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed modules
+        id: detect
+        uses: ./.github/actions/5_testintegration_detect-changes
+        with:
+          modules-config: .github/test_modules_linux.json
+          none-matrix: '{"include":[{"name":"none","shard_name":"none","pytest_target":"","pytest_extra_args":"","pytest_tier_args":"","pre_install":"","setup_aws_credentials":false,"timeout_minutes":1}]}'
+          field-defaults: '{"pytest_extra_args":"","pre_install":"","setup_aws_credentials":false,"timeout_minutes":120}'
+
+  run-integration-tests:
+    needs: [upload-deb-to-s3, detect-changes]
+    if: >
+      needs.upload-deb-to-s3.result == 'success' &&
+      needs.detect-changes.result == 'success'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
+    name: ${{ matrix.name == 'none' && 'Skipped IT Linux - no relevant changes' || format('IT Linux - {0} ({1})', matrix.name, matrix.shard_name) }}
+    uses: ./.github/workflows/5_testintegration_linux-integration-tests.yml
+    with:
+      base_branch: ${{ github.event.pull_request.base.ref }}
+      build_run_id: ${{ github.run_id }}
+      module_name: ${{ matrix.name }}
+      shard_name: ${{ matrix.shard_name }}
+      pytest_target: ${{ matrix.pytest_target }}
+      pytest_extra_args: ${{ matrix.pytest_extra_args }}
+      pytest_tier_args: ${{ matrix.pytest_tier_args }}
+      pre_install: ${{ matrix.pre_install }}
+      setup_aws_credentials: ${{ matrix.setup_aws_credentials || false }}
+      timeout_minutes: ${{ matrix.timeout_minutes }}
+    secrets: inherit

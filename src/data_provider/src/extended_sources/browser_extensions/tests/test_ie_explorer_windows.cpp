@@ -10,7 +10,6 @@
 #include "iie_extensions_wrapper.hpp"
 #include "gtest/gtest.h"
 #include "gmock/gmock.h"
-#include "filesystemHelper.h"
 #include "ie_explorer.hpp"
 
 class MockIEExtensionsWrapper : public IIEExtensionsWrapper

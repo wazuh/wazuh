@@ -69,15 +69,10 @@ function BuildWazuhMsi(){
 
         # Define files to sign
         $filesToSign = @(
-            ".\*.exe",
+            "..\build\bin\*.exe",
             ".\InstallerScripts.vbs",
-            "..\*.dll",
-            ".\*.dll",
-            "..\data_provider\build\bin\sysinfo.dll",
-            "..\shared_modules\dbsync\build\bin\dbsync.dll",
-            "..\shared_modules\rsync\build\bin\rsync.dll",
-            "..\wazuh_modules\syscollector\build\bin\syscollector.dll",
-            "..\syscheckd\build\bin\libfimdb.dll"
+            "..\build\bin\*.dll",
+            "..\build\lib\*.dll"
         )
 
         # Sign the files
@@ -100,38 +95,30 @@ function BuildWazuhMsi(){
 
 function ExtractDebugSymbols(){
 
-	#all executables in current folder
-	$exeFiles = Get-ChildItem -Filter "*.exe"
-	$exeFiles += Get-ChildItem -Filter "*.dll" 
-
-	#all executables in parent folder
-	cd .. #Get-ChildItem does not take "..\" so we have to do it manually
-	$exeFiles += Get-ChildItem -Filter "*.dll"
-
-	#plus a few more individual libraries
-	$exeFiles +=  Get-ChildItem -Filter "data_provider\build\bin\sysinfo.dll"
-	$exeFiles +=  Get-ChildItem -Filter "shared_modules\dbsync\build\bin\dbsync.dll"
-	$exeFiles +=  Get-ChildItem -Filter "shared_modules\rsync\build\bin\rsync.dll"
-	$exeFiles +=  Get-ChildItem -Filter "wazuh_modules\syscollector\build\bin\syscollector.dll"
-	$exeFiles +=  Get-ChildItem -Filter "syscheckd\build\bin\libfimdb.dll"
+	#all executables and DLLs from build directories
+	cd .. #Go to src folder
+	$exeFiles = @(Get-ChildItem -Path "build\bin\*.exe")
+	$exeFiles += @(Get-ChildItem -Path "build\bin\*.dll")
+	$exeFiles += @(Get-ChildItem -Path "build\lib\*.dll")
 	cd "win32"
 
 	#now loop
+	$processes = @()
 	foreach ($file in $exeFiles)
 	{
 		Write-Host "Extracting dbg symbols from" $file.FullName
-		$args = $file.FullName #source (exe/dll with debug symbols)
-		$args += " "
-		$args += $file.FullName  #destination (same as source - exe/dll is stripped of debug symbols)
-		$args += " "
-		$args += $file.BaseName
-		$args += ".pdb"
+		$procArgs = $file.FullName #source (exe/dll with debug symbols)
+		$procArgs += " "
+		$procArgs += $file.FullName  #destination (same as source - exe/dll is stripped of debug symbols)
+		$procArgs += " "
+		$procArgs += $file.BaseName
+		$procArgs += ".pdb"
 
-		Start-Process -FilePath "cv2pdb.exe" -ArgumentList $args -WindowStyle Hidden
+		$processes += Start-Process -FilePath "cv2pdb.exe" -ArgumentList $procArgs -WindowStyle Hidden -PassThru
 	}
 
   Write-Host "Waiting for processes to finish"
-  Wait-Process -Name cv2pdb -Timeout 10
+  $processes | Wait-Process
 
   #compress every pdb file in current folder
 	$pdbFiles = Get-ChildItem -Filter ".\*.pdb"

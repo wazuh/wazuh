@@ -98,7 +98,7 @@ if sys.platform == WINDOWS:
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=cases_ids)
 def test_full_capacity_create_delete(test_configuration, test_metadata, set_wazuh_configuration, truncate_monitored_files,
                                      configure_local_internal_options, folder_to_monitor, fill_folder_to_monitor,
-                                     daemons_handler, start_monitoring):
+                                     clean_fim_db, clean_fim_sync_db, daemons_handler, start_monitoring):
     '''
     description: Check if a testing file is not inserted in the FIM database when the maximum monitored
                  files limit has already been reached, and if the FIM event 'delete' is generated when
@@ -161,6 +161,14 @@ def test_full_capacity_create_delete(test_configuration, test_metadata, set_wazu
     wazuh_log_monitor = FileMonitor(WAZUH_LOG_PATH)
     fim_mode = test_metadata.get('fim_mode')
 
+    # Wait for the first FIM synchronization cycle to complete (succeed or fail) so that the
+    # sync thread releases fim_scan_mutex and fim_realtime_mutex. Without this, the sync
+    # handshake with the manager blocks all event processing for its entire duration.
+    wazuh_log_monitor.start(
+        timeout=250,
+        callback=generate_callback(r'.*FIM synchronization (finished|failed).*')
+    )
+
     # Create and delete at full capacity.
     file.write_file(Path(folder_to_monitor, f'test66.log'))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
@@ -177,4 +185,4 @@ def test_full_capacity_create_delete(test_configuration, test_metadata, set_wazu
     file.write_file(Path(folder_to_monitor, f'test66.log'))
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_ADDED))
     assert wazuh_log_monitor.callback_result
-    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
+    assert get_fim_event_data(wazuh_log_monitor.callback_result)['file']['mode'] == fim_mode

@@ -18,7 +18,6 @@ with patch('wazuh.common.getgrnam'):
 
                 from wazuh.core.cluster import control
                 from wazuh.core.cluster.local_client import LocalClient
-                from wazuh import WazuhInternalError, WazuhError
 
 
 async def async_local_client(command, data):
@@ -132,16 +131,13 @@ async def test_get_system_nodes():
                 result = await control.get_system_nodes()
                 assert result == [expected['items'][0]['name']]
 
-        with patch('wazuh.core.cluster.control.get_nodes', side_effect=WazuhInternalError(3012)):
-            result = await control.get_system_nodes()
-            assert result == WazuhError(3013)
-
     with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
         with pytest.raises(WazuhClusterError):
             await control.get_system_nodes()
 
         with pytest.raises(json.JSONDecodeError):
             await control.get_system_nodes()
+
 
 @pytest.mark.asyncio
 async def test_get_system_nodes_or_none():
@@ -152,74 +148,3 @@ async def test_get_system_nodes_or_none():
             with patch('wazuh.core.cluster.control.get_nodes', return_value=expected):
                 result = await control.get_system_nodes_or_none()
                 assert result == [expected['items'][0]['name']]
-
-        with patch('wazuh.core.cluster.control.get_nodes', side_effect=WazuhInternalError(3012)):
-            result = await control.get_system_nodes_or_none()
-            assert result is None
-
-@pytest.mark.asyncio
-async def test_get_system_nodes_or_none():
-    """Verify that get_system_nodes_or_none function returns the name of all cluster nodes."""
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client):
-        expected_result = [{'items': [{'name': 'master'}]}]
-        for expected in expected_result:
-            with patch('wazuh.core.cluster.control.get_nodes', return_value=expected):
-                result = await control.get_system_nodes_or_none()
-                assert result == [expected['items'][0]['name']]
-
-        with patch('wazuh.core.cluster.control.get_nodes', side_effect=WazuhInternalError(3012)):
-            result = await control.get_system_nodes_or_none()
-            assert result is None
-
-
-@pytest.mark.asyncio
-async def test_get_node_ruleset_integrity():
-    """Verify that get_node_ruleset_integrity function uses the expected command."""
-    local_client = LocalClient()
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client) as execute_mock:
-        with patch('json.loads'):
-            await control.get_node_ruleset_integrity(lc=local_client)
-        execute_mock.assert_called_once_with(command=b'get_hash', data=b'')
-
-        with patch('json.loads', return_value=KeyError(1)):
-            with pytest.raises(KeyError):
-                await control.get_node_ruleset_integrity(lc=local_client)
-
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=[WazuhClusterError(3020), 'error']):
-        with pytest.raises(WazuhClusterError):
-            await control.get_node_ruleset_integrity(lc=local_client)
-
-        with pytest.raises(json.JSONDecodeError):
-            await control.get_health(lc=local_client)
-
-
-@pytest.mark.asyncio
-async def test_set_reload_ruleset_flag():
-    """Verify that set_reload_ruleset_flag function uses the expected command and handles responses."""
-    local_client = LocalClient()
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=async_local_client) as execute_mock:
-        with patch('json.loads'):
-            await control.set_reload_ruleset_flag(lc=local_client)
-        execute_mock.assert_called_once_with(command=b'sendrreload', data=b'')
-
-@pytest.mark.parametrize('side_effect, json_loads_return_value, expected_err',
-    [
-        (async_local_client, KeyError(1), KeyError),
-        (WazuhClusterError(3020), None, WazuhClusterError),
-        ('error', None, json.JSONDecodeError)
-
-    ]
-)
-async def test_set_reload_ruleset_flag_nok(side_effect, json_loads_return_value, expected_err):
-    """Verify that set_reload_ruleset_flag function handles error scenarios as expected."""
-    local_client = LocalClient()
-    with patch('wazuh.core.cluster.local_client.LocalClient.execute', side_effect=side_effect):
-        if json_loads_return_value is None:
-            with pytest.raises(expected_err):
-                await control.set_reload_ruleset_flag(lc=local_client)
-        else:
-            with patch('json.loads', return_value=json_loads_return_value):
-                with pytest.raises(expected_err):
-                    await control.set_reload_ruleset_flag(lc=local_client)
-
-

@@ -11,7 +11,7 @@ Socket Query Tool for Wazuh modules
 
 Examples:
     echo -n '{"command":"getconfig","parameters":{"section":"internal"}}' | \\
-    ./socket-query.py /var/ossec/queue/sockets/analysis
+    ./socket-query.py /var/wazuh-manager/queue/sockets/analysis
 
 This tool allows you to send queries to Wazuh module control sockets.
 """

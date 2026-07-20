@@ -43,7 +43,10 @@ public:
      * @param host Host of the fake server.
      * @param port Port of the fake  server
      */
-    FakeServer(std::string host, int port) : m_thread(&FakeServer::run, this), m_host(std::move(host)), m_port(port)
+    FakeServer(std::string host, int port)
+        : m_thread(&FakeServer::run, this)
+        , m_host(std::move(host))
+        , m_port(port)
     {
         // Wait until server is ready
         while (!m_server.is_running())

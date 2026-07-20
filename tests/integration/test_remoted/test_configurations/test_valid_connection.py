@@ -38,7 +38,7 @@ def test_connection_valid(test_configuration, test_metadata, configure_local_int
                             set_wazuh_configuration, restart_wazuh_expect_error, protocols_list_to_str_upper_case, get_real_configuration):
 
     '''
-    description: Check if 'wazuh-remoted' sets 'connection' as 'secure' or 'syslog' properly.
+    description: Check if 'wazuh-manager-remoted' sets 'connection' as 'secure' or 'syslog' properly.
                  For this purpose, it loads the configuration from test cases cfg(For a syslog connection if more than
                  one protocol is provided, only TCP should be used), checks if remoted is properly started and if the
                  configuration is the same as the API reponse.
@@ -73,20 +73,13 @@ def test_connection_valid(test_configuration, test_metadata, configure_local_int
 
     log_monitor = FileMonitor(WAZUH_LOG_PATH)
 
-    TCP_UDP = ['TCP','UDP']
-    UDP_TCP = ['UDP','TCP']
-
     used_protocol = protocols_list_to_str_upper_case
-    if (test_metadata['valid_protocol'] == TCP_UDP or test_metadata['valid_protocol'] == UDP_TCP) and test_metadata['connection'] == 'syslog':
-        log_monitor.start(callback=generate_callback(patterns.WARNING_SYSLOG_TCP_UDP))
-        assert log_monitor.callback_result
-        used_protocol = 'TCP'
 
     log_monitor.start(callback=generate_callback(patterns.DETECT_REMOTED_STARTED,
                                                     replacement={
                                                     "port": test_metadata['port'],
                                                     "protocol_valid_upper": used_protocol,
-                                                    "connection": test_metadata['connection']}))
+                                                    "connection": "secure"}))
     assert log_monitor.callback_result
 
 

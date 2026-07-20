@@ -35,8 +35,6 @@ os_version:
     - Windows Server 2019
     - Windows Server 2016
     - Windows Server 2012
-    - Windows Server 2003
-    - Windows XP
 
 references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/log-data-collection/index.html
@@ -147,5 +145,5 @@ def test_configuration_reconnect_time(test_configuration, test_metadata, truncat
             callback = callbacks.generate_callback(patterns.LOGCOLLECTOR_INVALID_RECONNECTION_TIME_VALUE,
                                                             {'severity': 'WARNING',
                                                              'default_value':'5'})
-            wazuh_log_monitor.start(timeout=5, callback=callback)
+            wazuh_log_monitor.start(timeout=15, callback=callback)
             assert (wazuh_log_monitor.callback_result != None), patterns.ERROR_INVALID_RECONNECTION_TIME

@@ -14,14 +14,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/wm_gcp.h"
-#include "../../headers/defs.h"
+#include "wmodules.h"
+#include "wm_gcp.h"
+#include "defs.h"
 #include "../../wrappers/externals/cJSON/cJSON_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/schedule_scan_wrappers.h"
 #include "../../wrappers/wazuh/shared/time_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
+
 
 void wm_gcp_pubsub_run(const wm_gcp_pubsub *data);
 cJSON *wm_gcp_pubsub_dump(const wm_gcp_pubsub *data);

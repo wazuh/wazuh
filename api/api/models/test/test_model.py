@@ -18,7 +18,6 @@ with patch('wazuh.core.common.wazuh_uid'):
     with patch('wazuh.core.common.wazuh_gid'):
         sys.modules['api.authentication'] = MagicMock()
         from api.models import base_model_ as bm
-        from api.models import event_ingest_model
         from api.util import deserialize_model
         from wazuh import WazuhError
 
@@ -105,7 +104,6 @@ def test_model_operator_overloading():
 
     # Operator __repr__ (for print)
     # Assert that we can print a Model right away
-    print(test_model)
 
     equal_model = TestModel(*list(original_dict.values()))
     not_equal_model = TestModel('test')
@@ -119,69 +117,6 @@ def test_model_operator_overloading():
     assert test_model != not_equal_model
     with pytest.raises(AssertionError):
         assert test_model != equal_model
-
-
-def test_allof():
-    model1 = TestModel('a', 1)
-    model2 = TestModel('a', 2)
-
-    allof = bm.AllOf(model1, model2)
-    assert allof.models == (model1, model2)
-
-
-def test_allof_to_dict():
-    """Test class AllOf class `to_dict` method."""
-    args1 = ('one', 1)
-    args2 = ('two', 2)
-
-    allof = bm.AllOf(TestModel(*args1), TestModel(*args2))
-    # Same model means that the second model values will overwrite the first
-    assert tuple(allof.to_dict().values()) == args2
-
-    allof = bm.AllOf(TestModel(*args2), TestModel(*args1))
-    assert tuple(allof.to_dict().values()) == args1
-
-
-def test_data():
-    """Test class Data."""
-    model = TestModel('one', 1)
-    data_model = bm.Data(model)
-
-    assert data_model.swagger_types == {'data': bm.Model}
-    assert data_model.attribute_map == {'data': 'data'}
-    assert data_model._data == model
-
-    # Test class properties
-    new_data = {'new': 'data'}
-    data_model.data = new_data
-    assert data_model.data == new_data
-
-
-def test_data_from_dict():
-    """Test class Data `from_dict` class method."""
-    test_dict = {'test_key': 'test_value'}
-    assert bm.Data.from_dict(test_dict) == deserialize_model(test_dict, bm.Data)
-
-
-def test_items():
-    """Test class Items."""
-    l = [TestModel('one', 2)]
-    items_model = bm.Items(l)
-
-    assert items_model.swagger_types == {'items': bm.List[bm.Model]}
-    assert items_model.attribute_map == {'items': 'items'}
-    assert items_model._items == l
-
-    # Test class properties
-    new_items = [TestModel('new', 9)]
-    items_model.items = new_items
-    assert items_model.items == new_items
-
-
-def test_items_from_dict():
-    """Test class Items `from_dict` class method."""
-    test_dict_list = [{'test_key': 'test_value'}, {'test_key2': 'test_value2'}]
-    assert bm.Items.from_dict(test_dict_list) == deserialize_model(test_dict_list, bm.Items)
 
 
 @pytest.mark.asyncio
@@ -288,17 +223,3 @@ def test_all_models(deserialize_mock, module_name):
                 # Test the only possible overwritten method: `from_dict`
                 getattr(module_class, 'from_dict')('test')
                 deserialize_mock.assert_called_with('test', module_class)
-
-
-@pytest.mark.parametrize('size,raises', ([1, True], [2, False]))
-async def test_event_ingest_model_validation(size, raises):
-    request = {'events': [{"foo": 1}, {"bar": 2}]}
-    event_ingest_model.MAX_EVENTS_PER_REQUEST = size
-
-    if raises:
-        with pytest.raises(ProblemException) as exc:
-            await event_ingest_model.EventIngestModel.get_kwargs(request)
-
-        assert exc.value.title == 'Events bulk size exceeded'
-    else:
-        await event_ingest_model.EventIngestModel.get_kwargs(request)

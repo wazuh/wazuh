@@ -1,0 +1,124 @@
+{
+  "ChecksumModule": {
+    "message_type": "ChecksumModule",
+    "direction": "agent -> manager",
+    "trigger": "Cada integrity_interval (default 1h). El agente calcula SHA1 de todos sus checksums y lo manda para verificar integridad",
+    "fields": {
+      "session": "<mismo uint64 del Start>",
+      "index": "wazuh-states-sca",
+      "checksum": "4568d3966f6a9f15db8cd60431577e62e6c5e83c"
+    },
+    "size_bytes": "~100 bytes",
+    "note": "SHA1 de los 207 checksum.hash.sha1 individuales concatenados y ordenados"
+  },
+  "End": {
+    "message_type": "End",
+    "direction": "agent -> manager",
+    "trigger": "Al terminar de enviar todos los DataValues de la sesion",
+    "fields": {
+      "session": "<mismo uint64 del Start>"
+    },
+    "size_bytes": "~50 bytes",
+    "note": "Senial de cierre. El manager verifica con GapSet que no falten secuencias"
+  },
+  "DataBatch": {
+    "message_type": "DataBatch",
+    "direction": "agent -> manager",
+    "trigger": "Igual que DataValue pero agrupa multiples checks en un solo mensaje FlatBuffer",
+    "fields": {
+      "values": [
+        {
+          "seq": 0,
+          "session": "<session_id>",
+          "operation": "Upsert",
+          "id": "cis_ubuntu22-04:28500",
+          "index": "wazuh-states-sca",
+          "version": 1,
+          "data": "<JSON bytes check 1>"
+        },
+        {
+          "seq": 1,
+          "session": "<session_id>",
+          "operation": "Upsert",
+          "id": "cis_ubuntu22-04:28501",
+          "index": "wazuh-states-sca",
+          "version": 1,
+          "data": "<JSON bytes check 2>"
+        },
+        {
+          "seq": 2,
+          "session": "<session_id>",
+          "operation": "Upsert",
+          "id": "cis_ubuntu22-04:28502",
+          "index": "wazuh-states-sca",
+          "version": 1,
+          "data": "<JSON bytes check 3>"
+        }
+      ]
+    },
+    "size_bytes": "N x ~5KB por check incluido",
+    "note": "El manager re-serializa cada DataValue individualmente antes de escribir en RocksDB"
+  },
+  "DataClean": {
+    "message_type": "DataClean",
+    "direction": "agent -> manager",
+    "trigger": "Cuando todas las politicas SCA son removidas de la config. Pide al manager borrar el indice completo del agente",
+    "fields": {
+      "seq": 0,
+      "session": "<session_id>",
+      "index": "wazuh-states-sca"
+    },
+    "size_bytes": "~80 bytes",
+    "note": "SCA lo usa en handleAllPoliciesRemoved(). El manager hace deleteByQuery en el indice"
+  },
+  "DataContext": {
+    "message_type": "DataContext",
+    "direction": "agent -> manager",
+    "trigger": "NO APLICA PARA SCA",
+    "fields": {},
+    "size_bytes": "N/A",
+    "note": "Solo usado por Vulnerability Detection (VD). SCA no genera este tipo de mensaje"
+  },
+  "StartAck": {
+    "message_type": "StartAck",
+    "direction": "manager -> agent",
+    "trigger": "Respuesta inmediata al Start del agente",
+    "fields": {
+      "status": "Ok (0) | Error (1) | Offline (2)",
+      "session": "<uint64 asignado por el manager>"
+    },
+    "size_bytes": "~50 bytes",
+    "note": "Offline = limite de sesiones alcanzado (maxSessions=1000). El agente reintenta"
+  },
+  "EndAck": {
+    "message_type": "EndAck",
+    "direction": "manager -> agent",
+    "trigger": "Respuesta al End del agente, luego de procesar toda la sesion",
+    "fields": {
+      "status": "Ok (0) | Processing (4) | ChecksumMismatch (3) | Error (1)",
+      "session": "<session_id>"
+    },
+    "size_bytes": "~50 bytes",
+    "note": "ChecksumMismatch = el manager pide ModuleFull. Processing = indexer todavia procesando"
+  },
+  "ReqRet": {
+    "message_type": "ReqRet",
+    "direction": "manager -> agent",
+    "trigger": "El manager recibio el End pero faltan chunks. Pide reenvio de los que faltan",
+    "fields": {
+      "session": "<session_id>",
+      "seq": [
+        {
+          "begin": 5,
+          "end": 7
+        },
+        {
+          "begin": 12,
+          "end": 12
+        }
+      ]
+    },
+    "size_bytes": "~100 bytes",
+    "note": "Rangos de secuencias faltantes segun el GapSet. El agente reenv\u00eda esos DataValues"
+  }
+}

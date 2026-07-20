@@ -22,10 +22,10 @@
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_agent_upgrade_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_validate.h"
-#include "../../wazuh_modules/agent_upgrade/manager/wm_agent_upgrade_tasks.h"
-#include "../../headers/shared.h"
+#include "wmodules.h"
+#include "wm_agent_upgrade_validate.h"
+#include "wm_agent_upgrade_tasks.h"
+#include "shared.h"
 
 // Setup / teardown
 
@@ -103,14 +103,17 @@ void test_wm_agent_upgrade_validate_id_ok(void **state)
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
 }
 
-void test_wm_agent_upgrade_validate_id_manager(void **state)
+void test_wm_agent_upgrade_validate_id_invalid(void **state)
 {
     (void) state;
+
     int agent_id = 0;
-
     int ret = wm_agent_upgrade_validate_id(agent_id);
+    assert_int_equal(ret, WM_UPGRADE_UPGRADE_ERROR);
 
-    assert_int_equal(ret, WM_UPGRADE_INVALID_ACTION_FOR_MANAGER);
+    agent_id = -1;
+    ret = wm_agent_upgrade_validate_id(agent_id);
+    assert_int_equal(ret, WM_UPGRADE_UPGRADE_ERROR);
 }
 
 void test_wm_agent_upgrade_validate_status_ok(void **state)
@@ -260,21 +263,6 @@ void test_wm_agent_upgrade_validate_system_darwin_arm_ok(void **state)
     assert_non_null(package_type);
     assert_string_equal(package_type, "pkg");
     os_free(package_type);
-}
-
-void test_wm_agent_upgrade_validate_system_invalid_platform_solaris(void **state)
-{
-    (void) state;
-    char *platform = "sunos";
-    char *os_major = "11";
-    char *os_minor = "4";
-    char *arch = "x64";
-    char *package_type = NULL;
-
-    int ret = wm_agent_upgrade_validate_system(platform, os_major, os_minor, arch, &package_type);
-
-    assert_int_equal(ret, WM_UPGRADE_SYSTEM_NOT_SUPPORTED);
-    assert_null(package_type);
 }
 
 void test_wm_agent_upgrade_validate_system_invalid_platform_suse(void **state)
@@ -896,6 +884,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb(void **sta
     wm_upgrade_task *task = state[1];
     char *versions = NULL;
 
+    agent->agent_id = 15;
     os_strdup("centos", agent->platform);
     os_strdup("8", agent->major_version);
     os_strdup("x86_64", agent->architecture);
@@ -907,8 +896,8 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb(void **sta
 
     os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtwarn, formatted_msg, "(8169): Agent '0' with platform 'centos' won't be upgraded using package 'deb' without the force option. Ignoring...");
+    expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, formatted_msg, "(8169): Agent '15' with platform 'centos' won't be upgraded using package 'deb' without the force option. Ignoring...");
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/rpm/x86_64/versions");
     expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
@@ -928,6 +917,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb_force(void
     wm_upgrade_task *task = state[1];
     char *versions = NULL;
 
+    agent->agent_id = 20;
     os_strdup("centos", agent->platform);
     os_strdup("8", agent->major_version);
     os_strdup("x86_64", agent->architecture);
@@ -940,8 +930,8 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_rpm_deb_force(void
 
     os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
-    expect_string(__wrap__mtdebug1, formatted_msg, "(8170): Agent '0' with platform 'centos' will be upgraded using package 'deb'");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8170): Agent '20' with platform 'centos' will be upgraded using package 'deb'");
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/deb/amd64/versions");
     expect_value(__wrap_wurl_http_get, timeout, WM_UPGRADE_DEFAULT_REQUEST_TIMEOUT);
@@ -1061,7 +1051,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_rpm(void **sta
 
     os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8169): Agent '0' with platform 'ubuntu' won't be upgraded using package 'rpm' without the force option. Ignoring...");
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/deb/amd64/versions");
@@ -1095,7 +1085,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_deb_rpm_force(void
 
     os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8170): Agent '0' with platform 'ubuntu' will be upgraded using package 'rpm'");
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/rpm/x86_64/versions");
@@ -1123,7 +1113,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_x86_64
     task->use_http = false;
     os_strdup("v4.9.0", task->wpk_version);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8171): Agent '0' with unsupported platform 'unsupported' won't be upgraded without a default package.");
 
     int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
@@ -1147,7 +1137,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_aarch6
     task->use_http = false;
     os_strdup("v4.9.0", task->wpk_version);
 
-    expect_string(__wrap__mtwarn, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtwarn, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtwarn, formatted_msg, "(8171): Agent '0' with unsupported platform 'unsupported' won't be upgraded without a default package.");
 
     int ret = wm_agent_upgrade_validate_wpk_version(agent, task, NULL);
@@ -1175,7 +1165,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_rpm(vo
 
     os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8172): Agent '0' with unsupported platform 'unsupported' will be upgraded with package 'rpm'");
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/rpm/i386/versions");
@@ -1207,7 +1197,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_deb(vo
 
     os_strdup("v4.9.0 231ef123a32d312b4123c21313ee6780", versions);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8172): Agent '0' with unsupported platform 'unsupported' will be upgraded with package 'deb'");
 
     expect_string(__wrap_wurl_http_get, url, "https://packages.wazuh.com/4.x/wpk/linux/deb/i386/versions");
@@ -1225,7 +1215,7 @@ void test_wm_agent_upgrade_validate_wpk_version_linux_package_unsupported_deb(vo
 void test_wm_agent_upgrade_validate_version_upgrade_ok(void **state)
 {
     wm_upgrade_task *task = state[1];
-    char *wazuh_version = "v3.9.1";
+    char *wazuh_version = "v4.14.0";
     char *platform = "ubuntu";
 
     task->force_upgrade = false;
@@ -1233,13 +1223,13 @@ void test_wm_agent_upgrade_validate_version_upgrade_ok(void **state)
     int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
-    assert_string_equal(task->wpk_version, "v3.13.0");
+    assert_string_equal(task->wpk_version, "v5.0.0");
 }
 
 void test_wm_agent_upgrade_validate_version_upgrade_custom_ok(void **state)
 {
     wm_upgrade_task *task = state[1];
-    char *wazuh_version = "v3.9.1";
+    char *wazuh_version = "v4.14.0";
     char *platform = "ubuntu";
 
     int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
@@ -1269,49 +1259,154 @@ void test_wm_agent_upgrade_validate_version_upgrade_custom_non_minimal(void **st
     assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
 
+void test_wm_agent_upgrade_validate_version_upgrade_custom_v5_from_413(void **state)
+{
+    (void) state;
+    wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
+    os_strdup("/tmp/wazuh_agent_v5.0.0_linux_amd64.deb.wpk", task->custom_file_path);
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
+
+    assert_int_equal(ret, WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED);
+
+    wm_agent_upgrade_free_upgrade_custom_task(task);
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_custom_v5_from_414(void **state)
+{
+    (void) state;
+    wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
+    os_strdup("wazuh_agent_v5.0.0_linux_amd64.deb.wpk", task->custom_file_path);
+    char *wazuh_version = "v4.14.0";
+    char *platform = "ubuntu";
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+
+    wm_agent_upgrade_free_upgrade_custom_task(task);
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_custom_v414_from_413(void **state)
+{
+    (void) state;
+    wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
+    os_strdup("wazuh_agent_v4.14.4_linux_amd64.deb.wpk", task->custom_file_path);
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+
+    wm_agent_upgrade_free_upgrade_custom_task(task);
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_custom_renamed_filename(void **state)
+{
+    (void) state;
+    wm_upgrade_custom_task *task = wm_agent_upgrade_init_upgrade_custom_task();
+    os_strdup("/tmp/myfile.wpk", task->custom_file_path);
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+
+    wm_agent_upgrade_free_upgrade_custom_task(task);
+}
+
 void test_wm_agent_upgrade_validate_version_upgrade_older_version(void **state)
 {
     wm_upgrade_task *task = state[1];
-    char *wazuh_version = "v3.13.1";
+    char *wazuh_version = "v4.15.0";
     char *platform = "ubuntu";
 
     task->force_upgrade = false;
-    os_strdup("v3.12.0", task->custom_version);
+    os_strdup("v4.14.0", task->custom_version);
 
     int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
-    assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_LEES_OR_EQUAL_THAT_CURRENT);
-    assert_string_equal(task->wpk_version, "v3.12.0");
+    assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_LESS_OR_EQUAL_THAN_CURRENT);
+    assert_string_equal(task->wpk_version, "v4.14.0");
 }
 
 void test_wm_agent_upgrade_validate_version_upgrade_greater_version(void **state)
 {
     wm_upgrade_task *task = state[1];
-    char *wazuh_version = "v3.9.1";
+    char *wazuh_version = "v4.14.0";
     char *platform = "ubuntu";
 
     task->force_upgrade = false;
-    os_strdup("v3.13.1", task->custom_version);
+    os_strdup("v5.0.1", task->custom_version);
 
     int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_NEW_VERSION_GREATER_MASTER);
-    assert_string_equal(task->wpk_version, "v3.13.1");
+    assert_string_equal(task->wpk_version, "v5.0.1");
 }
 
 void test_wm_agent_upgrade_validate_version_upgrade_force(void **state)
 {
     wm_upgrade_task *task = state[1];
-    char *wazuh_version = "v3.9.1";
+    char *wazuh_version = "v4.14.0";
     char *platform = "ubuntu";
 
     task->force_upgrade = true;
-    os_strdup("v3.13.1", task->custom_version);
+    os_strdup("v5.0.0", task->custom_version);
 
     int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
 
     assert_int_equal(ret, WM_UPGRADE_SUCCESS);
-    assert_string_equal(task->wpk_version, "v3.13.1");
+    assert_string_equal(task->wpk_version, "v5.0.0");
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_intermediate_required(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    task->force_upgrade = false;
+    os_strdup("v5.0.0", task->custom_version);
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED);
+    assert_string_equal(task->wpk_version, "v5.0.0");
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_intermediate_required_force(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v4.13.0";
+    char *platform = "ubuntu";
+
+    task->force_upgrade = true;
+    os_strdup("v5.0.0", task->custom_version);
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_INTERMEDIATE_VERSION_REQUIRED);
+    assert_string_equal(task->wpk_version, "v5.0.0");
+}
+
+void test_wm_agent_upgrade_validate_version_upgrade_5x_to_5x(void **state)
+{
+    wm_upgrade_task *task = state[1];
+    char *wazuh_version = "v5.0.0";
+    char *platform = "ubuntu";
+
+    task->force_upgrade = true;
+    os_strdup("v5.0.1", task->custom_version);
+
+    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
+
+    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
+    assert_string_equal(task->wpk_version, "v5.0.1");
 }
 
 void test_wm_agent_upgrade_validate_version_version_null(void **state)
@@ -1322,32 +1417,6 @@ void test_wm_agent_upgrade_validate_version_version_null(void **state)
     int ret = wm_agent_upgrade_validate_version(NULL, platform, WM_UPGRADE_UPGRADE_CUSTOM, task);
 
     assert_int_equal(ret, WM_UPGRADE_GLOBAL_DB_FAILURE);
-}
-
-void test_wm_agent_upgrade_validate_version_upgrade_ok_macos(void **state)
-{
-    wm_upgrade_task *task = state[1];
-    char *wazuh_version = "v4.3.0";
-    char *platform = "darwin";
-
-    task->force_upgrade = true;
-    os_strdup("v4.3.0", task->custom_version);
-
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
-
-    assert_int_equal(ret, WM_UPGRADE_SUCCESS);
-    assert_string_equal(task->wpk_version, "v4.3.0");
-}
-
-void test_wm_agent_upgrade_validate_version_upgrade_non_minimal_macos(void **state)
-{
-    wm_upgrade_task *task = state[1];
-    char *wazuh_version = "v4.2.0";
-    char *platform = "darwin";
-
-    int ret = wm_agent_upgrade_validate_version(wazuh_version, platform, WM_UPGRADE_UPGRADE, task);
-
-    assert_int_equal(ret, WM_UPGRADE_NOT_MINIMAL_VERSION_SUPPORTED);
 }
 
 void test_wm_agent_upgrade_validate_wpk_exist(void **state)
@@ -1397,7 +1466,7 @@ void test_wm_agent_upgrade_validate_wpk_exist_diff_sha1(void **state)
     expect_value(__wrap_fclose, _File, 1);
     will_return(__wrap_fclose, 0);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8161): Downloading WPK file from: 'https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk'");
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
@@ -1428,7 +1497,7 @@ void test_wm_agent_upgrade_validate_wpk_download_retry(void **state)
     expect_string(__wrap_wfopen, mode, "rb");
     will_return(__wrap_wfopen, 0);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8161): Downloading WPK file from: 'https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk'");
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
@@ -1466,7 +1535,7 @@ void test_wm_agent_upgrade_validate_wpk_download_diff_sha1(void **state)
     expect_string(__wrap_wfopen, mode, "rb");
     will_return(__wrap_wfopen, 0);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8161): Downloading WPK file from: 'https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk'");
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
@@ -1497,7 +1566,7 @@ void test_wm_agent_upgrade_validate_wpk_download_retry_max(void **state)
     expect_string(__wrap_wfopen, mode, "rb");
     will_return(__wrap_wfopen, 0);
 
-    expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mtdebug1, formatted_msg, "(8161): Downloading WPK file from: 'https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk'");
 
     expect_string(__wrap_wurl_request, url, "https://packages.wazuh.com/4.x/wpk/windows/wazuh_agent_v4.0.0_windows.wpk");
@@ -1635,7 +1704,7 @@ void test_wm_agent_upgrade_validate_task_status_message_error_code(void **state)
     cJSON_AddNumberToObject(response, "agent", 5);
     cJSON_AddStringToObject(response, "status", "Done");
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8119): There has been an error updating task state. Error code: '1', message: 'Error'");
 
     int ret = wm_agent_upgrade_validate_task_status_message(response, NULL, NULL);
@@ -1649,7 +1718,7 @@ void test_wm_agent_upgrade_validate_task_status_message_invalid_json(void **stat
 {
     cJSON *response = cJSON_CreateObject();
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:agent-upgrade");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:agent-upgrade");
     expect_string(__wrap__mterror, formatted_msg, "(8107): Required parameters in message are missing.");
 
     int ret = wm_agent_upgrade_validate_task_status_message(response, NULL, NULL);
@@ -1778,7 +1847,7 @@ int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_agent_upgrade_validate_id
         cmocka_unit_test(test_wm_agent_upgrade_validate_id_ok),
-        cmocka_unit_test(test_wm_agent_upgrade_validate_id_manager),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_id_invalid),
         // wm_agent_upgrade_validate_status
         cmocka_unit_test(test_wm_agent_upgrade_validate_status_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_status_null),
@@ -1791,7 +1860,6 @@ int main(void) {
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_almalinux_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_x64_ok),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_darwin_arm_ok),
-        cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_solaris),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_suse),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_rhel),
         cmocka_unit_test(test_wm_agent_upgrade_validate_system_invalid_platform_centos),
@@ -1834,12 +1902,17 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_custom_ok, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_non_minimal, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_custom_non_minimal, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_version_upgrade_custom_v5_from_413),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_version_upgrade_custom_v5_from_414),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_version_upgrade_custom_v414_from_413),
+        cmocka_unit_test(test_wm_agent_upgrade_validate_version_upgrade_custom_renamed_filename),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_older_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_greater_version, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_force, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_intermediate_required, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_intermediate_required_force, setup_validate_wpk_version, teardown_validate_wpk_version),
+        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_5x_to_5x, setup_validate_wpk_version, teardown_validate_wpk_version),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_version_null, setup_validate_wpk_version, teardown_validate_wpk_version),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_ok_macos, setup_validate_wpk_version, teardown_validate_wpk_version),
-        cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_version_upgrade_non_minimal_macos, setup_validate_wpk_version, teardown_validate_wpk_version),
         // wm_agent_upgrade_validate_wpk
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist, setup_validate_wpk, teardown_validate_wpk),
         cmocka_unit_test_setup_teardown(test_wm_agent_upgrade_validate_wpk_exist_diff_sha1, setup_validate_wpk, teardown_validate_wpk),

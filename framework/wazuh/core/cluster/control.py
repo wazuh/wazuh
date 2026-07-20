@@ -3,15 +3,12 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import json
-from typing import Optional
 
 from wazuh import WazuhInternalError
 from wazuh.core import common
 from wazuh.core.agent import Agent
 from wazuh.core.cluster import local_client
 from wazuh.core.cluster.common import as_wazuh_object, WazuhJSONEncoder
-from wazuh.core.decorators import dapi_allower
-from wazuh.core.exception import WazuhError
 from wazuh.core.utils import filter_array_by_query
 
 
@@ -183,24 +180,7 @@ async def get_system_nodes():
         result = await get_nodes(lc)
         return [node['name'] for node in result['items']]
     except WazuhInternalError as e:
-        if e.code == 3012:
-            return WazuhError(3013)
         raise e
-
-async def get_system_nodes_or_none() -> Optional[dict]:
-    """Get the list of system nodes or None if an exception occurs.
-
-    Returns
-    -------
-    nodes : list or None
-        List of node names or None if an exception is raised.
-    """
-    nodes = await get_system_nodes()
-    if isinstance(nodes, Exception):
-        nodes = None
-
-    return nodes
-
 
 async def get_system_nodes_or_none() -> list | None:
     """Get the list of system nodes or None if an exception occurs.
@@ -215,47 +195,3 @@ async def get_system_nodes_or_none() -> list | None:
         nodes = None
 
     return nodes
-
-
-@dapi_allower(is_async=True)
-async def get_node_ruleset_integrity(lc: local_client.LocalClient) -> dict:
-    """Retrieve custom ruleset integrity.
-
-    Parameters
-    ----------
-    lc : LocalClient
-        LocalClient instance.
-
-    Returns
-    -------
-    dict
-        Dictionary with results
-    """
-    response = await lc.execute(command=b"get_hash", data=b"")
-    result = json.loads(response, object_hook=as_wazuh_object)
-
-    if isinstance(result, Exception):
-        raise result
-
-    return result
-
-async def set_reload_ruleset_flag(lc: local_client.LocalClient) -> dict:
-    """Set the reload ruleset flag on the specified cluster node.
-
-    Parameters
-    ----------
-    lc : LocalClient
-        LocalClient instance.
-
-    Returns
-    -------
-    dict
-        Dictionary with results.
-    """
-    response = await lc.execute(command=b"sendrreload", data=b"")
-    result = json.loads(response, object_hook=as_wazuh_object)
-
-    if isinstance(result, Exception):
-        raise result
-
-    return result

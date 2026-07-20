@@ -49,14 +49,20 @@ static sqlite3* openSQLiteDb(const std::string& path, const int flags = SQLITE_O
 
     if (SQLITE_OK != result)
     {
-        std::string errorMsg = "Error opening SQLite database '" + path + "' (SQLite error code: " + std::to_string(result) + ")";
+        std::string errorMsg = "Failed to open SQLite database at path '" + path + "': ";
+        errorMsg += sqlite3_errstr(result);
 
+        // If pDb is not null, we can get a more detailed error message
         if (pDb)
         {
-            errorMsg += ": " + std::string(sqlite3_errmsg(pDb));
+            errorMsg += " - " + std::string(sqlite3_errmsg(pDb));
+            sqlite3_close_v2(pDb);
         }
 
-        checkSqliteResult(result, errorMsg);
+        throw sqlite_error
+        {
+            std::make_pair(result, errorMsg)
+        };
     }
 
     return pDb;

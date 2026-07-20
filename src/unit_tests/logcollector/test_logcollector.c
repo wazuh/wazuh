@@ -13,11 +13,11 @@
 #include <cmocka.h>
 #include <stdio.h>
 
-#include "../../headers/shared.h"
-#include "../../logcollector/logcollector.h"
+#include "shared.h"
+#include "logcollector.h"
 #include <math.h>
 #include <pthread.h>
-#include "../../os_crypto/sha1/sha1_op.h"
+#include "sha1_op.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
@@ -28,9 +28,11 @@
 #include "../wrappers/wazuh/os_crypto/sha1_op_wrappers.h"
 #include "../wrappers/posix/pthread_wrappers.h"
 #include "../wrappers/posix/signal_wrappers.h"
+#include "../wrappers/posix/unistd_wrappers.h"
 
 
 extern OSHash *files_status;
+extern atomic_int_t _startup_completed;
 
 bool w_get_hash_context(logreader *lf, EVP_MD_CTX **context, int64_t position);
 ssize_t w_set_to_pos(logreader *lf, long pos, int mode);
@@ -86,6 +88,7 @@ static int setup_local_hashmap(void **state) {
 }
 
 static int teardown_local_hashmap(void **state) {
+    atomic_int_set(&_startup_completed, 0);
     if (teardown_hashmap(state) != 0) {
         return 1;
     }
@@ -826,11 +829,11 @@ void test_w_save_file_status_wfopen_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, 0);
 
-    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__merror_exit, formatted_msg, "(1103): Could not open file 'queue/logcollector/file_status.json.tmp' due to [(0)-(Success)].");
     expect_assert_failure(w_save_file_status());
 }
 
@@ -893,19 +896,22 @@ void test_w_save_file_status_fwrite_error(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, "test");
 
     will_return(__wrap_fwrite, 0);
 
-    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file 'queue/logcollector/file_status.json' due to [(0)-(Success)].");
+    expect_string(__wrap__merror, formatted_msg, "(1110): Could not write file 'queue/logcollector/file_status.json.tmp' due to [(0)-(Success)].");
 
     expect_function_call(__wrap_clearerr);
     expect_string(__wrap_clearerr, __stream, "test");
 
     expect_value(__wrap_fclose, _File, "test");
     will_return(__wrap_fclose, 1);
+
+    expect_string(__wrap_unlink, file, "queue/logcollector/file_status.json.tmp");
+    will_return(__wrap_unlink, 0);
 
     w_save_file_status();
 }
@@ -968,14 +974,94 @@ void test_w_save_file_status_OK(void ** state) {
 
     expect_function_call(__wrap_cJSON_Delete);
 
-    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json");
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
     expect_string(__wrap_wfopen, mode, "w");
     will_return(__wrap_wfopen, "test");
 
-    will_return(__wrap_fwrite, 1);
+    will_return(__wrap_fwrite, 9);
 
     expect_value(__wrap_fclose, _File, "test");
-    will_return(__wrap_fclose, 1);
+    will_return(__wrap_fclose, 0);
+
+    expect_string(__wrap_rename, __old, "queue/logcollector/file_status.json.tmp");
+    expect_string(__wrap_rename, __new, "queue/logcollector/file_status.json");
+    will_return(__wrap_rename, 0);
+
+    w_save_file_status();
+}
+
+void test_w_save_file_status_fclose_error(void ** state) {
+    test_logcollector_t *test_data = *state;
+
+    os_file_status_t * data = test_data->status;
+    OSHashNode *hash_node = test_data->node;
+
+    strcpy(data->hash,"test1234");
+    data->offset = 5;
+
+    hash_node->key = "test";
+    hash_node->data = data;
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    strcpy(macos_log_vault.timestamp,"hi 123");
+    macos_log_vault.settings = "my settings";
+
+    expect_value(__wrap_OSHash_Begin, self, files_status);
+    will_return(__wrap_OSHash_Begin, hash_node);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddArrayToObject, name, "files");
+    will_return(__wrap_cJSON_AddArrayToObject, (cJSON *) 1);
+
+    will_return(__wrap_cJSON_CreateObject, (cJSON *) 1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "path");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "hash");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "test1234");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_string(__wrap_cJSON_AddStringToObject, name, "offset");
+    expect_string(__wrap_cJSON_AddStringToObject, string, "5");
+    will_return(__wrap_cJSON_AddStringToObject, (cJSON *)1);
+
+    expect_function_call(__wrap_cJSON_AddItemToArray);
+    will_return(__wrap_cJSON_AddItemToArray, true);
+
+    expect_value(__wrap_OSHash_Next, self, files_status);
+    will_return(__wrap_OSHash_Next, NULL);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    expect_function_call(__wrap_pthread_rwlock_rdlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+
+    will_return(__wrap_cJSON_PrintUnformatted, strdup("test_1234"));
+
+    expect_function_call(__wrap_cJSON_Delete);
+
+    expect_string(__wrap_wfopen, path, "queue/logcollector/file_status.json.tmp");
+    expect_string(__wrap_wfopen, mode, "w");
+    will_return(__wrap_wfopen, "test");
+
+    will_return(__wrap_fwrite, 9);
+
+    expect_value(__wrap_fclose, _File, "test");
+    will_return(__wrap_fclose, EOF);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Could not close file 'queue/logcollector/file_status.json.tmp': Success");
+
+    expect_string(__wrap_unlink, file, "queue/logcollector/file_status.json.tmp");
+    will_return(__wrap_unlink, 0);
 
     w_save_file_status();
 }
@@ -2101,6 +2187,7 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
     logreader log_reader = {.fp = (FILE *)1, .file = "test"};
 
     test_position = &position_stack;
+    atomic_int_set(&_startup_completed, 0);
 
     expect_function_call(__wrap_pthread_rwlock_wrlock);
     expect_function_call(__wrap_pthread_rwlock_unlock);
@@ -2115,7 +2202,6 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
     will_return(__wrap_OSHash_Get_ex, NULL);
 
     //w_set_pos
-    long pos = 0;
     int mode = OS_BINARY;
 
     expect_any(__wrap_w_fseek, x);
@@ -2125,10 +2211,6 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
     expect_value(__wrap_w_ftell, x, 1);
     will_return(__wrap_w_ftell, 1);
 
-    expect_value(__wrap_w_ftell, x, 1);
-    will_return(__wrap_w_ftell, 1);
-
-
     //w_update_hash_node
     expect_string(__wrap_OS_SHA1_File_Nbytes, fname, log_reader.file);
     expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
@@ -2137,6 +2219,164 @@ void test_w_set_to_last_line_read_OSHash_Get_ex_fail(void ** state) {
     will_return(__wrap_OS_SHA1_File_Nbytes, 1);
 
     will_return(__wrap_OSHash_Update_ex, 1);
+
+    int ret = w_set_to_last_line_read(&log_reader);
+
+    assert_int_equal(ret, 0);
+}
+
+/* Runtime case: _startup_completed == 1, no bookmark → SEEK_SET (read from beginning) */
+void test_w_set_to_last_line_read_no_bookmark_runtime(void ** state) {
+    fpos_t position_stack = {.__pos = 1};
+    logreader log_reader = {.fp = (FILE *)1, .file = "test"};
+
+    test_position = &position_stack;
+
+    atomic_int_set(&_startup_completed, 1);
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    os_file_status_t * data;
+    os_malloc(sizeof(os_file_status_t), data);
+    data->context = EVP_MD_CTX_new();
+
+    __real_OSHash_Add_ex(mock_hashmap, log_reader.file, data);
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, "test");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    // Expect debug message for runtime discovery
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "New file 'test' discovered at runtime with no bookmark. Reading from beginning.");
+
+    //w_set_pos (SEEK_SET: runtime, no bookmark — read from beginning)
+    long pos = 0;
+    int mode = OS_BINARY;
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
+
+    expect_value(__wrap_w_ftell, x, 1);
+    will_return(__wrap_w_ftell, 0);
+
+    //w_update_hash_node with offset 0 (beginning of file)
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, log_reader.file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 0);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+
+    will_return(__wrap_OSHash_Update_ex, 1);
+
+    int ret = w_set_to_last_line_read(&log_reader);
+
+    assert_int_equal(ret, 0);
+}
+
+/* Runtime case: _startup_completed == 1, no bookmark, w_update_hash_node fails */
+void test_w_set_to_last_line_read_no_bookmark_runtime_hash_error(void ** state) {
+    fpos_t position_stack = {.__pos = 1};
+    logreader log_reader = {.fp = (FILE *)1, .file = "test"};
+
+    test_position = &position_stack;
+
+    atomic_int_set(&_startup_completed, 1);
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    os_file_status_t * data;
+    os_malloc(sizeof(os_file_status_t), data);
+    data->context = EVP_MD_CTX_new();
+
+    __real_OSHash_Add_ex(mock_hashmap, log_reader.file, data);
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, "test");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    expect_string(__wrap__mdebug1, formatted_msg,
+        "New file 'test' discovered at runtime with no bookmark. Reading from beginning.");
+
+    //w_set_pos (SEEK_SET)
+    int mode = OS_BINARY;
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
+
+    expect_value(__wrap_w_ftell, x, 1);
+    will_return(__wrap_w_ftell, 0);
+
+    //w_update_hash_node fails
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, log_reader.file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 0);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+
+    will_return(__wrap_OSHash_Update_ex, 0);
+
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, log_reader.file);
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(1299): Failure to update 'test' to 'file_status' hash table");
+
+    int ret = w_set_to_last_line_read(&log_reader);
+
+    assert_int_equal(ret, 0);
+}
+
+/* Startup case: _startup_completed == 0, no bookmark, w_update_hash_node fails */
+void test_w_set_to_last_line_read_no_bookmark_startup_hash_error(void ** state) {
+    fpos_t position_stack = {.__pos = 1};
+    logreader log_reader = {.fp = (FILE *)1, .file = "test"};
+
+    test_position = &position_stack;
+
+    atomic_int_set(&_startup_completed, 0);
+
+    expect_function_call(__wrap_pthread_rwlock_wrlock);
+    expect_function_call(__wrap_pthread_rwlock_unlock);
+    os_file_status_t * data;
+    os_malloc(sizeof(os_file_status_t), data);
+    data->context = EVP_MD_CTX_new();
+
+    __real_OSHash_Add_ex(mock_hashmap, log_reader.file, data);
+
+    expect_any(__wrap_OSHash_Get_ex, self);
+    expect_string(__wrap_OSHash_Get_ex, key, "test");
+    will_return(__wrap_OSHash_Get_ex, NULL);
+
+    //w_set_pos (SEEK_END: startup)
+    int mode = OS_BINARY;
+
+    expect_any(__wrap_w_fseek, x);
+    expect_value(__wrap_w_fseek, pos, 0);
+    will_return(__wrap_w_fseek, 0);
+
+    // w_ftell called once inside w_set_to_pos; return value used as end_pos
+    expect_value(__wrap_w_ftell, x, 1);
+    will_return(__wrap_w_ftell, 100);
+
+    //w_update_hash_node fails
+    expect_string(__wrap_OS_SHA1_File_Nbytes, fname, log_reader.file);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, mode, mode);
+    expect_value(__wrap_OS_SHA1_File_Nbytes, nbytes, 100);
+    will_return(__wrap_OS_SHA1_File_Nbytes, "32bb98743e298dee0a654a654765c765d765ae80");
+    will_return(__wrap_OS_SHA1_File_Nbytes, 1);
+
+    will_return(__wrap_OSHash_Update_ex, 0);
+
+    expect_value(__wrap_OSHash_Add_ex, self, files_status);
+    expect_string(__wrap_OSHash_Add_ex, key, log_reader.file);
+    will_return(__wrap_OSHash_Add_ex, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+        "(1299): Failure to update 'test' to 'file_status' hash table");
 
     int ret = w_set_to_last_line_read(&log_reader);
 
@@ -2702,6 +2942,7 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_w_save_file_status_str_NULL, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_wfopen_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_fwrite_error, setup_log_context, teardown_log_context),
+        cmocka_unit_test_setup_teardown(test_w_save_file_status_fclose_error, setup_log_context, teardown_log_context),
         cmocka_unit_test_setup_teardown(test_w_save_file_status_OK, setup_log_context, teardown_log_context),
 
         // Test w_load_files_status
@@ -2747,6 +2988,9 @@ int main(void) {
         // Test w_set_to_last_line_read
         cmocka_unit_test(test_w_set_to_last_line_read_null_reader),
         cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_OSHash_Get_ex_fail, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_no_bookmark_runtime, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_no_bookmark_runtime_hash_error, setup_local_hashmap, teardown_local_hashmap),
+        cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_no_bookmark_startup_hash_error, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test(test_w_set_to_last_line_read_fstat_fail),
         cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_OS_SHA1_File_Nbytes_fail, setup_local_hashmap, teardown_local_hashmap),
         cmocka_unit_test_setup_teardown(test_w_set_to_last_line_read_diferent_file, setup_local_hashmap, teardown_local_hashmap),

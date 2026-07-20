@@ -14,6 +14,8 @@
 #include <map>
 #include "json.hpp"
 
+#include <ifilesystem_wrapper.hpp>
+
 /// @brief Structure to hold information about a launchd service.
 struct LaunchdService
 {
@@ -46,8 +48,9 @@ struct LaunchdService
 class LaunchdProvider
 {
     public:
-        /// @brief Default constructor.
-        LaunchdProvider();
+        /// @brief Constructor with filesystem wrapper.
+        /// @param fileSystemWrapper Unique pointer to a file system wrapper implementation (optional).
+        explicit LaunchdProvider(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
 
         /// @brief Collects launchd services information.
         /// @return A JSON object containing the collected launchd services information.
@@ -114,4 +117,7 @@ class LaunchdProvider
         /// @param arrayElements Vector of strings to join.
         /// @return Joined string.
         std::string joinArrayElements(const std::vector<std::string>& arrayElements);
+
+        /// @brief Pointer to the file system wrapper implementation.
+        std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 };

@@ -101,6 +101,9 @@ static void test_OS_IsValidName_length(void **state) {
 static void test_OS_IsValidName_edge_cases(void **state) {
     (void) state;
 
+    /* NULL name should be rejected */
+    assert_int_equal(OS_IsValidName(NULL), 0);
+
     /* Names starting with dots should be rejected */
     assert_int_equal(OS_IsValidName("."), 0);
     assert_int_equal(OS_IsValidName(".."), 0);

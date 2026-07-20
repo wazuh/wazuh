@@ -1,6 +1,6 @@
 - name: MIDDLEWARE_BAD_REQUEST
   description: Check if the response_postprocessing API middleware works
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     method: post
     endpoint_url: /agents
@@ -15,7 +15,7 @@
 
 - name: MIDDLEWARE_ROUTE_NOT_FOUND
   description: Check if the response_postprocessing API middleware works.
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     method: get
     endpoint_url: /not_found_endpoint
@@ -29,7 +29,7 @@
 
 - name: MIDDLEWARE_NO_TOKEN
   description: Check if the response_postprocessing API middleware works.
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     method: get
     endpoint_url: /agents
@@ -43,7 +43,7 @@
 
 - name: MIDDLEWARE_INVALID_CREDENTIALS
   description: Check if the response_postprocessing API middleware works.
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     method: post
     endpoint_url: /security/user/authenticate

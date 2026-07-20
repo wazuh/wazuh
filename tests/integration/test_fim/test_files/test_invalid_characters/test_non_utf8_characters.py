@@ -24,7 +24,6 @@ daemons:
 
 os_platform:
     - Linux
-    - Windows
 
 os_version:
     - Arch Linux
@@ -36,9 +35,6 @@ os_version:
     - Red Hat 8
     - Ubuntu Focal
     - Ubuntu Bionic
-    - Windows 10
-    - Windows Server 2019
-    - Windows Server 2016
 
 references:
     - https://documentation.wazuh.com/current/user-manual/capabilities/file-integrity/index.html
@@ -46,7 +42,7 @@ references:
 
 pytest_args:
     - fim_mode:
-        realtime: Enable real-time monitoring on Linux (using the 'inotify' system calls) and Windows systems.
+        realtime: Enable real-time monitoring on Linux (using the 'inotify' system calls).
         whodata: Implies real-time monitoring but adding the 'who-data' information.
     - tier:
         0: Only level 0 tests are performed, they check basic functionalities and are quick to perform.
@@ -62,22 +58,12 @@ import sys
 
 import pytest
 
-if sys.platform == "win32":
-    import win32con
-    from win32con import KEY_WOW64_64KEY
-
 from pathlib import Path
 
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules.agentd.configuration import (
-    AGENTD_DEBUG,
-    AGENTD_WINDOWS_DEBUG,
-)
+from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG
 from wazuh_testing.modules.fim import configuration
-from wazuh_testing.modules.fim.patterns import (
-    IGNORING_DUE_TO_INVALID_NAME,
-    SYNC_INTEGRITY_MESSAGE,
-)
+from wazuh_testing.modules.fim.patterns import FIM_EVENT_JSON
 from wazuh_testing.modules.monitord.configuration import MONITORD_ROTATE_LOG
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.utils import file
@@ -89,11 +75,10 @@ from wazuh_testing.utils.configuration import (
 
 from . import CONFIGS_PATH, TEST_CASES_PATH
 
-# Pytest marks to run on any service type on linux or windows.
+# Pytest marks to run on any service type on linux.
 pytestmark = [
     pytest.mark.agent,
     pytest.mark.linux,
-    pytest.mark.win32,
     pytest.mark.tier(level=1),
 ]
 
@@ -111,8 +96,6 @@ local_internal_options = {
     AGENTD_DEBUG: 2,
     MONITORD_ROTATE_LOG: 0,
 }
-if sys.platform == "win32":
-    local_internal_options.update({AGENTD_WINDOWS_DEBUG: 2})
 
 # Valid UTF-8 filename test cases with actual symbols, diacritics, and multi-language characters
 valid_utf8_sequences = [
@@ -189,5 +172,5 @@ def test_valid_utf8_filenames_do_not_trigger_warning(
             f"Failed to create file: {test_path_bytes!r}"
         )
 
-        monitor.start(generate_callback(SYNC_INTEGRITY_MESSAGE))
+        monitor.start(generate_callback(FIM_EVENT_JSON))
         assert monitor.callback_result

@@ -5,7 +5,6 @@
 import asyncio
 import functools
 import json
-import logging
 import os
 import random
 from typing import Tuple, Union, Dict
@@ -63,8 +62,6 @@ class LocalServerHandler(server.AbstractServerHandler):
             return self.get_nodes(data)
         elif command == b'get_health':
             return self.get_health(data)
-        elif command == b'get_hash':
-            return self.get_ruleset_hashes()
         elif command == b'send_file':
             path, node_name = data.decode().split(' ')
             return self.send_file_request(path, node_name)
@@ -122,19 +119,6 @@ class LocalServerHandler(server.AbstractServerHandler):
             If the method is not implemented.
         """
         raise NotImplementedError
-
-    def get_ruleset_hashes(self):
-        """Obtain local ruleset paths and hashes.
-
-        Returns
-        -------
-        bytes
-            Result.
-        bytes
-            JSON containing local file paths and their hash.
-        """
-        hashes = cluster.get_ruleset_status(self.server.node.integrity_control)
-        return b'ok', json.dumps(hashes).encode()
 
     def send_file_request(self, path, node_name):
         """Send a file from the API to the cluster.
@@ -208,7 +192,7 @@ class LocalServer(server.AbstractServer):
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
         loop = asyncio.get_running_loop()
         loop.set_exception_handler(c_common.asyncio_exception_handler)
-        socket_path = os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock')
+        socket_path = common.CLUSTERD_SOCKET
 
         try:
             local_server = await loop.create_unix_server(
@@ -303,7 +287,10 @@ class LocalServerHandlerMaster(LocalServerHandler):
         dict
             Dict object containing nodes information.
         """
-        return b'ok', json.dumps(self.server.node.get_health(json.loads(filter_nodes))).encode()
+        return b'ok', json.dumps(
+            self.server.node.get_health(json.loads(filter_nodes)),
+            default=str
+        ).encode()
 
     def send_file_request(self, path, node_name):
         """Send a file from the API to the cluster.
@@ -398,22 +385,8 @@ class LocalServerHandlerWorker(LocalServerHandler):
             asyncio.create_task(self.log_exceptions(
                 self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
             return b'ok', b'Added request to sendsync requests queue'
-        elif command == b'sendrreload':
-            if self.server.node.client is None:
-                raise WazuhClusterError(3023)
-            asyncio.create_task(self.log_exceptions(self.set_reload_ruleset_flag()))
-            return b'ok', json.dumps({'success': True}).encode()
         else:
             return super().process_request(command, data)
-
-    async def set_reload_ruleset_flag(self):
-        """Set the reload ruleset flag asynchronously for the worker node.
-
-        This method acquires the reload_ruleset_flag lock and sets the flag,
-        indicating that the ruleset should be reloaded.
-        """
-        async with self.server.node.client.reload_ruleset_flag:
-            self.server.node.client.reload_ruleset_flag.set()
 
     def get_nodes(self, arguments) -> Tuple[bytes, bytes]:
         """Forward 'get_nodes' request to the master node.

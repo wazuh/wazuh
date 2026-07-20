@@ -34,7 +34,7 @@ future_version() {
   local wazuh_dir="$2"
   local base_version="$3"
 
-  specs_path="$(find $wazuh_dir -name SPECS|grep $SYSTEM)"
+  specs_path="$(find $wazuh_dir/packages -name SPECS|grep $SYSTEM)"
 
   local major=$(echo "$base_version" | cut -dv -f2 | cut -d. -f1)
   local minor=$(echo "$base_version" | cut -d. -f2)
@@ -74,8 +74,7 @@ export JOBS="$2"
 debug="$3"
 checksum="$4"
 future="$5"
-legacy="$6"
-src="$7"
+src="$6"
 
 build_dir="/build_wazuh"
 
@@ -91,14 +90,7 @@ if [ ! -d "/wazuh-local-src" ] ; then
     short_commit_hash="$(curl -s https://api.github.com/repos/wazuh/wazuh/commits/${WAZUH_BRANCH} \
                           | grep '"sha"' | head -n 1| cut -d '"' -f 4 | cut -c 1-7)"
 else
-    if [ "${legacy}" = "no" ]; then
       short_commit_hash="$(cd /wazuh-local-src && git rev-parse --short=7 HEAD)"
-    else
-      # Git package is not available in the CentOS 5 repositories.
-      head=$(cat /wazuh-local-src/.git/HEAD)
-      hash_commit=$(echo "$head" | grep "ref: " >/dev/null && cat /wazuh-local-src/.git/$(echo $head | cut -d' ' -f2) || echo $head)
-      short_commit_hash="$(cut -c 1-7 <<< $hash_commit)"
-    fi
 fi
 
 # Build directories
@@ -109,15 +101,15 @@ wazuh_version=$(awk -F'"' '/"version"[ \t]*:/ {print $4}' $source_dir/VERSION.js
 # Changing the "-" to "_" between target and version breaks the convention for RPM or DEB packages.
 # For now, I added extra code that fixes it.
 package_name="wazuh-${BUILD_TARGET}-${wazuh_version}"
-specs_path="$(find $source_dir -name SPECS|grep $SYSTEM)"
+specs_path="$(find $source_dir/packages -name SPECS|grep $SYSTEM)"
 
 setup_build "$source_dir" "$specs_path" "$build_dir" "$package_name" "$debug"
 
-set_debug $debug $sources_dir
+set_debug $debug $source_dir
 
 # Installing build dependencies
-cd $sources_dir
-build_deps $legacy
+cd $source_dir
+build_deps
 build_package $package_name $debug "$short_commit_hash" "$wazuh_version"
 
 # Post-processing

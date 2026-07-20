@@ -7,16 +7,20 @@
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
+list(APPEND shared_libs "../../wrappers/wazuh/wazuh_modules/wm_control_wrappers.c")
 
 # Tests list and flags
 list(APPEND tests_names "test_wm_control")
-list(APPEND tests_flags "-Wl,--wrap,sysinfo_networks -Wl,--wrap,sysinfo_free_result ${DEBUG_OP_WRAPPERS}")
+list(APPEND tests_flags "-Wl,--wrap,w_query_agentd -Wl,--wrap,wm_control_check_systemd \
+                         -Wl,--wrap,fork -Wl,--wrap,getpid -Wl,--wrap,access -Wl,--wrap,fopen -Wl,--wrap,fgets -Wl,--wrap,fclose \
+                         -Wl,--wrap,fflush -Wl,--wrap,fgetpos -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite \
+                         -Wl,--wrap,remove -Wl,--wrap,fgetc -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
 list(APPEND use_shared_libs 1)
 
 
 # Generate wazuh modules library
-file(GLOB control ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM control ../../../wazuh_modules/main.o)
+file(GLOB_RECURSE control ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+list(REMOVE_ITEM control ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
 
 add_library(CONTROL_O STATIC ${control})
 
@@ -50,12 +54,14 @@ foreach(counter RANGE ${count})
       add_executable(${test_name} ${test_name}.c)
     endif()
 
-    if(${TARGET} STREQUAL "server")
+    if(${TARGET} STREQUAL "manager")
         target_link_libraries(
             ${test_name}
+            -Wl,--start-group
             ${WAZUHLIB}
             ${WAZUHEXT}
             CONTROL_O
+            -Wl,--end-group
             -lcmocka
             -ldl
             -fprofile-arcs
@@ -70,6 +76,7 @@ foreach(counter RANGE ${count})
 
 
     if(NOT test_flags STREQUAL " ")
+        separate_arguments(test_flags)
         target_link_libraries(
             ${test_name}
             ${test_flags}

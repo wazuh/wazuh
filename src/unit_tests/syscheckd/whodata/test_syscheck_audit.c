@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 #include "wrappers/common.h"
-#include "../../../syscheckd/include/syscheck.h"
+#include "syscheck.h"
 #include "../../../syscheckd/src/whodata/syscheck_audit.h"
 
 #include "wrappers/externals/procpc/readproc_wrappers.h"
@@ -1112,7 +1112,7 @@ void test_audit_read_events_select_success_recv_error_audit_connection_closed(vo
         will_return(__wrap_OS_ConnectUnixDomain, -5);
         expect_string(__wrap__merror, formatted_msg, buffer);
     }
-    expect_string(__wrap_SendMSG, message, "ossec: Audit: Connection closed");
+    expect_string(__wrap_SendMSG, message, "wazuh: Audit: Connection closed");
     expect_string(__wrap_SendMSG, locmsg, SYSCHECK);
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 1);

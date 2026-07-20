@@ -13,7 +13,7 @@
 #include <cmocka.h>
 
 #include "../../wrappers/common.h"
-#include "../../../syscheckd/include/syscheck.h"
+#include "syscheck.h"
 #include "../../../syscheckd/src/whodata/syscheck_audit.h"
 
 
@@ -31,7 +31,7 @@
 #define PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
 #define CHECK_ALL                                                                                           \
     (CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_PERM | CHECK_SIZE | CHECK_OWNER | CHECK_GROUP | \
-     CHECK_MTIME | CHECK_INODE)
+     CHECK_MTIME | CHECK_INODE | CHECK_DEVICE)
 
 extern OSList *whodata_directories;
 OSList *GENERAL_CONFIG;

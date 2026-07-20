@@ -18,8 +18,6 @@
 
 #include <cJSON.h>
 
-char *__wrap_decode_win_permissions(char *raw_perm);
-
 void __wrap_decode_win_acl_json(cJSON *perms);
 
 int __wrap_delete_target_file(const char *path);

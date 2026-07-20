@@ -4,7 +4,6 @@
 
 import asyncio
 import logging
-import os
 import time
 from typing import Tuple
 
@@ -150,9 +149,7 @@ class LocalClient(client.AbstractClientManager):
                                                                                          name=self.name, logger=self.logger,
                                                                                          fernet_key='', manager=self,
                                                                                          cluster_items=self.cluster_items),
-                                             path=os.path.join(common.WAZUH_PATH, 'queue', 'cluster', 'c-internal.sock'))
-        except (ConnectionRefusedError, FileNotFoundError):
-            raise exception.WazuhInternalError(3012)
+                                             path=common.CLUSTERD_SOCKET)
         except MemoryError:
             raise exception.WazuhInternalError(1119)
         except Exception as e:

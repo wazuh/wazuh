@@ -85,10 +85,6 @@ def test_api_logger_size_exceptions():
 @pytest.mark.parametrize("path, hash_auth_context, body, loggerlevel", [
     ("/agents", '', {'bodyfield': 1}, 1),
     ("/agents", 'hashauthcontext', {'bodyfield': 1}, 21),
-    ("/events", '', {'bodyfield': 1, 'events' : [{'a': 1, 'b': 2 }]}, 1),
-    ("/events", 'hashauthcontext', {'bodyfield': 1, 'events' : [{'a': 1, 'b': 2 }]}, 22),
-    ("/events", 'hashauthcontext', ['foo', 'bar'], 22),
-    ("/events", 'hashauthcontext', 'foo', 22),
 ])
 def test_custom_logging(path, hash_auth_context, body, loggerlevel):
     """Test custom access logging calls."""
@@ -106,7 +102,7 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
     }
 
     log_info = f'{user} ({hash_auth_context}) {remote} "{method} {path}" ' if hash_auth_context \
-                else f'{user} ({hash_auth_context}) {remote} "{method} {path}" '
+                else f'{user} {remote} "{method} {path}" '
     json_info.update({'hash_auth_context' : hash_auth_context} if hash_auth_context else {})
     with patch('api.alogging.logger') as log_info_mock:
         log_info_mock.info = MagicMock()
@@ -115,14 +111,9 @@ def test_custom_logging(path, hash_auth_context, body, loggerlevel):
         alogging.custom_logging(user=user, remote=remote, method=method, path=path, query=query,
                         body=copy(body), elapsed_time=elapsed_time, status=status,
                         hash_auth_context=hash_auth_context, headers=headers)
-
-        if path == '/events' and loggerlevel >= 20:
-            if isinstance(body, dict):
-                events = body.get('events', [])
-                body = {'events': len(events)}
-                json_info['body'] = body
         log_info += f'with parameters {json.dumps(query)} and body'\
                     f' {json.dumps(body)} done in {elapsed_time:.3f}s: {status}'
-        log_info_mock.info.has_calls([call(log_info, {'log_type': 'log'}),
-                                      call(json_info, {'log_type': 'json'})])
+        log_info_mock.info.assert_has_calls([call(log_info, extra={'log_type': 'log'}),
+                                      call(json_info, extra={'log_type': 'json'})])
+
         log_info_mock.debug2.assert_called_with(f'Receiving headers {headers}')

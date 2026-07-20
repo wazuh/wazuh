@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.wazuh.api.engine;
+
+enum ReturnStatus
+{
+    UNKNOWN = 0;
+    OK = 1;    // Success
+    ERROR = 2; // Generic error
+}
+
+message GenericStatus_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+}

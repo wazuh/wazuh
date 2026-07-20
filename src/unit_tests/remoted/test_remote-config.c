@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../../remoted/remoted.h"
-#include "../../headers/shared.h"
+#include "remoted.h"
+#include "shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
@@ -32,11 +32,73 @@ int __wrap_ReadConfig(int modules, const char *cfgfile, void *d1, void *d2) {
     return mock();
 }
 
+typedef struct test_state {
+    OS_XML xml;
+    remoted *logr;
+} test_state;
+
 /* setup/teardown */
+
+static xml_node *create_xml_node(const char *element, const char *content) {
+    xml_node *node = calloc(1, sizeof(xml_node));
+    if (element) node->element = strdup(element);
+    if (content) node->content = strdup(content);
+    return node;
+}
+
+static xml_node **create_node_array(int count, ...) {
+    va_list args;
+    xml_node **nodes = calloc(count + 1, sizeof(xml_node *));
+
+    va_start(args, count);
+    for (int i = 0; i < count; i++) {
+        nodes[i] = va_arg(args, xml_node *);
+    }
+    va_end(args);
+
+    nodes[count] = NULL;
+    return nodes;
+}
+
+static void free_node_array(xml_node **nodes) {
+    if (!nodes) return;
+    for (int i = 0; nodes[i]; i++) {
+        free(nodes[i]->element);
+        free(nodes[i]->content);
+        free(nodes[i]);
+    }
+    free(nodes);
+}
+static remoted *create_remoted() {
+    remoted *logr = calloc(1, sizeof(remoted));
+    logr->port = 0;
+    logr->proto = 0;
+    logr->queue_size = 0;
+    logr->rids_closing_time = 0;
+    logr->connection_overtake_time = 60;
+    logr->lip = NULL;
+    return logr;
+}
+
+static int setup(void **state) {
+    test_state *ts = calloc(1, sizeof(test_state));
+    if (!ts) return 1;
+    ts->logr = create_remoted();
+    if (!ts->logr) { free(ts); return 1; }
+    *state = ts;
+    return 0;
+}
+
+static int teardown(void **state) {
+    test_state *ts = *state;
+    if (ts->logr->lip) free(ts->logr->lip);
+    free(ts->logr);
+    free(ts);
+    return 0;
+}
 
 
 /* wraps */
-
 
 /* tests */
 
@@ -218,34 +280,60 @@ static void test_remoted_internal_options_config(void **state) {
     (void) state;
 
     // Set internal options with prime numbers using mocked getDefine_Int
-    will_return(__wrap_getDefine_Int, 2);      // receive_chunk
-    will_return(__wrap_getDefine_Int, 3);      // send_chunk
-    will_return(__wrap_getDefine_Int, 5);      // buffer_relax
-    will_return(__wrap_getDefine_Int, 7);      // send_buffer_size
-    will_return(__wrap_getDefine_Int, 11);     // send_timeout_to_retry
-    will_return(__wrap_getDefine_Int, 13);     // recv_timeout
-    will_return(__wrap_getDefine_Int, 17);     // tcp_keepidle
-    will_return(__wrap_getDefine_Int, 19);     // tcp_keepintvl
-    will_return(__wrap_getDefine_Int, 23);     // tcp_keepcnt
-    will_return(__wrap_getDefine_Int, 29);     // worker_pool
-    will_return(__wrap_getDefine_Int, 31);     // merge_shared
-    will_return(__wrap_getDefine_Int, 37);     // pass_empty_keyfile
-    will_return(__wrap_getDefine_Int, 41);     // ctrl_msg_queue_size
-    will_return(__wrap_getDefine_Int, 43);     // keyupdate_interval
-    will_return(__wrap_getDefine_Int, 47);     // router_forwarding_disabled
-    will_return(__wrap_getDefine_Int, 53);     // state_interval
-    will_return(__wrap_getDefine_Int, 59);     // nofile
-    will_return(__wrap_getDefine_Int, 61);     // sender_pool
-    will_return(__wrap_getDefine_Int, 67);     // request_pool
-    will_return(__wrap_getDefine_Int, 71);     // request_timeout
-    will_return(__wrap_getDefine_Int, 73);     // response_timeout
-    will_return(__wrap_getDefine_Int, 79);     // rto_sec
-    will_return(__wrap_getDefine_Int, 83);     // rto_msec
-    will_return(__wrap_getDefine_Int, 89);     // max_attempts
-    will_return(__wrap_getDefine_Int, 97);     // guess_agent_group
-    will_return(__wrap_getDefine_Int, 101);    // shared_reload_interval
-    will_return(__wrap_getDefine_Int, 103);    // disk_storage
-    will_return(__wrap_getDefine_Int, 107);    // _s_verify_counter
+
+    // FIM limits
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+
+    // Syscollector limits
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+    will_return(__wrap_getDefine_Int_default, 1);
+
+    // SCA limits
+    will_return(__wrap_getDefine_Int_default, 1);
+
+    will_return(__wrap_getDefine_Int_default, 2);      // receive_chunk
+    will_return(__wrap_getDefine_Int_default, 3);      // send_chunk
+    will_return(__wrap_getDefine_Int_default, 5);      // buffer_relax
+    will_return(__wrap_getDefine_Int_default, 7);      // send_buffer_size
+    will_return(__wrap_getDefine_Int_default, 11);     // send_timeout_to_retry
+    will_return(__wrap_getDefine_Int_default, 13);     // recv_timeout
+    will_return(__wrap_getDefine_Int_default, 17);     // tcp_keepidle
+    will_return(__wrap_getDefine_Int_default, 19);     // tcp_keepintvl
+    will_return(__wrap_getDefine_Int_default, 23);     // tcp_keepcnt
+    will_return(__wrap_getDefine_Int_default, 29);     // worker_pool
+    will_return(__wrap_getDefine_Int_default, 31);     // merge_shared
+    will_return(__wrap_getDefine_Int_default, 37);     // pass_empty_keyfile
+    will_return(__wrap_getDefine_Int_default, 41);     // ctrl_msg_queue_size
+    will_return(__wrap_getDefine_Int_default, 43);     // keyupdate_interval
+    will_return(__wrap_getDefine_Int_default, 47);     // router_forwarding_disabled
+    will_return(__wrap_getDefine_Int_default, 53);     // state_interval
+    will_return(__wrap_getDefine_Int_default, 59);     // nofile
+    will_return(__wrap_getDefine_Int_default, 61);     // sender_pool
+    will_return(__wrap_getDefine_Int_default, 67);     // request_pool
+    will_return(__wrap_getDefine_Int_default, 71);     // request_timeout
+    will_return(__wrap_getDefine_Int_default, 73);     // response_timeout
+    will_return(__wrap_getDefine_Int_default, 79);     // rto_sec
+    will_return(__wrap_getDefine_Int_default, 83);     // rto_msec
+    will_return(__wrap_getDefine_Int_default, 89);     // max_attempts
+    will_return(__wrap_getDefine_Int_default, 101);    // shared_reload_interval
+    will_return(__wrap_getDefine_Int_default, 103);    // disk_storage
+    will_return(__wrap_getDefine_Int_default, 107);    // _s_verify_counter
+    will_return(__wrap_getDefine_Int_default, 109);    // batch_events_capacity
+    will_return(__wrap_getDefine_Int_default, 113);    // batch_events_per_agent_capacity
+    will_return(__wrap_getDefine_Int_default, 127);    // enrich_cache_expire_time
 
     // Mock ReadConfig calls
     expect_value(__wrap_ReadConfig, modules, CREMOTE);
@@ -256,8 +344,9 @@ static void test_remoted_internal_options_config(void **state) {
     expect_string(__wrap_ReadConfig, cfgfile, "test_ossec.conf");
     will_return(__wrap_ReadConfig, 0);
 
-    // Mock get_node_name call
+    // Mock get_node_name and get_cluster_name calls
     will_return(__wrap_get_node_name, NULL);
+    will_return(__wrap_get_cluster_name, NULL);
 
     // Call RemotedConfig to load all internal options
     int ret = RemotedConfig("test_ossec.conf", &logr);
@@ -298,12 +387,100 @@ static void test_remoted_internal_options_config(void **state) {
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "request_rto_sec")->valueint, 79);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "request_rto_msec")->valueint, 83);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "max_attempts")->valueint, 89);
-    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "guess_agent_group")->valueint, 97);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "shared_reload")->valueint, 101);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "disk_storage")->valueint, 103);
     assert_int_equal(cJSON_GetObjectItem(remoted_obj, "verify_msg_id")->valueint, 107);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_capacity")->valueint, 109);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "batch_events_per_agent_capacity")->valueint, 113);
+    assert_int_equal(cJSON_GetObjectItem(remoted_obj, "enrich_cache_expire_time")->valueint, 127);
 
     cJSON_Delete(json);
+}
+
+// Read_remote tests
+
+static void test_read_remote_valid_port(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("port", "1514")
+    );
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->port, 1514);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_invalid_port(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("port", "-1")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'port': -1.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_INVALID);
+    assert_int_equal(ts->logr->port, 0);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_connection_section(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("connection", "secure")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'connection'.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_allowed_ips_section(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("allowed-ips", "x")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'allowed-ips'.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_denied_ips_section(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("denied-ips", "x")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'denied-ips'.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
 }
 
 int main(void)
@@ -323,6 +500,11 @@ int main(void)
         cmocka_unit_test(test_w_remoted_parse_agents_invalid_value),
         cmocka_unit_test(test_w_remoted_parse_agents_invalid_element),
         cmocka_unit_test(test_remoted_internal_options_config),
+        cmocka_unit_test_setup_teardown(test_read_remote_valid_port, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_invalid_port, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_connection_section, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_allowed_ips_section, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_denied_ips_section, setup, teardown),
 
     };
 

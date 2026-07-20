@@ -1,0 +1,86 @@
+name: 'Test Wazuh upgrade preservation rules'
+description: 'Prepare and validate file preserve/overwrite rules around Wazuh upgrades'
+inputs:
+  mode:
+    description: 'Execution mode: prepare, validate, or run'
+    required: true
+  component:
+    description: 'Wazuh component: manager or agent'
+    required: false
+    default: manager
+  system:
+    description: 'Package system: deb or rpm'
+    required: true
+  container:
+    description: 'Docker container name or ID where the component is installed'
+    required: false
+    default: ''
+  package_path:
+    description: 'Path to the target package inside the container'
+    required: true
+  tested_docker:
+    description: 'image:tag used for full run mode'
+    required: false
+    default: ''
+  package_mount:
+    description: 'Host path to mount as /packages in full run mode'
+    required: false
+    default: /tmp
+  old_package_url:
+    description: 'URL of the baseline package in full run mode'
+    required: false
+    default: ''
+runs:
+  using: 'composite'
+  steps:
+    - name: Run upgrade rules test
+      shell: bash
+      run: |
+        DOCKER=(docker)
+        if ! docker ps >/dev/null 2>&1 && command -v sudo >/dev/null 2>&1; then
+          DOCKER=(sudo docker)
+        fi
+
+        if [ "${{ inputs.mode }}" = "run" ]; then
+          if [ -z "${{ inputs.tested_docker }}" ]; then
+            echo "tested_docker is required for run mode" >&2
+            exit 1
+          fi
+          if [ -z "${{ inputs.old_package_url }}" ]; then
+            echo "old_package_url is required for run mode" >&2
+            exit 1
+          fi
+
+          CONTAINER_NAME="wazuh_${{ inputs.component }}_upgrade_rules_${{ inputs.system }}_${GITHUB_RUN_ID:-local}_${GITHUB_RUN_ATTEMPT:-0}_${RANDOM}"
+          cleanup_container() {
+            "${DOCKER[@]}" rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true
+          }
+          "${DOCKER[@]}" run \
+            --name "$CONTAINER_NAME" \
+            -d \
+            -v "${{ inputs.package_mount }}:/packages" \
+            --entrypoint /bin/bash \
+            "${{ inputs.tested_docker }}" \
+            -lc 'tail -f /dev/null'
+          trap cleanup_container EXIT
+
+          "${DOCKER[@]}" cp "${{ github.action_path }}/upgrade_rules_test.sh" "$CONTAINER_NAME:/tmp/upgrade_rules_test.sh"
+          "${DOCKER[@]}" exec "$CONTAINER_NAME" bash -lc 'chmod +x /tmp/upgrade_rules_test.sh && /tmp/upgrade_rules_test.sh "$1" "$2" "$3" "$4" "$5"' -- \
+            "${{ inputs.mode }}" \
+            "${{ inputs.system }}" \
+            "${{ inputs.package_path }}" \
+            "${{ inputs.component }}" \
+            "${{ inputs.old_package_url }}"
+        else
+          if [ -z "${{ inputs.container }}" ]; then
+            echo "container is required for ${{ inputs.mode }} mode" >&2
+            exit 1
+          fi
+
+          "${DOCKER[@]}" cp "${{ github.action_path }}/upgrade_rules_test.sh" "${{ inputs.container }}:/tmp/upgrade_rules_test.sh"
+          "${DOCKER[@]}" exec "${{ inputs.container }}" bash -lc 'chmod +x /tmp/upgrade_rules_test.sh && /tmp/upgrade_rules_test.sh "$1" "$2" "$3" "$4"' -- \
+            "${{ inputs.mode }}" \
+            "${{ inputs.system }}" \
+            "${{ inputs.package_path }}" \
+            "${{ inputs.component }}"
+        fi

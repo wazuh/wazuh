@@ -12,7 +12,6 @@ ExecStop=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control stop
 ExecReload=/usr/bin/env WAZUH_HOME_TMP/bin/wazuh-control reload
 
 KillMode=process
-RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target

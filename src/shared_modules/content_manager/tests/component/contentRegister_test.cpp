@@ -27,7 +27,7 @@ TEST_F(ContentRegisterTest, TestInstantiation)
     EXPECT_NO_THROW(contentModule.start(nullptr));
 
     EXPECT_NO_THROW(std::make_shared<ContentRegister>(
-        topicName, m_parameters, [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; }));
+        topicName, m_parameters, [](nlohmann::json msg) -> FileProcessingResult { return {0, "", false}; }));
 
     EXPECT_NO_THROW(contentModule.stop());
 }
@@ -48,7 +48,7 @@ TEST_F(ContentRegisterTest, TestInstantiationWithOnDemandEnabled)
     EXPECT_NO_THROW(contentModule.start(nullptr));
 
     EXPECT_NO_THROW(std::make_shared<ContentRegister>(
-        topicName, m_parameters, [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; }));
+        topicName, m_parameters, [](nlohmann::json msg) -> FileProcessingResult { return {0, "", false}; }));
 
     EXPECT_NO_THROW(contentModule.stop());
 }
@@ -68,7 +68,7 @@ TEST_F(ContentRegisterTest, TestInstantiationAndChangeSchedulerInterval)
     EXPECT_NO_THROW(contentModule.start(nullptr));
 
     auto contentRegister {std::make_shared<ContentRegister>(
-        topicName, m_parameters, [](const std::string& msg) -> FileProcessingResult { return {0, "", false}; })};
+        topicName, m_parameters, [](nlohmann::json msg) -> FileProcessingResult { return {0, "", false}; })};
 
     EXPECT_NO_THROW(contentRegister->changeSchedulerInterval(interval + 1));
 

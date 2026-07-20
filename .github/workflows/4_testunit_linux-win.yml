@@ -4,39 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       base_branch:
-        description: 'Base branch'
+        description: "Base branch"
         required: true
-        default: 'main'
-  pull_request:
-    paths:
-        - "src/**"
-        - ".github/workflows/4_testunit_linux-win.yml"
+        default: "main"
 
 jobs:
-  Unit-Tests:
-    strategy:
-          fail-fast: false
-          matrix:
-              target: [agent, winagent, server]
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+  deprecated:
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-      - name: "Install a compatible CMake"
-        uses: ./.github/actions/reinstall_cmake
-      - name: "Install dependencies"
-        uses: ./.github/actions/install_build_deps
-        with:
-          target: ${{ matrix.target }}
-      - name: "Build wazuh"
-        uses: ./.github/actions/build_test_flags
-        with:
-          target: ${{ matrix.target }}
-      - name: "Build wazuh legacy unit tests"
-        uses: ./.github/actions/legacy_unit_tests_build
-        with:
-          target: ${{ matrix.target }}
-      - name: "Run wazuh legacy unit tests"
-        uses: ./.github/actions/legacy_unit_tests_run
-        with:
-          target: ${{ matrix.target }}
+      - name: Warning
+        run: echo "This workflow is deprecated. Be careful, you have just run it from main."

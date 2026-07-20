@@ -142,7 +142,7 @@ def test_regions(
             accumulations=expected_results
         )
         assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_event_number']
-        
+
         assert path_exist(path=S3_CLOUDTRAIL_DB_PATH)
 
         # Validate database updates
@@ -157,7 +157,7 @@ def test_regions(
         for region in regions_list:
             if region not in ALL_REGIONS:
                 invalid_region = region
-                break        
+                break
         log_monitor.start(
             timeout=session_parameters.default_timeout,
             callback=event_monitor.make_aws_callback(
@@ -432,15 +432,8 @@ def test_inspector_regions(
 
     assert log_monitor.callback_result is not None, ERROR_MESSAGE['incorrect_parameters']
 
-    # For inspector, validate V1 and V2 APIs both execute successfully
+    # For inspector, validate InspectorV2 API executed successfully
     if service_type == 'inspector' and expected_results_min is not None:
-        # Validate InspectorV1 API executed (can return 0+ events)
-        log_monitor.start(
-            timeout=TIMEOUT[10],
-            callback=event_monitor.make_aws_callback(r'.*\[InspectorV1\] \d+ events collected and processed'),
-        )
-        assert log_monitor.callback_result is not None, 'InspectorV1 API did not execute - check logs'
-
         # Validate InspectorV2 API executed (can return 0+ events or report no updates)
         log_monitor.start(
             timeout=TIMEOUT[10],

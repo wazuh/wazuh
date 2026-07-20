@@ -7,7 +7,7 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the set_secure_headers middleware of the API handled by the 'wazuh-apid' daemon is
+brief: These tests will check if the set_secure_headers middleware of the API handled by the 'wazuh-manager-apid' daemon is
        working properly. The Wazuh API is an open source 'RESTful' API that allows for interaction with the Wazuh
        manager from a web browser, command line tool like 'cURL' or any script or program that can make web requests.
 
@@ -20,12 +20,11 @@ targets:
     - manager
 
 daemons:
-    - wazuh-apid
-    - wazuh-modulesd
-    - wazuh-analysisd
-    - wazuh-execd
-    - wazuh-db
-    - wazuh-remoted
+    - wazuh-manager-apid
+    - wazuh-manager-modulesd
+    - wazuh-manager-analysisd
+    - wazuh-manager-db
+    - wazuh-manager-remoted
 
 os_platform:
     - linux
@@ -82,7 +81,7 @@ test_cases_path = Path(TEST_CASES_FOLDER_PATH, 'cases_set_secure_headers.yaml')
 # Configurations
 test_configuration, test_metadata, test_cases_ids = get_test_cases_data(test_cases_path)
 test_configuration = load_configuration_template(test_configuration_path, test_configuration, test_metadata)
-daemons_handler_configuration = {'daemons': API_DAEMONS_REQUIREMENTS}
+daemons_handler_configuration = {'all_daemons': True}
 
 
 # Tests

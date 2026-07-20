@@ -1,0 +1,493 @@
+#include "manager.hpp"
+
+#include <ctime>
+#include <filesystem>
+#include <fstream>
+#include <memory>
+#include <mutex>
+
+#include <fmt/format.h>
+#include <maxminddb.h>
+
+#include <base/logging.hpp>
+#include <base/utils/hash.hpp>
+#include <store/istore.hpp>
+
+#include "dbHandle.hpp"
+#include "locator.hpp"
+
+namespace geo
+{
+Manager::Manager(const std::shared_ptr<store::IStore>& store, const std::shared_ptr<IDownloader>& downloader)
+    : m_store(store)
+    , m_downloader(downloader)
+{
+    if (m_store == nullptr)
+    {
+        throw std::runtime_error("Maxmindb manager needs a non-null store");
+    }
+
+    if (m_downloader == nullptr)
+    {
+        throw std::runtime_error("Maxmindb manager needs a non-null downloader");
+    }
+
+    // Load dbs from the internal store (single document with nested structure)
+    auto docResp = m_store->readDoc(base::Name(INTERNAL_NAME));
+    if (base::isError(docResp))
+    {
+        LOG_DEBUG("[Geo::Manager] Geo module do not have dbs in the store: {}", base::getError(docResp).message);
+        updateGeoStatusSnapshot(); // Publish initial status even with no dbs
+        return;
+    }
+
+    auto doc = base::getResponse(docResp);
+    auto checkAndLoadDb = [&](Type type)
+    {
+        std::string pathStr, hashStr;
+        auto pathRet = doc.getString(pathStr, fmt::format("/{}/path", typeName(type)));
+        auto hashRet = doc.getString(hashStr, fmt::format("/{}/hash", typeName(type)));
+        auto createdAt = doc.getInt64(fmt::format("/{}/generated_at", typeName(type)));
+        if (pathRet == json::RetGet::Success && hashRet == json::RetGet::Success && createdAt.has_value())
+        {
+            auto addResp = addDbUnsafe(pathStr, hashStr, createdAt.value(), type);
+            if (base::isError(addResp))
+            {
+                LOG_ERROR("[Geo::Manager] Geo cannot add {} db '{}': {}",
+                          typeName(type),
+                          pathStr,
+                          base::getError(addResp).message);
+            }
+            else
+            {
+                // Loaded from store: the type has a version available for queries.
+                m_typeState[type].available = true;
+                m_typeState[type].hash = hashStr;
+                // Restore the last successful update timestamp if present (absent in older docs).
+                if (const auto ts = doc.getInt64(fmt::format("/{}/last_successful_update", typeName(type)));
+                    ts.has_value())
+                {
+                    m_typeState[type].lastSuccessfulUpdate = static_cast<uint32_t>(*ts);
+                }
+            }
+        }
+        else
+        {
+            LOG_WARNING("[Geo::Manager] Geo store has incomplete {} database information, skipping", typeName(type));
+        }
+    };
+
+    checkAndLoadDb(Type::CITY);
+    checkAndLoadDb(Type::ASN);
+
+    updateGeoStatusSnapshot(); // Publish initial status
+}
+
+base::OptError
+Manager::upsertStoreEntry(const std::string& path, Type type, const std::string& hash, const int64_t createdAt)
+{
+    // Read existing document or create new one
+    auto internalName = base::Name(INTERNAL_NAME);
+    auto docResp = m_store->readDoc(internalName);
+
+    store::Doc doc;
+    if (!base::isError(docResp))
+    {
+        doc = std::move(base::getResponse(docResp));
+    }
+
+    // Update fields for the specific type. This is the successful-update persistence point, so we
+    // also record our local sync timestamp (reported as last_successful_update, survives restart).
+    auto typePrefix = fmt::format("/{}", typeName(type));
+    doc.setString(path, typePrefix + "/path");
+    doc.setString(hash, typePrefix + "/hash");
+    doc.setInt64(createdAt, typePrefix + "/generated_at");
+    doc.setInt64(static_cast<int64_t>(std::time(nullptr)), typePrefix + "/last_successful_update");
+
+    auto storeResp = m_store->upsertDoc(internalName, doc);
+    if (base::isError(storeResp))
+    {
+        return base::Error {
+            fmt::format("Cannot update internal store for '{}': {}", path, base::getError(storeResp).message)};
+    }
+
+    return base::noError();
+}
+
+bool Manager::needsUpdate(const std::string& name, const std::string& remoteHash, Type type) const
+{
+    // Read the single document and check the specific type field
+    auto internalResp = m_store->readDoc(base::Name(INTERNAL_NAME));
+
+    if (base::isError(internalResp))
+    {
+        // If there's no stored document, we need to update
+        return true;
+    }
+
+    auto doc = base::getResponse(internalResp);
+    auto typePrefix = fmt::format("/{}", typeName(type));
+
+    std::string storedHash;
+    if (doc.getString(storedHash, typePrefix + "/hash") != json::RetGet::Success)
+    {
+        return true;
+    }
+
+    // Check if file exists physically
+    std::string storedPath;
+    if (doc.getString(storedPath, typePrefix + "/path") == json::RetGet::Success)
+    {
+        if (!std::filesystem::exists(storedPath))
+        {
+            // File was deleted, needs update
+            return true;
+        }
+    }
+
+    return storedHash != remoteHash;
+}
+
+base::OptError
+Manager::addDbUnsafe(const std::string& path, const std::string& hash, const int64_t createdAt, Type type)
+{
+    const auto name = std::filesystem::path(path).filename().string();
+
+    // Check if the type has already a database
+    if (m_dbTypes.find(type) != m_dbTypes.end())
+    {
+        return base::Error {fmt::format("Type '{}' already has the database '{}'", typeName(type), m_dbTypes.at(type))};
+    }
+
+    // Check if the database is already added
+    if (m_dbs.find(name) != m_dbs.end())
+    {
+        return base::Error {fmt::format("Database with name '{}' already exists", name)};
+    }
+
+    // Create stable handle + immutable instance (MMDB_open is done inside DbInstance)
+    auto handle = std::make_shared<DbHandle>();
+    try
+    {
+        auto inst = std::make_shared<DbInstance>(path, hash, createdAt, type);
+        handle->store(std::move(inst));
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Cannot add database '{}': {}", path, e.what())};
+    }
+
+    // Publish
+    m_dbs.emplace(name, handle);
+    m_dbTypes.emplace(type, name);
+
+    return base::noError();
+}
+
+base::OptError Manager::processDbEntry(const std::string& path,
+                                       Type type,
+                                       const std::string& gzUrl,
+                                       const std::string& expectedMd5,
+                                       const int64_t createdAt)
+{
+    const auto name = std::filesystem::path(path).filename().string();
+
+    // Lock map only for validating and obtaining/creating handle
+    std::unique_lock lock(m_rwMapMutex);
+
+    if (m_dbTypes.find(type) != m_dbTypes.end() && m_dbTypes.at(type) != name)
+    {
+        return base::Error {fmt::format(
+            "The name '{}' does not correspond to any database for type '{}'. "
+            "If you want it to correspond, please delete the existing database and recreate it with this name.",
+            name,
+            typeName(type))};
+    }
+
+    // Check if database needs update by comparing stored hash with manifest MD5
+    if (!needsUpdate(name, expectedMd5, type))
+    {
+        return base::noError();
+    }
+
+    // Get/create stable handle
+    std::shared_ptr<DbHandle> handle;
+    auto it = m_dbs.find(name);
+    if (it != m_dbs.end())
+    {
+        handle = it->second;
+    }
+    else
+    {
+        handle = std::make_shared<DbHandle>();
+        m_dbs.emplace(name, handle);
+        m_dbTypes.emplace(type, name);
+    }
+
+    // Already have the handle; release the map lock so as not to block
+    lock.unlock();
+
+    // Download gz with retries and validate MD5
+    std::string gzContent;
+    base::OptError error = base::Error {fmt::format("Cannot download database from '{}'", gzUrl)};
+
+    for (int i = 0; i < MAX_RETRIES; ++i)
+    {
+        if (!m_shouldRun->load())
+        {
+            return base::Error {"Shutdown requested, aborting geo database download"};
+        }
+
+        auto downloadResp = m_downloader->downloadHTTPS(gzUrl);
+        if (base::isError(downloadResp))
+        {
+            // If shutdown was requested mid-transfer, exit immediately instead of retrying
+            if (!m_shouldRun->load())
+            {
+                return base::Error {"Shutdown requested, aborting geo database download"};
+            }
+
+            error = base::Error {
+                fmt::format("Cannot download database from '{}': {}", gzUrl, base::getError(downloadResp).message)};
+            continue;
+        }
+
+        gzContent = base::getResponse(downloadResp);
+
+        // Validate MD5 of the gz file
+        const auto computedMd5 = base::utils::hash::md5(gzContent);
+        if (computedMd5 == expectedMd5)
+        {
+            error = base::noError();
+            break;
+        }
+
+        error = base::Error {
+            fmt::format("MD5 mismatch for database '{}'. Expected: {}, Got: {}", gzUrl, expectedMd5, computedMd5)};
+    }
+
+    if (base::isError(error))
+    {
+        return error;
+    }
+
+    // Extract .mmdb from gz to temporary path
+    const auto tmpPath = path + ".tmp";
+    auto extractResp = m_downloader->extractMmdbFromGz(gzContent, tmpPath);
+    if (base::isError(extractResp))
+    {
+        // Clean up temporary file if extraction failed
+        if (std::filesystem::exists(tmpPath))
+        {
+            std::filesystem::remove(tmpPath);
+        }
+        return base::getError(extractResp);
+    }
+
+    // Atomic rename to final path
+    try
+    {
+        std::filesystem::rename(tmpPath, path);
+
+        // Set permissions to 640 (rw-r-----)
+        std::filesystem::permissions(path,
+                                     std::filesystem::perms::owner_read | std::filesystem::perms::owner_write
+                                         | std::filesystem::perms::group_read,
+                                     std::filesystem::perm_options::replace);
+    }
+    catch (const std::exception& e)
+    {
+        std::filesystem::remove(tmpPath);
+        return base::Error {fmt::format("Cannot replace db '{}': {}", path, e.what())};
+    }
+
+    // Open a new instance and perform an atomic swap (hot reload)
+    std::shared_ptr<const DbInstance> newInst;
+    try
+    {
+        newInst = std::make_shared<DbInstance>(path, expectedMd5, createdAt, type);
+    }
+    catch (const std::exception& e)
+    {
+        return base::Error {fmt::format("Cannot open updated db '{}': {}", path, e.what())};
+    }
+
+    handle->store(std::move(newInst));
+
+    // Persist manifest MD5 hash and generated_at in store
+    auto res = upsertStoreEntry(path, type, expectedMd5, createdAt);
+    if (base::isError(res))
+    {
+        return base::getError(res);
+    }
+
+    return base::noError();
+}
+
+void Manager::remoteUpsert(const std::string& manifestUrl, const std::string& cityPath, const std::string& asnPath)
+{
+    LOG_DEBUG("[Geo::Manager] Checking for geo database updates from manifest '{}'", manifestUrl);
+
+    if (!m_shouldRun->load())
+    {
+        LOG_DEBUG("[Geo::Manager] Shutdown requested, skipping geo sync");
+        return;
+    }
+
+    // Download and parse manifest
+    auto manifestResp = m_downloader->downloadManifest(manifestUrl);
+    if (base::isError(manifestResp))
+    {
+        LOG_WARNING(
+            "[Geo::Manager] Cannot download manifest from '{}': {}", manifestUrl, base::getError(manifestResp).message);
+        // Mark all types as failed (keep previous availability/hash: an old version may still be usable)
+        for (auto type : {Type::CITY, Type::ASN})
+        {
+            m_typeState[type].status = base::SyncStatus::FAILED;
+        }
+        updateGeoStatusSnapshot();
+        return;
+    }
+
+    const auto manifest = base::getResponse(manifestResp);
+    LOG_DEBUG("[Geo::Manager] Manifest downloaded successfully");
+
+    // Extract manifest fields
+    auto createdAt = manifest.getInt64(GENERATED_AT_PATH);
+
+    // Lambda to process database entries
+    auto processDatabase = [&](Type type,
+                               const std::string& path,
+                               const std::string& url,
+                               const std::string& md5,
+                               const std::string& typeName)
+    {
+        if (url.empty() || md5.empty() || path.empty())
+        {
+            LOG_WARNING("[Geo::Manager] {} database not present in manifest or path not provided", typeName);
+            return;
+        }
+
+        const auto dbName = std::filesystem::path(path).filename().string();
+
+        // Check if database needs update
+        if (!needsUpdate(dbName, md5, type))
+        {
+            LOG_DEBUG("[Geo::Manager] No changes detected for {} database '{}'", typeName, dbName);
+            return;
+        }
+
+        // Mark this type as running (a previously loaded version, if any, stays available)
+        m_typeState[type].status = base::SyncStatus::UPDATING;
+        updateGeoStatusSnapshot();
+
+        LOG_INFO("[Geo::Manager] Changes detected for {} database '{}', updating...", typeName, dbName);
+        auto error = processDbEntry(path, type, url, md5, createdAt.value());
+        if (base::isError(error))
+        {
+            // Failed update: keep previous availability/hash, only report FAILED status.
+            m_typeState[type].status = base::SyncStatus::FAILED;
+            LOG_WARNING("[Geo::Manager] Failed to process {} database '{}': {}",
+                        typeName,
+                        dbName,
+                        base::getError(error).message);
+        }
+        else
+        {
+            // Successful swap: this type now has the manifest version available.
+            m_typeState[type].available = true;
+            m_typeState[type].hash = md5;
+            m_typeState[type].lastSuccessfulUpdate = static_cast<uint32_t>(std::time(nullptr));
+            m_typeState[type].status = base::SyncStatus::READY;
+            LOG_INFO("[Geo::Manager] Successfully updated {} database '{}'", typeName, dbName);
+        }
+
+        updateGeoStatusSnapshot();
+    };
+
+    // Process city database if present
+    std::string cityUrl, cityMd5;
+    manifest.getString(cityUrl, "/city/url");
+    manifest.getString(cityMd5, "/city/md5");
+    processDatabase(Type::CITY, cityPath, cityUrl, cityMd5, "CITY");
+
+    if (!m_shouldRun->load())
+    {
+        LOG_DEBUG("[Geo::Manager] Shutdown requested, skipping ASN database sync");
+        return;
+    }
+
+    // Process ASN database if present
+    std::string asnUrl, asnMd5;
+    manifest.getString(asnUrl, "/asn/url");
+    manifest.getString(asnMd5, "/asn/md5");
+    processDatabase(Type::ASN, asnPath, asnUrl, asnMd5, "ASN");
+
+    LOG_DEBUG("[Geo::Manager] Finished synchronization of geo databases");
+}
+
+void Manager::requestShutdown()
+{
+    m_shouldRun->store(false);
+    LOG_INFO("[Geo::Manager] Shutdown requested");
+}
+
+Result<std::shared_ptr<ILocator>> Manager::getLocator(Type type) const
+{
+    // Search the database with read lock
+    std::shared_lock lock(m_rwMapMutex);
+
+    // Check if the type has a database
+    if (m_dbTypes.find(type) == m_dbTypes.end())
+    {
+        return ErrorCode::DB_TYPE_NOT_AVAILABLE;
+    }
+
+    // Get the database handle and return the locator
+    auto handle = m_dbs.at(m_dbTypes.at(type));
+    auto locator = std::make_shared<Locator>(handle);
+
+    return Result<std::shared_ptr<ILocator>>(locator);
+}
+
+std::vector<DbInfo> Manager::listDbs() const
+{
+    std::shared_lock lock(m_rwMapMutex);
+
+    std::vector<DbInfo> dbs;
+    for (const auto& [name, handle] : m_dbs)
+    {
+        auto inst = handle->load();
+        if (!inst)
+        {
+            continue;
+        }
+
+        dbs.emplace_back(DbInfo {name, inst->path(), inst->hash(), inst->createdAt(), inst->type()});
+    }
+    return dbs;
+}
+
+std::vector<GeoDbStatus> Manager::getGeoStatus() const
+{
+    return *m_geoStatus.load();
+}
+
+void Manager::updateGeoStatusSnapshot()
+{
+    // Full rebuild from m_typeState (sync-thread working state), then publish atomically.
+    // Both types are always reported, keyed by their type name ("city" and "asn").
+    std::vector<GeoDbStatus> result;
+    result.reserve(2);
+
+    for (auto type : {Type::CITY, Type::ASN})
+    {
+        GeoDbStatus entry = m_typeState[type]; // copy current per-type state (default: unavailable, READY)
+        entry.name = typeName(type);
+        result.push_back(std::move(entry));
+    }
+
+    m_geoStatus.store(std::move(result));
+}
+
+} // namespace geo

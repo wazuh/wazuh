@@ -7,10 +7,9 @@ copyright: Copyright (C) 2015-2024, Wazuh Inc.
 
 type: integration
 
-brief: These tests will check if the 'wazuh-authd' daemon is able to handle secure connections using
-       the 'SSL' (Secure Socket Layer) protocol. The 'wazuh-authd' daemon can automatically add
+brief: These tests will check if the 'wazuh-manager-authd' daemon is able to handle secure connections using
+       the 'SSL' (Secure Socket Layer) protocol. The 'wazuh-manager-authd' daemon can automatically add
        a Wazuh agent to a Wazuh manager and provide the key to the agent.
-       It is used along with the 'agent-auth' application.
 
 components:
     - authd
@@ -19,9 +18,9 @@ targets:
     - manager
 
 daemons:
-    - wazuh-authd
-    - wazuh-db
-    - wazuh-modulesd
+    - wazuh-manager-authd
+    - wazuh-manager-db
+    - wazuh-manager-modulesd
 
 os_platform:
     - linux
@@ -38,7 +37,7 @@ os_version:
     - Ubuntu Bionic
 
 references:
-    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-authd.html
+    - https://documentation.wazuh.com/current/user-manual/reference/daemons/wazuh-manager-authd.html
     - https://documentation.wazuh.com/current/user-manual/registering/host-verification-registration.html
 
 tags:
@@ -54,6 +53,7 @@ from wazuh_testing.utils.configuration import get_test_cases_data, load_configur
 from wazuh_testing.tools.socket_controller import SocketController
 from wazuh_testing.constants.ports import DEFAULT_SSL_REMOTE_ENROLLMENT_PORT
 from wazuh_testing.constants.daemons import AUTHD_DAEMON, WAZUH_DB_DAEMON, MODULES_DAEMON
+from wazuh_testing.modules.authd.configuration import AUTHD_DEBUG_CONFIG
 
 from . import CONFIGURATIONS_FOLDER_PATH, TEST_CASES_FOLDER_PATH
 
@@ -93,26 +93,27 @@ OUPUT_MESSAGE = "OSSEC K:'"
 
 receiver_sockets_params = [((AGENT_IP, DEFAULT_SSL_REMOTE_ENROLLMENT_PORT), 'AF_INET', 'SSL_TLSv1_2')]
 
-monitored_sockets_params = [(MODULES_DAEMON, None, True), (WAZUH_DB_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
+monitored_sockets_params = [(WAZUH_DB_DAEMON, None, True), (MODULES_DAEMON, None, True), (AUTHD_DAEMON, None, True)]
 
 receiver_sockets, monitored_sockets = None, None
 
 daemons_handler_configuration = {'daemons': [AUTHD_DAEMON], 'ignore_errors': True}
+local_internal_options = {AUTHD_DEBUG_CONFIG: '2'}
 
 # Tests
 @pytest.mark.parametrize('test_configuration,test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configuration,
-                         generate_ca_certificate, truncate_monitored_files, daemons_handler,
-                         wait_for_authd_startup):
+                         generate_ca_certificate, truncate_monitored_files, configure_local_internal_options,
+                         daemons_handler, wait_for_authd_startup):
     '''
     description:
-        Checks if the 'wazuh-authd' daemon can manage 'SSL' connections with agents
+        Checks if the 'wazuh-manager-authd' daemon can manage 'SSL' connections with agents
         and the 'host verification' feature is working properly. For this purpose,
         it generates and signs the necessary certificates and builds the
         enrollment requests using them.
 
     wazuh_min_version:
-        4.2.0
+        5.0.0
 
     tier: 0
 
@@ -132,6 +133,9 @@ def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configurat
         - truncate_monitored_files:
             type: fixture
             brief: Truncate all the log files and json alerts files before and after the test execution.
+        - configure_local_internal_options:
+            type: fixture
+            brief: Handle the monitoring of a specified file.
         - daemons_handler:
             type: fixture
             brief: Handler of Wazuh daemons.
@@ -140,7 +144,7 @@ def test_authd_ssl_certs(test_configuration, test_metadata, set_wazuh_configurat
             brief: Waits until Authd is accepting connections.
 
     assertions:
-        - Verify that the agent can only connect to the 'wazuh-authd' daemon socket using a valid certificate.
+        - Verify that the agent can only connect to the 'wazuh-manager-authd' daemon socket using a valid certificate.
         - Verify that using a valid certificate the agent can only enroll using the IP address linked to it.
 
     input_description:

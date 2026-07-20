@@ -295,13 +295,3 @@ void __wrap_w_inc_global_belongs_get_group_agent() {
 void __wrap_w_inc_global_belongs_get_group_agent_time(__attribute__((unused))struct timeval diff) {
     function_called();
 }
-
-// Global labels counters
-
-void __wrap_w_inc_global_labels_get_labels() {
-    function_called();
-}
-
-void __wrap_w_inc_global_labels_get_labels_time(__attribute__((unused))struct timeval diff) {
-    function_called();
-}

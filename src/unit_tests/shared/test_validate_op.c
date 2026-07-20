@@ -15,11 +15,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "../../headers/shared.h"
-#include "../../headers/validate_op.h"
+#include "shared.h"
+#include "validate_op.h"
 #include "../wrappers/wazuh/shared/expression_wrappers.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
-#include "../../shared/validate_op.c"
+#include "../../shared/src/validate_op.c"
 
 /* tests */
 

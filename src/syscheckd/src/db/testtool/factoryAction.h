@@ -39,14 +39,6 @@ class FactoryAction
             {
                 return std::make_unique<SearchFileAction>();
             }
-            else if (0 == actionCode.compare("RunIntegrity"))
-            {
-                return std::make_unique<RunIntegrityAction>();
-            }
-            else if (0 == actionCode.compare("PushMessage"))
-            {
-                return std::make_unique<PushMessageAction>();
-            }
             else if (0 == actionCode.compare("StartTransaction"))
             {
                 return std::make_unique<StartTransactionAction>();

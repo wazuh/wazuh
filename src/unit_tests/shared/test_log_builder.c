@@ -15,9 +15,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../headers/shared.h"
+#include "shared.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/client-agent/notify_wrappers.h"
+#include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 
 extern int g_ip_update_interval;
 int log_builder_update_host_ip(log_builder_t * builder);
@@ -31,7 +32,11 @@ void test_log_builder(void **state)
     const char * LOCATION = "test";
     const char * EXPECTED_OUTPUT = "location: test, log: Hello \"World\", escaped: Hello \\\"World\\\"";
 
-    will_return(__wrap_getDefine_Int, 60);
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
+    will_return_always(__wrap_getDefine_Int, 60);
+#else
+    will_return_always(__wrap_getDefine_Int_default, 60);
+#endif
 
     int retval = 1;
     log_builder_t * builder = log_builder_init(false);
@@ -46,7 +51,11 @@ void test_log_builder(void **state)
 
 void test_log_builder_update(void **state)
 {
-    will_return(__wrap_getDefine_Int, 1);
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
+    will_return_always(__wrap_getDefine_Int, 1);
+#else
+    will_return_always(__wrap_getDefine_Int_default, 1);
+#endif
     log_builder_t * builder = log_builder_init(false);
     assert_int_equal(g_ip_update_interval, 1);
     assert_non_null(builder);
@@ -56,9 +65,7 @@ void test_log_builder_update(void **state)
     time_mock_value = 1000;
     will_return(wrap_get_agent_ip_legacy_win32, strdup(return_ip));
 #elif defined __linux__ || defined __MACH__ || defined sun || defined FreeBSD || defined OpenBSD
-    will_return(__wrap_control_check_connection, 16);
-    will_return(__wrap_send, 7);
-    will_return(__wrap_recv, 0);
+    will_return(__wrap_getPrimaryIP, NULL);
 #endif
 
     int r = log_builder_update_host_ip(builder);
@@ -70,7 +77,11 @@ void test_log_builder_update(void **state)
 }
 
 void test_log_builder_not_update(void **state) {
-    will_return(__wrap_getDefine_Int, 0);
+#if defined(TEST_AGENT) || defined(TEST_WINAGENT)
+    will_return_always(__wrap_getDefine_Int, 0);
+#else
+    will_return_always(__wrap_getDefine_Int_default, 0);
+#endif
 
     log_builder_t * builder = log_builder_init(false);
     assert_int_equal(g_ip_update_interval, 0);

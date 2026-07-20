@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.ioc;
+
+/***************************************************
+ * Query the IOC manager for a specific indicator
+ *
+ * endpoint: POST /content/ioc/update
+ *
+ * Performs an update of the IOCs in the manager using the provided file path and hash.
+ * The file should be in nd-json format, where each line is a JSON object representing an IOC.
+ * The hash is used to skip the update if the file has not changed since the last update, improving efficiency.
+ **************************************************/
+message UpdateIoc_Request
+{
+    string path = 1; ///< Path to the file containing the IOCs to update (nd-json format)
+    string hash = 2; ///< MD5 hash of the file to update
+}
+
+// message UpdateIoc_Response -> Return a GenericStatus_Response
+
+/***************************************************
+ * Query the IOC manager for a specific indicator
+ *
+ * endpoint: GET /content/ioc/state
+ *
+ * Retrieves the current state of the IOC manager;
+ * - The last hash
+ * - Whether an update is currently in progress
+ * - If an error occurred during the last update, the error message will be included in the response
+ **************************************************/
+message GetIocState_Request {}
+
+message GetIocState_Response
+{
+    ReturnStatus status = 1; // Status of the query
+    string hash = 2;         ///< MD5 hash of the current IOCs in the manager
+    bool updating = 3;       ///< Indicates if the IOC manager is currently performing an update
+    string lastError = 4;    ///< If an error occurred during the last update, the error message will be included here.
+}

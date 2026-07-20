@@ -3,123 +3,12 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import contextlib
-import datetime
 import json
-import os
-import re
 from typing import Union
 
 from wazuh.core import common, utils
 from wazuh.core import wazuh_socket
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException
-
-DAYS = "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
-MONTHS = "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-
-
-def hourly_() -> list:
-    """Compute hourly averages.
-
-    Returns
-    -------
-    list
-        Averages and iterations.
-    """
-    averages = []
-    interactions = 0
-    for i in range(25):
-        try:
-            with open(f'{common.STATS_PATH}/hourly-average/{i}', mode='r') as hfile:
-                data = hfile.read()
-                if i == 24:
-                    interactions = int(data)
-                else:
-                    averages.append(int(data))
-        except IOError:
-            if i < 24:
-                averages.append(0)
-            else:
-                interactions = 0
-
-    return [{'averages': averages, 'interactions': interactions}]
-
-
-def weekly_() -> list:
-    """Compute weekly averages.
-
-    Returns
-    -------
-    list
-        Hours and interactions for each week day.
-    """
-    weekly_results = []
-    for i in range(7):
-        hours = []
-        interactions = 0
-        for j in range(25):
-            try:
-                with open(f'{common.STATS_PATH}/weekly-average/{i}/{j}', mode='r') as wfile:
-                    data = wfile.read()
-                    if j == 24:
-                        interactions = int(data)
-                    else:
-                        hours.append(int(data))
-            except IOError:
-                if j < 24:
-                    hours.append(0)
-                else:
-                    interactions = 0
-        weekly_results.append({DAYS[i]: {'hours': hours, 'interactions': interactions}})
-
-    return weekly_results
-
-
-def totals_(date: datetime.datetime = utils.get_utc_now()) -> list:
-    """Compute statistical information for the current or specified date.
-
-    Parameters
-    ----------
-    date: datetime
-        Date object with the date value of the stats, current date by default.
-
-    Returns
-    -------
-    list
-        array of dictionaries. Each dictionary represents an hour.
-
-    Raises
-    ------
-    WazuhError
-        Raised on `IOError`.
-    """
-    try:
-        stat_filename = os.path.join(
-            common.STATS_PATH, "totals", str(date.year), MONTHS[date.month - 1],
-            f"ossec-totals-{date.strftime('%d')}.log")
-        with open(stat_filename, mode='r') as statsf:
-            stats = statsf.readlines()
-    except IOError:
-        raise WazuhError(1308, extra_message=stat_filename)
-
-    alerts = []
-    affected = []
-    for line in stats:
-        data = line.split('-')
-        if len(data) == 4:
-            alerts.append({'sigid': int(data[1]), 'level': int(data[2]), 'times': int(data[3])})
-        else:
-            data = line.split('--')
-            if len(data) != 5:
-                if len(data) in (0, 1):
-                    continue
-                else:
-                    raise WazuhInternalError(1309)
-            affected.append({'hour': int(data[0]), 'alerts': alerts, 'totalAlerts': int(data[1]),
-                             'events': int(data[2]), 'syscheck': int(data[3]), 'firewall': int(data[4])})
-            alerts = []
-
-    return affected
-
 
 def get_daemons_stats_socket(socket: str, agents_list: Union[list[int], str] = None, last_id: int = None) -> dict:
     """Send message to Wazuh socket to get statistical information.
@@ -185,56 +74,6 @@ def get_daemons_stats_socket(socket: str, agents_list: Union[list[int], str] = N
     return response
 
 
-def get_daemons_stats_(filename: str) -> list:
-    """Get daemons stats from an input file.
-
-    Parameters
-    ----------
-    filename : str
-        Full path of the file to get information.
-
-    Returns
-    -------
-    list
-        Stats of the input file.
-
-    Raises
-    ------
-    WazuhError
-        Raised if file does not exist.
-    """
-    try:
-        items = {}
-        with open(filename, mode='r') as f:
-            daemons_data = f.read()
-        try:
-            kv_regex = re.compile(r'(^\w*)=(.*)', re.MULTILINE)
-            for key, value in kv_regex.findall(daemons_data):
-                items[key] = float(value[1:-1])
-        except Exception as e:
-            raise WazuhInternalError(1104, extra_message=str(e))
-    except IOError:
-        raise WazuhError(1308, extra_message=filename)
-
-    return [items]
-
-
-def is_agent_a_manager(agent_id: Union[str, int]) -> bool:
-    """Check if the given agent ID corresponds to a manager agent.
-
-    Parameters
-    ----------
-    agent_id : Union[str, int]
-        The ID of the agent to check, which can be either a string or an integer.
-
-    Returns
-    -------
-    bool
-        True if the agent is a manager (ID is '000'), False otherwise.
-    """
-    return str(agent_id).zfill(3) == '000'
-
-
 def get_stats_socket_path(agent_id: Union[str, int], daemon: str) -> str:
     """Get the socket path for retrieving statistics based on agent type.
 
@@ -250,10 +89,7 @@ def get_stats_socket_path(agent_id: Union[str, int], daemon: str) -> str:
     str
         The path to the socket for communication.
     """
-    if is_agent_a_manager(agent_id):
-        return os.path.join(common.WAZUH_PATH, "queue", "sockets", daemon)
-    else:
-        return common.REMOTED_SOCKET
+    return common.REMOTED_SOCKET
 
 
 def create_stats_command(agent_id: Union[str, int], daemon: str, next_page: bool = False) -> str:
@@ -273,35 +109,12 @@ def create_stats_command(agent_id: Union[str, int], daemon: str, next_page: bool
     str
         The command to retrieve statistics.
     """
-    command = None
-    if is_agent_a_manager(agent_id):
-        command = "getstate"
-    else:
-        command = f"{str(agent_id).zfill(3)} {daemon} getstate"
+    command = f"{str(agent_id).zfill(3)} {daemon} getstate"
 
     if next_page:
         command += " next"
 
     return command
-
-
-def check_if_daemon_exists_in_agent(agent_id: Union[str, int], daemon: str) -> bool:
-    """Check if a daemon exists for a given agent.
-
-    Parameters
-    ----------
-    agent_id : Union[str, int]
-        The ID of the agent, which can be either a string or an integer.
-    daemon : str
-        The name of the daemon.
-
-    Returns
-    -------
-    bool
-        True if the daemon exists for the agent, False otherwise.
-    """
-    # Some daemons do not exist in agent 000
-    return not (is_agent_a_manager(agent_id) and daemon in {'agent'})
 
 
 def send_command_to_socket(dest_socket: str, command: str) -> dict:
@@ -352,9 +165,6 @@ def get_daemons_stats_from_socket(agent_id: str, daemon: str) -> dict:
     """
     if not agent_id or not daemon:
         raise WazuhError(1307)
-
-    if not check_if_daemon_exists_in_agent(agent_id=agent_id, daemon=daemon):
-        raise WazuhError(1310)
 
     dest_socket = get_stats_socket_path(agent_id=agent_id, daemon=daemon)
     command = create_stats_command(agent_id=agent_id, daemon=daemon)

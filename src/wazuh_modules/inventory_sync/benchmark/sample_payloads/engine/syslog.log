@@ -1,0 +1,1000 @@
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.
+Jun  1 00:00:01 host01 sshd[1234]: Accepted password for root from 10.0.0.5 port 51234 ssh2
+Jun  1 00:00:02 host01 sshd[1235]: Failed password for invalid user admin from 198.51.100.42 port 51235 ssh2
+Jun  1 00:00:03 host01 systemd[1]: Started Daily apt download activities.
+Jun  1 00:00:04 host01 kernel: [12345.678901] TCP: request_sock_TCP: Possible SYN flooding on port 80. Sending cookies.
+Jun  1 00:00:05 host01 cron[2345]: (root) CMD (   cd / && run-parts --report /etc/cron.hourly)
+Jun  1 00:00:06 host01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/usr/bin/apt update
+Jun  1 00:00:07 host01 dbus-daemon[789]: [system] Successfully activated service 'org.freedesktop.PolicyKit1'
+Jun  1 00:00:08 host01 NetworkManager[543]: <info>  [1717200008.1234] dhcp4 (eth0): state changed bound -> bound
+Jun  1 00:00:09 host01 sshd[1236]: Disconnected from 10.0.0.5 port 51234
+Jun  1 00:00:10 host01 systemd[1]: session-2.scope: Succeeded.

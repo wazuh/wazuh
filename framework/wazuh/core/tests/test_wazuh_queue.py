@@ -7,7 +7,7 @@ import socket
 
 import pytest
 from wazuh.core.exception import WazuhException
-from wazuh.core.wazuh_queue import BaseQueue, WazuhAnalysisdQueue, WazuhQueue
+from wazuh.core.wazuh_queue import BaseQueue, WazuhQueue
 
 
 @patch('wazuh.core.wazuh_queue.BaseQueue._connect')
@@ -121,15 +121,11 @@ def test_BaseQueue_close(mock_close, mock_conn):
 
 
 @pytest.mark.parametrize('msg, agent_id, msg_type', [
-    ('test_msg', '000', 'ar-message'),
     ('test_msg', '001', 'ar-message'),
     ('test_msg', None, 'ar-message'),
-    ('syscheck restart', '000', None),
-    ('force_reconnect', '000', None),
-    ('restart-ossec0', '001', None),
-    ('syscheck restart', None, None),
+    ('restart-wazuh0', '001', None),
     ('force_reconnect', None, None),
-    ('restart-ossec0', None, None)
+    ('restart-wazuh0', None, None)
 ])
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhQueue._send')
@@ -155,8 +151,7 @@ def test_WazuhQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_t
 
 
 @pytest.mark.parametrize('msg, agent_id, msg_type, expected_exception', [
-    ('test_msg', '000', None, 1012),
-    ('syscheck restart', None, None, 1014),
+    ('force_reconnect', None, None, 1014),
 ])
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
 @patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=Exception)
@@ -179,39 +174,5 @@ def test_WazuhQueue_send_msg_to_agent_ko(mock_send, mock_conn, msg, agent_id, ms
 
     with pytest.raises(WazuhException, match=f'.* {expected_exception} .*'):
         queue.send_msg_to_agent(msg, agent_id, msg_type)
-
-    mock_conn.assert_called_once_with('test_path')
-
-
-@patch('wazuh.core.wazuh_queue.socket.socket.connect')
-@patch('wazuh.core.wazuh_queue.WazuhAnalysisdQueue._send')
-def test_WazuhAnalysisdQueue_send_msg(mock_send, mock_conn):
-    """Test WazuhAnalysisdQueue.send_msg function."""
-
-    queue = WazuhAnalysisdQueue('test_path')
-
-    msg_header = '1:Head:'
-    msg = "{'foo': 1}"
-
-    queue.send_msg(msg_header=msg_header, msg=msg)
-
-    mock_conn.assert_called_once_with('test_path')
-    mock_send.assert_called_once_with(f'{msg_header}{msg}'.encode())
-
-
-@pytest.mark.parametrize(
-        "max_msg_size,expected_error_code",
-        ([20, 1014], [1, 1012])
-)
-@patch('wazuh.core.wazuh_queue.socket.socket.connect')
-@patch('wazuh.core.wazuh_queue.WazuhAnalysisdQueue._send', side_effect=Exception)
-def test_WazuhAnalysisdQueue_send_msg_ko(mock_send, mock_conn, max_msg_size, expected_error_code):
-    """Test WazuhAnalysisdQueue.send_msg function exceptions."""
-
-    queue = WazuhAnalysisdQueue('test_path')
-    queue.MAX_MSG_SIZE = max_msg_size
-
-    with pytest.raises(WazuhException, match=f'.* {expected_error_code} .*'):
-        queue.send_msg(msg_header='1:Head:', msg="{'foo': 1}")
 
     mock_conn.assert_called_once_with('test_path')

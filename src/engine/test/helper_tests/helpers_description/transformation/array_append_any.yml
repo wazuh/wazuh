@@ -1,0 +1,70 @@
+# Name of the helper function
+name: array_append_any
+
+metadata:
+  description: |
+    Adds the values or references of any Json type to the target array field.
+    This helper function is normally used in the map stage.
+    If the target field exists and is not an array it will be overridden, if it does not exist it will be created.
+    This operation will not fail if a reference parameter is not found, any parameters before or after
+    it will be added to the target field.
+    As it is an array, only elements of the same type can be added. The type of the first element contained in the array
+    will always be taken or, failing that, the type of the first element to be added.
+
+  keywords:
+    - array
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  any_object:
+    type:
+      - number
+      - string
+      - object
+      - boolean
+      - array
+    source: both # includes values or references (their names start with $)
+
+# adding elements of different type of target_field is not allowed
+skipped:
+  - success_cases
+
+target_field:
+  type: array
+  generate: all
+
+test:
+  - arguments:
+      any_object: 5
+      any_object_2: 6
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,5,6]
+    description: The type of the value matches the type of the elements of the array
+  - arguments:
+      any_object:
+        source: reference
+        value: null
+      any_object_2:
+        source: reference
+        value: 6
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,6]
+    description: The type of the value matches the type of the elements of the array
+  - arguments:
+      any_object:
+        source: value
+        value: 5
+      any_object_2:
+        source: reference
+        value: null
+    target_field: [1,2,3,4]
+    should_pass: true
+    expected: [1,2,3,4,5]
+    description: The type of the value matches the type of the elements of the array

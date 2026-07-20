@@ -38,7 +38,7 @@ def test_invalid_connection_port(test_configuration, test_metadata, configure_lo
                             set_wazuh_configuration, restart_wazuh_expect_error):
 
     '''
-    description: Check if 'wazuh-remoted' fails using invalid 'port' values and shows the expected error message
+    description: Check if 'wazuh-manager-remoted' fails using invalid 'port' values and shows the expected error message
                  to inform about it. For this purpose, the test will set a configuration from the module test cases and
                  check if is correct using a FileMonitor catching the errors.
 
@@ -69,8 +69,8 @@ def test_invalid_connection_port(test_configuration, test_metadata, configure_lo
     log_monitor.start(callback=generate_callback(regex=INVALID_VALUE_FOR_PORT_NUMBER, replacement={"port": test_metadata['port_number']}))
     assert test_metadata['port_number'] in log_monitor.callback_result
 
-    log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": "etc/ossec.conf"}))
+    log_monitor.start(callback=generate_callback(regex=CONFIGURATION_ERROR, replacement={"severity": 'ERROR', "path": "etc/wazuh-manager.conf"}))
     assert log_monitor.callback_result
 
-    log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', "etc/ossec.conf")))
+    log_monitor.start(callback=generate_callback(CONFIGURATION_ERROR.replace('{severity}', 'CRITICAL').replace('{path}', "etc/wazuh-manager.conf")))
     assert log_monitor.callback_result

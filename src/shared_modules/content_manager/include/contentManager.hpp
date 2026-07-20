@@ -13,6 +13,7 @@
 #define _CONTENT_MODULE_HPP
 
 #include "singleton.hpp"
+#include <cstdarg>
 #include <functional>
 #include <memory>
 #include <shared_mutex>

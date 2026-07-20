@@ -18,7 +18,7 @@ policy:
     - https://www.cisecurity.org/cis-benchmarks/
 
 requirements:
-  title: "Check that the Windows platform has Microsoft SQL Server 2016"
+  name: "Check that the Windows platform has Microsoft SQL Server 2016"
   description: "Requirements for running the CIS Microsoft SQL Server 2016 Benchmark"
   condition: all
   rules:
@@ -30,7 +30,7 @@ checks:
   ######################################################
   # 2.1 Ensure 'Ad Hoc Distributed Queries' Server Configuration Option is set to '0'
   - id: 13000
-    title: Ensure 'Ad Hoc Distributed Queries' Server Configuration Option is set to '0'
+    name: "Ensure 'Ad Hoc Distributed Queries' Server Configuration Option is set to '0'"
     description: >
       Enabling Ad Hoc Distributed Queries allows users to query data and execute statements on
       external data sources. This functionality should be disabled.
@@ -47,8 +47,31 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      - cis: ["2.1"]
-      - cis_csc: ["9.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/adhoc-distributed-queries-server-configuration-option
     condition: all
@@ -57,7 +80,7 @@ checks:
 
   # 2.2 Ensure 'CLR Enabled' Server Configuration Option is set to '0'
   - id: 13001
-    title: Ensure 'CLR Enabled' Server Configuration Option is set to '0'
+    name: "Ensure 'CLR Enabled' Server Configuration Option is set to '0'"
     description: The clr enabled option specifies whether user assemblies can be run by SQL Server.
     rationale: >
       Enabling use of CLR assemblies widens the attack surface of SQL Server and puts it at risk
@@ -67,8 +90,31 @@ checks:
         EXECUTE sp_configure 'clr enabled', 0;
         RECONFIGURE;
     compliance:
-      - cis: ["2.2"]
-      - cis_csc: ["18.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/t-sql/statements/create-assembly-transactsql
     condition: all
@@ -77,7 +123,7 @@ checks:
 
   # 2.3 Ensure 'Cross DB Ownership Chaining' Server Configuration Option is set to '0'
   - id: 13002
-    title: Ensure 'Cross DB Ownership Chaining' Server Configuration Option is set to '0'
+    name: "Ensure 'Cross DB Ownership Chaining' Server Configuration Option is set to '0'"
     description: >
       The cross db ownership chaining option controls cross-database ownership chaining
       across all databases at the instance (or server) level.
@@ -95,8 +141,31 @@ checks:
         RECONFIGURE;
         GO
     compliance:
-      - cis: ["2.3"]
-      - cis_csc: ["14.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/crossdb-ownership-chaining-server-configuration-option
     condition: all
@@ -105,7 +174,7 @@ checks:
 
   # 2.4 Ensure 'Database Mail XPs' Server Configuration Option is set to '0'
   - id: 13003
-    title: Ensure 'Database Mail XPs' Server Configuration Option is set to '0'
+    name: "Ensure 'Database Mail XPs' Server Configuration Option is set to '0'"
     description: >
       The Database Mail XPs option controls the ability to generate and transmit email
       messages from SQL Server.
@@ -122,8 +191,31 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      - cis: ["2.4"]
-      - cis_csc: ["18"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/relational-databases/databasemail/database-mail
     condition: all
@@ -132,7 +224,7 @@ checks:
 
   # 2.5 Ensure 'Ole Automation Procedures' Server Configuration Option is set to '0'
   - id: 13004
-    title: Ensure 'Ole Automation Procedures' Server Configuration Option is set to '0'
+    name: "Ensure 'Ole Automation Procedures' Server Configuration Option is set to '0'"
     description: >
       The Ole Automation Procedures option controls whether OLE Automation objects can be
       instantiated within Transact-SQL batches. These are extended stored procedures that allow
@@ -150,8 +242,31 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      - cis: ["2.5"]
-      - cis_csc: ["18"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/oleautomation-procedures-server-configuration-option
     condition: all
@@ -160,7 +275,7 @@ checks:
 
   # 2.6 Ensure 'Remote Access' Server Configuration Option is set to '0'
   - id: 13005
-    title: Ensure 'Remote Access' Server Configuration Option is set to '0'
+    name: "Ensure 'Remote Access' Server Configuration Option is set to '0'"
     description: >
       The remote access option controls the execution of local stored procedures on remote
       servers or remote stored procedures on local server.
@@ -177,8 +292,31 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      - cis: ["2.6"]
-      - cis_csc: ["9.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/database-engine/configurewindows/configure-the-remote-access-server-configuration-option
     condition: all
@@ -187,7 +325,7 @@ checks:
 
   # 2.7 Ensure 'Remote Admin Connections' Server Configuration Option is set to '0'
   - id: 13006
-    title: Ensure 'Remote Admin Connections' Server Configuration Option is set to '0'
+    name: "Ensure 'Remote Admin Connections' Server Configuration Option is set to '0'"
     description: >
       The remote admin connections option controls whether a client application on a remote
       computer can use the Dedicated Administrator Connection (DAC).
@@ -206,8 +344,31 @@ checks:
         RECONFIGURE;
         GO
     compliance:
-      - cis: ["2.7"]
-      - cis_csc: ["9.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/database-engine/configurewindows/remote-admin-connections-server-configuration-option
     condition: all
@@ -216,7 +377,7 @@ checks:
 
   # 2.8 Ensure 'Scan For Startup Procs' Server Configuration Option is set to '0'
   - id: 13007
-    title: Ensure 'Scan For Startup Procs' Server Configuration Option is set to '0'
+    name: "Ensure 'Scan For Startup Procs' Server Configuration Option is set to '0'"
     description: >
       The scan for startup procs option, if enabled, causes SQL Server to scan for and
       automatically run all stored procedures that are set to execute upon service startup.
@@ -235,8 +396,31 @@ checks:
 
       Restart the Database Engine.
     compliance:
-      - cis: ["2.8"]
-      - cis_csc: ["18"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/database-engine/configurewindows/configure-the-scan-for-startup-procs-server-configuration-option
     condition: all
@@ -245,7 +429,7 @@ checks:
 
   # 2.9 Ensure 'Trustworthy' Database Property is set to 'Off'
   - id: 13008
-    title: Ensure 'Trustworthy' Database Property is set to 'Off'
+    name: "Ensure 'Trustworthy' Database Property is set to 'Off'"
     description: >
       The TRUSTWORTHY database option allows database objects to access objects in other
       databases under certain circumstances.
@@ -255,8 +439,31 @@ checks:
       Execute the following T-SQL statement against the databases (replace <database_name> below) returned by the Audit Procedure:
         ALTER DATABASE [<database_name>] SET TRUSTWORTHY OFF;
     compliance:
-      - cis: ["2.9"]
-      - cis_csc: ["14.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/relational-databases/security/trustworthydatabase-property
       - https://support.microsoft.com/it-it/help/2183687/guidelines-for-using-thetrustworthy-database-setting-in-sql-server
@@ -266,7 +473,7 @@ checks:
 
   # 2.11 Ensure SQL Server is configured to use non-standard ports
   - id: 13009
-    title: Ensure SQL Server is configured to use non-standard ports
+    name: "Ensure SQL Server is configured to use non-standard ports"
     description: >
       If installed, a default SQL Server instance will be assigned a default port of TCP:1433 for
       TCP/IP communication. Administrators can also manually configure named instances to
@@ -290,8 +497,31 @@ checks:
       5. In the details pane, right-click SQL Server (<InstanceName>) and then click
       Restart, to stop and restart SQL Server.
     compliance:
-      - cis: ["2.11"]
-      - cis_csc: ["9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/database-engine/configurewindows/configure-a-server-to-listen-on-a-specific-tcp-port
     condition: none
@@ -300,7 +530,7 @@ checks:
 
   # 2.13 Ensure the 'sa' Login Account is set to 'Disabled'
   - id: 13010
-    title: Ensure the 'sa' Login Account is set to 'Disabled'
+    name: "Ensure the 'sa' Login Account is set to 'Disabled'"
     description: >
       The sa account is a widely known and often widely used SQL Server account with sysadmin
       privileges. This is the original login created during installation and always has the
@@ -317,8 +547,31 @@ checks:
         EXEC (@tsql)
         GO
     compliance:
-      - cis: ["2.13"]
-      - cis_csc: ["5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/relational-databases/system-catalogviews/sys-server-principals-transact-sql
       - https://docs.microsoft.com/en-us/sql/t-sql/statements/alter-login-transact-sql
@@ -329,7 +582,7 @@ checks:
 
   # 2.14 Ensure the 'sa' Login Account has been renamed
   - id: 13011
-    title: Ensure the 'sa' Login Account has been renamed
+    name: "Ensure the 'sa' Login Account has been renamed"
     description: >
       The sa account is a widely known and often widely used SQL Server login with sysadmin
       privileges. The sa login is the original login created during installation and always has
@@ -341,8 +594,31 @@ checks:
       Replace the <different_user> value within the below syntax and execute to rename the sa login.
         ALTER LOGIN sa WITH NAME = <different_user>;
     compliance:
-      - cis: ["2.14"]
-      - cis_csc: ["5"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/relational-databases/security/choose-anauthentication-mode
     condition: none
@@ -351,7 +627,7 @@ checks:
 
   # 2.15 Ensure 'xp_cmdshell' Server Configuration Option is set to '0'
   - id: 13012
-    title: Ensure 'xp_cmdshell' Server Configuration Option is set to '0'
+    name: "Ensure 'xp_cmdshell' Server Configuration Option is set to '0'"
     description: >
       The xp_cmdshell option controls whether the xp_cmdshell extended stored procedure can
       be used by an authenticated SQL Server user to execute operating-system command shell
@@ -369,8 +645,31 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      - cis: ["2.15"]
-      - cis_csc: ["18"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/relational-databases/system-storedprocedures/xp-cmdshell-transact-sql
       - https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/xpcmdshell-server-configuration-option
@@ -380,7 +679,7 @@ checks:
 
   # 2.16 Ensure 'AUTO_CLOSE' is set to 'OFF' on contained databases
   - id: 13013
-    title: Ensure 'AUTO_CLOSE' is set to 'OFF' on contained databases
+    name: "Ensure 'AUTO_CLOSE' is set to 'OFF' on contained databases"
     description: >
       AUTO_CLOSE determines if a given database is closed or not after a connection terminates. If
       enabled, subsequent connections to the given database will require the database to be
@@ -394,8 +693,31 @@ checks:
       Execute the following T-SQL, replacing <database_name> with each database name found by the Audit Procedure:
         ALTER DATABASE <database_name> SET AUTO_CLOSE OFF;
     compliance:
-      - cis: ["2.16"]
-      - cis_csc: ["18"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/relational-databases/databases/securitybest-practices-with-contained-databases
     condition: all
@@ -404,7 +726,7 @@ checks:
 
   # 2.17 Ensure no login exists with the name 'sa'
   - id: 13014
-    title: Ensure no login exists with the name 'sa'
+    name: "Ensure no login exists with the name 'sa'"
     description: >
       The sa login (e.g. principal) is a widely known and often widely used SQL Server account.
       Therefore, there should not be a login called sa even when the original sa login
@@ -426,8 +748,31 @@ checks:
         -- Do NOT drop the login if it is principal_id = 1
         DROP LOGIN sa
     compliance:
-      - cis: ["2.17"]
-      - cis_csc: ["5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'c:sqlcmd -Q "SELECT principal_id, name FROM sys.server_principals WHERE name = ''sa'';" -> r:0 rows affected'
@@ -437,7 +782,7 @@ checks:
   ###########################################################
   # 3.1 Ensure 'Server Authentication' Property is set to 'Windows Authentication Mode'
   - id: 13015
-    title: Ensure 'Server Authentication' Property is set to 'Windows Authentication Mode'
+    name: "Ensure 'Server Authentication' Property is set to 'Windows Authentication Mode'"
     description: Uses Windows Authentication to validate attempted connections.
     rationale: Windows provides a more robust authentication mechanism than SQL Server authentication.
     remediation: >
@@ -459,8 +804,31 @@ checks:
 
       Restart the SQL Server service for the change to take effect.
     compliance:
-      - cis: ["3.1"]
-      - cis_csc: ["16.9"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/database-engine/configurewindows/server-properties-security-page
     condition: all
@@ -469,7 +837,7 @@ checks:
 
   # 3.8 Ensure only the default permissions specified by Microsoft are granted to the public server role
   - id: 13016
-    title: Ensure only the default permissions specified by Microsoft are granted to the public server role
+    name: "Ensure only the default permissions specified by Microsoft are granted to the public server role"
     description: >
       public is a special fixed server role containing all logins. Unlike other fixed server roles,
       permissions can be changed for the public role. In keeping with the principle of least
@@ -488,8 +856,31 @@ checks:
         REVOKE <permission_name> FROM public;
         GO
     compliance:
-      - cis: ["3.8"]
-      - cis_csc: ["5.1"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/relationaldatabases/security/authentication-access/server-level-roles
       - https://docs.microsoft.com/en-us/sql/relationaldatabases/security/authentication-access/server-level-roles#permissions-of-fixedserver-roles
@@ -499,7 +890,7 @@ checks:
 
   # 3.10 Ensure Windows local groups are not SQL Logins
   - id: 13017
-    title: Ensure Windows local groups are not SQL Logins
+    name: "Ensure Windows local groups are not SQL Logins"
     description: Local Windows groups should not be used as logins for SQL Server instances.
     rationale: >
       Allowing local Windows groups as SQL Logins provides a loophole whereby anyone with
@@ -514,8 +905,31 @@ checks:
         DROP LOGIN [<name>]
         GO
     compliance:
-      - cis: ["3.10"]
-      - cis_csc: ["14.4"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'c:sqlcmd -Q "USE [master] SELECT pr.[name] AS LocalGroupName, pe.[permission_name], pe.[state_desc] FROM sys.server_principals pr JOIN sys.server_permissions pe ON pr.[principal_id] = pe.[grantee_principal_id] WHERE pr.[type_desc] = ''WINDOWS_GROUP'' AND pr.[name] like CAST(SERVERPROPERTY(''MachineName'') AS nvarchar) + ''%'';" -> r:0 rows affected'
@@ -525,7 +939,7 @@ checks:
   ###########################################################
   # 4.2 Ensure 'CHECK_EXPIRATION' Option is set to 'ON' for All SQL Authenticated Logins Within the Sysadmin Role
   - id: 13018
-    title: Ensure 'CHECK_EXPIRATION' Option is set to 'ON' for All SQL Authenticated Logins Within the Sysadmin Role
+    name: "Ensure 'CHECK_EXPIRATION' Option is set to 'ON' for All SQL Authenticated Logins Within the Sysadmin Role"
     description: Applies the same password expiration policy used in Windows to passwords used inside SQL Server.
     rationale: >
       Ensuring SQL logins comply with the secure password policy applied by the Windows
@@ -537,8 +951,31 @@ checks:
       For each <login_name> found by the Audit Procedure, execute the following T-SQL statement:
         ALTER LOGIN [<login_name>] WITH CHECK_EXPIRATION = ON;
     compliance:
-      - cis: ["4.2"]
-      - cis_csc: ["16.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/relational-databases/security/passwordpolicy?view=sql-server-2016
     condition: all
@@ -547,7 +984,7 @@ checks:
 
   # 4.3 Ensure 'CHECK_POLICY' Option is set to 'ON' for All SQL Authenticated Logins
   - id: 13019
-    title: Ensure 'CHECK_POLICY' Option is set to 'ON' for All SQL Authenticated Logins
+    name: "Ensure 'CHECK_POLICY' Option is set to 'ON' for All SQL Authenticated Logins"
     description: Applies the same password complexity policy used in Windows to passwords used inside SQL Server.
     rationale: >
       Ensure SQL authenticated login passwords comply with the secure password policy applied
@@ -559,8 +996,31 @@ checks:
 
       Note: In the case of AWS RDS do not perform this remediation for the Master account.
     compliance:
-      - cis: ["4.3"]
-      - cis_csc: ["16"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/relational-databases/security/passwordpolicy
     condition: all
@@ -572,7 +1032,7 @@ checks:
   ##########################################################
   # 5.1 Ensure 'Maximum number of error log files' is set to greater than or equal to '12'
   - id: 13020
-    title: Ensure 'Maximum number of error log files' is set to greater than or equal to '12'
+    name: "Ensure 'Maximum number of error log files' is set to greater than or equal to '12'"
     description: >
       SQL Server error log files must be protected from loss. The log files must be backed up
       before they are overwritten. Retaining more error logs helps prevent loss from frequent
@@ -601,8 +1061,31 @@ checks:
         REG_DWORD,
         <NumberAbove12>;
     compliance:
-      - cis: ["5.1"]
-      - cis_csc: ["6.3"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/scmservices-configure-sql-server-error-logs
     condition: all
@@ -611,7 +1094,7 @@ checks:
 
   # 5.2 Ensure 'Default Trace Enabled' Server Configuration Option is set to '1'
   - id: 13021
-    title: Ensure 'Default Trace Enabled' Server Configuration Option is set to '1'
+    name: "Ensure 'Default Trace Enabled' Server Configuration Option is set to '1'"
     description: >
       The default trace provides audit logging of database activity including account creations,
       privilege elevation and execution of DBCC commands.
@@ -626,8 +1109,31 @@ checks:
         EXECUTE sp_configure 'show advanced options', 0;
         RECONFIGURE;
     compliance:
-      - cis: ["5.2"]
-      - cis_csc: ["6.2"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/database-engine/configurewindows/default-trace-enabled-server-configuration-option
     condition: all
@@ -639,7 +1145,7 @@ checks:
   ###########################################################
   # 6.2 Ensure 'CLR Assembly Permission Set' is set to 'SAFE_ACCESS' for All CLR Assemblies
   - id: 13022
-    title: Ensure 'CLR Assembly Permission Set' is set to 'SAFE_ACCESS' for All CLR Assemblies
+    name: "Ensure 'CLR Assembly Permission Set' is set to 'SAFE_ACCESS' for All CLR Assemblies"
     description: >
       Setting CLR Assembly Permission Sets to SAFE_ACCESS will prevent assemblies from
       accessing external system resources such as files, the network, environment variables, or
@@ -656,8 +1162,31 @@ checks:
       GO
       ALTER ASSEMBLY <assembly_name> WITH PERMISSION_SET = SAFE;
     compliance:
-      - cis: ["6.2"]
-      - cis_csc: ["18"]
+      cmmc: ["CM.L2-3.4.1", "CA.L2-3.12.4"]
+      fedramp: ["CM-8"]
+      gdpr: ["IV_30.1.a", "IV_30.1.b", "IV_30.1.c", "IV_30.1.d", "IV_30.1.e", "IV_30.1.f", "IV_30.1.g", "IV_30.2.a", "IV_30.2.b", "IV_30.2.c", "IV_30.2.d", "IV_30.3", "IV_30.4", "IV_30.5", "IV_32.1.a", "IV_32.1.b", "IV_32.1.c", "IV_32.1.d", "IV_32.2", "IV_32.3", "IV_32.4"]
+      hipaa: ["164.308(a)(4)", "164.312(a)(1)"]
+      iso_27001: ["A.8.1.1", "A.8.1.2"]
+      nis2: ["21.2.j", "21.2.a"]
+      nist_800_171: ["3.4.1", "3.12.4"]
+      nist_800_53: ["CM-8"]
+      pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
+      tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
+    mitre:
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.microsoft.com/en-us/sql/relational-databases/clrintegration/security/clr-integration-code-access-security
       - https://docs.microsoft.com/en-us/sql/relational-databases/system-catalogviews/sys-assemblies-transact-sql

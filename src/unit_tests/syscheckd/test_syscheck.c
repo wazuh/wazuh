@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
@@ -17,10 +18,15 @@
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/fs_op_wrappers.h"
 #include "../wrappers/wazuh/shared/validate_op_wrappers.h"
+#include "../wrappers/wazuh/shared/agent_op_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/create_db_wrappers.h"
 #include "../wrappers/wazuh/syscheckd/fim_db_wrappers.h"
 
 #include "syscheck.h"
+#include "cJSON.h"
+
+/* External function declarations for testing */
+extern bool fetch_document_limits_from_agentd(void);
 
 /* setup/teardowns */
 static int setup_group(void **state) {
@@ -49,12 +55,6 @@ static int teardown_group(void **state) {
 static int setup_syscheck_config(void **state) {
     syscheck_config *syscheck_conf = calloc(1, sizeof(syscheck_config));
 
-    syscheck_conf->database_store            = FIM_DB_DISK;
-    syscheck_conf->sync_interval             = 300;
-    syscheck_conf->sync_response_timeout     = 30;
-    syscheck_conf->sync_max_interval         = 3600;
-    syscheck_conf->sync_thread_pool          = 1;
-    syscheck_conf->sync_queue_size           = 16384;
     syscheck_conf->file_entry_limit          = 100000;
 #ifdef WIN32
     syscheck_conf->db_entry_registry_limit   = 100000;
@@ -101,28 +101,40 @@ static int teardown_group_win(void **state) {
 void test_fim_initialize(void **state)
 {
     syscheck_config *syscheck_conf = *state;
+    syscheck.sync_end_delay = 1;
+    syscheck.sync_response_timeout = 30;
+    syscheck.sync_max_eps = 3;
 
 #ifdef TEST_WINAGENT
-    expect_wrapper_fim_db_init(syscheck_conf->database_store,
-                               syscheck_conf->sync_interval,
-                               syscheck_conf->sync_max_interval,
-                               syscheck_conf->sync_response_timeout,
+    expect_wrapper_fim_db_init(FIM_DB_DISK,
                                syscheck_conf->file_entry_limit,
-                               syscheck_conf->db_entry_registry_limit,
-                               1,
-                               syscheck_conf->sync_thread_pool,
-                               syscheck_conf->sync_queue_size);
+                               syscheck_conf->db_entry_registry_limit);
 #else
-    expect_wrapper_fim_db_init(syscheck_conf->database_store,
-                               syscheck_conf->sync_interval,
-                               syscheck_conf->sync_max_interval,
-                               syscheck_conf->sync_response_timeout,
+    expect_wrapper_fim_db_init(FIM_DB_DISK,
                                syscheck_conf->file_entry_limit,
-                               0,
-                               0,
-                               syscheck_conf->sync_thread_pool,
-                               syscheck_conf->sync_queue_size);
+                               0);
 #endif
+
+    // fetch_document_limits_from_agentd is called before asp_create in agent builds
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, true);
+
+    expect_string(__wrap_asp_create, module, "fim");
+    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
+    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
+    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
+    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
+
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
+    // Schema validator initialization
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
     fim_initialize();
 }
 
@@ -201,7 +213,28 @@ void test_Start_win32_Syscheck_corrupted_config_file(void **state) {
 
     will_return(__wrap_rootcheck_init, 1);
 
-    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
+    expect_wrapper_fim_db_init(0, 100000, 100000);
+
+    syscheck.sync_end_delay = 1;
+    syscheck.sync_response_timeout = 30;
+    syscheck.sync_max_eps = 3;
+    expect_string(__wrap_asp_create, module, "fim");
+    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
+    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
+    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
+    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
+    // Schema validator initialization
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, true);
+
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -226,13 +259,34 @@ void test_Start_win32_Syscheck_syscheck_disabled_1(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
+    expect_wrapper_fim_db_init(0, 100000, 100000);
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
+    syscheck.sync_end_delay = 1;
+    syscheck.sync_response_timeout = 30;
+    syscheck.sync_max_eps = 3;
+    expect_string(__wrap_asp_create, module, "fim");
+    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
+    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
+    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
+    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
+
+    // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, true);
+
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -255,13 +309,34 @@ void test_Start_win32_Syscheck_syscheck_disabled_2(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
+    expect_wrapper_fim_db_init(0, 100000, 100000);
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
+    syscheck.sync_end_delay = 1;
+    syscheck.sync_response_timeout = 30;
+    syscheck.sync_max_eps = 3;
+    expect_string(__wrap_asp_create, module, "fim");
+    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
+    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
+    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
+    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
+
+    // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, true);
+
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 }
@@ -310,23 +385,44 @@ void test_Start_win32_Syscheck_dirs_and_registry(void **state) {
     will_return(__wrap_rootcheck_init, 0);
 
     expect_string(__wrap__minfo, formatted_msg, "(6002): Monitoring registry entry: 'Entry1 [x64]', with options ''");
-    expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options ''.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options ''.");
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6206): Ignore 'file' entry 'dir1'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6206): Ignore 'file' entry 'dir1'");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6207): Ignore 'file' sregex '^regex$'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6207): Ignore 'file' sregex '^regex$'");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6206): Ignore 'registry' entry 'Entry1'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6206): Ignore 'registry' entry 'Entry1'");
 
-    expect_string(__wrap__minfo, formatted_msg, "(6004): No diff for file: 'Diff'");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6004): No diff for file: 'Diff'");
 
-    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
+    expect_wrapper_fim_db_init(0, 100000, 100000);
+
+    syscheck.sync_end_delay = 1;
+    syscheck.sync_response_timeout = 30;
+    syscheck.sync_max_eps = 3;
+    expect_string(__wrap_asp_create, module, "fim");
+    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
+    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
+    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
+    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
+
+    // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, true);
 
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
@@ -369,15 +465,37 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
     will_return(__wrap_rootcheck_init, 0);
 
-    expect_string(__wrap__minfo, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'whodata'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "(6003): Monitoring path: 'c:\\dir1', with options 'whodata'.");
 
-    expect_wrapper_fim_db_init(0, 300, 3600, 30, 100000, 100000, 1, 1, 16384);
+    expect_wrapper_fim_db_init(0, 100000, 100000);
+
+    syscheck.sync_end_delay = 1;
+    syscheck.sync_response_timeout = 30;
+    syscheck.sync_max_eps = 3;
+    expect_string(__wrap_asp_create, module, "fim");
+    expect_value(__wrap_asp_create, sync_end_delay, syscheck.sync_end_delay);
+    expect_value(__wrap_asp_create, timeout, syscheck.sync_response_timeout);
+    expect_value(__wrap_asp_create, retries, FIM_SYNC_RETRIES);
+    expect_value(__wrap_asp_create, max_eps, syscheck.sync_max_eps);
+    will_return(__wrap_asp_create, (AgentSyncProtocolHandle*)0xABCD1234);
+
     expect_string(__wrap__minfo, formatted_msg, FIM_FILE_SIZE_LIMIT_DISABLED);
 
     expect_string(__wrap__minfo, formatted_msg, FIM_DISK_QUOTA_LIMIT_DISABLED);
 
     snprintf(info_msg, OS_MAXSTR, "Started (pid: %d).", getpid());
     expect_string(__wrap__minfo, formatted_msg, info_msg);
+
+    // Schema validator initialization happens inside fim_initialize, after asp_create but before start_daemon
+    will_return(__wrap_schema_validator_is_initialized, false);
+    will_return(__wrap_schema_validator_initialize, true);
+    expect_string(__wrap__mdebug1, formatted_msg, "Schema validator initialized successfully from embedded resources");
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, "{}");  // Empty JSON
+    will_return(__wrap_w_query_agentd, true);
+
     expect_function_call(__wrap_start_daemon);
     assert_int_equal(Start_win32_Syscheck(), 0);
 
@@ -387,12 +505,171 @@ void test_Start_win32_Syscheck_whodata_active(void **state) {
 
 #endif
 
+/* Tests for fetch_document_limits_from_agentd */
+
+void test_fetch_document_limits_success(void **state) {
+    (void) state;
+
+    const char *json_response = "{\"file\": 100, \"registry_key\": 200, \"registry_value\": 300}";
+
+    // Initialize limits to different values
+    syscheck.file_limit = 0;
+    syscheck.registry_key_limit = 0;
+    syscheck.registry_value_limit = 0;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, json_response);
+    will_return(__wrap_w_query_agentd, true);
+
+    assert_true(fetch_document_limits_from_agentd());
+    assert_int_equal(syscheck.file_limit, 100);
+    assert_int_equal(syscheck.registry_key_limit, 200);
+    assert_int_equal(syscheck.registry_value_limit, 300);
+}
+
+void test_fetch_document_limits_query_failure(void **state) {
+    (void) state;
+
+    syscheck.file_limit = 50;
+    syscheck.registry_key_limit = 60;
+    syscheck.registry_value_limit = 70;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, NULL);
+    will_return(__wrap_w_query_agentd, false);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Failed to query agentd for document limits");
+
+    assert_false(fetch_document_limits_from_agentd());
+    // Limits should remain unchanged
+    assert_int_equal(syscheck.file_limit, 50);
+    assert_int_equal(syscheck.registry_key_limit, 60);
+    assert_int_equal(syscheck.registry_value_limit, 70);
+}
+
+void test_fetch_document_limits_invalid_json(void **state) {
+    (void) state;
+
+    const char *invalid_json = "not valid json {";
+
+    syscheck.file_limit = 50;
+    syscheck.registry_key_limit = 60;
+    syscheck.registry_value_limit = 70;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, invalid_json);
+    will_return(__wrap_w_query_agentd, true);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Failed to parse getdoclimits fim response");
+
+    assert_false(fetch_document_limits_from_agentd());
+    // Limits should remain unchanged
+    assert_int_equal(syscheck.file_limit, 50);
+    assert_int_equal(syscheck.registry_key_limit, 60);
+    assert_int_equal(syscheck.registry_value_limit, 70);
+}
+
+void test_fetch_document_limits_missing_fields(void **state) {
+    (void) state;
+
+    const char *json_response = "{\"file\": 100}";
+
+    syscheck.file_limit = 0;
+    syscheck.registry_key_limit = 50;
+    syscheck.registry_value_limit = 60;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, json_response);
+    will_return(__wrap_w_query_agentd, true);
+
+    assert_true(fetch_document_limits_from_agentd());
+    // Only file_limit should be updated
+    assert_int_equal(syscheck.file_limit, 100);
+    // Others should remain unchanged
+    assert_int_equal(syscheck.registry_key_limit, 50);
+    assert_int_equal(syscheck.registry_value_limit, 60);
+}
+
+void test_fetch_document_limits_negative_values(void **state) {
+    (void) state;
+
+    const char *json_response = "{\"file\": -100, \"registry_key\": 200, \"registry_value\": -300}";
+
+    syscheck.file_limit = 50;
+    syscheck.registry_key_limit = 0;
+    syscheck.registry_value_limit = 70;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, json_response);
+    will_return(__wrap_w_query_agentd, true);
+
+    assert_true(fetch_document_limits_from_agentd());
+    // Negative values should not update
+    assert_int_equal(syscheck.file_limit, 50);
+    assert_int_equal(syscheck.registry_key_limit, 200);
+    assert_int_equal(syscheck.registry_value_limit, 70);
+}
+
+void test_fetch_document_limits_partial_data(void **state) {
+    (void) state;
+
+    const char *json_response = "{\"registry_key\": 150}";
+
+    syscheck.file_limit = 10;
+    syscheck.registry_key_limit = 0;
+    syscheck.registry_value_limit = 30;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, json_response);
+    will_return(__wrap_w_query_agentd, true);
+
+    assert_true(fetch_document_limits_from_agentd());
+    // Only registry_key_limit should be updated
+    assert_int_equal(syscheck.file_limit, 10);
+    assert_int_equal(syscheck.registry_key_limit, 150);
+    assert_int_equal(syscheck.registry_value_limit, 30);
+}
+
+void test_fetch_document_limits_empty_json(void **state) {
+    (void) state;
+
+    const char *json_response = "{}";
+
+    syscheck.file_limit = 10;
+    syscheck.registry_key_limit = 20;
+    syscheck.registry_value_limit = 30;
+
+    expect_string(__wrap_w_query_agentd, module, SYSCHECK);
+    expect_string(__wrap_w_query_agentd, query, "getdoclimits fim");
+    will_return(__wrap_w_query_agentd, json_response);
+    will_return(__wrap_w_query_agentd, true);
+
+    assert_true(fetch_document_limits_from_agentd());
+    // All limits should remain unchanged
+    assert_int_equal(syscheck.file_limit, 10);
+    assert_int_equal(syscheck.registry_key_limit, 20);
+    assert_int_equal(syscheck.registry_value_limit, 30);
+}
+
 int main(void) {
     int ret;
     const struct CMUnitTest tests[] = {
             cmocka_unit_test_setup_teardown(test_fim_initialize, setup_syscheck_config, teardown_syscheck_config),
             cmocka_unit_test(test_read_internal),
             cmocka_unit_test(test_read_internal_debug),
+            cmocka_unit_test(test_fetch_document_limits_success),
+            cmocka_unit_test(test_fetch_document_limits_query_failure),
+            cmocka_unit_test(test_fetch_document_limits_invalid_json),
+            cmocka_unit_test(test_fetch_document_limits_missing_fields),
+            cmocka_unit_test(test_fetch_document_limits_negative_values),
+            cmocka_unit_test(test_fetch_document_limits_partial_data),
+            cmocka_unit_test(test_fetch_document_limits_empty_json),
     };
         /* Windows specific tests */
 #ifdef TEST_WINAGENT

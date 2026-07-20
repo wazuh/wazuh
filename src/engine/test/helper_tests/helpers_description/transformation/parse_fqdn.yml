@@ -1,0 +1,63 @@
+# Name of the helper function
+name: parse_fqdn
+
+metadata:
+  description: |
+    This parser is used to obtain, if possible, a valid domain name.
+    Such domain cannot be longer than 255 characters and can only contain “a-z”, “A-Z”, “0-9”, “.” and “-”.
+    Checks whether an input contains a valid domain name format and, if so, it evaluates to true and is then
+    stored on the field, otherwise it evaluates to false.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: true
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed - string generation is random
+
+# Its type is not evaluated, therefore it takes all by default
+target_field:
+  type:
+    - object
+    - array
+    - string
+    - number
+    - boolean
+
+test:
+  - arguments:
+      input_field: www.someurl.co
+    target_field: any_value
+    should_pass: true
+    expected: www.someurl.co
+    description: Success fqdn parse
+  - arguments:
+      input_field: www.some~url.com
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure fqdn parse
+  - arguments:
+      input_field: www.some~url.com
+    target_field: [any_value]
+    should_pass: false
+    expected: [any_value]
+    description: Failure fqdn parse
+  - arguments:
+      input_field: www.some~url.com
+    target_field:
+      key: value
+    should_pass: false
+    expected:
+      key: value
+    description: Failure fqdn parse

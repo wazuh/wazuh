@@ -13,7 +13,7 @@
 #define _CONTENT_REGISTER_HPP
 
 #include "sharedDefs.hpp"
-#include <external/nlohmann/json.hpp>
+#include <json.hpp>
 #include <memory>
 #include <shared_mutex>
 #include <string_view>
@@ -45,7 +45,8 @@ public:
      */
     explicit ContentRegister(std::string topicName,
                              const nlohmann::json& parameters,
-                             FileProcessingCallback fileProcessingCallback);
+                             FileProcessingCallback fileProcessingCallback,
+                             ContentUpdateCallbacks updateCallbacks = {});
 
     /**
      * @brief Destroy the Content Register object and cleanup
@@ -59,6 +60,13 @@ public:
      * @param newInterval New value to set.
      */
     void changeSchedulerInterval(size_t newInterval);
+
+    /**
+     * @brief Returns the cursor persisted by the content updater.
+     *
+     * @return Current content offset, or 0 when no cursor has been persisted yet.
+     */
+    uint64_t getCurrentOffset() const;
 };
 
 #endif // _CONTENT_REGISTER_HPP

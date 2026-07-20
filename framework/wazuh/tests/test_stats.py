@@ -3,7 +3,6 @@
 # This program is free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import sys
-from datetime import date
 from json import dumps
 from unittest.mock import call, MagicMock, patch
 
@@ -23,10 +22,10 @@ with patch('wazuh.core.common.wazuh_uid'):
         from api.util import remove_nones_to_dict
         from wazuh.core.tests.test_agent import InitAgent
 
-SOCKET_PATH_DAEMONS_MAPPING = {'/var/ossec/queue/sockets/remote': 'wazuh-remoted',
-                               '/var/ossec/queue/sockets/analysis': 'wazuh-analysisd'}
-DAEMON_SOCKET_PATHS_MAPPING = {'wazuh-remoted': '/var/ossec/queue/sockets/remote',
-                               'wazuh-analysisd': '/var/ossec/queue/sockets/analysis'}
+SOCKET_PATH_DAEMONS_MAPPING = {'/var/wazuh-manager/queue/sockets/remote': 'wazuh-manager-remoted',
+                               '/var/wazuh-manager/queue/sockets/analysis': 'wazuh-manager-analysisd'}
+DAEMON_SOCKET_PATHS_MAPPING = {'wazuh-manager-remoted': '/var/wazuh-manager/queue/sockets/remote',
+                               'wazuh-manager-analysisd': '/var/wazuh-manager/queue/sockets/analysis'}
 
 test_data = InitAgent()
 
@@ -37,47 +36,25 @@ def send_msg_to_wdb(msg, raw=False):
     return ['ok', dumps(result)] if raw else result
 
 
-def test_totals():
-    """Verify totals() function works and returns correct data"""
-    with patch('wazuh.stats.totals_', return_value=({})):
-        response = stats.totals(date(2019, 8, 13))
-        assert response.total_affected_items == len(response.affected_items)
-        assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-
-
-def test_hourly():
-    """Makes sure hourly() fit with the expected."""
-    response = stats.hourly()
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
-
-
-def test_weekly():
-    """Makes sure weekly() fit with the expected."""
-    response = stats.weekly()
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
-
-
-@patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
-@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
-@patch('wazuh.core.common.WDB_SOCKET', '/var/ossec/queue/db/wdb')
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
+@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis')
+@patch('wazuh.core.common.WDB_SOCKET', '/var/wazuh-manager/queue/db/wdb')
 @patch('wazuh.stats.get_daemons_stats_socket')
 def test_get_daemons_stats(mock_get_daemons_stats_socket):
     """Makes sure get_daemons_stats() fit with the expected."""
-    response = stats.get_daemons_stats(['wazuh-remoted', 'wazuh-analysisd', 'wazuh-db'])
+    response = stats.get_daemons_stats(['wazuh-manager-remoted', 'wazuh-manager-analysisd', 'wazuh-manager-db'])
 
-    calls = [call('/var/ossec/queue/sockets/remote'), call('/var/ossec/queue/sockets/analysis'),
-             call('/var/ossec/queue/db/wdb')]
+    calls = [call('/var/wazuh-manager/queue/sockets/remote'), call('/var/wazuh-manager/queue/sockets/analysis'),
+             call('/var/wazuh-manager/queue/db/wdb')]
     mock_get_daemons_stats_socket.assert_has_calls(calls)
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
     assert response.total_affected_items == len(response.affected_items)
 
 
-@patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/wrong_socket_name')
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/wrong_socket_name')
 def test_get_daemons_stats_ko():
     """Makes sure get_daemons_stats() fit with the expected."""
-    response = stats.get_daemons_stats(['wazuh-remoted'])
+    response = stats.get_daemons_stats(['wazuh-manager-remoted'])
 
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
     assert response.render()['data']['failed_items'][0]['error']['code'] == 1121, 'Expected error code was not returned'
@@ -88,21 +65,21 @@ def side_effect_test_get_daemons_stats(daemon_path, agents_list):
 
 
 @pytest.mark.parametrize('daemons_list, expected_daemons_list', [
-    ([], ['wazuh-remoted', 'wazuh-analysisd']),
-    (['wazuh-remoted'], ['wazuh-remoted']),
-    (['wazuh-remoted', 'wazuh-analysisd'], ['wazuh-remoted', 'wazuh-analysisd'])
+    ([], ['wazuh-manager-remoted', 'wazuh-manager-analysisd']),
+    (['wazuh-manager-remoted'], ['wazuh-manager-remoted']),
+    (['wazuh-manager-remoted', 'wazuh-manager-analysisd'], ['wazuh-manager-remoted', 'wazuh-manager-analysisd'])
 ])
 @patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
 @patch('socket.socket.connect')
-@patch('wazuh.stats.get_agents_info', return_value={'000', '001', '002', '003', '004', '005'})
-@patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
-@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
+@patch('wazuh.stats.get_agents_info', return_value={'001', '002', '003', '004', '005'})
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
+@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis')
 @patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_test_get_daemons_stats)
 def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents_info, mock_socket_connect,
                                   mock_send_wdb, daemons_list, expected_daemons_list):
     """Makes sure get_daemons_stats_agents() fit with the expected."""
-    agents_list = ['000', '001', '004', '999']  # Only stats from 001 are obtained
-    expected_errors_and_items = {'1703': {'000'}, '1701': {'999'}, '1707': {'004'}}
+    agents_list = ['001', '004', '999']  # Only stats from 001 are obtained
+    expected_errors_and_items = {'1701': {'999'}, '1707': {'004'}}
     result = stats.get_daemons_stats_agents(daemons_list, agents_list)
 
     # get_daemons_stats_socket called with the expected parameters
@@ -134,12 +111,12 @@ def side_effect_test_get_daemons_stats_all(daemon_path, agents_list, last_id):
 
 
 @pytest.mark.parametrize('daemons_list, expected_daemons_list', [
-    ([], ['wazuh-remoted', 'wazuh-analysisd']),
-    (['wazuh-remoted'], ['wazuh-remoted']),
-    (['wazuh-remoted', 'wazuh-analysisd'], ['wazuh-remoted', 'wazuh-analysisd'])
+    ([], ['wazuh-manager-remoted', 'wazuh-manager-analysisd']),
+    (['wazuh-manager-remoted'], ['wazuh-manager-remoted']),
+    (['wazuh-manager-remoted', 'wazuh-manager-analysisd'], ['wazuh-manager-remoted', 'wazuh-manager-analysisd'])
 ])
-@patch('wazuh.core.common.REMOTED_SOCKET', '/var/ossec/queue/sockets/remote')
-@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/ossec/queue/sockets/analysis')
+@patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
+@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis')
 @patch('wazuh.stats.get_daemons_stats_socket', side_effect=side_effect_test_get_daemons_stats_all)
 def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, daemons_list, expected_daemons_list):
     """Makes sure get_daemons_stats_agents() fit with the expected."""
@@ -164,19 +141,11 @@ def test_get_daemons_stats_all_agents(mock_get_daemons_stats_socket, daemons_lis
     assert isinstance(result, AffectedItemsWazuhResult), 'The result is not an AffectedItemsWazuhResult object'
 
 
-@patch('wazuh.stats.get_daemons_stats_', return_value=[{"events_decoded": 1.0}])
-def test_deprecated_get_daemons_stats(mock_daemons_stats_):
-    """Makes sure deprecated_get_daemons_stats() fit with the expected."""
-    response = stats.deprecated_get_daemons_stats('filename')
-    assert isinstance(response, AffectedItemsWazuhResult), 'The result is not WazuhResult type'
-    assert response.total_affected_items == len(response.affected_items)
-
-
 @pytest.mark.parametrize('component', [
     'logcollector', 'test'
 ])
 @patch('wazuh.core.agent.Agent.get_stats')
-@patch('wazuh.stats.get_agents_info', return_value=['000', '001'])
+@patch('wazuh.stats.get_agents_info', return_value=['001', '002'])
 def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, component):
     """Test `get_agents_component_stats_json` function from agent module."""
     response = stats.get_agents_component_stats_json(agent_list=['001'], component=component)
@@ -185,9 +154,47 @@ def test_get_agents_component_stats_json(mock_agents_info, mock_getstats, compon
 
 
 @patch('wazuh.core.agent.Agent.get_stats')
-@patch('wazuh.stats.get_agents_info', return_value=['000', '001'])
+@patch('wazuh.stats.get_agents_info', return_value=['001', '002'])
 def test_get_agents_component_stats_json_ko(mock_agents_info, mock_getstats):
     """Test `get_agents_component_stats_json` function from agent module."""
     response = stats.get_agents_component_stats_json(agent_list=['003'], component='logcollector')
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
     assert response.render()['data']['failed_items'][0]['error']['code'] == 1701, 'Expected error code was not returned'
+
+
+METRICS_DUMP_DATA = {
+    "status": 0,
+    "name": "engine",
+    "uptime": 99,
+    "global": [{"name": "router.queue.size", "type": 0, "enabled": True, "value": 500}],
+    "spaces": [],
+}
+
+
+@patch('wazuh.stats.EngineHTTPClient')
+def test_get_engine_metrics(mock_client_cls):
+    mock_client = MagicMock()
+    mock_client.get_metrics_dump.return_value = METRICS_DUMP_DATA
+    mock_client_cls.return_value = mock_client
+
+    response = stats.get_engine_metrics()
+
+    assert isinstance(response, AffectedItemsWazuhResult)
+    assert response.total_affected_items == 1
+    assert response.affected_items[0] == METRICS_DUMP_DATA
+    assert not response.failed_items
+
+
+@patch('wazuh.stats.EngineHTTPClient')
+def test_get_engine_metrics_ko(mock_client_cls):
+    from wazuh.core.exception import WazuhInternalError
+
+    mock_client = MagicMock()
+    mock_client.get_metrics_dump.side_effect = WazuhInternalError(2021)
+    mock_client_cls.return_value = mock_client
+
+    response = stats.get_engine_metrics()
+
+    assert isinstance(response, AffectedItemsWazuhResult)
+    assert response.total_affected_items == 0
+    assert response.render()['data']['failed_items'][0]['error']['code'] == 2021

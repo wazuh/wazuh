@@ -13,6 +13,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <string.h>
 #include <cmocka.h>
 #include "../../common.h"
 
@@ -160,6 +161,37 @@ DWORD __wrap_utf8_SetNamedSecurityInfo(const char* utf8_path,
     check_expected(sacl);
 
     return mock_type(DWORD);
+}
+
+BOOL __wrap_utf8_LookupAccountSid(__attribute__((unused)) LPCSTR lpSystemName,
+                                  __attribute__((unused)) PSID lpSid,
+                                  char **lpName,
+                                  __attribute__((unused)) LPDWORD cchName,
+                                  char **lpReferencedDomainName,
+                                  __attribute__((unused)) LPDWORD cchReferencedDomainName,
+                                  __attribute__((unused)) PSID_NAME_USE peUse) {
+
+    // Get result first
+    BOOL result = mock();
+
+    if (result) {
+        // On success, get the strings
+        char* mock_name = mock_type(char*);
+        char* mock_domain = mock_type(char*);
+
+        *lpName = mock_name;
+        *lpReferencedDomainName = mock_domain;
+    }
+
+    return result;
+}
+
+void expect_utf8_LookupAccountSid_call(char *name, char *domain_name, int ret_value) {
+    will_return(__wrap_utf8_LookupAccountSid, ret_value);
+    if (ret_value) {
+        will_return(__wrap_utf8_LookupAccountSid, name);
+        will_return(__wrap_utf8_LookupAccountSid, domain_name);
+    }
 }
 
 #endif

@@ -3,12 +3,12 @@
         "etc/": {
             "permissions": "0o640",
             "source": "master",
-            "files": ["client.keys"],
+            "files": ["client.keys", "authd.pass"],
             "recursive": false,
             "restart": false,
             "remove_subdirs_if_empty": false,
             "extra_valid": false,
-            "description": "client keys file database"
+            "description": "client keys file database and enrollment shared password"
         },
 
         "etc/shared/": {
@@ -33,42 +33,8 @@
             "description": "shared configuration files"
         },
 
-        "etc/rules/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": true,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "user rules"
-        },
-
-        "etc/decoders/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": true,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "user decoders"
-        },
-
-        "etc/lists/": {
-            "permissions": "0o660",
-            "source": "master",
-            "files": ["all"],
-            "recursive": true,
-            "restart": true,
-            "remove_subdirs_if_empty": false,
-            "extra_valid": false,
-            "description": "user CDB lists"
-        },
-
         "excluded_files": [
-            "ar.conf",
-            "ossec.conf"
+            "wazuh-manager.conf"
         ],
 
         "excluded_extensions": [
@@ -100,9 +66,18 @@
             "agent_group_start_delay": 30,
             "check_worker_lastkeepalive": 60,
             "max_allowed_time_without_keepalive": 120,
-            "max_locked_integrity_time": 1000
+            "max_locked_integrity_time": 1000,
+            "sync_disconnected_agent_groups": 300,
+            "sync_disconnected_agent_groups_batch_size": 100,
+            "sync_disconnected_agent_groups_min_offline": 600,
+            "sync_disconnected_agent_cluster_name_delay": 300,
+            "metrics_frequency": 600,
+            "metrics_bulk_size": 100
         },
 
+        "common":{
+            "active_response_polling": 30
+        },
         "communication":{
             "timeout_cluster_request": 20,
             "timeout_dapi_request": 200,

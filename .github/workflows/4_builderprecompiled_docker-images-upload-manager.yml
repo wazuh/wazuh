@@ -34,51 +34,8 @@ on:
         required: true
 
 jobs:
-  Upload-package-building-images:
-    runs-on: ${{ inputs.architecture == 'arm64' && format('codebuild-github-actions-codebuild-runner-server-arm-{0}-{1}', github.run_id, github.run_attempt) || 'ubuntu-22.04' }}
-    timeout-minutes: 140
-    name: Package - Upload pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ inputs.docker_image_tag }}
-
+  deprecated:
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout wazuh/wazuh repository
-        uses: actions/checkout@v4
-        with:
-          repository: wazuh/wazuh
-          ref: ${{ inputs.source_reference }}
-
-      - name: Set TAG
-        run: |
-          VERSION="$(grep '"version"' VERSION.json | sed -E 's/.*"version": *"([^"]+)".*/\1/')"
-          if [ "${{ inputs.docker_image_tag }}" == "auto" ]; then
-            echo "TAG=$VERSION" >> $GITHUB_ENV;
-          elif [ "${{ inputs.docker_image_tag }}" == "developer" ]; then
-            echo "TAG=$(sed 's|[/\]|--|g' <<< ${{ inputs.source_reference }})" >> $GITHUB_ENV;
-          else
-            echo "TAG=${{ inputs.docker_image_tag }}" >> $GITHUB_ENV;
-          fi
-
-      - name: Copy build.sh and utils to Dockerfile path
-        run: |
-          dockerfile_path="packages/${{ inputs.system }}s/${{ inputs.architecture }}/manager"
-          echo "DOCKERFILE_PATH=$dockerfile_path" >> $GITHUB_ENV
-          cp packages/build.sh $dockerfile_path
-          cp packages/${{ inputs.system }}s/utils/* $dockerfile_path
-
-      - name: CodeBuild workarounds
-        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild
-        run: |
-          # 1. Docker daemon: CodeBuild has no systemd; VFS driver avoids overlay-on-overlay.
-          if ! docker info &>/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y docker.io
-            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
-            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
-            sudo chmod 666 /var/run/docker.sock
-          fi
-          # 2. Git repo format: actions/checkout on newer git writes repositoryformatversion=1
-          #    which the older git inside builder Docker images cannot read.
-          git config core.repositoryformatversion 0
-
-      - name: Build and push image pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} with tag ${{ env.TAG }} to Github Container Registry
-        run:
-          bash .github/actions/ghcr-pull-and-push/build_and_push_image_to_ghcr.sh ${{ secrets.GITHUB_TOKEN }} ${{ github.actor}} pkg_${{ inputs.system }}_manager_builder_${{ inputs.architecture }} ${{ env.DOCKERFILE_PATH }} ${{ env.TAG }}
+      - name: Warning
+        run: echo "This workflow is deprecated. Be careful, you have just run it from main."

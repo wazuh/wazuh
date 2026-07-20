@@ -4,9 +4,7 @@
 
 import copy
 import datetime
-import logging
 import os
-import signal
 from typing import Dict, Tuple, Any, List
 
 import yaml
@@ -23,9 +21,6 @@ from api.api_exception import APIError
 from api.constants import CONFIG_FILE_PATH, SECURITY_CONFIG_PATH, API_SSL_PATH
 from api.validator import api_config_schema, security_config_schema
 
-CACHE_DEPRECATED_MESSAGE = 'The `cache` API configuration option was deprecated in {release} and will be removed ' \
-                           'in the next minor release.'
-
 # Fields that must preserve case sensitivity when converting to lowercase
 PRESERVE_CASE_SENSITIVITY_FIELDS = {'https.key', 'https.cert', 'https.ca'}
 
@@ -38,7 +33,6 @@ default_api_configuration = {
     "host": ["0.0.0.0", "::"],
     "port": 55000,
     "drop_privileges": True,
-    "experimental_features": False,
     "max_upload_size": 10485760,
     "authentication_pool_size": 2,
     "intervals": {
@@ -46,11 +40,10 @@ default_api_configuration = {
     },
     "https": {
         "enabled": True,
-        "key": "server.key",
-        "cert": "server.crt",
+        "key": "manager.key",
+        "cert": "manager.crt",
         "use_ca": False,
         "ca": "ca.crt",
-        "ssl_protocol": "auto",
         "ssl_ciphers": ""
     },
     "logs": {
@@ -74,21 +67,6 @@ default_api_configuration = {
         "max_request_per_minute": 300
     },
     "upload_configuration": {
-        "remote_commands": {
-            "localfile": {
-                "allow": True,
-                "exceptions": []
-            },
-            "wodle_command": {
-                "allow": True,
-                "exceptions": []
-            }
-        },
-        "limits": {
-            "eps": {
-                "allow": True
-            }
-        },
         "agents": {
             "allow_higher_versions": {
                 "allow": True
@@ -96,14 +74,6 @@ default_api_configuration = {
         },
         "indexer": {
             "allow": True
-        },
-        "integrations": {
-            "virustotal": {
-                "public_key": {
-                    "allow": True,
-                    "minimum_quota": 240
-                }
-            }
         }
     }
 }
@@ -201,7 +171,7 @@ def fill_dict(default: Dict, config: Dict, json_schema: Dict) -> Dict:
 
 def generate_private_key(private_key_path: str, public_exponent: int = 65537,
                          key_size: int = 2048) -> rsa.RSAPrivateKey:
-    """Generate a private key in 'CONFIG_PATH/ssl/server.key'.
+    """Generate a private key in 'CONFIG_PATH/ssl/manager.key'.
 
     Parameters
     ----------
@@ -235,7 +205,7 @@ def generate_private_key(private_key_path: str, public_exponent: int = 65537,
 
 def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate_path: str):
     """Generate a self-signed certificate using a generated private key. The certificate will be created in
-    'CONFIG_PATH/ssl/server.crt'.
+    'CONFIG_PATH/ssl/manager.crt'.
 
     Parameters
     ----------
@@ -262,7 +232,7 @@ def generate_self_signed_certificate(private_key: rsa.RSAPrivateKey, certificate
     ).serial_number(
         x509.random_serial_number()
     ).not_valid_before(
-        datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc)
+        datetime.datetime.now(datetime.timezone.utc)
     ).not_valid_after(
         # Our certificate will be valid for one year
         core_utils.get_utc_now() + datetime.timedelta(days=365)
@@ -331,11 +301,6 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
         # Convert string values to lowercase except for specific fields
         dict_to_lowercase(configuration, skip_keys=PRESERVE_CASE_SENSITIVITY_FIELDS)
 
-        # Check if cache is enabled
-        if configuration.get('cache', {}).get('enabled', {}):
-            logger = logging.getLogger('wazuh-api')
-            logger.warning(CACHE_DEPRECATED_MESSAGE.format(release="4.8.0"))
-
         schema = security_config_schema if config_file == SECURITY_CONFIG_PATH else api_config_schema
         configuration = fill_dict(default_conf, configuration, schema)
 
@@ -343,12 +308,6 @@ def read_yaml_config(config_file: str = CONFIG_FILE_PATH, default_conf: dict = N
     append_wazuh_prefixes(configuration, {API_SSL_PATH: [('https', 'key'), ('https', 'cert'), ('https', 'ca')]})
 
     return configuration
-
-
-def init_auth_worker():
-    """Set authentication pool worker to ignore SIGINT signals to avoid 
-    throwing exceptions when shutting down the API in foreground mode."""
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
 
 
 # Check if the default configuration is valid according to its jsonschema, so we are forced to update the schema if any

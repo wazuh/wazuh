@@ -65,6 +65,8 @@ namespace DbSync
 
             virtual void addTableRelationship(const nlohmann::json& data) = 0;
 
+            virtual void closeAndDeleteDatabase(const std::string& path) = 0;
+
         protected:
             IDbEngine() = default;
     };

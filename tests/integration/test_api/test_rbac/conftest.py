@@ -9,10 +9,11 @@ from wazuh_testing.modules.api.utils import add_resources, relate_resources, rem
 
 
 @pytest.fixture
-def set_security_resources(test_metadata: dict) -> None:
+def set_security_resources(wait_for_api_start, test_metadata: dict) -> None:
     """Configure the security resources using the API and clean the added resources.
 
     Args:
+        wait_for_api_start: Ensure the API is ready before issuing RBAC requests.
         test_metadata (dict): Test metadata.
     """
     remove_resources(test_metadata)

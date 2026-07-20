@@ -1,0 +1,132 @@
+from typing import Optional, Tuple
+
+from google.protobuf.message import Message
+
+# Import all proto messages to deduce component, resource and action
+import api_communication.proto.crud_pb2 as crud
+import api_communication.proto.router_pb2 as router
+import api_communication.proto.tester_pb2 as tester
+import api_communication.proto.geo_pb2 as geo
+import api_communication.proto.event_dumper_pb2 as event_dumper
+import api_communication.proto.rawevtindexer_pb2 as rawevtindexer
+import api_communication.proto.ioc_pb2 as ioc
+import api_communication.proto.metrics_pb2 as metrics
+import api_communication.proto.status_pb2 as status
+
+
+def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
+    """Get the endpoint string and HTTP method for the given message
+
+    Args:
+        message (Message): Proto message
+
+    Returns:
+        Tuple[Optional[str], str, str]: Error string if any, endpoint string, HTTP method
+    """
+    endpoint = ''
+    method = 'post'
+
+    # Geo
+    if isinstance(message, geo.DbGet_Request):
+        endpoint = '_internal/geo/db/get'
+    if isinstance(message, geo.DbList_Request):
+        endpoint = '_internal/geo/db/list'
+
+    # CRUD NS
+    if isinstance(message, crud.namespacePost_Request):
+        endpoint = '_internal/content/namespace/create'
+    if isinstance(message, crud.namespaceDelete_Request):
+        endpoint = '_internal/content/namespace/delete'
+    if isinstance(message, crud.namespaceGet_Request):
+        endpoint = '_internal/content/namespace/list'
+    if isinstance(message, crud.namespaceImport_Request):
+        endpoint = '_internal/content/namespace/import'
+
+    # CRUD CM
+    if isinstance(message, crud.resourcePost_Request):
+        endpoint = '_internal/content/upsert'
+    if isinstance(message, crud.resourceDelete_Request):
+        endpoint = '_internal/content/delete'
+    if isinstance(message, crud.resourceGet_Request):
+        endpoint = '_internal/content/get'
+    if isinstance(message, crud.resourceList_Request):
+        endpoint = '_internal/content/list'
+    if isinstance(message, crud.policyPost_Request):
+        endpoint = '_internal/content/policy/upsert'
+    if isinstance(message, crud.policyDelete_Request):
+        endpoint = '_internal/content/policy/delete'
+    if isinstance(message, crud.policyValidate_Request):
+        endpoint = 'content/validate/policy'
+    if isinstance(message, crud.resourceValidate_Request):
+        endpoint = 'content/validate/resource'
+
+    # Router
+    if isinstance(message, router.RoutePost_Request):
+        endpoint = '_internal/router/route/post'
+    if isinstance(message, router.RouteDelete_Request):
+        endpoint = '_internal/router/route/delete'
+    if isinstance(message, router.RouteGet_Request):
+        endpoint = '_internal/router/route/get'
+    if isinstance(message, router.RouteReload_Request):
+        endpoint = '_internal/router/route/reload'
+    if isinstance(message, router.RoutePatchPriority_Request):
+        endpoint = '_internal/router/route/patchPriority'
+    if isinstance(message, router.TableGet_Request):
+        endpoint = '_internal/router/table/get'
+
+    # Tester
+    if isinstance(message, tester.SessionPost_Request):
+        endpoint = '_internal/tester/session/post'
+    if isinstance(message, tester.SessionDelete_Request):
+        endpoint = '_internal/tester/session/delete'
+    if isinstance(message, tester.SessionGet_Request):
+        endpoint = '_internal/tester/session/get'
+    if isinstance(message, tester.SessionReload_Request):
+        endpoint = '_internal/tester/session/reload'
+    if isinstance(message, tester.TableGet_Request):
+        endpoint = '_internal/tester/table/get'
+    if isinstance(message, tester.RunPost_Request):
+        endpoint = '_internal/tester/run/post'
+    if isinstance(message, tester.LogtestDelete_Request):
+        endpoint = 'logtest'
+        method = 'delete'
+
+    # Event Dumper
+    if isinstance(message, event_dumper.EventDumperActivate_Request):
+        endpoint = '_internal/event-dumper/activate'
+    if isinstance(message, event_dumper.EventDumperDeactivate_Request):
+        endpoint = '_internal/event-dumper/deactivate'
+    if isinstance(message, event_dumper.EventDumperStatus_Request):
+        endpoint = '_internal/event-dumper/status'
+
+    # Raw event indexer
+    if isinstance(message, rawevtindexer.RawEvtIndexerStatus_Request):
+        endpoint = '_internal/raweventindexer/status'
+
+    # IOC
+    if isinstance(message, ioc.UpdateIoc_Request):
+        endpoint = 'content/ioc/update'
+    if isinstance(message, ioc.GetIocState_Request):
+        endpoint = 'content/ioc/state'
+        method = 'get'
+
+    # Metrics
+    if isinstance(message, metrics.Enable_Request):
+        endpoint = 'metrics/enable'
+    if isinstance(message, metrics.Get_Request):
+        endpoint = 'metrics/get'
+    if isinstance(message, metrics.List_Request):
+        endpoint = 'metrics/list'
+    if isinstance(message, metrics.Dump_Request):
+        endpoint = 'metrics/dump'
+
+    # Status
+    if isinstance(message, status.StatusGet_Request):
+        endpoint = 'status'
+        method = 'get'
+
+    # Unknown
+    if endpoint == '':
+        return 'api-communication does not have the api command for the request, check the get_command method', '', ''
+
+    return None, endpoint, method

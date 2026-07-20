@@ -18,12 +18,6 @@
 
 HEADER_TEMPLATE="./etc/templates/config/generic/header-comments.template"
 GLOBAL_TEMPLATE="./etc/templates/config/generic/global.template"
-GLOBAL_AR_TEMPLATE="./etc/templates/config/generic/global-ar.template"
-RULES_TEMPLATE="./etc/templates/config/generic/rules.template"
-RULE_TEST_TEMPLATE="./etc/templates/config/generic/rule_test.template"
-AR_COMMANDS_TEMPLATE="./etc/templates/config/generic/ar-commands.template"
-AR_DEFINITIONS_TEMPLATE="./etc/templates/config/generic/ar-definitions.template"
-ALERTS_TEMPLATE="./etc/templates/config/generic/alerts.template"
 LOGGING_TEMPLATE="./etc/templates/config/generic/logging.template"
 REMOTE_SEC_TEMPLATE="./etc/templates/config/generic/remote-secure.template"
 
@@ -32,7 +26,6 @@ LOCALFILES_TEMPLATE="./etc/templates/config/generic/localfile-logs/*.template"
 AUTH_TEMPLATE="./etc/templates/config/generic/auth.template"
 CLUSTER_TEMPLATE="./etc/templates/config/generic/cluster.template"
 
-CISCAT_TEMPLATE="./etc/templates/config/generic/wodle-ciscat.template"
 VULN_TEMPLATE="./etc/templates/config/generic/wodle-vulnerability-detection.manager.template"
 INDEXER_TEMPLATE="./etc/templates/config/generic/wodle-indexer.manager.template"
 
@@ -56,11 +49,6 @@ WriteSyscheck()
         echo "  <syscheck>" >> $NEWCONFIG
         echo "    <disabled>yes</disabled>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
-        echo "    <scan_on_start>yes</scan_on_start>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-        echo "    <!-- Generate alert when new file detected -->" >> $NEWCONFIG
-        echo "    <alert_new_files>yes</alert_new_files>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
         echo "  </syscheck>" >> $NEWCONFIG
         echo "" >> $NEWCONFIG
       else
@@ -77,7 +65,7 @@ WriteSyscheck()
 ##########
 DisableAuthd()
 {
-    echo "  <!-- Configuration for wazuh-authd -->" >> $NEWCONFIG
+    echo "  <!-- Configuration for wazuh-manager-authd -->" >> $NEWCONFIG
     echo "  <auth>" >> $NEWCONFIG
     echo "    <disabled>yes</disabled>" >> $NEWCONFIG
     echo "    <port>1515</port>" >> $NEWCONFIG
@@ -132,34 +120,6 @@ WriteSyscollector()
 }
 
 ##########
-# Osquery()
-##########
-WriteOsquery()
-{
-    # Adding to the config file
-    OSQUERY_TEMPLATE=$(GetTemplate "osquery.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$OSQUERY_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        OSQUERY_TEMPLATE=$(GetTemplate "osquery.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${OSQUERY_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-}
-
-##########
-# WriteCISCAT()
-##########
-WriteCISCAT()
-{
-    # Adding to the config file
-    CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.$1.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$CISCAT_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-        CISCAT_TEMPLATE=$(GetTemplate "wodle-ciscat.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    sed -e "s|\${INSTALLDIR}|$INSTALLDIR|g" "${CISCAT_TEMPLATE}" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-}
-
-##########
 # WriteConfigurationAssessment()
 ##########
 WriteConfigurationAssessment()
@@ -181,10 +141,6 @@ InstallSecurityConfigurationAssessmentFiles()
     cd ..
 
     CONFIGURATION_ASSESSMENT_FILES_PATH=$(GetTemplate "sca.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-
-    if [ "X$1" = "Xmanager" ]; then
-        CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH=$(GetTemplate "sca.$1.files" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
     cd ./src
     if [ "$CONFIGURATION_ASSESSMENT_FILES_PATH" = "ERROR_NOT_FOUND" ]; then
         echo "SCA policies are not available for this OS version ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER}."
@@ -202,18 +158,6 @@ InstallSecurityConfigurationAssessmentFiles()
             fi
         done
     fi
-
-    if [ "X$1" = "Xmanager" ]; then
-        echo "Installing additional SCA policies..."
-        CONFIGURATION_ASSESSMENT_FILES=$(cat .$CONFIGURATION_ASSESSMENT_MANAGER_FILES_PATH)
-        for FILE in $CONFIGURATION_ASSESSMENT_FILES; do
-            FILENAME=$(basename $FILE)
-            if [ -f "../ruleset/sca/$FILE" ] && [ ! -f "${INSTALLDIR}/ruleset/sca/$FILENAME" ]; then
-                ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../ruleset/sca/$FILE ${INSTALLDIR}/ruleset/sca/
-                mv ${INSTALLDIR}/ruleset/sca/$FILENAME ${INSTALLDIR}/ruleset/sca/$FILENAME.disabled
-            fi
-        done
-    fi
 }
 
 ##########
@@ -225,8 +169,13 @@ GenerateAuthCert()
         # Generation auto-signed certificate if not exists
         if [ ! -f "${INSTALLDIR}/etc/sslmanager.key" ] && [ ! -f "${INSTALLDIR}/etc/sslmanager.cert" ]; then
             if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
-                    echo "Generating self-signed certificate for wazuh-authd..."
-                    ${INSTALLDIR}/bin/wazuh-authd -C 365 -B 2048 -K ${INSTALLDIR}/etc/sslmanager.key -X ${INSTALLDIR}/etc/sslmanager.cert -S "/C=US/ST=California/CN=wazuh/"
+                    if [ "X${INSTYPE}" = "Xagent" ]; then
+                        AUTHD_BIN="wazuh-authd"
+                    else
+                        AUTHD_BIN="wazuh-manager-authd"
+                    fi
+                    echo "Generating self-signed certificate for ${AUTHD_BIN}..."
+                    ${INSTALLDIR}/bin/${AUTHD_BIN} -C 365 -B 2048 -K ${INSTALLDIR}/etc/sslmanager.key -X ${INSTALLDIR}/etc/sslmanager.cert -S "/C=US/ST=California/CN=wazuh/"
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.key
                     chmod 640 ${INSTALLDIR}/etc/sslmanager.cert
             fi
@@ -239,20 +188,17 @@ GenerateAuthCert()
 ##########
 WriteLogs()
 {
+  MODE="$1"
   LOCALFILES_TMP=`cat ${LOCALFILES_TEMPLATE}`
   HAS_JOURNALD=`command -v journalctl`
 
-  # If has journald, add journald to the configuration file
-  if [ "X$HAS_JOURNALD" != "X" ]; then
-    if [ "$1" = "echo" ]; then
-      echo "    -- journald"
-    elif [ "$1" = "add" ]; then
-      echo "  <localfile>" >> $NEWCONFIG
-      echo "    <log_format>journald</log_format>" >> $NEWCONFIG
-      echo "    <location>journald</location>" >> $NEWCONFIG
-      echo "  </localfile>" >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
+  # If journald is available, add it to the generated configuration.
+  if [ "X$HAS_JOURNALD" != "X" ] && [ "$MODE" = "add" ]; then
+    echo "  <localfile>" >> $NEWCONFIG
+    echo "    <log_format>journald</log_format>" >> $NEWCONFIG
+    echo "    <location>journald</location>" >> $NEWCONFIG
+    echo "  </localfile>" >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
   fi
 
   OLD_IFS="$IFS"  # Save the current IFS
@@ -294,10 +240,16 @@ WriteLogs()
       # If log file present or skip file
       if [ -f "$FILE" ] || [ "X$SKIP_CHECK_FILE" = "Xyes" ]; then
         # Print
-        if [ "$1" = "echo" ]; then
-            echo "    -- $FILE"
+        if [ "$MODE" = "echo" ]; then
+            case "$FILE" in
+                */logs/active-responses.log|/var/log/dpkg.log)
+                    ;;
+                *)
+                    echo "    -- $FILE"
+                    ;;
+            esac
         # Add to the configuration file
-        elif [ "$1" = "add" ]; then
+        elif [ "$MODE" = "add" ]; then
           echo "  <localfile>" >> $NEWCONFIG
           if [ "$FILE" = "snort" ]; then
             head -n 1 $FILE|grep "\[**\] "|grep -v "Classification:" > /dev/null
@@ -319,7 +271,7 @@ WriteLogs()
 }
 
 ##########
-# SetHeaders() 1-agent|manager|local
+# SetHeaders() 1-agent|manager
 ##########
 SetHeaders()
 {
@@ -343,7 +295,13 @@ SetHeaders()
 GenerateService()
 {
     SERVICE_TEMPLATE=./src/init/templates/${1}
-    sed "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
+    if [ "X${INSTYPE}" = "Xmanager" ]; then
+        sed -e "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" \
+            -e "s|/bin/wazuh-control|/bin/wazuh-manager-control|g" \
+            ${SERVICE_TEMPLATE}
+    else
+        sed "s|WAZUH_HOME_TMP|${INSTALLDIR}|g" ${SERVICE_TEMPLATE}
+    fi
 }
 
 ##########
@@ -359,15 +317,14 @@ WriteAgent()
 
     echo "<ossec_config>" >> $NEWCONFIG
     echo "  <client>" >> $NEWCONFIG
-    echo "    <server>" >> $NEWCONFIG
+    echo "    <manager>" >> $NEWCONFIG
     if [ "X${HNAME}" = "X" ]; then
       echo "      <address>$SERVER_IP</address>" >> $NEWCONFIG
     else
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1514</port>" >> $NEWCONFIG
-    echo "      <protocol>tcp</protocol>" >> $NEWCONFIG
-    echo "    </server>" >> $NEWCONFIG
+    echo "    </manager>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
          echo "    <config-profile>$PROFILE</config-profile>" >> $NEWCONFIG
@@ -385,7 +342,6 @@ WriteAgent()
     echo "    <notify_time>20</notify_time>" >> $NEWCONFIG
     echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
-    echo "    <crypto_method>aes</crypto_method>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
@@ -393,20 +349,12 @@ WriteAgent()
     echo "    <!-- Agent buffer options -->" >> $NEWCONFIG
     echo "    <disabled>no</disabled>" >> $NEWCONFIG
     echo "    <queue_size>5000</queue_size>" >> $NEWCONFIG
-    echo "    <events_per_second>500</events_per_second>" >> $NEWCONFIG
+    echo "    <events_per_second>600</events_per_second>" >> $NEWCONFIG
     echo "  </client_buffer>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Rootcheck
     WriteRootcheck "agent"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "agent"
-    fi
-
-    # Write osquery
-    WriteOsquery "agent"
 
     # Syscollector configuration
     WriteSyscollector "agent"
@@ -481,54 +429,19 @@ WriteManager()
     echo "$HEADERS" > $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "<ossec_config>" >> $NEWCONFIG
+    echo "<wazuh_config>" >> $NEWCONFIG
 
-    if [ "$EMAILNOTIFY" = "yes"   ]; then
-        GLOBAL_CONTENT=$(sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
-        s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
-        s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
-        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}")
-    else
-        GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
-    fi
-
-    if [ "$UPDATE_CHECK" = "no" ]; then
-        GLOBAL_CONTENT=$(echo "$GLOBAL_CONTENT" | sed "s|<update_check>yes</update_check>|<update_check>no</update_check>|g")
-    fi
+    GLOBAL_CONTENT=$(cat ${GLOBAL_TEMPLATE})
 
     echo "$GLOBAL_CONTENT" >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Alerts level
-    cat ${ALERTS_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Logging format
     cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    # Remote connection secure
-    if [ "X$SLOG" = "Xyes" ]; then
-      cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-    # Write rootcheck
-    WriteRootcheck "manager"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "manager"
-    fi
-
-    # Write osquery
-    WriteOsquery "manager"
-
-    # Syscollector configuration
-    WriteSyscollector "manager"
-
-    # Configuration assessment
-    WriteConfigurationAssessment
+    cat ${REMOTE_SEC_TEMPLATE} >> $NEWCONFIG
+    echo "" >> $NEWCONFIG
 
     # Vulnerability Detector
     cat ${VULN_TEMPLATE} >> $NEWCONFIG
@@ -536,76 +449,6 @@ WriteManager()
 
     # Indexer
     cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Write syscheck
-    WriteSyscheck "manager"
-
-    # Active response
-    if [ "$SET_WHITE_LIST"="true" ]; then
-       sed -e "/  <\/global>/d" "${GLOBAL_AR_TEMPLATE}" >> $NEWCONFIG
-      # Nameservers in /etc/resolv.conf
-      for ip in ${NAMESERVERS} ${NAMESERVERS2};
-        do
-          if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
-          fi
-      done
-      # Read string
-      for ip in ${IPS};
-        do
-          if [ ! "X${ip}" = "X" -a ! "${ip}" = "0.0.0.0" ]; then
-            echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
-            if [ $? = 0 ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
-            fi
-          fi
-        done
-        echo "  </global>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-    else
-      cat ${GLOBAL_AR_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-    cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-    cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Write the log files
-    if [ "X${NO_LOCALFILES}" = "X" ]; then
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
-      WriteLogs "add"
-    else
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
-    fi
-
-    # Localfile commands
-    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Localfile extra
-    LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    if [ ! "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-
-    # Writting rules configuration
-    cat ${RULES_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Writting wazuh-logtest configuration
-    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
     # Writting auth configuration
@@ -616,174 +459,60 @@ WriteManager()
         DisableAuthd
     fi
 
+    if command -v openssl >/dev/null 2>&1; then
+        CLUSTER_KEY=$(openssl rand -hex 16)
+    else
+        CLUSTER_KEY=$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')
+    fi
     # Writting cluster configuration
-    cat ${CLUSTER_TEMPLATE} >> $NEWCONFIG
+    sed -e "s|\${CLUSTER_KEY}|$CLUSTER_KEY|g" "${CLUSTER_TEMPLATE}" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
 
-    echo "</ossec_config>" >> $NEWCONFIG
+    echo "</wazuh_config>" >> $NEWCONFIG
 
-}
-
-##########
-# WriteLocal() $1="no_locafiles" or empty
-##########
-WriteLocal()
-{
-    NO_LOCALFILES=$1
-
-    HEADERS=$(SetHeaders "Local")
-    echo "$HEADERS" > $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    echo "<ossec_config>" >> $NEWCONFIG
-
-    if [ "$EMAILNOTIFY" = "yes"   ]; then
-        sed -e "s|<email_notification>no</email_notification>|<email_notification>yes</email_notification>|g; \
-        s|<smtp_server>smtp.example.wazuh.com</smtp_server>|<smtp_server>${SMTP}</smtp_server>|g; \
-        s|<email_from>wazuh@example.wazuh.com</email_from>|<email_from>wazuh@${HOST}</email_from>|g; \
-        s|<email_to>recipient@example.wazuh.com</email_to>|<email_to>${EMAIL}</email_to>|g;" "${GLOBAL_TEMPLATE}" >> $NEWCONFIG
-    else
-        cat ${GLOBAL_TEMPLATE} >> $NEWCONFIG
-    fi
-    echo "" >> $NEWCONFIG
-
-    # Alerts level
-    cat ${ALERTS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Logging format
-    cat ${LOGGING_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Write rootcheck
-    WriteRootcheck "manager"
-
-    # CIS-CAT configuration
-    if [ "X$DIST_NAME" !=  "Xdarwin" ]; then
-        WriteCISCAT "agent"
-    fi
-
-    # Write osquery
-    WriteOsquery "manager"
-
-    # Vulnerability Detector
-    cat ${VULN_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Indexer
-    cat ${INDEXER_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Write syscheck
-    WriteSyscheck "manager"
-
-    # Active response
-    if [ "$SET_WHITE_LIST"="true" ]; then
-       sed -e "/  <\/global>/d" "${GLOBAL_AR_TEMPLATE}" >> $NEWCONFIG
-      # Nameservers in /etc/resolv.conf
-      for ip in ${NAMESERVERS} ${NAMESERVERS2};
-        do
-          if [ ! "X${ip}" = "X" ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
-          fi
-      done
-      # Read string
-      for ip in ${IPS};
-        do
-          if [ ! "X${ip}" = "X" ]; then
-            echo $ip | grep -E "^[0-9./]{5,20}$" > /dev/null 2>&1
-            if [ $? = 0 ]; then
-              echo "    <white_list>${ip}</white_list>" >>$NEWCONFIG
-            fi
-          fi
-        done
-        echo "  </global>" >> $NEWCONFIG
-        echo "" >> $NEWCONFIG
-    else
-      cat ${GLOBAL_AR_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-    cat ${AR_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-    cat ${AR_DEFINITIONS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Write the log files
-    if [ "X${NO_LOCALFILES}" = "X" ]; then
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
-      WriteLogs "add"
-    else
-      echo "  <!-- Log analysis -->" >> $NEWCONFIG
-    fi
-
-    # Localfile commands
-    LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$LOCALFILE_COMMANDS_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_COMMANDS_TEMPLATE=$(GetTemplate "localfile-commands.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    cat ${LOCALFILE_COMMANDS_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Localfile extra
-    LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.manager.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    if [ "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      LOCALFILE_EXTRA_TEMPLATE=$(GetTemplate "localfile-extra.template" ${DIST_NAME} ${DIST_VER} ${DIST_SUBVER})
-    fi
-    if [ ! "$LOCALFILE_EXTRA_TEMPLATE" = "ERROR_NOT_FOUND" ]; then
-      cat ${LOCALFILE_EXTRA_TEMPLATE} >> $NEWCONFIG
-      echo "" >> $NEWCONFIG
-    fi
-
-    # Writting rules configuration
-    cat ${RULES_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    # Writting wazuh-logtest configuration
-    cat ${RULE_TEST_TEMPLATE} >> $NEWCONFIG
-    echo "" >> $NEWCONFIG
-
-    echo "</ossec_config>" >> $NEWCONFIG
 }
 
 InstallCommon()
 {
+  WAZUH_GROUP='wazuh'
+  WAZUH_USER='wazuh'
+  INSTALL="install"
 
-    WAZUH_GROUP='wazuh'
-    WAZUH_USER='wazuh'
-    INSTALL="install"
+  if [ ${INSTYPE} = 'manager' ]; then
+      WAZUH_GROUP='wazuh-manager'
+      WAZUH_USER='wazuh-manager'
+      WAZUH_CONTROL_SRC='./init/wazuh-server.sh'
+      WAZUH_CONF_SRC='../etc/wazuh-manager.conf'
+  elif [ ${INSTYPE} = 'agent' ]; then
+      WAZUH_CONTROL_SRC='./init/wazuh-client.sh'
+      WAZUH_CONF_SRC='../etc/ossec-agent.conf'
+  fi
 
-    if [ ${INSTYPE} = 'server' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-server.sh'
-        OSSEC_CONF_SRC='../etc/ossec-server.conf'
-    elif [ ${INSTYPE} = 'agent' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-client.sh'
-        OSSEC_CONF_SRC='../etc/ossec-agent.conf'
-    elif [ ${INSTYPE} = 'local' ]; then
-        OSSEC_CONTROL_SRC='./init/wazuh-local.sh'
-        OSSEC_CONF_SRC='../etc/ossec-local.conf'
-    fi
+  if [ ${INSTYPE} = 'manager' ]; then
+      WAZUH_CONF="wazuh-manager.conf"
+      WAZUH_LOGFILE="wazuh-manager.log"
+      WAZUH_LOGJSON="wazuh-manager.json"
+  else
+      WAZUH_CONF="ossec.conf"
+      WAZUH_LOGFILE="ossec.log"
+      WAZUH_LOGJSON="ossec.json"
+  fi
 
-    if [ ${DIST_NAME} = "sunos" ]; then
-        INSTALL="ginstall"
-    elif [ ${DIST_NAME} = "HP-UX" ]; then
-        INSTALL="/usr/local/coreutils/bin/install"
-   elif [ ${DIST_NAME} = "AIX" ]; then
-        INSTALL="/opt/freeware/bin/install"
-    fi
-
-    ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
+  ./init/adduser.sh ${WAZUH_USER} ${WAZUH_GROUP} ${INSTALLDIR}
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/
 
   # Install VERSION.json and append commit id if any
-  ${INSTALL} -m 440 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../VERSION.json ${INSTALLDIR}/VERSION.json
+  ${INSTALL} -m 440 -o root -g ${WAZUH_GROUP} ../VERSION.json ${INSTALLDIR}/VERSION.json
 
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs
   ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/wazuh
-  ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/ossec.log
-  ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/ossec.json
-  ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/active-responses.log
+  ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/${WAZUH_LOGFILE}
+  ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/${WAZUH_LOGJSON}
+
+  if [ ${INSTYPE} = 'agent' ]; then
+      ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/logs/active-responses.log
+  fi
 
     if [ ${INSTYPE} = 'agent' ]; then
         ${INSTALL} -d -m 0750 -o root -g 0 ${INSTALLDIR}/bin
@@ -795,13 +524,13 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        if [ -f libwazuhext.dylib ]
+        if [ -f build/lib/libwazuhext.dylib ]
         then
-            ${INSTALL} -m 0750 -o root -g 0 libwazuhext.dylib ${INSTALLDIR}/lib
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libwazuhext.dylib ${INSTALLDIR}/lib
         fi
-    elif [ -f libwazuhext.so ]
+    elif [ -f build/lib/libwazuhext.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhext.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libwazuhext.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhext.so
@@ -810,62 +539,72 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        if [ -f libwazuhshared.dylib ]
+        if [ -f build/lib/libdbsync.dylib ]
         then
-            ${INSTALL} -m 0750 -o root -g 0 libwazuhshared.dylib ${INSTALLDIR}/lib
-        fi
-    elif [ -f libwazuhshared.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libwazuhshared.so ${INSTALLDIR}/lib
-
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
-        fi
-    fi
-
-    if [ ${NUNAME} = 'Darwin' ]
-    then
-        if [ -f shared_modules/dbsync/build/lib/libdbsync.dylib ]
-        then
-            ${INSTALL} -m 0750 -o root -g 0 shared_modules/dbsync/build/lib/libdbsync.dylib ${INSTALLDIR}/lib
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libdbsync.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/libdbsync.dylib
         fi
-    elif [ -f shared_modules/dbsync/build/lib/libdbsync.so ]
+        if [ -f build/lib/libagent_sync_protocol.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib/libagent_sync_protocol.dylib
+        fi
+        if [ -f build/lib/libagent_metadata.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libagent_metadata.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libagent_metadata.dylib ${INSTALLDIR}/lib/libagent_metadata.dylib
+        fi
+    elif [ -f build/lib/libdbsync.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/dbsync/build/lib/libdbsync.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libdbsync.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libdbsync.so
         fi
     fi
-
-    if [ ${NUNAME} = 'Darwin' ]
+    if [ -f build/lib/libagent_sync_protocol.so ]
     then
-        if [ -f shared_modules/rsync/build/lib/librsync.dylib ]
-        then
-            ${INSTALL} -m 0750 -o root -g 0 shared_modules/rsync/build/lib/librsync.dylib ${INSTALLDIR}/lib
-            install_name_tool -id @rpath/../lib/librsync.dylib ${INSTALLDIR}/lib/librsync.dylib
-            install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/librsync.dylib
-        fi
-    elif [ -f shared_modules/rsync/build/lib/librsync.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} shared_modules/rsync/build/lib/librsync.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libagent_sync_protocol.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librsync.so
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_sync_protocol.so
+        fi
+    fi
+    if [ -f build/lib/libagent_metadata.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libagent_metadata.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_metadata.so
         fi
     fi
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        if [ -f data_provider/build/lib/libsysinfo.dylib ]
+        if [ -f build/lib/libschema_validator.dylib ]
         then
-            ${INSTALL} -m 0750 -o root -g 0 data_provider/build/lib/libsysinfo.dylib ${INSTALLDIR}/lib
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libschema_validator.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libschema_validator.dylib ${INSTALLDIR}/lib/libschema_validator.dylib
+        fi
+    elif [ -f build/lib/libschema_validator.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libschema_validator.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libschema_validator.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f build/lib/libsysinfo.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libsysinfo.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libsysinfo.dylib ${INSTALLDIR}/lib/libsysinfo.dylib
         fi
-    elif [ -f data_provider/build/lib/libsysinfo.so ]
+    elif [ -f build/lib/libsysinfo.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} data_provider/build/lib/libsysinfo.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libsysinfo.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsysinfo.so
@@ -874,14 +613,14 @@ InstallCommon()
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        if [ -f syscheckd/build/lib/libfimdb.dylib ]
+        if [ -f build/lib/libfimdb.dylib ]
         then
-            ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/lib/libfimdb.dylib ${INSTALLDIR}/lib
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libfimdb.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libfimdb.dylib ${INSTALLDIR}/lib/libfimdb.dylib
         fi
-    elif [ -f syscheckd/build/lib/libfimdb.so ]
+    elif [ -f build/lib/libfimdb.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} syscheckd/build/lib/libfimdb.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libfimdb.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libfimdb.so
@@ -890,108 +629,161 @@ InstallCommon()
 
     if [ ${NUNAME} != 'Darwin' ]
     then
-    	if [ -f syscheckd/build/lib/libfimebpf.so ]
+    	if [ -f build/lib/libfimebpf.so ]
     	then
-       		${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} syscheckd/build/lib/libfimebpf.so ${INSTALLDIR}/lib
+       		${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libfimebpf.so ${INSTALLDIR}/lib
 
        		if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
        		    chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libfimebpf.so
        		fi
       fi
 
-      if [ -f external/libbpf-bootstrap/build/libbpf/libbpf.so ]
-          then
-              ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/libbpf-bootstrap/build/libbpf/libbpf.so ${INSTALLDIR}/lib
+      if [ "X${INSTYPE}" = "Xagent" ]; then
+          if [ -f external/libbpf-bootstrap/build/libbpf/libbpf.so ]
+              then
+                  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/libbpf-bootstrap/build/libbpf/libbpf.so ${INSTALLDIR}/lib
 
-              if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-                  chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libbpf.so
-              fi
-      fi
+                  if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+                      chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libbpf.so
+                  fi
+          fi
 
-      if [ -f external/libbpf-bootstrap/build/modern.bpf.o ]
-          then
-              ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/libbpf-bootstrap/build/modern.bpf.o ${INSTALLDIR}/lib
+          if [ -f external/libbpf-bootstrap/build/modern.bpf.o ]
+              then
+                  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/libbpf-bootstrap/build/modern.bpf.o ${INSTALLDIR}/lib
 
-              if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-                  chcon -t textrel_shlib_t ${INSTALLDIR}/lib/modern.bpf.o
-              fi
+                  if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+                      chcon -t textrel_shlib_t ${INSTALLDIR}/lib/modern.bpf.o
+                  fi
+          fi
       fi
     fi
 
     if [ ${NUNAME} = 'Darwin' ]
     then
-        if [ -f wazuh_modules/syscollector/build/lib/libsyscollector.dylib ]
+        if [ -f build/lib/libsyscollector.dylib ]
         then
-            ${INSTALL} -m 0750 -o root -g 0 wazuh_modules/syscollector/build/lib/libsyscollector.dylib ${INSTALLDIR}/lib
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libsyscollector.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libsyscollector.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/data_provider/build/lib/libsysinfo.dylib @rpath/../lib/libsysinfo.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/shared_modules/rsync/build/lib/librsync.dylib @rpath/../lib/librsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
-            install_name_tool -change $(PWD)/shared_modules/dbsync/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/build/lib/libsysinfo.dylib @rpath/../lib/libsysinfo.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/build/lib/libdbsync.dylib @rpath/../lib/libdbsync.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
+            install_name_tool -change $(PWD)/build/lib/libagent_sync_protocol.dylib @rpath/../lib/libagent_sync_protocol.dylib ${INSTALLDIR}/lib/libsyscollector.dylib
         fi
-    elif [ -f wazuh_modules/syscollector/build/lib/libsyscollector.so ]
+    elif [ -f build/lib/libsyscollector.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh_modules/syscollector/build/lib/libsyscollector.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libsyscollector.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsyscollector.so
         fi
     fi
 
-    if [ ${DIST_NAME} = 'AIX' ]
+    if [ -f build/lib/libinventory_sync.so ]
     then
-        if [ -f libstdc++.a ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.a ${INSTALLDIR}/lib
-        fi
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libinventory_sync.so ${INSTALLDIR}/lib
 
-        if [ -f libgcc_s.a ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.a ${INSTALLDIR}/lib
-        fi
-    else
-        if [ -f libstdc++.so.6 ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libstdc++.so.6 ${INSTALLDIR}/lib
-
-            if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-                chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
-            fi
-        fi
-
-        if [ -f libgcc_s.so.1 ]
-        then
-            ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} libgcc_s.so.1 ${INSTALLDIR}/lib
-
-            if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
-                chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
-            fi
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libinventory_sync.so
         fi
     fi
 
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-logcollector ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 syscheckd/build/bin/wazuh-syscheckd ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-execd ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 manage_agents ${INSTALLDIR}/bin
-  ${INSTALL} -m 0750 -o root -g 0 ${OSSEC_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
-  ${INSTALL} -m 0750 -o root -g 0 wazuh-modulesd ${INSTALLDIR}/bin/
+    if [ -f build/lib/libvulnerability_scanner.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libvulnerability_scanner.so ${INSTALLDIR}/lib
 
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
-  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/alerts
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libvulnerability_scanner.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f build/lib/libsca.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libsca.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libsca.dylib ${INSTALLDIR}/lib/libsca.dylib
+        fi
+    elif [ -f build/lib/libsca.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libsca.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libsca.so
+        fi
+    fi
+
+    if [ ${NUNAME} = 'Darwin' ]
+    then
+        if [ -f build/lib/libagent_info.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libagent_info.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libagent_info.dylib ${INSTALLDIR}/lib/libagent_info.dylib
+        fi
+    elif [ -f build/lib/libagent_info.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libagent_info.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_info.so
+        fi
+    fi
+
+
+    if [ -f build/lib/libstdc++.so.6 ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libstdc++.so.6 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libstdc++.so.6
+        fi
+    fi
+
+    if [ -f build/lib/libgcc_s.so.1 ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libgcc_s.so.1 ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libgcc_s.so.1
+        fi
+    fi
+
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-logcollector ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-syscheckd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-execd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-modulesd ${INSTALLDIR}/bin/
+  else
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-modulesd ${INSTALLDIR}/bin/
+  fi
+  if [ "X${INSTYPE}" = "Xmanager" ]; then
+    ${INSTALL} -m 0750 -o root -g 0 ${WAZUH_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-manager-control
+  else
+    ${INSTALL} -m 0750 -o root -g 0 ${WAZUH_CONTROL_SRC} ${INSTALLDIR}/bin/wazuh-control
+  fi
+
+  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue
   ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sockets
-  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/diff
-  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fim
-  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fim/db
-  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector
-  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector/db
-  ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/diff
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agent_info
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agent_info/db
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fim
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fim/db
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/syscollector/db
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/sca/db
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/logcollector
+  fi
 
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/sca
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/sca
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/wodles
+  fi
 
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/wodles
-
-  ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
+  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc
 
     if [ -f /etc/localtime ]
     then
@@ -1003,77 +795,224 @@ InstallCommon()
     if [ -f /etc/TIMEZONE ]; then
          ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /etc/TIMEZONE ${INSTALLDIR}/etc/
     fi
-    # Solaris Needs some extra files
-    if [ ${DIST_NAME} = "SunOS" ]; then
-      ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/
-        cp -rf /usr/share/lib/zoneinfo/* ${INSTALLDIR}/usr/share/lib/zoneinfo/
-        chown root:${WAZUH_GROUP} ${INSTALLDIR}/usr/share/lib/zoneinfo/*
-        find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type d -exec chmod 0750 {} +
-        find ${INSTALLDIR}/usr/share/lib/zoneinfo/ -type f -exec chmod 0640 {} +
-    fi
 
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} wazuh_modules/syscollector/norm_config.json ${INSTALLDIR}/queue/syscollector
-
-    if [ ! -f ${INSTALLDIR}/etc/local_internal_options.conf ]; then
-        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
+    if [ "X${INSTYPE}" = "Xagent" ]; then
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../etc/internal_options.conf ${INSTALLDIR}/etc/
+        ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} wazuh_modules/syscollector/norm_config.json ${INSTALLDIR}/queue/syscollector
+        if [ ! -f ${INSTALLDIR}/etc/local_internal_options.conf ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/local_internal_options.conf ${INSTALLDIR}/etc/local_internal_options.conf
+        fi
+    else
+        if [ ! -f ${INSTALLDIR}/etc/wazuh-manager-internal-options.conf ]; then
+            ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wazuh-manager-internal-options.conf ${INSTALLDIR}/etc/wazuh-manager-internal-options.conf
+        fi
     fi
 
     if [ ! -f ${INSTALLDIR}/etc/client.keys ]; then
-        if [ ${INSTYPE} = 'agent' ]; then
+        if [ "X${INSTYPE}" = "Xagent" ]; then
             ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
         else
-            ${INSTALL} -m 0640 -o wazuh -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
+            ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/etc/client.keys
         fi
     fi
 
-    if [ ! -f ${INSTALLDIR}/etc/ossec.conf ]; then
-        if [ -f  ../etc/ossec.mc ]; then
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/ossec.mc ${INSTALLDIR}/etc/ossec.conf
+    if [ ! -f ${INSTALLDIR}/etc/${WAZUH_CONF} ]; then
+        if [ ! -f ../etc/wazuh.mc ]; then
+            echo "WARNING: missing ../etc/wazuh.mc. Regenerating configuration template."
+            if ! ./init/gen_wazuh.sh conf "${INSTYPE}" "${DIST_NAME}" "${DIST_VER}.${DIST_SUBVER}" "${INSTALLDIR}" > ../etc/wazuh.mc; then
+                rm -f ../etc/wazuh.mc
+                echo "WARNING: unable to regenerate ../etc/wazuh.mc."
+            fi
+        fi
+
+        if [ -f ../etc/wazuh.mc ]; then
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../etc/wazuh.mc ${INSTALLDIR}/etc/${WAZUH_CONF}
         else
-            echo "WARNING: unable to generate ossec.conf file with desired configurations, using default configurations from ${OSSEC_CONF_SRC}"
-            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${OSSEC_CONF_SRC} ${INSTALLDIR}/etc/ossec.conf
+            echo "WARNING: unable to generate ${WAZUH_CONF} with desired configurations, using default configurations from ${WAZUH_CONF_SRC}"
+            ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ${WAZUH_CONF_SRC} ${INSTALLDIR}/etc/${WAZUH_CONF}
         fi
     fi
+
 
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
-  ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/agentless
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} agentlessd/scripts/* ${INSTALLDIR}/agentless/
-
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/.ssh
-
-  ./init/fw-check.sh execute
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/*.sh ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} active-response/*.py ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} firewall-drop ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} default-firewall-drop ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} pf ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} npf ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ipfw ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} firewalld-drop ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} disable-account ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} host-deny ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ip-customblock ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} restart-wazuh ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} route-null ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} kaspersky ${INSTALLDIR}/active-response/bin/
-  ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-slack ${INSTALLDIR}/active-response/bin/
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+    # Active response scripts and helpers are agent runtime assets.
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/active-response/bin
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/block-ip ${INSTALLDIR}/active-response/bin/
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/disable-account ${INSTALLDIR}/active-response/bin/
+  fi
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/run
   ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/upgrade
-  ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/selinux
 
-  if [ -f selinux/wazuh.pp ]
-  then
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} selinux/wazuh.pp ${INSTALLDIR}/var/selinux/
-    InstallSELinuxPolicyPackage
+  if [ "X${INSTYPE}" = "Xagent" ]; then
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/selinux
+    if [ -f selinux/wazuh.pp ]; then
+      ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} selinux/wazuh.pp ${INSTALLDIR}/var/selinux/
+      InstallSELinuxPolicyPackage
+    fi
   fi
 
   ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup
 
+}
+
+
+generateSchemaFiles()
+{
+    echo "Generating schema files..."
+    ${INSTALLDIR}/framework/python/bin/python3 engine/tools/engine-schema/engine_schema.py generate \
+    --output-dir engine/ruleset/schemas/ \
+    --wcs-path external/wcs-flat-files/ \
+    --decoder-template engine/ruleset/schemas/wazuh-decoders.template.json \
+    --exclude-geo engine/ruleset/schemas/exclude-enrichment-geo.json \
+    --ioc-enrichment-cfg engine/ruleset/schemas/ioc-enrichment-cfg.json
+
+    if [ $? != 0 ]; then
+        echo "Error: Failed to generate schema files."
+        exit 1
+    fi
+    echo "Schema files generated successfully."
+}
+
+installEngineStore()
+{
+    local DEST_FULL_PATH=${INSTALLDIR}/data
+    local ENGINE_SRC_PATH=./engine
+
+    # Fallback store installation
+    local STORE_PATH=${DEST_FULL_PATH}/store
+    local SCHEMA_PATH=${STORE_PATH}/schema
+    local ENRICHMENT_PATH=${STORE_PATH}/enrichment
+    local ENGINE_SCHEMA_PATH=${SCHEMA_PATH}/engine-schema/
+    local ENGINE_LOGPAR_TYPE_PATH=${SCHEMA_PATH}/wazuh-logpar-overrides
+    local ENGINE_ALLOWED_FIELDS_PATH=${SCHEMA_PATH}/allowed-fields
+    local ENGINE_ENRICHMENT_GEO=${ENRICHMENT_PATH}/geo
+    local ENGINE_ENRICHMENT_IOC=${ENRICHMENT_PATH}/ioc
+
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${STORE_PATH}
+    mkdir -p "${ENGINE_SCHEMA_PATH}"
+    mkdir -p "${ENGINE_LOGPAR_TYPE_PATH}"
+    mkdir -p "${ENGINE_ALLOWED_FIELDS_PATH}"
+    mkdir -p "${ENGINE_ENRICHMENT_GEO}"
+    mkdir -p "${ENGINE_ENRICHMENT_IOC}"
+
+    # Copying the store files
+    echo "Copying store files..."
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/engine-schema.json" "${ENGINE_SCHEMA_PATH}/0"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/wazuh-logpar-overrides.json" "${ENGINE_LOGPAR_TYPE_PATH}/0"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/allowed-fields.json" "${ENGINE_ALLOWED_FIELDS_PATH}/0"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/enrichment-geo.json" "${ENGINE_ENRICHMENT_GEO}/0"
+    cp "${ENGINE_SRC_PATH}/ruleset/schemas/enrichment-ioc.json" "${ENGINE_ENRICHMENT_IOC}/0"
+
+    if [ ! -f "${ENGINE_SCHEMA_PATH}/0" ] || [ ! -f "${ENGINE_LOGPAR_TYPE_PATH}/0" ] \
+        || [ ! -f "${ENGINE_ALLOWED_FIELDS_PATH}/0" ] || [ ! -f "${ENGINE_ENRICHMENT_GEO}/0" ] \
+        || [ ! -f "${ENGINE_ENRICHMENT_IOC}/0" ]; then
+        echo "Error: Failed to copy store files."
+        exit 1
+    fi
+
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${STORE_PATH}
+    find ${STORE_PATH} -type d -exec chmod 770 {} \; -o -type f -exec chmod 660 {} \;
+
+    echo "Engine store installed successfully."
+
+    # Copy default output configuration files
+    local OUTPUTS_PATH=${INSTALLDIR}/etc/outputs
+    local DEFAULT_OUTPUTS_PATH=${OUTPUTS_PATH}/default
+    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${DEFAULT_OUTPUTS_PATH}
+    cp "${ENGINE_SRC_PATH}/ruleset/outputs/"*.yml "${DEFAULT_OUTPUTS_PATH}/"
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} ${OUTPUTS_PATH}
+    find ${OUTPUTS_PATH} -type d -exec chmod 750 {} \; -o -type f -exec chmod 640 {} \;
+
+    # Create /var/wazuh-manager/data/ruleset
+    install -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/data/ruleset
+
+    echo "Engine output configuration files installed successfully."
+}
+
+installGeoIP()
+{
+    DEST_FULL_PATH=${INSTALLDIR}/data
+    GEOIP_SRC_PATH=./external/geo_db
+
+    local MMDB_PATH=${DEST_FULL_PATH}/mmdb
+    local STORE_GEO_PATH=${DEST_FULL_PATH}/store/geo/mmdb
+    local MANIFEST_FILE=${GEOIP_SRC_PATH}/manifest.json
+
+    # Create directories
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${MMDB_PATH}
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${DEST_FULL_PATH}/store/geo
+    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${STORE_GEO_PATH}
+
+    # Check if GeoIP files exist
+    if [ ! -f "${GEOIP_SRC_PATH}/GeoLite2-ASN.mmdb" ] || [ ! -f "${GEOIP_SRC_PATH}/GeoLite2-City.mmdb" ]; then
+        echo "Warning: GeoIP database files not found in ${GEOIP_SRC_PATH}. Skipping GeoIP installation."
+        return 0
+    fi
+
+    if [ ! -f "${MANIFEST_FILE}" ]; then
+        echo "Warning: GeoIP manifest.json not found. Skipping GeoIP installation."
+        return 0
+    fi
+
+    echo "Installing GeoIP databases..."
+
+    # Copy .mmdb files
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-ASN.mmdb" "${MMDB_PATH}/"
+    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} "${GEOIP_SRC_PATH}/GeoLite2-City.mmdb" "${MMDB_PATH}/"
+
+    # Parse manifest.json without jq or python - using grep and sed
+    ASN_MD5=$(grep -A 2 '"asn"' "${MANIFEST_FILE}" | grep '"md5"' | sed 's/.*"md5"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+    CITY_MD5=$(grep -A 2 '"city"' "${MANIFEST_FILE}" | grep '"md5"' | sed 's/.*"md5"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/')
+    GENERATED_AT=$(grep '"generated_at"' "${MANIFEST_FILE}" | sed 's/.*"generated_at"[[:space:]]*:[[:space:]]*\([0-9]*\).*/\1/')
+
+    # Generate metadata JSON file
+    cat > "${STORE_GEO_PATH}/0" << EOF
+{
+    "city": {
+        "path": "${MMDB_PATH}/GeoLite2-City.mmdb",
+        "hash": "${CITY_MD5}",
+        "generated_at": ${GENERATED_AT}
+    },
+    "asn": {
+        "path": "${MMDB_PATH}/GeoLite2-ASN.mmdb",
+        "hash": "${ASN_MD5}",
+        "generated_at": ${GENERATED_AT}
+    }
+}
+EOF
+
+    # Set proper ownership and permissions
+    chown ${WAZUH_USER}:${WAZUH_GROUP} "${STORE_GEO_PATH}/0"
+    chmod 660 "${STORE_GEO_PATH}/0"
+
+    echo "GeoIP databases installed successfully."
+}
+
+installTZDB()
+{
+    local TZDB_SRC_PATH=./external/tzdata
+    local TZDB_DST_PATH=${INSTALLDIR}/data/tzdb/iana
+
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data/tzdb
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${TZDB_DST_PATH}
+
+    if [ ! -f "${TZDB_SRC_PATH}/version" ]; then
+        echo "Warning: Timezone database not found in ${TZDB_SRC_PATH}. Skipping TZDB installation."
+        return 0
+    fi
+
+    echo "Installing timezone database..."
+
+    cp -r "${TZDB_SRC_PATH}/." "${TZDB_DST_PATH}/"
+    chown -R ${WAZUH_USER}:${WAZUH_GROUP} "${TZDB_DST_PATH}"
+    find "${TZDB_DST_PATH}" -type f -exec chmod 0640 {} +
+    find "${TZDB_DST_PATH}" -type d -exec chmod 0750 {} +
+
+    echo "Timezone database installed successfully."
 }
 
 InstallLocal()
@@ -1081,145 +1020,69 @@ InstallLocal()
 
     InstallCommon
 
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/decoders
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/rules
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/var/multigroups
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/db
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/download
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/archives
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/alerts
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/firewall
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/api
-    ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/rootcheck
 
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-agentlessd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-analysisd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-monitord ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-reportd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-maild ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-logtest-legacy ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-csyslogd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-dbd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} verify-agent-conf ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 clear_stats ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-regex ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 agent_control ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-integratord ${INSTALLDIR}/bin/
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-db ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-monitord ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/bin/verify-agent-conf ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-db ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 build/engine/wazuh-engine ${INSTALLDIR}/bin/wazuh-manager-analysisd
 
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/stats
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/decoders
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/ruleset/rules
+    ### Install Python
+    ${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
 
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../ruleset/rules/*.xml ${INSTALLDIR}/ruleset/rules
-    ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} -b ../ruleset/decoders/*.xml ${INSTALLDIR}/ruleset/decoders
-    ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/rootcheck
-
-    InstallSecurityConfigurationAssessmentFiles "manager"
-
-    if [ ! -f ${INSTALLDIR}/etc/decoders/local_decoder.xml ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../etc/local_decoder.xml ${INSTALLDIR}/etc/decoders/local_decoder.xml
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/rules/local_rules.xml ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../etc/local_rules.xml ${INSTALLDIR}/etc/rules/local_rules.xml
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists ]; then
-        ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists/amazon ]; then
-        ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists/amazon
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/amazon/* ${INSTALLDIR}/etc/lists/amazon/
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists/audit-keys ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/audit-keys ${INSTALLDIR}/etc/lists/audit-keys
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists/malicious-ioc/malicious-ip ]; then
-        ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/lists/malicious-ioc
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/malicious-ioc/* ${INSTALLDIR}/etc/lists/malicious-ioc/
-    fi
-    if [ ! -f ${INSTALLDIR}/etc/lists/security-eventchannel ]; then
-        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} -b ../ruleset/lists/security-eventchannel ${INSTALLDIR}/etc/lists/security-eventchannel
+    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
+    # Framework installation may leave this parent directory with default root:root 755.
+    # Keep it aligned with the manager baseline used by check_files.
+    if [ -d "${INSTALLDIR}/framework/wazuh/core" ]; then
+        chown root:${WAZUH_GROUP} "${INSTALLDIR}/framework/wazuh/core"
+        chmod 0750 "${INSTALLDIR}/framework/wazuh/core"
     fi
 
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/fts
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/agentless
+    generateSchemaFiles
+
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data
+
+    installEngineStore
+
+    installGeoIP
+
+    installTZDB
+
+    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/data/kvdb-ioc
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/db
-
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/integrations
-    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/pagerduty.py ${INSTALLDIR}/integrations/pagerduty.py
-    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/slack.py ${INSTALLDIR}/integrations/slack.py
-    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/virustotal.py ${INSTALLDIR}/integrations/virustotal.py
-    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/shuffle.py ${INSTALLDIR}/integrations/shuffle.py
-    ${INSTALL} -m 750 -o root -g ${WAZUH_GROUP} ../integrations/maltiverse.py ${INSTALLDIR}/integrations/maltiverse.py
-    touch ${INSTALLDIR}/logs/integrations.log
-    chmod 640 ${INSTALLDIR}/logs/integrations.log
-    chown ${WAZUH_USER}:${WAZUH_GROUP} ${INSTALLDIR}/logs/integrations.log
 
     if [ "X${OPTIMIZE_CPYTHON}" = "Xy" ]; then
         CPYTHON_FLAGS="OPTIMIZE_CPYTHON=yes"
     fi
 
     # Install Vulnerability Detector files
-    ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd
-    ${INSTALL} -d -m 0660 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/indexer
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/vd
+    ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/indexer
 
-    # Install templates files
-    ${INSTALL} -d -m 0440 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/templates
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/index-template.json ${INSTALLDIR}/templates/vd_states_template.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-packages.json ${INSTALLDIR}/templates/wazuh-states-inventory-packages.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-processes.json ${INSTALLDIR}/templates/wazuh-states-inventory-processes.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-system.json ${INSTALLDIR}/templates/wazuh-states-inventory-system.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hardware.json ${INSTALLDIR}/templates/wazuh-states-inventory-hardware.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-networks.json ${INSTALLDIR}/templates/wazuh-states-inventory-networks.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-protocols.json ${INSTALLDIR}/templates/wazuh-states-inventory-protocols.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces.json ${INSTALLDIR}/templates/wazuh-states-inventory-interfaces.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hotfixes.json ${INSTALLDIR}/templates/wazuh-states-inventory-hotfixes.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-users.json ${INSTALLDIR}/templates/wazuh-states-inventory-users.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-groups.json ${INSTALLDIR}/templates/wazuh-states-inventory-groups.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-browser-extensions.json ${INSTALLDIR}/templates/wazuh-states-inventory-browser-extensions.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-services.json ${INSTALLDIR}/templates/wazuh-states-inventory-services.json
-
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/vulnerability_scanner/indexer/template/update-mappings.json ${INSTALLDIR}/templates/vd_states_update_mappings.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-packages-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-packages-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-processes-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-processes-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-system-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-system-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hardware-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-hardware-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-networks-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-networks-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-protocols-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-protocols-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-interfaces-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-interfaces-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-hotfixes-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-hotfixes-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-ports-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-ports-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-users-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-users-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-groups-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-groups-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-browser-extensions-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-browser-extensions-update.json
-    ${INSTALL} -m 0440 -o root -g ${WAZUH_GROUP} wazuh_modules/inventory_harvester/indexer/template/wazuh-states-inventory-services-update.json ${INSTALLDIR}/templates/wazuh-states-inventory-services-update.json
 
     # Install Task Manager files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/tasks
 
-    ### Install Python
-    ${MAKEBIN} wpython INSTALLDIR=${INSTALLDIR} TARGET=${INSTYPE}
-
-    ${MAKEBIN} --quiet -C ../framework install INSTALLDIR=${INSTALLDIR}
-
     ### Backup old API
     if [ "X${update_only}" = "Xyes" ]; then
-      ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} REVISION=${REVISION}
+      ${MAKEBIN} --quiet -C ../api backup INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
     fi
 
     ### Install API
-    ${MAKEBIN} --quiet -C ../api install INSTALLDIR=${INSTALLDIR}
+    ${MAKEBIN} --quiet -C ../api install INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
 
     ### Restore old API
     if [ "X${update_only}" = "Xyes" ]; then
-      ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} REVISION=${REVISION}
+      ${MAKEBIN} --quiet -C ../api restore INSTALLDIR=${INSTALLDIR} WAZUH_GROUP=${WAZUH_GROUP}
     fi
 
     ### Install router library
-    if [ -f build/shared_modules/router/librouter.so ]
+    if [ -f build/lib/librouter.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/router/librouter.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/librouter.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/librouter.so
@@ -1230,28 +1093,21 @@ InstallLocal()
 TransferShared()
 {
     rm -f ${INSTALLDIR}/etc/shared/merged.mg
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec cp -pf {} ${INSTALLDIR}/backup/shared \;
-    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -not -name ar.conf -not -name files.yml -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
-}
-
-checkDownloadContent()
-{
-    VD_FILENAME='vd_1.0.0_vd_4.13.0.tar.xz'
-    VD_FULL_PATH=${INSTALLDIR}/tmp/${VD_FILENAME}
-
-    if [ "X${DOWNLOAD_CONTENT}" = "Xy" ]; then
-        echo "Download ${VD_FILENAME} file"
-        wget -O ${VD_FULL_PATH} http://packages.wazuh.com/deps/vulnerability_model_database/${VD_FILENAME}
-
-        chmod 640 ${VD_FULL_PATH}
-        chown ${WAZUH_USER}:${WAZUH_GROUP} ${VD_FULL_PATH}
-    fi
+    find ${INSTALLDIR}/etc/shared -maxdepth 1 -type f -exec mv -f {} ${INSTALLDIR}/etc/shared/default \;
 }
 
 InstallServer()
 {
 
     InstallLocal
+    if [ -f build/lib/libwazuhshared.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libwazuhshared.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libwazuhshared.so
+        fi
+    fi
     if [ -f external/jemalloc/lib/libjemalloc.so.2 ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} external/jemalloc/lib/libjemalloc.so.2 ${INSTALLDIR}/lib
@@ -1260,33 +1116,18 @@ InstallServer()
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libjemalloc.so.2
         fi
     fi
-    if [ -f build/shared_modules/content_manager/libcontent_manager.so ]
+    if [ -f build/lib/libcontent_manager.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/content_manager/libcontent_manager.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libcontent_manager.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libcontent_manager.so
         fi
     fi
-    if [ -f build/wazuh_modules/vulnerability_scanner/libvulnerability_scanner.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/wazuh_modules/vulnerability_scanner/libvulnerability_scanner.so ${INSTALLDIR}/lib
 
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libvulnerability_scanner.so
-        fi
-    fi
-    if [ -f build/wazuh_modules/inventory_harvester/libinventory_harvester.so ]
+    if [ -f build/lib/libindexer_connector.so ]
     then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/wazuh_modules/inventory_harvester/libinventory_harvester.so ${INSTALLDIR}/lib
-
-        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
-            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libinventory_harvester.so
-        fi
-    fi
-    if [ -f build/shared_modules/indexer_connector/libindexer_connector.so ]
-    then
-        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/shared_modules/indexer_connector/libindexer_connector.so ${INSTALLDIR}/lib
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libindexer_connector.so ${INSTALLDIR}/lib
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]); then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libindexer_connector.so
@@ -1301,32 +1142,25 @@ InstallServer()
         fi
     fi
 
-    # Check if the content needs to be downloaded.
-    checkDownloadContent
-
     # Install cluster files
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/cluster
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/logs/cluster
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/etc/shared/default
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/shared
 
     TransferShared
 
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-remoted ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-authd ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-remoted ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-authd ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/router
 
     if [ ! -f ${INSTALLDIR}/queue/agents-timestamp ]; then
-        ${INSTALL} -m 0600 -o root -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/queue/agents-timestamp
+        ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} /dev/null ${INSTALLDIR}/queue/agents-timestamp
     fi
 
-    ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/agents
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/backup/db
-
-    ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/default
 
     if [ ! -f ${INSTALLDIR}/etc/shared/default/agent.conf ]; then
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/default
@@ -1336,80 +1170,11 @@ InstallServer()
         ${INSTALL} -m 0660 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ../etc/agent.conf ${INSTALLDIR}/etc/shared/agent-template.conf
     fi
 
-    # Install the plugins files
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/__init__.py ${INSTALLDIR}/wodles/__init__.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/utils.py ${INSTALLDIR}/wodles/utils.py
-
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws/buckets_s3
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws/services
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/aws/subscribers
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/aws_s3.py ${INSTALLDIR}/wodles/aws/aws-s3.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/__init__.py ${INSTALLDIR}/wodles/aws/__init__.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/aws_tools.py ${INSTALLDIR}/wodles/aws/aws_tools.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/wazuh_integration.py ${INSTALLDIR}/wodles/aws/wazuh_integration.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/buckets_s3/aws_bucket.py ${INSTALLDIR}/wodles/aws/buckets_s3/aws_bucket.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/buckets_s3/cloudtrail.py ${INSTALLDIR}/wodles/aws/buckets_s3/cloudtrail.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/buckets_s3/config.py ${INSTALLDIR}/wodles/aws/buckets_s3/config.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/buckets_s3/guardduty.py ${INSTALLDIR}/wodles/aws/buckets_s3/guardduty.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/buckets_s3/__init__.py ${INSTALLDIR}/wodles/aws/buckets_s3/__init__.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/buckets_s3/load_balancers.py ${INSTALLDIR}/wodles/aws/buckets_s3/load_balancers.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/buckets_s3/server_access.py ${INSTALLDIR}/wodles/aws/buckets_s3/server_access.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/buckets_s3/umbrella.py ${INSTALLDIR}/wodles/aws/buckets_s3/umbrella.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/buckets_s3/vpcflow.py ${INSTALLDIR}/wodles/aws/buckets_s3/vpcflow.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/buckets_s3/waf.py ${INSTALLDIR}/wodles/aws/buckets_s3/waf.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/services/aws_service.py ${INSTALLDIR}/wodles/aws/services/aws_service.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/services/cloudwatchlogs.py ${INSTALLDIR}/wodles/aws/services/cloudwatchlogs.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/services/__init__.py ${INSTALLDIR}/wodles/aws/services/__init__.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/services/inspector.py ${INSTALLDIR}/wodles/aws/services/inspector.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/subscribers/__init__.py ${INSTALLDIR}/wodles/aws/subscribers/__init__.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/subscribers/sqs_queue.py ${INSTALLDIR}/wodles/aws/subscribers/sqs_queue.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/subscribers/s3_log_handler.py ${INSTALLDIR}/wodles/aws/subscribers/s3_log_handler.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/aws/subscribers/sqs_message_processor.py ${INSTALLDIR}/wodles/aws/subscribers/sqs_message_processor.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/aws/aws-s3
-
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/gcloud
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/gcloud/buckets
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/gcloud/pubsub
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/gcloud.py ${INSTALLDIR}/wodles/gcloud/gcloud.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/integration.py ${INSTALLDIR}/wodles/gcloud/integration.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/tools.py ${INSTALLDIR}/wodles/gcloud/tools.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/exceptions.py ${INSTALLDIR}/wodles/gcloud/exceptions.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/buckets/bucket.py ${INSTALLDIR}/wodles/gcloud/buckets/bucket.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/buckets/access_logs.py ${INSTALLDIR}/wodles/gcloud/buckets/access_logs.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/gcloud/pubsub/subscriber.py ${INSTALLDIR}/wodles/gcloud/pubsub/subscriber.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/gcloud/gcloud
-
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/docker
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/docker-listener/DockerListener.py ${INSTALLDIR}/wodles/docker/DockerListener.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/docker/DockerListener
-
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/azure
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/azure/azure_services
-    ${INSTALL} -d -m 0750 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/wodles/azure/db
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure-logs.py ${INSTALLDIR}/wodles/azure/azure-logs.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure_utils.py ${INSTALLDIR}/wodles/azure/azure_utils.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure_services/__init__.py ${INSTALLDIR}/wodles/azure/azure_services/__init__.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure_services/analytics.py ${INSTALLDIR}/wodles/azure/azure_services/analytics.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure_services/graph.py ${INSTALLDIR}/wodles/azure/azure_services/graph.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/azure_services/storage.py ${INSTALLDIR}/wodles/azure/azure_services/storage.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/db/__init__.py ${INSTALLDIR}/wodles/azure/db/__init__.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/db/orm.py ${INSTALLDIR}/wodles/azure/db/orm.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/azure/db/utils.py ${INSTALLDIR}/wodles/azure/db/utils.py
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/wodles/azure/azure-logs
-
     GenerateAuthCert
-
-    # Add the wrappers for python script in active-response
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/pagerduty
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/slack
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/virustotal
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/shuffle
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../framework/wrappers/generic_wrapper.sh ${INSTALLDIR}/integrations/maltiverse
 
     # Keystore
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/keystore
-    ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} wazuh-keystore ${INSTALLDIR}/bin/
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-manager-keystore ${INSTALLDIR}/bin/wazuh-manager-keystore
 }
 
 InstallAgent()
@@ -1419,17 +1184,15 @@ InstallAgent()
 
     InstallSecurityConfigurationAssessmentFiles "agent"
 
-    ${INSTALL} -m 0750 -o root -g 0 wazuh-agentd ${INSTALLDIR}/bin
-    ${INSTALL} -m 0750 -o root -g 0 agent-auth ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/manage_agents ${INSTALLDIR}/bin
+    ${INSTALL} -m 0750 -o root -g 0 build/bin/wazuh-agentd ${INSTALLDIR}/bin
 
     ${INSTALL} -d -m 0750 -o ${WAZUH_USER} -g ${WAZUH_GROUP} ${INSTALLDIR}/queue/rids
     ${INSTALL} -d -m 0770 -o root -g ${WAZUH_GROUP} ${INSTALLDIR}/var/incoming
-    ${INSTALL} -m 0660 -o root -g ${WAZUH_GROUP} ../ruleset/rootcheck/db/*.txt ${INSTALLDIR}/etc/shared/
     ${INSTALL} -m 0640 -o root -g ${WAZUH_GROUP} ../etc/wpk_root.pem ${INSTALLDIR}/etc/
 
     # Install the plugins files
-    # Don't install the plugins if they are already installed. This check affects
-    # hybrid installation mode
+    # Don't install the plugins if they are already installed.
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/__init__.py ${INSTALLDIR}/wodles/__init__.py
     ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} ../wodles/utils.py ${INSTALLDIR}/wodles/utils.py
 
@@ -1492,10 +1255,7 @@ InstallWazuh()
 {
     if [ "X$INSTYPE" = "Xagent" ]; then
         InstallAgent
-    elif [ "X$INSTYPE" = "Xserver" ]; then
+    elif [ "X$INSTYPE" = "Xmanager" ]; then
         InstallServer
-    elif [ "X$INSTYPE" = "Xlocal" ]; then
-        InstallLocal
     fi
-
 }

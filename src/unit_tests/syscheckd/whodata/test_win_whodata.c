@@ -37,7 +37,7 @@
 #include "wrappers/windows/ntsecapi_wrappers.h"
 
 
-#include "../../../syscheckd/include/syscheck.h"
+#include "syscheck.h"
 
 int set_winsacl(const char *dir, directory_t *configuration);
 extern int set_privilege(HANDLE hdle, LPCTSTR privilege, int enable);
@@ -203,7 +203,6 @@ int syscheck_teardown(void ** state) {
     syscheck.key_ignore_regex = NULL;
     syscheck.registry = NULL;
     syscheck.realtime = NULL;
-    syscheck.prefilter_cmd = NULL;
     syscheck.audit_key = NULL;
 
     return 0;
@@ -269,7 +268,7 @@ static int setup_whodata_callback_group(void ** state) {
         return -1;
     }
 
-    int options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE |
+    int options = CHECK_SIZE | CHECK_PERM | CHECK_OWNER | CHECK_GROUP | CHECK_MTIME | CHECK_INODE | CHECK_DEVICE |
                   CHECK_MD5SUM | CHECK_SHA1SUM | CHECK_SHA256SUM | CHECK_ATTRS | WHODATA_ACTIVE;
     directory_t *directory0 = fim_create_directory("c:\\windows", options, NULL, 50, NULL, -1, 0);
     directory0->dirs_status.status = WD_CHECK_WHODATA;
@@ -3506,7 +3505,7 @@ void test_get_volume_names_no_more_files(void **state) {
 
 void test_notify_SACL_change(void **state) {
     expect_string(__wrap_SendMSG, message,
-        "ossec: Audit: The SACL of 'C:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
+        "wazuh: Audit: The SACL of 'C:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
     expect_string(__wrap_SendMSG, locmsg, "syscheck");
     expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
     will_return(__wrap_SendMSG, 0); // Return value is discarded
@@ -5510,8 +5509,6 @@ void test_whodata_callback_4663_non_monitored_directory(void **state) {
     will_return(__wrap_OSHash_Get, w_evt);
 
     expect_string(__wrap__mdebug2, formatted_msg,
-        "(6319): No configuration found for (file):'c:\\a\\path'");
-    expect_string(__wrap__mdebug2, formatted_msg,
         "(6243): The 'c:\\a\\path' directory has been discarded because it is not being monitored in whodata mode.");
 
     result = whodata_callback(action, NULL, event);
@@ -7079,7 +7076,7 @@ void test_state_checker_file_with_invalid_sacl(void **state) {
     // Inside notify_SACL_change
     {
         expect_string(__wrap_SendMSG, message,
-            "ossec: Audit: The SACL of 'c:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
+            "wazuh: Audit: The SACL of 'c:\\a\\path' has been modified and can no longer be scanned in whodata mode.");
         expect_string(__wrap_SendMSG, locmsg, "syscheck");
         expect_value(__wrap_SendMSG, loc, LOCALFILE_MQ);
         will_return(__wrap_SendMSG, 0); // Return value is discarded

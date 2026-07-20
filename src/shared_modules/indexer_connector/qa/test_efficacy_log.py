@@ -66,12 +66,9 @@ def test_initialize_indexer_connector(opensearch):
         shutil.rmtree("queue/indexer/")
 
     # Run indexer connector testtool out of the container
-    cmd = Path("build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool")
-    cmd_alt = Path("shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool")
+    cmd = Path("build/bin/", "indexer_connector_tool")
 
     # Ensure the binary exists
-    if not cmd.exists():
-        cmd = cmd_alt
     assert cmd.exists(), "The binary does not exists"
 
     # Remove previous log file if exists
@@ -118,12 +115,9 @@ def test_add_bulk_indexer_connector(opensearch):
         shutil.rmtree("queue/indexer/")
 
     # Run indexer connector testtool out of the container
-    cmd = Path("build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool")
-    cmd_alt = Path("shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool")
+    cmd = Path("build/bin/", "indexer_connector_tool")
 
     # Ensure the binary exists
-    if not cmd.exists():
-        cmd = cmd_alt
     assert cmd.exists(), "The binary does not exists"
 
     # Remove previous log file if exists
@@ -250,15 +244,17 @@ def test_add_bulk_indexer_connector(opensearch):
     # Manual insert and check if resync clean the element.
     url = 'http://'+GLOBAL_URL+'/wazuh-states-vulnerabilities-cluster/_doc/000_pkghash_CVE-2022-123456?refresh=true'
     query = """{
-      "agent": {
-        "build": {
+      "wazuh": {
+        "agent": {
+          "build": {
           "original": "sample_build_1"
-        },
-        "ephemeral_id": "eph_id_1",
-        "id": "000",
-        "name": "agent_name_1",
-        "type": "agent_type_1",
-        "version": "1.0.0"
+          },
+          "ephemeral_id": "eph_id_1",
+          "id": "000",
+          "name": "agent_name_1",
+          "type": "agent_type_1",
+          "version": "1.0.0"
+        }
       },
       "message": "Sample message",
       "package": {
@@ -343,12 +339,9 @@ def test_bulk_indexer_413_connector(opensearch):
         shutil.rmtree("queue/indexer/")
 
     # Run indexer connector testtool out of the container
-    cmd = Path("build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool")
-    cmd_alt = Path("shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool")
+    cmd = Path("build/bin/", "indexer_connector_tool")
 
     # Ensure the binary exists
-    if not cmd.exists():
-        cmd = cmd_alt
     assert cmd.exists(), "The binary does not exists"
 
     # Remove previous log file if exists
@@ -475,12 +468,9 @@ def test_update_mappings_connector(opensearch):
         shutil.rmtree("queue/indexer/")
 
     # Run indexer connector testtool out of the container
-    cmd = Path("build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool")
-    cmd_alt = Path("shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool")
+    cmd = Path("build/bin/", "indexer_connector_tool")
 
     # Ensure the binary exists
-    if not cmd.exists():
-        cmd = cmd_alt
     assert cmd.exists(), "The binary does not exists"
 
     # Remove previous log file if exists
@@ -582,12 +572,9 @@ def test_update_mappings_connector_legacy(opensearch):
         shutil.rmtree("queue/indexer/")
 
     # Run indexer connector testtool out of the container
-    cmd = Path("build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool")
-    cmd_alt = Path("shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool")
+    cmd = Path("build/bin/", "indexer_connector_tool")
 
     # Ensure the binary exists
-    if not cmd.exists():
-        cmd = cmd_alt
     assert cmd.exists(), "The binary does not exists"
 
     # Remove previous log file if exists
@@ -707,11 +694,6 @@ def test_error_handling_shard_limit_exceeded(opensearch):
     cmd = Path(
         "build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool"
     )
-    cmd_alt = Path(
-        "shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool"
-    )
-    if not cmd.exists():
-        cmd = cmd_alt
     assert cmd.exists(), "The binary does not exist"
 
     log_file = Path("log.out")
@@ -777,14 +759,7 @@ def test_error_handling_404_index_not_found(opensearch):
     response = requests.delete(index_url)
     LOGGER.debug(f"Deleted test index (if existed): {response.status_code}")
 
-    cmd = Path(
-        "build/shared_modules/indexer_connector/testtool/", "indexer_connector_tool"
-    )
-    cmd_alt = Path(
-        "shared_modules/indexer_connector/build/testtool/", "indexer_connector_tool"
-    )
-    if not cmd.exists():
-        cmd = cmd_alt
+    cmd = Path("build/bin/indexer_connector_tool")
     assert cmd.exists(), "The binary does not exist"
 
     log_file = Path("log.out")
@@ -796,17 +771,13 @@ def test_error_handling_404_index_not_found(opensearch):
     LOGGER.debug(f"Running test {test_name}")
 
     # Try to sync with non-existent index (no template, no creation)
+
 @pytest.mark.parametrize("opensearch", [False], indirect=True)
 def test_abuse_control_indexer_connector(opensearch):
     os.chdir(Path(__file__).parent.parent.parent.parent)
     test_name = inspect.currentframe().f_code.co_name
 
-    cmd = Path("build/shared_modules/indexer_connector/testtool/indexer_connector_tool")
-    cmd_alt = Path(
-        "shared_modules/indexer_connector/build/testtool/indexer_connector_tool"
-    )
-    if not cmd.exists():
-        cmd = cmd_alt
+    cmd = Path("build/bin/indexer_connector_tool")
     assert cmd.exists()
 
     if Path("log.out").exists():
@@ -867,10 +838,7 @@ def test_abuse_control_no_data_loss_on_indexer_failure(opensearch):
     if os.path.exists("queue/indexer/"):
         shutil.rmtree("queue/indexer/")
 
-    cmd = Path("build/shared_modules/indexer_connector/testtool/indexer_connector_tool")
-    cmd_alt = Path("shared_modules/indexer_connector/build/testtool/indexer_connector_tool")
-    if not cmd.exists():
-        cmd = cmd_alt
+    cmd = Path("build/bin/indexer_connector_tool")
     assert cmd.exists(), "Binary does not exist"
 
     client = opensearch

@@ -43,7 +43,7 @@ TEST_DISCARD_REGEX = "test_regex"
 TEST_ONLY_LOGS_AFTER = "20220101"
 TEST_ONLY_LOGS_AFTER_WITH_FORMAT = "2022-01-01 00:00:00.0"
 TEST_LOG_KEY = "123456789_CloudTrail-us-east-1_20190401T00015Z_aaaa.json.gz"
-TEST_FULL_PREFIX = "base/account_id/service/region/"
+TEST_FULL_PREFIX = "AWSLogs/123456789/CloudTrail/us-east-1/"
 TEST_EXTERNAL_ID = "external-id-Sec-Lake"
 
 TEST_SERVICE_ENDPOINT = 'test_service_endpoint'
@@ -452,3 +452,12 @@ def database_execute_script(connector, sql_file):
 def database_execute_query(connector, query, query_params={}):
     row = connector.execute(query, query_params).fetchone()
     return row[0] if row and len(row) == 1 else row
+
+
+def apply_expected_startafter(bucket, marker: str, aws_account_id: str, aws_region: str) -> str:
+    """Apply the same StartAfter normalization used by AWSBucket when reparse=False."""
+    marker = bucket.rewind_marker_to_day_folder(marker, aws_account_id, aws_region)
+    if bucket.only_logs_after:
+        only_logs_marker = bucket.marker_only_logs_after(aws_region, aws_account_id)
+        marker = only_logs_marker if only_logs_marker > marker else marker
+    return marker

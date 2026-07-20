@@ -9,21 +9,22 @@ import subprocess
 import pytest
 import sys
 
+from wazuh_testing.constants.platforms import WINDOWS, MACOS
+from py.xml import html
 from wazuh_testing import session_parameters
 from wazuh_testing.constants import platforms
-from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.constants.daemons import WAZUH_MANAGER, API_DAEMONS_REQUIREMENTS
 from wazuh_testing.constants.paths import ROOT_PREFIX
+from wazuh_testing.constants.paths.variables import VAR_RUN_PATH
 from wazuh_testing.constants.paths.api import RBAC_DATABASE_PATH
 from wazuh_testing.constants.paths.logs import (
-    ACTIVE_RESPONSE_LOG_PATH,
     WAZUH_LOG_PATH,
     ALERTS_JSON_PATH,
     ARCHIVES_LOG_PATH,
     WAZUH_API_LOG_FILE_PATH,
     WAZUH_API_JSON_LOG_FILE_PATH,
 )
-from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH
+from wazuh_testing.constants.paths.configurations import WAZUH_CLIENT_KEYS_PATH, SHARED_CONFIGURATIONS_PATH, WAZUH_CONF_PATH
 from wazuh_testing.logger import logger
 from wazuh_testing.tools import socket_controller
 from wazuh_testing.tools.monitors import queue_monitor
@@ -36,6 +37,8 @@ from wazuh_testing.utils.file import remove_file, truncate_file
 from wazuh_testing.utils.manage_agents import remove_agents
 import wazuh_testing.utils.configuration as wazuh_configuration
 from wazuh_testing.utils.services import control_service
+
+WAZUH_MERGED_MG_PATH = os.path.join(SHARED_CONFIGURATIONS_PATH, 'merged.mg')
 
 # - - - - - - - - - - - - - - - - - - - - - - - - -Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -85,7 +88,7 @@ def pytest_collection_modifyitems(
     deselected_tests = []
     _host_types = set(["server", "agent"])
     _platforms = set(
-        [platforms.LINUX, platforms.WINDOWS, platforms.MACOS, platforms.SOLARIS]
+        [platforms.LINUX, platforms.WINDOWS, platforms.MACOS]
     )
 
     for item in items:
@@ -123,13 +126,31 @@ def pytest_collection_modifyitems(
     items[:] = selected_tests
 
 
+@pytest.hookimpl(optionalhook=True)
+def pytest_html_results_summary(prefix, summary, postfix):
+    """Add custom information to the HTML report summary section.
+
+    Args:
+        prefix: Content to be added before the summary table
+        summary: The summary table element
+        postfix: Content to be added after the summary table
+    """
+    commit_sha = os.getenv('GITHUB_SHA', os.getenv('GIT_COMMIT', 'unknown'))
+    branch_name = os.getenv('GITHUB_REF_NAME', os.getenv('GIT_BRANCH', 'unknown'))
+
+    prefix.extend([
+        html.p(html.strong("Branch: "), branch_name),
+        html.p(html.strong("Commit SHA: "), commit_sha)
+    ])
+
+
 # - - - - - - - - - - - - - - - - - - - - - - -End of Pytest configuration - - - - - - - - - - - - - - - - - - - - - - -
 
 
 @pytest.fixture(scope="session")
 def load_wazuh_basic_configuration():
     """Load a new basic configuration to the manager"""
-    # Load ossec.conf with all disabled settings
+    # Load wazuh configuration file with all disabled settings
     minimal_configuration = configuration.get_minimal_configuration()
 
     # Make a backup from current configuration
@@ -140,7 +161,7 @@ def load_wazuh_basic_configuration():
 
     yield
 
-    # Restore the ossec.conf backup
+    # Restore the wazuh configuration file backup
     configuration.write_wazuh_conf(backup_ossec_configuration)
 
 
@@ -157,7 +178,7 @@ def backup_wazuh_configuration() -> None:
 
 
 @pytest.fixture()
-def set_wazuh_configuration(test_configuration: dict) -> None:
+def set_wazuh_configuration(request: pytest.FixtureRequest, test_configuration: dict) -> None:
     """Set wazuh configuration
 
     Args:
@@ -167,8 +188,22 @@ def set_wazuh_configuration(test_configuration: dict) -> None:
     backup_config = configuration.get_wazuh_conf()
 
     # Configuration for testing
+    template = None
+    template_spec = getattr(request.module, "wazuh_configuration_template", None)
+    use_minimal_template = getattr(request.module, "use_minimal_wazuh_configuration", False)
+
+    if use_minimal_template:
+        template = configuration.get_minimal_configuration()
+    elif template_spec is not None:
+        if template_spec == "minimal":
+            template = configuration.get_minimal_configuration()
+        elif isinstance(template_spec, list):
+            template = template_spec
+        else:
+            template = file.read_file_lines(os.fspath(template_spec))
+
     test_config = configuration.set_section_wazuh_conf(
-        test_configuration.get("sections")
+        test_configuration.get("sections"), template=template
     )
 
     # Set new configuration
@@ -237,7 +272,7 @@ def restart_wazuh_function(request):
         daemons = []
 
     if len(daemons) == 0:
-        logger.debug(f"Restarting all daemon")
+        logger.debug("Restarting all daemon")
         control_service("restart")
     else:
         for daemon in daemons:
@@ -249,7 +284,7 @@ def restart_wazuh_function(request):
 
     # Stop all daemons by default (daemons = None)
     if len(daemons) == 0:
-        logger.debug(f"Stopping all daemons")
+        logger.debug("Stopping all daemons")
         control_service("stop")
     else:
         # Stop a list daemons in order (as Wazuh does)
@@ -364,9 +399,10 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
             services.control_service("restart")
         else:
             for daemon in daemons:
-                logger.debug(f"Restarting {daemon}")
-                # Restart daemon instead of starting due to legacy used fixture in the test suite.
-                services.control_service("restart", daemon=daemon)
+                if daemon is not None:
+                    logger.debug(f"Restarting {daemon}")
+                    # Restart daemon instead of starting due to legacy used fixture in the test suite.
+                    services.control_service("restart", daemon=daemon)
 
     except ValueError as value_error:
         logger.error(f"{str(value_error)}")
@@ -386,8 +422,9 @@ def daemons_handler_implementation(request: pytest.FixtureRequest) -> None:
         if daemons == API_DAEMONS_REQUIREMENTS:
             daemons.reverse()  # Stop in reverse, otherwise the next start will fail
         for daemon in daemons:
-            logger.debug(f"Stopping {daemon}")
-            services.control_service("stop", daemon=daemon)
+            if daemon is not None:
+                logger.debug(f"Stopping {daemon}")
+                services.control_service("stop", daemon=daemon)
 
 
 @pytest.fixture()
@@ -509,22 +546,26 @@ def configure_sockets_environment_implementation(
         try:
             services.control_service("stop")
         except Exception as e:
-            logger.warning(f"Setup step failed: {e}")
+            logger.error(f"Setup step failed: {e}")
+            raise
 
         try:
             services.wait_expected_daemon_status(running_condition=False)
         except Exception as e:
-            logger.warning(f"Setup step failed: {e}")
+            logger.error(f"Setup step failed: {e}")
+            raise
 
 
         # Clean leftover daemons. Missing files are the expected case when the
         # previous teardown ran cleanly, so swallow FileNotFoundError silently.
         for daemon, mitm, daemon_first in monitored_sockets_params:
-            pid_file = f"/var/ossec/var/run/{daemon}.pid"
-            try:
-                os.unlink(pid_file)
-            except FileNotFoundError:
-                pass
+
+            if daemon is not None:
+                pid_file = os.path.join(VAR_RUN_PATH, f"{daemon}.pid")
+                try:
+                    os.unlink(pid_file)
+                except FileNotFoundError:
+                    pass
 
             if mitm is not None and mitm.family == "AF_UNIX":
                 try:
@@ -546,7 +587,9 @@ def configure_sockets_environment_implementation(
                 started_mitms.append(mitm)
 
             services.control_service("start", daemon=daemon, debug_mode=True)
-            started_daemons.append(daemon)
+
+            if daemon is not None:
+                started_daemons.append(daemon)
 
             # Use a 60s timeout (vs the framework default of 10s) because
             # test_authd_key_request_worker has been observed to need >30s for
@@ -606,12 +649,14 @@ def configure_sockets_environment_implementation(
         try:
             database.delete_dbs()
         except Exception as e:
-            logger.warning(f"Cleanup step failed: {e}")
+            logger.error(f"Cleanup step failed: {e}")
+            raise
 
         try:
             services.control_service("start")
         except Exception as e:
-            logger.warning(f"Cleanup step failed: {e}")
+            logger.error(f"Cleanup step failed: {e}")
+            raise
 
 
 @pytest.fixture(scope="module")
@@ -736,6 +781,41 @@ def mock_agent_packages(mock_agent_with_custom_system) -> list:
     yield package_names
 
     mocking.delete_mocked_packages(agent_id=mock_agent_with_custom_system)
+
+
+@pytest.fixture(autouse=True)
+def ensure_merged_mg() -> None:
+    """Write the default dummy merged.mg whose MD5 matches RemotedSimulator.DEFAULT_MERGED_SUM.
+
+    On Linux the file is created with group-writable permissions (0o660) and
+    owned by root:wazuh so that wazuh-agentd can overwrite it when receiving
+    a new merged.mg from the manager (or simulator).
+    """
+    os.makedirs(os.path.dirname(WAZUH_MERGED_MG_PATH), exist_ok=True)
+    with open(WAZUH_MERGED_MG_PATH, 'wb') as f:
+        f.write(RemotedSimulator.DEFAULT_MERGED_MG_CONTENT)
+    if sys.platform != platforms.WINDOWS:
+        import grp
+        os.chmod(WAZUH_MERGED_MG_PATH, 0o660)
+        try:
+            wazuh_gid = grp.getgrnam('wazuh').gr_gid
+            os.chown(WAZUH_MERGED_MG_PATH, -1, wazuh_gid)
+        except (KeyError, PermissionError):
+            pass
+
+
+@pytest.fixture()
+def clean_merged_mg():
+    """Remove merged.mg before the test so the agent starts with no local file.
+
+    After the test, any merged.mg left by the simulator push is also removed
+    to avoid leaking state between tests.
+    """
+    if os.path.exists(WAZUH_MERGED_MG_PATH):
+        os.remove(WAZUH_MERGED_MG_PATH)
+    yield
+    if os.path.exists(WAZUH_MERGED_MG_PATH):
+        os.remove(WAZUH_MERGED_MG_PATH)
 
 
 @pytest.fixture()
@@ -866,11 +946,39 @@ def autostart_simulators(request: pytest.FixtureRequest) -> None:
 def simulate_agents(test_metadata):
 
     agents_amount = test_metadata.get("agents_number", 1)
-    agents = create_agents(agents_amount, "localhost")
+    agents = create_agents(agents_amount, "localhost", retry_enrollment=True)
 
     yield agents
 
     # Delete simulated agents
     control_service("start")
-    remove_agents([a.id for a in agents], "manage_agents")
+    remove_agents([a.id for a in agents], "api")
     control_service("stop")
+
+@pytest.fixture(scope="session", autouse=True)
+def fix_ossec_conf_multiple_roots():
+    """Temporary fix: DEB/RPM packages install ossec.conf with two <ossec_config> root
+    blocks. The test framework's XML parser only supports a single root element, so we
+    merge both blocks by removing the closing tag of the first block and the opening tag
+    of the second block before the test session begins.
+    """
+    if sys.platform == WINDOWS:
+        return
+
+    try:
+        with open(WAZUH_CONF_PATH, 'r') as f:
+            content = f.read()
+
+        # Only act when two root blocks are present
+        if content.count('</ossec_config>') < 2:
+            return
+
+        # Remove the boundary between the two blocks: </ossec_config>...<ossec_config>
+        import re
+        fixed = re.sub(r'</ossec_config>\s*<ossec_config>', '', content, count=1)
+
+        with open(WAZUH_CONF_PATH, 'w') as f:
+            f.write(fixed)
+    except OSError:
+        # Not installed or no permission — tests will fail on their own if needed
+        pass

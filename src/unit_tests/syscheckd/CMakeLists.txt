@@ -1,52 +1,40 @@
-# Generate syscheck library
+# Collect syscheckd object files from CMake build
 if(${TARGET} STREQUAL "winagent")
-  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj
-                     ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*/*.obj)
-  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.obj)
+  file(GLOB sysfiles
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*.obj
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*/*.obj
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*/*/*.obj)
+  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/main.c.obj)
 else()
-  file(GLOB sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*.o
-                     ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/*/*.o)
-  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd.dir/src/main.c.o)
+  file(GLOB sysfiles
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*.o
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*/*.o
+       ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/*/*/*.o)
+  list(REMOVE_ITEM sysfiles ${SRC_FOLDER}/build/syscheckd/CMakeFiles/syscheckd_lib.dir/src/main.c.o)
 endif()
 
-file(GLOB rootfiles ${SRC_FOLDER}/rootcheck/*.o)
-
+# Link against required libraries
+link_directories(${SRC_FOLDER}/build/lib)
 if(${TARGET} STREQUAL "winagent")
-  # Exclude winagent file
-  list(FILTER rootfiles EXCLUDE REGEX ".*_rk.o$")
-
-  # Add test wrappers
-  file(GLOB test_wrapper_files
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/audit/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/bzip2/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/cJSON/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/openssl/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/procpc/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/externals/sqlite/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/libc/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/linux/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/posix/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/os_crypto/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/os_net/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/os_regex/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/syscheckd/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_db/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/wazuh/wazuh_modules/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/windows/*.o
-       ${SRC_FOLDER}/unit_tests/wrappers/windows/libc/*.o
-       )
-  list(APPEND sysfiles ${test_wrapper_files})
+  # On Windows, link to .dll.a import libraries
+  set(FIMDB_LIB ${SRC_FOLDER}/build/lib/libfimdb.dll.a)
+  set(AGENT_SYNC_PROTOCOL_LIB ${SRC_FOLDER}/build/lib/libagent_sync_protocol.dll.a)
+  set(DBSYNC_LIB ${SRC_FOLDER}/build/lib/libdbsync.dll.a)
+  set(SCHEMA_VALIDATOR_LIB ${SRC_FOLDER}/build/lib/libschema_validator.dll.a)
+else()
+  find_library(FIMDB_LIB NAMES fimdb HINTS ${SRC_FOLDER}/build/lib REQUIRED)
+  find_library(AGENT_SYNC_PROTOCOL_LIB NAMES agent_sync_protocol HINTS ${SRC_FOLDER}/build/lib REQUIRED)
+  find_library(DBSYNC_LIB NAMES dbsync HINTS ${SRC_FOLDER}/build/lib REQUIRED)
+  find_library(SCHEMA_VALIDATOR_LIB NAMES schema_validator HINTS ${SRC_FOLDER}/build/lib REQUIRED)
 endif()
+
+# Link against the rootcheck static library built by CMake
+find_library(ROOTCHECK_LIB NAMES rootcheck HINTS ${SRC_FOLDER}/build/lib REQUIRED)
 
 add_library(SYSCHECK_O STATIC ${sysfiles})
-add_library(ROOTCHECK_O STATIC ${rootfiles})
 
 set_source_files_properties(
   ${sysfiles}
-  ${rootfiles}
   PROPERTIES
   EXTERNAL_OBJECT true
   GENERATED true
@@ -54,15 +42,18 @@ set_source_files_properties(
 
 set_target_properties(
   SYSCHECK_O
-  ROOTCHECK_O
   PROPERTIES
   LINKER_LANGUAGE C
   )
 
-target_link_libraries(SYSCHECK_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+if(${TARGET} STREQUAL "winagent")
+  target_link_libraries(SYSCHECK_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ${ROOTCHECK_LIB} ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+else()
+  target_link_libraries(SYSCHECK_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ${ROOTCHECK_LIB} ${WAZUHLIB} ${WAZUHEXT} -lpthread -ldl)
+endif()
 
 if(${TARGET} STREQUAL "winagent")
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
 endif(${TARGET} STREQUAL "winagent")
 
 # Add fim_tools library to compilation
@@ -71,6 +62,10 @@ include_directories(${SRC_FOLDER}/syscheckd/src)
 include_directories(${SRC_FOLDER}/unit_tests)
 include_directories(${SRC_FOLDER}/unit_tests/syscheckd)
 include_directories(${SRC_FOLDER}/config)
+
+# Link directories for sync_protocol and dbsync libraries
+link_directories(${SRC_FOLDER}/shared_modules/sync_protocol/build/lib)
+link_directories(${SRC_FOLDER}/shared_modules/dbsync/build/lib)
 
 add_library(fim_shared STATIC expect_run_check.c
                               expect_fim_diff_changes.c
@@ -84,9 +79,9 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate syscheckd-event library
 if(${TARGET} STREQUAL "winagent")
-  file(GLOB syscheck_event_files ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj
-                                 ${SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/*/*.obj)
-  list(REMOVE_ITEM sysfiles {SRC_FOLDER}/syscheckd/build/CMakeFiles/wazuh-syscheckd-event.dir/src/main.obj)
+  file(GLOB syscheck_event_files ${SRC_FOLDER}/build/syscheckd/CMakeFiles/wazuh-syscheckd-event.dir/src/*.obj
+                                 ${SRC_FOLDER}/build/syscheckd/CMakeFiles/wazuh-syscheckd-event.dir/src/*/*.obj)
+  list(REMOVE_ITEM syscheck_event_files ${SRC_FOLDER}/build/syscheckd/CMakeFiles/wazuh-syscheckd-event.dir/src/main.c.obj)
   add_library(SYSCHECK_EVENT_O STATIC ${syscheck_event_files})
 
   set_source_files_properties(
@@ -98,12 +93,11 @@ if(${TARGET} STREQUAL "winagent")
 
   set_target_properties(
     SYSCHECK_EVENT_O
-    ROOTCHECK_O
     PROPERTIES
     LINKER_LANGUAGE C
     )
 
-  target_link_libraries(SYSCHECK_EVENT_O ROOTCHECK_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+  target_link_libraries(SYSCHECK_EVENT_O ${FIMDB_LIB} ${AGENT_SYNC_PROTOCOL_LIB} ${DBSYNC_LIB} ${SCHEMA_VALIDATOR_LIB} ${ROOTCHECK_LIB} ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
   add_subdirectory(registry)
 endif()
@@ -114,7 +108,18 @@ add_subdirectory(whodata)
 # syscom.c tests
 list(APPEND syscheckd_tests_names "syscom")
 set(FIM_SYSCOM_BASE_FLAGS "-Wl,--wrap,getSyscheckConfig -Wl,--wrap,getRootcheckConfig -Wl,--wrap,getSyscheckInternalOptions \
-                           -Wl,--wrap,getpid -Wl,--wrap,fim_sync_push_msg ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap,getpid -Wl,--wrap,fim_sync_push_msg -Wl,--wrap,fim_db_init -Wl,--wrap,fim_db_transaction_sync_row \
+                           -Wl,--wrap,fim_db_file_pattern_search -Wl,--wrap,fim_db_transaction_deleted_rows \
+                           -Wl,--wrap,fim_db_get_count_file_entry -Wl,--wrap,fim_db_get_count_file_inode -Wl,--wrap,fim_db_file_inode_search \
+                           -Wl,--wrap,fim_db_file_update -Wl,--wrap,fim_db_get_path -Wl,--wrap,fim_db_transaction_start \
+                           -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
+                           -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
+                           -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                           -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                           -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                           -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                           -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                           -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS} -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=fim_db_init -Wl,--wrap,fim_sync_push_msg \
@@ -122,8 +127,9 @@ if(${TARGET} STREQUAL "winagent")
                                      -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                                      -Wl,--wrap=fim_db_file_pattern_search -Wl,--wrap=fim_db_transaction_start \
                                      -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_transaction_deleted_rows \
+                                     -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                                      -Wl,--wrap=fim_db_file_update -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=is_fim_shutdown \
-                                     -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                     -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_SYSCOM_BASE_FLAGS}")
 endif()
@@ -141,15 +147,22 @@ set(FIM_DIFF_CHANGES_BASE_FLAGS "-Wl,--wrap,lstat -Wl,--wrap,stat \
                                  -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                                  -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                  -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_db_init -Wl,--wrap=fim_run_integrity \
+                                 -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
                                  -Wl,--wrap=fim_db_transaction_start -Wl,--wrap=fim_db_transaction_sync_row \
-                                 -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
+                                 -Wl,--wrap=fim_db_transaction_deleted_rows -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete -Wl,--wrap,popen \
+                                 -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                 -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                                 -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                                 -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                                 -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                                 -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "fim_diff_changes")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=FileSizeWin -Wl,--wrap,fim_sync_push_msg \
                                      -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=utf8_GetShortPathName")
+                                     -Wl,--wrap=fim_db_teardown -Wl,--wrap=utf8_GetShortPathName")
 else()
   list(APPEND syscheckd_tests_flags "${FIM_DIFF_CHANGES_BASE_FLAGS} -Wl,--wrap=unlink -Wl,--wrap=FileSize")
 endif()
@@ -164,14 +177,21 @@ set(RUN_REALTIME_BASE_FLAGS "-Wl,--wrap,inotify_init -Wl,--wrap,inotify_add_watc
                              -Wl,--wrap,fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode -Wl,--wrap,fim_db_get_count_file_entry \
                              -Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                              -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
-                             ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
+                             -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
+                             -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
+                             -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                             -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                             -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                             -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                             -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                             -Wl,--wrap,w_query_agentd ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "run_realtime")
 if(${TARGET} STREQUAL "winagent")
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS} -Wl,--wrap=fim_configuration_directory -Wl,--wrap,fim_sync_push_msg \
                                      -Wl,--wrap=fim_db_get_count_registry_data -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=QueryDosDeviceA")
+                                     -Wl,--wrap=fim_db_teardown -Wl,--wrap=QueryDosDeviceA")
 
   # Create event channel tests for run_realtime
   list(APPEND syscheckd_event_tests_names "test_run_realtime_event")
@@ -180,7 +200,7 @@ if(${TARGET} STREQUAL "winagent")
                                            -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
                                            -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch
                                            -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                           -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                                           -Wl,--wrap=fim_db_teardown \
                                            -Wl,--wrap=utf8_CreateFile -Wl,--wrap=QueryDosDeviceA")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_REALTIME_BASE_FLAGS}")
@@ -194,7 +214,14 @@ set(SYSCHECK_CONFIG_BASE_FLAGS "-Wl,--wrap,pthread_rwlock_rdlock -Wl,--wrap,pthr
                                 -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                                 -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                                 -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
-                                ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
+                                -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
+                                -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                                -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                                -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                                -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                                -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                                -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND syscheckd_tests_names "config")
 if(${TARGET} STREQUAL "agent")
@@ -205,18 +232,26 @@ else()
                                       -Wl,--wrap=fim_db_get_count_registry_data \
                                       -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                       -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                      -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=QueryDosDeviceA")
+                                      -Wl,--wrap=fim_db_teardown -Wl,--wrap=QueryDosDeviceA")
   else()
     list(APPEND syscheckd_tests_flags "${SYSCHECK_CONFIG_BASE_FLAGS} -Wl,--wrap,getpid")
   endif()
 endif()
 
 # syscheck.c tests
-set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--wrap,wfopen \
+set(SYSCHECK_BASE_FLAGS "-Wl,--wrap,fim_db_init -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,wfopen \
                          -Wl,--wrap=fim_db_file_pattern_search,--wrap=fim_db_remove_path -Wl,--wrap,fim_db_get_path \
                          -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                          -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                          -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
+                         -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
+                         -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
+                         -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                         -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                         -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                         -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                         -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                         -Wl,--wrap,w_query_agentd -Wl,--wrap,OS_ConnectUnixDomain \
                          ${DEBUG_OP_WRAPPERS}")
 list(APPEND syscheckd_tests_names "syscheck")
 if(${TARGET} STREQUAL "winagent")
@@ -232,7 +267,7 @@ if(${TARGET} STREQUAL "winagent")
                                     -Wl,--wrap=fim_db_get_count_registry_data \
                                     -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                     -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                    -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown")
+                                    -Wl,--wrap=fim_db_teardown")
 
 else()
   list(APPEND syscheckd_tests_flags "${SYSCHECK_BASE_FLAGS}")
@@ -250,23 +285,35 @@ set(RUN_CHECK_BASE_FLAGS "-Wl,--wrap,sleep -Wl,--wrap,SendMSGPredicated -Wl,--wr
                           -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
-                          -Wl,--wrap=fim_generate_delete_event ${DEBUG_OP_WRAPPERS}")
+                          -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
+                          -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
+                          -Wl,--wrap=fim_generate_delete_event -Wl,--wrap=asp_sync_module \
+                          -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                          -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                          -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                          -Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_update_last_sync_time_value \
+                          -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                          -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+
+set(RUN_CHECK_BASE_FLAGS_WINAGENT "${RUN_CHECK_BASE_FLAGS}")
+string(REPLACE "-Wl,--wrap=fim_run_integrity " "" RUN_CHECK_BASE_FLAGS_WINAGENT "${RUN_CHECK_BASE_FLAGS_WINAGENT}")
 
 list(APPEND syscheckd_tests_names "run_check")
 if(${TARGET} STREQUAL "agent")
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep -Wl,--wrap,time")
 elseif(${TARGET} STREQUAL "winagent")
-  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start \
+  list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS_WINAGENT} -Wl,--wrap=realtime_start \
                                      -Wl,--wrap,WaitForSingleObjectEx -Wl,--wrap,pthread_rwlock_rdlock \
                                      -Wl,--wrap,pthread_rwlock_unlock -Wl,--wrap,pthread_rwlock_wrlock \
                                      -Wl,--wrap,fim_sync_push_msg -Wl,--wrap=fim_db_get_count_registry_data \
                                      -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                      -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                     -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown -Wl,--wrap=QueryDosDeviceA")
+                                     -Wl,--wrap=fim_db_teardown -Wl,--wrap=QueryDosDeviceA")
 
   # Create event channel tests for run_check
   list(APPEND syscheckd_event_tests_names "test_run_check_event")
-  list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan \
+  list(APPEND syscheckd_event_tests_flags "${RUN_CHECK_BASE_FLAGS_WINAGENT} -Wl,--wrap=realtime_start,--wrap=run_whodata_scan \
                                                                    -Wl,--wrap=audit_restore -Wl,--wrap=QueryDosDeviceA \
                                                                    -Wl,--wrap,pthread_rwlock_rdlock \
                                                                    -Wl,--wrap,pthread_rwlock_unlock \
@@ -280,7 +327,6 @@ elseif(${TARGET} STREQUAL "winagent")
                                                                    -Wl,--wrap=fim_generate_delete_event \
                                                                    -Wl,--wrap=is_fim_shutdown \
                                                                    -Wl,--wrap=_imp__dbsync_initialize \
-                                                                   -Wl,--wrap=_imp__rsync_initialize \
                                                                    -Wl,--wrap=fim_db_teardown")
 else()
   list(APPEND syscheckd_tests_flags "${RUN_CHECK_BASE_FLAGS} -Wl,--wrap=sleep,--wrap,time")
@@ -356,7 +402,7 @@ if(NOT ${TARGET} STREQUAL "winagent")
                            ${DEBUG_OP_WRAPPERS}")
 
   add_executable(test_check_rc_sys test_check_rc_sys.c)
-  target_include_directories(test_check_rc_sys PRIVATE ${SRC_FOLDER}/rootcheck)
+  target_include_directories(test_check_rc_sys PRIVATE ${SRC_FOLDER}/rootcheck/include)
   target_link_libraries(test_check_rc_sys SYSCHECK_O ${TEST_DEPS} "${CHECK_RC_SYS_FLAGS}")
   add_test(NAME test_check_rc_sys COMMAND test_check_rc_sys)
 
@@ -373,17 +419,18 @@ if(NOT ${TARGET} STREQUAL "winagent")
                     ${DEBUG_OP_WRAPPERS}")
 
   add_executable(test_common test_common.c)
-  target_include_directories(test_common PRIVATE ${SRC_FOLDER}/rootcheck)
+  target_include_directories(test_common PRIVATE ${SRC_FOLDER}/rootcheck/include)
   target_link_libraries(test_common SYSCHECK_O ${TEST_DEPS} "${COMMON_FLAGS}")
   add_test(NAME test_common COMMAND test_common)
 endif()
 
-# create_db.c tests
-add_executable(test_create_db test_create_db.c)
+# fim_scan.c tests
+add_executable(test_fim_scan test_fim_scan.c)
 
-target_compile_options(test_create_db PRIVATE "-Wall")
+target_compile_options(test_fim_scan PRIVATE "-Wall")
 
-set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck_msg \
+set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,send_syscheck_msg -Wl,--wrap,persist_syscheck_msg \
+                          -Wl,--wrap,validate_and_persist_fim_event -Wl,--wrap,cleanup_failed_fim_files \
                           -Wl,--wrap,readdir -Wl,--wrap,opendir -Wl,--wrap,closedir -Wl,--wrap,realtime_adddir \
                           -Wl,--wrap,HasFilesystem -Wl,--wrap,fim_db_get_path \
                           -Wl,--wrap,delete_target_file -Wl,--wrap,OS_MD5_SHA1_SHA256_File \
@@ -403,24 +450,87 @@ set(CREATE_DB_BASE_FLAGS "-Wl,--wrap,fim_send_scan_info -Wl,--wrap,send_syscheck
                           -Wl,--wrap=fim_db_file_update,--wrap=fim_db_file_inode_search -Wl,--wrap,fim_db_get_count_file_inode \
                           -Wl,--wrap=fim_db_get_count_file_entry -Wl,--wrap=fim_run_integrity -Wl,--wrap=fim_db_transaction_start \
                           -Wl,--wrap=fim_db_transaction_sync_row -Wl,--wrap=fim_db_transaction_deleted_rows \
-                          ${DEBUG_OP_WRAPPERS}")
+                          -Wl,--wrap,fim_db_get_max_version_file -Wl,--wrap,fim_db_set_version_file \
+                          -Wl,--wrap,fim_db_close_and_delete_database -Wl,--wrap,fim_db_clean_file_table -Wl,--wrap,fim_db_file_delete \
+                          -Wl,--wrap,asp_create -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_parse_response_buffer -Wl,--wrap,asp_persist_diff \
+                          -Wl,--wrap,asp_notify_data_clean -Wl,--wrap,asp_delete_database \
+                          -Wl,--wrap,fim_recovery_check_if_full_sync_required -Wl,--wrap,fim_recovery_persist_table_and_resync \
+                          -Wl,--wrap,fim_recovery_integrity_interval_has_elapsed -Wl,--wrap,fim_db_update_last_sync_time \
+                          -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_initialize -Wl,--wrap,schema_validator_validate \
+                          -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
-target_link_libraries(test_create_db SYSCHECK_O ${TEST_DEPS} fim_shared)
+target_link_libraries(test_fim_scan SYSCHECK_O ${TEST_DEPS} fim_shared)
 if(${TARGET} STREQUAL "winagent")
-    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions
+    target_link_libraries(test_fim_scan "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=w_get_file_permissions
                                           -Wl,--wrap,getpid -Wl,--wrap=fim_db_get_count_registry_data \
                                           -Wl,--wrap=fim_db_get_count_registry_key -Wl,--wrap=syscom_dispatch \
                                           -Wl,--wrap=decode_win_acl_json,--wrap=w_get_file_attrs -Wl,--wrap=os_winreg_check \
                                           -Wl,--wrap,get_file_user -Wl,--wrap,fim_registry_scan \
                                           -Wl,--wrap,get_UTC_modification_time -Wl,--wrap,fim_sync_push_msg \
                                           -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
-                                          -Wl,--wrap=_imp__rsync_initialize -Wl,--wrap=fim_db_teardown \
+                                          -Wl,--wrap=fim_db_teardown \
                                           -Wl,--wrap=utf8_stat64 -Wl,--wrap=QueryDosDeviceA"
                                           fimdb)
 else()
-    target_link_libraries(test_create_db "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
+    target_link_libraries(test_fim_scan "${CREATE_DB_BASE_FLAGS} -Wl,--wrap=lstat -Wl,--wrap=count_watches \
                                           -Wl,--wrap,get_user -Wl,--wrap,realpath -Wl,--wrap,add_whodata_directory \
-                                          -Wl,--wrap,atexit -Wl,--wrap,remove_audit_rule_syscheck")
+                                          -Wl,--wrap,atexit -Wl,--wrap,remove_audit_rule_syscheck \
+                                          -Wl,--wrap,IsLink")
 endif()
 
-add_test(NAME test_create_db COMMAND test_create_db)
+add_test(NAME test_fim_scan COMMAND test_fim_scan)
+
+# fim_sync_limits tests (new sync document limit functionality)
+add_executable(test_fim_sync_limits test_fim_sync_limits.c)
+
+target_compile_options(test_fim_sync_limits PRIVATE "-Wall")
+
+set(FIM_SYNC_LIMITS_BASE_FLAGS "-Wl,--wrap,validate_and_persist_fim_event \
+                                -Wl,--wrap,build_stateful_event_file \
+                                -Wl,--wrap,build_stateful_event_registry_key \
+                                -Wl,--wrap,build_stateful_event_registry_value \
+                                -Wl,--wrap,fim_db_get_documents_to_promote \
+                                -Wl,--wrap,fim_db_get_documents_to_demote \
+                                -Wl,--wrap,fim_db_count_synced_docs \
+                                -Wl,--wrap,fim_db_set_sync_flag \
+                                -Wl,--wrap,fim_configuration_directory \
+                                -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+
+target_link_libraries(test_fim_sync_limits SYSCHECK_O ${TEST_DEPS})
+if(${TARGET} STREQUAL "winagent")
+  target_link_libraries(test_fim_sync_limits "${FIM_SYNC_LIMITS_BASE_FLAGS} -Wl,--wrap,syscom_dispatch -Wl,--wrap,Start_win32_Syscheck \
+                                -Wl,--wrap=is_fim_shutdown -Wl,--wrap=_imp__dbsync_initialize \
+                                -Wl,--wrap=fim_db_teardown" fimdb)
+else()
+  target_link_libraries(test_fim_sync_limits "${FIM_SYNC_LIMITS_BASE_FLAGS}")
+endif()
+
+add_test(NAME test_fim_sync_limits COMMAND test_fim_sync_limits)
+
+# recovery.c tests
+add_executable(test_recovery test_recovery.c)
+
+target_compile_options(test_recovery PRIVATE "-Wall")
+
+set(RECOVERY_BASE_FLAGS "-Wl,--wrap,fim_db_get_last_sync_time -Wl,--wrap,fim_db_update_last_sync_time_value \
+                         -Wl,--wrap,fim_db_get_every_element -Wl,--wrap,fim_db_calculate_table_checksum \
+                         -Wl,--wrap,fim_db_increase_each_entry_version \
+                         -Wl,--wrap,asp_clear_in_memory_data -Wl,--wrap,asp_persist_diff_in_memory \
+                         -Wl,--wrap,asp_sync_module -Wl,--wrap,asp_requires_full_sync \
+                         -Wl,--wrap,merror -Wl,--wrap,minfo -Wl,--wrap,mdebug1 \
+                         -Wl,--wrap,build_stateful_event_file -Wl,--wrap,build_stateful_event_registry_key \
+                         -Wl,--wrap,build_stateful_event_registry_value \
+                         -Wl,--wrap,fim_configuration_directory \
+                         -Wl,--wrap,schema_validator_is_initialized -Wl,--wrap,schema_validator_validate \
+                         -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+
+target_link_libraries(test_recovery SYSCHECK_O ${TEST_DEPS})
+if(${TARGET} STREQUAL "winagent")
+  target_link_libraries(test_recovery "${RECOVERY_BASE_FLAGS} -Wl,--wrap=is_fim_shutdown \
+                                       -Wl,--wrap=fim_db_teardown -Wl,--wrap=Start_win32_Syscheck \
+                                       -Wl,--wrap=syscom_dispatch" fimdb)
+else()
+  target_link_libraries(test_recovery "${RECOVERY_BASE_FLAGS} -Wl,--wrap,time")
+endif()
+
+add_test(NAME test_recovery COMMAND test_recovery)

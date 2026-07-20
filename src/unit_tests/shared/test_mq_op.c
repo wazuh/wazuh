@@ -17,7 +17,7 @@
 #include <cmocka.h>
 #include <unistd.h>
 
-#include "../headers/shared.h"
+#include "shared.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
@@ -301,7 +301,41 @@ void test_start_mq_predicated_write_fail(void ** state){
     expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
     expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
     will_return(__wrap_OS_ConnectUnixDomain, -1);
-    expect_string(__wrap__mdebug2, formatted_msg, "(6220): Reconnection attempts terminated due to the shutdown of FIM.");
+    expect_string(__wrap__mdebug2, formatted_msg, "(8301): Reconnection attempts terminated due to shutdown.");
+
+    ret = StartMQPredicated(path, type, n_attempts, ptr_function);
+    assert_int_equal(ret, -1);
+}
+
+void test_start_mq_predicated_write_shutdown_during_backoff(void ** state){
+    (void)state; // Unused
+
+    /* Function parameters */
+    short int n_attempts = 0; // INFINITE_OPENQ_ATTEMPTS
+    short int type = WRITE;
+    char * path = "/test";
+
+    int ret = 0;
+    char message[OS_SIZE_128];
+
+    errno = ERRNO;
+
+    /* ptr_function toggles its return value on each call. Seeding it to true
+     * makes the first (top-of-loop) check return false, so the connection
+     * failure proceeds into the escalating backoff; the second call (now inside
+     * the backoff) returns true, so shutdown must be honored without waiting out
+     * the sleep. */
+    ptr_function_value = true;
+
+    expect_string(__wrap_OS_ConnectUnixDomain, path, path);
+    expect_value(__wrap_OS_ConnectUnixDomain, type, SOCK_DGRAM);
+    expect_value(__wrap_OS_ConnectUnixDomain, max_msg_size, OS_MAXSTR + 256);
+    will_return(__wrap_OS_ConnectUnixDomain, -1);
+
+    snprintf(message, OS_SIZE_128, "Can't connect to '%s': %s (%d). Attempt: %d", path, strerror(errno), errno, 1);
+    expect_string(__wrap__mdebug1, formatted_msg, message);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "(8301): Reconnection attempts terminated due to shutdown.");
 
     ret = StartMQPredicated(path, type, n_attempts, ptr_function);
     assert_int_equal(ret, -1);
@@ -396,7 +430,7 @@ void test_SendMSGAction_format_error(void ** state){
 void test_SendMSGAction_queue_not_available(void ** state){
     (void)state;
 
-    int ret = SendMSG(-1, "message", "location", SYSLOG_MQ);
+    int ret = SendMSG(-1, "message", "location", LOCALFILE_MQ);
 
     assert_int_equal(ret, -1);
 }
@@ -406,13 +440,13 @@ void test_SendMSGAction_socket_error(void ** state){
     int queue = 0;
 
     expect_value(__wrap_OS_SendUnix, socket, queue);
-    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_string(__wrap_OS_SendUnix, msg, "1:location:message");
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
 
     expect_string(__wrap__mdebug1, formatted_msg, "socketerr (not available).");
 
-    int ret = SendMSG(queue, "message", "location", SYSLOG_MQ);
+    int ret = SendMSG(queue, "message", "location", LOCALFILE_MQ);
 
     assert_int_equal(ret, -1);
 }
@@ -422,14 +456,14 @@ void test_SendMSGAction_socket_busy(void ** state){
     int queue = 0;
 
     expect_value(__wrap_OS_SendUnix, socket, queue);
-    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_string(__wrap_OS_SendUnix, msg, "1:location:message");
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, OS_INVALID);
 
     expect_string(__wrap__mdebug2, formatted_msg, "Socket busy, discarding message.");
     expect_string(__wrap__mwarn, formatted_msg, "Socket busy, discarding message.");
 
-    int ret = SendMSG(queue, "message", "location", SYSLOG_MQ);
+    int ret = SendMSG(queue, "message", "location", LOCALFILE_MQ);
 
     assert_int_equal(ret, 0);
 }
@@ -439,11 +473,11 @@ void test_SendMSGAction_non_secure_msg(void ** state){
     int queue = 0;
 
     expect_value(__wrap_OS_SendUnix, socket, queue);
-    expect_string(__wrap_OS_SendUnix, msg, "2:location:message");
+    expect_string(__wrap_OS_SendUnix, msg, "1:location:message");
     expect_value(__wrap_OS_SendUnix, size, 0);
     will_return(__wrap_OS_SendUnix, 1);
 
-    int ret = SendMSG(queue, "message", "location", SYSLOG_MQ);
+    int ret = SendMSG(queue, "message", "location", LOCALFILE_MQ);
 
     assert_int_equal(ret, 0);
 }
@@ -469,6 +503,98 @@ void test_SendMSGAction_secure_msg_keepalive(void ** state){
     assert_int_equal(ret, 0);
 }
 
+void test_SendBinaryMSGAction_secure_mq_not_supported(void **state) {
+    (void)state;
+
+    expect_string(__wrap__merror, formatted_msg, "SendBinaryMSGAction does not support SECURE_MQ mode.");
+
+    int ret = SendBinaryMSG(0, "payload", 7, "location", SECURE_MQ);
+
+    assert_int_equal(ret, -1);
+}
+
+void test_SendBinaryMSGAction_message_too_large(void **state) {
+    (void)state;
+
+    char dummy_payload;
+    size_t large_size = OS_MAXSTR;
+
+    expect_any(__wrap__mwarn, formatted_msg);
+
+    int ret = SendBinaryMSG(0, &dummy_payload, large_size, "some_location", 's');
+
+    assert_int_equal(ret, -1);
+}
+
+void test_SendBinaryMSGAction_queue_not_available(void **state) {
+    (void)state;
+
+    int ret = SendBinaryMSG(-1, "payload", 7, "location", 's');
+
+    assert_int_equal(ret, -1);
+}
+
+void test_SendBinaryMSGAction_socket_error(void **state) {
+    (void)state;
+    int queue = 123;
+    const char *payload = "bin_data";
+    size_t payload_len = 8;
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_any(__wrap_OS_SendUnix, msg);
+    expect_value(__wrap_OS_SendUnix, size, 19);
+    will_return(__wrap_OS_SendUnix, OS_SOCKTERR);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "socketerr (not available).");
+
+    int ret = SendBinaryMSG(queue, payload, payload_len, "location", 's');
+
+    assert_int_equal(ret, -1);
+}
+
+void test_SendBinaryMSGAction_success(void **state) {
+    (void)state;
+    int queue = 123;
+    const char payload[] = {'d', 'a', 't', 'a', '\0', 'm', 'o', 'r', 'e'};
+    size_t payload_len = sizeof(payload);
+    const char *locmsg = "FIM";
+    char loc = 's';
+
+    char expected_msg[100];
+    snprintf(expected_msg, sizeof(expected_msg), "%c:%s:", loc, locmsg);
+    size_t header_len = strlen(expected_msg);
+    memcpy(expected_msg + header_len, payload, payload_len);
+    size_t total_len = header_len + payload_len;
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_memory(__wrap_OS_SendUnix, msg, expected_msg, total_len);
+    expect_value(__wrap_OS_SendUnix, size, total_len);
+    will_return(__wrap_OS_SendUnix, 0);
+
+    int ret = SendBinaryMSG(queue, payload, payload_len, locmsg, loc);
+
+    assert_int_equal(ret, 0);
+}
+
+void test_SendBinaryMSGAction_socket_busy(void **state) {
+    (void)state;
+    int queue = 123;
+    const char *payload = "data";
+    size_t payload_len = 4;
+    size_t total_len = strlen("s:loc:") + payload_len;
+
+    expect_value(__wrap_OS_SendUnix, socket, queue);
+    expect_any(__wrap_OS_SendUnix, msg);
+    expect_value(__wrap_OS_SendUnix, size, total_len);
+    will_return(__wrap_OS_SendUnix, OS_INVALID);
+
+    expect_string(__wrap__mdebug2, formatted_msg, "Socket busy, discarding binary message.");
+    expect_string(__wrap__mwarn, formatted_msg, "Socket busy, discarding binary message.");
+
+    int ret = SendBinaryMSG(queue, payload, payload_len, "loc", 's');
+
+    assert_int_equal(ret, 0);
+}
 
 // Main test function
 
@@ -487,14 +613,22 @@ int main(void){
        cmocka_unit_test(test_reconnect_mq_simple_success),
        cmocka_unit_test(test_start_mq_predicated_write_success),
        cmocka_unit_test(test_start_mq_predicated_write_fail),
+       cmocka_unit_test(test_start_mq_predicated_write_shutdown_during_backoff),
        // Test test_SendMSGAction
        cmocka_unit_test(test_SendMSGAction_format_error),
+       cmocka_unit_test(test_SendMSGAction_secure_msg),
        cmocka_unit_test(test_SendMSGAction_queue_not_available),
        cmocka_unit_test(test_SendMSGAction_socket_error),
        cmocka_unit_test(test_SendMSGAction_socket_busy),
        cmocka_unit_test(test_SendMSGAction_non_secure_msg),
-       cmocka_unit_test(test_SendMSGAction_secure_msg),
        cmocka_unit_test(test_SendMSGAction_secure_msg_keepalive),
+       // Test test_SendBinaryMSG
+       cmocka_unit_test(test_SendBinaryMSGAction_secure_mq_not_supported),
+       cmocka_unit_test(test_SendBinaryMSGAction_message_too_large),
+       cmocka_unit_test(test_SendBinaryMSGAction_queue_not_available),
+       cmocka_unit_test(test_SendBinaryMSGAction_socket_error),
+       cmocka_unit_test(test_SendBinaryMSGAction_success),
+       cmocka_unit_test(test_SendBinaryMSGAction_socket_busy),
        };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

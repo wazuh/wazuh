@@ -11,6 +11,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 #include <string.h>
 #include <stdio.h>
@@ -41,8 +42,13 @@ int __wrap_getpid() {
 }
 
 #ifndef WIN32
+__attribute__((weak)) void __wrap_sleep_hook(unsigned int seconds) {
+    (void)seconds;
+}
+
 void __wrap_sleep(unsigned int seconds) {
     check_expected(seconds);
+    __wrap_sleep_hook(seconds);
     return;
 }
 

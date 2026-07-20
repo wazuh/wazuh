@@ -15,11 +15,6 @@
 #include <stdio.h>
 #include "shared.h"
 
-char *__wrap_decode_win_permissions(char *raw_perm) {
-    check_expected(raw_perm);
-    return mock_type(char*);
-}
-
 void __wrap_decode_win_acl_json(cJSON *perms) {
     check_expected(perms);
     return;

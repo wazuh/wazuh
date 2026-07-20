@@ -1,0 +1,890 @@
+/* Copyright (C) 2015, Wazuh Inc.
+ * Copyright (C) 2009 Trend Micro Inc.
+ * All right reserved.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation
+ */
+
+#include "shared.h"
+#include "agentd.h"
+#include "sendmsg.h"
+#include "os_net.h"
+#include "../os_crypto/md5/md5_op.h"
+#include "metadata_provider.h"
+#include <ctype.h>
+
+#ifdef WAZUH_UNIT_TESTING
+    // Remove static qualifier when unit testing
+    #define STATIC
+    #ifdef WIN32
+            #include "../../unit_tests/wrappers/wazuh/client-agent/start_agent.h"
+            #define recv wrap_recv
+    #endif
+
+    // Redefine wazuh_version
+    #undef __wazuh_version
+    #define __wazuh_version "v5.0.0"
+#else
+    #define STATIC static
+#endif
+
+#define ENROLLMENT_RETRY_TIME_MAX   60
+#define ENROLLMENT_RETRY_TIME_DELTA 5
+
+int timeout;    //timeout in seconds waiting for a server reply
+
+static ssize_t receive_message(char *buffer, unsigned int max_lenght);
+static void w_agentd_keys_init (void);
+STATIC bool agent_handshake_to_server(int server_id, bool is_startup);
+STATIC void send_msg_on_startup(void);
+
+/**
+ * @brief Get a required integer field from a JSON object
+ * @param parent Parent JSON object
+ * @param name Field name
+ * @param value Pointer to store the value
+ * @return true on success, false if field is missing or not a number
+ */
+STATIC bool get_required_int(const cJSON *parent, const char *name, int *value) {
+    cJSON *field = cJSON_GetObjectItem(parent, name);
+    if (!field || !cJSON_IsNumber(field)) {
+        mdebug1("Missing or invalid required field '%s' in handshake JSON", name);
+        return false;
+    }
+    *value = field->valueint;
+    return true;
+}
+
+/**
+ * @brief Parse FIM limits from JSON
+ * @param root Root JSON object
+ * @param fim Pointer to FIM limits structure
+ * @return true on success, false on error
+ */
+STATIC bool parse_fim_limits(const cJSON *root, fim_limits_t *fim) {
+    cJSON *module = cJSON_GetObjectItem(root, "fim");
+    if (!module || !cJSON_IsObject(module)) {
+        mdebug1("Missing or invalid 'fim' object in handshake JSON");
+        return false;
+    }
+
+    return get_required_int(module, "file", &fim->file) &&
+           get_required_int(module, "registry_key", &fim->registry_key) &&
+           get_required_int(module, "registry_value", &fim->registry_value);
+}
+
+/**
+ * @brief Parse Syscollector limits from JSON
+ * @param root Root JSON object
+ * @param syscollector Pointer to Syscollector limits structure
+ * @return true on success, false on error
+ */
+STATIC bool parse_syscollector_limits(const cJSON *root, syscollector_limits_t *syscollector) {
+    cJSON *module = cJSON_GetObjectItem(root, "syscollector");
+    if (!module || !cJSON_IsObject(module)) {
+        mdebug1("Missing or invalid 'syscollector' object in handshake JSON");
+        return false;
+    }
+
+    return get_required_int(module, "hotfixes", &syscollector->hotfixes) &&
+           get_required_int(module, "packages", &syscollector->packages) &&
+           get_required_int(module, "processes", &syscollector->processes) &&
+           get_required_int(module, "ports", &syscollector->ports) &&
+           get_required_int(module, "network_iface", &syscollector->network_iface) &&
+           get_required_int(module, "network_protocol", &syscollector->network_protocol) &&
+           get_required_int(module, "network_address", &syscollector->network_address) &&
+           get_required_int(module, "hardware", &syscollector->hardware) &&
+           get_required_int(module, "os_info", &syscollector->os_info) &&
+           get_required_int(module, "users", &syscollector->users) &&
+           get_required_int(module, "groups", &syscollector->groups) &&
+           get_required_int(module, "services", &syscollector->services) &&
+           get_required_int(module, "browser_extensions", &syscollector->browser_extensions);
+}
+
+/**
+ * @brief Parse SCA limits from JSON
+ * @param root Root JSON object
+ * @param sca Pointer to SCA limits structure
+ * @return true on success, false on error
+ */
+STATIC bool parse_sca_limits(const cJSON *root, sca_limits_t *sca) {
+    cJSON *module = cJSON_GetObjectItem(root, "sca");
+    if (!module || !cJSON_IsObject(module)) {
+        mdebug1("Missing or invalid 'sca' object in handshake JSON");
+        return false;
+    }
+
+    return get_required_int(module, "checks", &sca->checks);
+}
+
+/**
+ * @brief Parse all module limits from JSON
+ * @param root Root JSON object
+ * @param limits Pointer to module limits structure
+ * @return true on success, false on error
+ */
+STATIC bool parse_limits(const cJSON *root, module_limits_t *limits) {
+    cJSON *limits_obj = cJSON_GetObjectItem(root, "limits");
+    if (!limits_obj || !cJSON_IsObject(limits_obj)) {
+        mdebug1("Missing or invalid 'limits' object in handshake JSON");
+        return false;
+    }
+
+    if (!parse_fim_limits(limits_obj, &limits->fim) ||
+        !parse_syscollector_limits(limits_obj, &limits->syscollector) ||
+        !parse_sca_limits(limits_obj, &limits->sca)) {
+        return false;
+    }
+
+    limits->limits_received = true;
+    return true;
+}
+
+/**
+ * @brief Parse cluster_name from JSON
+ * @param root Root JSON object
+ * @param cluster_name Buffer to store cluster name
+ * @param cluster_name_size Size of buffer
+ * @return true on success, false on error
+ */
+STATIC bool parse_cluster_name(const cJSON *root, char *cluster_name, size_t cluster_name_size) {
+    if (!cluster_name || cluster_name_size == 0) {
+        return true;
+    }
+
+    cJSON *cluster = cJSON_GetObjectItem(root, "cluster_name");
+    if (!cluster || !cJSON_IsString(cluster) || !cluster->valuestring || cluster->valuestring[0] == '\0') {
+        mdebug1("Missing or empty 'cluster_name' in handshake JSON");
+        return false;
+    }
+
+    strncpy(cluster_name, cluster->valuestring, cluster_name_size - 1);
+    cluster_name[cluster_name_size - 1] = '\0';
+    return true;
+}
+
+/**
+ * @brief Parse cluster_node from JSON
+ * @return true on success, false on error
+ */
+STATIC bool parse_cluster_node(const cJSON *root, char *cluster_node, size_t cluster_node_size) {
+    if (!cluster_node || cluster_node_size == 0) {
+        return true;
+    }
+
+    cJSON *node = cJSON_GetObjectItem(root, "cluster_node");
+    if (!node || !cJSON_IsString(node) || !node->valuestring || node->valuestring[0] == '\0') {
+        mdebug1("Missing or empty 'cluster_node' in handshake JSON");
+        return false;
+    }
+
+    strncpy(cluster_node, node->valuestring, cluster_node_size - 1);
+    cluster_node[cluster_node_size - 1] = '\0';
+    return true;
+}
+
+/**
+ * @brief Parse agent_groups array from JSON and convert to CSV
+ * @return true on success (at least one group present), false on error
+ */
+STATIC bool parse_agent_groups(const cJSON *root, char *agent_groups, size_t agent_groups_size) {
+    if (!agent_groups || agent_groups_size == 0) {
+        return true;
+    }
+
+    agent_groups[0] = '\0';
+
+    cJSON *groups_array = cJSON_GetObjectItem(root, "agent_groups");
+    if (!groups_array || !cJSON_IsArray(groups_array)) {
+        mdebug1("Missing or invalid 'agent_groups' array in handshake JSON");
+        return false;
+    }
+
+    size_t offset = 0;
+    int valid_groups = 0;
+    cJSON *group_item = NULL;
+
+    cJSON_ArrayForEach(group_item, groups_array) {
+        if (cJSON_IsString(group_item) && group_item->valuestring && group_item->valuestring[0] != '\0') {
+            size_t group_len = strlen(group_item->valuestring);
+            /* Check if there's space: group + comma + null terminator */
+            if (offset + group_len + 2 < agent_groups_size) {
+                if (offset > 0) {
+                    agent_groups[offset++] = ',';
+                }
+                strcpy(agent_groups + offset, group_item->valuestring);
+                offset += group_len;
+                valid_groups++;
+            }
+        }
+    }
+    agent_groups[offset] = '\0';
+
+    /* Empty agent_groups is allowed - fallback to merge.mg will be used */
+    if (valid_groups == 0) {
+        mdebug1("Empty 'agent_groups' array, will use fallback");
+    }
+
+    return true;
+}
+
+/**
+ * @brief Validate that a string is a well-formed 32-character hex MD5 hash.
+ * @param hash String to validate.
+ * @return true if valid MD5, false otherwise.
+ */
+STATIC bool is_valid_md5_hash(const char *hash) {
+    size_t i;
+
+    if (!hash || strlen(hash) != 32) {
+        return false;
+    }
+
+    for (i = 0; i < 32; i++) {
+        if (!isxdigit((unsigned char)hash[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Parse optional merged_sum from handshake JSON
+ * @param root Root JSON object
+ * @param merged_sum Buffer to store merged sum
+ * @param merged_sum_size Size of merged_sum buffer
+ * @return true when field is absent or valid, false when field is malformed
+ */
+STATIC bool parse_optional_merged_sum(const cJSON *root, char *merged_sum, size_t merged_sum_size) {
+    if (!merged_sum || merged_sum_size == 0) {
+        return true;
+    }
+
+    merged_sum[0] = '\0';
+
+    cJSON *merged = cJSON_GetObjectItem(root, "merged_sum");
+    if (!merged) {
+        return true;
+    }
+
+    if (!cJSON_IsString(merged) || !merged->valuestring) {
+        mdebug1("Invalid 'merged_sum' type in handshake JSON");
+        return false;
+    }
+
+    if (!is_valid_md5_hash(merged->valuestring)) {
+        mdebug1("Invalid 'merged_sum' value in handshake JSON");
+        return false;
+    }
+
+    strncpy(merged_sum, merged->valuestring, merged_sum_size - 1);
+    merged_sum[merged_sum_size - 1] = '\0';
+
+    return true;
+}
+
+/**
+ * @brief Parse JSON payload from handshake ACK response
+ * @param json_str JSON string to parse
+ * @param limits Pointer to module limits structure to populate
+ * @param cluster_name Buffer to store cluster name
+ * @param cluster_name_size Size of cluster_name buffer
+ * @param cluster_node Buffer to store cluster node (min 256 bytes)
+ * @param cluster_node_size Size of cluster_node buffer
+ * @param agent_groups Buffer to store agent groups as CSV
+ * @param agent_groups_size Size of agent_groups buffer
+ * @param merged_sum Buffer to store expected merged hash from manager (optional)
+ * @param merged_sum_size Size of merged_sum buffer
+ * @return 0 on success, -1 on error (all fields are required)
+ */
+STATIC int parse_handshake_json(const char *json_str, module_limits_t *limits,
+                                char *cluster_name, size_t cluster_name_size,
+                                char *cluster_node, size_t cluster_node_size,
+                                char *agent_groups, size_t agent_groups_size,
+                                char *merged_sum, size_t merged_sum_size) {
+    if (!json_str || !limits) {
+        return -1;
+    }
+
+    cJSON *root = cJSON_Parse(json_str);
+    if (!root) {
+        mdebug1("Failed to parse handshake JSON");
+        return -1;
+    }
+
+    if (!parse_limits(root, limits) ||
+        !parse_cluster_name(root, cluster_name, cluster_name_size) ||
+        !parse_cluster_node(root, cluster_node, cluster_node_size) ||
+        !parse_agent_groups(root, agent_groups, agent_groups_size) ||
+        !parse_optional_merged_sum(root, merged_sum, merged_sum_size)) {
+        cJSON_Delete(root);
+        return -1;
+    }
+
+    cJSON_Delete(root);
+    return 0;
+}
+
+/**
+ * @brief Connects to a specified server
+ * @param server_id index of the specified server from agt servers list
+ * @param verbose Be verbose or not.
+ * @post The remote IP id (rip_id) is set to server_id if and only if this function succeeds.
+ * @retval true on success
+ * @retval false when failed
+ * */
+bool connect_server(int server_id, bool verbose)
+{
+    timeout = getDefine_Int("agent", "recv_timeout", 1, 600);
+
+    /* Close socket if available */
+    if (agt->sock >= 0) {
+        OS_CloseSocket(agt->sock);
+        agt->sock = -1;
+
+        if (agt->server[agt->rip_id].rip) {
+            if (verbose) {
+                mdebug1("Closing connection to server ([%s]:%d/%s).",
+                    agt->server[agt->rip_id].rip,
+                    agt->server[agt->rip_id].port,
+                    "tcp");
+            }
+        }
+    }
+
+    char *ip_address = NULL;
+    char *tmp_str = strchr(agt->server[server_id].rip, '/');
+    if (tmp_str) {
+        // server address comes in {hostname}/{ip} format
+        ip_address = strdup(++tmp_str);
+    }
+    if (!ip_address) {
+        // server address is either a host or a ip
+        ip_address = OS_GetHost(agt->server[server_id].rip, 3);
+    }
+
+    /* The hostname was not resolved correctly */
+    if (ip_address == NULL || *ip_address == '\0') {
+        if (agt->server[server_id].rip != NULL) {
+            const int rip_l = strlen(agt->server[server_id].rip);
+            mdebug1("Could not resolve hostname '%.*s'", agt->server[server_id].rip[rip_l - 1] == '/' ? rip_l - 1 : rip_l, agt->server[server_id].rip);
+        } else {
+            mdebug1("Could not resolve hostname");
+        }
+        os_free(ip_address);
+        return false;
+    }
+
+    if (verbose) {
+        minfo("Trying to connect to server ([%s]:%d/%s).",
+            agt->server[server_id].rip,
+            agt->server[server_id].port,
+            "tcp");
+    }
+
+    agt->sock = OS_ConnectTCP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
+
+    if (agt->sock < 0) {
+        agt->sock = -1;
+
+        if (verbose) {
+            #ifdef WIN32
+                merror(CONNS_ERROR, ip_address, agt->server[server_id].port, "tcp", win_strerror(WSAGetLastError()));
+            #else
+                merror(CONNS_ERROR, ip_address, agt->server[server_id].port, "tcp", strerror(errno));
+            #endif
+        }
+    } else {
+        if (OS_SetKeepalive(agt->sock) < 0) {
+#ifdef WIN32
+            mwarn("OS_SetKeepalive failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
+            mwarn("OS_SetKeepalive failed with error '%s'", strerror(errno));
+#endif
+        } else {
+            int keepidle  = getDefine_Int("agent", "tcp_keepidle",  1, 7200);
+            int keepintvl = getDefine_Int("agent", "tcp_keepintvl", 1, 100);
+            int keepcnt   = getDefine_Int("agent", "tcp_keepcnt",   1, 50);
+            OS_SetKeepalive_Options(agt->sock, keepidle, keepintvl, keepcnt);
+        }
+        int send_timeout = getDefine_Int("agent", "send_timeout", 1, 600);
+        if (OS_SetSendTimeout(agt->sock, send_timeout) < 0) {
+#ifdef WIN32
+            mwarn("OS_SetSendTimeout failed with error '%s'", win_strerror(WSAGetLastError()));
+#else
+            mwarn("OS_SetSendTimeout failed with error '%s'", strerror(errno));
+#endif
+        }
+        agt->rip_id = server_id;
+        last_connection_time = (int)time(NULL);
+        os_free(ip_address);
+        return true;
+    }
+    os_free(ip_address);
+    return false;
+}
+
+/* Send synchronization message to the server and wait for the ack */
+void start_agent(int is_startup)
+{
+
+    if (is_startup) {
+        startup_gate_initialize();
+        w_agentd_keys_init();
+    }
+
+    int current_server_id = agt->rip_id;
+    while (1) {
+        // (max_retries - 1) attempts
+
+        for (int attempts = 0; attempts < agt->server[current_server_id].max_retries - 1; attempts++) {
+            if (agent_handshake_to_server(current_server_id, is_startup)) {
+                return;
+            }
+
+            sleep(agt->server[current_server_id].retry_interval);
+        }
+
+        // Last attempt
+
+        if (agent_handshake_to_server(current_server_id, is_startup)) {
+            return;
+        }
+
+        // Try to enroll and extra attempt
+
+        if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+            if (try_enroll_to_server(agt->server[current_server_id].rip, agt->server[current_server_id].network_interface) == 0) {
+                if (agent_handshake_to_server(current_server_id, is_startup)) {
+                    return;
+                }
+            }
+        }
+
+        sleep(agt->server[current_server_id].retry_interval);
+
+        /* Wait for server reply */
+        mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip, __wazuh_version);
+
+        /* If there is a next server, try it */
+        if (agt->server[current_server_id + 1].rip) {
+            current_server_id++;
+            mdebug1("Trying next server ip in the line: '%s'.", agt->server[current_server_id].rip);
+        } else {
+            current_server_id = 0;
+            mwarn("Unable to connect to any server.");
+        }
+    }
+}
+
+/**
+ * @brief Initialize keys structure, counter, agent info and crypto method.
+ * Keys are read from client.keys. If no valid entry is found:
+ *  -If autoenrollment is enabled, a new key is requested to server and execution is blocked until a valid key is received.
+ *  -If autoenrollment is disabled, daemon is stoped
+ * */
+static void w_agentd_keys_init (void) {
+
+    if (keys.keysize == 0) {
+        /* Check if we can auto-enroll */
+        if (agt->enrollment_cfg && agt->enrollment_cfg->enabled) {
+            int registration_status = -1;
+            int delay_sleep = 0;
+            while (registration_status != 0) {
+                int rc = 0;
+                if (agt->enrollment_cfg->target_cfg->manager_name) {
+                    /* Configured enrollment server */
+                    registration_status = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name, agt->enrollment_cfg->target_cfg->network_interface);
+                }
+
+                /* Try to enroll to server list */
+                while (agt->server[rc].rip && (registration_status != 0)) {
+                    registration_status = try_enroll_to_server(agt->server[rc].rip, agt->server[rc].network_interface);
+                    rc++;
+                }
+
+                /* Sleep between retries */
+                if (registration_status != 0) {
+                    if (delay_sleep < ENROLLMENT_RETRY_TIME_MAX) {
+                        delay_sleep += ENROLLMENT_RETRY_TIME_DELTA;
+                    }
+                    mdebug1("Sleeping %d seconds before trying to enroll again", delay_sleep);
+                    sleep(delay_sleep);
+                }
+            }
+        }
+        /* If autoenrollment is disabled, stop daemon */
+        else {
+            merror_exit(AG_NOKEYS_EXIT);
+        }
+    }
+    else {
+        /* If the key store was empty, the counters will already be initialized in the enrollment process */
+        OS_StartCounter(&keys);
+    }
+
+    os_write_agent_info(keys.keyentries[0]->name, NULL, keys.keyentries[0]->id,
+                        agt->profile);
+
+    /* Set the crypto method for the agent */
+    os_set_agent_crypto_method(&keys, W_METH_AES);
+    mdebug1("Using AES as encryption method.");
+}
+
+/**
+ * @brief Holds the message reception logic for TCP
+ * @param buffer pointer to buffer where the information will be stored
+ * @param max_length size of buffer
+ * @return Integer value indicating the status code.
+ * @retval message_size on success
+ * @retval 0 when retries failed
+ * */
+static ssize_t receive_message(char *buffer, unsigned int max_lenght) {
+
+    ssize_t recv_b = 0;
+    /* Read received reply */
+    switch (wnet_select(agt->sock, timeout)) {
+        case -1:
+            merror(SELECT_ERROR, errno, strerror(errno));
+            break;
+
+        case 0:
+            // Timeout
+            break;
+
+        default:
+            /* Receive response TCP*/
+            recv_b = OS_RecvSecureTCP(agt->sock, buffer, max_lenght);
+
+            /* Successful response */
+            if (recv_b > 0) {
+                return recv_b;
+            }
+            /* Error response */
+            else {
+                switch (recv_b) {
+                case OS_SOCKTERR:
+                    merror("Corrupt payload (exceeding size) received.");
+                    break;
+                default:
+                    if ((errno == EAGAIN) || (errno == EWOULDBLOCK)) {
+                        mdebug1("Unable to receive start response: Timeout reached");
+                    } else {
+                        #ifdef WIN32
+                            mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+                        #else
+                            mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
+                        #endif
+                    }
+                }
+            }
+    }
+    return 0;
+}
+
+int try_enroll_to_server(const char * server_rip, uint32_t network_interface) {
+    int enroll_result = w_enrollment_request_key(agt->enrollment_cfg, server_rip, network_interface);
+    if (enroll_result == 0) {
+        /* Wait for key update on agent side */
+        mdebug1("Waiting %ld seconds before server connection", (long)agt->enrollment_cfg->delay_after_enrollment);
+        sleep(agt->enrollment_cfg->delay_after_enrollment);
+        /* Successfull enroll, read keys */
+        OS_UpdateKeys(&keys);
+        /* Set the crypto method for the agent */
+        os_set_agent_crypto_method(&keys, W_METH_AES);
+    }
+    return enroll_result;
+}
+
+/* Populate shared memory with agent metadata so the first keepalive
+ * already contains full agent info. All data is local and available
+ * immediately after the handshake completes. */
+static void populate_early_metadata(void)
+{
+    agent_metadata_t metadata = {0};
+
+#ifdef WIN32
+    os_info *os = get_win_version();
+#else
+    os_info *os = get_unix_version();
+#endif
+
+    /* Agent identity */
+    if (keys.keysize > 0 && keys.keyentries[0]) {
+        strncpy(metadata.agent_id, keys.keyentries[0]->id, sizeof(metadata.agent_id) - 1);
+        strncpy(metadata.agent_name, keys.keyentries[0]->name, sizeof(metadata.agent_name) - 1);
+    }
+    strncpy(metadata.agent_version, __wazuh_version, sizeof(metadata.agent_version) - 1);
+
+    /* OS info */
+    if (os) {
+        if (os->os_name) {
+            strncpy(metadata.os_name, os->os_name, sizeof(metadata.os_name) - 1);
+        }
+        if (os->os_version) {
+            strncpy(metadata.os_version, os->os_version, sizeof(metadata.os_version) - 1);
+        }
+        if (os->os_platform) {
+            strncpy(metadata.os_platform, os->os_platform, sizeof(metadata.os_platform) - 1);
+        }
+        if (os->machine) {
+            strncpy(metadata.architecture, os->machine, sizeof(metadata.architecture) - 1);
+        }
+        if (os->nodename) {
+            strncpy(metadata.hostname, os->nodename, sizeof(metadata.hostname) - 1);
+        }
+        free_osinfo(os);
+    }
+
+    /* OS type (compile-time constant) */
+#ifdef WIN32
+    strncpy(metadata.os_type, "windows", sizeof(metadata.os_type) - 1);
+#elif defined(__MACH__)
+    strncpy(metadata.os_type, "macos", sizeof(metadata.os_type) - 1);
+#else
+    strncpy(metadata.os_type, "linux", sizeof(metadata.os_type) - 1);
+#endif
+
+    /* Cluster info from handshake */
+    strncpy(metadata.cluster_name, agent_cluster_name, sizeof(metadata.cluster_name) - 1);
+    strncpy(metadata.cluster_node, agent_cluster_node, sizeof(metadata.cluster_node) - 1);
+
+    /* Groups from handshake */
+    if (agent_agent_groups[0] != '\0') {
+        /* Count groups (comma-separated) */
+        size_t count = 1;
+        for (const char *p = agent_agent_groups; *p; p++) {
+            if (*p == ',') {
+                count++;
+            }
+        }
+
+        metadata.groups = (char **)calloc(count, sizeof(char *));
+        if (metadata.groups) {
+            char groups_copy[OS_SIZE_65536];
+            strncpy(groups_copy, agent_agent_groups, sizeof(groups_copy) - 1);
+            groups_copy[sizeof(groups_copy) - 1] = '\0';
+
+            size_t i = 0;
+            char *saveptr = NULL;
+            char *token = strtok_r(groups_copy, ",", &saveptr);
+            while (token && i < count) {
+                if (token[0] != '\0') {
+                    metadata.groups[i] = strdup(token);
+                    i++;
+                }
+                token = strtok_r(NULL, ",", &saveptr);
+            }
+            metadata.groups_count = i;
+        }
+    }
+
+    if (metadata_provider_update(&metadata) == 0) {
+        mdebug1("Early metadata populated into shared memory");
+    } else {
+        mdebug1("Failed to populate early metadata");
+    }
+
+    /* Free groups */
+    if (metadata.groups) {
+        for (size_t i = 0; i < metadata.groups_count; i++) {
+            free(metadata.groups[i]);
+        }
+        free(metadata.groups);
+    }
+}
+
+/**
+ * @brief Holds handshake logic for an attempt to connect to server
+ * @param server_id index of the specified server from agt servers list
+ * @param is_startup The agent is starting up.
+ * @post If is_startup is set to true, the startup message is sent on success.
+ * @retval true on success
+ * @retval false when failed
+ * */
+STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
+    size_t msg_length;
+    ssize_t recv_b = 0;
+
+    char *tmp_msg;
+    char msg[OS_MAXSTR + 2] = { '\0' };
+    char buffer[OS_MAXSTR + 1] = { '\0' };
+    char cleartext[OS_MAXSTR + 1] = { '\0' };
+
+    cJSON* agent_info = cJSON_CreateObject();
+    cJSON_AddStringToObject(agent_info, "version", __wazuh_version);
+    char *agent_info_string = cJSON_PrintUnformatted(agent_info);
+    cJSON_Delete(agent_info);
+
+    snprintf(msg, OS_MAXSTR, "%s%s%s", CONTROL_HEADER, HC_STARTUP, agent_info_string);
+    os_free(agent_info_string);
+
+    if (connect_server(server_id, true)) {
+        /* Send start up message */
+        send_msg(msg, -1);
+
+        /* Read until our reply comes back */
+        recv_b = receive_message(buffer, OS_MAXSTR);
+
+        if (recv_b > 0) {
+            /* Id of zero -- only one key allowed */
+            if (ReadSecMSG(&keys, buffer, cleartext, 0, recv_b - 1, &msg_length, agt->server[server_id].rip, &tmp_msg) != KS_VALID) {
+                mwarn(MSG_ERROR, agt->server[server_id].rip);
+            }
+            else {
+                /* Check for commands */
+                if (IsValidHeader(tmp_msg)) {
+                    /* If it is an ack reply */
+                    if (strncmp(tmp_msg, HC_ACK, strlen(HC_ACK)) == 0) {
+                        available_server = time(0);
+
+                        /* Check for JSON payload after HC_ACK */
+                        const char *json_start = strchr(tmp_msg, '{');
+                        if (json_start) {
+                            char cluster_name_buffer[256] = {0};
+                            char cluster_node_buffer[256] = {0};
+                            char agent_groups_buffer[OS_SIZE_65536] = {0};
+
+                            /* Save previous limits to detect changes */
+                            module_limits_t previous_limits = agent_module_limits;
+
+                            os_md5 merged_sum_buffer = {0};
+                            if (parse_handshake_json(json_start, &agent_module_limits,
+                                                      cluster_name_buffer, sizeof(cluster_name_buffer),
+                                                      cluster_node_buffer, sizeof(cluster_node_buffer),
+                                                      agent_groups_buffer, sizeof(agent_groups_buffer),
+                                                      merged_sum_buffer, sizeof(merged_sum_buffer)) == 0) {
+                                mdebug1("Module limits received from manager");
+
+                                mdebug2("Received FIM limits: file=%d, registry_key=%d, registry_value=%d",
+                                        agent_module_limits.fim.file, agent_module_limits.fim.registry_key,
+                                        agent_module_limits.fim.registry_value);
+                                mdebug2("Received Syscollector limits: hotfixes=%d, packages=%d, processes=%d, ports=%d",
+                                        agent_module_limits.syscollector.hotfixes,
+                                        agent_module_limits.syscollector.packages,
+                                        agent_module_limits.syscollector.processes,
+                                        agent_module_limits.syscollector.ports);
+                                mdebug2("Received Syscollector limits: net_iface=%d, net_proto=%d, net_addr=%d",
+                                        agent_module_limits.syscollector.network_iface,
+                                        agent_module_limits.syscollector.network_protocol,
+                                        agent_module_limits.syscollector.network_address);
+                                mdebug2("Received Syscollector limits: hw=%d, os=%d, users=%d, groups=%d, services=%d, browser_ext=%d",
+                                        agent_module_limits.syscollector.hardware,
+                                        agent_module_limits.syscollector.os_info,
+                                        agent_module_limits.syscollector.users,
+                                        agent_module_limits.syscollector.groups,
+                                        agent_module_limits.syscollector.services,
+                                        agent_module_limits.syscollector.browser_extensions);
+                                mdebug2("Received SCA limits: checks=%d", agent_module_limits.sca.checks);
+
+                                /* Store cluster_name in global for agent-info module to query via agcom */
+                                strncpy(agent_cluster_name, cluster_name_buffer, sizeof(agent_cluster_name) - 1);
+                                agent_cluster_name[sizeof(agent_cluster_name) - 1] = '\0';
+                                mdebug1("Connected to cluster: %s", agent_cluster_name);
+
+                                /* Store cluster_node in global for agent-info module to query via agcom */
+                                strncpy(agent_cluster_node, cluster_node_buffer, sizeof(agent_cluster_node) - 1);
+                                agent_cluster_node[sizeof(agent_cluster_node) - 1] = '\0';
+                                mdebug1("Connected to node: %s", agent_cluster_node);
+
+                                /* Store agent_groups in global for agent-info module to query via agcom */
+                                strncpy(agent_agent_groups, agent_groups_buffer, sizeof(agent_agent_groups) - 1);
+                                agent_agent_groups[sizeof(agent_agent_groups) - 1] = '\0';
+                                mdebug1("Agent groups: %s", agent_agent_groups);
+
+                                /* Populate shared memory before opening the startup gate so that
+                                 * any module that starts immediately after has full metadata
+                                 * (OS, hostname, groups, cluster info) available. */
+                                populate_early_metadata();
+
+                                startup_gate_process_handshake(is_startup, merged_sum_buffer);
+
+                                /* Check if limits changed and reload if auto_restart is enabled */
+                                if (previous_limits.limits_received &&
+                                    module_limits_changed(&previous_limits, &agent_module_limits)) {
+                                    if (agt->flags.auto_restart) {
+                                        mdebug1("Agent is reloading due to document limits changes.");
+                                        reloadAgent();
+                                    } else {
+                                        mdebug1("Document limits have been updated.");
+                                    }
+                                }
+
+                            } else {
+                                mwarn("Error parsing handshake JSON, will retry handshake");
+                                return false;
+                            }
+                        } else {
+                            mdebug1("No handshake JSON after ACK, using defaults");
+                            populate_early_metadata();
+                            startup_gate_process_handshake(is_startup, NULL);
+                        }
+
+                        minfo(AG_CONNECTED, agt->server[server_id].rip,
+                                agt->server[server_id].port, "tcp");
+
+                        if (is_startup) {
+                            send_msg_on_startup();
+                        }
+
+                        return true;
+                    } else if (strncmp(tmp_msg, HC_ERROR, strlen(HC_ERROR)) == 0) {
+                        cJSON *error_msg = NULL;
+                        cJSON *error_info = NULL;
+                        if (error_msg = cJSON_Parse(strchr(tmp_msg, '{')), error_msg) {
+                            if (error_info = cJSON_GetObjectItem(error_msg, "message"), cJSON_IsString(error_info)) {
+                                mwarn("Couldn't connect to server '%s': '%s'", agt->server[server_id].rip, error_info->valuestring);
+                            } else {
+                                merror("Error getting message from server '%s'", agt->server[server_id].rip);
+                            }
+                        } else {
+                            merror("Error getting message from server '%s'", agt->server[server_id].rip);
+                        }
+                        cJSON_Delete(error_msg);
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * @brief Sends log message about start up
+ * */
+STATIC void send_msg_on_startup(void) {
+
+    char fmsg[OS_MAXSTR + 1] = { '\0' };
+    char timestamp[32];
+
+    get_iso8601_utc_time(timestamp, sizeof(timestamp));
+
+    cJSON *event = cJSON_CreateObject();
+    cJSON_AddStringToObject(event, "event.module", "wazuh-agent");
+    cJSON_AddStringToObject(event, "event.action", "agent-start");
+    cJSON_AddStringToObject(event, "event.start", timestamp);
+    char *json_str = cJSON_PrintUnformatted(event);
+    cJSON_Delete(event);
+
+    os_snprintf(fmsg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", json_str);
+    os_free(json_str);
+
+    send_msg(fmsg, -1);
+}
+
+/**
+ * @brief Send agent stopped message to server before exit
+ * */
+void send_agent_stopped_message() {
+    char msg[OS_SIZE_32] = { '\0' };
+
+    snprintf(msg, OS_SIZE_32, "%s%s", CONTROL_HEADER, HC_SHUTDOWN);
+
+    /* Send shutdown message */
+    send_msg(msg, -1);
+}

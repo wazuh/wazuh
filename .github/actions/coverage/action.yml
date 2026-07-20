@@ -2,6 +2,19 @@ name: "Coverage"
 description: "Calculates the coverage for a module located on a given path"
 
 inputs:
+  aws_region:
+    description: "AWS region for S3 (pass the CI_AWS_REGION secret)."
+    required: false
+    default: "us-east-1"
+
+  bucket:
+    description: "Target S3 bucket URI (pass the CI_INTERNAL_S3_BUCKET secret)."
+    required: false
+    default: ""
+  aws_role:
+    description: "IAM role (OIDC) to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+    required: false
+    default: ""
   path:
     required: true
     description: "Path to the module"
@@ -51,10 +64,6 @@ runs:
             arguments+="--directory build/tests "
           fi
 
-          if [[ ${{ inputs.path }} =~ "inventory_harvester" ]]; then
-            arguments+="--directory build/tests "
-          fi
-
           # Set output file
           arguments+="--output-file build/coverage.info "
 
@@ -79,6 +88,16 @@ runs:
           # Exclude generated headers and scanContext
           arguments+="--exclude=*_generated.h --exclude=*/scanContext.hpp "
 
+          lcov_version=$(lcov --version | awk '{print $NF}')
+          lcov_major=${lcov_version%%.*}
+          if [[ "$lcov_major" =~ ^[0-9]+$ ]] && (( lcov_major >= 2 )); then
+            ignore_errors="mismatch,unused"
+          else
+            ignore_errors="mismatch"
+          fi
+          arguments+="--ignore-errors $ignore_errors "
+          echo "Using lcov ignore-errors: $ignore_errors (lcov $lcov_version)"
+
           echo "Executing: lcov $arguments"
           lcov $arguments
 
@@ -99,11 +118,13 @@ runs:
       # Upload the coverage report as an artifact
       - name: Uploading coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ inputs.aws_region }}
+          bucket: ${{ inputs.bucket }}
+          aws_role: ${{ inputs.aws_role }}
           name: Coverage Report - ${{ inputs.id }}
           path: ./${{ inputs.path }}/build/coverage_report
-          retention-days: 1
 
       # Check whether the coverage is greater than 90% both for lines and functions
       - name: Validate coverage
@@ -115,7 +136,7 @@ runs:
           # Parse coverage directly from the .info file (avoids lcov version-dependent output format issues)
           linesCoverage=$(awk -F: '/^LH:/{h+=$2}/^LF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' build/coverage.info)
           echo "Lines coverage is: $linesCoverage %"
-          if ! (( $(echo "$linesCoverage > 90" | bc -l) )); then
+          if ! (( $(echo "$linesCoverage >= 90" | bc -l) )); then
             echo "----------------------------------------"
             echo "FAILED: Lines coverage is lower than 90%"
             echo "----------------------------------------"
@@ -128,7 +149,7 @@ runs:
 
           functionsCoverage=$(awk -F: '/^FNH:/{h+=$2}/^FNF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' build/coverage.info)
           echo "Functions coverage is: $functionsCoverage %"
-          if ! (( $(echo "$functionsCoverage > 90" | bc -l) )); then
+          if ! (( $(echo "$functionsCoverage >= 90" | bc -l) )); then
             echo "---------------------------------------------"
             echo "FAILED: Functions coverage is lower than 90%"
             echo "--------------------------------------------"

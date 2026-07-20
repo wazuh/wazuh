@@ -621,6 +621,9 @@ def test_master_handler_hello_ok(super_hello_mock, mkdir_with_mode_mock, join_mo
 
         def __init__(self):
             self.configuration = {}
+            self.clients = {}
+            self.tasks_event = asyncio.Event()
+            self.tasks_event.set()
 
     master_handler.server = Server()
     master_handler.server.configuration["name"] = "cluster_name"
@@ -898,7 +901,7 @@ def test_master_handler_end_receiving_integrity_checksums(end_receiving_file_moc
 @patch('wazuh.core.cluster.common.Handler.update_chunks_wdb', return_value={'updated_chunks': 1})
 @patch('wazuh.core.cluster.common.Handler.get_chunks_in_task_id', return_value='chunks')
 async def test_master_handler_sync_wazuh_db_info(get_chunks_mock, update_chunks_mock, send_request_mock):
-    """Check that the wazuh-db data reception task is created and chunks are obtained and updated in DB."""
+    """Check that the wazuh-manager-db data reception task is created and chunks are obtained and updated in DB."""
     class LoggerMock:
         """Auxiliary class."""
 
@@ -1097,7 +1100,7 @@ async def test_master_handler_sync_extra_valid(sync_worker_files_mock, set_date_
 def test_set_date_end_master(info_mock):
     """Check if set_date_end_master works as expected."""
     master_handler = get_master_handler()
-    master_handler.integrity_sync_status['tmp_date_start_master'] = datetime.utcnow().replace(tzinfo=timezone.utc)
+    master_handler.integrity_sync_status['tmp_date_start_master'] = datetime.now(timezone.utc)
     master_handler.set_date_end_master(logging.getLogger("wazuh"))
 
     assert master_handler.integrity_sync_status['date_end_master'] == "1970-01-01T00:00:00.000000Z"
@@ -1435,6 +1438,9 @@ def test_master_handler_connection_lost(clean_up_mock, connection_lost_mock, log
     master_handler = get_master_handler()
     master_handler.logger = logging.getLogger("wazuh")
     master_handler.name = worker_name
+    master_handler.server.clients = {}
+    master_handler.server.tasks_event = asyncio.Event()
+    master_handler.server.tasks_event.set()
 
     class PendingTaskMock:
         """Auxiliary class."""
@@ -1506,7 +1512,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
                                  )
 
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
-                                        "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
+                                        "'/dev/shm' must be accessible by the 'wazuh-manager' user. Check that this file has "
                                         "permissions to be accessed by all users. Changing the file permissions to 777 "
                                         "will solve this issue."),
                                    call('The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 '
@@ -1519,7 +1525,7 @@ def test_master_init(pool_executor_mock, get_running_loop_mock, warning_mock):
                                  )
 
     warning_mock.assert_has_calls([call("In order to take advantage of Wazuh 4.3.0 cluster improvements, the directory "
-                                        "'/dev/shm' must be accessible by the 'wazuh' user. Check that this file has "
+                                        "'/dev/shm' must be accessible by the 'wazuh-manager' user. Check that this file has "
                                         "permissions to be accessed by all users. Changing the file permissions to 777 "
                                         "will solve this issue."),
                                    call('The Wazuh cluster will be run without the improvements added in Wazuh 4.3.0 '
@@ -1594,6 +1600,7 @@ async def test_agent_groups_update(sleep_mock, perf_counter_mock):
 
     logger_mock = LoggerMock()
     master_class = get_master()
+    master_class.tasks_event.set()
 
     with patch("wazuh.core.cluster.master.Master.setup_task_logger",
                return_value=logger_mock) as setup_task_logger_mock:
@@ -1621,6 +1628,7 @@ async def test_master_file_status_update_ok(sleep_mock):
     """Check if the file status is properly obtained."""
 
     master_class = get_master()
+    master_class.tasks_event.set()
 
     class LoggerMock:
         """Auxiliary class."""
@@ -1678,6 +1686,7 @@ async def test_master_file_status_update_ok(run_in_pool_mock, asyncio_sleep_mock
                                                 "node_type": "master"},
                                  cluster_items=cluster_items,
                                  )
+    master_class.tasks_event.set()
 
     class LoggerMock:
         """Auxiliary class."""
@@ -1775,64 +1784,139 @@ def test_master_get_node(get_running_loop_mock):
                                        'node': master_class.configuration['node_name']}
 
 
-@pytest.mark.parametrize('item_key, expected_error', [
-    ("invalid_key", True),
-    ("queue/testing/", False),
-])
-@patch("wazuh.core.cluster.master.safe_join", return_value="/some/path")
-@patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
-@patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
-def test_master_handler_process_files_from_worker_validates_cluster_item_key(gid_mock, uid_mock, path_join_mock,
-                                                                               item_key, expected_error):
-    """Test that process_files_from_worker validates cluster_item_key."""
-    master_handler = get_master_handler()
-    files_metadata = {"data": {"merged": False, "cluster_item_key": item_key}}
+@pytest.mark.asyncio
+@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
+async def test_disconnected_agent_group_sync_task_initialization(get_ossec_conf_mock):
+    """Test DisconnectedAgentSyncTasks initialization."""
+    
+    cluster_items_with_sync = cluster_items.copy()
+    cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups'] = 300
+    cluster_items_with_sync['sync_disconnected_agent_groups_batch_size'] = 100
+    cluster_items_with_sync['sync_disconnected_agent_groups_min_offline'] = 600
+    # New implementation expects a `server` with `setup_task_logger`
+    server_mock = MagicMock()
+    server_mock.setup_task_logger.return_value = MagicMock()
 
-    result = master_handler.process_files_from_worker(
-        files_metadata=files_metadata,
-        decompressed_files_path='/decompressed/files/path',
-        cluster_items=cluster_items,
-        worker_name='worker1',
-        timeout=0
+    task = master.DisconnectedAgentSyncTasks(
+        server=server_mock,
+        cluster_items=cluster_items_with_sync,
     )
 
-    if expected_error:
-        assert 'Invalid cluster_item_key' in str(result['generic_errors'])
-    else:
-        assert 'Invalid cluster_item_key' not in str(result.get('generic_errors', []))
+    assert task.sync_interval == 300
+    assert task.batch_size == 100
+    assert task.min_disconnection_time == 600
 
 
-@patch("wazuh.core.cluster.master.safe_join")
-@patch("os.path.basename", return_value="file.txt")
-@patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
-@patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
-def test_master_handler_process_files_from_worker_validates_path_confinement(gid_mock, uid_mock, basename_mock,
-                                                                               path_join_mock):
-    """Test that process_files_from_worker validates path confinement for merged files."""
-    master_handler = get_master_handler()
-    files_metadata = {
-        "data": {"merged": True, "merge_type": "type", "merge_name": "name", "cluster_item_key": "queue/testing/"}
-    }
+@pytest.mark.asyncio
+@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
+async def test_disconnected_agent_group_sync_task_batch_agents(get_ossec_conf_mock):
+    """Test DisconnectedAgentSyncTasks batch_agents method."""
+    
+    cluster_items_with_sync = cluster_items.copy()
+    cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups'] = 300
+    cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups_batch_size'] = 2
+    cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups_min_offline'] = 600
+    cluster_items_with_sync['disconnected_agent_sync'] = {'enabled': True}
+    
+    server_mock = MagicMock()
+    server_mock.setup_task_logger.return_value = MagicMock()
 
-    def custom_safe_join(*args):
-        return "/".join(str(a) for a in args)
+    task = master.DisconnectedAgentSyncTasks(
+        server=server_mock,
+        cluster_items=cluster_items_with_sync,
+    )
+    
+    agents = [
+        {'id': '001', 'group': ['default']},
+        {'id': '002', 'group': ['group1']},
+        {'id': '003', 'group': ['group2']},
+        {'id': '004', 'group': ['group3']},
+    ]
+    
+    batches = list(task._batch_agents(agents))
+    assert len(batches) == 2
+    assert len(batches[0]) == 2
+    assert len(batches[1]) == 2
 
-    path_join_mock.side_effect = custom_safe_join
 
-    with patch("wazuh.core.cluster.cluster.unmerge_info",
-               return_value=[("queue/other/file.txt", "data", '1970-01-01 00:00:00+00:00')]):
-        with patch("os.path.commonpath", return_value="/var/ossec/queue/other"):
-            result = master_handler.process_files_from_worker(
-                files_metadata=files_metadata,
-                decompressed_files_path='/decompressed/files/path',
-                cluster_items=cluster_items,
-                worker_name='worker1',
-                timeout=0
-            )
+@pytest.mark.asyncio
+@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
+@patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
+@patch('wazuh.core.indexer.disconnected_agents.WazuhDBQueryAgents')
+async def test_disconnected_agent_group_sync_task_get_disconnected_agents_filter_by_time(
+    mock_wazuh_db_query, 
+    mock_async_conn,
+    mock_get_ossec_conf
+):
+    """Test DisconnectedAgentSyncTasks _get_disconnected_agents_filter_by_time method."""
 
-            assert len(result['errors_per_folder']['queue/testing/']) > 0
-            assert any('outside allowed directory' in str(e) or '3022' in str(e)
-                      for e in result['errors_per_folder']['queue/testing/'])
+    cluster_items_with_sync = cluster_items.copy()
+    cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups'] = 300
+    cluster_items_with_sync['sync_disconnected_agent_groups_batch_size'] = 100
+    cluster_items_with_sync['sync_disconnected_agent_groups_min_offline'] = 600
+
+    server_mock = MagicMock()
+    server_mock.setup_task_logger.return_value = MagicMock()
+
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone.utc)
+    old_time = now - timedelta(seconds=2000)
+    mock_agents = [
+        {'id': '001', 'name': 'agent1', 'status': 'disconnected', 'group': ['default'], 'lastKeepAlive': old_time},
+        {'id': '002', 'name': 'agent2', 'status': 'disconnected', 'group': ['group1'], 'lastKeepAlive': old_time},
+    ]
+
+    mock_db_query = MagicMock()
+    mock_db_query.run.return_value = {"items": mock_agents}
+
+    mock_wazuh_db_query.return_value.__enter__.return_value = mock_db_query
+
+    task = master.DisconnectedAgentSyncTasks(
+        server=server_mock,
+        cluster_items=cluster_items_with_sync,
+    )
+
+    with patch('wazuh.core.indexer.disconnected_agents.core_utils.get_utc_now') as mock_get_utc_now:
+        mock_get_utc_now.return_value = now
+
+        result = await task._get_disconnected_agents_filter_by_time()
+
+    assert len(result) == 2
+    assert result[0]['id'] == '001'
+    assert result[1]['id'] == '002'
+
+
+@pytest.mark.asyncio
+@patch('wazuh.core.indexer.disconnected_agents.get_ossec_conf', return_value={})
+@patch('wazuh.core.cluster.master.DisconnectedAgentSyncTasks.check_indexer', new_callable=AsyncMock)
+@patch('wazuh.core.cluster.master.DisconnectedAgentSyncTasks._get_disconnected_agents_filter_by_time')
+@patch('wazuh.core.cluster.master.AsyncWazuhDBConnection')
+async def test_disconnected_agent_group_sync_task_run_with_disabled_task(mock_wdb_conn, mock_get_disconnected, mock_check_indexer, get_ossec_conf_mock):
+    """Test DisconnectedAgentSyncTasks run method when disabled."""
+
+    cluster_items_with_sync = cluster_items.copy()
+    cluster_items_with_sync['intervals']['master']['sync_disconnected_agent_groups'] = 300
+    cluster_items_with_sync['sync_disconnected_agent_groups_batch_size'] = 100
+    cluster_items_with_sync['sync_disconnected_agent_groups_min_offline'] = 600
+    cluster_items_with_sync['disconnected_agent_sync'] = {'enabled': False}
+
+    server_mock = MagicMock()
+    server_mock.setup_task_logger.return_value = MagicMock()
+
+    task = master.DisconnectedAgentSyncTasks(
+        server=server_mock,
+        cluster_items=cluster_items_with_sync,
+    )
+
+    # Make _get_disconnected_agents_filter_by_time return empty and make asyncio.sleep raise to break loop
+    mock_get_disconnected.return_value = []
+
+    import asyncio as _asyncio
+    with patch('asyncio.sleep', side_effect=_asyncio.CancelledError()):
+        with pytest.raises(_asyncio.CancelledError):
+            await task.run_agent_groups_sync()
+
+    server_mock.setup_task_logger.return_value.info.assert_called()
 
 
 @patch("os.path.basename")

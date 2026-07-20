@@ -16,6 +16,7 @@
 #include "defer.hpp"
 #include "minizip/unzip.h"
 #include "stringHelper.h"
+#include <atomic>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -49,6 +50,92 @@ namespace Utils
         ZlibHelper& operator=(const ZlibHelper&) = delete;
         ZlibHelper(ZlibHelper&&) = delete;
         ZlibHelper& operator=(ZlibHelper&&) = delete;
+
+        /**
+         * @brief Compress file to GZIP format with cancellation support.
+         *
+         * @param inputFilePath Input file path to compress.
+         * @param gzFilePath Output compressed (.gz) file path.
+         * @param compressionLevel Compression level (0-9).
+         * @param shouldRun Atomic flag; when false, compression is cancelled and the partial .gz is removed.
+         */
+        static void gzipCompress(const std::filesystem::path& inputFilePath,
+                                 const std::filesystem::path& gzFilePath,
+                                 int compressionLevel,
+                                 const std::atomic<bool>& shouldRun)
+        {
+            // Validate compression level (Z_DEFAULT_COMPRESSION = -1 is allowed)
+            if ((compressionLevel < 0 && compressionLevel != Z_DEFAULT_COMPRESSION) || compressionLevel > 9)
+            {
+                throw std::runtime_error("Invalid compression level: " + std::to_string(compressionLevel) +
+                                         ". Must be between 0 and 9.");
+            }
+
+            // Check if input file exists
+            if (!std::filesystem::exists(inputFilePath))
+            {
+                throw std::runtime_error("Input file does not exist: " + inputFilePath.string());
+            }
+
+            // Open input file
+            std::ifstream inputFile {inputFilePath, std::ios::binary};
+            if (!inputFile.good())
+            {
+                throw std::runtime_error("Unable to open input file: " + inputFilePath.string());
+            }
+
+            // Create compression mode string
+            std::string mode = "wb" + std::to_string(compressionLevel);
+
+            // Open compressed file for writing
+            ZFilePtr gzFile {gzopen(gzFilePath.c_str(), mode.c_str())};
+            if (!gzFile)
+            {
+                throw std::runtime_error("Unable to create compressed file: " + gzFilePath.string());
+            }
+
+            // Compress file content
+            char buf[GZ_BUF_LEN] {};
+            while (inputFile.read(buf, sizeof(buf)) || inputFile.gcount() > 0)
+            {
+                // Allow cancellation between chunks
+                if (!shouldRun.load(std::memory_order_relaxed))
+                {
+                    inputFile.close();
+                    gzFile.reset();
+                    std::error_code ec;
+                    std::filesystem::remove(gzFilePath, ec);
+                    throw std::runtime_error("Compression cancelled for: " + inputFilePath.string());
+                }
+
+                auto bytesRead = inputFile.gcount();
+                if (gzwrite(gzFile.get(), buf, static_cast<unsigned int>(bytesRead)) != bytesRead)
+                {
+                    throw std::runtime_error("Error writing to compressed file: " + gzFilePath.string());
+                }
+            }
+
+            inputFile.close();
+        }
+
+        /**
+         * @brief Compress file to GZIP format (non-cancellable convenience overload).
+         */
+        static void gzipCompress(const std::filesystem::path& inputFilePath,
+                                 const std::filesystem::path& gzFilePath,
+                                 int compressionLevel)
+        {
+            static const std::atomic<bool> alwaysRun {true};
+            gzipCompress(inputFilePath, gzFilePath, compressionLevel, alwaysRun);
+        }
+
+        /**
+         * @brief Compress file to GZIP format with default compression level.
+         */
+        static void gzipCompress(const std::filesystem::path& inputFilePath, const std::filesystem::path& gzFilePath)
+        {
+            gzipCompress(inputFilePath, gzFilePath, Z_DEFAULT_COMPRESSION);
+        }
 
         /**
          * @brief Uncompress GZIP file.

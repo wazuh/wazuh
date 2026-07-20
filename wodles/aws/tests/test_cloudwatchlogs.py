@@ -4,6 +4,7 @@
 
 import os
 import sys
+import json
 import botocore
 import copy
 import sqlite3
@@ -454,3 +455,105 @@ def test_aws_cloudwatchlogs_purge_db(mock_get_log_streams, mock_sts_client, cust
 
     assert utils.database_execute_query(instance.db_connector,
                                         utils.SQL_COUNT_ROWS.format(table_name=instance.db_table_name)) == 0
+
+
+@patch('wazuh_integration.WazuhIntegration.send_msg')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('cloudwatchlogs.aws_tools.debug')
+def test_aws_cloudwatchlogs_get_alerts_within_range_skips_json_event_matching_discard_field(
+        mock_debug, mock_sts_client, mock_send_msg):
+    """Test get_alerts_within_range skips a JSON event when event_should_be_skipped returns True."""
+    instance = utils.get_mocked_service(
+        class_=cloudwatchlogs.AWSCloudWatchLogs,
+        discard_field='action',
+        discard_regex='REJECT'
+    )
+    instance.client = MagicMock()
+
+    event_msg = json.dumps({'action': 'REJECT', 'src': '1.2.3.4'})
+    response_with_event = {
+        'events': [{'timestamp': TEST_START_TIME, 'message': event_msg, 'ingestionTime': 1}],
+        'nextForwardToken': TEST_TOKEN
+    }
+    response_empty = {'events': [], 'nextForwardToken': TEST_TOKEN}
+    instance.client.get_log_events.side_effect = [response_with_event, response_empty]
+
+    instance.get_alerts_within_range(TEST_LOG_GROUP, TEST_LOG_STREAM, None, TEST_START_TIME, None)
+
+    mock_send_msg.assert_not_called()
+    mock_debug.assert_any_call(
+        f'+++ The "REJECT" regex found a match in the "action" '
+        f'field. The event will be skipped.', 2)
+
+
+@patch('wazuh_integration.WazuhIntegration.send_msg')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('cloudwatchlogs.aws_tools.debug')
+def test_aws_cloudwatchlogs_get_alerts_within_range_processes_json_event_not_matching_discard_field(
+        mock_debug, mock_sts_client, mock_send_msg):
+    """Test get_alerts_within_range processes a JSON event when event_should_be_skipped returns False."""
+    instance = utils.get_mocked_service(
+        class_=cloudwatchlogs.AWSCloudWatchLogs,
+        discard_field='action',
+        discard_regex='REJECT'
+    )
+    instance.client = MagicMock()
+
+    event_msg = json.dumps({'action': 'ACCEPT', 'src': '1.2.3.4'})
+    response_with_event = {
+        'events': [{'timestamp': TEST_START_TIME, 'message': event_msg, 'ingestionTime': 1}],
+        'nextForwardToken': TEST_TOKEN
+    }
+    response_empty = {'events': [], 'nextForwardToken': TEST_TOKEN}
+    instance.client.get_log_events.side_effect = [response_with_event, response_empty]
+
+    instance.get_alerts_within_range(TEST_LOG_GROUP, TEST_LOG_STREAM, None, TEST_START_TIME, None)
+
+    mock_send_msg.assert_called_once_with(event_msg, dump_json=False)
+    mock_debug.assert_any_call(
+        f'+++ The "REJECT" regex did not find a match in the '
+        f'"action" field. The event will be processed.', 3)
+
+
+@patch('wazuh_integration.WazuhIntegration.send_msg')
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('cloudwatchlogs.aws_tools.debug')
+def test_aws_cloudwatchlogs_get_alerts_within_range_skips_plain_text_event_matching_discard_regex(
+        mock_debug, mock_sts_client, mock_send_msg):
+    """Test get_alerts_within_range skips a non-JSON event when discard_regex matches the raw string."""
+    instance = utils.get_mocked_service(
+        class_=cloudwatchlogs.AWSCloudWatchLogs,
+        discard_field='action',
+        discard_regex='.*REJECT.*'
+    )
+    instance.client = MagicMock()
+
+    event_msg = 'REJECT some plain text log line'
+    response_with_event = {
+        'events': [{'timestamp': TEST_START_TIME, 'message': event_msg, 'ingestionTime': 1}],
+        'nextForwardToken': TEST_TOKEN
+    }
+    response_empty = {'events': [], 'nextForwardToken': TEST_TOKEN}
+    instance.client.get_log_events.side_effect = [response_with_event, response_empty]
+
+    instance.get_alerts_within_range(TEST_LOG_GROUP, TEST_LOG_STREAM, None, TEST_START_TIME, None)
+
+    mock_send_msg.assert_not_called()
+    mock_debug.assert_any_call(
+        f'+++ The ".*REJECT.*" regex found a match. The event will be skipped.', 2)
+
+
+@patch('wazuh_integration.WazuhIntegration.get_sts_client')
+@patch('cloudwatchlogs.aws_tools.error')
+def test_aws_cloudwatchlogs_get_log_streams_logs_error_on_endpoint_connection_error(
+        mock_error, mock_sts_client):
+    """Test get_log_streams calls aws_tools.error when EndpointConnectionError is raised."""
+    instance = utils.get_mocked_service(class_=cloudwatchlogs.AWSCloudWatchLogs)
+    instance.client = MagicMock()
+    err = botocore.exceptions.EndpointConnectionError(endpoint_url='https://logs.us-east-1.amazonaws.com')
+    instance.client.describe_log_streams.side_effect = err
+
+    result = instance.get_log_streams(TEST_LOG_GROUP)
+
+    assert result == []
+    mock_error.assert_called_once_with(str(err))

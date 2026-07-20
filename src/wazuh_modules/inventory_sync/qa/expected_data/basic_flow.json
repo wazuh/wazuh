@@ -1,0 +1,46 @@
+{
+  "description": "Expected results for basic inventory sync flow test",
+  "expected_message_count": 3,
+  "validate_session_consistency": true,
+  "expected_messages": [
+    {
+      "type": "start",
+      "expected_status": "sent",
+      "description": "Start message should be sent successfully",
+      "expected_response": {
+        "type": "flatbuffer",
+        "data": {
+          "type": "start_ack",
+          "status": 0
+        },
+        "validate_session": true,
+        "timeout": 5.0
+      }
+    },
+    {
+      "type": "data",
+      "expected_status": "sent",
+      "description": "Data message should be sent successfully",
+      "expected_response": null
+    },
+    {
+      "type": "end",
+      "expected_status": "sent",
+      "description": "End message should be sent successfully",
+      "expected_response": {
+        "type": "flatbuffer",
+        "data": {
+          "type": "end_ack",
+          "status": 0
+        },
+        "validate_session": true,
+        "timeout": 30.0
+      }
+    }
+  ],
+  "validation_rules": {
+    "session_consistency": "All messages should use the same session ID",
+    "message_order": "Messages should be sent in the correct order: start -> data -> end",
+    "response_format": "Each message should receive a proper response or no response for data messages"
+  }
+}

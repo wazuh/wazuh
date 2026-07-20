@@ -23,4 +23,3 @@ class WindowsSpecialization final
 };
 
 #endif // _FIMDB_OS_WINDOWS_SPECIALIZATION_H
-

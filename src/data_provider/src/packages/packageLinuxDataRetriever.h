@@ -14,17 +14,10 @@
 
 #include <memory>
 #include <unordered_set>
-#include "filesystemHelper.h"
+#include <filesystem_wrapper.hpp>
 #include "json.hpp"
 #include "sharedDefs.h"
 #include "utilsWrapperLinux.hpp"
-
-/**
- * @brief Fills a JSON object with all available pacman-related information
- * @param libPath  Path to pacman's database directory
- * @param callback Callback to be called for every single element being found
- */
-void getPacmanInfo(const std::string& libPath, std::function<void(nlohmann::json&)> callback);
 
 /**
  * @brief Fills a JSON object with all available rpm-related information
@@ -37,12 +30,6 @@ void getRpmInfo(std::function<void(nlohmann::json&)> callback);
  * @param pythonPackages Set to be filled with all python packages found
  */
 void getRpmPythonPackages(std::unordered_set<std::string>& pythonPackages);
-
-/**
- * @brief Fills a JSON object with all available rpm-related information for legacy Linux.
- * @param callback Callback to be called for every single element being found
- */
-void getRpmInfoLegacy(std::function<void(nlohmann::json&)> callback);
 
 /**
  * @brief Fills a JSON object with all available dpkg-related information
@@ -58,61 +45,30 @@ void getDpkgInfo(const std::string& libPath, std::function<void(nlohmann::json&)
 void getDpkgPythonPackages(std::unordered_set<std::string>& pythonPackages);
 
 /**
- * @brief Fills a JSON object with all available apk-related information
- * @param libPath Path to apk's database directory
- * @param callback Callback to be called for every single element being found
- */
-void getApkInfo(const std::string& libPath, std::function<void(nlohmann::json&)> callback);
-
-
-/**
  * @brief Fills a JSON object with all available snap-related information
  * @param callback Callback to be called for every single element being found
  */
 void getSnapInfo(std::function<void(nlohmann::json&)> callback);
 
-// Exception template
-template <LinuxType linuxType>
+// Extract package information in fully compatible Linux systems
 class FactoryPackagesCreator final
 {
     public:
-        static void getPackages(std::function<void(nlohmann::json&)> /*callback*/)
+        static void getPackages(const std::function<void(nlohmann::json&)>& callback)
         {
-            throw std::runtime_error
-            {
-                "Error creating package data retriever."
-            };
-        }
-};
+            const file_system::FileSystemWrapper fs;
 
-// Standard template to extract package information in fully compatible Linux systems
-template <>
-class FactoryPackagesCreator<LinuxType::STANDARD> final
-{
-    public:
-        static void getPackages(std::function<void(nlohmann::json&)> callback)
-        {
-            if (Utils::existsDir(DPKG_PATH))
+            if (fs.is_directory(DPKG_PATH))
             {
                 getDpkgInfo(DPKG_STATUS_PATH, callback);
             }
 
-            if (Utils::existsDir(PACMAN_PATH))
-            {
-                getPacmanInfo(PACMAN_PATH, callback);
-            }
-
-            if (Utils::existsDir(RPM_PATH))
+            if (fs.is_directory(RPM_PATH))
             {
                 getRpmInfo(callback);
             }
 
-            if (Utils::existsDir(APK_PATH))
-            {
-                getApkInfo(APK_DB_PATH, callback);
-            }
-
-            if (Utils::existsDir(SNAP_PATH))
+            if (fs.is_directory(SNAP_PATH))
             {
                 getSnapInfo(callback);
             }
@@ -120,31 +76,18 @@ class FactoryPackagesCreator<LinuxType::STANDARD> final
 
         static void getPythonPackages(std::unordered_set<std::string>& pythonPackages)
         {
-            if (Utils::existsDir(DPKG_PATH))
+            const file_system::FileSystemWrapper fs;
+
+            if (fs.is_directory(DPKG_PATH))
             {
                 getDpkgPythonPackages(pythonPackages);
             }
 
-            if (Utils::existsDir(RPM_PATH))
+            if (fs.is_directory(RPM_PATH))
             {
                 getRpmPythonPackages(pythonPackages);
             }
         }
-};
-
-// Template to extract package information in partially incompatible Linux systems
-template <>
-class FactoryPackagesCreator<LinuxType::LEGACY> final
-{
-    public:
-        static void getPackages(std::function<void(nlohmann::json&)> callback)
-        {
-            if (Utils::existsDir(RPM_PATH))
-            {
-                getRpmInfoLegacy(callback);
-            }
-        }
-        static void getPythonPackages(std::unordered_set<std::string>&) {};
 };
 
 #endif // _PACKAGE_LINUX_DATA_RETRIEVER_H

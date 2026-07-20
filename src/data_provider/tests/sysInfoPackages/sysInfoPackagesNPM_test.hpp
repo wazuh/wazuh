@@ -13,23 +13,29 @@
 #define _NPMTEST_HPP
 
 #include "gtest/gtest.h"
-#include "MockFileSystem.hpp"
-#include "MockJsonIO.hpp"
+#include "gmock/gmock.h"
 #include "packagesNPM.hpp"
+#include "json.hpp"
+#include <filesystem>
+#include <ifilesystem_wrapper.hpp>
+#include <mock_filesystem_wrapper.hpp>
+#include <MockJsonIO.hpp>
 
 class NPMTest : public ::testing::Test
 {
     protected:
-        std::unique_ptr<NPM<MockFileSystem<std::vector<std::filesystem::path>>, MockJsonIO>> npm;
+        MockFileSystemWrapper* mockFileSystem; // Raw pointer - npm will own it
+        std::unique_ptr<NPM<MockJsonIO>> npm;
 
         void SetUp() override
         {
-            npm = std::make_unique<NPM<MockFileSystem<std::vector<std::filesystem::path>>, MockJsonIO>>();
+            mockFileSystem = new MockFileSystemWrapper();
+            npm = std::make_unique<NPM<MockJsonIO>>(std::unique_ptr<IFileSystemWrapper>(mockFileSystem));
         }
 
         void TearDown() override
         {
-            npm.reset();
+            npm.reset(); // This will delete mockFileSystem
         }
 };
 

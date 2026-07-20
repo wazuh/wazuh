@@ -1,5 +1,5 @@
 
-  - U heeft 3 installatie typen: server, agent or local.
+  - U heeft 2 installatie typen: server or agent.
 
     - Als u kiest voor 'server', kunt u alle logs analyseren,
       email notificaties en handelingen aanmaken en tevens
@@ -12,18 +12,11 @@
       deze (beveiligd) doorsturen naar de server voor
       analyse.
 
-    - Als u kiest voor 'local', kunt u alles doen wat de
-      server kan, behalve het ontvangen van externe berichten
-      vanaf agenten of externe systeemloggende apparaten.
-
   - Kies voor 'server' als u een log/analyze server opzet.
 
   - Kies voor 'agent' als u een andere machine als log server
     heeft opgezet en hier naar toe voor analyze wilt doorsturen.
     (ideaal voor webservers en database servers)
-
-  - Kies voor 'local' als u een enkel systeem in de gaten
-    wilt houden.
 
   - Meer informatie vindt u op:
     https://documentation.wazuh.com

@@ -14,7 +14,7 @@
 #include <cmocka.h>
 #include "shared.h"
 
-#include "../os_zlib/os_zlib.h"
+#include "os_zlib.h"
 
 #define TEST_STRING_1 "Hello World!"
 #define TEST_STRING_2 "Test hello \n test \t test \r World\n"

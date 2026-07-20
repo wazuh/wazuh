@@ -24,6 +24,7 @@
 #include <time.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
+#include <netioapi.h>
 #include <versionhelpers.h>
 #include "mem_op.h"
 #include "stringHelper.h"
@@ -128,7 +129,7 @@ namespace Utils
         return ret;
     }
 
-    typedef NETIOAPI_API (WINAPI* ConvertLengthToIpv4Mask_t)(ULONG, PULONG);
+    typedef DWORD (WINAPI* ConvertLengthToIpv4Mask_t)(ULONG, PULONG);
     static ConvertLengthToIpv4Mask_t getConvertLengthToIpv4MaskFunctionAddress()
     {
         ConvertLengthToIpv4Mask_t ret{nullptr};
@@ -142,7 +143,7 @@ namespace Utils
         return ret;
     }
 
-    typedef NETIOAPI_API (WINAPI* GetIfEntry2_t)(PMIB_IF_ROW2);
+    typedef DWORD (WINAPI* GetIfEntry2_t)(PMIB_IF_ROW2);
     static GetIfEntry2_t getIfEntry2FunctionAddress()
     {
         GetIfEntry2_t ret{nullptr};
@@ -181,15 +182,6 @@ namespace Utils
             ret = reinterpret_cast<inet_ntop_t>(GetProcAddress(hWs232, "inet_ntop"));
         }
 
-        return ret;
-    }
-
-    static bool isVistaOrLater()
-    {
-        static const bool ret
-        {
-            IsWindowsVistaOrGreater()
-        };
         return ret;
     }
 
@@ -350,11 +342,7 @@ namespace Utils
             {
                 // Set the flags to pass to GetAdaptersAddresses()
                 // When the GAA_FLAG_INCLUDE_PREFIX flag is set, IP address prefixes are returned for both IPv6 and IPv4 addresses.
-                const auto adapterAddressesFlags
-                {
-                    isVistaOrLater() ? (GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS)
-                    : 0
-                };
+                const auto adapterAddressesFlags = GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_INCLUDE_GATEWAYS;
 
                 ULONG bufferLen { WORKING_ADAPTERS_INFO_BUFFER_SIZE };
                 DWORD dwRetVal  { 0 };
@@ -396,47 +384,6 @@ namespace Utils
                 return dwRetVal;
             }
 
-            static DWORD getAdapterInfoXP(PIP_ADAPTER_INFO& ipAdapterInfo)
-            {
-                // Windows XP additional IPv4 interfaces data
-
-                ULONG bufferLen { WORKING_ADAPTERS_INFO_BUFFER_SIZE };
-                DWORD dwRetVal  { 0 };
-                auto attempts   { 0 };
-                bool adapterInfoFound { false };
-
-                while (!adapterInfoFound && attempts < MAX_ADAPTERS_INFO_TRIES)
-                {
-                    ipAdapterInfo = reinterpret_cast<IP_ADAPTER_INFO*>(win_alloc(bufferLen));
-
-                    if (!ipAdapterInfo)
-                    {
-                        throw std::system_error
-                        {
-                            static_cast<int>(GetLastError()),
-                            std::system_category(),
-                            "Unable to allocate memory for IP_ADAPTER_INFO struct."
-                        };
-                    }
-
-                    dwRetVal = GetAdaptersInfo(ipAdapterInfo, &bufferLen);
-
-                    if (ERROR_BUFFER_OVERFLOW == dwRetVal)
-                    {
-                        win_free(ipAdapterInfo);
-                        ipAdapterInfo = nullptr;
-                    }
-                    else
-                    {
-                        adapterInfoFound = true;
-                    }
-
-                    ++attempts;
-                }
-
-                return dwRetVal;
-            }
-
         public:
 
             enum NetworkFamilyTypes
@@ -472,49 +419,16 @@ namespace Utils
                 }
             }
 
-            static void getAdapterInfo(std::unique_ptr<IP_ADAPTER_INFO, IPAddressSmartDeleter>& adapterInfo)
-            {
-                PIP_ADAPTER_INFO ipAdapterInfo { nullptr };
-                const DWORD dwRetVal { getAdapterInfoXP(ipAdapterInfo) };
-
-                if (NO_ERROR == dwRetVal)
-                {
-                    adapterInfo.reset(ipAdapterInfo);
-                }
-                else
-                {
-                    throw std::system_error
-                    {
-                        static_cast<int>(dwRetVal),
-                        std::system_category(),
-                        "Error reading network adapter info"
-                    };
-                }
-            }
-
             static std::string IAddressToString(const int family, in_addr address)
             {
                 std::string retVal;
                 auto plainAddress { std::make_unique<char[]>(NI_MAXHOST) };
 
-                if (isVistaOrLater())
-                {
-                    static auto pfnInetNtop { getInetNtopFunctionAddress() };
+                static auto pfnInetNtop { getInetNtopFunctionAddress() };
 
-                    if (pfnInetNtop)
-                    {
-                        if (pfnInetNtop(family, &address, plainAddress.get(), NI_MAXHOST))
-                        {
-                            retVal = plainAddress.get();
-                        }
-                    }
-                }
-                else
+                if (pfnInetNtop)
                 {
-                    // Windows XP
-                    plainAddress.reset(inet_ntoa(address));
-
-                    if (plainAddress)
+                    if (pfnInetNtop(family, &address, plainAddress.get(), NI_MAXHOST))
                     {
                         retVal = plainAddress.get();
                     }
@@ -528,20 +442,16 @@ namespace Utils
                 std::string retVal;
                 auto plainAddress { std::make_unique<char[]>(NI_MAXHOST) };
 
-                if (isVistaOrLater())
-                {
-                    static auto pfnInetNtop { getInetNtopFunctionAddress() };
+                static auto pfnInetNtop { getInetNtopFunctionAddress() };
 
-                    if (pfnInetNtop)
+                if (pfnInetNtop)
+                {
+                    if (pfnInetNtop(family, &address, plainAddress.get(), NI_MAXHOST))
                     {
-                        if (pfnInetNtop(family, &address, plainAddress.get(), NI_MAXHOST))
-                        {
-                            retVal = plainAddress.get();
-                        }
+                        retVal = plainAddress.get();
                     }
                 }
 
-                // IPv6 in Windows XP is not supported
                 return retVal;
             }
 
@@ -593,7 +503,7 @@ namespace Utils
                 static const auto MAX_BITS_LENGTH { 128 };
                 std::string netmask;
 
-                if (maskLength < MAX_BITS_LENGTH)
+                if (maskLength <= MAX_BITS_LENGTH)
                 {
                     // For a unicast IPv6 address, any value greater than 128 is an illegal value
 

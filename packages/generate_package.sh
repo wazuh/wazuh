@@ -22,11 +22,11 @@ DEBUG="no"
 SRC="no"
 BUILD_DOCKER="yes"
 DOCKER_TAG="latest"
-INSTALLATION_PATH="/var/ossec"
+INSTALLATION_PATH=""
 CHECKSUM="no"
 FUTURE="no"
-LEGACY="no"
 IS_STAGE="no"
+FORCE_OSSEC_PATH="no"
 
 
 trap ctrl_c INT
@@ -55,27 +55,19 @@ download_file() {
 }
 
 build_pkg() {
-    if [ "$LEGACY" = "yes" ]; then
-        REVISION="${REVISION}.el5"
-        TAR_URL="https://packages-dev.wazuh.com/utils/centos-5-i386-build/centos-5-i386.tar.gz"
-        TAR_FILE="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy/centos-5-i386.tar.gz"
-        if [ ! -f "$TAR_FILE" ]; then
-            download_file ${TAR_URL} "${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy"
-        fi
-        DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/legacy"
-        CONTAINER_NAME="pkg_${SYSTEM}_legacy_builder_${ARCHITECTURE}"
-        if [ "$SYSTEM" != "rpm" ]; then
-            echo "Legacy mode is only available for RPM packages."
-            clean 1
-        fi
-    else
-        CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
-        DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/${TARGET}"
+    CONTAINER_NAME="pkg_${SYSTEM}_${TARGET}_builder_${ARCHITECTURE}"
+    DOCKERFILE_PATH="${CURRENT_PATH}/${SYSTEM}s/${ARCHITECTURE}/${TARGET}"
+
+    # Validate architecture
+    if [[ "${ARCHITECTURE}" != "amd64" && "${ARCHITECTURE}" != "arm64" ]]; then
+        echo "Error: Unsupported architecture '${ARCHITECTURE}'. Supported: [amd64, arm64]."
+        return 1
     fi
 
     # Copy the necessary files
     cp ${CURRENT_PATH}/build.sh ${DOCKERFILE_PATH}
     cp ${CURRENT_PATH}/${SYSTEM}s/utils/* ${DOCKERFILE_PATH}
+    cp ${WAZUH_PATH}/.github/scripts/run_with_retry.sh ${DOCKERFILE_PATH}/retry.sh
 
     # Build the Docker image
     if [[ ${BUILD_DOCKER} == "yes" ]]; then
@@ -94,7 +86,7 @@ build_pkg() {
         ${CUSTOM_CODE_VOL} \
         ${CONTAINER_NAME}:${DOCKER_TAG} \
         ${REVISION} ${JOBS} ${DEBUG} \
-        ${CHECKSUM} ${FUTURE} ${LEGACY} ${SRC}|| return 1
+        ${CHECKSUM} ${FUTURE} ${SRC}|| return 1
 
     return 0
 }
@@ -111,14 +103,13 @@ help() {
     echo
     echo "    -b, --branch <branch>      [Optional] Select Git branch."
     echo "    -t, --target <target>      [Required] Target package to build: manager or agent."
-    echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/i386/ppc64le/arm64/armhf]."
+    echo "    -a, --architecture <arch>  [Optional] Target architecture of the package [amd64/arm64]."
     echo "    -j, --jobs <number>        [Optional] Change number of parallel jobs when compiling the manager or agent. By default: 2."
     echo "    -r, --revision <rev>       [Optional] Package revision. By default: 0."
     echo "    -s, --store <path>         [Optional] Set the destination path of package. By default, an output folder will be created."
-    echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/ossec."
+    echo "    -p, --path <path>          [Optional] Installation path for the package. By default: /var/wazuh-manager (manager) or /var/ossec (agent)."
     echo "    -d, --debug                [Optional] Build the binaries with debug flags (without optimizations). By default: no."
     echo "    -c, --checksum             [Optional] Generate checksum on the same directory than the package. By default: no."
-    echo "    -l, --legacy               [Optional only for RPM] Build package for CentOS 5."
     echo "    --dont-build-docker        [Optional] Locally built docker image will be used instead of generating a new one."
     echo "    --tag                      [Optional] Tag to use with the docker image."
     echo "    --sources <path>           [Optional] Absolute path containing wazuh source code. This option will use local source code instead of downloading it from GitHub. By default use the script path."
@@ -127,6 +118,7 @@ help() {
     echo "    --src                      [Optional] Generate the source package in the destination directory."
     echo "    --future                   [Optional] Build test future package x.30.0 Used for development purposes."
     echo "    --verbose                  [Optional] Print commands and their arguments as they are executed."
+    echo "    --force                    [Optional] Force building manager package with /var/ossec path (not recommended)."
     echo "    -h, --help                 Show this help."
     echo
     exit $1
@@ -163,10 +155,6 @@ main() {
             else
                 help 1
             fi
-            ;;
-        "-l"|"--legacy")
-            LEGACY="yes"
-            shift 1
             ;;
         "-j"|"--jobs")
             if [ -n "$2" ]; then
@@ -248,6 +236,10 @@ main() {
             VERBOSE="yes"
             shift 1
             ;;
+        "--force")
+            FORCE_OSSEC_PATH="yes"
+            shift 1
+            ;;
         *)
             help 1
         esac
@@ -260,6 +252,31 @@ main() {
     # Add a default source only if neither the branch nor a custom code volume is defined.
     if [ -z "${CUSTOM_CODE_VOL}" ] && [ -z "${BRANCH}" ]; then
         CUSTOM_CODE_VOL="-v $WAZUH_PATH:/wazuh-local-src:Z"
+    fi
+
+    # Set default INSTALLATION_PATH based on TARGET if not explicitly provided
+    if [ -z "${INSTALLATION_PATH}" ]; then
+        if [ "${TARGET}" = "manager" ]; then
+            INSTALLATION_PATH="/var/wazuh-manager"
+        else
+            INSTALLATION_PATH="/var/ossec"
+        fi
+    fi
+
+    # Soft block: Prevent building manager package with /var/ossec path
+    if [ "${TARGET}" = "manager" ] && [ "${INSTALLATION_PATH}" = "/var/ossec" ]; then
+        if [ "${FORCE_OSSEC_PATH}" != "yes" ]; then
+            echo "=============================================================="
+            echo "ERROR: Building Wazuh Manager with /var/ossec path is not recommended."
+            echo ""
+            echo "The recommended installation path for Wazuh Manager is /var/wazuh-manager."
+            echo ""
+            echo "If you still want to build with /var/ossec, use the --force flag:"
+            echo ""
+            echo "    $0 -t manager -p /var/ossec --force"
+            echo "=============================================================="
+            exit 1
+        fi
     fi
 
     build && clean 0

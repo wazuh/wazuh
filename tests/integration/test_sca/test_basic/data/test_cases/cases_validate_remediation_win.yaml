@@ -3,21 +3,21 @@
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 5
-    POLICY_FILE: cis_win_validate_remediation.yaml
+    POLICY_FILE: ruleset/sca/cis_win_validate_remediation.yaml
   metadata:
     policy_file: cis_win_validate_remediation.yaml
     check_id: 1
-    initial_result: failed
-    final_result: passed
+    initial_result: Failed
+    final_result: Passed
 
 - name: SCA Rule Check Passes - Change system cause Fail
   description: A given rule check passes in SCA scan. After changing system, it fails in next scan.
   configuration_parameters:
     ENABLED: 'yes'
     INTERVAL: 5
-    POLICY_FILE: cis_win_validate_remediation.yaml
+    POLICY_FILE: ruleset/sca/cis_win_validate_remediation.yaml
   metadata:
     policy_file: cis_win_validate_remediation.yaml
     check_id: 2
-    initial_result: passed
-    final_result: failed
+    initial_result: Passed
+    final_result: Failed

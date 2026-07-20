@@ -12,10 +12,10 @@
 #ifndef _CUSTOM_DELETER_HPP
 #define _CUSTOM_DELETER_HPP
 
-template <typename F, F func>
+template<typename F, F func>
 struct CustomDeleter
 {
-    template <typename T>
+    template<typename T>
     constexpr void operator()(T* arg) const
     {
         func(arg);

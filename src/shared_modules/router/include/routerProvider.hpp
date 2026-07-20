@@ -43,7 +43,8 @@ public:
      * @param isLocal True for a local provider, false otherwise.
      */
     explicit RouterProvider(std::string topicName, const bool isLocal = true)
-        : m_topicName {std::move(topicName)}, m_isLocal {isLocal}
+        : m_topicName {std::move(topicName)}
+        , m_isLocal {isLocal}
     {
     }
     // LCOV_EXCL_START

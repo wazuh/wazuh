@@ -8,19 +8,16 @@ import json
 import operator
 import os
 import re
-import stat
 import sys
-import tempfile
 import typing
 from copy import deepcopy
-from datetime import datetime, timedelta, timezone, tzinfo
+from datetime import datetime, timezone, tzinfo
 from dateutil.tz import gettz
 from functools import wraps
 from itertools import groupby, chain
 from os import chmod, chown, listdir, mkdir, curdir, rename, utime, remove, path
 import psutil
 from pyexpat import ExpatError
-from requests import get, exceptions
 from shutil import Error, move, copy2
 from signal import signal, alarm, SIGALRM, SIGKILL
 from xml.etree.ElementTree import Element  # nosec B405
@@ -69,53 +66,6 @@ def clean_pid_files(daemon: str) -> None:
                 print(f'{daemon}: Non existent process {pid}, removing from {common.WAZUH_PATH}/var/run...')
             finally:
                 os.remove(path.join(common.OSSEC_PIDFILE_PATH, pid_file))
-
-
-def find_nth(string: str, substring: str, n: int) -> int:
-    """Return the index corresponding to the n'th occurrence of a substring within a string.
-
-    Parameters
-    ----------
-    string : str
-        String where the substring is searched.
-    substring : str
-        String to be found in "string".
-    n : int
-        Occurrence to be found.
-
-    Returns
-    -------
-    int
-        Index of the n'th occurrence of a substring within a string.
-    """
-
-    start = string.find(substring)
-    while start >= 0 and n > 1:
-        start = string.find(substring, start + len(substring))
-        n -= 1
-    return start
-
-
-def previous_month(n: int = 1) -> datetime.date:
-    """Return the first date of the previous n month.
-
-    Parameters
-    ----------
-    n : int
-        Number of months.
-
-    Returns
-    -------
-    datetime.date
-        First date of the previous n month.
-    """
-
-    date = get_utc_now().replace(day=1)  # First day of current month
-
-    for i in range(0, int(n)):
-        date = (date - timedelta(days=1)).replace(day=1)  # (first_day - 1) = previous month
-
-    return date.replace(hour=00, minute=00, second=00, microsecond=00)
 
 
 def process_array(array: list, search_text: str = None, complementary_search: bool = False,
@@ -495,58 +445,6 @@ def select_array(array: list, select: list = None, required_fields: set = None,
     return result_list
 
 
-_filemode_table = (
-    ((stat.S_IFLNK, "l"),
-     (stat.S_IFREG, "-"),
-     (stat.S_IFBLK, "b"),
-     (stat.S_IFDIR, "d"),
-     (stat.S_IFCHR, "c"),
-     (stat.S_IFIFO, "p")),
-
-    ((stat.S_IRUSR, "r"),),
-    ((stat.S_IWUSR, "w"),),
-    ((stat.S_IXUSR | stat.S_ISUID, "s"),
-     (stat.S_ISUID, "S"),
-     (stat.S_IXUSR, "x")),
-
-    ((stat.S_IRGRP, "r"),),
-    ((stat.S_IWGRP, "w"),),
-    ((stat.S_IXGRP | stat.S_ISGID, "s"),
-     (stat.S_ISGID, "S"),
-     (stat.S_IXGRP, "x")),
-
-    ((stat.S_IROTH, "r"),),
-    ((stat.S_IWOTH, "w"),),
-    ((stat.S_IXOTH | stat.S_ISVTX, "t"),
-     (stat.S_ISVTX, "T"),
-     (stat.S_IXOTH, "x"))
-)
-
-
-def filemode(mode: int) -> str:
-    """Convert a file's mode to a string of the form '-rwxrwxrwx'.
-
-    Parameters
-    ----------
-    mode : int
-        Mode.
-
-    Returns
-    -------
-    str
-        String.
-    """
-    perm = []
-    for table in _filemode_table:
-        for bit, char in table:
-            if mode & bit == bit:
-                perm.append(char)
-                break
-        else:
-            perm.append("-")
-    return "".join(perm)
-
-
 def tail(filename: str, n: int = 20) -> list:
     """Returns last 'n' lines of the file 'filename'.
 
@@ -633,39 +531,6 @@ def chown_r(file_path: str, uid: int, gid: int):
                 chown(item_path, uid, gid)
             elif path.isdir(item_path):
                 chown_r(item_path, uid, gid)
-
-
-def delete_wazuh_file(full_path: str) -> bool:
-    """Delete a Wazuh file.
-
-    Parameters
-    ----------
-    full_path : str
-        Full path of the file to delete.
-
-    Raises
-    ------
-    WazuhError(1906)
-        File does not exist.
-    WazuhError(1907)
-        File could not be deleted.
-
-    Returns
-    -------
-    bool
-        True if success.
-    """
-    if not full_path.startswith(common.WAZUH_PATH) or '..' in full_path:
-        raise WazuhError(1907)
-
-    if path.exists(full_path):
-        try:
-            remove(full_path)
-            return True
-        except IOError:
-            raise WazuhError(1907)
-    else:
-        raise WazuhError(1906)
 
 
 def safe_move(source: str, target: str, ownership: tuple = None, time: tuple = None, permissions: int = None):
@@ -781,12 +646,6 @@ def get_hash(filename, hash_algorithm='md5', return_hex=True):
     return hashing.hexdigest() if return_hex else hashing.digest()
 
 
-def get_hash_str(my_str, hash_algorithm='md5'):
-    hashing = _get_hashing_algorithm(hash_algorithm)
-    hashing.update(my_str.encode())
-    return hashing.hexdigest()
-
-
 def get_fields_to_nest(fields, force_fields=[], split_character="_"):
     nest = {k: set(filter(lambda x: x != k, chain.from_iterable(g)))
             for k, g in groupby(map(lambda x: x.split(split_character), sorted(fields)),
@@ -863,99 +722,13 @@ def plain_dict_to_nested_dict(data, nested=None, non_nested=None, force_fields=[
     return nested_dict
 
 
-def check_remote_commands(new_conf: Element, original_conf: Element):
-    """Check remote commands are allowed.
-
-    Parameters
-    ----------
-    new_conf : Element
-        New configuration file.
-    original_conf : Element
-        Original configuration file.
-
-    Raises
-    ------
-    WazuhError(1124)
-        Raised if remote command settings are modified in the configuration to upload.
-    """
-
-    def _filter_remote_commands(commands: list, exceptions: list) -> list:
-        """Keep only remote commands that are not part of the exception list.
-
-        Parameters
-        ----------
-        commands : list
-            List of commands to filter.
-        exceptions : list
-            List of exceptions to exclude from filtering.
-
-        Returns
-        -------
-        list
-            List of remote commands.
-        """
-        remote_commands = []
-
-        for command in commands:
-            if command['localfile']['log_format']['value'] in ['command', 'full_command'] \
-                and command['localfile']['command']['value'] not in exceptions:
-                remote_commands.append(command)
-
-        return remote_commands
-
-    def _filter_wodle_commands(commands: list, exceptions: list) -> list:
-        """Keep only wodle commands that are not part of the exception list.
-
-        Parameters
-        ----------
-        commands : list
-            List of commands to filter.
-        exceptions : list
-            List of exceptions to exclude from filtering.
-
-        Returns
-        -------
-        list
-            List of wodle commands.
-        """
-        wodle_commands = []
-
-        for command in commands:
-            if 'command' in command['wodle'] and command['wodle']['command']['value'] not in exceptions:
-                wodle_commands.append(command)
-
-        return wodle_commands
-
-    ALLOW_KEY = 'allow'
-    EXCEPTIONS_KEY = 'exceptions'
-    LOCALFILE_HIERARCHY = ['ossec_config', 'localfile']
-    WODLE_HIERARCHY = ['ossec_config', 'wodle']
-    LOCALFILE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['localfile']
-    WODLE_SETTINGS = configuration.api_conf['upload_configuration']['remote_commands']['wodle_command']
-
-    if not LOCALFILE_SETTINGS[ALLOW_KEY]:
-        new_localfile = xml_to_dict(new_conf, LOCALFILE_HIERARCHY)
-        original_localfile = xml_to_dict(original_conf, LOCALFILE_HIERARCHY)
-
-        if normalize(_filter_remote_commands(new_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])) \
-            != normalize(_filter_remote_commands(original_localfile, LOCALFILE_SETTINGS[EXCEPTIONS_KEY])):
-            raise WazuhError(1124, extra_message="localfile")
-
-    if not WODLE_SETTINGS[ALLOW_KEY]:
-        new_wodle = xml_to_dict(new_conf, WODLE_HIERARCHY)
-        original_wodle = xml_to_dict(original_conf, WODLE_HIERARCHY)
-
-        if normalize(_filter_wodle_commands(new_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])) \
-            != normalize(_filter_wodle_commands(original_wodle, WODLE_SETTINGS[EXCEPTIONS_KEY])):
-            raise WazuhError(1124, extra_message="wodle")
-
 def xml_to_dict(root, section_path: list):
     """Extract configuration sections from an XML tree using dotted paths.
 
     Parameters
     ----------
     root : Element
-        Root element containing one or more ossec_config nodes.
+        Root element containing one or more wazuh_config nodes.
     section_path : list
         List of strings representing the path to the desired section.
 
@@ -1027,31 +800,6 @@ def normalize(data, preserve_root_order=True):
     return _normalize(data, True)
 
 
-def check_wazuh_limits_unchanged(new_conf, original_conf):
-    """Check if Wazuh limits remain unchanged.
-
-    Parameters
-    ----------
-    new_conf : Element
-        New configuration file.
-    original_conf : Element
-        Original configuration file.
-
-    Raises
-    -------
-    WazuhError(1127)
-        Raised if one of the protected limits is modified in the configuration to upload.
-    """
-    CONFIG_LIMITS_HIERARCHY = ['ossec_config', 'global', 'limits']
-    limits_configuration = configuration.api_conf['upload_configuration']['limits']
-    for disabled_limit in [conf for conf, allowed in limits_configuration.items() if not allowed['allow']]:
-        new_limits = xml_to_dict(new_conf, CONFIG_LIMITS_HIERARCHY + [disabled_limit])
-        original_limits = xml_to_dict(original_conf, CONFIG_LIMITS_HIERARCHY + [disabled_limit])
-
-        if normalize(new_limits) != normalize(original_limits):
-            raise WazuhError(1127, extra_message=f"global > limits > {disabled_limit}")
-
-
 def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element):
     """Check if higher version agents are allowed.
 
@@ -1068,8 +816,8 @@ def check_agents_allow_higher_versions(new_conf: Element, original_conf: Element
         Raised if the agents allow_higher_versions setting is modified in the configuration to upload.
     """
 
-    AUTH_HIERARCHY = ['ossec_config', 'auth', 'allow_higher_versions']
-    REMOTE_HIERARCHY = ['ossec_config', 'remote', 'agents', 'allow_higher_versions']
+    AUTH_HIERARCHY = ['wazuh_config', 'auth', 'allow_higher_versions']
+    REMOTE_HIERARCHY = ['wazuh_config', 'remote', 'agents', 'allow_higher_versions']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['agents']['allow_higher_versions']['allow']:
@@ -1100,7 +848,7 @@ def check_indexer(new_conf, original_conf):
         Raised if the indexer section is modified in the configuration to upload.
     """
 
-    CONFIG_INDEXER_HIERARCHY = ['ossec_config', 'indexer']
+    CONFIG_INDEXER_HIERARCHY = ['wazuh_config', 'indexer']
     upload_configuration = configuration.api_conf['upload_configuration']
 
     if not upload_configuration['indexer']['allow']:
@@ -1108,67 +856,6 @@ def check_indexer(new_conf, original_conf):
         original_indexer = xml_to_dict(original_conf, CONFIG_INDEXER_HIERARCHY)
         if normalize(new_indexer) != normalize(original_indexer):
             raise WazuhError(1127, extra_message='indexer')
-
-
-def check_virustotal_integration(new_conf: Element):
-    """Check if VirusTotal integration configuration is allowed.
-
-    Parameters
-    ----------
-    new_conf : Element
-        New configuration file.
-
-    Raises
-    ------
-    WazuhError(1131)
-        Raised if there is an unexpected VirusTotal response or connection error.
-    WazuhError(1130)
-        Raised if the VirusTotal API key does not meet the minimum quota requirements.
-    """
-
-    def obtain_vt_api_keys(integrations: list[dict]) -> list[str]:
-        """Obtain Virus Total API keys from the configuration.
-
-        Parameters
-        ----------
-        integrations : list[dict]
-            List of integration configurations from XML.
-
-        Returns
-        -------
-        keys: list[str]
-            Virus Total API keys.
-        """
-        keys = []
-        for integration in integrations:
-            if integration['integration']['name']['value'] == 'virustotal':
-                keys.append(
-                    integration['integration']['api_key']['value']
-                )
-
-        return keys
-
-    CONFIG_VT_HIERARCHY = ['ossec_config', 'integration']
-
-    blocked_configurations = configuration.api_conf['upload_configuration']['integrations']['virustotal']
-
-    if not blocked_configurations['public_key']['allow']:
-        new_vt = xml_to_dict(new_conf, CONFIG_VT_HIERARCHY)
-
-        minimum_quota = blocked_configurations['public_key']['minimum_quota']
-        api_keys = obtain_vt_api_keys(new_vt)
-
-        for api_key in api_keys:
-            headers = {'x-apikey': f'{api_key}'}
-            url = f"https://www.virustotal.com/api/v3/users/{api_key}/overall_quotas"
-            try:
-                virustotal_response = get(url=url, headers=headers, timeout=10).json()
-                response_minimum_quota = virustotal_response["data"]["api_requests_hourly"]["user"]["allowed"]
-            except (exceptions.RequestException, KeyError) as e:
-                extra_msg = "Unexpected VirusTotal response" if type(e) == KeyError else str(e)
-                raise WazuhError(1131, extra_message=f'{extra_msg}')
-            if response_minimum_quota == minimum_quota:
-                raise WazuhError(1130, extra_message='integrations > virustotal')
 
 
 def load_wazuh_xml(xml_path, data=None):
@@ -1220,9 +907,22 @@ def load_wazuh_xml(xml_path, data=None):
 
 class WazuhVersion:
 
-    def __init__(self, version):
+    def __init__(self, version, treat_as_empty: list = None, no_version_string: str = 'N/A'):
 
         pattern = r"(?:Wazuh )?v?(\d+)\.(\d+)\.(\d+)\-?(alpha|beta|rc)?(\d*)"
+
+        self.__empty_string = no_version_string
+
+        treat_as_empty = treat_as_empty or []
+
+        if version in treat_as_empty:
+            self.__mayor = 0
+            self.__minor = 0
+            self.__patch = 0
+            self.__dev = None
+            self.__dev_ver = None
+            return
+
         m = re.match(pattern, version)
 
         if m:
@@ -1234,18 +934,10 @@ class WazuhVersion:
         else:
             raise ValueError("Invalid version format.")
 
-    def to_array(self):
-        array = [str(self.__mayor)]
-        array.extend(str(self.__minor))
-        array.extend(str(self.__patch))
-        if self.__dev:
-            array.append(self.__dev)
-        if self.__dev_ver:
-            array.append(self.__dev_ver)
-        return array
-
     def __to_string(self):
-        ver_string = "{0}.{1}.{2}".format(self.__mayor, self.__minor, self.__patch)
+        if self.__mayor == 0 and self.__minor == 0 and self.__patch == 0:
+            return self.__empty_string
+        ver_string = "v{0}.{1}.{2}".format(self.__mayor, self.__minor, self.__patch)
         if self.__dev:
             ver_string = "{0}-{1}{2}".format(ver_string, self.__dev, self.__dev_ver)
         return ver_string
@@ -1738,6 +1430,7 @@ class WazuhDBQuery(object):
             self.request['search'] = "%{0}%".format(re.sub(f"[{self.special_characters}]", '_', self.search['value']))
 
     def _parse_select_filter(self, select_fields):
+
         if select_fields:
             select_fields_set = set(select_fields)
             allowed_select_fields = set(self.fields.keys()) - self.extra_fields
@@ -2041,32 +1734,6 @@ class WazuhDBQuery(object):
         return value == "all"
 
 
-class WazuhDBQueryDistinct(WazuhDBQuery):
-    """Retrieve unique values for a given field."""
-
-    def _default_query(self):
-        return "SELECT DISTINCT {0} FROM " + self.table
-
-    def _default_count_query(self):
-        return "COUNT (DISTINCT {0})".format(','.join(map(lambda x: self.fields[x], self.select)))
-
-    def _add_filters_to_query(self):
-        WazuhDBQuery._add_filters_to_query(self)
-        self.query += ' WHERE ' if not self.q and 'WHERE' not in self.query else ' AND '
-        self.query += ' AND '.join(
-            ["{0} IS NOT null AND {0} != ''".format(self.fields[field]) for field in self.select])
-
-    def _add_select_to_query(self):
-        if len(self.select) > 1:
-            raise WazuhError(1410)
-
-        WazuhDBQuery._add_select_to_query(self)
-
-    def _format_data_into_dictionary(self):
-        self._data = [next(iter(x.values())) for x in self._data]
-        return WazuhDBQuery._format_data_into_dictionary(self)
-
-
 class WazuhDBQueryGroupBy(WazuhDBQuery):
     """Retrieve unique values for multiple fields using group by."""
 
@@ -2092,42 +1759,13 @@ class WazuhDBQueryGroupBy(WazuhDBQuery):
         self.select = self.select & self.filter_fields['fields']
 
 
-
-
-def add_dynamic_detail(detail: str, value: str, attribs: dict, details: dict):
-    """Add a detail with attributes (i.e. regex with negate or type).
-
-    Parameters
-    ----------
-    detail : str
-        Name of the detail.
-    value : str
-        Detail value.
-    attribs : dict
-        Dictionary with the XML attributes.
-    details : dict
-        Dictionary with all the current details.
-    """
-    if detail in details:
-        new_pattern = details[detail]['pattern'] + value
-        details[detail].clear()
-        details[detail]['pattern'] = new_pattern
-    else:
-        details[detail] = dict()
-        details[detail]['pattern'] = value
-
-    details[detail].update(attribs)
-
-
-def validate_wazuh_xml(content: str, config_file: bool = False):
-    """Validate Wazuh XML files (rules, decoders and ossec.conf)
+def validate_wazuh_xml(content: str):
+    """Validate Wazuh XML files (wazuh-manager.conf)
 
     Parameters
     ----------
     content : str
         File content.
-    config_file : bool
-        Validate remote commands if True.
 
     Raises
     ------
@@ -2154,14 +1792,10 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
 
         # Check xml format
         incoming_xml = load_wazuh_xml(xml_path='', data=final_xml)
-        # Check if remote commands are allowed if it is a configuration file
-        if config_file:
-            current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
-            check_remote_commands(incoming_xml, current_xml)
-            check_agents_allow_higher_versions(incoming_xml, current_xml)
-            check_virustotal_integration(incoming_xml)
-            check_indexer(incoming_xml, current_xml)
-            check_wazuh_limits_unchanged(incoming_xml, current_xml)
+        current_xml = load_wazuh_xml(xml_path=common.OSSEC_CONF)
+        # Check if configuration changes are allowed
+        check_agents_allow_higher_versions(incoming_xml, current_xml)
+        check_indexer(incoming_xml, current_xml)
 
     except ExpatError:
         raise WazuhError(1113)
@@ -2169,99 +1803,6 @@ def validate_wazuh_xml(content: str, config_file: bool = False):
         raise e
     except Exception as e:
         raise WazuhError(1113, str(e))
-
-
-def upload_file(content: str, file_path: str, check_xml_formula_values: bool = True):
-    """Upload files (rules, lists, decoders and ossec.conf).
-
-    Parameters
-    ----------
-    content: str
-        Content of the XML file.
-    file_path: str
-        Destination of the new XML file.
-    check_xml_formula_values: bool
-        Check formula values in the resulting XML if true.
-
-    Raises
-    ------
-    WazuhInternalError(1005)
-        Error reading file.
-    WazuhInternalError(1016)
-        Error moving file.
-    WazuhError(1006)
-        Permision error accessing File or Directory.
-
-    Returns
-    -------
-    WazuhResult
-        Confirmation message.
-    """
-
-    def escape_formula_values(xml_string):
-        """Prepend with a single quote possible formula injections."""
-        formula_characters = ('=', '+', '-', '@')
-        et = fromstring(f'<root>{xml_string}</root>')
-        full_preprend, beginning_preprend = list(), list()
-        for node in et.iter():
-            if node.tag and node.tag.startswith(formula_characters):
-                full_preprend.append(node.tag)
-            if node.text and node.text.startswith(formula_characters) and ("'" in node.text or '"' in node.text):
-                beginning_preprend.append(node.text)
-
-        for text in full_preprend:
-            xml_string = re.sub(f'<{re.escape(text)}>', f"<'{text}'>", xml_string)
-            xml_string = re.sub(f'</{re.escape(text)}>', f"</'{text}'>", xml_string)
-
-        for text in beginning_preprend:
-            xml_string = re.sub(f'>{re.escape(text)}<', f">'{text}<", xml_string)
-
-        return xml_string
-
-    # Path of temporary files for parsing xml input
-    handle, tmp_file_path = tempfile.mkstemp(prefix='api_tmp_file_', suffix='.tmp', dir=common.OSSEC_TMP_PATH)
-    try:
-        with open(handle, 'w') as tmp_file:
-            final_file = escape_formula_values(content) if check_xml_formula_values else content
-            tmp_file.write(final_file)
-        chmod(tmp_file_path, 0o660)
-    except IOError as exc:
-        raise WazuhInternalError(1005) from exc
-
-    # Move temporary file to group folder
-    try:
-        new_conf_path = path.join(common.WAZUH_PATH, file_path)
-        safe_move(tmp_file_path, new_conf_path, ownership=(common.wazuh_uid(), common.wazuh_gid()), permissions=0o660)
-    except PermissionError as exc:
-        raise WazuhError(1006) from exc
-    except Error as exc:
-        raise WazuhInternalError(1016) from exc
-
-    return results.WazuhResult({'message': 'File was successfully updated'})
-
-
-def delete_file_with_backup(backup_file: str, abs_path: str, delete_function: callable):
-    """Try to delete a file doing a backup beforehand.
-
-    Parameters
-    ----------
-    backup_file : str
-        Name of the backup file.
-    abs_path : str
-        Absolute path of the file to delete.
-    delete_function : callable
-        Function that will be used to delete the file.
-
-    Raises
-    ------
-    WazuhError(1019)
-        If there is any `IOError` while doing the backup.
-    """
-    try:
-        full_copy(abs_path, backup_file)
-    except IOError:
-        raise WazuhError(1019)
-    delete_function(filename=path.basename(abs_path))
 
 
 def replace_in_comments(original_content, to_be_replaced, replacement):
@@ -2375,7 +1916,7 @@ def get_date_from_timestamp(timestamp: float) -> datetime:
     date: datetime
         The default date.
     """
-    return datetime.utcfromtimestamp(timestamp).replace(tzinfo=timezone.utc)
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
 def get_localtime() -> tzinfo:
@@ -2402,7 +1943,7 @@ def get_utc_now() -> datetime:
     date: datetime
         The current date.
     """
-    return datetime.utcnow().replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc)
 
 
 def get_utc_strptime(date: str, datetime_format: str, date_is_at_utc: bool = True) -> datetime:
@@ -2431,42 +1972,3 @@ def get_utc_strptime(date: str, datetime_format: str, date_is_at_utc: bool = Tru
         dt = dt.replace(tzinfo=get_localtime()).astimezone(timezone.utc)
 
     return dt
-
-
-def check_if_wazuh_agent_version(version_str: str) -> bool:
-    """Check if the string has the expected wazuh agent version format.
-
-    Parameters
-    ----------
-    version_str : str
-        The wazuh version string.
-
-    Returns
-    -------
-    bool
-        True if the string has the expected wazuh version format.
-
-    """
-    if not isinstance(version_str, str):
-        return False
-
-    return bool(re.match(r'^Wazuh v(\d+)\.(\d+)\.(\d+)', version_str))
-
-
-def parse_wazuh_agent_version(version_str: str) -> tuple:
-    """Convert the string vX.Y.Z to a tuple of type (X, Y, Z).
-
-    Parameters
-    ----------
-    version_str : str
-        The wazuh version string.
-
-    Returns
-    -------
-    tuple
-        The tuple of the wazuh version string.
-    """
-    match = re.search(r'v(\d+)\.(\d+)\.(\d+)', version_str)
-    if match:
-        return tuple(map(int, match.groups()))
-    return 0, 0, 0

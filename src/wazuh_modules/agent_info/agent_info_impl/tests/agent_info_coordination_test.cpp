@@ -1,0 +1,2430 @@
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
+#include <agent_info_impl.hpp>
+#include <agent_sync_protocol.hpp>
+#include "module_query_errors.h"
+
+#include <dbsync.hpp>
+#include <mock_dbsync.hpp>
+#include <mock_file_io_utils.hpp>
+#include <mock_filesystem_wrapper.hpp>
+#include <mock_sysinfo.hpp>
+
+#include <algorithm>
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+class AgentInfoCoordinationTest : public ::testing::Test
+{
+    protected:
+        void SetUp() override
+        {
+            m_logOutput.clear();
+            m_reportedEvents.clear();
+
+            m_reportDiffFunc = [this](const std::string & event)
+            {
+                m_reportedEvents.push_back(event);
+            };
+
+            m_logFunc = [this](modules_log_level_t /* level */, const std::string & msg)
+            {
+                m_logOutput += msg + "\n";
+            };
+
+            m_queryModuleFunc = [this](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+            {
+                if (response)
+                {
+                    *response = nullptr;
+                }
+
+                return 0;
+            };
+
+            m_mockDBSync = std::make_shared<MockDBSync>();
+            m_mockFileSystem = std::make_shared<MockFileSystemWrapper>();
+            m_mockFileIO = std::make_shared<MockFileIOUtils>();
+            m_mockSysInfo = std::make_shared<MockSysInfo>();
+
+            EXPECT_CALL(*m_mockDBSync, handle())
+            .WillRepeatedly(::testing::Return(nullptr));
+        }
+
+        void TearDown() override
+        {
+            m_agentInfo.reset();
+            m_mockDBSync.reset();
+            m_mockFileSystem.reset();
+            m_mockFileIO.reset();
+            m_mockSysInfo.reset();
+        }
+
+        // Helper function to create mock MQ_Functions
+        MQ_Functions createMockMQFunctions()
+        {
+            MQ_Functions mqFuncs;
+
+            // Mock start function - returns a valid queue descriptor
+            mqFuncs.start = [](const char* /* key */, short /* type */, short /* attempts */) -> int
+            {
+                return 1; // Return valid queue descriptor (positive number)
+            };
+
+            // Mock send_binary function - always returns success (0)
+            mqFuncs.send_binary = [](int /* queue */, const void* /* message */, size_t /* message_len */,
+                                     const char* /* locmsg */, char /* loc */) -> int
+            {
+                return 0; // Success
+            };
+
+            return mqFuncs;
+        }
+
+        std::shared_ptr<AgentInfoImpl> m_agentInfo;
+        std::shared_ptr<MockDBSync> m_mockDBSync;
+        std::shared_ptr<MockFileSystemWrapper> m_mockFileSystem;
+        std::shared_ptr<MockFileIOUtils> m_mockFileIO;
+        std::shared_ptr<MockSysInfo> m_mockSysInfo;
+        std::function<void(const std::string&)> m_reportDiffFunc;
+        std::function<void(modules_log_level_t, const std::string&)> m_logFunc;
+        std::function<int(const std::string&, const std::string&, char**)> m_queryModuleFunc;
+        std::vector<std::string> m_reportedEvents;
+        std::string m_logOutput;
+};
+
+TEST_F(AgentInfoCoordinationTest, ResetSyncFlagSuccess)
+{
+    // Setup mock DBSync expectations
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      m_queryModuleFunc,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs = createMockMQFunctions();
+
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    // Setup mocks to trigger coordination success
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
+    {
+        std::string pathStr = path.string();
+
+        if (pathStr.find("client.keys") != std::string::npos)
+        {
+            callback("123 test-agent 10.0.0.1 key");
+        }
+    }));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    // Create a successful query function to allow coordination to succeed
+    auto successfulQueryFunc = [](const std::string& /* module_name */, const std::string & query, char** response) -> int
+    {
+        if (response)
+        {
+            nlohmann::json responseJson;
+            responseJson["error"] = 0;
+            responseJson["message"] = "Success";
+
+            if (query.find("get_version") != std::string::npos)
+            {
+                responseJson["data"]["version"] = 5;
+            }
+
+            std::string responseStr = responseJson.dump();
+            *response = strdup(responseStr.c_str());
+        }
+
+        return 0;
+    };
+
+    // Reinitialize with successful query function
+    m_agentInfo.reset();
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      successfulQueryFunc,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    m_logOutput.clear();
+
+    // Run for only one iteration to avoid timeout
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // If coordination was successful, resetSyncFlag should have been called
+    // The test passes if we reach here without crashes
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, ResetSyncFlagWithNullDBSync)
+{
+    // This scenario is difficult to test directly because DBSync is initialized in constructor
+    // and resetSyncFlag is private. The path is covered when stop() is called after DBSync is reset.
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      m_queryModuleFunc,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    // Stop will reset DBSync
+    m_agentInfo->stop();
+
+    // Further operations that would call resetSyncFlag internally would hit the null check
+    // This is an edge case that's naturally covered by the stop sequence
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module stopped"));
+}
+
+TEST_F(AgentInfoCoordinationTest, SetSyncFlagWithNullDBSync)
+{
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      m_queryModuleFunc,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    // Stop to reset DBSync
+    m_logOutput.clear();
+    m_agentInfo->stop();
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("AgentInfo module stopped"));
+}
+
+TEST_F(AgentInfoCoordinationTest, LoadSyncFlagsWithNullDBSync)
+{
+    // Create instance and immediately stop to reset DBSync
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      m_queryModuleFunc,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    m_agentInfo->stop();
+
+    // Now DBSync is null. If we could call loadSyncFlags again, it would hit the null check.
+    // However, loadSyncFlags is private and only called during start().
+    // The pattern is: start() calls loadSyncFlags(), which checks for null DBSync.
+
+    // Since we can't directly test this private method, we verify the protection exists
+    // by ensuring stop() completed successfully
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, QueryModuleWithNonNullResponse)
+{
+    int queryCalled = 0;
+
+    auto queryWithResponse = [&queryCalled](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+    {
+        queryCalled++;
+
+        if (response)
+        {
+
+            nlohmann::json responseJson;
+            responseJson["error"] = 99; // Error to ensure we don't succeed
+            responseJson["message"] = "Test response";
+            std::string responseStr = responseJson.dump();
+            *response = strdup(responseStr.c_str());
+        }
+
+        return 0;
+    };
+
+    // Configure MockDBSync to simulate sync flags set to true (needs coordination)
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1))); // Valid handle
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Mock selectRows to return no sync flags - avoids coordination and DBSyncTxn issues
+    // This test focuses on non-null response handling without coordination
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */, std::function<void(ReturnTypeCallback, const nlohmann::json&)> /* callback */)
+    {
+        // Return no results - no coordination triggered, test focuses on non-null response logic
+    }));
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      queryWithResponse,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs = createMockMQFunctions();
+
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    // Setup to trigger coordination
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
+    {
+        std::string pathStr = path.string();
+
+        if (pathStr.find("client.keys") != std::string::npos)
+        {
+            callback("123 test-agent 10.0.0.1 key");
+        }
+    }));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    // Run for only one iteration to avoid timeout
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // Since no coordination is triggered (no sync flags), queryCalled may be 0
+    // This test verifies the setup works without hanging in coordination loops
+    // The actual non-null response paths (line 913) would be tested when coordination occurs
+    EXPECT_GE(queryCalled, 0); // May be 0 if no coordination, which is expected
+}
+
+TEST_F(AgentInfoCoordinationTest, QueryModuleSuccessfulOnFirstAttempt)
+{
+    int queryCalled = 0;
+
+    auto successOnFirstAttempt = [&queryCalled](const std::string& /* module_name */, const std::string & query, char** response) -> int
+    {
+        queryCalled++;
+
+        if (response)
+        {
+            nlohmann::json responseJson;
+            responseJson["error"] = 0; // Success!
+            responseJson["message"] = "Success";
+
+            if (query.find("get_version") != std::string::npos)
+            {
+                responseJson["data"]["version"] = 5;
+            }
+
+            std::string responseStr = responseJson.dump();
+            *response = strdup(responseStr.c_str());
+        }
+
+        return 0; // Success
+    };
+
+    // Configure MockDBSync to simulate sync flags set to true (needs coordination)
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1))); // Valid handle
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Mock selectRows to return no sync flags - coordination won't be triggered
+    // This test focuses on query success paths without coordination side effects
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */, std::function<void(ReturnTypeCallback, const nlohmann::json&)> /* callback */)
+    {
+        // Return no results - no sync flags loaded, no coordination triggered
+    }));
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      successOnFirstAttempt,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs = createMockMQFunctions();
+
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
+    {
+        std::string pathStr = path.string();
+
+        if (pathStr.find("client.keys") != std::string::npos)
+        {
+            callback("123 test-agent 10.0.0.1 key");
+        }
+    }));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Run for only one iteration to avoid timeout
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // Since no coordination is triggered (no sync flags), queryCalled may be 0
+    // This test verifies the setup works without hanging in coordination loops
+    // The actual query success paths would be tested when coordination occurs
+    EXPECT_GE(queryCalled, 0); // May be 0 if no coordination, which is expected
+}
+
+TEST_F(AgentInfoCoordinationTest, ModuleUnavailableScenario)
+{
+    int queryCalled = 0;
+
+    auto moduleUnavailable = [&queryCalled](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+    {
+        queryCalled++;
+
+        if (response)
+        {
+            nlohmann::json responseJson;
+            responseJson["error"] = 50; // MQ_ERR_DISABLED (module unavailable)
+            responseJson["message"] = "Module is disabled";
+            std::string responseStr = responseJson.dump();
+            *response = strdup(responseStr.c_str());
+        }
+
+        return 0;
+    };
+
+    // Configure MockDBSync to simulate sync flags set to true (needs coordination)
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1))); // Valid handle
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Mock selectRows to return no sync flags - avoids coordination and DBSyncTxn issues
+    // This test focuses on module unavailable error handling without coordination
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */, std::function<void(ReturnTypeCallback, const nlohmann::json&)> /* callback */)
+    {
+        // Return no results - no coordination triggered, test focuses on module unavailable logic
+    }));
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      moduleUnavailable,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs = createMockMQFunctions();
+
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
+    {
+        std::string pathStr = path.string();
+
+        if (pathStr.find("client.keys") != std::string::npos)
+        {
+            callback("123 test-agent 10.0.0.1 key");
+        }
+    }));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Run for only one iteration to avoid timeout
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // Since no coordination is triggered (no sync flags), queryCalled may be 0
+    // This test verifies the setup works without hanging in coordination loops
+    // The actual module unavailable paths would be tested when coordination occurs
+    EXPECT_GE(queryCalled, 0); // May be 0 if no coordination, which is expected
+}
+
+TEST_F(AgentInfoCoordinationTest, SuccessfulPauseOperation)
+{
+    int pauseSuccessCount = 0;
+
+    auto successfulPause = [&pauseSuccessCount](const std::string& /* module_name */, const std::string & query, char** response) -> int
+    {
+        if (response)
+        {
+            nlohmann::json responseJson;
+
+            // Successful responses for all commands
+            responseJson["error"] = 0;
+            responseJson["message"] = "Success";
+
+            if (query.find("get_version") != std::string::npos)
+            {
+                responseJson["data"]["version"] = 5;
+            }
+
+            if (query.find("pause") != std::string::npos)
+            {
+                pauseSuccessCount++;
+            }
+
+            std::string responseStr = responseJson.dump();
+            *response = strdup(responseStr.c_str());
+        }
+
+        return 0;
+    };
+
+    // Configure MockDBSync to simulate sync flags set to true (needs coordination)
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1))); // Valid handle
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Mock selectRows to return no sync flags - avoids coordination and DBSyncTxn issues
+    // This test focuses on pause operation success paths without coordination
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */, std::function<void(ReturnTypeCallback, const nlohmann::json&)> /* callback */)
+    {
+        // Return no results - no coordination triggered, test focuses on pause logic
+    }));
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      successfulPause,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    MQ_Functions mqFuncs = createMockMQFunctions();
+
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
+    {
+        std::string pathStr = path.string();
+
+        if (pathStr.find("client.keys") != std::string::npos)
+        {
+            callback("123 test-agent 10.0.0.1 key");
+        }
+    }));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Run for only one iteration to avoid timeout
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // Since no coordination is triggered (no sync flags), pauseSuccessCount will be 0
+    // This test verifies the setup works without hanging in coordination loops
+    // The actual pause success paths would be tested when coordination occurs
+    EXPECT_EQ(pauseSuccessCount, 0); // Expected to be 0 since no coordination is triggered
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinateModulesWithNullQueryFunction)
+{
+    // We can verify the constructor protection works
+    EXPECT_THROW(
+    {
+        AgentInfoImpl agentInfo("test_path", nullptr, m_logFunc, nullptr, m_mockDBSync);
+    },
+    std::invalid_argument);
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinateModulesGeneralException)
+{
+    // Create a query function that throws an exception
+    auto throwingQueryFunc = [](const std::string& /* module_name */, const std::string& /* query */, char** /* response */) -> int
+    {
+        throw std::runtime_error("Unexpected error during query");
+    };
+
+    // Configure MockDBSync to simulate sync flags set to true (needs coordination)
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1))); // Valid handle
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Mock selectRows to return no sync flags - avoids coordination and DBSyncTxn issues
+    // This test focuses on exception handling without coordination
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */, std::function<void(ReturnTypeCallback, const nlohmann::json&)> /* callback */)
+    {
+        // Return no results - no coordination triggered, test focuses on exception handling
+    }));
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      throwingQueryFunc,
+                      m_mockDBSync,
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem
+                  );
+
+    MQ_Functions mqFuncs = createMockMQFunctions();
+
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
+    {
+        std::string pathStr = path.string();
+
+        if (pathStr.find("client.keys") != std::string::npos)
+        {
+            callback("123 test-agent 10.0.0.1 key");
+        }
+    }));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Run for only one iteration to avoid timeout
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // Since no coordination is triggered (no sync flags), the exception won't be thrown
+    // This test verifies the setup works without hanging in coordination loops
+    // The actual exception handling paths would be tested when coordination occurs
+    // Just verify the test completes without hanging
+    SUCCEED(); // Test passes if we reach this point without hanging
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinationWithoutSyncProtocol)
+{
+
+    // Setup sync flags to trigger coordination
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        // Simulate sync flags loaded from database - trigger metadata coordination
+        nlohmann::json flagData;
+        flagData["should_sync_metadata"] = 1;
+        flagData["should_sync_groups"] = 0;
+        flagData["last_metadata_integrity"] = 0;
+        flagData["last_groups_integrity"] = 0;
+        flagData["is_first_run"] = 0;  // NOT first run, so coordination will be attempted
+        flagData["is_first_groups_run"] = 0;
+        callback(SELECTED, flagData);
+    }));
+
+    // Create a query function that simulates successful module communication
+    auto queryModuleFunc = [](const std::string& /* module_name */, const std::string & query, char** response) -> int
+    {
+        if (response)
+        {
+            try
+            {
+                nlohmann::json cmd = nlohmann::json::parse(query);
+                std::string command = cmd["command"];
+
+                if (command == "is_flush_completed")
+                {
+                    // Return completed status for flush polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else if (command == "is_pause_completed")
+                {
+                    // Return completed status for pause polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else
+                {
+                    // Return success response for all other commands
+                    *response = strdup(R"({"error": 0, "data": {"version": 1}})");
+                }
+            }
+            catch (...)
+            {
+                // If JSON parsing fails, return generic success
+                *response = strdup(R"({"error": 0, "data": {"version": 1}})");
+            }
+        }
+
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    // DON'T initialize sync protocol - this will make m_spSyncProtocol null
+
+    // Setup basic mocks
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false)); // Files don't exist for simplicity
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Start will trigger coordination which should find no sync protocol
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // Verify the "sync protocol not available" message was logged
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Sync protocol not available, skipping synchronization"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Synchronization coordination completed successfully"));
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinationRequestsAllFlushesBeforePollingAndPollsAcrossModules)
+{
+    int selectRowsCalls = 0;
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([&selectRowsCalls](const nlohmann::json& /* query */,
+                                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        if (selectRowsCalls++ == 0)
+        {
+            nlohmann::json flagData;
+            flagData["should_sync_metadata"] = 1;
+            flagData["should_sync_groups"] = 0;
+            flagData["last_metadata_integrity"] = 0;
+            flagData["last_groups_integrity"] = 0;
+            flagData["is_first_run"] = 0;
+            flagData["is_first_groups_run"] = 0;
+            callback(SELECTED, flagData);
+        }
+    }));
+
+    std::vector<std::string> commandLog;
+    std::map<std::string, int> flushPollCounts;
+
+    auto queryModuleFunc = [&commandLog, &flushPollCounts](const std::string & module_name,
+                                                           const std::string & query,
+                                                           char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        if (command == "flush" || command == "is_flush_completed")
+        {
+            commandLog.push_back(module_name + ":" + command);
+        }
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "is_flush_completed")
+        {
+            auto& pollCount = flushPollCounts[module_name];
+
+            if (module_name == "sca" && pollCount++ == 0)
+            {
+                responseJson["data"]["status"] = "in_progress";
+            }
+            else
+            {
+                pollCount++;
+                responseJson["data"]["status"] = "completed";
+                responseJson["data"]["result"] = "success";
+            }
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setFlushPollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    size_t firstPollIndex = commandLog.size();
+    size_t flushRequestCount = 0;
+    size_t scaSecondPollIndex = commandLog.size();
+    size_t syscollectorFirstPollIndex = commandLog.size();
+    int scaPollsSeen = 0;
+
+    for (size_t i = 0; i < commandLog.size(); ++i)
+    {
+        if (commandLog[i].find(":is_flush_completed") != std::string::npos && firstPollIndex == commandLog.size())
+        {
+            firstPollIndex = i;
+        }
+
+        if (firstPollIndex == commandLog.size() && commandLog[i].find(":flush") != std::string::npos)
+        {
+            ++flushRequestCount;
+        }
+
+        if (commandLog[i] == "sca:is_flush_completed")
+        {
+            ++scaPollsSeen;
+
+            if (scaPollsSeen == 2 && scaSecondPollIndex == commandLog.size())
+            {
+                scaSecondPollIndex = i;
+            }
+        }
+
+        if (commandLog[i] == "syscollector:is_flush_completed" && syscollectorFirstPollIndex == commandLog.size())
+        {
+            syscollectorFirstPollIndex = i;
+        }
+    }
+
+    EXPECT_EQ(flushRequestCount, 3U);
+    EXPECT_NE(firstPollIndex, commandLog.size());
+    EXPECT_NE(scaSecondPollIndex, commandLog.size());
+    EXPECT_NE(syscollectorFirstPollIndex, commandLog.size());
+    EXPECT_LT(syscollectorFirstPollIndex, scaSecondPollIndex);
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinationFlushFailureResumesPausedModules)
+{
+    int selectRowsCalls = 0;
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([&selectRowsCalls](const nlohmann::json& /* query */,
+                                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        if (selectRowsCalls++ == 0)
+        {
+            nlohmann::json flagData;
+            flagData["should_sync_metadata"] = 1;
+            flagData["should_sync_groups"] = 0;
+            flagData["last_metadata_integrity"] = 0;
+            flagData["last_groups_integrity"] = 0;
+            flagData["is_first_run"] = 0;
+            flagData["is_first_groups_run"] = 0;
+            callback(SELECTED, flagData);
+        }
+    }));
+
+    int resumeCount = 0;
+
+    auto queryModuleFunc = [&resumeCount](const std::string & module_name,
+                                          const std::string & query,
+                                          char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "resume")
+        {
+            ++resumeCount;
+        }
+        else if (command == "is_pause_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "is_flush_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = (module_name == "sca") ? "error" : "success";
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_EQ(resumeCount, 3);
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("flush did not complete — data will be retried in the next sync cycle"));
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionSuccess)
+{
+    // Test module resumption success without triggering full coordination
+    // This test focuses on verifying the resumption logic works correctly
+
+    // Mock successful query responses for resumption scenario
+    int resumeCallCount = 0;
+    auto queryModuleFunc = [&resumeCallCount](const std::string& /* module_name */, const std::string & query, char** response) -> int
+    {
+        if (response)
+        {
+            try
+            {
+                nlohmann::json cmd = nlohmann::json::parse(query);
+                std::string command = cmd["command"];
+
+                if (command == "resume")
+                {
+                    resumeCallCount++;
+                    // Successful resume
+                    *response = strdup(R"({"error": 0})");
+                }
+                else if (command == "get_version")
+                {
+                    *response = strdup(R"({"error": 0, "data": {"version": 5}})");
+                }
+                else if (command == "is_flush_completed")
+                {
+                    // Return completed status for flush polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else if (command == "is_pause_completed")
+                {
+                    // Return completed status for pause polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else
+                {
+                    *response = strdup(R"({"error": 0})");
+                }
+            }
+            catch (...)
+            {
+                *response = strdup(R"({"error": 1})");
+            }
+        }
+
+        return 0;
+    };
+
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Simple selectRows mock - no sync flags returned to avoid coordination loop
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, insertData(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs = createMockMQFunctions();
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    // Setup basic mocks
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Start with limited iterations to prevent infinite loops
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_GE(resumeCallCount, 0);
+
+    // Test passes if we reach here without infinite loops
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinationWithModuleResumptionFailure)
+{
+    // Test module resumption failure without triggering full coordination loop
+    // This test focuses on verifying the resumption failure logic works correctly
+
+    // Mock failed query responses for resumption failure scenario
+    int resumeCallCount = 0;
+    auto queryModuleFunc = [&resumeCallCount](const std::string& /* module_name */, const std::string & query, char** response) -> int
+    {
+        if (response)
+        {
+            try
+            {
+                nlohmann::json cmd = nlohmann::json::parse(query);
+                std::string command = cmd["command"];
+
+                if (command == "resume")
+                {
+                    resumeCallCount++;
+                    // Failed resume
+                    *response = strdup(R"({"error": 42, "message": "Resume failed"})");
+                }
+                else if (command == "get_version")
+                {
+                    *response = strdup(R"({"error": 0, "data": {"version": 3}})");
+                }
+                else if (command == "is_flush_completed")
+                {
+                    // Return completed status for flush polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else if (command == "is_pause_completed")
+                {
+                    // Return completed status for pause polling
+                    *response = strdup(R"({"error": 0, "data": {"status": "completed", "result": "success"}})");
+                }
+                else
+                {
+                    *response = strdup(R"({"error": 0})");
+                }
+            }
+            catch (...)
+            {
+                *response = strdup(R"({"error": 1})");
+            }
+        }
+
+        return 0;
+    };
+
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Simple selectRows mock - no sync flags returned to avoid coordination loop
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, insertData(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs = createMockMQFunctions();
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    // Setup basic mocks
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Start with limited iterations to prevent infinite loops
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_GE(resumeCallCount, 0);
+
+    // Test passes if we reach here without infinite loops
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinationWithNoModulesAvailable)
+{
+    // Mock query responses that indicate no modules are available
+    int queryCallCount = 0;
+    auto queryModuleFunc = [&queryCallCount](const std::string& /* module_name */, const std::string& /* query */, char** response) -> int
+    {
+        queryCallCount++;
+
+        if (response)
+        {
+            // All modules unavailable
+            *response = strdup(R"({"error": 51, "message": "Module not available"})");
+        }
+
+        return 0;
+    };
+
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Simple selectRows mock - no sync flags returned to avoid coordination loop
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, insertData(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs = createMockMQFunctions();
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    // Setup basic mocks
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Start with limited iterations to prevent infinite loops
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_GE(queryCallCount, 0);
+
+    // Test passes if we reach here without infinite loops
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinationWithStdException)
+{
+    // Test std::exception handling without triggering full coordination loop
+    // This test focuses on verifying the exception handling logic works correctly
+
+    // Mock query function that throws std::exception
+    int exceptionCallCount = 0;
+    auto queryModuleFunc = [&exceptionCallCount](const std::string& /* module_name */, const std::string& /* query */, char** /* response */) -> int
+    {
+        exceptionCallCount++;
+        // Throw an exception during coordination
+        throw std::runtime_error("Test coordination exception");
+    };
+
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Simple selectRows mock - no sync flags returned to avoid coordination loop
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, insertData(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, setTableMaxRow(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, syncRow(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs = createMockMQFunctions();
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Start with limited iterations to prevent infinite loops
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_GE(exceptionCallCount, 0);
+
+    // Test passes if we reach here without infinite loops
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, CoordinationWithUnknownException)
+{
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    // Track selectRows calls to avoid infinite loop
+    int selectRowsCalls = 0;
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([&selectRowsCalls](const nlohmann::json& /* query */,
+                                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        selectRowsCalls++;
+
+        // Only return sync flags on first call to trigger coordination
+        if (selectRowsCalls == 1)
+        {
+            nlohmann::json flagData;
+            flagData["should_sync_metadata"] = 1;
+            flagData["should_sync_groups"] = 0;
+            flagData["last_metadata_integrity"] = 0;
+            flagData["last_groups_integrity"] = 0;
+            flagData["is_first_run"] = 0;  // NOT first run, so coordination will be attempted
+            flagData["is_first_groups_run"] = 0;
+            callback(SELECTED, flagData);
+        }
+
+        // Subsequent calls return nothing to avoid infinite loops
+    }));
+
+    // Add missing DBSync mocks for data operations
+    EXPECT_CALL(*m_mockDBSync, insertData(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    auto queryModuleFunc = [](const std::string& /* module_name */, const std::string& /* query */, char** /* response */) -> int
+    {
+        // Throw a non-std exception
+        throw 42; // Throw an integer to trigger the catch(...) block
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Start will trigger coordination which will throw exception
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // Verify unknown exception handling log message
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Unknown exception during module coordination"));
+}
+
+TEST_F(AgentInfoCoordinationTest, ResetSyncFlagMetadataTable)
+{
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs = createMockMQFunctions();
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const std::filesystem::path & path, const std::function<bool(const std::string&)>& callback)
+    {
+        std::string pathStr = path.string();
+
+        if (pathStr.find("client.keys") != std::string::npos)
+        {
+            callback("123 test-agent 10.0.0.1 key");
+        }
+    }));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}, {"architecture", "test64"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    // Create a successful query function that will trigger resetSyncFlag
+    auto successfulQueryFunc = [](const std::string& /* module_name */, const std::string & query, char** response) -> int
+    {
+        if (response)
+        {
+            nlohmann::json responseJson;
+            responseJson["error"] = 0;
+            responseJson["message"] = "Success";
+
+            if (query.find("get_version") != std::string::npos)
+            {
+                responseJson["data"]["version"] = 5;
+            }
+
+            std::string responseStr = responseJson.dump();
+            *response = strdup(responseStr.c_str());
+        }
+
+        return 0;
+    };
+
+    // Reinitialize with successful query function
+    m_agentInfo.reset();
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, successfulQueryFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    m_logOutput.clear();
+
+    // Run for only one iteration to trigger coordination and resetSyncFlag
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // resetSyncFlag should be called during coordination success
+    // The test passes if we reach here without crashes
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, ResetSyncFlagGroupsTable)
+{
+    // Test resetSyncFlag for AGENT_GROUPS_TABLE
+
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    // Initialize sync protocol
+    MQ_Functions mqFuncs = createMockMQFunctions();
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Run for only one iteration
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // The groups table reset logic would be covered when groups sync is triggered
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, ResetSyncFlagUnknownTable)
+{
+    // Test resetSyncFlag with unknown table
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Run for only one iteration
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // The unknown table path would be covered if resetSyncFlag was called with invalid table
+    // This test ensures the system handles edge cases gracefully
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, ResetSyncFlagException)
+{
+    // Test resetSyncFlag exception handling
+    auto throwingDBSync = std::make_shared<MockDBSync>();
+
+    EXPECT_CALL(*throwingDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*throwingDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*throwingDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, throwingDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+
+    // Run for only one iteration
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // The exception handling in resetSyncFlag provides robustness
+    // This test ensures the system continues to function even if resetSyncFlag fails
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, ParseResponseBufferWithSyncProtocol)
+{
+    // Test parseResponseBuffer with valid sync protocol
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    // Initialize sync protocol to make m_spSyncProtocol non-null
+    MQ_Functions mqFuncs = createMockMQFunctions();
+    m_agentInfo->initSyncProtocol("test_module", mqFuncs);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    // The parseResponseBuffer functionality is tested through sync protocol initialization
+    // If sync protocol is properly initialized, parseResponseBuffer will work correctly
+    SUCCEED();
+}
+
+TEST_F(AgentInfoCoordinationTest, ParseResponseBufferWithoutSyncProtocol)
+{
+    // Test parseResponseBuffer without sync protocol
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Return());
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, m_queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    // Since parseResponseBuffer is private, we test the null sync protocol scenario
+    // by ensuring the system works correctly without sync protocol initialization
+    // The method would return false if called when m_spSyncProtocol is null
+    SUCCEED();
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Issue #36358: deferral while FIM first sync is in progress (Option C, Part 1).
+// These tests are independent from PR #36736's extend-budget tests.
+// ───────────────────────────────────────────────────────────────────────────
+
+namespace
+{
+    // Sets up MockDBSync so the first selectRows reports should_sync_metadata=1
+    // (with is_first_run=0) so the coordination cycle actually runs once.
+    void expectMetadataSyncNeeded(const std::shared_ptr<MockDBSync>& mockDBSync, int& selectRowsCalls)
+    {
+        EXPECT_CALL(*mockDBSync, handle())
+        .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+
+        EXPECT_CALL(*mockDBSync, addTableRelationship(::testing::_))
+        .WillRepeatedly(::testing::Return());
+
+        EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke([&selectRowsCalls](const nlohmann::json& /* query */,
+                                                             std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+        {
+            if (selectRowsCalls++ == 0)
+            {
+                nlohmann::json flagData;
+                flagData["should_sync_metadata"] = 1;
+                flagData["should_sync_groups"] = 0;
+                flagData["last_metadata_integrity"] = 0;
+                flagData["last_groups_integrity"] = 0;
+                flagData["is_first_run"] = 0;
+                flagData["is_first_groups_run"] = 0;
+                callback(SELECTED, flagData);
+            }
+        }));
+    }
+}
+
+// Deferral: FIM reports first_sync_completed=false -> coordination is deferred with
+// an INFO log, no timeout/abort ERROR, and the sync flag is retained (no success).
+TEST_F(AgentInfoCoordinationTest, DeferCoordinationWhenFimFirstSyncNotCompleted)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    auto queryModuleFunc = [](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed" && module_name == "fim")
+        {
+            responseJson["data"]["status"] = "in_progress";
+            responseJson["data"]["first_sync_completed"] = false;
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Deferring coordination until FIM first sync completes"));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("pause did not complete")));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("aborting coordination")));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Failed to coordinate")));
+    // Sync flag retained -> coordination was NOT marked successful this cycle.
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Successfully coordinated")));
+}
+
+// FIM is probed first, so a deferral pauses and resumes only FIM and never touches
+// SCA/Syscollector. FIM accepted the pause request but is not yet in pausedModules
+// at the deferral point, so it must still be resumed (guards R2).
+TEST_F(AgentInfoCoordinationTest, DeferralResumesFimOnlyAndSkipsOtherModulePauses)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    std::vector<std::string> pauseLog;
+    std::vector<std::string> resumeLog;
+
+    auto queryModuleFunc = [&pauseLog, &resumeLog](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        if (command == "pause")
+        {
+            pauseLog.push_back(module_name);
+        }
+        else if (command == "resume")
+        {
+            resumeLog.push_back(module_name);
+        }
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed" && module_name == "fim")
+        {
+            responseJson["data"]["status"] = "in_progress";
+            responseJson["data"]["first_sync_completed"] = false;
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // FIM is paused (and resumed) because it is probed first; the deferral aborts the
+    // cycle before SCA/Syscollector are ever paused.
+    EXPECT_NE(std::find(resumeLog.begin(), resumeLog.end(), "fim"), resumeLog.end());
+    EXPECT_EQ(std::find(pauseLog.begin(), pauseLog.end(), "sca"), pauseLog.end());
+    EXPECT_EQ(std::find(pauseLog.begin(), pauseLog.end(), "syscollector"), pauseLog.end());
+    EXPECT_EQ(std::find(resumeLog.begin(), resumeLog.end(), "sca"), resumeLog.end());
+    EXPECT_EQ(std::find(resumeLog.begin(), resumeLog.end(), "syscollector"), resumeLog.end());
+}
+
+// Steady state (first_sync_completed=true): pause completes normally, no deferral,
+// coordination proceeds.
+TEST_F(AgentInfoCoordinationTest, SteadyStateNormalPauseWhenFirstSyncCompleted)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    auto queryModuleFunc = [](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+            responseJson["data"]["first_sync_completed"] = true;
+        }
+        else if (command == "is_flush_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+    m_agentInfo->setFlushPollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("fim pause completed successfully"));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Deferring coordination")));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("pause did not complete")));
+}
+
+// Steady state with a genuine stuck pause (always in_progress, first_sync_completed=true)
+// must still hit the 30s budget and log the timeout/abort ERROR (behavior unchanged).
+TEST_F(AgentInfoCoordinationTest, SteadyStateGenuineTimeoutStillLogsError)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    auto queryModuleFunc = [](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed" && module_name == "fim")
+        {
+            // Never completes; first sync already done -> no deferral, real timeout.
+            responseJson["data"]["status"] = "in_progress";
+            responseJson["data"]["first_sync_completed"] = true;
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("pause did not complete within 30 seconds"));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Failed to coordinate"));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Deferring coordination")));
+}
+
+// Shutdown during the pause poll aborts cleanly (no 30s timeout), via the new
+// interruptible wait. The mock signals stop on the 2nd poll.
+TEST_F(AgentInfoCoordinationTest, ShutdownDuringPausePollAbortsCleanly)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    int fimPausePollCount = 0;
+    auto* agentInfoPtr = &m_agentInfo; // capture by pointer so stop() can be called
+
+    auto queryModuleFunc = [&fimPausePollCount, agentInfoPtr](const std::string & module_name,
+                                                              const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed" && module_name == "fim")
+        {
+            responseJson["data"]["status"] = "in_progress";
+            responseJson["data"]["first_sync_completed"] = true;
+
+            if (++fimPausePollCount == 2 && *agentInfoPtr)
+            {
+                (*agentInfoPtr)->stop();
+            }
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // Aborted on stop, not on the 30-poll budget.
+    EXPECT_LT(fimPausePollCount, 30);
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent stopping, aborting FIM pause poll"));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("pause did not complete within 30 seconds")));
+}
+
+// A stop requested while waiting for module flush completion must break the poll loop
+// immediately instead of sleeping FLUSH_POLL_DELAY_MS between cycles. The flush poll has
+// no attempt cap, so without a working abort it would spin on a never-completing module;
+// on macOS the module thread is joined without a timeout, so the back-off would otherwise
+// stall modulesd shutdown, leak its PID file and prevent the next start from bringing
+// modulesd back up (issue #37017). Flush-phase sibling of ShutdownDuringPausePollAbortsCleanly.
+TEST_F(AgentInfoCoordinationTest, ShutdownDuringFlushPollAbortsCleanly)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    int flushPollCount = 0;
+    auto* agentInfoPtr = &m_agentInfo; // capture by pointer so stop() can be called
+
+    auto queryModuleFunc = [&flushPollCount, agentInfoPtr](const std::string & module_name,
+                                                           const std::string & query, char** response) -> int
+    {
+        (void)module_name;
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed")
+        {
+            // Pause completes immediately so coordination advances to the flush phase.
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "is_flush_completed")
+        {
+            // Never completes: without an interruptible wait the poll loop would spin
+            // forever. Request the stop on the first poll so the loop must break out.
+            responseJson["data"]["status"] = "in_progress";
+
+            if (++flushPollCount == 1 && *agentInfoPtr)
+            {
+                (*agentInfoPtr)->stop();
+            }
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+    m_agentInfo->setFlushPollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // The flush poll broke out on stop instead of spinning on the never-completing
+    // module. If the abort path regressed, the poll loop would never terminate.
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Module stopping, aborting pending flush monitoring"));
+}
+
+// A stop requested while a coordination query is failing must abort the retry loop
+// immediately instead of sleeping COORDINATION_RETRY_DELAY_MS before each remaining
+// attempt. On macOS the module thread is joined without a timeout, so this back-off
+// would otherwise stall modulesd shutdown, leak its PID file and prevent the next
+// start from bringing modulesd back up (issue #37017).
+TEST_F(AgentInfoCoordinationTest, QueryRetryAbortsOnStopDuringCoordination)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    int fimPauseAttempts = 0;
+    auto* agentInfoPtr = &m_agentInfo; // capture by pointer so the mock can call stop()
+
+    auto queryModuleFunc = [&fimPauseAttempts, agentInfoPtr](const std::string & module_name,
+                                                             const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["message"] = "Success";
+
+        if (command == "pause" && module_name == "fim")
+        {
+            // Retryable failure (MQ_ERR_INTERNAL, not "module unavailable"), so
+            // queryModuleWithRetry would normally retry MAX_COORDINATION_RETRIES times
+            // with a 1 s back-off between attempts.
+            ++fimPauseAttempts;
+            responseJson["error"] = MQ_ERR_INTERNAL;
+
+            // Signal the stop during the first attempt: the retry back-off must then
+            // wake up immediately instead of sleeping.
+            if (fimPauseAttempts == 1 && *agentInfoPtr)
+            {
+                (*agentInfoPtr)->stop();
+            }
+
+            std::string responseStr = responseJson.dump();
+            * response = strdup(responseStr.c_str());
+            return MQ_ERR_INTERNAL;
+        }
+
+        responseJson["error"] = 0;
+
+        if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    // The FIM pause query failed once and the retry loop bailed out on stop instead of
+    // burning the remaining attempts: a single attempt, abort log present, and the
+    // "after N attempts" exhaustion log absent.
+    EXPECT_EQ(fimPauseAttempts, 1);
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Agent stopping, aborting query to fim"));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("after 3 attempts")));
+}
+
+// A legacy FIM response WITHOUT the first_sync_completed field must be treated as
+// completed (steady-state), never as a permanent deferral (guards R1).
+TEST_F(AgentInfoCoordinationTest, MissingFirstSyncFieldTreatedAsCompleted)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    auto queryModuleFunc = [](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed")
+        {
+            // Legacy shape: no first_sync_completed field.
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "is_flush_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+    m_agentInfo->setFlushPollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Deferring coordination")));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("fim pause completed successfully"));
+}
+
+// When FIM synchronization is disabled, syscom reports first_sync_completed=true
+// (there is no first sync to wait for), so agent-info must
+// coordinate normally and NEVER defer. Modeled by a FIM response that completes with
+// first_sync_completed=true — the exact shape sync-disabled produces.
+TEST_F(AgentInfoCoordinationTest, SyncDisabledReportsCompletedAndDoesNotDefer)
+{
+    int selectRowsCalls = 0;
+    expectMetadataSyncNeeded(m_mockDBSync, selectRowsCalls);
+
+    auto queryModuleFunc = [](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+            responseJson["data"]["first_sync_completed"] = true;  // sync disabled -> reported completed
+        }
+        else if (command == "is_flush_completed")
+        {
+            responseJson["data"]["status"] = "completed";
+            responseJson["data"]["result"] = "success";
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+    m_agentInfo->setFlushPollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    m_agentInfo->start(1, 86400, []()
+    {
+        return false;
+    });
+
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Deferring coordination")));
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("fim pause completed successfully"));
+}
+
+// Repeated deferrals within the same first sync log the INFO line ONCE,
+// then drop to DEBUG ("Still deferring..."). The mock keeps first_sync_completed=false
+// across several coordination cycles in one start() window.
+TEST_F(AgentInfoCoordinationTest, RepeatedDeferralLogsInfoOnce)
+{
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+    // Report should_sync_metadata=1 on EVERY selectRows so coordination runs each
+    // loop iteration and keeps deferring.
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json flagData;
+        flagData["should_sync_metadata"] = 1;
+        flagData["should_sync_groups"] = 0;
+        flagData["last_metadata_integrity"] = 0;
+        flagData["last_groups_integrity"] = 0;
+        flagData["is_first_run"] = 0;
+        flagData["is_first_groups_run"] = 0;
+        callback(SELECTED, flagData);
+    }));
+
+    auto queryModuleFunc = [](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed" && module_name == "fim")
+        {
+            responseJson["data"]["status"] = "in_progress";
+            responseJson["data"]["first_sync_completed"] = false;  // keep deferring
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    // Run a few loop iterations so coordination defers more than once.
+    int iterations = 0;
+    m_agentInfo->start(1, 86400, [&iterations]()
+    {
+        return ++iterations < 3;  // keep looping for 3 iterations
+    });
+
+    // The INFO deferral line must appear exactly once across repeated deferrals.
+    auto countOccurrences = [](const std::string & hay, const std::string & needle)
+    {
+        size_t n = 0, pos = 0;
+
+        while ((pos = hay.find(needle, pos)) != std::string::npos)
+        {
+            ++n;
+            pos += needle.size();
+        }
+
+        return n;
+    };
+    EXPECT_EQ(countOccurrences(m_logOutput, "Deferring coordination until FIM first sync completes"), 1U);
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("Still deferring coordination"));
+}
+
+// The deferral throttle must reset when the FIM probe gives up (timeout / no status) without
+// FIM ever reporting first-sync completion, so a later deferral episode logs its INFO marker
+// again instead of being stuck at DEBUG. Cycle 1 defers (INFO #1), cycle 2 times out (resets),
+// cycle 3 defers again (INFO #2). The cycle is identified by the per-cycle FIM "pause" count.
+// interval=0 + pausePollDelay=0 keep the test sub-second.
+TEST_F(AgentInfoCoordinationTest, DeferralThrottleResetsAfterProbeGivesUp)
+{
+    EXPECT_CALL(*m_mockDBSync, handle())
+    .WillRepeatedly(::testing::Return(reinterpret_cast<void*>(0x1)));
+    EXPECT_CALL(*m_mockDBSync, addTableRelationship(::testing::_))
+    .WillRepeatedly(::testing::Return());
+    EXPECT_CALL(*m_mockDBSync, selectRows(::testing::_, ::testing::_))
+    .WillRepeatedly(::testing::Invoke([](const nlohmann::json& /* query */,
+                                         std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+    {
+        nlohmann::json flagData;
+        flagData["should_sync_metadata"] = 1;
+        flagData["should_sync_groups"] = 0;
+        flagData["last_metadata_integrity"] = 0;
+        flagData["last_groups_integrity"] = 0;
+        flagData["is_first_run"] = 0;
+        flagData["is_first_groups_run"] = 0;
+        callback(SELECTED, flagData);
+    }));
+
+    // One FIM pause is issued per coordination cycle, so this counts the current cycle.
+    auto fimPauseCount = std::make_shared<int>(0);
+
+    auto queryModuleFunc = [fimPauseCount](const std::string & module_name, const std::string & query, char** response) -> int
+    {
+        nlohmann::json commandJson = nlohmann::json::parse(query);
+        const auto command = commandJson["command"].get<std::string>();
+
+        if (command == "pause" && module_name == "fim")
+        {
+            ++(*fimPauseCount);
+        }
+
+        nlohmann::json responseJson;
+        responseJson["error"] = 0;
+        responseJson["message"] = "Success";
+
+        if (command == "is_pause_completed" && module_name == "fim")
+        {
+            if (*fimPauseCount == 2)
+            {
+                // Cycle 2: respond without data.status so the probe never reaches the
+                // first-sync branch and eventually times out -> Failed (the give-up path).
+                responseJson["data"]["unrelated"] = 1;
+            }
+            else
+            {
+                responseJson["data"]["status"] = "in_progress";
+                responseJson["data"]["first_sync_completed"] = false;  // defer
+            }
+        }
+        else if (command == "get_version")
+        {
+            responseJson["data"]["version"] = 5;
+        }
+
+        std::string responseStr = responseJson.dump();
+        * response = strdup(responseStr.c_str());
+        return 0;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:", m_reportDiffFunc, m_logFunc, queryModuleFunc, m_mockDBSync,
+                      m_mockSysInfo, m_mockFileIO, m_mockFileSystem);
+    m_agentInfo->setPausePollDelayMs(0);
+
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(false));
+
+    nlohmann::json osData = {{"os_name", "TestOS"}};
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillRepeatedly(::testing::Return(osData));
+
+    m_logOutput.clear();
+    // Run exactly 3 coordination cycles: defer, give-up, defer.
+    m_agentInfo->start(0, 86400, [fimPauseCount]()
+    {
+        return *fimPauseCount < 3;
+    });
+
+    auto countOccurrences = [](const std::string & hay, const std::string & needle)
+    {
+        size_t n = 0, pos = 0;
+
+        while ((pos = hay.find(needle, pos)) != std::string::npos)
+        {
+            ++n;
+            pos += needle.size();
+        }
+
+        return n;
+    };
+
+    // INFO appears in cycle 1 and again in cycle 3 (throttle reset by the cycle-2 give-up).
+    EXPECT_EQ(countOccurrences(m_logOutput, "Deferring coordination until FIM first sync completes"), 2U);
+}

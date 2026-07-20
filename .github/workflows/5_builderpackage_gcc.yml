@@ -1,0 +1,126 @@
+name: 5.X - Build GCC Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      gcc_major_version:
+        description: "GCC major version"
+        required: true
+        default: "14"
+      gcc_minor_version:
+        description: "GCC minor version"
+        required: true
+        default: "3"
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          GCC_MAJOR_VERSION: ${{ github.event.inputs.gcc_major_version }}
+          GCC_MINOR_VERSION: ${{ github.event.inputs.gcc_minor_version }}
+        run: |
+          docker build -t gcc-deb -f packages/debs/amd64/gcc/Dockerfile \
+            --build-arg GCC_MAJOR_VERSION="$GCC_MAJOR_VERSION" \
+            --build-arg GCC_MINOR_VERSION="$GCC_MINOR_VERSION" .
+          docker run -v /tmp:/tmp gcc-deb /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .deb artifact
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: gcc-deb
+          path: /tmp/*.deb
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  build-rpm:
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          GCC_MAJOR_VERSION: ${{ github.event.inputs.gcc_major_version }}
+          GCC_MINOR_VERSION: ${{ github.event.inputs.gcc_minor_version }}
+        run: |
+          docker build -t gcc-rpm -f packages/rpms/amd64/gcc/Dockerfile \
+            --build-arg GCC_MAJOR_VERSION="$GCC_MAJOR_VERSION" \
+            --build-arg GCC_MINOR_VERSION="$GCC_MINOR_VERSION" .
+          docker run -v /tmp:/tmp gcc-rpm /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .rpm artifact
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: gcc-rpm
+          path: /tmp/*.rpm
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  build-deb-arm64:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          GCC_MAJOR_VERSION: ${{ github.event.inputs.gcc_major_version }}
+          GCC_MINOR_VERSION: ${{ github.event.inputs.gcc_minor_version }}
+        run: |
+          docker build -t gcc-deb-arm64 -f packages/debs/arm64/gcc/Dockerfile \
+            --build-arg GCC_MAJOR_VERSION="$GCC_MAJOR_VERSION" \
+            --build-arg GCC_MINOR_VERSION="$GCC_MINOR_VERSION" .
+          docker run -v /tmp:/tmp gcc-deb-arm64 /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .deb artifact
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: gcc-deb-arm64
+          path: /tmp/*.deb
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  build-rpm-arm64:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          GCC_MAJOR_VERSION: ${{ github.event.inputs.gcc_major_version }}
+          GCC_MINOR_VERSION: ${{ github.event.inputs.gcc_minor_version }}
+        run: |
+          docker build -t gcc-rpm-arm64 -f packages/rpms/arm64/gcc/Dockerfile \
+            --build-arg GCC_MAJOR_VERSION="$GCC_MAJOR_VERSION" \
+            --build-arg GCC_MINOR_VERSION="$GCC_MINOR_VERSION" .
+          docker run -v /tmp:/tmp gcc-rpm-arm64 /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .rpm artifact
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: gcc-rpm-arm64
+          path: /tmp/*.rpm
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

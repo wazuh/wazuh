@@ -12,9 +12,11 @@
 #include <fstream>
 #include <sstream>
 #include <pwd.h>
-#include "filesystemHelper.h"
 
-LaunchdProvider::LaunchdProvider()
+#include <filesystem_wrapper.hpp>
+
+LaunchdProvider::LaunchdProvider(std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
+    : m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>())
 {
 }
 
@@ -27,39 +29,47 @@ nlohmann::json LaunchdProvider::collect()
 
     for (const auto& path : launchers)
     {
-        if (!Utils::existsRegular(path))
+        try
         {
-            continue;
+            if (!m_fileSystemWrapper->is_regular_file(path))
+            {
+                continue;
+            }
+
+            LaunchdService service;
+
+            if (parsePlistFile(path, service))
+            {
+                nlohmann::json serviceJson;
+                serviceJson["path"] = service.path;
+                serviceJson["name"] = service.name;
+                serviceJson["label"] = service.label;
+                serviceJson["run_at_load"] = service.runAtLoad;
+                serviceJson["keep_alive"] = service.keepAlive;
+                serviceJson["stdout_path"] = service.stdoutPath;
+                serviceJson["stderr_path"] = service.stderrPath;
+                serviceJson["inetd_compatibility"] = service.inetdCompatibility;
+                serviceJson["start_interval"] = service.startInterval;
+                serviceJson["program"] = service.program;
+                serviceJson["start_on_mount"] = service.startOnMount;
+                serviceJson["on_demand"] = service.onDemand;
+                serviceJson["disabled"] = service.disabled;
+                serviceJson["username"] = service.username;
+                serviceJson["groupname"] = service.groupname;
+                serviceJson["root_directory"] = service.rootDirectory;
+                serviceJson["working_directory"] = service.workingDirectory;
+                serviceJson["process_type"] = service.processType;
+                serviceJson["program_arguments"] = service.programArguments;
+                serviceJson["watch_paths"] = service.watchPaths;
+                serviceJson["queue_directories"] = service.queueDirectories;
+
+                result.push_back(serviceJson);
+            }
         }
-
-        LaunchdService service;
-
-        if (parsePlistFile(path, service))
+        catch (...)
         {
-            nlohmann::json serviceJson;
-            serviceJson["path"] = service.path;
-            serviceJson["name"] = service.name;
-            serviceJson["label"] = service.label;
-            serviceJson["run_at_load"] = service.runAtLoad;
-            serviceJson["keep_alive"] = service.keepAlive;
-            serviceJson["stdout_path"] = service.stdoutPath;
-            serviceJson["stderr_path"] = service.stderrPath;
-            serviceJson["inetd_compatibility"] = service.inetdCompatibility;
-            serviceJson["start_interval"] = service.startInterval;
-            serviceJson["program"] = service.program;
-            serviceJson["start_on_mount"] = service.startOnMount;
-            serviceJson["on_demand"] = service.onDemand;
-            serviceJson["disabled"] = service.disabled;
-            serviceJson["username"] = service.username;
-            serviceJson["groupname"] = service.groupname;
-            serviceJson["root_directory"] = service.rootDirectory;
-            serviceJson["working_directory"] = service.workingDirectory;
-            serviceJson["process_type"] = service.processType;
-            serviceJson["program_arguments"] = service.programArguments;
-            serviceJson["watch_paths"] = service.watchPaths;
-            serviceJson["queue_directories"] = service.queueDirectories;
-
-            result.push_back(serviceJson);
+            // Skip files we can't access
+            continue;
         }
     }
 
@@ -71,27 +81,35 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
     // Search standard launchd paths
     for (const auto& searchPath : m_launchdSearchPaths)
     {
-        if (Utils::existsDir(searchPath))
+        try
         {
-            try
+            if (m_fileSystemWrapper->is_directory(searchPath))
             {
-                std::vector<std::string> entries = Utils::enumerateDir(searchPath);
+                auto entries = m_fileSystemWrapper->list_directory(searchPath);
 
                 for (const auto& entry : entries)
                 {
-                    std::string fullPath = searchPath + "/" + entry;
+                    std::filesystem::path fullPath = std::filesystem::path(searchPath) / entry;
 
-                    if (Utils::existsRegular(fullPath) && fullPath.substr(fullPath.length() - 6) == ".plist")
+                    try
                     {
-                        launchers.push_back(fullPath);
+                        if (m_fileSystemWrapper->is_regular_file(fullPath) && std::filesystem::path(fullPath).extension() == ".plist")
+                        {
+                            launchers.push_back(fullPath);
+                        }
+                    }
+                    catch (...)
+                    {
+                        // Skip files we can't access
+                        continue;
                     }
                 }
             }
-            catch (...)
-            {
-                // Skip directories we can't read
-                continue;
-            }
+        }
+        catch (...)
+        {
+            // Skip directories we can't access
+            continue;
         }
     }
 
@@ -120,27 +138,35 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
 
                     userPath += path;
 
-                    if (Utils::existsDir(userPath))
+                    try
                     {
-                        try
+                        if (m_fileSystemWrapper->is_directory(userPath))
                         {
-                            std::vector<std::string> entries = Utils::enumerateDir(userPath);
+                            auto entries = m_fileSystemWrapper->list_directory(userPath);
 
                             for (const auto& entry : entries)
                             {
-                                std::string fullPath = userPath + "/" + entry;
+                                std::filesystem::path fullPath = std::filesystem::path(userPath) / entry;
 
-                                if (Utils::existsRegular(fullPath) && fullPath.substr(fullPath.length() - 6) == ".plist")
+                                try
                                 {
-                                    launchers.push_back(fullPath);
+                                    if (m_fileSystemWrapper->is_regular_file(fullPath) && std::filesystem::path(fullPath).extension() == ".plist")
+                                    {
+                                        launchers.push_back(fullPath);
+                                    }
+                                }
+                                catch (...)
+                                {
+                                    // Skip files we can't access
+                                    continue;
                                 }
                             }
                         }
-                        catch (...)
-                        {
-                            // Skip directories we can't read
-                            continue;
-                        }
+                    }
+                    catch (...)
+                    {
+                        // Skip directories we can't access
+                        continue;
                     }
                 }
             }
@@ -158,7 +184,7 @@ void LaunchdProvider::getLauncherPaths(std::vector<std::string>& launchers)
 bool LaunchdProvider::parsePlistFile(const std::string& path, LaunchdService& service)
 {
     service.path = path;
-    service.name = Utils::getFilename(path);
+    service.name = std::filesystem::path(path).filename().string();
 
     // Read the plist file
     CFURLRef fileURL = CFURLCreateFromFileSystemRepresentation(

@@ -1,20 +1,40 @@
 # Database Schema
 
-Syscollector uses a local SQLite database to store system inventory data and track changes between scans.
+This document describes the database schema additions specific to Syscollector (Inventory) persistence implementation used by the Agent Sync Protocol.
 
-## Database Location
+---
 
-The Syscollector database is typically located at:
-- **Linux/Unix/macOS**: `/var/ossec/queue/syscollector/db/local.db`
-- **Windows**: `C:\Program Files (x86)\ossec-agent\queue\syscollector\db\local.db`
+## Overview
+
+Syscollector uses a SQLite database with multiple tables to store different types of system inventory data. Each table is designed to track specific system components and their changes over time. The schema is defined in `src/wazuh_modules/syscollector/src/syscollectorTablesDef.hpp`.
+
+### Wazuh Common Schema (WCS)
+
+The schemas according to the Wazuh Common Schema (WCS) are available in `src/external/indexer-plugins` and are downloaded during the agent build process as part of external dependencies (`make deps`):
+
+- `inventory-browser-extensions.json`
+- `inventory-groups.json`
+- `inventory-hardware.json`
+- `inventory-hotfixes.json`
+- `inventory-interfaces.json`
+- `inventory-networks.json`
+- `inventory-packages.json`
+- `inventory-ports.json`
+- `inventory-processes.json`
+- `inventory-protocols.json`
+- `inventory-services.json`
+- `inventory-system.json`
+- `inventory-users.json`
+
+These schemas define the standardized format for inventory data that is sent to the Wazuh indexer.
+
+---
 
 ## Database Tables
 
-### System Information Tables
+### Operating System Information (`dbsync_osinfo`)
 
-#### `dbsync_osinfo` - Operating System Information
-
-Stores operating system and kernel details.
+Stores operating system details and characteristics.
 
 ```sql
 CREATE TABLE dbsync_osinfo (
@@ -27,203 +47,208 @@ CREATE TABLE dbsync_osinfo (
     os_minor TEXT,
     os_patch TEXT,
     os_build TEXT,
+    os_type TEXT,
     os_platform TEXT,
-    sysname TEXT,
-    release TEXT,
-    version TEXT,
-    os_release TEXT,
-    os_display_version TEXT,
+    os_kernel_name TEXT,
+    os_kernel_release TEXT,
+    os_kernel_version TEXT,
+    os_distribution_release TEXT,
+    os_full TEXT,
     checksum TEXT,
-    PRIMARY KEY (os_name)
+    PRIMARY KEY (os_name, os_version)
 ) WITHOUT ROWID;
 ```
 
-#### `dbsync_hwinfo` - Hardware Information
+**Key Fields:**
+- `os_name`, `os_version`: Composite primary key identifying the operating system
+- `checksum`: Hash for change detection
+- Various OS-specific version and build information
 
-Stores hardware specifications.
+---
+
+### Hardware Information (`dbsync_hwinfo`)
+
+Stores hardware specifications and configuration.
 
 ```sql
 CREATE TABLE dbsync_hwinfo (
-    board_serial TEXT,
+    serial_number TEXT,
     cpu_name TEXT,
     cpu_cores INTEGER,
-    cpu_mhz DOUBLE,
-    ram_total INTEGER,
-    ram_free INTEGER,
-    ram_usage INTEGER,
+    cpu_speed DOUBLE,
+    memory_total INTEGER,
+    memory_free INTEGER,
+    memory_used INTEGER,
     checksum TEXT,
-    PRIMARY KEY (board_serial)
+    PRIMARY KEY (serial_number)
 ) WITHOUT ROWID;
 ```
 
-### Software Tables
+**Key Fields:**
+- `serial_number`: Primary key identifying hardware system
+- `cpu_*`: CPU-related specifications
+- `memory_*`: Memory usage information in bytes
 
-#### `dbsync_packages` - Installed Packages
+---
 
-Stores information about installed software packages.
+### Software Packages (`dbsync_packages`)
+
+Stores installed software packages and their metadata.
 
 ```sql
-CREATE TABLE dbsync_packages (
+CREATE TABLE dbsync_packages(
     name TEXT,
     version TEXT,
     vendor TEXT,
-    install_time TEXT,
-    location TEXT,
+    installed TEXT,
+    path TEXT,
     architecture TEXT,
-    groups TEXT,
+    category TEXT,
     description TEXT,
     size BIGINT,
     priority TEXT,
     multiarch TEXT,
     source TEXT,
-    format TEXT,
+    type TEXT,
     checksum TEXT,
-    item_id TEXT,
-    PRIMARY KEY (name, version, architecture, format, location)
+    PRIMARY KEY (name,version,architecture,type,path)
 ) WITHOUT ROWID;
 ```
 
-#### `dbsync_hotfixes` - Windows Hotfixes
+**Key Fields:**
+- Composite primary key: `(name,version,architecture,type,path)`
+- `size`: Package size in bytes
+- `installed`: Installation timestamp
+- `type`: Package type (rpm, deb, msi, etc.)
 
-Stores Windows security updates and hotfixes.
+---
 
-```sql
-CREATE TABLE dbsync_hotfixes (
-    hotfix TEXT,
-    checksum TEXT,
-    PRIMARY KEY (hotfix)
-) WITHOUT ROWID;
-```
-
-### Network Tables
-
-#### `dbsync_network_iface` - Network Interfaces
+### Network Interfaces (`dbsync_network_iface`)
 
 Stores network interface configuration and statistics.
 
 ```sql
 CREATE TABLE dbsync_network_iface (
-    name TEXT,
-    adapter TEXT,
-    type TEXT,
-    state TEXT,
-    mtu INTEGER,
-    mac TEXT,
-    tx_packets INTEGER,
-    rx_packets INTEGER,
-    tx_bytes INTEGER,
-    rx_bytes INTEGER,
-    tx_errors INTEGER,
-    rx_errors INTEGER,
-    tx_dropped INTEGER,
-    rx_dropped INTEGER,
+    interface_name TEXT,
+    interface_alias TEXT,
+    interface_type TEXT,
+    interface_state TEXT,
+    interface_mtu INTEGER,
+    host_mac TEXT,
+    host_network_egress_packages INTEGER,
+    host_network_ingress_packages INTEGER,
+    host_network_egress_bytes INTEGER,
+    host_network_ingress_bytes INTEGER,
+    host_network_egress_errors INTEGER,
+    host_network_ingress_errors INTEGER,
+    host_network_egress_drops INTEGER,
+    host_network_ingress_drops INTEGER,
     checksum TEXT,
-    item_id TEXT,
-    PRIMARY KEY (name, adapter, type)
+    PRIMARY KEY (interface_name,interface_alias,interface_type)
 ) WITHOUT ROWID;
 ```
 
-#### `dbsync_network_address` - Network Addresses
+**Key Fields:**
+- Composite primary key: `(interface_name,interface_alias,interface_type)`
+- Traffic statistics: packets, bytes, errors, drops (ingress/egress)
 
-Stores IP addresses assigned to interfaces.
+---
 
-```sql
-CREATE TABLE dbsync_network_address (
-    iface TEXT,
-    proto INTEGER,
-    address TEXT,
-    netmask TEXT,
-    broadcast TEXT,
-    checksum TEXT,
-    item_id TEXT,
-    PRIMARY KEY (iface, proto, address)
-) WITHOUT ROWID;
-```
+### Network Protocol Configuration (`dbsync_network_protocol`)
 
-#### `dbsync_network_protocol` - Network Protocols
-
-Stores network protocol configuration.
+Stores network protocol settings per interface.
 
 ```sql
 CREATE TABLE dbsync_network_protocol (
-    iface TEXT,
-    type TEXT,
-    gateway TEXT,
-    dhcp TEXT NOT NULL CHECK (dhcp IN ('enabled', 'disabled', 'unknown', 'BOOTP')) DEFAULT 'unknown',
-    metric TEXT,
+    interface_name TEXT,
+    network_type TEXT,
+    network_gateway TEXT,
+    network_dhcp INTEGER,
+    network_metric TEXT,
     checksum TEXT,
-    item_id TEXT,
-    PRIMARY KEY (iface, type)
+    PRIMARY KEY (interface_name,network_type)
 ) WITHOUT ROWID;
 ```
 
-#### `dbsync_ports` - Network Ports
+---
 
-Stores information about open network ports.
+### Network Addresses (`dbsync_network_address`)
+
+Stores IP address assignments per interface.
+
+```sql
+CREATE TABLE dbsync_network_address (
+    interface_name TEXT,
+    network_type INTEGER,
+    network_ip TEXT,
+    network_netmask TEXT,
+    network_broadcast TEXT,
+    checksum TEXT,
+    PRIMARY KEY (interface_name,network_type,network_ip)
+) WITHOUT ROWID;
+```
+
+---
+
+### Open Ports (`dbsync_ports`)
+
+Stores information about open ports and listening services.
 
 ```sql
 CREATE TABLE dbsync_ports (
-    protocol TEXT,
-    local_ip TEXT,
-    local_port BIGINT,
-    remote_ip TEXT,
-    remote_port BIGINT,
-    tx_queue BIGINT,
-    rx_queue BIGINT,
-    inode BIGINT,
-    state TEXT,
-    pid BIGINT,
-    process TEXT,
+    network_transport TEXT,
+    source_ip TEXT,
+    source_port BIGINT,
+    destination_ip TEXT,
+    destination_port BIGINT,
+    host_network_egress_queue BIGINT,
+    host_network_ingress_queue BIGINT,
+    file_inode BIGINT,
+    interface_state TEXT,
+    process_pid BIGINT,
+    process_name TEXT,
     checksum TEXT,
-    item_id TEXT,
-    PRIMARY KEY (inode, protocol, local_ip, local_port)
+    PRIMARY KEY (file_inode, network_transport, source_ip, source_port)
 ) WITHOUT ROWID;
 ```
 
-### Process and System Tables
+**Key Fields:**
+- Composite primary key: `(file_inode, network_transport, source_ip, source_port)`
+- Links ports to processes via `process_pid` and `process_name`
 
-#### `dbsync_processes` - Running Processes
+---
 
-Stores information about running system processes.
+### Running Processes (`dbsync_processes`)
+
+Stores information about running processes.
 
 ```sql
 CREATE TABLE dbsync_processes (
     pid TEXT,
     name TEXT,
     state TEXT,
-    ppid BIGINT,
+    parent_pid BIGINT,
     utime BIGINT,
     stime BIGINT,
-    cmd TEXT,
-    argvs TEXT,
-    euser TEXT,
-    ruser TEXT,
-    suser TEXT,
-    egroup TEXT,
-    rgroup TEXT,
-    sgroup TEXT,
-    fgroup TEXT,
-    priority BIGINT,
-    nice BIGINT,
-    size BIGINT,
-    vm_size BIGINT,
-    resident BIGINT,
-    share BIGINT,
-    start_time BIGINT,
-    pgrp BIGINT,
-    session BIGINT,
-    nlwp BIGINT,
-    tgid BIGINT,
-    tty BIGINT,
-    processor BIGINT,
+    command_line TEXT,
+    args TEXT,
+    args_count BIGINT,
+    start BIGINT,
     checksum TEXT,
     PRIMARY KEY (pid)
 ) WITHOUT ROWID;
 ```
 
-#### `dbsync_users` - System Users
+**Key Fields:**
+- `pid`: Process ID (primary key)
+- `utime`/`stime`: CPU time usage
+- `start`: Process start timestamp
 
-Stores system user account information.
+---
+
+### System Users (`dbsync_users`)
+
+Stores user account information and authentication details.
 
 ```sql
 CREATE TABLE dbsync_users (
@@ -263,9 +288,16 @@ CREATE TABLE dbsync_users (
 ) WITHOUT ROWID;
 ```
 
-#### `dbsync_groups` - System Groups
+**Key Fields:**
+- `user_name`: Primary key
+- Extensive password policy and authentication tracking
+- Login session information
 
-Stores system group information.
+---
+
+### System Groups (`dbsync_groups`)
+
+Stores system group information and membership.
 
 ```sql
 CREATE TABLE dbsync_groups (
@@ -281,7 +313,13 @@ CREATE TABLE dbsync_groups (
 ) WITHOUT ROWID;
 ```
 
-#### `dbsync_services` - System Services
+**Key Fields:**
+- `group_name`: Primary key
+- `group_users`: Comma-separated list of group members
+
+---
+
+### System Services (`dbsync_services`)
 
 Stores system service configuration and status.
 
@@ -320,16 +358,19 @@ CREATE TABLE dbsync_services (
     service_target_type TEXT,
     service_target_address TEXT,
     checksum TEXT,
-    item_id TEXT,
     PRIMARY KEY (service_id, file_path)
 ) WITHOUT ROWID;
 ```
 
-### Additional Tables
+**Key Fields:**
+- Composite primary key: `(service_id, file_path)`
+- Comprehensive service configuration and runtime information
 
-#### `dbsync_browser_extensions` - Browser Extensions
+---
 
-Stores installed browser extensions and add-ons.
+### Browser Extensions (`dbsync_browser_extensions`)
+
+Stores browser extension information across different browsers and user profiles.
 
 ```sql
 CREATE TABLE dbsync_browser_extensions (
@@ -356,64 +397,52 @@ CREATE TABLE dbsync_browser_extensions (
     package_installed TEXT,
     file_hash_sha256 TEXT,
     checksum TEXT,
-    item_id TEXT,
-    PRIMARY KEY (browser_name, user_id, browser_profile_name, package_name, package_version)
+    PRIMARY KEY (browser_name,user_id,browser_profile_name,package_name,package_version)
 ) WITHOUT ROWID;
 ```
 
-## Database Design
+**Key Fields:**
+- Composite primary key: `(browser_name,user_id,browser_profile_name,package_name,package_version)`
+- Security-relevant extension permissions and source information
 
-### Primary Keys
-Each table uses composite primary keys that uniquely identify records based on their natural identifiers.
+---
 
-### Change Detection
-All tables include a `checksum` column containing an MD5 hash of the record data, used for efficient change detection between scans.
+### Windows Hotfixes (`dbsync_hotfixes`)
 
-### Item ID Fields
-Many tables include an `item_id` column that serves as a composite identifier for synchronization purposes, constructed from key fields.
+Stores Windows system hotfix/patch information.
 
-### Storage Optimization
-- Tables use `WITHOUT ROWID` optimization for better performance
-- Primary keys are chosen to minimize storage overhead
-- Indexes are automatically created for primary key columns
-
-### Data Types
-- `TEXT`: UTF-8 encoded strings
-- `INTEGER`: 64-bit signed integers
-- `BIGINT`: 64-bit signed integers (for large values)
-- `DOUBLE`: Double-precision floating-point numbers
-
-## Database Operations
-
-### Initialization
-The database is automatically created when Syscollector starts for the first time.
-
-### Maintenance
-Syscollector performs automatic database maintenance including:
-- Cleanup of obsolete records
-- Vacuum operations to reclaim space
-- Index rebuilding as needed
-
-### Backup
-The database file can be safely backed up while the agent is running, as SQLite supports concurrent readers.
-
-## Troubleshooting
-
-### Database Corruption
-If the database becomes corrupted, delete the file and restart the agent:
-```bash
-sudo rm /var/ossec/queue/syscollector/db/local.db
-sudo systemctl restart wazuh-agent
+```sql
+CREATE TABLE dbsync_hotfixes(
+    hotfix_name TEXT,
+    checksum TEXT,
+    PRIMARY KEY (hotfix_name)
+) WITHOUT ROWID;
 ```
 
-### Large Database Size
-Monitor database size and consider adjusting scan intervals if it grows too large:
-```bash
-ls -lh /var/ossec/queue/syscollector/db/local.db
+**Key Fields:**
+- `hotfix_name`: Primary key (KB number or patch identifier)
+
+---
+
+### Table Metadata (`table_metadata`)
+
+Stores recovery metadata for each inventory table, tracking the last synchronization timestamp.
+
+```sql
+CREATE TABLE table_metadata (
+    table_name TEXT PRIMARY KEY,
+    last_sync_time INTEGER DEFAULT 0
+) WITHOUT ROWID;
 ```
 
-### Performance Issues
-For performance analysis, use SQLite tools to examine the database:
-```bash
-sqlite3 /var/ossec/queue/syscollector/db/local.db ".schema"
-```
+**Key Fields:**
+- `table_name`: Primary key identifying the inventory table
+- `last_sync_time`: Unix timestamp of last integrity check/recovery
+
+**Purpose:**
+This table enables the recovery mechanism by tracking when each inventory table was last validated against the manager. When `integrity_interval` elapses for a table, Syscollector:
+1. Calculates checksum-of-checksums from the inventory table
+2. Sends it to manager for validation
+3. Updates `last_sync_time` after check completes
+
+---

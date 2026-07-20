@@ -24,8 +24,13 @@ public:
     {
     }
 
-    T getNext()
+    T& getNext()
     {
+        if (m_values.empty())
+        {
+            throw std::runtime_error("No servers available");
+        }
+
         auto idx = m_index.fetch_add(1) % m_values.size();
         return m_values[idx];
     }

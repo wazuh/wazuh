@@ -5,9 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "shared.h"
-#include "../os_auth/check_cert.h"
-#include "../os_auth/auth.h"
+#include "check_cert_op.h"
+#include "ssl_op.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/stat_wrappers.h"
@@ -17,6 +16,8 @@
 #include "../wrappers/externals/openssl/bio_wrappers.h"
 #include "../wrappers/externals/openssl/ssl_lib_wrappers.h"
 #include "../wrappers/wazuh/os_auth/os_auth_wrappers.h"
+#include "../wrappers/wazuh/shared/check_cert_op_wrappers.h"
+#include "../wrappers/wazuh/shared/ssl_op_wrappers.h"
 
 #define NEW_AGENT1      "Agent1"
 #define AGENT1_ID       "001"
@@ -656,7 +657,7 @@ void test_w_enrollment_send_message_fix_invalid_hostname(void **state) {
     expect_string(__wrap__minfo, formatted_msg, "Using agent name as: InvalidHostname");
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
     char buff[128];
-    snprintf(buff,128,"OSSEC A:'InvalidHostname' V:'v4.5.0'\n");
+    snprintf(buff,128,"OSSEC A:'InvalidHostname' V:'v5.0.0'\n");
 
     expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, -1);
@@ -699,7 +700,7 @@ void test_w_enrollment_send_message_ssl_error(void **state) {
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
 
     char buff[128];
-    snprintf(buff,128,"OSSEC A:'host.name' V:'v4.5.0'\n");
+    snprintf(buff,128,"OSSEC A:'host.name' V:'v5.0.0'\n");
 
     expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, -1);
@@ -725,7 +726,7 @@ void test_w_enrollment_send_message_success(void **state) {
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
 
     char buff[256];
-    snprintf(buff,256,"OSSEC PASS: test_password OSSEC A:'test_agent' V:'v4.5.0' G:'test_group' IP:'192.168.1.1' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n");
+    snprintf(buff,256,"OSSEC PASS: test_password OSSEC A:'test_agent' V:'v5.0.0' G:'test_group' IP:'192.168.1.1' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n");
 
     expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, 0);
@@ -763,7 +764,7 @@ void test_w_enrollment_send_message_success_different_hostname(void **state) {
     expect_value(__wrap_SSL_write, ssl, cfg->ssl);
 
     char buff[128];
-    snprintf(buff,128,"OSSEC A:'host.name' V:'v4.5.0' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n");
+    snprintf(buff,128,"OSSEC A:'host.name' V:'v5.0.0' K:'0965e68d9935a35530910bf32d35052995efe7bd'\n");
 
     expect_string(__wrap_SSL_write, buf, buff);
     will_return(__wrap_SSL_write, 0);
@@ -992,6 +993,36 @@ void test_w_enrollment_process_response_message_error(void **state) {
     assert_int_equal(ret, -1);
 }
 
+void test_w_enrollment_process_response_message_error_limit(void **state) {
+    SSL *ssl = *state;
+    expect_string(__wrap__minfo, formatted_msg, "Waiting for server reply");
+
+    expect_value(__wrap_SSL_read, ssl, ssl);
+    expect_any(__wrap_SSL_read, buf);
+    expect_any(__wrap_SSL_read, num);
+
+    will_return(__wrap_SSL_read, "ERROR: Agent limit (2) reached. Unable to add agent");
+    will_return(__wrap_SSL_read, strlen("ERROR: Agent limit (2) reached. Unable to add agent"));
+
+    expect_string(__wrap__merror,
+                  formatted_msg,
+                  "Agent limit (2) reached. Unable to add agent (from manager)");
+
+    expect_value(__wrap_SSL_read, ssl, ssl);
+    expect_any(__wrap_SSL_read, buf);
+    expect_any(__wrap_SSL_read, num);
+    will_return(__wrap_SSL_read, "");
+    will_return(__wrap_SSL_read, 0);
+
+    expect_value(__wrap_SSL_get_error, i, 0);
+    will_return(__wrap_SSL_get_error, SSL_ERROR_NONE);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "Connection closed.");
+
+    int ret = w_enrollment_process_response(ssl);
+    assert_int_equal(ret, -1);
+}
+
 void test_w_enrollment_process_response_success(void **state) {
     const char *string = "OSSEC K:'006 ubuntu1610 192.168.1.1 95fefb8f0fe86bb8121f3f5621f2916c15a998728b3d50479aa64e6430b5a9f'";
     SSL *ssl = *state;
@@ -1110,7 +1141,7 @@ void test_w_enrollment_request_key(void **state) {
         will_return(__wrap_OS_IsValidIP, 1);
         expect_value(__wrap_SSL_write, ssl, cfg->ssl);
 
-        snprintf(buff,128,"OSSEC PASS: test_password OSSEC A:'test_agent' V:'v4.5.0' G:'test_group' IP:'192.168.1.1'\n");
+        snprintf(buff,128,"OSSEC PASS: test_password OSSEC A:'test_agent' V:'v5.0.0' G:'test_group' IP:'192.168.1.1'\n");
         expect_string(__wrap_SSL_write, buf, buff);
         will_return(__wrap_SSL_write, 0);
         expect_string(__wrap__mdebug1, formatted_msg,"Request sent to manager");
@@ -1170,39 +1201,6 @@ void test_w_enrollment_request_key(void **state) {
     }
     int ret = w_enrollment_request_key(cfg, NULL, 0);
     assert_int_equal(ret, 0);
-}
-
-/**********************************************/
-/******* w_enrollment_extract_agent_name ********/
-void test_w_enrollment_extract_agent_name_localhost_allowed(void **state) {
-    w_enrollment_ctx *cfg = *state;
-    cfg->allow_localhost = true; // Allow localhost
-#ifdef WIN32
-    will_return(wrap_gethostname, "localhost");
-    will_return(wrap_gethostname, 0);
-#else
-    will_return(__wrap_gethostname, "localhost");
-    will_return(__wrap_gethostname, 0);
-#endif
-    char *lhostname = w_enrollment_extract_agent_name(cfg);
-    assert_string_equal( lhostname, "localhost");
-    os_free(lhostname);
-}
-
-void test_w_enrollment_extract_agent_name_localhost_not_allowed(void **state) {
-    w_enrollment_ctx *cfg = *state;
-    cfg->allow_localhost = false; // Do not allow localhost
-#ifdef WIN32
-    will_return(wrap_gethostname, "localhost");
-    will_return(wrap_gethostname, 0);
-#else
-    will_return(__wrap_gethostname, "localhost");
-    will_return(__wrap_gethostname, 0);
-#endif
-    expect_string(__wrap__merror, formatted_msg, "(4104): Invalid hostname: 'localhost'.");
-
-    char *lhostname = w_enrollment_extract_agent_name(cfg);
-    assert_int_equal( lhostname, NULL);
 }
 
 /******* w_enrollment_load_pass ********/
@@ -1323,13 +1321,11 @@ int main() {
         cmocka_unit_test(test_w_enrollment_process_response_ssl_null),
         cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_ssl_error, test_setup_ssl_context, test_teardown_ssl_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_message_error, test_setup_ssl_context, test_teardown_ssl_context),
+        cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_message_error_limit, test_setup_ssl_context, test_teardown_ssl_context),
         cmocka_unit_test_setup_teardown(test_w_enrollment_process_response_success, test_setup_ssl_context, test_teardown_ssl_context),
         // w_enrollment_request_key (wrapper)
         cmocka_unit_test(test_w_enrollment_request_key_null_cfg),
         cmocka_unit_test_setup_teardown(test_w_enrollment_request_key, test_setup_w_enrollment_request_key, test_teardown_w_enrollment_request_key),
-        // w_enrollment_extract_agent_name
-        cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_allowed, test_setup_context, test_teardown_context),
-        cmocka_unit_test_setup_teardown(test_w_enrollment_extract_agent_name_localhost_not_allowed, test_setup_context, test_teardown_context),
         // w_enrollment_load_pass
         cmocka_unit_test(test_w_enrollment_load_pass_null_cert),
         cmocka_unit_test_setup_teardown(test_w_enrollment_load_pass_empty_file, test_setup_enrollment_load_pass, test_teardown_enrollment_load_pass),

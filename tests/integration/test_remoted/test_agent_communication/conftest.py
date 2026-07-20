@@ -5,68 +5,67 @@
 """
 
 import pytest
-import time
-from wazuh_testing.tools.thread_executor import ThreadExecutor
 
-from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
-from wazuh_testing.modules.analysisd.patterns import ANALYSISD_STARTED
-from wazuh_testing.utils import callbacks
-from wazuh_testing.tools.monitors import file_monitor
+from pathlib import Path
+from wazuh_testing.constants.paths.logs import ALERTS_JSON_PATH
+from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.agent_simulator import connect
+from wazuh_testing.tools.thread_executor import ThreadExecutor
+from wazuh_testing.utils import callbacks
 
-@pytest.fixture(scope='module')
-def waiting_for_analysisd_startup(request):
-    """Wait until analysisd has begun and alerts.json is created."""
-    log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
-    log_monitor.start(callback=callbacks.generate_callback(ANALYSISD_STARTED))
+# SSH public-key auth event — triggers rule 5715 "Authentication success" if it reaches the engine.
+_SSH_AUTH_EVENT = (
+    '1:/root/test.log:Feb 23 17:18:20 35-u20-manager4 sshd[40657]: Accepted publickey for root'
+    ' from 192.168.0.5 port 48044 ssh2: RSA SHA256:IZT11YXRZoZfuGlj/K/t3tT8OdolV58hcCOJFZLIW2Y'
+)
+
+_ALERT_PATTERN = r'.*Accepted publickey.*'
+_NEGATIVE_TIMEOUT = 10  # seconds to wait confirming no alert appears
 
 
 @pytest.fixture
 def validate_agent_manager_protocol_communication():
+    """Send an SSH event via the specified protocol and verify it does NOT generate an alert.
 
-    def validate_agent_manager_protocol_communication(monitored_sockets, simulate_agents, protocol, manager_port):
+    Used by invalid-protocol tests: if the manager is configured for the opposite protocol,
+    the event never reaches the engine and no alert is generated.
+    """
 
-        agent =simulate_agents[0]
+    def _validate(simulate_agents, protocol, manager_port):
+        agent = simulate_agents[0]
         injectors = []
 
-        def send_event(event, protocol, manager_port, agent):
-            """Send an event to the manager"""
+        def _send(event, protocol, manager_port, agent):
+            try:
+                sender, injector = connect(agent, manager_port=manager_port, protocol=protocol,
+                                           wait_status='')
+                sender.send_event(event)
+                injectors.append(injector)
+            except OSError:
+                pass  # invalid-protocol connections are expected to fail at the transport layer
 
-            sender, injector = connect(agent, manager_port = manager_port, protocol = protocol, wait_status= '' if protocol == 'UDP' else 'active' )
-            sender.send_event(event)
-            injectors.append(injector)
-            return injector
+        Path(ALERTS_JSON_PATH).parent.mkdir(parents=True, exist_ok=True)
+        Path(ALERTS_JSON_PATH).touch(exist_ok=True)
 
+        alert_monitor = FileMonitor(ALERTS_JSON_PATH)
 
-        # Generate custom events for each agent
-        search_pattern = f"test message from agent {agent.id}"
-        agent_custom_message = f"1:/test.log:Feb 23 17:18:20 manager sshd[40657]: {search_pattern}"
-        event = agent.create_event(agent_custom_message)
+        event = agent.create_event(_SSH_AUTH_EVENT)
+        thread = ThreadExecutor(_send, {'event': event, 'protocol': protocol,
+                                        'manager_port': manager_port, 'agent': agent})
+        thread.start()
 
-        # Create sender event threads
-        send_event_thread = ThreadExecutor(send_event, {'event': event, 'protocol': protocol,
-                                                        'manager_port': manager_port, 'agent': agent})
+        alert_monitor.start(timeout=_NEGATIVE_TIMEOUT,
+                            callback=callbacks.generate_callback(_ALERT_PATTERN))
 
-        # If protocol is TCP, then just send the message as the attempt to establish the connection will fail.
-        if protocol == 'TCP':
-            send_event_thread.start()
-            send_event_thread.join()
-        else:  # If protocol is UDP, then monitor the  socket queue to verify that the event has not been received.
+        thread.join()
 
-            callback = callbacks.generate_callback(fr"{search_pattern}")
-            monitored_sockets[0].start(callback=callback)
-            assert monitored_sockets[0].callback_result
+        assert not alert_monitor.callback_result, (
+            f"An alert was generated for an event sent via {protocol} to port {manager_port} "
+            f"even though the manager is configured for the opposite protocol — "
+            f"the event should not have reached the engine."
+        )
 
-
-        # Wait until socket monitor is fully initialized
-        time.sleep(5)
-
-        send_event_thread.start()
-        send_event_thread.join()
-
-        yield
-        time.sleep(5)
         for injector in injectors:
             injector.stop_receive()
 
-    return validate_agent_manager_protocol_communication
+    return _validate

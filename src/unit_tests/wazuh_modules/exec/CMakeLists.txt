@@ -6,7 +6,13 @@
 # Foundation.
 
 # Generate wazuh modules library
-file(GLOB wm_exec ../../../wazuh_modules/wm_exec.o)
+if(${TARGET} STREQUAL "winagent")
+    file(GLOB_RECURSE wm_exec ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.obj)
+    list(REMOVE_ITEM wm_exec ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.obj)
+else()
+    file(GLOB_RECURSE wm_exec ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+    list(REMOVE_ITEM wm_exec ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+endif()
 
 add_library(WM_EXEC_O STATIC ${wm_exec})
 
@@ -26,7 +32,7 @@ set_target_properties(
 target_link_libraries(WM_EXEC_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 if(${TARGET} STREQUAL "winagent")
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
 endif(${TARGET} STREQUAL "winagent")
 
 #include wrappers
@@ -35,7 +41,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 # Tests list and flags
 list(APPEND tests_names "test_wm_exec")
 list(APPEND WM_EXEC_BASE_FLAGS "-Wl,--wrap,OSList_AddData -Wl,--wrap,OSList_DeleteThisNode \
-                                -Wl,--wrap,OSList_GetFirstNode -Wl,--wrap,OSList_Destroy ${DEBUG_OP_WRAPPERS}")
+                                -Wl,--wrap,OSList_GetFirstNode -Wl,--wrap,OSList_Destroy -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 if(${TARGET} STREQUAL "winagent")
     list(APPEND tests_flags "${WM_EXEC_BASE_FLAGS} -Wl,--wrap,fim_db_init -Wl,--wrap=syscom_dispatch \

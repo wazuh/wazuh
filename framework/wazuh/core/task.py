@@ -2,12 +2,8 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is free software; you can redistribute it and/or modify it under the terms of GP
 
-from json import dumps, loads
-
 from wazuh.core import common
-from wazuh.core.exception import WazuhInternalError
 from wazuh.core.utils import WazuhDBQuery, WazuhDBBackend, get_date_from_timestamp
-from wazuh.core.wazuh_socket import WazuhSocket
 
 tasks_fields = {'task_id': 'task_id', 'agent_id': 'agent_id', 'node': 'node', 'module': 'module',
                 'command': 'command', 'create_time': 'create_time', 'last_update_time': 'last_update_time',
@@ -97,32 +93,3 @@ class WazuhDBQueryTask(WazuhDBQuery):
                   for k, v in t.items() if k in self.date_fields) for t in self._data]
 
         return {'items': self._data, 'totalItems': self.total_items}
-
-
-def send_to_tasks_socket(command: dict) -> str:
-    """Send command to task module.
-
-    Parameters
-    ----------
-    command : dict
-        Command to be sent to task module.
-
-    Raises
-    ------
-    WazuhInternalError(1121)
-        If it was unable to connect to the socket.
-
-    Returns
-    -------
-    str
-        Message received from the socket.
-    """
-    try:
-        s = WazuhSocket(common.TASKS_SOCKET)
-    except Exception:
-        raise WazuhInternalError(1121)
-    s.send(dumps(command).encode())
-    data = loads(s.receive().decode())
-    s.close()
-
-    return data

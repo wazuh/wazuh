@@ -19,7 +19,9 @@ void __wrap_fim_checker(const char *path, event_data_t *evt_data, const director
     check_expected(configuration);
 }
 
-directory_t *__wrap_fim_configuration_directory(const char *path) {
+directory_t *__wrap_fim_configuration_directory(const char *path,
+                                                 __attribute__((unused)) bool notify_not_found,
+                                                 __attribute__((unused)) const OSList *directories_list) {
     check_expected(path);
     return mock_type(directory_t *);
 }

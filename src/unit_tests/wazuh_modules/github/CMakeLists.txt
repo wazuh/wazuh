@@ -15,10 +15,10 @@ set(WM_GITHUB_BASE_FLAGS "-Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,_merr
                           -Wl,--wrap,OS_IsValidIP -Wl,--wrap,OSMatch_Execute -Wl,--wrap,wm_sendmsg -Wl,--wrap,OSRegex_Compile \
                           -Wl,--wrap,wm_state_io -Wl,--wrap,OSRegex_Execute -Wl,--wrap,OSRegex_Execute_ex -Wl,--wrap,OSMatch_Compile \
                           -Wl,--wrap,OSRegex_FreePattern -Wl,--wrap,wurl_http_request -Wl,--wrap,strftime -Wl,--wrap,gmtime_r \
-                          -Wl,--wrap,isDebug")
+                          -Wl,--wrap,isDebug -Wl,--wrap,w_query_agentd")
 if(${TARGET} STREQUAL "winagent")
     list(APPEND tests_flags "${WM_GITHUB_BASE_FLAGS} -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck -Wl,--wrap=is_fim_shutdown \
-                             -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize -Wl,--wrap=_imp__rsync_initialize")
+                             -Wl,--wrap=fim_db_teardown -Wl,--wrap=_imp__dbsync_initialize")
 else()
     list(APPEND tests_flags "${WM_GITHUB_BASE_FLAGS}")
 endif()
@@ -29,8 +29,13 @@ list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.h")
 list(APPEND shared_libs "../scheduling/wmodules_scheduling_helpers.c")
 
 # Generate wazuh modules library
-file(GLOB github ../../../wazuh_modules/*.o)
-list(REMOVE_ITEM github ../../../wazuh_modules/main.o)
+if(${TARGET} STREQUAL "winagent")
+    file(GLOB_RECURSE github ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.obj)
+    list(REMOVE_ITEM github ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.obj)
+else()
+    file(GLOB_RECURSE github ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/*.c.o)
+    list(REMOVE_ITEM github ../../../build/wazuh_modules/CMakeFiles/wazuh_modulesd_lib.dir/src/main.c.o)
+endif()
 
 add_library(GITHUB_O STATIC ${github})
 
@@ -50,7 +55,7 @@ set_target_properties(
 target_link_libraries(GITHUB_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
 
 if(${TARGET} STREQUAL "winagent")
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
 endif(${TARGET} STREQUAL "winagent")
 
 # Compiling tests
@@ -67,12 +72,14 @@ foreach(counter RANGE ${count})
       add_executable(${test_name} ${test_name}.c)
     endif()
 
-    if(${TARGET} STREQUAL "server")
+    if(${TARGET} STREQUAL "manager")
         target_link_libraries(
             ${test_name}
+            -Wl,--start-group
             ${WAZUHLIB}
             ${WAZUHEXT}
             GITHUB_O
+            -Wl,--end-group
             -lcmocka
             -ldl
             -fprofile-arcs
@@ -90,6 +97,7 @@ foreach(counter RANGE ${count})
 
 
     if(NOT test_flags STREQUAL " ")
+        separate_arguments(test_flags)
         target_link_libraries(
             ${test_name}
             ${test_flags}

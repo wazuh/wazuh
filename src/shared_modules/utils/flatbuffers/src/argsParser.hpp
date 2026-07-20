@@ -63,8 +63,7 @@ public:
                   << "\t-h \t\t\tShow this help message\n"
                   << "\t-s <schemaFile> \tSchema file path\n"
                   << "\t-i <jsonFile> \t\tJSON input file path\n"
-                  << "\nExample:"
-                  << "\n\t./flatbuffers_tool -d rocksDBPath/ -f schema.fbs \n"
+                  << "\nExample:" << "\n\t./flatbuffers_tool -d rocksDBPath/ -f schema.fbs \n"
                   << "\n\t./flatbuffers_tool -d rocksDBPath/ -f schema.fbs -k key1 \n"
                   << std::endl;
     }

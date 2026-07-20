@@ -11,7 +11,7 @@
 #include "sysInfo.hpp"
 #include "cmdHelper.h"
 #include "stringHelper.h"
-#include "filesystemHelper.h"
+#include <filesystem_wrapper.hpp>
 #include "osinfo/sysOsParsers.h"
 #include <libproc.h>
 #include <pwd.h>
@@ -29,6 +29,7 @@
 #include "osPrimitivesImplMac.h"
 #include "sqliteWrapperTemp.h"
 #include "packages/modernPackageDataRetriever.hpp"
+#include "timeHelper.h"
 #include "groups_darwin.hpp"
 #include "user_groups_darwin.hpp"
 #include "logged_in_users_darwin.hpp"
@@ -74,35 +75,18 @@ static nlohmann::json getProcessInfo(const ProcessTaskInfo& taskInfo, const pid_
     nlohmann::json jsProcessInfo{};
     jsProcessInfo["pid"]        = std::to_string(pid);
     jsProcessInfo["name"]       = taskInfo.pbsd.pbi_name;
-
     jsProcessInfo["state"]      = UNKNOWN_VALUE;
-    jsProcessInfo["ppid"]       = taskInfo.pbsd.pbi_ppid;
+    jsProcessInfo["parent_pid"] = taskInfo.pbsd.pbi_ppid;
+    jsProcessInfo["start"]      = Utils::rawTimestampToISO8601(static_cast<uint32_t>(taskInfo.pbsd.pbi_start_tvsec));
 
-    const auto eUser { getpwuid(taskInfo.pbsd.pbi_uid) };
-
-    if (eUser)
+    char pathBuffer[PROC_PIDPATHINFO_MAXSIZE] = {0};
+    const auto pathLen
     {
-        jsProcessInfo["euser"]  = eUser->pw_name;
-    }
+        proc_pidpath(pid, pathBuffer, sizeof(pathBuffer))
+    };
 
-    const auto rUser { getpwuid(taskInfo.pbsd.pbi_ruid) };
+    jsProcessInfo["command_line"] = pathLen > 0 ? std::string(pathBuffer) : "";
 
-    if (rUser)
-    {
-        jsProcessInfo["ruser"]  = rUser->pw_name;
-    }
-
-    const auto rGroup { getgrgid(taskInfo.pbsd.pbi_rgid) };
-
-    if (rGroup)
-    {
-        jsProcessInfo["rgroup"] = rGroup->gr_name;
-    }
-
-    jsProcessInfo["priority"]   = taskInfo.ptinfo.pti_priority;
-    jsProcessInfo["nice"]       = taskInfo.pbsd.pbi_nice;
-    jsProcessInfo["vm_size"]    = taskInfo.ptinfo.pti_virtual_size / KByte;
-    jsProcessInfo["start_time"] = taskInfo.pbsd.pbi_start_tvsec;
     return jsProcessInfo;
 }
 
@@ -115,9 +99,11 @@ nlohmann::json SysInfo::getHardware() const
 
 static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgType, std::function<void(nlohmann::json&)> callback)
 {
+    const file_system::FileSystemWrapper fs;
+
     if (MACPORTS == pkgType)
     {
-        if (Utils::existsRegular(pkgDirectory + "/" + MACPORTS_DB_NAME))
+        if (fs.is_regular_file(pkgDirectory + "/" + MACPORTS_DB_NAME))
         {
             try
             {
@@ -158,7 +144,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
     }
     else
     {
-        const auto packages { Utils::enumerateDir(pkgDirectory) };
+        const auto packages { fs.list_directory(pkgDirectory) };
 
         for (const auto& package : packages)
         {
@@ -168,7 +154,7 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
                 try
                 {
                     nlohmann::json jsPackage;
-                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, ""}, pkgType))->buildPackageData(jsPackage);
+                    FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename().string(), ""}, pkgType))->buildPackageData(jsPackage);
 
                     if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                     {
@@ -183,18 +169,21 @@ static void getPackagesFromPath(const std::string& pkgDirectory, const int pkgTy
             }
             else if (BREW == pkgType)
             {
-                if (!Utils::startsWith(package, "."))
-                {
-                    const auto packageVersions { Utils::enumerateDir(pkgDirectory + "/" + package) };
+                if (fs.is_directory(package) && !Utils::startsWith(package.filename().string(), "."))
 
-                    for (const auto& version : packageVersions)
+                {
+                    const auto packageVersions { fs.list_directory(package) };
+
+                    for (const auto& versionPath : packageVersions)
                     {
+                        const std::string version = versionPath.filename().string();
+
                         if (!Utils::startsWith(version, "."))
                         {
                             try
                             {
                                 nlohmann::json jsPackage;
-                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package, version}, pkgType))->buildPackageData(jsPackage);
+                                FactoryPackageFamilyCreator<OSPlatformType::BSDBASED>::create(std::make_pair(PackageContext{pkgDirectory, package.filename().string(), version}, pkgType))->buildPackageData(jsPackage);
 
                                 if (!jsPackage.at("name").get_ref<const std::string&>().empty())
                                 {
@@ -293,17 +282,20 @@ nlohmann::json SysInfo::getOsInfo() const
 
     if (uname(&uts) >= 0)
     {
-        ret["sysname"] = uts.sysname;
+        ret["os_kernel_name"] = uts.sysname;
         ret["hostname"] = uts.nodename;
-        ret["version"] = uts.version;
+        ret["os_kernel_version"] = uts.version;
         ret["architecture"] = uts.machine;
-        ret["release"] = uts.release;
+        ret["os_kernel_release"] = uts.release;
     }
 
     if (isRunningOnRosetta())
     {
         ret["architecture"] = MAC_ROSETTA_DEFAULT_ARCH;
     }
+
+    // ECS-compliant os.type field (values: linux, macos, unix, windows)
+    ret["os_type"] = "macos";
 
     return ret;
 }
@@ -431,11 +423,13 @@ void SysInfo::getProcessesInfo(std::function<void(nlohmann::json&)> callback) co
 
 void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
 {
+    const file_system::FileSystemWrapper fs;
+
     for (const auto& packageDirectory : s_mapPackagesDirectories)
     {
         const auto pkgDirectory { packageDirectory.first };
 
-        if (Utils::existsDir(pkgDirectory))
+        if (fs.is_directory(pkgDirectory))
         {
             getPackagesFromPath(pkgDirectory, packageDirectory.second, callback);
         }
@@ -463,7 +457,7 @@ void SysInfo::getPackages(std::function<void(nlohmann::json&)> callback) const
         {"PYPI", pypyMacOSPaths},
         {"NPM", UNIX_NPM_DEFAULT_BASE_DIRS}
     };
-    ModernFactoryPackagesCreator<HAS_STDFILESYSTEM>::getPackages(searchPaths, callback);
+    ModernFactoryPackagesCreator::getPackages(searchPaths, callback);
 }
 
 nlohmann::json SysInfo::getHotfixes() const
@@ -591,11 +585,14 @@ nlohmann::json SysInfo::getUsers() const
         }
 
         // Macos
-        userItem["user_password_last_change"] = user["password_last_set_time"];
+        auto passwordLastChange = user["password_last_set_time"].get<int64_t>();
+        auto creationTime = user["creation_time"].get<double>();
+        auto failedLoginTimestamp = user["failed_login_timestamp"].get<double>();
+        userItem["user_password_last_change"] = passwordLastChange > 0 ? passwordLastChange : 0;
         userItem["user_is_hidden"] = user["is_hidden"];
-        userItem["user_created"] = user["creation_time"];
+        userItem["user_created"] = creationTime > 0 ? Utils::rawTimestampToISO8601(creationTime) : UNKNOWN_VALUE;
         userItem["user_auth_failed_count"] = user["failed_login_count"];
-        userItem["user_auth_failed_timestamp"] = user["failed_login_timestamp"];
+        userItem["user_auth_failed_timestamp"] = failedLoginTimestamp > 0 ? Utils::rawTimestampToISO8601(failedLoginTimestamp) : UNKNOWN_VALUE;
         // Macos or windows
         userItem["user_uuid"] = user["uuid"];
 
@@ -627,7 +624,7 @@ nlohmann::json SysInfo::getUsers() const
                 if (newDate > lastLogin)
                 {
                     lastLogin = newDate;
-                    userItem["user_last_login"] = newDate;
+                    userItem["user_last_login"] = Utils::rawTimestampToISO8601(static_cast<uint32_t>(newDate));
                     userItem["login_tty"] = item["tty"].get<std::string>();
                     userItem["login_type"] = item["type"].get<std::string>();
                     userItem["process_pid"] = item["pid"].get<int32_t>();
@@ -650,10 +647,10 @@ nlohmann::json SysInfo::getUsers() const
             userItem["login_tty"] = UNKNOWN_VALUE;
             userItem["login_type"] = UNKNOWN_VALUE;
             userItem["process_pid"] = 0;
-            userItem["user_last_login"] = 0;
+            userItem["user_last_login"] = UNKNOWN_VALUE;
         }
 
-        userItem["user_password_expiration_date"] = 0;
+        userItem["user_password_expiration_date"] = UNKNOWN_VALUE;
         userItem["user_password_hash_algorithm"] = UNKNOWN_VALUE;
         userItem["user_password_inactive_days"] = 0;
         userItem["user_password_max_days_between_changes"] = 0;
@@ -687,7 +684,7 @@ nlohmann::json SysInfo::getServices() const
 {
     nlohmann::json result = nlohmann::json::array();
 
-    LaunchdProvider servicesProvider;
+    LaunchdProvider servicesProvider{nullptr};
     auto collectedServices = servicesProvider.collect();
 
     for (auto& svc : collectedServices)
@@ -812,7 +809,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("author",              UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;
@@ -846,7 +843,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("copyright",           UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = ext.value("bundle_version",      UNKNOWN_VALUE);
@@ -880,7 +877,7 @@ nlohmann::json SysInfo::getBrowserExtensions() const
             extensionItem["user_id"]                   = (ext.contains("uid") && !ext["uid"].get<std::string>().empty()) ? ext["uid"] : UNKNOWN_VALUE;
             extensionItem["package_name"]              = (ext.contains("name") && !ext["name"].get<std::string>().empty()) ? ext["name"] : UNKNOWN_VALUE;
             extensionItem["package_id"]                = ext.value("identifier",          UNKNOWN_VALUE);
-            extensionItem["package_version"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
+            extensionItem["package_version_"]           = (ext.contains("version") && !ext["version"].get<std::string>().empty()) ? ext["version"] : UNKNOWN_VALUE;
             extensionItem["package_description"]       = ext.value("description",         UNKNOWN_VALUE);
             extensionItem["package_vendor"]            = ext.value("creator",             UNKNOWN_VALUE);
             extensionItem["package_build_version"]     = UNKNOWN_VALUE;

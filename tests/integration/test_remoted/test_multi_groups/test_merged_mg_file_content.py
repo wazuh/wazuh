@@ -60,7 +60,7 @@ def test_merged_mg_file_content(test_configuration, test_metadata, configure_loc
                             set_wazuh_configuration, daemons_handler, prepare_environment):
 
     '''
-    description: Check the content of the merged.mg file that wazuh-remoted compiles for multi-groups.
+    description: Check the content of the merged.mg file that wazuh-manager-remoted compiles for multi-groups.
 
     parameters:
         - test_configuration
@@ -92,7 +92,7 @@ def test_merged_mg_file_content(test_configuration, test_metadata, configure_loc
     action = test_metadata['action']
     manipulate_file(action, shared_file_path)
     time.sleep(wait_time)
-    if action == 'created':
+    if action == 'create':
         if os.path.exists(merged_mg_file):
             log_monitor.start(callback=generate_callback(regex="{expected_line}", replacement={"expected_line":expected_line}))
             assert log_monitor.callback_result

@@ -1,41 +1,121 @@
 #!/bin/sh
 # preinst script for Wazuh
-
 set -e
 
 # configuration variables
-DIR="/var/ossec"
+DIR="/var/wazuh-manager"
 WAZUH_TMP_DIR="${DIR}/packages_files/manager_config_files"
-VERSION="$2"
-MAJOR=$(echo "$VERSION" | cut -dv -f2 | cut -d. -f1)
+WAZUH_PRESERVE_DIR="${DIR}/packages_files/manager_upgrade_preserve"
+prepare_tmp_dir() {
+    if [ -d "${WAZUH_TMP_DIR}" ]; then
+        rm -rf "${WAZUH_TMP_DIR}"
+    fi
+    mkdir -p "${WAZUH_TMP_DIR}"
+}
 
-# environment configuration
-if [ ! -d ${WAZUH_TMP_DIR} ]; then
-    mkdir -p ${WAZUH_TMP_DIR}
-else
-    rm -rf ${WAZUH_TMP_DIR}
-    mkdir -p ${WAZUH_TMP_DIR}
-fi
+backup_upgrade_preserve() {
+    if [ -e "${WAZUH_PRESERVE_DIR}" ]; then
+        echo "ERROR: Existing manager upgrade preserve backup found at ${WAZUH_PRESERVE_DIR}." >&2
+        echo "ERROR: Recover or move this directory before retrying the upgrade." >&2
+        exit 1
+    fi
+    mkdir -p "${WAZUH_PRESERVE_DIR}"
+
+    if [ -d "${DIR}/etc" ]; then
+        cp -a "${DIR}/etc" "${WAZUH_PRESERVE_DIR}/"
+    fi
+
+    if [ -d "${DIR}/data" ]; then
+        mkdir -p "${WAZUH_PRESERVE_DIR}/data"
+        for DATA_ENTRY in "${DIR}/data/"* "${DIR}/data/."[!.]* "${DIR}/data/"..?*; do
+            [ -e "${DATA_ENTRY}" ] || continue
+            DATA_NAME=$(basename "${DATA_ENTRY}")
+            [ "${DATA_NAME}" = "tzdb" ] && continue
+            cp -a "${DATA_ENTRY}" "${WAZUH_PRESERVE_DIR}/data/"
+        done
+    fi
+}
+
+print_unsupported_manager_upgrade() {
+    DETECTED_VERSION=$(echo "${1:-unknown}" | sed 's/^v//')
+    cat <<EOF >&2
+==============================================================
+ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+
+Detected installed version: ${DETECTED_VERSION}
+
+A clean installation of Wazuh manager 5.x is required.
+Refer to the 5.x migration guide for more information.
+==============================================================
+EOF
+}
 
 case "$1" in
     install|upgrade)
 
+        # HARD BLOCK: Prevent upgrade from versions prior to 5.x.
+        if [ "$1" = "upgrade" ] && [ -n "$2" ]; then
+            # $2 contains the old version in upgrade scenarios
+            OLD_VERSION="$2"
+            OLD_MAJOR=$(echo "$OLD_VERSION" | sed 's/^v//' | cut -d. -f1)
+
+            if [ -n "$OLD_MAJOR" ] && [ "$OLD_MAJOR" -le 4 ] 2>/dev/null; then
+                print_unsupported_manager_upgrade "$OLD_VERSION"
+                exit 1
+            fi
+        fi
+
         if [ "$1" = "upgrade" ]; then
+            # Get version information
+            if [ -f "${DIR}/bin/wazuh-manager-control" ]; then
+                OLD_VERSION=`${DIR}/bin/wazuh-manager-control info -v 2>/dev/null`
+                MAJOR_VER=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+            elif [ -f ${DIR}/VERSION.json ]; then
+                OLD_VERSION=`grep -oP '(?<="version": ")[^"]*' ${DIR}/VERSION.json 2>/dev/null`
+                MAJOR_VER=$(echo $OLD_VERSION | cut -d. -f1)
+            fi
+
+            # Validate upgrade constraints for Manager
+            ERROR_TYPE=""
+
+            # Determine if upgrade should be blocked
+            if [ -z "$MAJOR_VER" ]; then
+                ERROR_TYPE="no_version"
+            elif [ "$MAJOR_VER" -lt 5 ]; then
+                ERROR_TYPE="old_version"
+            fi
+
+            # If any error was detected, show message and block
+            if [ -n "$ERROR_TYPE" ]; then
+                print_unsupported_manager_upgrade "$OLD_VERSION"
+                exit 1
+            fi
+
+            # environment configuration (original behavior, after hard-block checks)
+            prepare_tmp_dir
+            touch "${WAZUH_TMP_DIR}/rollback_prepared"
+
             if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && systemctl is-active --quiet wazuh-manager > /dev/null 2>&1; then
                 systemctl stop wazuh-manager.service > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
             elif command -v service > /dev/null 2>&1 && service wazuh-manager status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
                 service wazuh-manager stop > /dev/null 2>&1
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
+            elif ${DIR}/bin/wazuh-manager-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
+                touch ${WAZUH_TMP_DIR}/wazuh.restart
             elif ${DIR}/bin/wazuh-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
                 touch ${WAZUH_TMP_DIR}/wazuh.restart
-            elif ${DIR}/bin/ossec-control status 2>/dev/null | grep "is running" > /dev/null 2>&1; then
-                touch ${WAZUH_TMP_DIR}/wazuh.restart
             fi
-            ${DIR}/bin/ossec-control stop > /dev/null 2>&1 || ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
-            if pgrep -f ossec-authd > /dev/null 2>&1; then
-                kill -15 $(pgrep -f ossec-authd)
+            if [ -x "${DIR}/bin/wazuh-manager-control" ]; then
+                ${DIR}/bin/wazuh-manager-control stop > /dev/null 2>&1
+            elif [ -x "${DIR}/bin/wazuh-control" ]; then
+                ${DIR}/bin/wazuh-control stop > /dev/null 2>&1
             fi
+            if pgrep -f wazuh-manager-authd > /dev/null 2>&1; then
+                kill -15 $(pgrep -f wazuh-manager-authd)
+            fi
+
+            backup_upgrade_preserve
 
             if [ -d ${DIR}/logs/ossec ]; then
                 mv ${DIR}/logs/ossec ${DIR}/logs/wazuh
@@ -50,19 +130,8 @@ case "$1" in
                 rm -rf ${DIR}/~api
             fi
 
-            # Get old package version
-            if [ -f /etc/ossec-init.conf ]; then
-                . /etc/ossec-init.conf
-            else
-                VERSION=$(${DIR}/bin/wazuh-control info -v)
-            fi
-
-            # Get the major and minor version
-            MAJOR=$(echo $VERSION | cut -dv -f2 | cut -d. -f1)
-            MINOR=$(echo $VERSION | cut -d. -f2)
-
             # Delete 3.X Wazuh API service
-            if [ "$MAJOR" = "3" ] && [ -d ${DIR}/api ]; then
+            if [ "$MAJOR_VER" = "3" ] && [ -d ${DIR}/api ]; then
                 if command -v systemctl > /dev/null 2>&1 && systemctl > /dev/null 2>&1 && \
                   systemctl list-unit-files --type service | grep wazuh-api; then
                     systemctl stop wazuh-api.service > /dev/null 2>&1
@@ -76,13 +145,7 @@ case "$1" in
                     rm -f /etc/rc.d/init.d/wazuh-api || true
                 fi
             fi
-        fi
 
-        if [ ! -z "$2" ] && [ ! -f ${DIR}/etc/ossec.conf ] ; then
-            touch ${WAZUH_TMP_DIR}/create_conf
-        fi
-
-        if [ "$1" = "upgrade" ]; then
             # RBAC database
             if [ -f ${DIR}/api/configuration/security/rbac.db ]; then
                 cp -fp ${DIR}/api/configuration/security/rbac.db ${WAZUH_TMP_DIR}/rbac.db
@@ -93,43 +156,13 @@ case "$1" in
                 cp -fp ${DIR}/api/configuration/api.yaml ${WAZUH_TMP_DIR}/api.yaml
             fi
 
-            # Agent-groups files
-            if [ -d ${DIR}/queue/agent-groups ]; then
-                mv -f ${DIR}/queue/agent-groups ${WAZUH_TMP_DIR}/
-            fi
+        else
+            # environment configuration (original behavior for install)
+            prepare_tmp_dir
         fi
 
-        # Delete old service
-        if [ -f /etc/init.d/ossec ]; then
-          rm /etc/init.d/ossec
-        fi
-
-        if [ -d ${DIR}/etc/lists ]; then
-          cp -rp ${DIR}/etc/lists ${WAZUH_TMP_DIR}/lists
-        fi
-
-        if [ -f ${DIR}/etc/client.keys ]; then
-            cp -p ${DIR}/etc/client.keys ${WAZUH_TMP_DIR}/client.keys
-        fi
-
-        if [ -f ${DIR}/etc/local_internal_options.conf ]; then
-            cp -p ${DIR}/etc/local_internal_options.conf ${WAZUH_TMP_DIR}/local_internal_options.conf
-        fi
-
-        if [ -f ${DIR}/etc/rules/local_rules.xml ]; then
-            cp -p ${DIR}/etc/rules/local_rules.xml ${WAZUH_TMP_DIR}/local_rules.xml
-        fi
-
-        if [ -f ${DIR}/etc/decoders/local_decoder.xml ]; then
-            cp -p ${DIR}/etc/decoders/local_decoder.xml ${WAZUH_TMP_DIR}/local_decoder.xml
-        fi
-
-        if [ -f ${DIR}/etc/ossec.conf ]; then
-            cp -p ${DIR}/etc/ossec.conf ${WAZUH_TMP_DIR}/ossec.conf
-        fi
-
-        if [ -d ${DIR}/etc/shared ]; then
-            cp -rp ${DIR}/etc/shared ${WAZUH_TMP_DIR}/group
+        if [ ! -z "$2" ] && [ ! -f ${DIR}/etc/wazuh-manager.conf ] ; then
+            touch ${WAZUH_TMP_DIR}/create_conf
         fi
 
         if [ -d ${DIR}/var/db/agents ]; then
@@ -139,15 +172,6 @@ case "$1" in
         # Remove plain-text agent information if exists
         if [ -d ${DIR}/queue/agent-info ]; then
             rm -rf ${DIR}/queue/agent-info/* > /dev/null 2>&1
-        fi
-
-        if [ -d ${DIR}/queue/rootcheck ]; then
-            rm -rf ${DIR}/queue/rootcheck/* > /dev/null 2>&1
-        fi
-
-        # Remove groups backup content if exists
-        if [ -d ${DIR}/backup/groups ]; then
-            rm -rf ${DIR}/backup/groups/* > /dev/null 2>&1
         fi
     ;;
 

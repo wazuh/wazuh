@@ -1,32 +1,29 @@
 - name: UPLOAD_ONE_BLOCK_CONFIG
   description: Upload one block configuration
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     body: >
-      <ossec_config>
+      <wazuh_config>
         <remote>
-          <connection>secure</connection>
           <port>1514</port>
         </remote>
-      </ossec_config>
+      </wazuh_config>
     expected_code: 200
 
 - name: UPLOAD_TWO_BLOCKS_CONFIG
   description: Upload two blocks configuration
-  configuration_parameters:
+  configuration_parameters: null
   metadata:
     body: >
-      <ossec_config>
+      <wazuh_config>
         <remote>
-          <connection>secure</connection>
           <port>1514</port>
         </remote>
-      </ossec_config>
+      </wazuh_config>
 
-      <ossec_config>
+      <wazuh_config>
         <remote>
-          <connection>syslog</connection>
           <port>514</port>
         </remote>
-      </ossec_config>
+      </wazuh_config>
     expected_code: 200

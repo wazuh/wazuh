@@ -4,8 +4,7 @@ no="n"
 yesmatch="j"
 nomatch="n"
 agent="agent"
-local="local"
-server="server"
+server="manager"
 help="help"
 
 # Global
@@ -21,10 +20,9 @@ system="Systeem"
 user="Gebruiker"
 host="Host"
 hitanyorabort="Druk op ENTER om door te gaan of Ctrl-C om af te breken."
-whattoinstall="Wat voor soort installatie wilt u doen (manager, agent, local of help)?"
-serverchose="Gekozen voor manager (server) installatie"
+whattoinstall="Wat voor soort installatie wilt u doen (manager, agent, of help)?"
+serverchose="Gekozen voor manager installatie"
 clientchose="Gekozen voor agent(client) installatie"
-localchose="Gekozen voor lokale installatie"
 
 # Part 2
 settingupenv="Opzetten van installatie omgeving"
@@ -59,11 +57,6 @@ runrootcheck="Wilt u de rootkit detectie engine?"
 norootcheck="Geen rootcheck (rootkit detectie)"
 yesrootcheck="Starten van rootcheck (rootkit detectie)"
 
-# Part 3.4
-runopenscap="Wilt u OpenSCAP?"
-norunopenscap="Geen running OpenSCAP"
-yesrunopenscap="Starten OpenSCAP"
-
 # Part 3.5/server/local
 enable_ar="Wilt u actief handelen?"
 noactive="Actief handelen uitgeschakeld"
@@ -75,11 +68,6 @@ yesfirewall="firewall-drop ingeschakeld (lokaal) voor niveaus >= 6"
 defaultwhitelist="Standaard witte lijst voor actief handelen:"
 addwhite="Wilt u meer IPs toevoegen aan de witte lijst?"
 ipswhite="IPs (spatie gescheiden): "
-
-# Part 3.5/server/local
-syslog="Wilt u externe systeem logging (syslog) inschakelen (poort 514 udp)?"
-nosyslog="Externe systeem logging uitgeschakeld"
-yessyslog="Externe systeem logging ingeschakeld"
 
 # Part 3.4/3.5
 readlogs="Systeem instellen om de volgende logbestanden te controleren:"

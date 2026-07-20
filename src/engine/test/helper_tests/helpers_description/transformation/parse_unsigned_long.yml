@@ -1,0 +1,56 @@
+# Name of the helper function
+name: parse_unsigned_long
+
+metadata:
+  description: |
+    Evaluates if the content of the input field is a string that can be successfully converted into an unsigned long
+    number. It converts and stores the unsigned long number in `field` with truncation.
+  keywords:
+    - parser
+
+helper_type: transformation
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  input_field:
+    type: string  # Accept only string
+    generate: string
+    source: reference # includes only references (their names start with $)
+
+skipped:
+  - success_cases # parser failed
+
+target_field:
+  type: object
+
+test:
+  - arguments:
+      input_field: "-2"
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure unsigned long parse (negative integer)
+
+  - arguments:
+      input_field: "23.45"
+    target_field: any_value
+    should_pass: true
+    expected: 23
+    description: Success unsigned long parse with truncation
+
+  - arguments:
+      input_field: "2345"
+    target_field: any_value
+    should_pass: true
+    expected: 2345
+    description: Success unsigned long parse
+
+  - arguments:
+      input_field: hello
+    target_field: any_value
+    should_pass: false
+    expected: any_value
+    description: Failure unsigned long parse

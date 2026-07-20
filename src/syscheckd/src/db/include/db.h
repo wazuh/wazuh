@@ -27,18 +27,19 @@
 #define EXPORTED
 #endif
 
-#include "fimCommonDefs.h"
 #include "commonDefs.h"
+#include "fimCommonDefs.h"
 #include "syscheck.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #include <openssl/evp.h>
 
-#define FIM_DB_MEMORY_PATH  ":memory:"
-#define FIM_DB_DISK_PATH    "queue/fim/db/fim.db"
+#define FIM_DB_MEMORY_PATH ":memory:"
+#define FIM_DB_DISK_PATH   "queue/fim/db/fim.db"
 
 #define EVP_MAX_MD_SIZE 64
 
@@ -47,46 +48,28 @@ extern "C" {
  *
  * It will be dbsync the responsible of managing the DB.
  * @param storage storage 1 Store database in memory, disk otherwise.
- * @param sync_interval Interval when the synchronization will be performed.
- * @param sync_max_interval Maximum interval allowed for the synchronization process.
- * @param sync_response_timeout Minimum interval for the synchronization process.
- * @param sync_callback Callback to send the synchronization messages.
  * @param log_callback Callback to perform logging operations.
  * @param file_limit Maximum number of files to be monitored.
  * @param value_limit Maximum number of registry values to be monitored.
- * @param sync_registry_enable Flag to enable the registry synchronization.
- * @param sync_queue_size Number to define the size of the queue to be synchronized.
  * @param dbsync_log_function Logging function for dbsync module.
- * @param rsync_log_function Logging function for rsync module.
  *
  * @return FIMDB_OK on success, FIMDB_ERROR on error.
  */
-EXPORTED FIMDBErrorCode fim_db_init(int storage,
-                                    int sync_interval,
-                                    uint32_t sync_max_interval,
-                                    uint32_t sync_response_timeout,
-                                    fim_sync_callback_t sync_callback,
-                                    logging_callback_t log_callback,
-                                    int file_limit,
-                                    int value_limit,
-                                    bool sync_registry_enabled,
-                                    int sync_thread_pool,
-                                    unsigned int sync_queue_size,
-                                    log_fnc_t dbsync_log_function,
-                                    log_fnc_t rsync_log_function);
+EXPORTED FIMDBErrorCode fim_db_init(
+    int storage, logging_callback_t log_callback, int file_limit, int value_limit, log_fnc_t dbsync_log_function);
 
 /**
  * @brief Get entry data using path.
  *
  * @param file_path File path can be a pattern or a primary key
  * @param data Pointer to the data structure where the callback context will be stored.
+ * @param to_delete True if the entry is to be deleted
  *
  * @retval FIMDB_OK on success.
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-EXPORTED FIMDBErrorCode fim_db_get_path(const char* file_path,
-                                        callback_context_t data);
+EXPORTED FIMDBErrorCode fim_db_get_path(const char* file_path, callback_context_t data, bool to_delete);
 
 /**
  * @brief Find entries based on pattern search.
@@ -98,19 +81,7 @@ EXPORTED FIMDBErrorCode fim_db_get_path(const char* file_path,
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-EXPORTED FIMDBErrorCode fim_db_file_pattern_search(const char* pattern,
-                                                   callback_context_t data);
-
-/**
- * @brief Delete entry from the DB using file path.
- *
- * @param path Path of the entry to be removed.
- *
- * @retval FIMDB_OK on success.
- * @retval FIMDB_FULL if the table limit was reached.
- * @retval FIMDB_ERR on failure.
- */
-EXPORTED FIMDBErrorCode fim_db_remove_path(const char* path);
+EXPORTED FIMDBErrorCode fim_db_file_pattern_search(const char* pattern, callback_context_t data);
 
 /**
  * @brief Get count of all inodes in file_entry table.
@@ -127,6 +98,29 @@ EXPORTED int fim_db_get_count_file_inode();
 EXPORTED int fim_db_get_count_file_entry();
 
 /**
+ * @brief Get the maximum version from file_entry table.
+ *
+ * @return Maximum version value, 0 if no entries exist.
+ */
+EXPORTED int fim_db_get_max_version_file();
+
+/**
+ * @brief Set the version for all entries in file_entry table.
+ *
+ * @param version The version value to set.
+ * @return 0 on success, -1 on error.
+ */
+EXPORTED int fim_db_set_version_file(int version);
+
+/**
+ * @brief Clean all file entries from the database.
+ *
+ * This function deletes all entries from file_entry table.
+ * Used when all directory paths are removed from configuration to clean orphaned data.
+ */
+EXPORTED void fim_db_clean_file_table();
+
+/**
  * @brief Makes any necessary queries to get the entry updated in the DB.
  *
  * @param data The information linked to the path to be created or updated.
@@ -134,37 +128,29 @@ EXPORTED int fim_db_get_count_file_entry();
  *
  * @return FIMDB_OK on success.
  */
-EXPORTED FIMDBErrorCode fim_db_file_update(fim_entry* data,
-                                           callback_context_t callback);
+EXPORTED FIMDBErrorCode fim_db_file_update(fim_entry* data, callback_context_t callback);
+
+/**
+ * @brief Remove a file entry from the database.
+ *
+ * @param file_path The path of the file to remove.
+ *
+ * @return FIMDB_OK on success.
+ */
+EXPORTED FIMDBErrorCode fim_db_file_delete(const char* file_path);
 
 /**
  * @brief Find entries using the inode.
  *
  * @param inode Inode.
- * @param dev Device.
+ * @param device Device.
  * @param data Pointer to the data structure where the callback context will be stored.
  *
  * @return FIMDB_OK on success.
  */
 EXPORTED FIMDBErrorCode fim_db_file_inode_search(unsigned long long int inode,
-                                                 unsigned long int dev,
+                                                 unsigned long int device,
                                                  callback_context_t data);
-
-/**
- * @brief Push a message to the syscheck queue
- *
- * @param msg The specific message to be pushed
- *
- * @return FIMDB_OK on success.
- */
-EXPORTED FIMDBErrorCode fim_sync_push_msg(const char* msg);
-
-/**
- * @brief Thread that performs the syscheck data synchronization
- *
- * @return FIMDB_OK on success.
- */
-EXPORTED FIMDBErrorCode fim_run_integrity();
 
 /*
  * @brief Function that starts a new DBSync transaction.
@@ -175,9 +161,7 @@ EXPORTED FIMDBErrorCode fim_run_integrity();
  *
  * @return TXN_HANDLE Transaction handler.
  */
-EXPORTED TXN_HANDLE fim_db_transaction_start(const char* table,
-                                             result_callback_t row_callback,
-                                             void *user_data);
+EXPORTED TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void* user_data);
 
 /**
  * @brief Function to perform a sync row operation (ADD OR REPLACE).
@@ -189,8 +173,7 @@ EXPORTED TXN_HANDLE fim_db_transaction_start(const char* table,
  * @retval FIMDB_FULL if the table limit was reached.
  * @retval FIMDB_ERR on failure.
  */
-EXPORTED FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler,
-                                                    const fim_entry* entry);
+EXPORTED FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry);
 
 /**
  * @brief Function to perform the deleted rows operation.
@@ -213,6 +196,84 @@ EXPORTED FIMDBErrorCode fim_db_transaction_deleted_rows(TXN_HANDLE txn_handler,
  */
 EXPORTED void fim_db_teardown();
 
+/**
+ * @brief Closes the database connection and deletes the database file.
+ */
+EXPORTED void fim_db_close_and_delete_database();
+
+/**
+ * @brief Increase the version column for all entries in a table.
+ * @return 0 on success, -1 on error.
+ */
+EXPORTED int fim_db_increase_each_entry_version(const char* table_name);
+
+/**
+ * @brief Update the last integrity check timestamp for a table.
+ *
+ * @param table_name Name of the table (e.g., "file_entry", "registry_key", "registry_data").
+ */
+EXPORTED void fim_db_update_last_sync_time(const char* table_name);
+
+/**
+ * @brief Get all elements from a table with optional filter.
+ *
+ * @param table_name Name of the table to query.
+ * @param row_filter Optional SQL WHERE clause to filter rows (e.g., "WHERE sync=1"). Pass NULL or "" for no filter.
+ * @return cJSON array containing all matching table elements (must be freed with cJSON_Delete), NULL on error.
+ */
+EXPORTED cJSON* fim_db_get_every_element(const char* table_name, const char* row_filter);
+
+/**
+ * @brief Calculate the checksum-of-checksums for a table.
+ *
+ * @param table_name The table to calculate checksum for.
+ * @return The SHA1 checksum-of-checksums as a hex string (must be freed by caller), NULL on error.
+ */
+EXPORTED char* fim_db_calculate_table_checksum(const char* table_name);
+
+/**
+ * @brief Get the last sync time for a table.
+ *
+ * @param table_name Name of the table.
+ * @return Last sync timestamp in seconds since epoch, 0 if never synced or on error.
+ */
+EXPORTED int64_t fim_db_get_last_sync_time(const char* table_name);
+
+/**
+ * @brief Update the last sync time for a table.
+ *
+ * @param table_name Name of the table.
+ * @param timestamp Timestamp in seconds since epoch.
+ */
+EXPORTED void fim_db_update_last_sync_time_value(const char* table_name, int64_t timestamp);
+
+/**
+ * @brief Set the sync flag for a file document.
+ *
+ * @param file_path The file path to update.
+ * @param sync_value The sync value to set (0 or 1).
+ * @param version The version to set for the document.
+ * @return 0 on success, -1 on error or if entry not found.
+ */
+EXPORTED int fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_value);
+
+/**
+ * @brief Count the number of synced documents in a table.
+ *
+ * Counts rows where the sync flag is set to 1, indicating they are within
+ * the sync limit and will be synchronized to the manager.
+ *
+ * @param table_name The name of the table to count synced documents from
+ *                   (e.g., FIMDB_FILE_TABLE_NAME, FIMDB_REGISTRY_KEY_TABLENAME,
+ *                   FIMDB_REGISTRY_VALUE_TABLENAME).
+ * @return The count of documents where sync = 1, or 0 on error.
+ */
+EXPORTED int fim_db_count_synced_docs(const char* table_name);
+
+EXPORTED cJSON* fim_db_get_documents_to_promote(char* table_name, int documents);
+
+EXPORTED cJSON* fim_db_get_documents_to_demote(char* table_name, int documents);
+
 #ifdef WIN32
 
 // Registry functions.
@@ -231,8 +292,51 @@ EXPORTED int fim_db_get_count_registry_data();
  */
 EXPORTED int fim_db_get_count_registry_key();
 
-#endif /* WIN32 */
+/**
+ * @brief Get the maximum version from registry tables.
+ *
+ * @return Maximum version value from registry_key and registry_data tables, 0 if no entries exist.
+ */
+EXPORTED int fim_db_get_max_version_registry();
 
+/**
+ * @brief Set the version for all entries in registry tables.
+ *
+ * @param version The version value to set.
+ * @return 0 on success, -1 on error.
+ */
+EXPORTED int fim_db_set_version_registry(int version);
+
+/**
+ * @brief Clean all registry entries from the database.
+ *
+ * This function deletes all entries from registry_key and registry_data tables.
+ * Used when all registry paths are removed from configuration to clean orphaned data.
+ */
+EXPORTED void fim_db_clean_registry_tables();
+
+/**
+ * @brief Remove a registry key entry from the database.
+ *
+ * @param path The path of the registry key to remove.
+ * @param arch The architecture (ARCH_32BIT or ARCH_64BIT).
+ *
+ * @return FIMDB_OK on success.
+ */
+EXPORTED FIMDBErrorCode fim_db_registry_key_delete(const char* path, int arch);
+
+/**
+ * @brief Remove a registry value entry from the database.
+ *
+ * @param path The path of the registry key containing the value.
+ * @param value The name of the registry value to remove.
+ * @param arch The architecture (ARCH_32BIT or ARCH_64BIT).
+ *
+ * @return FIMDB_OK on success.
+ */
+EXPORTED FIMDBErrorCode fim_db_registry_value_delete(const char* path, const char* value, int arch);
+
+#endif /* WIN32 */
 
 #ifdef __cplusplus
 }

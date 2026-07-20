@@ -15,7 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../../headers/wazuhdb_op.h"
+#include "wazuhdb_op.h"
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/os_net/os_net_wrappers.h"
 
@@ -25,7 +25,7 @@ void test_ok_query(void **state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 000 syscheck save file 0:0:0:0:0:0:0:0:0:0:0:0:0!0:0 /tmp/test.file";
+    char *query = "agent 001 syscheck save file 0:0:0:0:0:0:0:0:0:0:0:0:0!0:0 /tmp/test.file";
     char response[OS_SIZE_6144];
     char *message;
 
@@ -52,7 +52,7 @@ void test_ok2_query(void **state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 000 syscheck delete /tmp/test.file";
+    char *query = "agent 001 syscheck delete /tmp/test.file";
     char response[OS_SIZE_6144];
     char *message;
 
@@ -79,7 +79,7 @@ void test_okmsg_query(void **state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 000 syscheck scan_info_get start_scan";
+    char *query = "agent 001 syscheck scan_info_get start_scan";
     char response[OS_SIZE_6144];
     char *message;
 
@@ -106,7 +106,7 @@ void test_err_query(void **state)
 {
     int ret = 0;
     int wdb_sock = -1;
-    char *query = "agent 000";
+    char *query = "agent 001";
     char response[OS_SIZE_6144];
     char *message;
 
@@ -129,20 +129,12 @@ void test_err_query(void **state)
     assert_int_equal(wdbc_parse_result(response, &message), WDBC_ERROR);
 }
 
-void test_invalid_component(void** state)
-{
-    char* query = "random_component";
-
-    assert_int_equal(wdbc_validate_component(query), WB_COMP_INVALID);
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_ok_query),
         cmocka_unit_test(test_ok2_query),
         cmocka_unit_test(test_okmsg_query),
         cmocka_unit_test(test_err_query),
-        cmocka_unit_test(test_invalid_component)
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

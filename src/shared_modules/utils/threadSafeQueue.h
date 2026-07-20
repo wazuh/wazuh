@@ -13,7 +13,6 @@
 #define THREAD_SAFE_QUEUE_H
 #include <atomic>
 #include <condition_variable>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -53,6 +52,17 @@ namespace Utils
             if (!m_canceled)
             {
                 m_queue.push(value);
+                m_cv.notify_one();
+            }
+        }
+
+        void push(T&& value)
+        {
+            std::lock_guard<std::mutex> lock {m_mutex};
+
+            if (!m_canceled)
+            {
+                m_queue.push(std::move(value));
                 m_cv.notify_one();
             }
         }

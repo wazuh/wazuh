@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../syscheckd/include/syscheck.h"
-#include "../config/syscheck-config.h"
+#include "syscheck.h"
+#include "syscheck-config.h"
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/pthread_wrappers.h"
@@ -123,7 +123,6 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_int_equal(syscheck.skip_fs.dev, 1);
     assert_int_equal(syscheck.skip_fs.sys, 1);
     assert_int_equal(syscheck.skip_fs.proc, 1);
-    assert_int_equal(syscheck.scan_on_start, 1);
     assert_int_equal(syscheck.time, 43200);
     assert_non_null(syscheck.ignore);
     assert_non_null(syscheck.ignore_regex);
@@ -145,11 +144,7 @@ void test_Read_Syscheck_Config_success(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_int_equal(syscheck.allow_remote_prefilter_cmd, true);
-    assert_non_null(syscheck.prefilter_cmd);    // It should be a valid binary absolute path
     assert_int_equal(syscheck.sync_interval, 600);
-    assert_int_equal(syscheck.sync_queue_size, 16384);
-    assert_int_equal(syscheck.sync_thread_pool, 1);
     assert_int_equal(syscheck.max_eps, 200);
     assert_int_equal(syscheck.disk_quota_enabled, true);
     assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
@@ -200,7 +195,6 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_int_equal(syscheck.skip_fs.dev, 0);
     assert_int_equal(syscheck.skip_fs.sys, 0);
     assert_int_equal(syscheck.skip_fs.proc, 0);
-    assert_int_equal(syscheck.scan_on_start, 0);
     assert_int_equal(syscheck.time, 43200);
     assert_null(syscheck.ignore);
     assert_null(syscheck.ignore_regex);
@@ -215,11 +209,7 @@ void test_Read_Syscheck_Config_undefined(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 0);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_int_equal(syscheck.allow_remote_prefilter_cmd, false);
-    assert_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 600);
-    assert_int_equal(syscheck.sync_queue_size, 16384);
-    assert_int_equal(syscheck.sync_thread_pool, 1);
     assert_int_equal(syscheck.max_eps, 200);
     assert_int_equal(syscheck.disk_quota_enabled, true);
     assert_int_equal(syscheck.disk_quota_limit, 2 * 1024 * 1024);
@@ -254,7 +244,6 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_int_equal(syscheck.skip_fs.dev, 1);
     assert_int_equal(syscheck.skip_fs.sys, 1);
     assert_int_equal(syscheck.skip_fs.proc, 1);
-    assert_int_equal(syscheck.scan_on_start, 1);
     assert_int_equal(syscheck.time, 43200);
     assert_null(syscheck.ignore);
     assert_null(syscheck.ignore_regex);
@@ -270,11 +259,7 @@ void test_Read_Syscheck_Config_unparsed(void **state)
     assert_null(syscheck.realtime);
     assert_int_equal(syscheck.audit_healthcheck, 1);
     assert_int_equal(syscheck.process_priority, 10);
-    assert_int_equal(syscheck.allow_remote_prefilter_cmd, false);
-    assert_null(syscheck.prefilter_cmd);
     assert_int_equal(syscheck.sync_interval, 300);
-    assert_int_equal(syscheck.sync_queue_size, 16384);
-    assert_int_equal(syscheck.sync_thread_pool, 1);
     assert_int_equal(syscheck.max_eps, 50);
     assert_int_equal(syscheck.disk_quota_enabled, true);
     assert_int_equal(syscheck.disk_quota_limit, 1024 * 1024);
@@ -307,11 +292,11 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    #if defined(TEST_SERVER) || defined(TEST_AGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 21);
-    #elif defined(TEST_WINAGENT)
-    assert_int_equal(cJSON_GetArraySize(sys_items), 29);
-    #endif
+#if defined(TEST_AGENT)
+    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
+#elif defined(TEST_WINAGENT)
+    assert_int_equal(cJSON_GetArraySize(sys_items), 26);
+#endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "no");
@@ -346,14 +331,12 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_sys), "yes");
     cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "yes");
-    cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
-    assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
 
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 6);
-    #elif defined(TEST_WINAGENT)
+#elif defined(TEST_WINAGENT)
     assert_int_equal(cJSON_GetArraySize(sys_dir), 13);
 #endif
 
@@ -362,9 +345,9 @@ void test_getSyscheckConfig(void **state)
     assert_int_equal(cJSON_GetArraySize(sys_nodiff), 1);
 
     cJSON *sys_ignore = cJSON_GetObjectItem(sys_items, "ignore");
-#if defined(TEST_SERVER) || defined(TEST_AGENT)
+#if defined(TEST_AGENT)
     assert_int_equal(cJSON_GetArraySize(sys_ignore), 12);
-    #elif defined(TEST_WINAGENT)
+#elif defined(TEST_WINAGENT)
     assert_int_equal(cJSON_GetArraySize(sys_ignore), 2);
 #endif
 
@@ -399,15 +382,6 @@ void test_getSyscheckConfig(void **state)
     assert_string_equal(cJSON_GetStringValue(whodata_provider), "audit");
 #endif
 
-    cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
-    assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "yes");
-    cJSON *prefilter_cmd = cJSON_GetObjectItem(sys_items, "prefilter_cmd");
-#ifndef TEST_WINAGENT
-    assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "/bin/ls");
-#else
-    assert_string_equal(cJSON_GetStringValue(prefilter_cmd), "c:\\windows\\system32\\cmd.exe");
-#endif
-
     cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
     cJSON *synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
     assert_string_equal(cJSON_GetStringValue(synchronization_enabled), "yes");
@@ -416,11 +390,10 @@ void test_getSyscheckConfig(void **state)
 
     cJSON *sys_max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
     assert_int_equal(sys_max_eps->valueint, 200);
+    cJSON *sys_notify_first_scan = cJSON_GetObjectItem(sys_items, "notify_first_scan");
+    assert_string_equal(cJSON_GetStringValue(sys_notify_first_scan), "no");
     cJSON *sys_process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
     assert_int_equal(sys_process_priority->valueint, 10);
-
-    cJSON *database = cJSON_GetObjectItem(sys_items, "database");
-    assert_string_equal(cJSON_GetStringValue(database), "disk");
 }
 
 void test_getSyscheckConfig_no_audit(void **state)
@@ -446,9 +419,9 @@ void test_getSyscheckConfig_no_audit(void **state)
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
     #ifndef TEST_WINAGENT
-    assert_int_equal(cJSON_GetArraySize(sys_items), 17);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 15);
     #else
-    assert_int_equal(cJSON_GetArraySize(sys_items), 21);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 19);
     #endif
 
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
@@ -484,8 +457,6 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_sys), "no");
     cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "no");
-    cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
-    assert_string_equal(cJSON_GetStringValue(scan_on_start), "no");
 
     cJSON *sys_dir = cJSON_GetObjectItem(sys_items, "directories");
 #ifndef TEST_WINAGENT
@@ -521,19 +492,11 @@ void test_getSyscheckConfig_no_audit(void **state)
     assert_int_equal(cJSON_GetArraySize(win_registry_ignore_regex), 1);
 #endif
 
-    cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
-    assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");
-    cJSON *prefilter_cmd = cJSON_GetObjectItem(sys_items, "prefilter_cmd");
-    assert_null(prefilter_cmd);
-
     cJSON *sys_synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
     cJSON *synchronization_enabled = cJSON_GetObjectItem(sys_synchronization, "enabled");
     assert_string_equal(cJSON_GetStringValue(synchronization_enabled), "no");
     cJSON *synchronization_interval = cJSON_GetObjectItem(sys_synchronization, "interval");
     assert_int_equal(synchronization_interval->valueint, 600);
-
-    cJSON *database = cJSON_GetObjectItem(sys_items, "database");
-    assert_string_equal(cJSON_GetStringValue(database), "memory");
 }
 
 #ifndef TEST_WINAGENT
@@ -575,7 +538,7 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_int_equal(cJSON_GetArraySize(ret), 1);
 
     cJSON *sys_items = cJSON_GetObjectItem(ret, "syscheck");
-    assert_int_equal(cJSON_GetArraySize(sys_items), 18);
+    assert_int_equal(cJSON_GetArraySize(sys_items), 16);
     cJSON *disabled = cJSON_GetObjectItem(sys_items, "disabled");
     assert_string_equal(cJSON_GetStringValue(disabled), "yes");
     cJSON *frequency = cJSON_GetObjectItem(sys_items, "frequency");
@@ -616,27 +579,24 @@ void test_getSyscheckConfig_no_directories(void **state)
     assert_string_equal(cJSON_GetStringValue(skip_sys), "yes");
     cJSON *skip_proc = cJSON_GetObjectItem(sys_items, "skip_proc");
     assert_string_equal(cJSON_GetStringValue(skip_proc), "yes");
-    cJSON *scan_on_start = cJSON_GetObjectItem(sys_items, "scan_on_start");
-    assert_string_equal(cJSON_GetStringValue(scan_on_start), "yes");
     cJSON *windows_audit_interval = cJSON_GetObjectItem(sys_items, "windows_audit_interval");
     assert_int_equal(windows_audit_interval->valueint, 0);
     cJSON *registry = cJSON_GetObjectItem(sys_items, "registry");
     assert_int_equal(cJSON_GetArraySize(registry), 0);
-    cJSON *allow_remote_prefilter_cmd = cJSON_GetObjectItem(sys_items, "allow_remote_prefilter_cmd");
-    assert_string_equal(cJSON_GetStringValue(allow_remote_prefilter_cmd), "no");
     cJSON *max_eps = cJSON_GetObjectItem(sys_items, "max_eps");
     assert_int_equal(max_eps->valueint, 50);
+    cJSON *notify_first_scan = cJSON_GetObjectItem(sys_items, "notify_first_scan");
+    assert_string_equal(cJSON_GetStringValue(notify_first_scan), "no");
     cJSON *process_priority = cJSON_GetObjectItem(sys_items, "process_priority");
     assert_int_equal(process_priority->valueint, 10);
 
     cJSON *synchronization = cJSON_GetObjectItem(sys_items, "synchronization");
-    assert_int_equal(cJSON_GetArraySize(synchronization), 8);
     cJSON *enabled = cJSON_GetObjectItem(synchronization, "enabled");
     assert_string_equal(cJSON_GetStringValue(enabled), "yes");
     cJSON *interval = cJSON_GetObjectItem(synchronization, "interval");
     assert_int_equal(interval->valueint, 300);
     cJSON *sync_max_eps = cJSON_GetObjectItem(synchronization, "max_eps");
-    assert_int_equal(sync_max_eps->valueint, 10);
+    assert_int_equal(sync_max_eps->valueint, 75);
 }
 #endif
 

@@ -1,0 +1,34 @@
+name: "Install GCC 14.3"
+description: "Downloads and installs the Wazuh-packaged GCC 14.3 on Ubuntu, creating the required symlinks"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Install GCC 14.3
+      shell: bash
+      run: |
+        ARCH=$(dpkg --print-architecture)
+        GCC_PKG="gcc_14.3-1_${ARCH}.deb"
+        URL="https://packages.wazuh.com/utils/gcc/${GCC_PKG}"
+
+        echo "Downloading GCC 14.3 package (${ARCH})..."
+        wget --timeout=30 --tries=3 -O "/tmp/${GCC_PKG}" "${URL}" || {
+          echo "Failed to download GCC package"
+          exit 1
+        }
+
+        sudo dpkg -i "/tmp/${GCC_PKG}" || {
+          echo "Package installation failed, trying to fix dependencies"
+          sudo apt-get update
+          sudo apt-get install -f -y
+          sudo dpkg -i "/tmp/${GCC_PKG}"
+        }
+        rm -f "/tmp/${GCC_PKG}"
+
+        for cmd in gcc g++ c++; do
+          sudo mv /usr/bin/${cmd} /usr/bin/${cmd}.bak 2>/dev/null || true
+        done
+
+        sudo ln -sf /opt/gcc-14/bin/gcc /usr/bin/gcc
+        sudo ln -sf /opt/gcc-14/bin/g++ /usr/bin/g++
+        sudo ln -sf /opt/gcc-14/bin/g++ /usr/bin/c++

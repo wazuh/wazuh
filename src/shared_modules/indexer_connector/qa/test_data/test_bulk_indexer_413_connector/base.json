@@ -2,15 +2,17 @@
   "id": "000",
   "operation": "INSERT",
   "data": {
-    "agent": {
-      "build": {
-        "original": "sample_build_1"
-      },
-      "ephemeral_id": "eph_id_1",
-      "id": "000",
-      "name": "agent_name_1",
-      "type": "agent_type_1",
-      "version": "1.0.0"
+    "wazuh": {
+      "agent": {
+        "build": {
+          "original": "sample_build_1"
+        },
+        "ephemeral_id": "eph_id_1",
+        "id": "000",
+        "name": "agent_name_1",
+        "type": "agent_type_1",
+        "version": "1.0.0"
+      }
     },
     "message": "Sample message",
     "package": {
@@ -34,21 +36,13 @@
     ],
     "vulnerability": {
       "detected_at": "2023-09-18T12:00:00Z",
-      "published_at": "2023-01-18T12:00:00Z",
       "category": "sample_category",
-      "classification": "sample_classification",
-      "description": "Sample vulnerability description",
-      "enumeration": "sample_enumeration",
       "id": "vuln_id_1",
-      "reference": "sample_reference",
-      "report_id": "report_id_1",
       "scanner": {
         "vendor": "sample_vendor"
       },
       "score": {
         "base": 5,
-        "environmental": 5.5,
-        "temporal": 4.5,
         "version": "1.0.0"
       },
       "severity": "medium"

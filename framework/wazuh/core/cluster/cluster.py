@@ -34,7 +34,7 @@ from wazuh.core.cluster.utils import (
     safe_join,
 )
 from wazuh.core.InputValidator import InputValidator
-from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode, to_relative_path
+from wazuh.core.utils import blake2b, get_date_from_timestamp, get_utc_now, mkdir_with_mode
 
 logger = logging.getLogger('wazuh')
 
@@ -107,7 +107,7 @@ def check_cluster_config(config):
         If any of above conditions is not met.
     """
     iv = InputValidator()
-    reservated_ips = {'localhost', 'NODE_IP', '0.0.0.0', '127.0.1.1'}
+    reservated_ips = {'localhost', '0.0.0.0', '127.0.1.1'}
 
     if len(config['key']) == 0:
         raise WazuhError(3004, 'Unspecified key')
@@ -153,18 +153,6 @@ def get_node():
     data["type"] = config_cluster["node_type"]
 
     return data
-
-
-def check_cluster_status():
-    """Get whether cluster is enabled in current active configuration.
-
-    Returns
-    -------
-    bool
-        Whether cluster is enabled.
-    """
-    return not read_config()['disabled']
-
 
 #
 # Files
@@ -293,38 +281,6 @@ def get_files_status(previous_status=None, get_hash=True):
             result_logs['warning'][file_path].append(f"Error getting file status: {e}.")
 
     return final_items, result_logs
-
-
-def get_ruleset_status(previous_status):
-    """Get hash of custom ruleset files.
-
-    Parameters
-    ----------
-    previous_status : dict
-        Integrity information of local files.
-
-    Returns
-    -------
-    Dict
-        Relative path and hash of local ruleset files.
-    """
-    final_items = {}
-    cluster_items = get_cluster_items()
-    user_ruleset = [os.path.join(to_relative_path(user_path), '') for user_path in [common.USER_DECODERS_PATH,
-                                                                                    common.USER_RULES_PATH,
-                                                                                    common.USER_LISTS_PATH]]
-
-    for file_path, item in cluster_items['files'].items():
-        if file_path == "excluded_files" or file_path == "excluded_extensions" or file_path not in user_ruleset:
-            continue
-        try:
-            items, _ = walk_dir(file_path, item['recursive'], item['files'], cluster_items['files']['excluded_files'],
-                                cluster_items['files']['excluded_extensions'], file_path, previous_status, True)
-            final_items.update(items)
-        except Exception as e:
-            logger.warning(f"Error getting file status: {e}.")
-
-    return {file_path: file_data['hash'] for file_path, file_data in final_items.items()}
 
 
 def update_cluster_control(failed_file, ko_files, exists=True):
@@ -636,7 +592,7 @@ def clean_up(node_name=""):
             return
 
         for f in listdir(local_rm_path):
-            if f == "c-internal.sock":
+            if f == os.path.basename(common.CLUSTERD_SOCKET) or f == os.path.basename(common.AR_BOOKMARK_FILEPATH):
                 continue
             f_path = path.join(local_rm_path, f)
             try:

@@ -1,10 +1,10 @@
 
-  - Dispone de tres posibilidades de instalación: servidor,
-    agente o local.
+  - Dispone de dos posibilidades de instalación: servidor o
+    agente.
 
     - Si elige 'servidor', será capaz de analizar todos
       los registros, crear  notificaciónes de correo  y
-      respuestas, así como también recibir registros syslog
+      respuestas, así como también recibir registros
       desde equipos remotos y sistemas  ejecutando  el  'agente'
       (quienes transmitirán su trafico cifrado hacia el servidor).
 
@@ -12,18 +12,12 @@
       registros  locales (de syslog, snort, apache, etc)  y
       retrasmitirlos al servidor de analisis.
 
-    - Si elige 'local', será capaz de todo lo que es capaz
-      de hacer el servidor, excepto recibir mensajes remotos de los
-      agentes o fuentes externas de syslog.
-
     - Elija 'servidor' si desea instalar un servidor de registros
       o análisis.
 
     - Elija 'agente' si tiene otra maquina ejecutando el servidor
       de lectura de registros y desea transmitir los registros para
       análisis. (Ideal para servidore WEB, base de datos, etc)
-
-    -Elija 'local' si va a monitear un único sistema .
 
   - Para más información dirijase a:
     https://documentation.wazuh.com

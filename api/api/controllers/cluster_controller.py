@@ -2,20 +2,17 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import datetime
 import logging
 
 from connexion import request
 from connexion.lifecycle import ConnexionResponse
 
 import wazuh.cluster as cluster
-import wazuh.core.common as common
-import wazuh.analysis as analysis
 import wazuh.manager as manager
 import wazuh.stats as stats
 from api.controllers.util import json_response, XML_CONTENT_TYPE
 from api.models.base_model_ import Body
-from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc, deserialize_date, deprecate_endpoint
+from api.util import remove_nones_to_dict, parse_api_param, raise_if_exc
 from api.validator import check_component_configuration_pair
 from wazuh.core.cluster.control import get_system_nodes
 from wazuh.core.cluster.dapi.dapi import DistributedAPI
@@ -158,53 +155,6 @@ async def get_healthcheck(pretty: bool = False, wait_for_complete: bool = False,
     return json_response(data, pretty=pretty)
 
 
-async def get_nodes_ruleset_sync_status(pretty: bool = False, wait_for_complete: bool = False,
-                                        nodes_list: str = "*") -> ConnexionResponse:
-    """Get cluster ruleset synchronization status.
-
-    Returns cluster ruleset synchronization status for all nodes or a list of them.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    nodes_list : list
-        Node IDs. Default: '*'
-
-    Returns
-    -------
-    ConnexionResponse
-        Nodes ruleset synchronization statuses.
-    """
-    nodes = raise_if_exc(await get_system_nodes())
-
-    master_dapi = DistributedAPI(f=cluster.get_node_ruleset_integrity,
-                                 request_type='local_master',
-                                 is_async=True,
-                                 wait_for_complete=wait_for_complete,
-                                 logger=logger,
-                                 local_client_arg='lc',
-                                 )
-    master_md5 = raise_if_exc(await master_dapi.distribute_function()).dikt
-
-    f_kwargs = {'node_list': nodes_list, 'master_md5': master_md5}
-    dapi = DistributedAPI(f=cluster.get_ruleset_sync_status,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type="distributed_master",
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=nodes_list == "*",
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def get_status(pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
     """Get cluster status.
 
@@ -267,7 +217,11 @@ async def get_config(pretty: bool = False, wait_for_complete: bool = False) -> C
 
 
 async def get_status_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get a specified node's Wazuh daemons status.
+    """Get a specified node's status (whether it is ready to process events).
+
+    Reports per-daemon status (`ready` + `running`); analysisd embeds the engine resources
+    (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node is ready only when every
+    daemon is ready.
 
     Parameters
     ----------
@@ -339,7 +293,7 @@ async def get_info_node(node_id: str, pretty: bool = False, wait_for_complete: b
 async def get_configuration_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False,
                                  section: str = None, field: str = None,
                                  raw: bool = False) -> ConnexionResponse:
-    """Get a specified node's configuration (ossec.conf).
+    """Get a specified node's configuration (wazuh-manager.conf).
 
     Parameters
     ----------
@@ -352,7 +306,7 @@ async def get_configuration_node(node_id: str, pretty: bool = False, wait_for_co
     section : str
         Indicates the wazuh configuration section.
     field : str
-        Indicates a section child, e.g, fields for rule section are include, decoder_dir, etc.
+        Indicates a section child.
     raw : bool, optional
         Whether to return the file content in raw or JSON format. Default `False`
 
@@ -417,206 +371,6 @@ async def get_daemon_stats_node(node_id: str, pretty: bool = False, wait_for_com
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
                           nodes=nodes)
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def get_stats_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False,
-                         date: str = None) -> ConnexionResponse:
-    """Get a specified node's stats.
-
-    Returns Wazuh statistical information in node {node_id} for the current or specified date.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    date : str
-        Selects the date for getting the statistical information. Format YYYY-MM-DD.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    if not date:
-        date = datetime.datetime.today()
-    else:
-        date = deserialize_date(date)
-
-    f_kwargs = {'node_id': node_id,
-                'date': date}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.totals,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-    return json_response(data, pretty=pretty)
-
-
-async def get_stats_hourly_node(node_id: str, pretty: bool = False,
-                                wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get a specified node's stats by hour.
-
-    Returns Wazuh statistical information in node {node_id} per hour. Each number in the averages field represents the
-    average of alerts per hour.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'node_id': node_id}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.hourly,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def get_stats_weekly_node(node_id: str, pretty: bool = False,
-                                wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get a specified node's stats by week.
-
-    Returns Wazuh statistical information in node {node_id} per week. Each number in the averages field represents the
-    average of alerts per hour for that specific day.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'node_id': node_id}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.weekly,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-@deprecate_endpoint()
-async def get_stats_analysisd_node(node_id: str, pretty: bool = False,
-                                   wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get a specified node's analysisd statistics.
-
-    Notes
-    -----
-    To be deprecated in v5.0.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool, optional
-        Whether to disable response timeout or not. Default `False`
-
-    Returns
-    -------
-    ConnexionResponse
-    """
-    f_kwargs = {'node_id': node_id,
-                'filename': common.ANALYSISD_STATS}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-@deprecate_endpoint()
-async def get_stats_remoted_node(node_id: str, pretty: bool = False,
-                                 wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get a specified node's remoted statistics.
-
-    Notes
-    -----
-    To be deprecated in v5.0.
-
-    Parameters
-    ----------
-    node_id : str
-        Cluster node name.
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool, optional
-        Whether to disable response timeout or not. Default `False`
-
-    Returns
-    -------
-    ConnexionResponse
-    """
-    f_kwargs = {'node_id': node_id,
-                'filename': common.REMOTED_STATS}
-
-    nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=stats.deprecated_get_daemons_stats,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
     data = raise_if_exc(await dapi.distribute_function())
 
     return json_response(data, pretty=pretty)
@@ -791,7 +545,7 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
             rbac_permissions=request.context['token_info']['rbac_policies'],
         )
         result = raise_if_exc(await dapi.distribute_function())
-        
+
         return json_response(result, pretty=pretty, status_code=202)
 
     dapi = DistributedAPI(f=manager.restart,
@@ -821,16 +575,13 @@ async def put_restart(pretty: bool = False, nodes_list: str = '*') -> ConnexionR
     return json_response(result, pretty=pretty, status_code=202)
 
 
-async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = False,
-                               nodes_list: str = '*') -> ConnexionResponse:
-    """Reload the analysisd process on all nodes in the cluster, or a list of them.
+async def put_reload(pretty: bool = False, nodes_list: str = '*') -> ConnexionResponse:
+    """Reloads configuration in all nodes in the cluster or a list of them.
 
     Parameters
     ----------
     pretty : bool
         Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
     nodes_list : str
         List of node IDs.
 
@@ -842,19 +593,48 @@ async def put_reload_analysisd(pretty: bool = False, wait_for_complete: bool = F
     f_kwargs = {'node_list': nodes_list}
 
     nodes = raise_if_exc(await get_system_nodes())
-    dapi = DistributedAPI(f=analysis.reload_ruleset,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=True,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          broadcasting=nodes_list == '*',
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          nodes=nodes
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
+    # Remove the master from the list to reload all workers without issuing the command locally yet.
+    # The master node is always the first item in the list.
+    master_node = nodes.pop(0)
 
-    return json_response(data, pretty=pretty)
+    if nodes_list == [master_node]:
+        dapi = DistributedAPI(
+            f=manager.reload,
+            request_type='local_master',
+            logger=logger,
+            rbac_permissions=request.context['token_info']['rbac_policies'],
+        )
+        result = raise_if_exc(await dapi.distribute_function())
+
+        return json_response(result, pretty=pretty, status_code=202)
+
+    dapi = DistributedAPI(f=manager.reload,
+                        f_kwargs=remove_nones_to_dict(f_kwargs),
+                        request_type='distributed_master',
+                        is_async=False,
+                        logger=logger,
+                        broadcasting=nodes_list == '*',
+                        rbac_permissions=request.context['token_info']['rbac_policies'],
+                        wait_for_complete=True,
+                        nodes=nodes
+                        )
+    result = raise_if_exc(await dapi.distribute_function())
+
+    if nodes_list == '*' or master_node in nodes_list:
+        dapi_master = DistributedAPI(
+            f=manager.reload,
+            request_type='local_master',
+            logger=logger,
+            rbac_permissions=request.context['token_info']['rbac_policies'],
+        )
+        master_result = raise_if_exc(await dapi_master.distribute_function())
+        if master_result.total_affected_items > 0:
+            result.affected_items.insert(0, master_node)
+            result.total_affected_items += 1
+        if master_result.total_failed_items > 0:
+            result.add_failed_items_from(master_result)
+
+    return json_response(result, pretty=pretty, status_code=202)
 
 
 async def get_conf_validation(pretty: bool = False, wait_for_complete: bool = False,
@@ -921,7 +701,7 @@ async def get_node_config(node_id: str, component: str, wait_for_complete: bool 
                 }
 
     nodes = raise_if_exc(await get_system_nodes())
-    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config']))
+    raise_if_exc(check_component_configuration_pair(f_kwargs['component'], f_kwargs['config'], True))
 
     dapi = DistributedAPI(f=manager.get_config,
                           f_kwargs=remove_nones_to_dict(f_kwargs),
@@ -939,14 +719,14 @@ async def get_node_config(node_id: str, component: str, wait_for_complete: bool 
 
 async def update_configuration(node_id: str, body: bytes, pretty: bool = False,
                                wait_for_complete: bool = False) -> ConnexionResponse:
-    """Update Wazuh configuration (ossec.conf) in node node_id.
+    """Update Wazuh configuration (wazuh-manager.conf) in node node_id.
 
     Parameters
     ----------
     node_id : str
         Node ID.
     body : bytes
-        New content for the Wazuh configuration (ossec.conf).
+        New content for the Wazuh configuration (wazuh-manager.conf).
     pretty : bool
         Show results in human-readable format.
     wait_for_complete : bool

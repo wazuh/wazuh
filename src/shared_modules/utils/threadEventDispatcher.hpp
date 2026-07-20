@@ -12,15 +12,17 @@
 #ifndef _THREAD_EVENT_DISPATCHER_HPP
 #define _THREAD_EVENT_DISPATCHER_HPP
 
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 #include "commonDefs.h"
+#include "loggerHelper.h"
 #include "promiseFactory.h"
 #include "rocksDBQueue.hpp"
 #include "rocksDBQueueCF.hpp"
 #include "threadSafeMultiQueue.hpp"
 #include "threadSafeQueue.h"
-#include <atomic>
-#include <iostream>
-#include <thread>
 
 template<typename T,
          typename U,
@@ -34,10 +36,15 @@ public:
                                     const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
                                     const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    const size_t retryDelay = 1,
+                                    const size_t flushInterval = 20,
                                     bool useSharedBuffers = false)
         : m_functor {std::move(functor)}
         , m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
+        , m_retryDelay {retryDelay}
+        , m_flushInterval {flushInterval}
+        , m_logFn {makeLibLogFn("thread-dispatcher")}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath, useSharedBuffers))}
     {
         m_thread = std::thread {&TThreadEventDispatcher<T, U, Functor, TQueueType, TSafeQueueType>::dispatch, this};
@@ -45,9 +52,14 @@ public:
 
     explicit TThreadEventDispatcher(const std::string& dbPath,
                                     const uint64_t bulkSize = 1,
-                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+                                    const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE,
+                                    const size_t retryDelay = 1,
+                                    const size_t flushInterval = 20)
         : m_maxQueueSize {maxQueueSize}
         , m_bulkSize {bulkSize}
+        , m_retryDelay {retryDelay}
+        , m_flushInterval {flushInterval}
+        , m_logFn {makeLibLogFn("thread-dispatcher")}
         , m_queue {std::make_unique<TSafeQueueType>(TQueueType(dbPath))}
     {
     }
@@ -72,6 +84,53 @@ public:
             if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size() < m_maxQueueSize))
             {
                 m_queue->push(value);
+                // If we were previously discarding, log that we're accepting again
+                if (m_discardedCount.load() > 0)
+                {
+                    LOG_INFO(m_logFn,
+                             "Queue size normalized. Resuming event acceptance after %zu discarded events.",
+                             m_discardedCount.load());
+                    m_discardedCount = 0;
+                    m_firstDiscardLogged = false;
+                }
+            }
+            else if (m_running)
+            {
+                // Increment discard counter
+                const auto discarded = ++m_discardedCount;
+                ++m_totalDiscardedCount;
+                const auto now = std::chrono::steady_clock::now();
+
+                // Log the first discard immediately
+                if (!m_firstDiscardLogged.exchange(true))
+                {
+                    LOG_WARN(m_logFn,
+                             "Queue is full (size: %zu, max: %zu). Starting to discard events. "
+                             "Periodic summaries will be logged every %zu seconds.",
+                             m_queue->size(),
+                             m_maxQueueSize,
+                             m_summaryInterval);
+                    m_lastSummaryLog = now;
+                }
+                // Log periodic summary
+                else
+                {
+                    const auto elapsed =
+                        std::chrono::duration_cast<std::chrono::seconds>(now - m_lastSummaryLog).count();
+                    if (elapsed >= m_summaryInterval)
+                    {
+                        LOG_WARN(m_logFn,
+                                 "Queue overflow continues: %zu events discarded in the last %lld seconds "
+                                 "(queue size: %zu, max: %zu, total discarded: %zu).",
+                                 discarded - m_lastDiscardedCount.load(),
+                                 elapsed,
+                                 m_queue->size(),
+                                 m_maxQueueSize,
+                                 discarded);
+                        m_lastSummaryLog = now;
+                        m_lastDiscardedCount = discarded;
+                    }
+                }
             }
         }
         else
@@ -89,6 +148,59 @@ public:
             if (m_running && (UNLIMITED_QUEUE_SIZE == m_maxQueueSize || m_queue->size(prefix) < m_maxQueueSize))
             {
                 m_queue->push(prefix, value);
+                // If we were previously discarding, log that we're accepting again
+                if (m_discardedCount.load() > 0)
+                {
+                    LOG_INFO(m_logFn,
+                             "Queue '%.*s' size normalized. Resuming event acceptance after %zu discarded events.",
+                             static_cast<int>(prefix.size()),
+                             prefix.data(),
+                             m_discardedCount.load());
+                    m_discardedCount = 0;
+                    m_firstDiscardLogged = false;
+                }
+            }
+            else if (m_running)
+            {
+                // Increment discard counter
+                const auto discarded = ++m_discardedCount;
+                ++m_totalDiscardedCount;
+                const auto now = std::chrono::steady_clock::now();
+
+                // Log the first discard immediately
+                if (!m_firstDiscardLogged.exchange(true))
+                {
+                    LOG_WARN(m_logFn,
+                             "Queue '%.*s' is full (size: %zu, max: %zu). Starting to discard events. "
+                             "Periodic summaries will be logged every %zu seconds.",
+                             static_cast<int>(prefix.size()),
+                             prefix.data(),
+                             m_queue->size(prefix),
+                             m_maxQueueSize,
+                             m_summaryInterval);
+                    m_lastSummaryLog = now;
+                }
+                // Log periodic summary
+                else
+                {
+                    const auto elapsed =
+                        std::chrono::duration_cast<std::chrono::seconds>(now - m_lastSummaryLog).count();
+                    if (elapsed >= m_summaryInterval)
+                    {
+                        LOG_WARN(m_logFn,
+                                 "Queue '%.*s' overflow continues: %zu events discarded in the last %lld seconds "
+                                 "(queue size: %zu, max: %zu, total discarded: %zu).",
+                                 static_cast<int>(prefix.size()),
+                                 prefix.data(),
+                                 discarded - m_lastDiscardedCount.load(),
+                                 elapsed,
+                                 m_queue->size(prefix),
+                                 m_maxQueueSize,
+                                 discarded);
+                        m_lastSummaryLog = now;
+                        m_lastDiscardedCount = discarded;
+                    }
+                }
             }
         }
         else
@@ -138,6 +250,11 @@ public:
         }
     }
 
+    uint64_t getDroppedEvents() const
+    {
+        return m_totalDiscardedCount.load();
+    }
+
     size_t size(std::string_view prefix) const
     {
         if constexpr (std::is_same_v<Utils::TSafeMultiQueue<T, U, RocksDBQueueCF<T, U>>, TSafeQueueType>)
@@ -185,7 +302,7 @@ private:
             {
                 if constexpr (std::is_same_v<Utils::TSafeQueue<T, U, RocksDBQueue<T, U>>, TSafeQueueType>)
                 {
-                    std::queue<U> data = m_queue->getBulk(m_bulkSize);
+                    std::queue<U> data = m_queue->getBulk(m_bulkSize, std::chrono::seconds(m_flushInterval));
                     const auto size = data.size();
 
                     if (!data.empty())
@@ -217,12 +334,12 @@ private:
                 // Sleep for a second to avoid busy loop
                 if (m_running)
                 {
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                    std::cerr << "Dispatch handler error, " << ex.what() << "\n";
+                    std::this_thread::sleep_for(std::chrono::seconds(m_retryDelay));
+                    LOG_WARN(m_logFn, "Dispatch handler error, %s", ex.what());
                 }
                 else
                 {
-                    std::cout << "ThreadEventDispatcher dispatch end.\n";
+                    LOG_DEBUG1(m_logFn, "ThreadEventDispatcher dispatch end.");
                 }
             }
         }
@@ -240,9 +357,21 @@ private:
     Functor m_functor;
     const size_t m_maxQueueSize;
     std::atomic<uint64_t> m_bulkSize;
+    const size_t m_retryDelay;
+    const size_t m_flushInterval;
+    LogFn m_logFn;
     std::unique_ptr<TSafeQueueType> m_queue;
     std::thread m_thread;
     std::atomic_bool m_running = true;
+
+    std::atomic<size_t> m_discardedCount {0}; // Number of events discarded since the last time the queue was normalized
+                                              // (reset to 0 when queue resumes accepting events)
+    std::atomic<size_t> m_lastDiscardedCount {
+        0}; // Number of events discarded at the time of the last periodic summary log (used for interval reporting)
+    std::atomic<size_t> m_totalDiscardedCount {0}; // Global accumulator
+    std::atomic_bool m_firstDiscardLogged {false};
+    std::chrono::steady_clock::time_point m_lastSummaryLog;
+    const size_t m_summaryInterval {30}; // Log summary every 30 seconds
 };
 
 template<typename Type, typename Functor>

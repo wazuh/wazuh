@@ -6,7 +6,7 @@ The [execution context](../../src/components/executionContext.hpp) stage is part
 
 The tasks that this stage performs are:
 - **Set up context**: Configure some of the fields present on the Updater Context.
-- **Database initialization**: Initializes the RocksDB database, creating the necessary columns, and retrieving the API offset stored in it as well as the last downloaded file hash. It also defines which offset will be considered as the current one between the offset in the database and the offset in the input configuration.
+- **Database initialization**: Initializes the RocksDB database, creating the necessary columns, and retrieving the API offset stored in it as well as the last downloaded file hash. It also defines which offset will be considered as the current one between the offset in the database and the offset in the input configuration. When `contentSource` is `indexer`, the stored value in the `CURRENT_OFFSET` column is used as the starting cursor by the [Indexer Downloader](INDEXER_DOWNLOADER.md) to determine whether to perform a full initial load or an incremental update.
 - **Output folders creation**: It creates the folders needed to store the execution files, such as downloaded and uncompressed files. If the output folder already exists, it gets deleted and re-created.
 
 It is important to note that this stage is only called once for each Content Manager execution.

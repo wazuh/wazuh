@@ -24,7 +24,7 @@
 #include <unordered_map>
 
 constexpr auto EVENTS_LIMIT = 1024;
-constexpr auto EVENTS = 32;
+constexpr auto EPOLL_EVENTS_BATCH = 32;
 
 template<typename TSocket = Socket<OSPrimitives>, typename TEpoll = EpollWrapper>
 class SocketServer final
@@ -142,7 +142,12 @@ public:
         ::close(m_stopFD[0]);
         ::close(m_stopFD[1]);
 
-        std::filesystem::remove_all(m_socketPath);
+        std::error_code ec;
+        std::filesystem::remove_all(m_socketPath, ec);
+        if (ec)
+        {
+            std::cerr << "Failed to remove socket file: " << ec.message() << std::endl;
+        }
     }
 
     void stop()
@@ -179,7 +184,7 @@ public:
         m_listenThread = std::thread(
             [this, onRead]()
             {
-                std::vector<struct epoll_event> events(EVENTS);
+                std::vector<struct epoll_event> events(EPOLL_EVENTS_BATCH);
                 while (!m_shouldStop)
                 {
                     // Wait for events

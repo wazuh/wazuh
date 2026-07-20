@@ -15,6 +15,24 @@ inputs:
     required: false
     description: "Threshold for the coverage"
     default: "90"
+  validate_function_coverage:
+    required: false
+    description: "Whether to validate function coverage or not"
+    default: "true"
+
+  aws_region:
+    description: "AWS region for S3 (pass the CI_AWS_REGION secret)."
+    required: false
+    default: "us-east-1"
+
+  bucket:
+    description: "Target S3 bucket URI (pass the CI_INTERNAL_S3_BUCKET secret)."
+    required: false
+    default: ""
+  aws_role:
+    description: "IAM role (OIDC) to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -45,13 +63,10 @@ runs:
 
           # Set arguments
           arguments="--capture "
-
           # Set working directory
           arguments+="--directory $BUILD_DIR "
-
           # Set output file
           arguments+="--output-file $BUILD_DIR/coverage.info "
-
           # # Disable branch coverage
           arguments+="--rc branch_coverage=0 "
 
@@ -69,11 +84,21 @@ runs:
           # Exclude generated headers
           arguments+="--exclude=*_generated.h "
 
-          echo "Executing: lcov $arguments"
-          lcov $arguments
 
-      # Generate the HTML coverage report
-      - name: Generate coverage report
+          echo "Executing: lcov $arguments"
+          echo "Include files: $include_files"
+          lcov_version=$(lcov --version | awk '{print $NF}')
+          lcov_major=${lcov_version%%.*}
+          if [[ "$lcov_major" =~ ^[0-9]+$ ]] && (( lcov_major >= 2 )); then
+            ignore_errors="mismatch,unused"
+          else
+            ignore_errors="mismatch"
+          fi
+          echo "Using lcov ignore-errors: $ignore_errors (lcov $lcov_version)"
+          lcov $arguments --ignore-errors "$ignore_errors"
+
+      # Generate the HTML coverage report and capture coverage data
+      - name: Generate coverage report and extract coverage data
         shell: bash
         run: |
           cd $(pwd)/src/build
@@ -84,23 +109,26 @@ runs:
       # Upload the coverage report as an artifact
       - name: Uploading coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ inputs.aws_region }}
+          bucket: ${{ inputs.bucket }}
+          aws_role: ${{ inputs.aws_role }}
           name: Coverage Report - ${{ inputs.id }}
           path: ./src/build/coverage_report
-          retention-days: 1
+        continue-on-error: true
 
       # Check whether the coverage is greater than 90% both for lines and functions
       - name: Validate coverage
         shell: bash
         run: |
 
-          cd $(pwd)/src/
+          cd $(pwd)/src/build
 
           # Parse coverage directly from the .info file (avoids lcov version-dependent output format issues)
-          linesCoverage=$(awk -F: '/^LH:/{h+=$2}/^LF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' build/coverage.info)
+          linesCoverage=$(awk -F: '/^LH:/{h+=$2}/^LF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' coverage.info)
           echo "Lines coverage is: $linesCoverage %"
-          if ! (( $(echo "$linesCoverage > ${{ inputs.threshold }}" | bc -l) )); then
+          if ! awk -v c="$linesCoverage" -v t="${{ inputs.threshold }}" 'BEGIN{exit !(c>=t)}'; then
             echo "----------------------------------------"
             echo "FAILED: Lines coverage is lower than ${{ inputs.threshold }}%"
             echo "----------------------------------------"
@@ -111,15 +139,21 @@ runs:
             echo "------------------------------------------"
           fi
 
-          functionsCoverage=$(awk -F: '/^FNH:/{h+=$2}/^FNF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' build/coverage.info)
+          functionsCoverage=$(awk -F: '/^FNH:/{h+=$2}/^FNF:/{f+=$2}END{if(f>0)printf "%.1f",h/f*100;else print "0.0"}' coverage.info)
           echo "Functions coverage is: $functionsCoverage %"
-          if ! (( $(echo "$functionsCoverage > ${{ inputs.threshold }}" | bc -l) )); then
-            echo "---------------------------------------------"
-            echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
-            echo "--------------------------------------------"
-            exit 1
+          if [[ "${{ inputs.validate_function_coverage }}" == "true" ]]; then
+            if ! awk -v c="$functionsCoverage" -v t="${{ inputs.threshold }}" 'BEGIN{exit !(c>=t)}'; then
+              echo "---------------------------------------------"
+              echo "FAILED: Functions coverage is lower than ${{ inputs.threshold }}%"
+              echo "--------------------------------------------"
+              exit 1
+            else
+              echo "----------------------------------------------"
+              echo "PASSED: Functions coverage is greater than ${{ inputs.threshold }}%"
+              echo "----------------------------------------------"
+            fi
           else
             echo "----------------------------------------------"
-            echo "PASSED: Functions coverage is greater than ${{ inputs.threshold }}%"
+            echo "SKIPPED: Function coverage validation is disabled"
             echo "----------------------------------------------"
           fi

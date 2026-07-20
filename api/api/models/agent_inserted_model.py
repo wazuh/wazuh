@@ -20,7 +20,7 @@ class AgentInsertedModel(Body):
         :type name: str
         :param ip: If this is not included, the API will get the IP automatically. If you are behind a proxy, you must set the option BehindProxyServer to yes at API configuration. Allowed values: IP, IP/NET, ANY
         :type ip: str
-        :param agent_id: Agent ID. All posible values since 000 onwards.
+        :param agent_id: Agent ID.
         :type agent_id: str
         :param key: Key to use when communicating with the manager. The agent must have the same key on its `client.keys` file.
         :type key: str

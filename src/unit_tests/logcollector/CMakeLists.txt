@@ -1,22 +1,29 @@
 # Generate logcollector library
-file(GLOB logcollector_files
-    ${SRC_FOLDER}/logcollector/*.o)
-add_library(LOGCOLLECTOR_O STATIC ${logcollector_files})
-set_source_files_properties(
-    ${logcollector_files}
-    PROPERTIES
-    EXTERNAL_OBJECT true
-    GENERATED true
-)
-set_target_properties(
-    LOGCOLLECTOR_O
-    PROPERTIES
-    LINKER_LANGUAGE C
-)
-target_link_libraries(LOGCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+if(${TARGET} STREQUAL "winagent")
+  # On winagent, logcollector objects are already in DEPENDENCIES_O (winagent.cmake).
+  # Creating a separate library from the same objects would cause duplicate globals.
+else()
+  file(GLOB logcollector_files
+       ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/*.o)
+  list(REMOVE_ITEM logcollector_files ${SRC_FOLDER}/build/logcollector/CMakeFiles/logcollector_lib.dir/src/main.c.o)
+
+  add_library(LOGCOLLECTOR_O STATIC ${logcollector_files})
+  set_source_files_properties(
+      ${logcollector_files}
+      PROPERTIES
+      EXTERNAL_OBJECT true
+      GENERATED true
+  )
+  set_target_properties(
+      LOGCOLLECTOR_O
+      PROPERTIES
+      LINKER_LANGUAGE C
+  )
+  target_link_libraries(LOGCOLLECTOR_O ${WAZUHLIB} ${WAZUHEXT} -lpthread)
+endif()
 
 if(${TARGET} STREQUAL "winagent")
-    link_directories(${SRC_FOLDER}/syscheckd/build/bin)
+    link_directories(${SRC_FOLDER}/build/bin)
 endif(${TARGET} STREQUAL "winagent")
 
 #include wrappers
@@ -26,8 +33,8 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 if(${TARGET} STREQUAL "winagent")
     list(APPEND logcollector_names "test_read_win_event_channel")
     list(APPEND logcollector_flags "-Wl,--wrap,wstr_split -Wl,--wrap=syscom_dispatch -Wl,--wrap=Start_win32_Syscheck \
-                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap,convert_windows_string \
-                                    ${DEBUG_OP_WRAPPERS}")
+                                    -Wl,--wrap=is_fim_shutdown -Wl,--wrap,convert_windows_string -Wl,--wrap=SendMSG \
+                                    -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 else()
     list(APPEND logcollector_names "test_logcollector")
     list(APPEND logcollector_flags "-Wl,--wrap,OS_SHA1_Stream -Wl,--wrap,merror_exit \
@@ -42,7 +49,8 @@ else()
                                     -Wl,--wrap,stat -Wl,--wrap=fgetc -Wl,--wrap=w_fseek -Wl,--wrap,w_ftell \
                                     -Wl,--wrap,OS_SHA1_File_Nbytes_with_fp_check -Wl,--wrap,cJSON_CreateString \
                                     -Wl,--wrap,cJSON_AddItemToObject -Wl,--wrap,wpclose -Wl,--wrap,kill \
-                                    -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS} \
+                                    -Wl,--wrap,so_get_function_sym -Wl,--wrap,so_get_module_handle -Wl,--wrap,popen \
+                                    -Wl,--wrap,rename -Wl,--wrap,unlink -Wl,--wrap,getpid ${DEBUG_OP_WRAPPERS} \
                                     ${HASH_OP_WRAPPERS}")
 
     list(APPEND logcollector_names "test_read_multiline_regex")
@@ -69,7 +77,7 @@ else()
                                     -Wl,--wrap,cJSON_AddStringToObject -Wl,--wrap,cJSON_AddNumberToObject \
                                     -Wl,--wrap,cJSON_AddItemToArray -Wl,--wrap,cJSON_AddItemToObject \
                                     -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,pthread_mutex_lock \
-                                    -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_Print -Wl,--wrap,getDefine_Int \
+                                    -Wl,--wrap,cJSON_Delete -Wl,--wrap,cJSON_Print -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default \
                                     -Wl,--wrap,FOREVER -Wl,--wrap,sleep -Wl,--wrap,getpid -Wl,--wrap,cJSON_Duplicate \
                                     -Wl,--wrap,strftime -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS} ${HASH_OP_WRAPPERS}")
 
@@ -162,17 +170,25 @@ foreach(counter RANGE ${count})
     list(GET logcollector_names ${counter} logcollector_test_name)
     list(GET logcollector_flags ${counter} logcollector_test_flags)
     add_executable(${logcollector_test_name} ${logcollector_test_name}.c)
-    target_link_libraries(
-        ${logcollector_test_name}
-        ${WAZUHLIB}
-        ${WAZUHEXT}
-        LOGCOLLECTOR_O
-        ${TEST_DEPS}
-    )
 
     if(${TARGET} STREQUAL "winagent")
+        # On winagent, logcollector objects come from DEPENDENCIES_O (in TEST_DEPS)
+        target_link_libraries(
+            ${logcollector_test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            ${TEST_DEPS}
+        )
         target_link_libraries(${logcollector_test_name} fimdb)
-    endif(${TARGET} STREQUAL "winagent")
+    else()
+        target_link_libraries(
+            ${logcollector_test_name}
+            ${WAZUHLIB}
+            ${WAZUHEXT}
+            LOGCOLLECTOR_O
+            ${TEST_DEPS}
+        )
+    endif()
 
     if(NOT logcollector_test_flags STREQUAL " ")
         target_link_libraries(

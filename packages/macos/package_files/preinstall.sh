@@ -47,15 +47,68 @@ if [ -d "${DIR}" ]; then
         rm -f "${DIR}/WAZUH_RESTART"
     fi
 
+    # Get version information
+    if [ -f "${DIR}/bin/wazuh-control" ]; then
+        OLD_VERSION=`${DIR}/bin/wazuh-control info -v 2>/dev/null`
+        MAJOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f1)
+        MINOR=$(echo $OLD_VERSION | cut -dv -f2 | cut -d. -f2)
+    elif [ -f ${DIR}/VERSION.json ]; then
+        OLD_VERSION=$(awk -F'"' '/"version"[[:space:]]*:/ {print $4; exit}' "${DIR}/VERSION.json" 2>/dev/null)
+        MAJOR=$(echo $OLD_VERSION | cut -d. -f1)
+        MINOR=$(echo $OLD_VERSION | cut -d. -f2)
+    fi
+
+    # Validate upgrade constraints for Agent
+    ERROR_TYPE=""
+
+    # Determine if upgrade should be blocked
+    if [ -z "$MAJOR" ] || [ -z "$MINOR" ]; then
+        ERROR_TYPE="no_version"
+        ERROR_TITLE="Cannot detect current version"
+        ERROR_MESSAGE="Unable to detect the currently installed Wazuh version."
+    elif [ "$MAJOR" -lt 4 ] || ([ "$MAJOR" -eq 4 ] && [ "$MINOR" -lt 14 ]); then
+        ERROR_TYPE="unsupported"
+        ERROR_TITLE="Incompatible version detected"
+        ERROR_MESSAGE="Current version: $OLD_VERSION
+Target version:  5.0.0
+
+Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
+    fi
+
+    # If any error was detected, show message and block
+    if [ -n "$ERROR_TYPE" ]; then
+        echo "═════════════════════════════════════════════════════════════════"
+        echo "  UPGRADE BLOCKED: $ERROR_TITLE"
+        echo "═════════════════════════════════════════════════════════════════"
+        echo ""
+        echo "$ERROR_MESSAGE"
+        echo ""
+        echo "Required action:"
+        echo "  1. Upgrade to version 4.14.0 or later first"
+        echo "  2. Then upgrade to 5.0.0"
+        echo ""
+        echo "For more information, visit:"
+        echo "  https://documentation.wazuh.com/current/upgrade-guide/"
+        echo "═════════════════════════════════════════════════════════════════"
+        echo -n "1" > ${DIR}/var/upgrade/upgrade_result
+        exit 1
+    fi
+
     # Stops the agent before upgrading it
     if ${DIR}/bin/wazuh-control status | grep "is running" > /dev/null 2>&1; then
         touch "${DIR}/WAZUH_RESTART"
         ${DIR}/bin/wazuh-control stop
         restart="true"
-    elif ${DIR}/bin/ossec-control status | grep "is running" > /dev/null 2>&1; then
-        touch "${DIR}/WAZUH_RESTART"
-        ${DIR}/bin/ossec-control stop
-        restart="true"
+    fi
+
+    # Remove old databases if upgrading from pre 5.X to 5.X
+    if [ $MAJOR -lt 5 ]; then
+        if [ -f ${DIR}/queue/syscollector/db/local.db ]; then
+          rm -f ${DIR}/queue/syscollector/db/local.db
+        fi
+        if [ -f ${DIR}/queue/fim/db/fim.db ]; then
+          rm -f ${DIR}/queue/fim/db/fim.db
+        fi
     fi
 
     echo "Backing up configuration files to ${DIR}/config_files/"

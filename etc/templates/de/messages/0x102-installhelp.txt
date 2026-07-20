@@ -1,5 +1,5 @@
 
-  - Es gibt drei Arten der Installation: agent, local oder server.
+  - Es gibt zwei Arten der Installation: server oder agent.
 
     - Wenn Sie Server wählen, können Logfiles analysiert werden,
       es werden Benachrichtigungen per E-Mail verschickt und es
@@ -10,17 +10,11 @@
       (zb syslog, snort, apache) und verschlüsselt an einen
       Server zur analyse geschickt werden.
 
-    - Wenn Sie local auswählen, können alle Funktionen eines
-      Servers, bis auf den Empfang von Agentennachrichten ausge-
-      führt werden.
-
   - Wöhlen Sie 'Server' wenn Sie Nachrichten von fremden Agenten
     empfangen und verarbeiten möchten.
 
   - Wöhlen Sie 'Agent' wenn Sie einen anderen Rechner haben, der
     als Server dient und an den die Logs zur Analyse geschickt
     werden (sinnvoll zb für Webserver, Datenbankserver usw).
-
-  - Wöhlen Sie 'Local' wenn nur ein System analysiert werden soll.
 
   - weitere Informationen unter: https://documentation.wazuh.com

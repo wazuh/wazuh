@@ -1,0 +1,1134 @@
+#include <algorithm>
+#include <array>
+#include <optional>
+#include <regex>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
+#include <indexerConnector.hpp>
+#include <json.hpp>
+
+#include <base/logging.hpp>
+
+#include <wiconnector/windexerconnector.hpp>
+
+#include "indexerConnectorAsyncAdapter.hpp"
+
+namespace wiconnector
+{
+
+namespace
+{
+
+/**
+ * @brief List of policy resource aliases in the indexer
+ */
+const std::vector<std::string> POLICY_ALIASES = {"wazuh-threatintel-kvdbs",
+                                                 "wazuh-threatintel-decoders",
+                                                 "wazuh-threatintel-filters",
+                                                 "wazuh-threatintel-integrations",
+                                                 "wazuh-threatintel-policies"};
+
+constexpr std::string_view PIT_KEEP_ALIVE {"5m"};                       ///< Keep alive duration for Point In Time
+constexpr std::string_view POLICY_INDEX {"wazuh-threatintel-policies"}; ///< Policy index name
+constexpr std::string_view IOC_INDEX {"wazuh-threatintel-enrichments"}; ///< IOC index name
+constexpr std::string_view IOC_HASHES_DOC_ID {"__ioc_type_hashes__"};   ///< IOC hash manifest document ID
+constexpr std::size_t SINGLE_RESULT_SIZE {1};                           ///< Size for single result queries
+constexpr std::size_t HASH_QUERY_SIZE {1};                        ///< Size for hash query (expecting single result)
+constexpr std::size_t SAFE_STREAM_PAGE_SIZE {1000};               ///< Hard cap for streaming page size
+constexpr std::string_view REMOTE_CONF_INDEX {".wazuh-settings"}; ///< remote conf index name
+constexpr std::string_view CTI_CONSUMERS_INDEX {".wazuh-cti-consumers"}; ///< CTI consumers index name
+const std::array<std::string_view, 12> IOC_SOURCE_FILTER_INCLUDES = {"document.name",
+                                                                     "document.type",
+                                                                     "document.id",
+                                                                     "document.software.type",
+                                                                     "document.software.name",
+                                                                     "document.software.alias",
+                                                                     "document.confidence",
+                                                                     "document.first_seen",
+                                                                     "document.last_seen",
+                                                                     "document.feed.name",
+                                                                     "document.tags",
+                                                                     "document.provider"};
+
+/// @brief Types of indexer resources
+enum class IndexResourceType
+{
+    KVDB,
+    DECODER,
+    FILTER,
+    INTEGRATION_DECODER,
+    POLICY
+};
+
+/**
+ * @brief Constant that keeps the value of the base path where engine-output queue is going to be
+ *
+ */
+const std::string BASEQUEUEPATH = "queue/";
+
+IndexResourceType fromIndexName(std::string_view indexName)
+{
+    // Static regex patterns compiled once
+    static const std::array<std::pair<std::regex, IndexResourceType>, 5> patterns = {
+        {{std::regex(R"(.*kvdbs.*)"), IndexResourceType::KVDB},
+         {std::regex(R"(.*decoders.*)"), IndexResourceType::DECODER},
+         {std::regex(R"(.*filters.*)"), IndexResourceType::FILTER},
+         {std::regex(R"(.*integrations.*)"), IndexResourceType::INTEGRATION_DECODER},
+         {std::regex(R"(.*policies.*)"), IndexResourceType::POLICY}}};
+
+    for (const auto& [pattern, resourceType] : patterns)
+    {
+        if (std::regex_match(indexName.begin(), indexName.end(), pattern))
+        {
+            return resourceType;
+        }
+    }
+
+    throw IndexerConnectorException("Cannot determine resource type from index name: " + std::string(indexName));
+}
+
+// Helpers
+nlohmann::json getQueryFilter(std::string_view space)
+{
+    if (space.empty())
+    {
+        throw std::runtime_error("Space name cannot be empty");
+    }
+    nlohmann::json query = R"({"bool": {"filter": [{ "term": { "space.name": "" }}]}})"_json;
+    query["bool"]["filter"][0]["term"]["space.name"] = space;
+    return query;
+}
+
+nlohmann::json getSortCriteria()
+{
+    nlohmann::json sort = R"([{"_shard_doc": "asc"}, {"_id": "asc"}])"_json;
+    return sort;
+}
+
+nlohmann::json getSearchAfter(const nlohmann::json& hits)
+{
+    if (!hits.contains("hits") || !hits["hits"].is_array() || hits["hits"].empty())
+    {
+        throw std::runtime_error("Hits object is invalid or empty");
+    }
+
+    return hits["hits"].back().at("sort");
+}
+
+size_t getTotalHits(const nlohmann::json& hits)
+{
+    if (!hits.contains("total") || !hits["total"].is_object())
+    {
+        throw std::runtime_error("Hits object is invalid or does not contain total hits");
+    }
+
+    const auto& total = hits["total"];
+    if (total.is_object() && total.contains("value"))
+    {
+        return total["value"].get<size_t>();
+    }
+    else if (total.is_number())
+    {
+        return total.get<size_t>();
+    }
+    else
+    {
+        throw std::runtime_error("Total hits format is unrecognized");
+    }
+}
+
+json::Json extractDocumentFromHit(const nlohmann::json& hit)
+{
+    if (!hit.contains("_source") || !hit["_source"].is_object())
+    {
+        throw std::runtime_error("Hit does not contain _source field");
+    }
+
+    const auto& source = hit["_source"];
+    if (!source.contains("document"))
+    {
+        throw std::runtime_error("Source does not contain document field");
+    }
+
+    try
+    {
+        return json::Json {source["document"].dump().c_str()};
+    }
+    catch (const std::exception& e)
+    {
+        throw std::runtime_error(fmt::format(
+            "Failed to parse document JSON: '{}'. Original error: {}", source["document"].dump(), e.what()));
+    }
+}
+
+std::unordered_map<std::string, std::string> parseIocHashesDocument(const json::Json& hashesDoc)
+{
+    const auto parsed = nlohmann::json::parse(hashesDoc.str(), nullptr, false);
+    if (parsed.is_discarded() || !parsed.is_object())
+    {
+        throw IndexerConnectorException("Invalid __ioc_type_hashes__ document format");
+    }
+
+    const nlohmann::json* typeHashesObj = &parsed;
+    if (parsed.contains("type_hashes") && parsed["type_hashes"].is_object())
+    {
+        typeHashesObj = &parsed["type_hashes"];
+    }
+
+    std::unordered_map<std::string, std::string> typeHashes;
+    for (auto it = typeHashesObj->begin(); it != typeHashesObj->end(); ++it)
+    {
+        const auto& iocType = it.key();
+        const auto& iocObject = it.value();
+
+        if (!iocObject.is_object() || !iocObject.contains("hash") || !iocObject["hash"].is_object()
+            || !iocObject["hash"].contains("sha256") || !iocObject["hash"]["sha256"].is_string())
+        {
+            continue;
+        }
+
+        const auto hash = iocObject["hash"]["sha256"].get<std::string>();
+        if (!hash.empty())
+        {
+            typeHashes.emplace(iocType, hash);
+        }
+    }
+
+    return typeHashes;
+}
+
+std::string buildIocSourceFilter()
+{
+    nlohmann::json includes = nlohmann::json::array();
+    for (const auto field : IOC_SOURCE_FILTER_INCLUDES)
+    {
+        includes.push_back(field);
+    }
+
+    return nlohmann::json {{"includes", std::move(includes)}, {"excludes", nlohmann::json::array()}}.dump();
+}
+
+/// @brief RAII guard type for automatic PIT cleanup
+using PitGuard = std::unique_ptr<PointInTime, std::function<void(PointInTime*)>>;
+
+/**
+ * @brief Creates a RAII guard that deletes the PIT on scope exit.
+ * @param pit Reference to the PIT object to guard (must outlive the guard).
+ * @param async Reference to the async connector used to delete the PIT.
+ * @return PitGuard that will call deletePointInTime on destruction.
+ */
+PitGuard makePitGuard(PointInTime& pit, IIndexerConnectorAsync& async)
+{
+    return PitGuard(&pit,
+                    [&async](PointInTime* p)
+                    {
+                        try
+                        {
+                            async.deletePointInTime(*p);
+                        }
+                        catch (const IndexerConnectorException& e)
+                        {
+                            LOG_WARNING_L(
+                                "pitGuard", "[indexer-connector] Error deleting Point In Time (PIT): {}", e.what());
+                        }
+                    });
+}
+
+/**
+ * @brief Builds the list of PIT indices, appending the CTI consumers index when consumer validation is needed.
+ * @param baseIndices The base set of indices for the query.
+ * @param consumerIdToValidate If present, CTI_CONSUMERS_INDEX is appended.
+ * @return The (potentially augmented) vector of index names.
+ */
+std::vector<std::string> buildPitIndices(std::vector<std::string> baseIndices,
+                                         const std::optional<std::string_view>& consumerIdToValidate)
+{
+    if (consumerIdToValidate.has_value())
+    {
+        baseIndices.emplace_back(CTI_CONSUMERS_INDEX);
+    }
+    return baseIndices;
+}
+
+/**
+ * @brief Validates that a CTI consumer is in "ready" state within a PIT snapshot.
+ *
+ * Queries the consumer document by ID inside the given PIT and checks its status field.
+ *
+ * @param async Reference to the async connector.
+ * @param pit The PIT snapshot to query within.
+ * @param consumerId The consumer document ID to look up.
+ * @return true if consumer status is "ready".
+ * @return false if consumer status is NOT "ready" (logs DEBUG).
+ * @throws IndexerConnectorException if the consumer document is not found or has invalid structure.
+ */
+bool validateConsumerReadyInPit(IIndexerConnectorAsync& async, const PointInTime& pit, std::string_view consumerId)
+{
+    nlohmann::json consumerQuery = {{"ids", {{"values", {consumerId}}}}};
+    nlohmann::json consumerSort = getSortCriteria();
+    nlohmann::json consumerSource = {{"includes", {"status"}}, {"excludes", nlohmann::json::array()}};
+
+    nlohmann::json consumerHits =
+        async.search(pit, SINGLE_RESULT_SIZE, consumerQuery, consumerSort, std::nullopt, consumerSource);
+
+    size_t consumerTotalHits = getTotalHits(consumerHits);
+    if (consumerTotalHits == 0)
+    {
+        throw IndexerConnectorException("Consumer document not found in PIT: " + std::string(consumerId));
+    }
+
+    const auto& consumerHitArray = consumerHits["hits"];
+    if (!consumerHitArray.is_array() || consumerHitArray.empty() || !consumerHitArray[0].contains("_source"))
+    {
+        throw IndexerConnectorException("Invalid consumer hit in PIT for: " + std::string(consumerId));
+    }
+
+    const auto& consumerSrc = consumerHitArray[0]["_source"];
+    if (!consumerSrc.contains("status") || !consumerSrc["status"].is_string())
+    {
+        throw IndexerConnectorException("Consumer document missing 'status' in PIT for: " + std::string(consumerId));
+    }
+
+    const auto status = consumerSrc["status"].get<std::string>();
+    if (status != "ready")
+    {
+        LOG_DEBUG("[indexer-connector] Consumer '{}' is not ready (status: {}), returning nullopt",
+                  std::string(consumerId),
+                  status);
+        return false;
+    }
+
+    LOG_DEBUG("[indexer-connector] Consumer '{}' PIT check: ready", std::string(consumerId));
+    return true;
+}
+
+} // namespace
+
+/****************************************************************************************
+ * Config class implementation
+ ****************************************************************************************/
+
+/*
+ * Example:
+ * {
+ *   "hosts": [
+ *     "http://10.2.20.2:9200",
+ *     "https://10.2.20.42:9200"
+ *   ],
+ *   "ssl": {
+ *     "certificate_authorities": [
+ *       "/var/wazuh-manager/",
+ *       "/var/wazuh-manager_cert/"
+ *     ],
+ *     "certificate": "cert",
+ *     "key": "key_example"
+ *   }
+ * }
+ */
+std::string Config::toJson() const
+{
+    nlohmann::json config {};
+    config["hosts"] = hosts;
+    if (!username.empty() && !password.empty())
+    {
+        config["username"] = username;
+        config["password"] = password;
+    }
+
+    if (!ssl.cacert.empty() || !ssl.cert.empty() || !ssl.key.empty())
+    {
+        nlohmann::json sslJson {};
+        if (!ssl.cacert.empty())
+        {
+            sslJson["certificate_authorities"] = ssl.cacert;
+        }
+        if (!ssl.cert.empty())
+        {
+            sslJson["certificate"] = ssl.cert;
+        }
+        if (!ssl.key.empty())
+        {
+            sslJson["key"] = ssl.key;
+        }
+        config["ssl"] = sslJson;
+    }
+
+    config["max_queue_size"] = maxQueueSize;
+
+    return config.dump();
+}
+
+/****************************************************************************************
+ * Wrapper of IndexerConnector class implementation
+ ****************************************************************************************/
+WIndexerConnector::WIndexerConnector(std::string_view jsonOssecConfig, const std::size_t maxHitsPerRequest)
+{
+    if (maxHitsPerRequest == 0)
+    {
+        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
+        m_maxHitsPerRequest = 1;
+    }
+    else
+    {
+        m_maxHitsPerRequest = maxHitsPerRequest;
+    }
+
+    if (jsonOssecConfig.empty())
+    {
+        throw std::runtime_error("Empty JSON configuration for IndexerConnector");
+    }
+
+    const auto jsonParsed = nlohmann::json::parse(jsonOssecConfig, nullptr, false);
+    if (jsonParsed.is_discarded())
+    {
+        throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
+    }
+
+    const auto logFunction = logging::createStandaloneLogFunction();
+    auto inner = std::make_unique<IndexerConnectorAsync>(
+        jsonParsed, "engine-output", LoggingContext {logging::default_tag(), logFunction}, BASEQUEUEPATH);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(inner));
+}
+
+WIndexerConnector::WIndexerConnector(const Config& config,
+                                     const LogFunctionType& logFunction,
+                                     const std::size_t maxHitsPerRequest)
+{
+    if (maxHitsPerRequest == 0)
+    {
+        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
+        m_maxHitsPerRequest = 1;
+    }
+    else
+    {
+        m_maxHitsPerRequest = maxHitsPerRequest;
+    }
+
+    nlohmann::json jsonConfig = nlohmann::json::parse(config.toJson(), nullptr, false);
+    if (jsonConfig.is_discarded())
+    {
+        throw std::runtime_error("Invalid JSON configuration for IndexerConnector");
+    }
+
+    auto inner = std::make_unique<IndexerConnectorAsync>(
+        jsonConfig, "engine-output", LoggingContext {logging::default_tag(), logFunction}, BASEQUEUEPATH);
+    m_indexerConnectorAsync = std::make_unique<IndexerConnectorAsyncAdapter>(std::move(inner));
+}
+
+WIndexerConnector::WIndexerConnector(std::unique_ptr<IIndexerConnectorAsync> async, const std::size_t maxHitsPerRequest)
+{
+    if (!async)
+    {
+        throw std::runtime_error("IndexerConnectorAsync instance cannot be null");
+    }
+    m_indexerConnectorAsync = std::move(async);
+
+    if (maxHitsPerRequest == 0)
+    {
+        LOG_WARNING("[indexer-connector] maxHitsPerRequest must be greater than zero, default to 1");
+        m_maxHitsPerRequest = 1;
+    }
+    else
+    {
+        m_maxHitsPerRequest = maxHitsPerRequest;
+    }
+}
+
+WIndexerConnector::~WIndexerConnector() = default;
+
+void WIndexerConnector::shutdown()
+{
+    LOG_INFO("[indexer-connector] Shutdown initiated");
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    std::unique_lock lock(m_mutex); // Wait for any in-flight operations (syncs)
+    m_indexerConnectorAsync.reset();
+}
+
+void WIndexerConnector::requestShutdown()
+{
+    m_shutdownRequested.store(true, std::memory_order_relaxed);
+    LOG_INFO("[indexer-connector] Shutdown requested");
+}
+
+uint64_t WIndexerConnector::getQueueSize()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getQueueSize();
+}
+
+uint64_t WIndexerConnector::getDroppedEvents()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        return 0;
+    }
+    return m_indexerConnectorAsync->getDroppedEvents();
+}
+
+void WIndexerConnector::index(std::string_view index, std::string_view data)
+{
+    std::shared_lock lock(m_mutex);
+    if (m_indexerConnectorAsync)
+    {
+        try
+        {
+            m_indexerConnectorAsync->indexDataStream(index, data);
+        }
+        catch (const IndexerConnectorException& e)
+        {
+            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
+            return;
+        }
+        catch (const std::exception& e)
+        {
+            LOG_WARNING("[indexer-connector] Error indexing data: %s", e.what());
+            return;
+        }
+    }
+    else
+    {
+        LOG_DEBUG("[indexer-connector] IndexerConnectorAsync shutdown, cannot index data");
+    }
+}
+
+std::optional<PolicyResources> WIndexerConnector::getPolicy(std::string_view space,
+                                                            const std::optional<std::string_view>& consumerIdToValidate)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    std::vector<std::pair<IndexResourceType, json::Json>> resourceList;
+
+    // Build PIT indices: policy aliases + optionally the CTI consumers index
+    auto pitIndices = buildPitIndices(POLICY_ALIASES, consumerIdToValidate);
+
+    // Create Point In Time (PIT) - Can throw IndexerConnectorException
+    auto pit = m_indexerConnectorAsync->createPointInTime(pitIndices, PIT_KEEP_ALIVE, true);
+    auto pitGuard = makePitGuard(pit, *m_indexerConnectorAsync);
+
+    // --- Pre-check: validate consumer is ready within the PIT snapshot ---
+    if (consumerIdToValidate.has_value())
+    {
+        if (!validateConsumerReadyInPit(*m_indexerConnectorAsync, pit, *consumerIdToValidate))
+        {
+            return std::nullopt;
+        }
+    }
+
+    // Prepare query and sort criteria
+    nlohmann::json query = getQueryFilter(space);
+    nlohmann::json sort = getSortCriteria();
+    std::optional<nlohmann::json> searchAfter = std::nullopt;
+
+    size_t total_hits = 0;
+    size_t retrievedSoFar = 0;
+    bool moreHits = true;
+
+    // Organize resources into PolicyResources structure
+    PolicyResources policyMap {};
+
+    do
+    {
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            throw IndexerConnectorException("Shutdown requested during policy retrieval");
+        }
+
+        nlohmann::json hits = m_indexerConnectorAsync->search(pit, m_maxHitsPerRequest, query, sort, searchAfter);
+
+        if (!searchAfter.has_value())
+        {
+            total_hits = getTotalHits(hits);
+            resourceList.reserve(total_hits);
+            LOG_TRACE("[indexer-connector] Total hits to retrieve: {}", total_hits);
+        }
+
+        const auto& hitArray = hits["hits"];
+
+        // Just in case total_hits was greater than zero but no hits were returned
+        if (!hitArray.is_array() || hitArray.empty())
+        {
+            LOG_TRACE("[indexer-connector] No more hits retrieved, ending pagination");
+            break;
+        }
+
+        retrievedSoFar += hitArray.size();
+        for (const auto& hit : hitArray)
+        {
+            auto indexName = hit["_index"].get<std::string>();
+
+            // Skip documents from the CTI consumers index (they were included only for PIT consistency)
+            if (indexName == CTI_CONSUMERS_INDEX)
+            {
+                continue;
+            }
+
+            auto sourceData = extractDocumentFromHit(hit);
+            IndexResourceType resourceType = fromIndexName(indexName);
+
+            if (resourceType == IndexResourceType::POLICY)
+            {
+                policyMap.policy = std::move(sourceData);
+
+                try
+                {
+                    const auto& source = hit["_source"];
+                    const auto hash = source["space"]["hash"]["sha256"].get<std::string>();
+                    policyMap.policy.setString(hash, "/hash");
+                }
+                catch (const std::exception&)
+                {
+                    throw IndexerConnectorException("space.hash.sha256 field not found for policy");
+                }
+            }
+            else
+            {
+                resourceList.emplace_back(resourceType, std::move(sourceData));
+            }
+        }
+
+        moreHits = retrievedSoFar < total_hits;
+        searchAfter = getSearchAfter(hits);
+        LOG_TRACE("[indexer-connector] Retrieved {} / {} hits so far", retrievedSoFar, total_hits);
+
+    } while (moreHits);
+
+    // Avoid memory reallocations
+    {
+        std::size_t kvdbCount = 0;
+        std::size_t decoderCount = 0;
+        std::size_t filterCount = 0;
+        std::size_t integrationDecoderCount = 0;
+        for (const auto& [type, _] : resourceList)
+        {
+            switch (type)
+            {
+                case IndexResourceType::KVDB: ++kvdbCount; break;
+                case IndexResourceType::DECODER: ++decoderCount; break;
+                case IndexResourceType::FILTER: ++filterCount; break;
+                case IndexResourceType::INTEGRATION_DECODER: ++integrationDecoderCount; break;
+                case IndexResourceType::POLICY: break;
+            }
+        }
+        policyMap.kvdbs.reserve(kvdbCount);
+        policyMap.filters.reserve(filterCount);
+        policyMap.decoders.reserve(decoderCount);
+        policyMap.integration.reserve(integrationDecoderCount);
+    }
+
+    // Move resources to appropriate vectors
+    for (auto& [type, data] : resourceList)
+    {
+        switch (type)
+        {
+            case IndexResourceType::KVDB: policyMap.kvdbs.emplace_back(std::move(data)); break;
+            case IndexResourceType::DECODER: policyMap.decoders.emplace_back(std::move(data)); break;
+            case IndexResourceType::FILTER: policyMap.filters.emplace_back(std::move(data)); break;
+            case IndexResourceType::INTEGRATION_DECODER: policyMap.integration.emplace_back(std::move(data)); break;
+        }
+    }
+
+    // Enrich policy with origin_space if not present
+    if (policyMap.policy.isObject() && policyMap.policy.size() > 0)
+    {
+        policyMap.policy.setString(space, "/origin_space");
+    }
+
+    return policyMap;
+}
+
+std::optional<std::pair<std::string, bool>>
+WIndexerConnector::getPolicyHashAndEnabled(std::string_view space,
+                                           const std::optional<std::string_view>& consumerIdToValidate)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    // Prepare query filter for the space
+    nlohmann::json query = getQueryFilter(space);
+
+    // Prepare source filter to only retrieve the needed fields
+    nlohmann::json source = {{"includes", {"space.hash.sha256", "document.enabled", "document.integrations"}},
+                             {"excludes", nlohmann::json::array()}};
+
+    nlohmann::json hits;
+
+    if (consumerIdToValidate.has_value())
+    {
+        // Use PIT with consumer validation
+        auto pitIndices = buildPitIndices({std::string(POLICY_INDEX)}, consumerIdToValidate);
+        auto pit = m_indexerConnectorAsync->createPointInTime(pitIndices, PIT_KEEP_ALIVE, true);
+        auto pitGuard = makePitGuard(pit, *m_indexerConnectorAsync);
+
+        if (!validateConsumerReadyInPit(*m_indexerConnectorAsync, pit, *consumerIdToValidate))
+        {
+            return std::nullopt;
+        }
+
+        // Query policy hash within the same PIT
+        nlohmann::json policySort = getSortCriteria();
+        hits = m_indexerConnectorAsync->search(pit, HASH_QUERY_SIZE, query, policySort, std::nullopt, source);
+    }
+    else
+    {
+        // Direct search without PIT (no consumer validation needed)
+        hits = m_indexerConnectorAsync->search(POLICY_INDEX, HASH_QUERY_SIZE, query, source);
+    }
+
+    // Check total hits
+    size_t totalHits = getTotalHits(hits);
+
+    if (totalHits == 0)
+    {
+        throw IndexerConnectorException("No policy found for space: " + std::string(space));
+    }
+
+    if (totalHits > 1)
+    {
+        throw IndexerConnectorException("Multiple policies found for space: " + std::string(space)
+                                        + " (expected 1, got " + std::to_string(totalHits) + ")");
+    }
+
+    // Extract the hash from the first (and only) hit
+    const auto& hitArray = hits["hits"];
+    if (!hitArray.is_array() || hitArray.empty())
+    {
+        throw IndexerConnectorException("No hits returned despite total_hits > 0 for space: " + std::string(space));
+    }
+
+    const auto& firstHit = hitArray[0];
+    if (!firstHit.contains("_source"))
+    {
+        throw IndexerConnectorException("Hit does not contain _source field for space: " + std::string(space));
+    }
+
+    const auto& source_data = firstHit["_source"];
+    // Validate the presence of space.hash.sha256 in the source data
+    if (!source_data.contains("space") || !source_data["space"].contains("hash")
+        || !source_data["space"]["hash"].contains("sha256") || !source_data["space"]["hash"]["sha256"].is_string())
+    {
+        throw IndexerConnectorException("space.hash.sha256 field not found for space: " + std::string(space));
+    }
+
+    // Validate that the document.enabled exist
+    if (!source_data.contains("document") || !source_data["document"].contains("enabled")
+        || !source_data["document"]["enabled"].is_boolean())
+    {
+        throw IndexerConnectorException("document.enabled field not found or invalid for space: " + std::string(space));
+    }
+
+    // Validate that the document.integrations exist and is an array
+    if (!source_data.contains("document") || !source_data["document"].contains("integrations")
+        || !source_data["document"]["integrations"].is_array())
+    {
+        throw IndexerConnectorException("document.integrations field not found or invalid for space: "
+                                        + std::string(space));
+    }
+
+    // If the document hasn't integrations or it's empty, we consider the policy as disabled, avoiding the need of sync
+    // between enabled field and integrations content
+    const bool hasIntegrations = !source_data["document"]["integrations"].empty();
+    const bool enabled = source_data["document"]["enabled"].get<bool>();
+
+    return std::make_pair(source_data["space"]["hash"]["sha256"].get<std::string>(), enabled && hasIntegrations);
+}
+
+bool WIndexerConnector::existsPolicy(std::string_view space)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    // Prepare query filter for the space
+    nlohmann::json query = getQueryFilter(space);
+
+    // Prepare source filter to only retrieve space.name field
+    nlohmann::json source = {{"includes", {"space.name"}}, {"excludes", nlohmann::json::array()}};
+
+    // Execute search query with size=1 (we only need to know if at least one exists)
+    nlohmann::json hits = m_indexerConnectorAsync->search(POLICY_INDEX, SINGLE_RESULT_SIZE, query, source);
+
+    // Check total hits
+    size_t totalHits = getTotalHits(hits);
+
+    return totalHits > 0;
+}
+
+bool WIndexerConnector::existsIndex(std::string_view indexName)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    try
+    {
+        // Try a simple count query with size=0
+        nlohmann::json query = R"({"match_all": {}})"_json;
+        nlohmann::json source = {{"includes", nlohmann::json::array()}, {"excludes", nlohmann::json::array()}};
+
+        // If the index doesn't exist, this will throw an exception
+        m_indexerConnectorAsync->search(indexName, 0, query, source);
+        return true;
+    }
+    catch (const IndexerConnectorException&)
+    {
+        return false;
+    }
+}
+
+bool WIndexerConnector::existsIocDataIndex()
+{
+    return existsIndex(IOC_INDEX);
+}
+
+bool WIndexerConnector::isConsumerReadyForSync(std::string_view consumerId)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        LOG_DEBUG("[indexer-connector] IndexerConnectorAsync not initialized, consumer '{}' not ready",
+                  std::string(consumerId));
+        return false;
+    }
+
+    try
+    {
+        nlohmann::json query = {{"ids", {{"values", {consumerId}}}}};
+        nlohmann::json source = {{"includes", {"status", "local_offset"}}, {"excludes", nlohmann::json::array()}};
+
+        nlohmann::json hits = m_indexerConnectorAsync->search(CTI_CONSUMERS_INDEX, SINGLE_RESULT_SIZE, query, source);
+
+        size_t totalHits = getTotalHits(hits);
+        if (totalHits == 0)
+        {
+            LOG_DEBUG("[indexer-connector] Consumer document '{}' not found", std::string(consumerId));
+            return false;
+        }
+
+        const auto& hitArray = hits["hits"];
+        if (!hitArray.is_array() || hitArray.empty() || !hitArray[0].contains("_source"))
+        {
+            LOG_DEBUG("[indexer-connector] Invalid consumer hit for '{}'", std::string(consumerId));
+            return false;
+        }
+
+        const auto& src = hitArray[0]["_source"];
+
+        // Check status == "ready"
+        if (!src.contains("status") || !src["status"].is_string())
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' missing 'status' field", std::string(consumerId));
+            return false;
+        }
+
+        const auto status = src["status"].get<std::string>();
+        if (status != "ready")
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' is not ready (status: {})", std::string(consumerId), status);
+            return false;
+        }
+
+        // Check local_offset != 0
+        if (!src.contains("local_offset") || !src["local_offset"].is_number())
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' missing or non-numeric 'local_offset' field",
+                      std::string(consumerId));
+            return false;
+        }
+
+        const auto localOffset = src["local_offset"].get<int64_t>();
+        if (localOffset == 0)
+        {
+            LOG_DEBUG("[indexer-connector] Consumer '{}' has local_offset=0, data not yet available",
+                      std::string(consumerId));
+            return false;
+        }
+
+        LOG_DEBUG("[indexer-connector] Consumer '{}' is ready for sync (ready, local_offset={})",
+                  std::string(consumerId),
+                  localOffset);
+        return true;
+    }
+    catch (const std::exception& e)
+    {
+        LOG_DEBUG("[indexer-connector] Error checking consumer '{}' readiness: {}", std::string(consumerId), e.what());
+        return false;
+    }
+}
+
+std::optional<std::unordered_map<std::string, std::string>>
+WIndexerConnector::getIocTypeHashes(const std::optional<std::string_view>& consumerIdToValidate)
+{
+    // Hash retrieval with consumer validation delegated to queryByBatches
+    // (creates a single PIT including CTI consumers index and validates ready atomically)
+    std::optional<json::Json> hashesDoc = std::nullopt;
+    const std::string queryBody = fmt::format(R"({{"ids": {{"values": ["{}"]}}}})", IOC_HASHES_DOC_ID);
+
+    auto result = queryByBatches(
+        IOC_INDEX,
+        queryBody,
+        1,
+        [&hashesDoc](const json::Json& doc)
+        {
+            if (hashesDoc.has_value())
+            {
+                return;
+            }
+
+            auto docCopy = doc;
+            docCopy.erase("/_id");
+            hashesDoc = std::move(docCopy);
+        },
+        std::nullopt,
+        consumerIdToValidate);
+
+    // Consumer was not ready — propagate nullopt
+    if (!result.has_value())
+    {
+        return std::nullopt;
+    }
+
+    // Hashes document not found, is expected on fresh installs without any IOC indexed yet — return empty map
+    if (!hashesDoc.has_value())
+    {
+        LOG_DEBUG("[indexer-connector] Hash document '{}' not found in index '{}'", IOC_HASHES_DOC_ID, IOC_INDEX);
+        return std::nullopt;
+    }
+
+    return parseIocHashesDocument(*hashesDoc);
+}
+
+std::optional<std::size_t>
+WIndexerConnector::streamIocsByType(std::string_view iocType,
+                                    std::size_t batchSize,
+                                    const IocRecordCallback& onIoc,
+                                    const std::optional<std::string_view>& consumerIdToValidate)
+{
+    if (iocType.empty())
+    {
+        throw std::runtime_error("iocType cannot be empty");
+    }
+
+    if (!onIoc)
+    {
+        throw std::runtime_error("onIoc callback cannot be empty");
+    }
+
+    const std::string queryBody = fmt::format(R"({{"term": {{"document.type": "{}"}}}})", iocType);
+    const auto sourceFilter = buildIocSourceFilter();
+    std::size_t streamedDocs = 0;
+
+    auto result = queryByBatches(
+        IOC_INDEX,
+        queryBody,
+        batchSize,
+        [&iocType, &onIoc, &streamedDocs](const json::Json& doc)
+        {
+            std::string docName;
+            if (doc.getString(docName, "/document/name") != json::RetGet::Success || docName.empty())
+            {
+                LOG_WARNING("[indexer-connector] IOC document without document.name field, skipping");
+                return;
+            }
+
+            auto optDocument = doc.getJson("/document");
+            if (!optDocument.has_value())
+            {
+                LOG_WARNING("[indexer-connector] IOC document without /document object, skipping");
+                return;
+            }
+
+            onIoc(docName, optDocument->str());
+            ++streamedDocs;
+        },
+        sourceFilter,
+        consumerIdToValidate);
+
+    if (!result.has_value())
+    {
+        return std::nullopt;
+    }
+
+    return streamedDocs;
+}
+
+std::optional<std::size_t>
+WIndexerConnector::queryByBatches(std::string_view indexName,
+                                  std::string_view queryStr,
+                                  std::size_t batchSize,
+                                  const std::function<void(const json::Json&)>& onDocument,
+                                  const std::optional<std::string_view>& sourceFilter,
+                                  const std::optional<std::string_view>& consumerIdToValidate)
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    if (!onDocument)
+    {
+        throw std::runtime_error("onDocument callback cannot be empty");
+    }
+
+    nlohmann::json query = nlohmann::json::parse(queryStr, nullptr, false);
+    if (query.is_discarded())
+    {
+        throw std::runtime_error("Invalid query JSON");
+    }
+
+    std::optional<nlohmann::json> source = std::nullopt;
+    if (sourceFilter.has_value())
+    {
+        const auto parsedSource = nlohmann::json::parse(sourceFilter.value(), nullptr, false);
+        if (parsedSource.is_discarded())
+        {
+            throw std::runtime_error("Invalid source filter JSON");
+        }
+
+        source = parsedSource;
+    }
+
+    const std::size_t effectiveBatchSize = std::max<std::size_t>(1, std::min(batchSize, SAFE_STREAM_PAGE_SIZE));
+
+    // Build PIT indices: include consumer index when consumer validation is requested
+    auto pitIndices = buildPitIndices({std::string(indexName)}, consumerIdToValidate);
+
+    auto pit = m_indexerConnectorAsync->createPointInTime(pitIndices, PIT_KEEP_ALIVE, true);
+    auto pitGuard = makePitGuard(pit, *m_indexerConnectorAsync);
+
+    // Validate consumer is ready within the PIT snapshot before streaming
+    if (consumerIdToValidate.has_value())
+    {
+        if (!validateConsumerReadyInPit(*m_indexerConnectorAsync, pit, *consumerIdToValidate))
+        {
+            return std::nullopt;
+        }
+    }
+
+    nlohmann::json sort = getSortCriteria();
+    std::optional<nlohmann::json> searchAfter = std::nullopt;
+    std::size_t processedDocs = 0;
+
+    while (true)
+    {
+        nlohmann::json hits =
+            m_indexerConnectorAsync->search(pit, effectiveBatchSize, query, sort, searchAfter, source);
+
+        const auto& hitArray = hits["hits"];
+        if (!hitArray.is_array() || hitArray.empty())
+        {
+            break;
+        }
+
+        for (const auto& hit : hitArray)
+        {
+            if (!hit.contains("_source") || !hit["_source"].is_object())
+            {
+                LOG_WARNING("[indexer-connector] Hit without _source, skipping");
+                continue;
+            }
+
+            nlohmann::json fullDoc = hit["_source"];
+            if (hit.contains("_id"))
+            {
+                fullDoc["_id"] = hit["_id"];
+            }
+
+            try
+            {
+                onDocument(json::Json {fullDoc.dump().c_str()});
+                ++processedDocs;
+            }
+            catch (const std::exception& e)
+            {
+                LOG_WARNING("[indexer-connector] Failed to parse/process document: {}", e.what());
+            }
+        }
+
+        if (hitArray.size() < effectiveBatchSize)
+        {
+            break;
+        }
+
+        if (m_shutdownRequested.load(std::memory_order_relaxed))
+        {
+            // Throw to ensure callers (e.g. IOC sync) discard the partial result instead of
+            // promoting an incomplete dataset (e.g. via hot-swap).
+            throw IndexerConnectorException(
+                fmt::format("Shutdown requested during batched query after {} processed docs", processedDocs));
+        }
+
+        searchAfter = getSearchAfter(hits);
+        LOG_TRACE("[indexer-connector] Processed docs {}", processedDocs);
+    }
+
+    return processedDocs;
+}
+
+json::Json WIndexerConnector::getEngineRemoteConfig()
+{
+    std::shared_lock lock(m_mutex);
+    if (!m_indexerConnectorAsync)
+    {
+        throw std::runtime_error("IndexerConnectorAsync is not initialized");
+    }
+
+    nlohmann::json query = {{"match_all", nlohmann::json::object()}};
+    nlohmann::json source = {{"includes", {"engine"}}, {"excludes", nlohmann::json::array()}};
+
+    nlohmann::json hits = m_indexerConnectorAsync->search(REMOTE_CONF_INDEX, SINGLE_RESULT_SIZE, query, source);
+    size_t totalHits = getTotalHits(hits);
+
+    if (totalHits == 0)
+    {
+        throw IndexerConnectorException("Remote settings document not found");
+    }
+
+    if (totalHits > 1)
+    {
+        throw IndexerConnectorException("Multiple remote settings documents found in index "
+                                        + std::string(REMOTE_CONF_INDEX) + " (expected 1, got "
+                                        + std::to_string(totalHits) + ")");
+    }
+
+    const auto& hitArray = hits["hits"];
+    if (!hitArray.is_array() || hitArray.empty())
+    {
+        throw IndexerConnectorException("No hits returned for remote settings");
+    }
+
+    const auto& firstHit = hitArray[0];
+    if (!firstHit.contains("_source"))
+    {
+        throw IndexerConnectorException("Remote settings hit does not contain _source");
+    }
+
+    const auto& sourceData = firstHit["_source"];
+    if (!sourceData.contains("engine") || !sourceData["engine"].is_object())
+    {
+        throw IndexerConnectorException("Remote settings _source.engine missing or invalid");
+    }
+
+    return json::Json {sourceData["engine"].dump().c_str()};
+}
+
+}; // namespace wiconnector

@@ -23,8 +23,8 @@ with patch('wazuh.core.common.wazuh_uid'):
         from wazuh.core.cluster.local_client import LocalClient
         from wazuh.core.results import WazuhResult
 
-default_config = {'disabled': True, 'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
-                  'key': '', 'port': 1516, 'bind_addr': '0.0.0.0', 'nodes': ['NODE_IP'], 'hidden': 'no'}
+default_config = {'node_type': 'master', 'name': 'wazuh', 'node_name': 'node01',
+                  'key': '', 'port': 1516, 'bind_addr': '127.0.0.1', 'nodes': ['127.0.0.1'], 'hidden': 'no'}
 
 
 @patch('wazuh.cluster.read_config', return_value=default_config)
@@ -41,8 +41,10 @@ def test_read_config_wrapper_exception(mock_read_config):
     assert list(result.failed_items.keys())[0] == WazuhError(1001)
 
 
-@patch('wazuh.cluster.read_config', return_value=default_config)
-def test_node_wrapper(mock_read_config):
+@patch('wazuh.cluster.get_node', return_value={'cluster': default_config["name"],
+                                               'node': default_config["node_name"],
+                                               'type': default_config["node_type"]})
+def test_node_wrapper(mock_get_node):
     """Verify that the node_wrapper returns the default node information."""
     result = cluster.get_node_wrapper()
     assert result.affected_items == [{'cluster': default_config["name"],
@@ -60,7 +62,7 @@ def test_node_wrapper_exception(mock_get_node):
 def test_get_status_json():
     """Verify that get_status_json returns the default status information."""
     result = cluster.get_status_json()
-    expected = WazuhResult({'data': {"enabled": "no" if default_config['disabled'] else "yes", "running": "no"}})
+    expected = WazuhResult({'data': {"running": "no"}})
     assert result == expected
 
 
@@ -97,33 +99,3 @@ async def test_get_nodes_info():
     assert result.total_affected_items == expected['totalItems']
     assert result.failed_items[WazuhResourceNotFound(1730)] == {'noexists'}
     assert result.total_failed_items == 1
-
-
-@pytest.mark.parametrize("ruleset_integrity", [
-    True,
-    False
-])
-@patch("wazuh.cluster.node_id", new="testing_node")
-@pytest.mark.asyncio
-async def test_get_ruleset_sync_status(ruleset_integrity):
-    """Verify that `get_ruleset_sync_status` function correctly returns node ruleset synchronization status."""
-    master_md5 = {'key1': 'value1'}
-    with patch("wazuh.cluster.get_node_ruleset_integrity",
-               return_value=master_md5 if ruleset_integrity else {}) as ruleset_integrity_mock:
-        result = await cluster.get_ruleset_sync_status(master_md5=master_md5)
-        assert result.total_affected_items == 1
-        assert result.total_failed_items == 0
-        assert result.affected_items[0]['name'] == "testing_node"
-        assert result.affected_items[0]['synced'] is ruleset_integrity
-
-
-@patch("wazuh.cluster.node_id", new="testing_node")
-@pytest.mark.asyncio
-async def test_get_ruleset_sync_status_ko():
-    """Verify proper exceptions behavior with `get_ruleset_sync_status`."""
-    exc = WazuhError(1000)
-    with patch("wazuh.cluster.get_node_ruleset_integrity", side_effect=exc):
-        result = await cluster.get_ruleset_sync_status(master_md5={})
-        assert result.total_affected_items == 0
-        assert result.total_failed_items == 1
-        assert result.failed_items[exc] == {"testing_node"}

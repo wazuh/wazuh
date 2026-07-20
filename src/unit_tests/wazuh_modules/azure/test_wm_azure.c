@@ -17,8 +17,8 @@
 #include <time.h>
 
 #include "shared.h"
-#include "../../../wazuh_modules/wmodules.h"
-#include "../../../wazuh_modules/wm_azure.h"
+#include "wmodules.h"
+#include "wm_azure.h"
 
 #include "../scheduling/wmodules_scheduling_helpers.h"
 #include "../../wrappers/common.h"
@@ -29,6 +29,7 @@
 #include "../../wrappers/externals/pcre2/pcre2_wrappers.h"
 
 #define TEST_MAX_DATES 5
+
 
 static wmodule *azure_module;
 static OS_XML *lxml;

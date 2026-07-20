@@ -3,11 +3,9 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     QUEUE_SIZE: '1'
   metadata:
     port: '1514'
-    connection: 'secure'
     queue_size: '1'
 
 
@@ -16,11 +14,9 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     QUEUE_SIZE: '1200'
   metadata:
     port: '1514'
-    connection: 'secure'
     queue_size: '1200'
 
 
@@ -29,9 +25,7 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     QUEUE_SIZE: '262144'
   metadata:
     port: '1514'
-    connection: 'secure'
     queue_size: '262144'

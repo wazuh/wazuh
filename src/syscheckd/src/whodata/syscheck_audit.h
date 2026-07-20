@@ -13,6 +13,7 @@
 
 #include "shared.h"
 #include "syscheck.h"
+#include "file.h"
 #include "audit_op.h"
 
 #define WHODATA_PERMS (AUDIT_PERM_WRITE | AUDIT_PERM_ATTR)
@@ -20,12 +21,14 @@
 #define AUDIT_HEALTHCHECK_KEY "wazuh_hc"
 #define AUDIT_KEY "wazuh_fim"
 
-typedef struct {
-    char *path;
+typedef struct
+{
+    char* path;
     int pending_removal;
 } whodata_directory_t;
 
-typedef enum audit_key_type {
+typedef enum audit_key_type
+{
     FIM_AUDIT_UNKNOWN_KEY = 0,
     FIM_AUDIT_KEY,
     FIM_AUDIT_HC_KEY,

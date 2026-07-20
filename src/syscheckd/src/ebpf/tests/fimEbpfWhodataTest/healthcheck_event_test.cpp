@@ -7,19 +7,23 @@
 extern volatile bool event_received;
 const char* EBPF_HC_FILE = "tmp/ebpf_hc";
 
-void ResetEventReceived() {
+void ResetEventReceived()
+{
     event_received = false;
 }
 
-class HealthcheckEventTest : public ::testing::Test {
-protected:
-    void SetUp() override {
-        ResetEventReceived();
-    }
-    void TearDown() override {}
+class HealthcheckEventTest : public ::testing::Test
+{
+    protected:
+        void SetUp() override
+        {
+            ResetEventReceived();
+        }
+        void TearDown() override {}
 };
 
-TEST_F(HealthcheckEventTest, TestEventReceivedWhenFileNameContainsEBPF_HC_FILE) {
+TEST_F(HealthcheckEventTest, TestEventReceivedWhenFileNameContainsEBPF_HC_FILE)
+{
     file_event e;
     snprintf(e.filename, sizeof(e.filename), "%s", EBPF_HC_FILE);
 
@@ -29,7 +33,8 @@ TEST_F(HealthcheckEventTest, TestEventReceivedWhenFileNameContainsEBPF_HC_FILE) 
 }
 
 
-TEST_F(HealthcheckEventTest, TestEventNotReceivedWhenFileNameDoesNotContainEBPF_HC_FILE) {
+TEST_F(HealthcheckEventTest, TestEventNotReceivedWhenFileNameDoesNotContainEBPF_HC_FILE)
+{
     file_event e;
     strcpy(e.filename, "testing.txt");
 

@@ -173,4 +173,4 @@ def test_delete_dir(test_configuration, test_metadata, set_wazuh_configuration, 
     file.delete_path_recursively(folder_to_delete)
     wazuh_log_monitor.start(generate_callback(EVENT_TYPE_DELETED))
     assert wazuh_log_monitor.callback_result
-    assert get_fim_event_data(wazuh_log_monitor.callback_result)['mode'] == fim_mode
+    assert get_fim_event_data(wazuh_log_monitor.callback_result)['file']['mode'] == fim_mode

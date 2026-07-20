@@ -16,6 +16,7 @@
 #include "debug_op.h"
 #include "syscheck.h"
 #include "syscheck_op.h"
+#include "file.h"
 
 #ifdef WAZUH_UNIT_TESTING
 #ifdef WIN32
@@ -161,7 +162,7 @@ void fim_realtime_delete_watches(const directory_t *configuration) {
         if (data == NULL) {
             continue;
         }
-        watch_conf = fim_configuration_directory(data);
+        watch_conf = fim_configuration_directory(data, true, syscheck.directories);
 
         if (configuration == watch_conf) {
             W_Vector_insert(watch_to_delete, hash_node->key);
@@ -220,7 +221,7 @@ void realtime_process() {
         if (event->wd == -1 && event->mask == IN_Q_OVERFLOW) {
             mwarn("Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
             fim_realtime_set_queue_overflow(true);
-            send_log_msg("ossec: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
+            send_log_msg("wazuh: Real-time inotify kernel queue is full. Some events may be lost. Next scheduled scan will recover lost data.");
             continue;
         }
 
@@ -287,10 +288,9 @@ int realtime_update_watch(const char *wd, const char *dir) {
         return -1;
     }
 
-    configuration = fim_configuration_directory(dir);
+    configuration = fim_configuration_directory(dir, true, syscheck.directories);
 
     if (configuration == NULL) {
-        mdebug2(FIM_CONFIGURATION_NOTFOUND, "file", dir);
         inotify_rm_watch(syscheck.realtime->fd, atoi(wd));
         free(OSHash_Delete_ex(syscheck.realtime->dirtb, wd));
         return 0;
@@ -498,8 +498,8 @@ void CALLBACK RTCallBack(DWORD dwerror, DWORD dwBytes, LPOVERLAPPED overlap)
             }
             str_lowercase(final_path);
 
-            directory_t *index = fim_configuration_directory(wdchar);
-            directory_t *file_index = fim_configuration_directory(final_path);
+            directory_t *index = fim_configuration_directory(wdchar, true, syscheck.directories);
+            directory_t *file_index = fim_configuration_directory(final_path, true, syscheck.directories);
 
             if (index == file_index) {
                 /* Check the change */

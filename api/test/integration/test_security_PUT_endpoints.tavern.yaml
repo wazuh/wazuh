@@ -730,3 +730,28 @@ stages:
         data:
           auth_token_exp_timeout: 3000
           rbac_mode: !anystr
+
+---
+test_name: PUT /security/user/revoke
+
+stages:
+
+  - name: Revoke all tokens
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/revoke"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+    response:
+      status_code: 200
+
+  - name: Revoke all tokens (Invalid token after previous call)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/revoke"
+      headers:
+        Authorization: "Bearer {test_login_token}"
+      method: PUT
+    response:
+      status_code: 401

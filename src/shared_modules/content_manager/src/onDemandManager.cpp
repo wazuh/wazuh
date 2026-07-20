@@ -72,7 +72,10 @@ void OnDemandManager::startServer()
             std::filesystem::path path {ONDEMAND_SOCK};
             std::filesystem::create_directories(path.parent_path());
 
+            // Set umask to create socket with 0660 permissions
+            mode_t oldMask = umask(0117); // umask 0117 creates files with 0660
             m_runningTrigger = m_server.listen(ONDEMAND_SOCK, true);
+            umask(oldMask); // Restore original umask
         });
 
     // Spin lock until server is ready
@@ -85,15 +88,25 @@ void OnDemandManager::startServer()
 /**
  * @brief Stop the server
  */
-
 void OnDemandManager::stopServer()
 {
-    m_server.stop();
+    if (m_server.is_running())
+    {
+        m_server.stop();
+    }
     if (m_serverThread.joinable())
     {
         m_serverThread.join();
     }
     logDebug1(WM_CONTENTUPDATER, "Server stopped");
+}
+
+/**
+ * @brief OnDemandManager destructor. Ensures server is stopped and thread is joined.
+ */
+OnDemandManager::~OnDemandManager()
+{
+    stopServer();
 }
 
 void OnDemandManager::addEndpoint(const std::string& endpoint, std::function<void(ActionOrchestrator::UpdateData)> func)

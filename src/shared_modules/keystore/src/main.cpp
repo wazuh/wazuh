@@ -17,12 +17,6 @@
 #include <fstream>
 #include <functional>
 
-namespace Log
-{
-    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
-        GLOBAL_LOG_FUNCTION;
-}; // namespace Log
-
 int main(int argc, char* argv[])
 {
     std::string family;
@@ -31,16 +25,10 @@ int main(int argc, char* argv[])
     std::string valuePath;
 
     Log::assignLogFunction(
-        [](const int logLevel,
-           const std::string&,
-           const std::string&,
-           const int,
-           const std::string&,
-           const std::string& str,
-           va_list args)
+        [](const int logLevel, const char*, const char*, const int, const char*, const char* str, va_list args)
         {
             char formattedStr[MAXLEN] = {0};
-            vsnprintf(formattedStr, MAXLEN, str.c_str(), args);
+            vsnprintf(formattedStr, MAXLEN, str, args);
 
             if (logLevel == Log::LOGLEVEL_ERROR || logLevel == Log::LOGLEVEL_CRITICAL ||
                 logLevel == Log::LOGLEVEL_WARNING)
@@ -52,6 +40,7 @@ int main(int argc, char* argv[])
                 std::cout << formattedStr << "\n";
             }
         });
+    Log::setModuleLogFn(LogFn {"wazuh-keystore"});
 
     try
     {

@@ -2,63 +2,10 @@ name: 4.X - Running RTR. Module syscollector and its dependencies for agent/wina
 
 on:
   workflow_dispatch:
-  pull_request:
-    paths:
-      - "src/ci/**"
-      - "src/build.py"
-      - "src/data_provider/**"
-      - "src/shared_modules/**"
-      - "src/wazuh_modules/syscollector/**"
-      - "src/Makefile"
-      - ".github/workflows/4_testcomponent_syscollector-rtr.yml"
-      - ".github/actions/**"
 
 jobs:
-  rtr:
-    strategy:
-          fail-fast: false
-          matrix:
-              module: [wazuh_modules/syscollector, shared_modules/dbsync, shared_modules/rsync, data_provider]
-              target: [server, agent, winagent]
-    # We don't use ubuntu-latest because the install_build_deps action adds a fixed repository for Wine
-    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+  deprecated:
+    runs-on: ubuntu-24.04
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: "Install a compatible CMake"
-        uses: ./.github/actions/reinstall_cmake
-      - name: "Install dependencies"
-        uses: ./.github/actions/install_build_deps
-        with:
-          target: ${{ matrix.target }}
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version-file: ".github/workflows/.python-version"
-          architecture: x64
-      - name: Exclude timing-sensitive test on CodeBuild runners
-        if: matrix.module == 'wazuh_modules/syscollector'
-        # TODO(codebuild-temp): Remove when destroyWaitsForSyncLoopCompletion is fixed for EC2.
-        # The test sleeps 1 s assuming the first syscollector scan completes in that time, but EC2
-        # instances are slower than self-hosted runners. destroy() returns before syncLoopExited
-        # is set to true, causing the assertion at syscollectorImp_test.cpp:2523 to fail.
-        run: |
-          echo "GTEST_FILTER=-SyscollectorImpTest.destroyWaitsForSyncLoopCompletion" >> $GITHUB_ENV
-      - name: Run RTR for module ${{ matrix.module }} and target ${{ matrix.target }}
-        run: |
-          cd src/
-          python build.py --target ${{ matrix.target }} --readytoreview ${{ matrix.module }}
-      - name: Creating a valid artifact name
-        if: always()
-        run: |
-          name="${{ matrix.module }}"
-          name=$(echo $name | sed -e 's*/*-*g')
-          echo "ARTIFACT_NAME=$name" >> $GITHUB_ENV
-      - name: Uploading coverage report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage_report ${{ env.ARTIFACT_NAME }} ${{ matrix.target }}
-          path: ./**/coverage_report/**
+      - name: Warning
+        run: echo "This workflow is deprecated. Be careful, you have just run it from main."

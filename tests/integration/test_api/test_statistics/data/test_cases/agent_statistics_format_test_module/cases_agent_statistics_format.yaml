@@ -1,13 +1,13 @@
 - name: REMOTED_ENDPOINT
   description: remoted statistics endpoint
   configuration_parameters:
-    ENDPOINT: wazuh-remoted
+    ENDPOINT: wazuh-manager-remoted
   metadata:
-    endpoint: wazuh-remoted
+    endpoint: wazuh-manager-remoted
 
 - name: ANALYSISD_ENDPOINT
   description: analysisd statistics endpoint
   configuration_parameters:
-    ENDPOINT: wazuh-analysisd
+    ENDPOINT: wazuh-manager-analysisd
   metadata:
-    endpoint: wazuh-analysisd
+    endpoint: wazuh-manager-analysisd

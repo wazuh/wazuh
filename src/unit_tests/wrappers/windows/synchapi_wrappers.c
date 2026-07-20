@@ -13,8 +13,11 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+__attribute__((weak)) void wrap_Sleep_hook(__attribute__((unused)) DWORD dwMilliseconds) {}
+
 VOID wrap_Sleep(DWORD dwMilliseconds) {
     check_expected(dwMilliseconds);
+    wrap_Sleep_hook(dwMilliseconds);
 }
 
 HANDLE wrap_CreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,

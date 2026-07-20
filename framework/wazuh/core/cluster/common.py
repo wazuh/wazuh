@@ -18,16 +18,17 @@ import struct
 import time
 import traceback
 from importlib import import_module
-from typing import Tuple, Dict, Callable, List, Iterable, Union, Any
+from typing import Any, Callable, Coroutine, Dict, Iterable, List, Tuple, Union
 from uuid import uuid4
 
 import cryptography.fernet
 
 import wazuh.core.results as wresults
 from wazuh import Wazuh
-from wazuh.core import common, exception
-from wazuh.core import utils
-from wazuh.core.cluster import cluster, utils as cluster_utils
+from wazuh.core import common, exception, utils
+from wazuh.core.cluster import cluster
+from wazuh.core.cluster import utils as cluster_utils
+from wazuh.core.indexer.indexer import get_indexer_client
 from wazuh.core.wdb import AsyncWazuhDBConnection, WazuhDBConnection
 from wazuh.core.wdb_http import get_wdb_http_client
 
@@ -42,6 +43,11 @@ ALLOWED_CALLABLES_PACKAGES = ["wazuh", "api"]
 MAX_TOTAL_SIZE = 268435456  # maximum total size of the message to receive in bytes (256 MiB)
 
 MAX_CHUNK_SIZE = 10485760  # maximum chunk size of the message to receive in bytes (10 MiB)
+
+# Seconds a connection may hold an open header (sent header bytes but not yet
+# the declared payload) before being closed.  Bounds memory hold-time for
+# half-open messages regardless of source IP.
+PRE_AUTH_PAYLOAD_TIMEOUT = 30
 
 MAX_CONCURRENT_DIVIDED_MSGS = 10  # maximum number of concurrent divided messages being received. This is used to mitigate DoS attacks with many divided messages.
 
@@ -91,7 +97,7 @@ class InBuffer:
         """
         if total > MAX_TOTAL_SIZE:
             raise exception.WazuhClusterError(3050, extra_message=str(total))
-        self.payload = bytearray(total)  # array to store the message's data
+        self.payload = bytearray()  # grows incrementally as data is received
         self.total = total  # total of bytes to receive
         self.received = 0  # number of received bytes
         self.cmd = ''  # request's command in header
@@ -124,7 +130,7 @@ class InBuffer:
         self.cmd = cmd[:-1].split(b' ')[0]
         if self.total > MAX_TOTAL_SIZE :
             raise exception.WazuhClusterError(3050, extra_message=f"Header total size out of range: {self.total}")
-        self.payload = bytearray(self.total)
+        self.payload = bytearray()  # grows incrementally; no pre-allocation on peer-controlled size
         return header[header_size:]
 
     def receive_data(self, data: bytes) -> bytes:
@@ -139,8 +145,9 @@ class InBuffer:
         -------
             Extended data buffer.
         """
-        len_data = len(data[:self.total - self.received])
-        self.payload[self.received:len_data + self.received] = data[:self.total - self.received]
+        chunk = data[:self.total - self.received]
+        len_data = len(chunk)
+        self.payload.extend(chunk)
         self.received += len_data
         return data[len_data:]
 
@@ -374,6 +381,30 @@ class Handler(asyncio.Protocol):
         self.loop = None
         # Abstract server object.
         self.server = None
+        # Handle for the per-message payload-completion deadline timer.
+        self._payload_deadline = None
+
+    def _start_payload_deadline(self) -> None:
+        """Arm a timer that closes this connection if the payload never completes."""
+        self._cancel_payload_deadline()
+        try:
+            loop = asyncio.get_running_loop()
+            self._payload_deadline = loop.call_later(PRE_AUTH_PAYLOAD_TIMEOUT, self._close_on_payload_deadline)
+        except RuntimeError:
+            pass  # no running event loop (e.g. unit tests calling msg_parse directly)
+
+    def _cancel_payload_deadline(self) -> None:
+        """Cancel an armed payload-completion deadline, if any."""
+        if self._payload_deadline is not None:
+            self._payload_deadline.cancel()
+            self._payload_deadline = None
+
+    def _close_on_payload_deadline(self) -> None:
+        """Close the transport when a declared payload never arrives within the deadline."""
+        self.logger.warning("Closing connection: incomplete message payload not received within deadline.")
+        if self.transport is not None:
+            self.transport.close()
+        self._payload_deadline = None
 
     def push(self, message: bytes):
         """Send a message to peer.
@@ -475,6 +506,10 @@ class Handler(asyncio.Protocol):
                                                                   header_format=self.header_format,
                                                                   header_size=self.header_len)
                 self.in_buffer = self.in_msg.receive_data(data=self.in_buffer)
+                # If payload bytes are still outstanding, arm the completion deadline so a
+                # peer that stops after the header cannot hold memory indefinitely.
+                if self.in_msg.total > 0 and self.in_msg.received < self.in_msg.total:
+                    self._start_payload_deadline()
                 return True
             elif self.in_msg.received != 0:
                 # The previous message has not been completely received yet. No header to parse, just payload.
@@ -505,6 +540,8 @@ class Handler(asyncio.Protocol):
 
         while parsed:
             if self.in_msg.received == self.in_msg.total:
+                # Full payload received — cancel any outstanding completion deadline.
+                self._cancel_payload_deadline()
                 # Decrypt received message if it is not a part of a divided message
                 try:
                     decrypted_payload = \
@@ -598,7 +635,7 @@ class Handler(asyncio.Protocol):
         Parameters
         ----------
         data : dict
-            Dict containing command and list of chunks to be sent to wazuh-db.
+            Dict containing command and list of chunks to be sent to wazuh-manager-db.
         info_type : str
             Information type handled.
         logger : Logger object
@@ -630,7 +667,7 @@ class Handler(asyncio.Protocol):
             logger.debug2(f'Chunk {error[0] + 1}/{len(data["chunks"])}: {data["chunks"][error[0]]}')
             logger.error(f'Wazuh-db response for chunk {error[0] + 1}/{len(data["chunks"])} was not "ok": {error[1]}')
 
-        logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-db '
+        logger.debug(f'{result["updated_chunks"]}/{len(data["chunks"])} chunks updated in wazuh-manager-db '
                      f'in {result["time_spent"]:.3f}s.')
         result['error_messages'] = [error[1] for error in result['error_messages']['chunks']]
 
@@ -1573,7 +1610,7 @@ class SyncFiles(SyncTask):
 
 class SyncWazuhdb(SyncTask):
     """
-    Define methods to send information to the master/worker node (wazuh-db) through send_string protocol.
+    Define methods to send information to the master/worker node (wazuh-manager-db) through send_string protocol.
     """
 
     def __init__(self, manager, logger, data_retriever: Callable, cmd: bytes = b'', get_data_command: str = '',
@@ -1587,9 +1624,9 @@ class SyncWazuhdb(SyncTask):
         cmd : bytes
             Request command to send to the master/worker.
         get_data_command : str
-            Command to retrieve data from local wazuh-db.
+            Command to retrieve data from local wazuh-manager-db.
         set_data_command : str
-            Command to set data in master/worker's wazuh-db.
+            Command to set data in master/worker's wazuh-manager-db.
         logger : Logger object
             Logger to use during synchronization process.
         data_retriever : Callable
@@ -1633,7 +1670,7 @@ class SyncWazuhdb(SyncTask):
             self.get_payload[self.pivot_key] = last_pivot_value
 
         try:
-            # Retrieve information from local wazuh-db
+            # Retrieve information from local wazuh-manager-db
             start_time = time.perf_counter()
             while status != 'ok':
                 command = self.get_data_command + json.dumps(self.get_payload)
@@ -1648,7 +1685,7 @@ class SyncWazuhdb(SyncTask):
                     except (IndexError, KeyError):
                         pass
         except exception.WazuhException as e:
-            self.logger.error(f"Could not obtain data from wazuh-db: {e}")
+            self.logger.error(f"Could not obtain data from wazuh-manager-db: {e}")
             return []
 
         self.logger.debug(f"Obtained {len(chunks)} chunks of data in {(time.perf_counter() - start_time):.3f}s.")
@@ -1667,7 +1704,7 @@ class SyncWazuhdb(SyncTask):
             async with get_wdb_http_client() as wdb_client:
                 agents_sync = await wdb_client.get_agents_sync()
         except exception.WazuhException as e:
-            self.logger.error(f"Could not obtain data from wazuh-db: {e}")
+            self.logger.error(f"Could not obtain data from wazuh-manager-db: {e}")
             return
 
         now = time.perf_counter()
@@ -1772,7 +1809,7 @@ async def send_data_to_wdb(data, timeout, info_type='agent-info'):
     Parameters
     ----------
     data : dict
-        Dict containing command and list of chunks to be sent to wazuh-db.
+        Dict containing command and list of chunks to be sent to wazuh-manager-db.
     timeout : int
         Seconds to wait before stopping the task.
     info_type : str
@@ -1957,3 +1994,108 @@ def as_wazuh_object(dct: Dict):
         raise exception.WazuhInternalError(1000,
                                            extra_message=f"Wazuh object cannot be decoded from JSON {dct}",
                                            cmd_error=True)
+class IndexerTaskManager:
+    """
+    Mixin class for managing the lifecycle of indexer-dependent tasks.
+
+    Supervises a set of asyncio tasks that require the Wazuh Indexer to be
+    available, starting them when the indexer is reachable and stopping them
+    with exponential backoff when it is not.
+
+    This class is intended to be used as a mixin alongside classes that already
+    expose a ``self.logger`` attribute (e.g. ``Master``, ``Worker``). If no
+    logger is found on the instance, a fallback logger named ``'wazuh'`` is
+    created automatically.
+    """
+
+    def __init__(self):
+        """Class constructor.
+
+        Initializes the internal task registry and sets up a fallback logger.
+        """
+        self.indexer_tasks: Dict[str, asyncio.Task] = {}
+        self.logger = logging.getLogger('wazuh')
+
+    async def manage_indexer_tasks(
+        self,
+        task_factories: List[Callable[[], Coroutine[Any, Any, None]]],
+        base_delay: int = 300,
+        max_delay: int = 3600
+    ) -> None:
+        """Manage the lifecycle of indexer-dependent asyncio tasks.
+
+        Runs an infinite loop that periodically checks indexer availability.
+        When the indexer is reachable and no tasks are running, it creates and
+        starts a task for each factory in ``task_factories``. If the indexer
+        becomes unavailable, any active tasks are cancelled and an exponential
+        backoff strategy is applied before the next retry.
+
+        Parameters
+        ----------
+        task_factories : list of callable
+            Zero-argument callables, each returning a coroutine to be wrapped
+            in an ``asyncio.Task``.
+        base_delay : int, optional
+            Seconds to wait between availability checks when the indexer is
+            reachable, by default 300.
+        max_delay : int, optional
+            Upper bound in seconds for the exponential backoff delay applied
+            when the indexer is unavailable, by default 3600.
+
+        Returns
+        -------
+        None
+        """
+        delay = base_delay
+        active_tasks: List[asyncio.Task] = []
+
+        while True:
+            try:
+                self.logger.info("Checking if the indexer is available to initiate indexer tasks.")
+                async with get_indexer_client() as client:
+                    await client.healthcheck()
+
+                is_running = any(not t.done() for t in active_tasks) if active_tasks else False
+
+                if not is_running:
+                    if active_tasks:
+                        await self._stop_indexer_tasks(active_tasks)
+                    self.logger.info("Indexer is available. Starting indexer tasks.")
+                    active_tasks = [asyncio.create_task(factory()) for factory in task_factories]
+                    self.indexer_tasks = {
+                        getattr(f, '__name__', repr(f)): t
+                        for f, t in zip(task_factories, active_tasks)
+                    }
+
+                delay = base_delay
+                await asyncio.sleep(base_delay)
+
+            except Exception as e:
+                self.logger.warning(f"Indexer is not configured or unavailable: {e}.")
+
+                if active_tasks:
+                    await self._stop_indexer_tasks(active_tasks)
+                    active_tasks = []
+                    self.indexer_tasks = {}
+
+                self.logger.info(f"Retrying indexer check in {delay} seconds.")
+                await asyncio.sleep(delay)
+                delay = min(delay * 2, max_delay)
+
+    async def _stop_indexer_tasks(self, tasks: List[asyncio.Task]) -> None:
+        """Cancel and await all active indexer tasks.
+
+        Parameters
+        ----------
+        tasks : list of asyncio.Task
+            Tasks to cancel and clean up.
+
+        Returns
+        -------
+        None
+        """
+        for t in tasks:
+            if not t.done():
+                t.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)

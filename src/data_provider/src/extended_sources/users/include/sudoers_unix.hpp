@@ -13,11 +13,13 @@
 
 #include "json.hpp"
 
+#include <ifilesystem_wrapper.hpp>
+
 class SudoersProvider
 {
     public:
         /// Constructor
-        explicit SudoersProvider(std::string fileName);
+        explicit SudoersProvider(std::string fileName, std::unique_ptr<IFileSystemWrapper> fileSystemWrapper = nullptr);
 
         /// Default constructor
         SudoersProvider();
@@ -35,4 +37,5 @@ class SudoersProvider
         // const std::string kSudoFile = "/usr/local/etc/sudoers";
         // #endif
         std::string m_sudoFile;
+        std::unique_ptr<IFileSystemWrapper> m_fileSystemWrapper;
 };

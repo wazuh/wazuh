@@ -1,30 +1,24 @@
 {
     "action": "UpdateFile",
-    "body":
-    {
+    "body": {
         "table": "file_entry",
-        "data":
-        [
+        "data": [
             {
                 "attributes": "10",
                 "checksum": "a2fbef8f81af27155dcee5e3927ff6243593b91a",
-                "dev": 2456,
+                "device": 2456,
                 "gid": "0",
-                "group_name": "root",
+                "group_": "root",
                 "hash_md5": "4b531524aa13c8a54614100b570b3dc7",
                 "hash_sha1": "7902feb66d0bcbe4eb88e1bfacf28befc38bd58b",
                 "hash_sha256": "e403b83dd73a41b286f8db2ee36d6b0ea6e80b49f02c476e0a20b4181a3a062a",
                 "inode": 18277083,
-                "last_event": 1596489275,
-                "mode": 0,
                 "mtime": 1578075431,
-                "options": 131583,
                 "path": "/etc/wgetrc",
-                "perm": "-rw-rw-r--",
-                "scanned": 1,
+                "permissions": "-rw-rw-r--",
                 "size": 4925,
                 "uid": "0",
-                "user_name": "fakeUser"
+                "owner": "fakeUser"
             }
         ]
     }

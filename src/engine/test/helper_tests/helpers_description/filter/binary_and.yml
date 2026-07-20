@@ -1,0 +1,33 @@
+# Name of the helper function
+name: binary_and
+
+metadata:
+  description: |
+    Transforms the hexadecimal value into an unsigned integer and performs the AND bit by bit with the field hexadecimal
+    transformed to unsigned int. If it is other than 0x0 then the operation evaluates to true.
+  keywords:
+    - undefined
+
+helper_type: filter
+
+# Indicates whether the helper function supports a variable number of arguments
+is_variadic: false
+
+# Arguments expected by the helper function
+arguments:
+  hexadecimal:
+    type: string
+    generate: hexadecimal  # Expected type is string of type hexa
+    source: value # includes values
+
+target_field:
+  type: string
+  generate: hexadecimal
+
+
+test:
+  - arguments:
+      hexadecimal: "0x4F1"
+    target_field: "0x1"
+    should_pass: true
+    description: Success binary and

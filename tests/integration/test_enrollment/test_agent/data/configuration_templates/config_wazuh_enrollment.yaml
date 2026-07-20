@@ -7,9 +7,7 @@
                 value: 60
             - auto_restart:
                 value: 'yes'
-            - crypto_method:
-                value: 'aes'
-            - server:
+            - manager:
                 elements:
                 - address:
                     value: 127.0.0.1

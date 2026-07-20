@@ -42,7 +42,7 @@ stages:
                version: !anystr
          agent_status:
            connection:
-             active: 8 
+             active: 8
              disconnected: 2
              never_connected: 2
              pending: 0
@@ -70,24 +70,20 @@ stages:
              mergedSum: !anystr
              name: !anystr
          last_registered_agent:
-           - configSum: !anystr
-             dateAdd: !anystr
+           - dateAdd: !anystr
              group: !anything
              id: !anystr
              ip: !anystr
              lastKeepAlive: !anystr
-             manager: !anystr
              mergedSum: !anystr
              name: !anystr
              node_name: !anystr
              os:
                arch: !anystr
-               codename: !anystr
                major: !anystr
                minor: !anystr
                name: !anystr
                platform: !anystr
-               uname: !anystr
                version: !anystr
              registerIP: any
              status: disconnected

@@ -11,14 +11,17 @@
 #ifndef _MOCKFILEIO_HPP
 #define _MOCKFILEIO_HPP
 
-#include "gtest/gtest.h"
 #include "gmock/gmock.h"
+#include "gtest/gtest.h"
 #include <filesystem>
 
 class MockFileIO
 {
-    public:
-        MOCK_METHOD(void, readLineByLine, (const std::filesystem::path&, const std::function<bool(const std::string&)>&), ());
+public:
+    MOCK_METHOD(void,
+                readLineByLine,
+                (const std::filesystem::path&, const std::function<bool(const std::string&)>&),
+                ());
 };
 
 #endif // _MOCKFILEIO_HPP

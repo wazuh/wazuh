@@ -12,12 +12,12 @@
 #ifndef NOTIFY_OP_WRAPPERS_H
 #define NOTIFY_OP_WRAPPERS_H
 
-#include "../../../../headers/shared.h"
-#include "../../../../headers/notify_op.h"
+#include "notify_op.h"
+#include "shared.h"
 
-int __wrap_wnotify_modify(wnotify_t * notify, int fd, const woperation_t op);
+int __wrap_wnotify_modify(wnotify_t* notify, int fd, const woperation_t op);
 
-int __wrap_wnotify_add(wnotify_t * notify, int fd, const woperation_t op);
+int __wrap_wnotify_add(wnotify_t* notify, int fd, const woperation_t op);
 
 #endif
 

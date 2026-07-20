@@ -38,7 +38,7 @@ def test_ping_pong_message(test_configuration, test_metadata, configure_local_in
                             set_wazuh_configuration, restart_wazuh_expect_error, protocols_list_to_str_upper_case):
 
     '''
-    description: Check if 'wazuh-remoted' sends the #pong message
+    description: Check if 'wazuh-manager-remoted' sends the #pong message
 
     parameters:
         - test_configuration

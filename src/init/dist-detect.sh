@@ -98,24 +98,6 @@ if [ ! -r "/etc/os-release" ] || [ "$DIST_NAME" = "centos" ]; then
         DIST_VER=$(uname -r | sed -En 's/[^0-9]*([0-9]+).*/\1/p')
         DIST_SUBVER=$(uname -r | sed -En 's/[^0-9]*[0-9]+\.([0-9]+).*/\1/p')
 
-    # Solaris / SunOS
-    elif [ "$(uname)" = "SunOS" ]; then
-        DIST_NAME="sunos"
-        DIST_VER=$(uname -r | cut -d\. -f1)
-        DIST_SUBVER=$(uname -r | cut -d\. -f2)
-
-    # HP-UX
-    elif [ "$(uname)" = "HP-UX" ]; then
-        DIST_NAME="HP-UX"
-        DIST_VER=$(uname -r | cut -d\. -f2)
-        DIST_SUBVER=$(uname -r | cut -d\. -f3)
-
-    # AIX
-    elif [ "$(uname)" = "AIX" ]; then
-        DIST_NAME="AIX"
-        DIST_VER=$(oslevel | cut -d\. -f1)
-        DIST_SUBVER=$(oslevel | cut -d\. -f2)
-
     # BSD
     elif [ "X$(uname)" = "XOpenBSD" -o "X$(uname)" = "XNetBSD" -o "X$(uname)" = "XFreeBSD" -o "X$(uname)" = "XDragonFly" ]; then
         DIST_NAME="bsd"

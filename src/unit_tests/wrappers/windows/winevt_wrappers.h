@@ -11,6 +11,16 @@
 #ifndef WINEVT_WRAPPERS_H
 #define WINEVT_WRAPPERS_H
 
+/*
+ * EVT_HANDLE and related APIs are gated in MinGW's winevt.h
+ * behind _WIN32_WINNT >= 0x0600.
+ * Force Vista+ API visibility for this unit-test wrapper.
+ */
+#if !defined(_WIN32_WINNT) || (_WIN32_WINNT < 0x0600)
+#undef _WIN32_WINNT
+#define _WIN32_WINNT 0x0600
+#endif
+
 #include <windows.h>
 #include <winevt.h>
 

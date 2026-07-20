@@ -12,6 +12,7 @@
 #ifndef _CACHELRU_HPP
 #define _CACHELRU_HPP
 
+#include <functional>
 #include <list>
 #include <map>
 #include <optional>

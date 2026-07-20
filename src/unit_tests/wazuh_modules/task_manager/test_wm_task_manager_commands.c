@@ -18,10 +18,10 @@
 #include "../../wrappers/wazuh/wazuh_db/wdb_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wm_task_manager_wrappers.h"
 
-#include "../../wazuh_modules/wmodules.h"
-#include "../../wazuh_modules/task_manager/wm_task_manager.h"
-#include "../../wazuh_modules/task_manager/wm_task_manager_tasks.h"
-#include "../../headers/shared.h"
+#include "wmodules.h"
+#include "wm_task_manager.h"
+#include "wm_task_manager_tasks.h"
+#include "shared.h"
 
 cJSON* wm_task_manager_command_upgrade(wm_task_manager_upgrade *task, int command, int *error_code);
 cJSON* wm_task_manager_command_upgrade_get_status(wm_task_manager_upgrade_get_status *task, int *error_code);
@@ -188,7 +188,7 @@ void test_wm_task_manager_send_message_to_wdb_parse_err(void **state)
     expect_string(__wrap_wdbc_parse_result, result, wdb_response);
     will_return(__wrap_wdbc_parse_result, WDBC_OK);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8257): Error parsing JSON event: '{\"error\":0,\"task_id\":24'");
 
     cJSON *response = wm_task_manager_send_message_to_wdb(command, parameters, &error_code);
@@ -222,7 +222,7 @@ void test_wm_task_manager_send_message_to_wdb_request_err(void **state)
     expect_string(__wrap_wdbc_parse_result, result, wdb_response);
     will_return(__wrap_wdbc_parse_result, WDBC_ERROR);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8208): Tasks DB Error reported in the result of the query, message: 'Invalid message'");
 
     cJSON *response = wm_task_manager_send_message_to_wdb(command, parameters, &error_code);
@@ -251,7 +251,7 @@ void test_wm_task_manager_send_message_to_wdb_response_err(void **state)
     will_return(__wrap_wdbc_query_ex, NULL);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8209): Tasks DB Cannot execute SQL query: err database 'queue/tasks/tasks.db'");
 
     cJSON *response = wm_task_manager_send_message_to_wdb(command, parameters, &error_code);
@@ -424,7 +424,7 @@ void test_wm_task_manager_command_upgrade_db_response_null(void **state)
     will_return(__wrap_wdbc_query_ex, NULL);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8209): Tasks DB Cannot execute SQL query: err database 'queue/tasks/tasks.db'");
 
     state[0] = NULL;
@@ -540,7 +540,7 @@ void test_wm_task_manager_command_upgrade_get_status_db_response_null(void **sta
     will_return(__wrap_wdbc_query_ex, NULL);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8209): Tasks DB Cannot execute SQL query: err database 'queue/tasks/tasks.db'");
 
     state[0] = NULL;
@@ -706,7 +706,7 @@ void test_wm_task_manager_command_upgrade_update_status_db_response_null(void **
     will_return(__wrap_wdbc_query_ex, NULL);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8209): Tasks DB Cannot execute SQL query: err database 'queue/tasks/tasks.db'");
 
     cJSON *response = wm_task_manager_command_upgrade_update_status(task_parameters, &error_code);
@@ -886,7 +886,7 @@ void test_wm_task_manager_command_upgrade_result_db_response_null(void **state)
     will_return(__wrap_wdbc_query_ex, NULL);
     will_return(__wrap_wdbc_query_ex, OS_INVALID);
 
-    expect_string(__wrap__mterror, tag, "wazuh-modulesd:task-manager");
+    expect_string(__wrap__mterror, tag, "wazuh-manager-modulesd:task-manager");
     expect_string(__wrap__mterror, formatted_msg, "(8209): Tasks DB Cannot execute SQL query: err database 'queue/tasks/tasks.db'");
 
     cJSON *response = wm_task_manager_command_upgrade_result(task_parameters, &error_code);

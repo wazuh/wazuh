@@ -34,7 +34,8 @@ public:
      * @param observerId Observer ID.
      */
     explicit Subscriber(const std::function<void(T)>& callback, std::string observerId)
-        : m_callback {callback}, Observer<T>(std::move(observerId))
+        : m_callback {callback}
+        , Observer<T>(std::move(observerId))
     {
     }
 

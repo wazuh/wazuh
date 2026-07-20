@@ -25,6 +25,8 @@ export JOBS="5"
 export DEBUG_ENABLED="no"
 export PATH="${PATH}"
 export LD_LIBRARY_PATH=""
+export CC=""
+export CXX=""
 
 %:
 	dh $@
@@ -44,27 +46,24 @@ override_dh_install:
 	make -j$(JOBS) -C src/ TARGET=agent USE_SELINUX=yes DEBUG=$(DEBUG_ENABLED)
 
 	USER_LANGUAGE="en" \
-	USER_NO_STOP="y" \
 	USER_INSTALL_TYPE="agent" \
 	USER_DIR="$(INSTALLATION_DIR)" \
 	USER_DELETE_DIR="y" \
 	USER_ENABLE_ACTIVE_RESPONSE="y" \
 	USER_ENABLE_SYSCHECK="y" \
 	USER_ENABLE_ROOTCHECK="y" \
-	USER_ENABLE_OPENSCAP="y" \
-	USER_ENABLE_CISCAT="y" \
 	USER_ENABLE_SYSCOLLECTOR="y" \
 	USER_UPDATE="n" \
-	USER_AGENT_SERVER_IP="MANAGER_IP" \
+	USER_AGENT_MANAGER_IP="MANAGER_IP" \
 	USER_CA_STORE="/path/to/my_cert.pem" \
 	USER_AUTO_START="n" \
 	./install.sh || { echo "install.sh failed! Aborting." >&2; exit 1; }
 
 	# Copying init.d script
 	mkdir -p ${TARGET_DIR}/etc/init.d/
-	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/ossec-hids-debian.init
+	sed -i "s:WAZUH_HOME_TMP:${INSTALLATION_DIR}:g" src/init/templates/wazuh-debian.init
 
-	cp src/init/templates/ossec-hids-debian.init ${TARGET_DIR}/etc/init.d/wazuh-agent
+	cp src/init/templates/wazuh-debian.init ${TARGET_DIR}/etc/init.d/wazuh-agent
 
 	# Copying systemd file
 	mkdir -p ${TARGET_DIR}/usr/lib/systemd/system/
@@ -82,6 +81,9 @@ override_dh_install:
 	rm -rf ${TARGET_DIR}$(INSTALLATION_DIR)/ruleset/sca
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_DIR)/ruleset/sca
 
+	# Set correct permissions for ossec.conf before generating restore-permissions.sh
+	chmod 640 $(INSTALLATION_DIR)/etc/ossec.conf
+
 	./gen_permissions.sh $(INSTALLATION_DIR)/ ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/restore-permissions.sh
 
 	# Copying to target
@@ -90,8 +92,6 @@ override_dh_install:
 
 	# Copying install scripts to /usr/share
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
-	cp gen_ossec.sh ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
-	cp add_localfiles.sh ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
 	cp VERSION.json ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/
 
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src
@@ -113,6 +113,7 @@ override_dh_install:
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/20/04
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/22/04
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/24/04
+	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/26/04
 
 	cp -r ruleset/sca/* ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca
 
@@ -136,6 +137,7 @@ override_dh_install:
 	cp etc/templates/config/ubuntu/20/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/20/04
 	cp etc/templates/config/ubuntu/22/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/22/04
 	cp etc/templates/config/ubuntu/24/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/24/04
+	cp etc/templates/config/ubuntu/26/04/sca.files ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/sca/ubuntu/26/04
 
 	mkdir -p ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/init
 	cp -r src/init/*  ${TARGET_DIR}$(INSTALLATION_SCRIPTS_DIR)/src/init

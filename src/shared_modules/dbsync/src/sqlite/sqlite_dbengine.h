@@ -156,6 +156,8 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         void addTableRelationship(const nlohmann::json& data) override;
 
+        void closeAndDeleteDatabase(const std::string& path) override;
+
     private:
         void initialize(const std::string&              path,
                         const std::string&              tableStmtCreation,

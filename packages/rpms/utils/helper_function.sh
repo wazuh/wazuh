@@ -34,19 +34,16 @@ set_debug(){
 }
 
 build_deps(){
-    local legacy="$1"
-    if [ "${legacy}" = "no" ]; then
-        echo "%_source_filedigest_algorithm 8" >> /root/.rpmmacros
-        echo "%_binary_filedigest_algorithm 8" >> /root/.rpmmacros
-        if [ "${BUILD_TARGET}" = "agent" ]; then
-            echo " %rhel 6" >> /root/.rpmmacros
-            echo " %centos 6" >> /root/.rpmmacros
-            echo " %centos_ver 6" >> /root/.rpmmacros
-            echo " %dist .el6" >> /root/.rpmmacros
-            echo " %el6 1" >> /root/.rpmmacros
-        fi
-        rpmbuild="/usr/local/bin/rpmbuild"
+    echo "%_source_filedigest_algorithm 8" >> /root/.rpmmacros
+    echo "%_binary_filedigest_algorithm 8" >> /root/.rpmmacros
+    if [ "${BUILD_TARGET}" = "agent" ]; then
+        echo " %rhel 6" >> /root/.rpmmacros
+        echo " %centos 6" >> /root/.rpmmacros
+        echo " %centos_ver 6" >> /root/.rpmmacros
+        echo " %dist .el6" >> /root/.rpmmacros
+        echo " %el6 1" >> /root/.rpmmacros
     fi
+    rpmbuild="/usr/local/bin/rpmbuild"
 }
 
 build_package(){
@@ -55,24 +52,16 @@ build_package(){
     short_commit_hash="$3"
     wazuh_version="$4"
 
-    if [ "${ARCHITECTURE_TARGET}" = "i386" ] || [ "${ARCHITECTURE_TARGET}" = "armhf" ]; then
-        linux="linux32"
-    fi
-
-    if [ "${ARCHITECTURE_TARGET}" = "armhf" ]; then
-        ARCH="armv7hl"
-    elif [ "${ARCHITECTURE_TARGET}" = "arm64" ]; then
+    if [ "${ARCHITECTURE_TARGET}" = "arm64" ]; then
         ARCH="aarch64"
     elif [ "${ARCHITECTURE_TARGET}" = "amd64" ]; then
         ARCH="x86_64"
-    elif [[ "${ARCHITECTURE_TARGET}" == "i386" ]] || [[ "${ARCHITECTURE_TARGET}" == "ppc64le" ]]; then
-        ARCH=${ARCHITECTURE_TARGET}
     else
-        echo "Invalid architecture selected. Choose: [armhf, arm64, amd64, i386, ppc64le]"
+        echo "Error: Unsupported architecture '${ARCHITECTURE_TARGET}'. Supported: [amd64, arm64]."
         return 1
     fi
 
-    $linux $rpmbuild --define "_sysconfdir /etc" --define "_topdir ${rpm_build_dir}" \
+    $rpmbuild --define "_sysconfdir /etc" --define "_topdir ${rpm_build_dir}" \
         --define "_threads ${JOBS}" --define "_release ${REVISION}" --define "_isstage ${IS_STAGE}" \
         --define "_localstatedir ${INSTALLATION_PATH}" --define "_debugenabled ${debug}" \
         --define "_version ${wazuh_version}" --define "_hashcommit ${short_commit_hash}" \
@@ -93,7 +82,7 @@ get_package_and_checksum(){
 
     if [[ "${checksum}" == "yes" ]]; then
         cd "${rpm_build_dir}/RPMS" && sha512sum $RPM_NAME > /var/local/wazuh/$RPM_NAME.sha512
-        # Legacy RPMs do not have symbols
+
         if [ -n "${SYMBOLS_NAME}" ]; then
             sha512sum $SYMBOLS_NAME > /var/local/wazuh/$SYMBOLS_NAME.sha512
         fi

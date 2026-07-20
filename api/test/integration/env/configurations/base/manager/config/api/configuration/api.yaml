@@ -5,8 +5,8 @@ port: 55000
 
 https:
  enabled: yes
- key: "server.key"
- cert: "server.crt"
+ key: "manager.key"
+ cert: "manager.crt"
  use_ca: False
  ca: "ca.crt"
 
@@ -29,8 +29,13 @@ access:
   max_login_attempts: 10000
   max_request_per_minute: 10000
 
-# Drop privileges (Run as wazuh user)
+# Drop privileges (Run as wazuh-manager user)
 drop_privileges: yes
 
-# Enable features under development
-experimental_features: yes
+# Uploadable Wazuh configuration sections (allow all for testing)
+upload_configuration:
+  agents:
+    allow_higher_versions:
+      allow: yes
+  indexer:
+    allow: yes

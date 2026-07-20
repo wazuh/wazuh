@@ -1,6 +1,12 @@
 # Syscollector
 
-The **Syscollector** module collects system inventory information from Wazuh agents and detects changes in system state over time.
+The **Syscollector** module collects system inventory information from Wazuh agents and detects changes in system state over time. It module has been enhanced with a reliable synchronization mechanism that ensures system inventory changes are persisted and synchronized with the manager even during network interruptions or agent restarts.
+
+The module implements a **dual event system** that provides both real-time alerts and reliable state synchronization. It leverages the **Agent Sync Protocol** to persist differences in a local SQLite database and synchronizes them periodically with the manager through a session-based protocol.
+
+Syscollector persistence supports **stateful synchronization** for complete system inventory including hardware, OS, network, packages, ports, processes, users, groups, services, and browser extensions, while maintaining **stateless real-time events** for immediate inventory change detection.
+
+> **Note:** Starting in version 5.0, vulnerability detection operates as an independent module separate from Syscollector, with its own synchronization protocol.
 
 ## Overview
 
@@ -13,6 +19,8 @@ Syscollector performs periodic scans to gather inventory data and only sends cha
 - **Cross-Platform**: Supports Windows, Linux, macOS, and Unix systems
 - **Configurable**: Flexible scan intervals and component selection
 - **Local Storage**: SQLite database for change detection and state persistence
+- **Document Limits**: Manager-controlled limits on synchronized items per inventory type to optimize resource consumption
+- **Automatic Data Cleanup**: When individual collectors (packages, OS, hotfixes, etc.) are disabled, Syscollector automatically notifies the manager and cleans up associated data
 
 ### How It Works
 

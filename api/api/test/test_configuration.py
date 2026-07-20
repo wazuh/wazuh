@@ -3,7 +3,7 @@
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
 import copy
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -14,16 +14,14 @@ custom_api_configuration = {
     "host": ["0.0.0.0", "::"],
     "port": 55000,
     "drop_privileges": True,
-    "experimental_features": False,
     "max_upload_size": 10485760,
     "authentication_pool_size": 2,
     "https": {
         "enabled": True,
-        "key": "server.key",
-        "cert": "server.crt",
+        "key": "manager.key",
+        "cert": "manager.crt",
         "use_ca": False,
         "ca": "rootCA.pem",
-        "ssl_protocol": "auto",
         "ssl_ciphers": ""
     },
     "logs": {
@@ -43,16 +41,6 @@ custom_api_configuration = {
         "max_request_per_minute": 300
     },
     "upload_configuration": {
-        "remote_commands": {
-            "localfile": {
-                "allow": True,
-                "exceptions": []
-            },
-            "wodle_command": {
-                "allow": True,
-                "exceptions": []
-            }
-        },
         "agents": {
             "allow_higher_versions": {
                 "allow": True
@@ -60,14 +48,6 @@ custom_api_configuration = {
         },
         "indexer": {
             "allow": True
-        },
-        "integrations": {
-            "virustotal": {
-                "public_key": {
-                    "allow": True,
-                    "minimum_quota": 240
-                }
-            }
         }
     }
 }
@@ -105,7 +85,7 @@ def test_read_configuration(mock_open, mock_exists, read_config):
         # Currently we only add SSL path to HTTPS options
         for section, subsection in [('https', 'key'), ('https', 'cert'), ('https', 'ca')]:
             config[section][subsection] = config[section][subsection].replace(f'{api.constants.API_SSL_PATH}/', '')
-        
+
         # SSL paths (key, cert, ca) must preserve their original case
         if 'https' in read_config and 'ca' in read_config['https']:
             assert config['https']['ca'] == read_config['https']['ca']
@@ -121,7 +101,6 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'host': 1234},
     {'port': 'invalid_type'},
     {'drop_privileges': 'invalid_type'},
-    {'experimental_features': 'invalid_type'},
     {'max_upload_size': 'invalid_type'},
     {'authentication_pool_size': 'invalid_type'},
     {'authentication_pool_size': 0},
@@ -147,15 +126,8 @@ def test_read_configuration(mock_open, mock_exists, read_config):
     {'access': {'block_time': 'invalid_type'}},
     {'access': {'max_request_per_minute': 'invalid_type'}},
     {'access': {'invalid_subkey': 'invalid_type'}},
-    {'remote_commands': {'localfile': {'enabled': 'invalid_type'}}},
-    {'remote_commands': {'localfile': {'exceptions': [0, 1, 2]}}},
-    {'remote_commands': {'localfile': {'invalid_subkey': 'invalid_type'}}},
-    {'remote_commands': {'wodle_command': {'enabled': 'invalid_type'}}},
-    {'remote_commands': {'wodle_command': {'exceptions': [0, 1, 2]}}},
-    {'remote_commands': {'wodle_command': {'invalid_subkey': 'invalid_type'}}},
     {'agents': {'allow_higher_versions': {'allow': True}}},
     {'indexer': {'allow': True}},
-    {'integrations': {'virustotal': {'public_key': {'allow': True}}}},
 ])
 @patch('os.path.exists', return_value=True)
 def test_read_wrong_configuration(mock_exists, config):
@@ -183,10 +155,6 @@ def test_read_cache_configuration(mock_exists, config, expected_msg):
             patch('builtins.open'):
         m.return_value = config
         configuration.read_yaml_config()
-
-        if expected_msg:
-            mock_logger.assert_called_once_with(configuration.CACHE_DEPRECATED_MESSAGE.format(release="4.8.0"))
-
 
 @patch('os.chmod')
 @patch('builtins.open')

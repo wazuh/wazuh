@@ -11,20 +11,25 @@
 
 #ifndef _DB_TEST_H
 #define _DB_TEST_H
-#include "gtest/gtest.h"
-#include "gmock/gmock.h"
+#include "db.h"
 #include "dbFileItem.hpp"
 #include "dbRegistryKey.hpp"
 #include "dbRegistryValue.hpp"
-#include "db.h"
 #include "fimDBTests/fimDBImpTests.hpp"
+#include "gmock/gmock.h"
+#include "gtest/gtest.h"
 
-
-typedef struct txn_context_test_s {
-    event_data_t *evt_data;
+typedef struct callback_ctx_test_s
+{
+    event_data_t* event;
+    const directory_t* config;
+    fim_entry* entry;
+} callback_ctx_test;
+typedef struct txn_context_test_s
+{
+    event_data_t* evt_data;
 } txn_context_test;
 MockLoggingCall* mockLog;
-MockSyncMsg* mockSync;
 callback_context_t callback_data_added;
 callback_context_t callback_data_modified;
 callback_context_t callback_null;
@@ -32,42 +37,30 @@ event_data_t evt_data1;
 event_data_t evt_data2;
 directory_t configuration1;
 directory_t configuration2;
-create_json_event_ctx ctx1;
-create_json_event_ctx ctx2;
+callback_ctx_test ctx1;
+callback_ctx_test ctx2;
 
 void mockLoggingFunction(const modules_log_level_t logLevel, const char* tag)
 {
     mockLog->loggingFunction(logLevel, tag);
 }
 
-void mockSyncMessage(const char* log, const char* tag)
+static void callbackFileUpdateAdded(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data)
 {
-    mockSync->syncMsg(log, tag);
-}
-
-static void callbackFileUpdateAdded(void* return_data, void* user_data)
-{
-    cJSON* json_event = (cJSON*)return_data;
+    ASSERT_TRUE(result_type == ReturnTypeCallback::INSERTED);
+    ASSERT_TRUE(result_json);
     ASSERT_TRUE(user_data);
-    ASSERT_TRUE(json_event);
-
-    cJSON* data = cJSON_GetObjectItem(json_event, "data");
-    char* type = cJSON_GetStringValue(cJSON_GetObjectItem(data, "type"));
-    ASSERT_FALSE(strcmp("added", type));
 }
 
-static void callbackFileUpdateModified(void* return_data, void* user_data)
+static void callbackFileUpdateModified(ReturnTypeCallback result_type, const cJSON* result_json, void* user_data)
 {
-    cJSON* json_event = (cJSON*)return_data;
+    ASSERT_TRUE(result_type == ReturnTypeCallback::MODIFIED);
+    ASSERT_TRUE(result_json);
     ASSERT_TRUE(user_data);
-    ASSERT_TRUE(json_event);
-
-    cJSON* data = cJSON_GetObjectItem(json_event, "data");
-    char* type = cJSON_GetStringValue(cJSON_GetObjectItem(data, "type"));
-    ASSERT_FALSE(strcmp("modified", type));
 }
 
-class DBTestFixture : public testing::Test {
+class DBTestFixture : public testing::Test
+{
     protected:
         DBTestFixture() = default;
         virtual ~DBTestFixture() = default;
@@ -78,27 +71,14 @@ class DBTestFixture : public testing::Test {
         void SetUp() override
         {
             mockLog = new MockLoggingCall();
-            mockSync = new MockSyncMsg();
 
-            fim_db_init(FIM_DB_MEMORY,
-                        300,
-                        600,
-                        10,
-                        mockSyncMessage,
-                        mockLoggingFunction,
-                        MAX_FILE_LIMIT,
-                        100000,
-                        true,
-                        1,
-                        0,
-                        nullptr,
-                        nullptr);
+            fim_db_init(FIM_DB_MEMORY, mockLoggingFunction, MAX_FILE_LIMIT, 100000, nullptr);
 
             evt_data = {};
             evt_data.report_event = true;
             evt_data.mode = FIM_SCHEDULED;
             evt_data.w_evt = NULL;
-            txn_ctx = { .evt_data = &evt_data };
+            txn_ctx = {.evt_data = &evt_data};
 
             evt_data1 = {};
             evt_data1.report_event = true;
@@ -122,9 +102,9 @@ class DBTestFixture : public testing::Test {
             ctx2.event = &evt_data2;
             ctx2.config = &configuration2;
 
-            callback_data_added.callback = callbackFileUpdateAdded;
+            callback_data_added.callback_txn = callbackFileUpdateAdded;
             callback_data_added.context = &ctx1;
-            callback_data_modified.callback = callbackFileUpdateModified;
+            callback_data_modified.callback_txn = callbackFileUpdateModified;
             callback_data_modified.context = &ctx2;
             callback_null.callback = NULL;
             callback_null.context = NULL;
@@ -133,7 +113,6 @@ class DBTestFixture : public testing::Test {
         {
             fim_db_teardown();
             delete mockLog;
-            delete mockSync;
         }
 };
 

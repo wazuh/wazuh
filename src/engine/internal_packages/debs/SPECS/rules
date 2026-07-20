@@ -1,0 +1,63 @@
+#!/usr/bin/make -f
+
+# Enable all standard hardening features for potential native artifacts.
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+
+# Make pip deterministic and faster in CI-like builds.
+export PIP_NO_BUILD_ISOLATION = 1
+export PIP_DISABLE_PIP_VERSION_CHECK = 1
+export PIP_PREFER_BINARY = 1
+
+# Staging locations used during package build.
+DESTDIR    := $(CURDIR)/debian/wazuh-internal-tools
+VENV_REL   := opt/wazuh-internal-tools/venv
+DESTVENV   := $(DESTDIR)/$(VENV_REL)
+
+# Final runtime location on the target system (matches postinst logic).
+INSTALLVENV := /opt/wazuh-internal-tools/venv
+
+# Host python3 (informational; not used directly here).
+PY3 := $(shell command -v python3)
+
+# Default dh entry point (build, install, etc. are delegated to dh).
+%:
+	dh $@ --buildsystem=none --without autoreconf
+
+# ---------------------------------------------------------------------------
+# Build phase
+# - Call our helper to create the local venv under build/venv.
+# - Keep build logic outside of rules to simplify maintenance.
+# ---------------------------------------------------------------------------
+override_dh_auto_build:
+	@echo "CURDIR=$(CURDIR)"
+	bash debian/build_venv.sh
+
+# ---------------------------------------------------------------------------
+# Install phase
+# - Copy the prebuilt venv into the package staging dir.
+# - Remove caches/bytecode to reduce package size.
+# - Rewrite all shebangs in venv/bin/* to the final target python path
+#   (/opt/wazuh-internal-tools/venv/bin/python), ensuring executables run
+#   correctly after installation.
+# ---------------------------------------------------------------------------
+override_dh_auto_install:
+	# Copy the venv as-is into the package payload
+	mkdir -p $(DESTDIR)/opt/wazuh-internal-tools
+	cp -a build/venv $(DESTVENV)
+
+	# (Optional) shrink package: drop __pycache__ and .pyc/.pyo
+	find $(DESTVENV) -type d -name '__pycache__' -exec rm -rf {} +
+	find $(DESTVENV) -type f -name '*.py[co]' -delete
+
+	# Rewrite shebangs of ALL venv scripts to the final runtime path
+	bash -ec '\
+	  PY="$(INSTALLVENV)/bin/python"; \
+	  for f in "$(DESTVENV)"/bin/*; do \
+	    [ -f "$$f" ] || continue; \
+	    if head -c 2 "$$f" | grep -q "^#\!"; then \
+	      if head -n1 "$$f" | grep -qi python; then \
+	        sed -i "1 s|^#!.*|#!$$PY|" "$$f"; \
+	      fi; \
+	    fi; \
+	    chmod a+rx "$$f"; \
+	  done'

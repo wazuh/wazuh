@@ -2,16 +2,15 @@
 # Created by Wazuh, Inc. <info@wazuh.com>.
 # This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2
 
-import asyncio
 import re
 from collections import defaultdict
 from functools import wraps
+from typing import Awaitable, Any
 
 from wazuh.core.agent import get_agents_info, get_groups, expand_group
 from wazuh.core.common import rbac, broadcast, cluster_nodes
 from wazuh.core.exception import WazuhPermissionError
 from wazuh.core.results import AffectedItemsWazuhResult
-from wazuh.rbac.utils import expand_rules, expand_lists, expand_decoders
 from wazuh.rbac.orm import RolesManager, PoliciesManager, AuthenticationManager, RulesManager
 
 SENSITIVE_FIELD_PATHS = ("authd.pass", "cluster.key")
@@ -62,12 +61,6 @@ def _expand_resource(resource: str) -> set:
             with RulesManager() as rum:
                 rules = rum.get_rules()
             return {str(rule_id.id) for rule_id in rules}
-        elif resource_type == 'rule:file':
-            return expand_rules()
-        elif resource_type == 'decoder:file':
-            return expand_decoders()
-        elif resource_type == 'list:file':
-            return expand_lists()
         elif resource_type == 'node:id':
             return set(cluster_nodes.get())
         elif resource_type == '*:*':  # Resourceless
@@ -379,7 +372,7 @@ def _get_denied(original: dict, allowed: list, target_param: str, res_id: int, r
         return {res.split(':')[2] for res in resources} if resources is not None else {}
 
 
-async def async_list_handler(result, **kwargs):
+async def async_list_handler(result: Awaitable[Any], **kwargs):
     """This function makes list_handler async."""
     result = await result
     return list_handler(result, **kwargs)
@@ -520,7 +513,7 @@ def _has_update_permissions() -> bool:
     perms = rbac.get() or {}
     for action in ("manager:update_config", "cluster:update_config"):
         action_map = perms.get(action)
-        if isinstance(action_map, dict) and len(action_map) > 0:
+        if isinstance(action_map, dict) and any(effect == 'allow' for effect in action_map.values()):
             return True
     return False
 

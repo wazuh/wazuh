@@ -30,10 +30,6 @@ LOGGING_DATE_FORMAT = '%Y/%m/%d %H:%M:%S'
 LOG_LEVELS = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
 
 CREDENTIALS_URL = 'https://documentation.wazuh.com/current/azure/activity-services/prerequisites/credentials.html'
-DEPRECATED_MESSAGE = (
-    'The {name} authentication parameter was deprecated in {release}. '
-    'Please use another authentication method instead. Check {url} for more information.'
-)
 URL_LOGGING = 'https://login.microsoftonline.com'
 
 
@@ -71,22 +67,6 @@ def get_script_arguments():
     )
 
     # Log Analytics arguments #
-    parser.add_argument(
-        '--la_id',
-        metavar='ID',
-        type=str,
-        required=False,
-        help='Application ID for Log Analytics authentication. '
-        f'{DEPRECATED_MESSAGE.format(name="la_id", release="4.4", url=CREDENTIALS_URL)}',
-    )
-    parser.add_argument(
-        '--la_key',
-        metavar='KEY',
-        type=str,
-        required=False,
-        help='Application Key for Log Analytics authentication. '
-        f'{DEPRECATED_MESSAGE.format(name="la_key", release="4.4", url=CREDENTIALS_URL)}',
-    )
     parser.add_argument(
         '--la_auth_path',
         metavar='filepath',
@@ -132,22 +112,6 @@ def get_script_arguments():
 
     # Graph arguments #
     parser.add_argument(
-        '--graph_id',
-        metavar='ID',
-        type=str,
-        required=False,
-        help='Application ID for Graph authentication. '
-        f'{DEPRECATED_MESSAGE.format(name="graph_id", release="4.4", url=CREDENTIALS_URL)}',
-    )
-    parser.add_argument(
-        '--graph_key',
-        metavar='KEY',
-        type=str,
-        required=False,
-        help='Application KEY for Graph authentication. '
-        f'{DEPRECATED_MESSAGE.format(name="graph_key", release="4.4", url=CREDENTIALS_URL)}',
-    )
-    parser.add_argument(
         '--graph_auth_path',
         metavar='filepath',
         type=str,
@@ -184,22 +148,6 @@ def get_script_arguments():
     )
 
     # Storage arguments #
-    parser.add_argument(
-        '--account_name',
-        metavar='account',
-        type=str,
-        required=False,
-        help='Storage account name for authentication. '
-        f'{DEPRECATED_MESSAGE.format(name="account_name", release="4.4", url=CREDENTIALS_URL)}',
-    )
-    parser.add_argument(
-        '--account_key',
-        metavar='KEY',
-        type=str,
-        required=False,
-        help='Storage account key for authentication. '
-        f'{DEPRECATED_MESSAGE.format(name="account_key", release="4.4", url=CREDENTIALS_URL)}',
-    )
     parser.add_argument(
         '--storage_auth_path',
         metavar='filepath',

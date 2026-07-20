@@ -3,9 +3,8 @@ yes="s"
 no="n"
 yesmatch="s"
 nomatch="n"
-server="servidor"
+server="manager"
 agent="cliente"
-local="local"
 help="ajuda"
 
 
@@ -22,10 +21,9 @@ system="Sistema"
 user="Usuário"
 host="Host"
 hitanyorabort="Aperte ENTER para continuar ou Ctrl+C para abortar."
-whattoinstall="Que tipo de instalação você deseja (manager, cliente, local ou ajuda)?"
+whattoinstall="Que tipo de instalação você deseja (manager, cliente, ou ajuda)?"
 serverchose="Escolhida instalação manager"
 clientchose="Escolhida instalação cliente"
-localchose="Escolhida instalação local"
 
 # Parte 2
 settingupenv="Configurando o ambiente de instalação"
@@ -44,8 +42,8 @@ usingsmtp="Usando servidor SMTP: "
 whatsmtp="Qual é o ip/host de seu servidor SMTP?"
 
 # Parte 3.1/agente
-serverip="Qual é o endereço de IP do servidor Wazuh?"
-serveraddr="Qual é o endereço de IP/hostname do servidor Wazuh?"
+serverip="Qual é o endereço IP do gestor Wazuh?"
+serveraddr="Qual é o endereço IP/nome do host do gestor Wazuh?"
 addingip="Adicionando IP do servidor"
 addingname="Adicionando hostname do servidor"
 
@@ -60,11 +58,6 @@ runrootcheck="Deseja habilitar o sistema de detecção de rootkis?"
 norootcheck="Rootcheck (Sistema de detecção de rootkits) desabilitado"
 yesrootcheck="Rootcheck (Sistema de detecção de rootkits) habilitado"
 
-# Part 3.4
-runopenscap="Deseja habilitar OpenSCAP?"
-norunopenscap="OpenSCAP desabilitado"
-yesrunopenscap="OpenSCAP desabilitado"
-
 # Parte 3.5/servidor/local
 enable_ar="Deseja habilitar o sistema de respostas automáticas?"
 noactive="Sistema de respostas automáticas desabilitado"
@@ -76,12 +69,6 @@ yesfirewall="firewall-drop habilitado (local) para níveis >= 6"
 defaultwhitelist="Lista de endereços que não serão bloqueados pela resposta automática:"
 addwhite="Deseja adicionar mais algum endereço a essa lista?"
 ipswhite="Endereços de IP (separados por espaço): "
-
-
-# Parte 3.5/servidor/local
-syslog="Deseja habilitar o syslog remoto (514 udp)?"
-nosyslog="Syslog desabilitado"
-yessyslog="Syslog habilitado"
 
 # Parte 3.4/3.5
 readlogs="Ajustando a configuração para analisar os seguintes logs:"

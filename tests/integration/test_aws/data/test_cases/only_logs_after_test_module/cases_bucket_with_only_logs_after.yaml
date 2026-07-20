@@ -125,20 +125,6 @@
     only_logs_after: 2022-NOV-20
     expected_results: 3
 
-- name: guardduty_with_only_logs_after
-  description: GuardDuty only logs after configurations
-  configuration_parameters:
-    BUCKET_TYPE: guardduty
-    BUCKET_NAME: wazuh-guardduty-integration-tests
-    ONLY_LOGS_AFTER: 2022-NOV-20
-    PATH: ''
-  metadata:
-    resource_type: bucket
-    bucket_type: guardduty
-    bucket_name: wazuh-guardduty-integration-tests
-    only_logs_after: 2022-NOV-20
-    expected_results: 3
-
 - name: native_guardduty_with_only_logs_after
   description: Native GuardDuty only logs after configurations
   configuration_parameters:

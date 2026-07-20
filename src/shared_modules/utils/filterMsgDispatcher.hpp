@@ -36,9 +36,11 @@ namespace Utils
                                      const std::function<bool(RawValue)>& filterCallback = nullptr,
                                      const unsigned int threadPoolSize = std::thread::hardware_concurrency(),
                                      const size_t maxQueueSize = UNLIMITED_QUEUE_SIZE)
+            // clang-format off
             : ThreadType {std::bind(&DispatcherType::dispatch, this, std::placeholders::_1),
                           threadPoolSize,
                           maxQueueSize}
+            // clang-format on
             , m_callback {callback}
             , m_filterCallback {filterCallback}
         {

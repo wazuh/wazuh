@@ -74,7 +74,7 @@ custom_incomplete_configuration = {
     ({'cluster': {'port': 'string', 'node_type': 'master'}}, "Port has to"),
     ({'cluster': {'port': 90}}, "Port must be"),
     ({'cluster': {'port': 70000}}, "Port must be"),
-    ({'cluster': {'port': 1516, 'nodes': ['NODE_IP'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
+    ({'cluster': {'port': 1516, 'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['localhost'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['0.0.0.0'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
     ({'cluster': {'nodes': ['127.0.1.1'], 'key': 'a' * 32, 'node_type': 'master'}}, "Invalid elements"),
@@ -103,11 +103,6 @@ def test_get_node():
         assert get_node["node"] == test_dict["node_name"]
         assert get_node["cluster"] == test_dict["name"]
         assert get_node["type"] == test_dict["node_type"]
-
-
-def test_check_cluster_status():
-    """Check the correct output of the check_cluster_status function."""
-    assert isinstance(cluster.check_cluster_status(), bool)
 
 
 @patch('os.path.getmtime', return_value=45)
@@ -254,49 +249,6 @@ def test_get_files_status(mock_get_cluster_items):
     with patch('wazuh.core.cluster.cluster.walk_dir', side_effect=Exception):
         _, logs = cluster.get_files_status()
         assert logs['warning']['etc/'] == ["Error getting file status: ."]
-
-
-@patch('wazuh.core.cluster.cluster.get_cluster_items', return_value={
-    'files': {
-        'etc/': {'permissions': 416, 'source': 'master', 'files': ['client.keys'], 'recursive': False, 'restart': False,
-                 'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'client keys file database'},
-        'etc/shared/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': False,
-                        'remove_subdirs_if_empty': True, 'extra_valid': False,
-                        'description': 'shared configuration files'},
-        'var/multigroups/': {'permissions': 432, 'source': 'master', 'files': ['merged.mg'], 'recursive': True,
-                             'restart': False, 'remove_subdirs_if_empty': True, 'extra_valid': False,
-                             'description': 'shared configuration files'},
-        'etc/rules/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': True,
-                       'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'user rules'},
-        'etc/decoders/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': True,
-                          'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'user decoders'},
-        'etc/lists/': {'permissions': 432, 'source': 'master', 'files': ['all'], 'recursive': True, 'restart': True,
-                       'remove_subdirs_if_empty': False, 'extra_valid': False, 'description': 'user CDB lists'},
-        'excluded_files': ['ar.conf', 'ossec.conf'], 'excluded_extensions': ['~', '.tmp', '.lock', '.swp']}
-})
-def test_get_ruleset_status(mock_get_cluster_items):
-    """Verify that walk_dir is called only for custom ruleset folders."""
-
-    test_dict = {"path": {"hash": "test"}}
-    expected_calls = [
-        call('etc/rules/', True, ['all'], ['ar.conf', 'ossec.conf'],
-             ['~', '.tmp', '.lock', '.swp'], 'etc/rules/', {}, True),
-        call('etc/decoders/', True, ['all'], ['ar.conf', 'ossec.conf'],
-             ['~', '.tmp', '.lock', '.swp'], 'etc/decoders/', {}, True),
-        call('etc/lists/', True, ['all'], ['ar.conf', 'ossec.conf'],
-             ['~', '.tmp', '.lock', '.swp'], 'etc/lists/', {}, True)
-    ]
-
-    with patch("wazuh.core.cluster.cluster.walk_dir", return_value=(test_dict, {})) as walk_dir_mock:
-        result = cluster.get_ruleset_status({})
-        assert isinstance(result, dict)
-        assert result["path"] == test_dict["path"]["hash"]
-        assert walk_dir_mock.call_args_list == expected_calls
-
-    with patch("wazuh.core.cluster.cluster.walk_dir", side_effect=Exception):
-        with patch.object(wazuh.core.cluster.cluster.logger, "warning") as logger_mock:
-            cluster.get_ruleset_status({})
-            logger_mock.assert_has_calls([call('Error getting file status: .')]*3)
 
 
 @pytest.mark.parametrize('failed_item, exists, expected_result', [

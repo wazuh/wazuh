@@ -7,7 +7,7 @@ policy:
     - https://documentation.wazuh.com/current/user-manual/capabilities/sec-config-assessment/index.html
 
 requirements:
-  title: Check Centos 8 family platform
+  name: Check Centos 8 family platform
   description: Requirements for running the policy against CentOS 8 family.
   condition: any
   rules:
@@ -18,24 +18,24 @@ checks:
 
   # Check that permitions for file are 222
   - id: 1
-    title: Test_1
+    name: Test_1
     description: Test osregex regex engine with osregex rules
     rationale: Test_1
     remediation: The testfile permissions should be '0222'. Use chmod 222 /testfile command to fix permissions
     compliance:
-      - cis: [1.8.1.5]
+      pci_dss: ["7.1"]
     condition: all
     rules:
-      - c:stat -L /testfile -> r:Access:\s*\(0222/d-w--w--w-\)\s*Uid:\.*root\)\s*\t*Gid:\.*root\)
+      - c:stat -L /testfile -> r:Access:\s*\(0222/d-w--w--w-\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)
 
   # Check that permitions for file are 644
   - id: 2
-    title: Test_2
+    name: Test_2
     description: Test osregex regex engine with pcre2 rules
     rationale: Test_2
     remediation: The testfile permissions should be '644'. Use chmod 666 /testfile command to fix permissions
     compliance:
-      - cis: [1.8.1.5]
+      pci_dss: ["7.1"]
     condition: all
     rules:
-      - c:stat -L /testfile -> r:Access:\s*\(0644/drw-r--r--\)\s*Uid:\.*root\)\s*\t*Gid:\.*root\)
+      - c:stat -L /testfile -> r:Access:\s*\(0644/drw-r--r--\)\s*Uid:\s*\(\s*\t*0/\s*\t*root\)\s*\t*Gid:\s*\(\s*\t*0/\s*\t*root\)

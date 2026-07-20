@@ -8,9 +8,12 @@
 cmake_minimum_required(VERSION 3.10)
 
 list(APPEND hmac_tests_names "test_hmac_op")
+# test_hmac_file_popen_fail now expects __wrap_wfopen (OS_HMAC_SHA1_File calls
+# wfopen directly on both targets) — add the wrap to satisfy the expectation.
 list(APPEND hmac_tests_flags "-Wl,--wrap,fopen -Wl,--wrap,fclose -Wl,--wrap,fflush -Wl,--wrap,fread \
                              -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,fprintf \
-                             -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,popen")
+                             -Wl,--wrap,fgets -Wl,--wrap,fgetpos -Wl,--wrap,fgetc -Wl,--wrap,popen \
+                             -Wl,--wrap=wfopen")
 
 # Compiling tests
 list(LENGTH hmac_tests_names count)
@@ -19,7 +22,7 @@ foreach(counter RANGE ${count})
     list(GET hmac_tests_names ${counter} test_name)
     list(GET hmac_tests_flags ${counter} test_flags)
     add_executable(${test_name} ${test_name}.c)
-    if(${TARGET} STREQUAL "server")
+    if(${TARGET} STREQUAL "manager")
         target_link_libraries(
             ${test_name}
             ${TEST_DEPS}

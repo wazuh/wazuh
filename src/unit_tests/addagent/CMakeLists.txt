@@ -1,8 +1,13 @@
 # Generate addagent library
-file(GLOB addagent_files
-    ${SRC_FOLDER}/addagent/*.o)
-
-list(REMOVE_ITEM addagent_files ${SRC_FOLDER}/addagent/main.o)
+if(${TARGET} STREQUAL "winagent")
+  file(GLOB addagent_files
+       ${SRC_FOLDER}/build/addagent/CMakeFiles/addagent_lib.dir/src/*.obj)
+  list(REMOVE_ITEM addagent_files ${SRC_FOLDER}/build/addagent/CMakeFiles/addagent_lib.dir/src/main.c.obj)
+else()
+  file(GLOB addagent_files
+       ${SRC_FOLDER}/build/addagent/CMakeFiles/addagent_lib.dir/src/*.o)
+  list(REMOVE_ITEM addagent_files ${SRC_FOLDER}/build/addagent/CMakeFiles/addagent_lib.dir/src/main.c.o)
+endif()
 
 add_library(ADDAGENT_O STATIC ${addagent_files})
 

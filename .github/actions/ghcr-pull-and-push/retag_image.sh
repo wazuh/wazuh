@@ -10,22 +10,14 @@ fi
 IMAGES_LIST=(
     "common_wpk_builder"
     "compile_windows_agent"
-    "pkg_deb_agent_builder_i386"
     "pkg_deb_agent_builder_amd64"
     "pkg_deb_agent_builder_arm64"
-    "pkg_deb_agent_builder_armhf"
-    "pkg_deb_agent_builder_ppc64le"
     "pkg_deb_manager_builder_amd64"
     "pkg_deb_manager_builder_arm64"
-    "pkg_rpm_agent_builder_i386"
     "pkg_rpm_agent_builder_amd64"
     "pkg_rpm_agent_builder_arm64"
-    "pkg_rpm_agent_builder_armhf"
-    "pkg_rpm_agent_builder_ppc64le"
     "pkg_rpm_manager_builder_amd64"
     "pkg_rpm_manager_builder_arm64"
-    "pkg_rpm_legacy_builder_i386"
-    "pkg_rpm_legacy_builder_amd64"
 )
 
 retag_image(){

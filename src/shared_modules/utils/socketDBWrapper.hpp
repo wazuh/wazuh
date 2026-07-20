@@ -207,7 +207,11 @@ public:
     {
         m_teardown = true;
         m_conditionVariable.notify_all();
-        m_dbSocket->stop();
+        if (m_dbSocket)
+        {
+            m_dbSocket->stop();
+            m_dbSocket.reset();
+        }
     }
 };
 

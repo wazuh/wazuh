@@ -2,7 +2,6 @@
 - actions:
   - agent:read
   resources:
-  - agent:id:000
   - agent:id:002
   - agent:id:004
   - agent:id:006
@@ -39,7 +38,6 @@
 - actions:
   - agent:modify_group
   resources:
-  - agent:id:000
   - agent:id:001
   - agent:id:002
   - agent:id:005

@@ -36,27 +36,9 @@ environment_status = None
 env_cluster_nodes = ['master', 'worker1', 'worker2']
 agent_names = ['agent1', 'agent2', 'agent3', 'agent4', 'agent5', 'agent6', 'agent7', 'agent8']
 
-standalone_env_mode = 'standalone'
-cluster_env_mode = 'cluster'
-
 
 def pytest_addoption(parser):
     parser.addoption('--nobuild', action='store_false', help='Do not run docker compose build.')
-
-
-def pytest_collection_modifyitems(items: list):
-    """Pytest hook used to add standalone and cluster marks to tests having none of them.
-
-    Parameters
-    ----------
-    items : list[pytest.Item]
-        List of pytest items collected in the pytest session.
-    """
-    for item in items:
-        test_name = item.nodeid.split('::')[0]
-        if 'rbac' not in test_name and not {standalone_env_mode, cluster_env_mode} & {m.name for m in item.own_markers}:
-            item.add_marker(standalone_env_mode)
-            item.add_marker(cluster_env_mode)
 
 
 def get_token_login_api():
@@ -81,13 +63,11 @@ def pytest_tavern_beta_before_every_test_run(test_dict, variables):
     variables["test_login_token"] = get_token_login_api()
 
 
-def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
+def build_and_up(interval: int = 10, build: bool = True):
     """Build all Docker environments needed for the current test.
 
     Parameters
     ----------
-    env_mode : str
-        Indicates the environment to be used in the process.
     interval : int
         Time interval between every build.
     build : bool
@@ -117,14 +97,12 @@ def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
     with open(docker_log_path, mode='w') as f_docker:
         while retries < max_retries:
             if build:
-                build_process = subprocess.Popen(["docker", "compose", "--profile", env_mode,
-                    "build", "--build-arg", f"WAZUH_BRANCH={current_branch}",
-                    "--build-arg", f"ENV_MODE={env_mode}", "--no-cache"],
+                build_process = subprocess.Popen(["docker", "compose", "build",
+                    "--build-arg", f"WAZUH_BRANCH={current_branch}", "--no-cache"],
                     stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
                 build_process.wait()
             up_process = subprocess.Popen(
-                ["docker", "compose", "--profile", env_mode, "up", "-d"],
-                env=dict(os.environ, ENV_MODE=env_mode),
+                ["docker", "compose", "up", "-d"],
                 stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
             up_process.wait()
 
@@ -137,18 +115,17 @@ def build_and_up(env_mode: str, interval: int = 10, build: bool = True):
     os.chdir(current_path)
 
 
-def down_env(env_mode: str):
+def down_env():
     """Stop and remove all Docker containers."""
     os.chdir(env_path)
     with open(docker_log_path, mode='a') as f_docker:
-        current_process = subprocess.Popen(["docker", "compose", "--profile", env_mode, "down", "-v"],
+        current_process = subprocess.Popen(["docker", "compose", "down", "-v"],
                                            stdout=f_docker, stderr=subprocess.STDOUT, universal_newlines=True)
         current_process.wait()
     os.chdir(current_path)
 
 
-def check_health(node_type: str = 'manager', agents: list = None,
-                 only_check_master_health: bool = False):
+def check_health(node_type: str = 'manager', agents: list = None):
     """Check the Wazuh nodes health.
 
     Parameters
@@ -158,8 +135,6 @@ def check_health(node_type: str = 'manager', agents: list = None,
     agents : list
         List of active agents for the current test
         (only needed if the agents need a custom healthcheck).
-    only_check_master_health : bool
-        Indicates whether the only node which health needs to be checked is master or not.
 
     Returns
     -------
@@ -167,7 +142,7 @@ def check_health(node_type: str = 'manager', agents: list = None,
         True if all healthchecks passed, False otherwise.
     """
     if node_type == 'manager':
-        nodes_to_check = ['master'] if only_check_master_health else env_cluster_nodes
+        nodes_to_check = env_cluster_nodes
         for node in nodes_to_check:
             health = subprocess.check_output(
                 f"docker inspect env-wazuh-{node}-1 -f '{{{{json .State.Health.Status}}}}'",
@@ -306,23 +281,24 @@ def save_logs(test_name: str):
     Save haproxy-lb log.
 
     Examples:
-    "test_{test_name}-{node/agent}-{log}" -> "test_decoder-worker1-api.log"
-    "test_{test_name}-{node/agent}-{log}" -> "test_decoder-agent4-ossec.log"
+    "test_{test_name}-{node/agent}-{log}" -> "test_cluster-worker1-api.log"
+    "test_{test_name}-{node/agent}-{log}" -> "test_cluster-agent4-ossec.log"
 
     Parameters
     ----------
     test_name : str
         Name of the test.
     """
-    logs_path = '/var/ossec/logs'
+    manager_logs_path = '/var/wazuh-manager/logs'
+    agent_logs_path = '/var/ossec/logs'
 
     # Save cluster nodes' logs
-    logs = ['api.log', 'cluster.log', 'ossec.log']
+    logs = ['api.log', 'cluster.log', 'wazuh-manager.log']
     for node in env_cluster_nodes:
         for log in logs:
             try:
                 subprocess.check_output(
-                    f"docker cp env-wazuh-{node}-1:{os.path.join(logs_path, log)} "
+                    f"docker cp env-wazuh-{node}-1:{os.path.join(manager_logs_path, log)} "
                     f"{os.path.join(test_logs_path, f'test_{test_name}-{node}-{log}')}",
                     shell=True)
             except subprocess.CalledProcessError:
@@ -332,7 +308,7 @@ def save_logs(test_name: str):
     for agent in agent_names:
         try:
             subprocess.check_output(
-                f"docker cp env-wazuh-{agent}-1:{os.path.join(logs_path, 'ossec.log')} "
+                f"docker cp env-wazuh-{agent}-1:{os.path.join(agent_logs_path, 'ossec.log')} "
                 f"{os.path.join(test_logs_path, f'test_{test_name}-{agent}-ossec.log')}",
                 shell=True)
         except subprocess.CalledProcessError:
@@ -357,7 +333,7 @@ def api_test(request: _pytest.fixtures.SubRequest):
         Object that contains information about the current test
     """
 
-    def clean_up_env(env_mode: str):
+    def clean_up_env():
         """Clean temporary folder, save environment logs and status; and stop and remove all Docker containers."""
         clean_tmp_folder()
         if request.session.testsfailed > 0:
@@ -366,15 +342,12 @@ def api_test(request: _pytest.fixtures.SubRequest):
         # Get the environment current status
         global environment_status
         environment_status = get_health()
-        down_env(env_mode)
+        down_env()
 
-    # Get the value of the mark indicating the test mode. This value will vary between 'cluster' or 'standalone'
-    mode = request.node.config.getoption("-m")
-    env_mode = standalone_env_mode if mode == 'standalone' else cluster_env_mode
     os.makedirs(test_logs_path, exist_ok=True)
 
     # Add clean_up_env as fixture finalizer
-    request.addfinalizer(lambda: clean_up_env(env_mode))
+    request.addfinalizer(lambda: clean_up_env())
 
     test_filename = request.node.config.args[0].split('_')
     if 'rbac' in test_filename:
@@ -393,13 +366,13 @@ def api_test(request: _pytest.fixtures.SubRequest):
         enable_white_mode()
 
     general_procedure(module)
-    build_and_up(build=request.config.getoption('--nobuild'), env_mode=env_mode)
+    build_and_up(build=request.config.getoption('--nobuild'))
 
     max_retries = 30
     retries = 0
 
     while retries < max_retries:
-        managers_health = check_health(only_check_master_health=env_mode == standalone_env_mode)
+        managers_health = check_health()
         agents_health = check_health(node_type='agent', agents=list(range(1, 9)))
         haproxy_health = check_health(node_type='haproxy-lb')
 
@@ -524,10 +497,10 @@ def pytest_runtest_makereport(item, call):
     elif report.outcome == 'failed':
         results[report.location[0]]['error'] += 1
 
-    if report.when == 'setup' and \
-            report.longrepr and ('api_test did not yield a value' in report.longrepr.reprcrash.message or
-                                 'StopIteration' in report.longrepr.reprcrash.message):
-        report.sections.append(('Environment section', environment_status))
+    if report.when == 'setup' and report.longrepr:
+        repr_text = str(report.longrepr)
+        if 'api_test did not yield a value' in repr_text or 'StopIteration' in repr_text:
+            report.sections.append(('Environment section', environment_status))
 
 
 @pytest.hookimpl(optionalhook=True)

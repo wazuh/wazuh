@@ -21,7 +21,7 @@
  * @brief TEndpointPostV1AgentsRestartInfo class.
  *
  */
-template<typename DBConnection = SQLite::Connection, typename DBStatement = SQLite::Statement>
+template<typename DBConnection = SQLite3Wrapper::Connection, typename DBStatement = SQLite3Wrapper::Statement>
 class TEndpointPostV1AgentsRestartInfo final
 {
     struct AgentRestartInfo final

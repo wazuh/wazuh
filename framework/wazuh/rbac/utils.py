@@ -5,7 +5,6 @@
 from cachetools import TTLCache, cached
 from cachetools.keys import hashkey
 from functools import partial, wraps
-from os import walk
 
 from wazuh.core import common
 
@@ -83,62 +82,3 @@ def resource_cache(cache: TTLCache = RESOURCES_CACHE):
         return wrapper
 
     return decorator
-
-
-@resource_cache()
-def expand_rules() -> set:
-    """Return all ruleset rule files in the system.
-
-    Returns
-    -------
-    set
-        Rule files.
-    """
-    folders = [common.RULES_PATH, common.USER_RULES_PATH]
-    rules = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.RULES_EXTENSION), files):
-                rules.add(f)
-
-    return rules
-
-
-@resource_cache()
-def expand_decoders() -> set:
-    """Return all ruleset decoder files in the system.
-
-    Returns
-    -------
-    set
-        Decoder files.
-    """
-    folders = [common.DECODERS_PATH, common.USER_DECODERS_PATH]
-    decoders = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.DECODERS_EXTENSION), files):
-                decoders.add(f)
-
-    return decoders
-
-
-@resource_cache()
-def expand_lists() -> set:
-    """Return all CDB list files in the system.
-
-    Returns
-    -------
-    set
-        CDB list files.
-    """
-    folders = [common.LISTS_PATH, common.USER_LISTS_PATH]
-    lists = set()
-    for folder in folders:
-        for _, _, files in walk(folder):
-            for f in filter(lambda x: x.endswith(common.LISTS_EXTENSION), files):
-                # List files do not have an extension at the moment
-                if '.' not in f:
-                    lists.add(f)
-
-    return lists

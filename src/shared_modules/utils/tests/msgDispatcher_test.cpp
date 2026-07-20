@@ -9,10 +9,10 @@
  * Foundation.
  */
 
-#include <thread>
-#include <chrono>
 #include "msgDispatcher_test.h"
 #include "msgDispatcher.h"
+#include <chrono>
+#include <thread>
 
 using Key = int;
 using Value = std::string;
@@ -21,11 +21,11 @@ using DecodedValue = std::pair<Key, Value>;
 
 class DecoderWrapper
 {
-    public:
-        DecoderWrapper() {}
-        ~DecoderWrapper() {}
-        MOCK_METHOD(DecodedValue, decode, (const RawValue&), ());
-        MOCK_METHOD(void, callback, (const Value&));
+public:
+    DecoderWrapper() {}
+    ~DecoderWrapper() {}
+    MOCK_METHOD(DecodedValue, decode, (const RawValue&), ());
+    MOCK_METHOD(void, callback, (const Value&));
 };
 
 void MsgDispatcherTest::SetUp() {};
@@ -39,12 +39,12 @@ using TestMsgDispatcher = MsgDispatcher<Key, Value, RawValue, DecoderWrapper>;
 
 TEST_F(MsgDispatcherTest, MsgDispatcherPushAndRundown)
 {
-    const Key key1{100};
-    const Key key2{200};
-    const Key key3{300};
-    const auto input1 {RawValue{reinterpret_cast<void*>(0x65654), 5000}};
-    const auto input2 {RawValue{reinterpret_cast<void*>(0x65244), 4000}};
-    const auto input3 {RawValue{reinterpret_cast<void*>(0x68878), 6546}};
+    const Key key1 {100};
+    const Key key2 {200};
+    const Key key3 {300};
+    const auto input1 {RawValue {reinterpret_cast<void*>(0x65654), 5000}};
+    const auto input2 {RawValue {reinterpret_cast<void*>(0x65244), 4000}};
+    const auto input3 {RawValue {reinterpret_cast<void*>(0x68878), 6546}};
 
     const auto decoded1 {DecodedValue(key1, "value 0")};
     const auto decoded2 {DecodedValue(key2, "value 1")};
@@ -57,15 +57,8 @@ TEST_F(MsgDispatcherTest, MsgDispatcherPushAndRundown)
     EXPECT_CALL(dispatcher, callback(decoded1.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded2.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded3.second)).Times(0);
-    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
-    {
-        dispatcher.callback(value);
-    }));
-    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
-    {
-        dispatcher.callback(value);
-    }));
-
+    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value& value) { dispatcher.callback(value); }));
+    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value& value) { dispatcher.callback(value); }));
 
     dispatcher.push(input1);
     dispatcher.push(input2);
@@ -80,12 +73,12 @@ TEST_F(MsgDispatcherTest, MsgDispatcherPushAndRundown)
 
 TEST_F(MsgDispatcherTest, MsgDispatcherPushSync)
 {
-    const Key key1{100};
-    const Key key2{200};
-    const Key key3{300};
-    const auto input1 {RawValue{reinterpret_cast<void*>(0x65654), 5000}};
-    const auto input2 {RawValue{reinterpret_cast<void*>(0x65244), 4000}};
-    const auto input3 {RawValue{reinterpret_cast<void*>(0x68878), 6546}};
+    const Key key1 {100};
+    const Key key2 {200};
+    const Key key3 {300};
+    const auto input1 {RawValue {reinterpret_cast<void*>(0x65654), 5000}};
+    const auto input2 {RawValue {reinterpret_cast<void*>(0x65244), 4000}};
+    const auto input3 {RawValue {reinterpret_cast<void*>(0x68878), 6546}};
 
     const auto decoded1 {DecodedValue(key1, "value 0")};
     const auto decoded2 {DecodedValue(key2, "value 1")};
@@ -98,14 +91,8 @@ TEST_F(MsgDispatcherTest, MsgDispatcherPushSync)
     EXPECT_CALL(dispatcher, callback(decoded1.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded2.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded3.second)).Times(0);
-    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
-    {
-        dispatcher.callback(value);
-    }));
-    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
-    {
-        dispatcher.callback(value);
-    }));
+    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value& value) { dispatcher.callback(value); }));
+    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value& value) { dispatcher.callback(value); }));
 
     dispatcher.dispatch(input1);
     dispatcher.dispatch(input2);
@@ -114,31 +101,22 @@ TEST_F(MsgDispatcherTest, MsgDispatcherPushSync)
 
 TEST_F(MsgDispatcherTest, MsgDispatcherAddCallbackTwice)
 {
-    const Key key1{100};
-    const Key key2{200};
+    const Key key1 {100};
+    const Key key2 {200};
     TestMsgDispatcher dispatcher;
-    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
-    {
-        dispatcher.callback(value);
-    }));
-    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
-    {
-        dispatcher.callback(value);
-    }));
-    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
-    {
-        dispatcher.callback(value);
-    }));
+    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value& value) { dispatcher.callback(value); }));
+    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value& value) { dispatcher.callback(value); }));
+    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value& value) { dispatcher.callback(value); }));
 }
 
 TEST_F(MsgDispatcherTest, MsgDispatcherRemoveCallback)
 {
-    const Key key1{100};
-    const Key key2{200};
-    const Key key3{300};
-    const auto input1 {RawValue{reinterpret_cast<void*>(0x65654), 5000}};
-    const auto input2 {RawValue{reinterpret_cast<void*>(0x65244), 4000}};
-    const auto input3 {RawValue{reinterpret_cast<void*>(0x68878), 6546}};
+    const Key key1 {100};
+    const Key key2 {200};
+    const Key key3 {300};
+    const auto input1 {RawValue {reinterpret_cast<void*>(0x65654), 5000}};
+    const auto input2 {RawValue {reinterpret_cast<void*>(0x65244), 4000}};
+    const auto input3 {RawValue {reinterpret_cast<void*>(0x68878), 6546}};
 
     const auto decoded1 {DecodedValue(key1, "value 0")};
     const auto decoded2 {DecodedValue(key2, "value 1")};
@@ -151,14 +129,8 @@ TEST_F(MsgDispatcherTest, MsgDispatcherRemoveCallback)
     EXPECT_CALL(dispatcher, callback(decoded1.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded2.second)).Times(1);
     EXPECT_CALL(dispatcher, callback(decoded3.second)).Times(0);
-    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value & value)
-    {
-        dispatcher.callback(value);
-    }));
-    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value & value)
-    {
-        dispatcher.callback(value);
-    }));
+    EXPECT_NO_THROW(dispatcher.addCallback(key1, [&dispatcher](const Value& value) { dispatcher.callback(value); }));
+    EXPECT_NO_THROW(dispatcher.addCallback(key2, [&dispatcher](const Value& value) { dispatcher.callback(value); }));
 
     dispatcher.dispatch(input1);
     dispatcher.dispatch(input2);

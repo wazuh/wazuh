@@ -1,8 +1,0 @@
-- name: enabled
-  description: EPS Limits enabled
-  configuration_parameters:
-    MAXIMUM: '20'
-    TIMEFRAME: '5'
-  metadata:
-    maximum: 20
-    timeframe: 5

@@ -2,6 +2,19 @@ name: "Coding style check"
 description: "Validates the Coding style of a given module"
 
 inputs:
+  aws_region:
+    description: "AWS region for S3 (pass the CI_AWS_REGION secret)."
+    required: false
+    default: "us-east-1"
+
+  bucket:
+    description: "Target S3 bucket URI (pass the CI_INTERNAL_S3_BUCKET secret)."
+    required: false
+    default: ""
+  aws_role:
+    description: "IAM role (OIDC) to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+    required: false
+    default: ""
   path:
     required: true
     description: "Path to validate"
@@ -72,7 +85,7 @@ runs:
         if: env.ACT && env.USE_WAZUH_CLANG_FORMAT != 'true'
         shell: bash
         run: |
-          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key|sudo apt-key add -
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
           echo "deb http://deb.debian.org/debian/ testing main" >>  /etc/apt/sources.conf
           sudo apt update
 
@@ -90,17 +103,11 @@ runs:
         run: |
           set -euo pipefail
 
-          # Don't apply changes, just check
-          arguments="--dry-run "
+          readonly ERRORS_FILE=${{ inputs.path }}/clang_format_errors.txt
+          mapfile -t SOURCE_FILES < <(find "${{ inputs.path }}" -type f \( -name "*.cpp" -o -name "*.hpp" \))
 
-          # Retrieve all the source files for the desired module
-          sourceFiles=$(find ${{ inputs.path }} -type f \( -name "*.cpp" -o -name "*.hpp" \) | tr '\n' ' ')
-          arguments+="-i $sourceFiles "
+          "${CLANG_FORMAT_BIN}" --dry-run -i "${SOURCE_FILES[@]}" 2> "${ERRORS_FILE}"
 
-          ERRORS_FILE=${{ inputs.path }}/clang_format_errors.txt
-          "${CLANG_FORMAT_BIN}" $arguments 2> ${ERRORS_FILE}
-
-          # Check if there are errors
           if [ -s "${ERRORS_FILE}" ]; then
             echo "---------------------------------"
             echo "FAILED: Clang-format check failed"
@@ -113,9 +120,11 @@ runs:
           fi
 
       # Upload errors as an artifact, when failed
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/upload_s3_artifact
         if: failure()
         with:
+          aws_region: ${{ inputs.aws_region }}
+          bucket: ${{ inputs.bucket }}
+          aws_role: ${{ inputs.aws_role }}
           name: Clang-format errors - ${{ inputs.id }}
           path: ${{ inputs.path }}/clang_format_errors.txt
-          retention-days: 1

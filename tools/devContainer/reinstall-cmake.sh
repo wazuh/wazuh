@@ -5,6 +5,7 @@
 #-------------------------------------------------------------------------------------------------------------
 #
 set -e
+set -o pipefail
 
 CMAKE_VERSION=${1:-"none"}
 
@@ -12,6 +13,9 @@ if [ "${CMAKE_VERSION}" = "none" ]; then
     echo "No CMake version specified, skipping CMake reinstallation"
     exit 0
 fi
+
+# Accept both "3.x.y" and "v3.x.y".
+CMAKE_VERSION="${CMAKE_VERSION#v}"
 
 # Cleanup temporary directory and associated files when exiting the script.
 cleanup() {
@@ -49,10 +53,18 @@ TMP_DIR=$(mktemp -d -t cmake-XXXXXXXXXX)
 echo "${TMP_DIR}"
 cd "${TMP_DIR}"
 
-curl -sSL "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/${CMAKE_BINARY_NAME}" -O
-curl -sSL "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/${CMAKE_CHECKSUM_NAME}" -O
+curl -fsSLo "${CMAKE_BINARY_NAME}" --retry 3 --retry-delay 2 \
+    "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/${CMAKE_BINARY_NAME}"
+curl -fsSLo "${CMAKE_CHECKSUM_NAME}" --retry 3 --retry-delay 2 \
+    "https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/${CMAKE_CHECKSUM_NAME}"
 
-sha256sum -c --ignore-missing "${CMAKE_CHECKSUM_NAME}"
+CHECKSUM_LINE="$(grep "  ${CMAKE_BINARY_NAME}$" "${CMAKE_CHECKSUM_NAME}" || true)"
+if [ -z "${CHECKSUM_LINE}" ]; then
+    echo "Could not find checksum entry for ${CMAKE_BINARY_NAME} in ${CMAKE_CHECKSUM_NAME}"
+    exit 1
+fi
+
+printf "%s\n" "${CHECKSUM_LINE}" | sha256sum -c -
 sh "${TMP_DIR}/${CMAKE_BINARY_NAME}" --prefix=/opt/cmake --skip-license
 
 ln -s /opt/cmake/bin/cmake /usr/local/bin/cmake

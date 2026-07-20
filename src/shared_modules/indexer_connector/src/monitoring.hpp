@@ -12,7 +12,7 @@
 #ifndef _MONITORING_HPP
 #define _MONITORING_HPP
 
-#include "HTTPRequest.hpp"
+#include "IURLRequest.hpp"
 #include "secureCommunication.hpp"
 #include <atomic>
 #include <chrono>
@@ -40,7 +40,8 @@ auto constexpr MONITOR_NAME {"monitoring"};
  * @brief Monitoring class.
  *
  */
-class Monitoring final
+template<typename THttpRequest>
+class TMonitoring final
 {
     std::map<std::string, bool, std::less<>> m_servers;
     std::thread m_thread;
@@ -48,6 +49,9 @@ class Monitoring final
     std::condition_variable m_condition;
     std::atomic<bool> m_stop {false};
     uint32_t m_interval {INTERVAL};
+    THttpRequest* m_httpRequest;
+    std::map<std::string, std::string, std::less<>> m_unavailableReasonByServer;
+    std::map<std::string, bool, std::less<>> m_previousServerAvailability;
 
     /**
      * @brief Checks the health of a server.
@@ -63,6 +67,10 @@ class Monitoring final
     void healthCheck(const std::string& serverAddress, const SecureCommunication& authentication)
     {
         auto& serverStatus = m_servers[serverAddress];
+        const auto previousAvailability = m_previousServerAvailability.find(serverAddress);
+        const bool wasAvailable =
+            previousAvailability == m_previousServerAvailability.end() || previousAvailability->second;
+        std::string unavailableReason;
 
         // Set the server status to unavailable by default
         serverStatus = false;
@@ -103,8 +111,8 @@ class Monitoring final
         };
 
         // On error callback
-        const auto onError =
-            [&serverAddress](const std::string& error, const long statusCode, const std::string& errorBody)
+        const auto onError = [&serverAddress, &unavailableReason](
+                                 const std::string& error, const long statusCode, const std::string& errorBody)
         {
             // LCOV_EXCL_START
             //  Try to extract error details from JSON
@@ -135,59 +143,74 @@ class Monitoring final
             {
                 if (!errorType.empty() && !errorReason.empty())
                 {
-                    logDebug2(MONITOR_NAME,
-                              "Health check failed for '%s' - type: '%s', reason: '%s' - Check indexer credentials",
-                              serverAddress.c_str(),
-                              errorType.c_str(),
-                              errorReason.c_str());
+                    unavailableReason =
+                        "Unauthorized (" + errorType + ": " + errorReason + ") - Check indexer credentials";
                 }
                 else
                 {
-                    logDebug2(MONITOR_NAME,
-                              "Health check failed for '%s' - Unauthorized - Check indexer credentials",
-                              serverAddress.c_str());
+                    unavailableReason = "Unauthorized - Check indexer credentials";
                 }
             }
             else if (statusCode == 403)
             {
                 if (!errorType.empty() && !errorReason.empty())
                 {
-                    logDebug2(MONITOR_NAME,
-                              "Health check failed for '%s' - type: '%s', reason: '%s' - Check user permissions",
-                              serverAddress.c_str(),
-                              errorType.c_str(),
-                              errorReason.c_str());
+                    unavailableReason = "Forbidden (" + errorType + ": " + errorReason + ") - Check user permissions";
                 }
                 else
                 {
-                    logDebug2(MONITOR_NAME,
-                              "Health check failed for '%s' - Forbidden - Check user permissions",
-                              serverAddress.c_str());
+                    unavailableReason = "Forbidden - Check user permissions";
                 }
             }
             else if (statusCode >= 500)
             {
-                logDebug2(MONITOR_NAME,
-                          "Health check failed for '%s' - Server error (%ld)",
-                          serverAddress.c_str(),
-                          statusCode);
+                unavailableReason = "Server error (HTTP " + std::to_string(statusCode) + ")";
             }
             else
             {
-                logDebug2(MONITOR_NAME,
-                          "Health check failed for '%s' - status: %ld, error: %s",
-                          serverAddress.c_str(),
-                          statusCode,
-                          error.c_str());
+                unavailableReason = error.empty() ? "status: " + std::to_string(statusCode) : error;
             }
+
+            logDebug2(
+                MONITOR_NAME, "Health check failed for '%s' - %s", serverAddress.c_str(), unavailableReason.c_str());
         };
         // LCOV_EXCL_STOP
 
         // Get the health of the server.
-        HTTPRequest::instance().get(
-            RequestParameters {.url = HttpURL(serverAddress + "/_cat/health"), .secureCommunication = authentication},
-            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
-            ConfigurationParameters {.timeout = HEALTH_CHECK_TIMEOUT_MS});
+        thread_local std::string url;
+        url = serverAddress + "/_cat/health";
+
+        m_httpRequest->get(RequestParameters {.url = HttpURL(url), .secureCommunication = authentication},
+                           PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                           ConfigurationParameters {.timeout = HEALTH_CHECK_TIMEOUT_MS});
+
+        if (!serverStatus && unavailableReason.empty())
+        {
+            unavailableReason = "Cluster reported unhealthy status";
+        }
+
+        if (!serverStatus)
+        {
+            m_unavailableReasonByServer[serverAddress] = unavailableReason;
+        }
+        else
+        {
+            m_unavailableReasonByServer.erase(serverAddress);
+        }
+
+        if (wasAvailable && !serverStatus)
+        {
+            logInfo(MONITOR_NAME,
+                    "Indexer node '%s' is no longer available. Reason: %s",
+                    serverAddress.c_str(),
+                    unavailableReason.c_str());
+        }
+        else if (!wasAvailable && serverStatus)
+        {
+            logInfo(MONITOR_NAME, "Indexer node '%s' is available again.", serverAddress.c_str());
+        }
+
+        m_previousServerAvailability[serverAddress] = serverStatus;
     }
 
     /**
@@ -212,13 +235,13 @@ class Monitoring final
     }
 
 public:
-    /**
-     * @brief Class destructor.
-     */
-    ~Monitoring()
+    ~TMonitoring()
     {
-        m_stop = true;
-        m_condition.notify_one();
+        {
+            std::scoped_lock lock(m_mutex);
+            m_stop = true;
+            m_condition.notify_one();
+        }
         if (m_thread.joinable())
         {
             m_thread.join();
@@ -231,11 +254,14 @@ public:
      * @param serverAddresses Servers to be monitored.
      * @param interval Interval for monitoring.
      * @param authentication Object that provides secure communication.
+     * @param httpRequest Optional HTTP request instance for dependency injection (for testing).
      */
-    explicit Monitoring(const std::vector<std::string>& serverAddresses,
-                        const uint32_t interval = INTERVAL,
-                        const SecureCommunication& authentication = {})
+    explicit TMonitoring(const std::vector<std::string>& serverAddresses,
+                         const uint32_t interval = INTERVAL,
+                         const SecureCommunication& authentication = {},
+                         THttpRequest* httpRequest = nullptr)
         : m_interval(interval)
+        , m_httpRequest(httpRequest ? httpRequest : &THttpRequest::instance())
     {
 
         // First, initialize the status of the servers.
@@ -245,10 +271,10 @@ public:
         m_thread = std::thread(
             [this, authentication]()
             {
+                std::unique_lock lock(m_mutex);
                 while (!m_stop)
                 {
                     // Wait for the interval.
-                    std::unique_lock lock(m_mutex);
                     m_condition.wait_for(lock, std::chrono::seconds(m_interval), [this]() { return m_stop.load(); });
 
                     // If the thread is not stopped, check the health of the servers.
@@ -271,10 +297,39 @@ public:
      * @return true if available.
      * @return false if not available.
      */
-    bool isAvailable(const std::string& serverAddress)
+    bool isAvailable(std::string_view serverAddress)
     {
         std::scoped_lock lock(m_mutex);
-        return m_servers.at(serverAddress);
+        auto it = m_servers.find(serverAddress);
+        if (it == m_servers.end())
+        {
+            throw std::out_of_range("Server not found in monitoring");
+        }
+        return it->second;
+    }
+
+    std::string getUnavailableServersDetails()
+    {
+        std::scoped_lock lock(m_mutex);
+        std::string result;
+        for (const auto& [serverAddress, available] : m_servers)
+        {
+            if (available)
+            {
+                continue;
+            }
+
+            const auto unavailableReason = m_unavailableReasonByServer.find(serverAddress);
+            if (!result.empty())
+            {
+                result += "; ";
+            }
+            result += serverAddress + ": " +
+                      (unavailableReason == m_unavailableReasonByServer.end() ? std::string {"unknown"}
+                                                                              : unavailableReason->second);
+        }
+
+        return result.empty() ? "no error details available" : result;
     }
 };
 

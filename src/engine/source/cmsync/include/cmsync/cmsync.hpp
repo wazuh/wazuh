@@ -1,0 +1,158 @@
+#ifndef _CMSYNC_CMSYNC
+#define _CMSYNC_CMSYNC
+
+#include <atomic>
+#include <mutex>
+#include <shared_mutex>
+#include <string>
+
+#include <base/statusSnapshot.hpp>
+#include <cmcrud/icmcrudservice.hpp>
+#include <router/iapi.hpp>
+#include <store/istore.hpp>
+#include <wiconnector/iwindexerconnector.hpp>
+
+#include <cmsync/icmsync.hpp>
+
+namespace cm::sync
+{
+
+// Forward declarations, state of synchronized namespace
+class SyncedNamespace;
+
+class CMSync : public ICMSync
+{
+
+private:
+    std::weak_ptr<wiconnector::IWIndexerConnector> m_indexerPtr; ///< Indexer connector resource
+    std::weak_ptr<cm::crud::ICrudService> m_cmcrudPtr;           ///< Resource namespace handler
+    std::weak_ptr<::store::IStore> m_store;                      ///< Internal config store
+    std::weak_ptr<router::IRouterAPI> m_router;                  ///< Router API for event injection
+
+    std::size_t m_attempts;    ///< Number of attempts to connect or retry operations before failing
+    std::size_t m_waitSeconds; ///< Seconds to wait between attempts
+
+    mutable std::shared_mutex m_mutex; ///< Mutex to protect access to m_namespacesState and sync operations
+    std::vector<SyncedNamespace> m_namespacesState; ///< State of the namespaces being synchronized
+
+    std::atomic<bool> m_shutdownRequested {false}; ///< Flag to signal graceful shutdown of sync operations
+
+    /// Lock-free status snapshot of all spaces. Read via load() (wait-free). Rebuilt and published
+    /// via store() by updateSpacesStatusSnapshot() on the single sync thread.
+    base::StatusSnapshot<SpaceStatus> m_spacesStatus;
+
+    /// Rebuild the spaces status from cached per-namespace state and publish it atomically (lock-free reads).
+    void updateSpacesStatusSnapshot();
+
+    /**
+     * @brief Check if a space exists in the wazuh-indexer
+     *
+     * @param space Space name to check
+     * @return true if the space exists, false otherwise
+     * @throws std::runtime_error on errors.
+     */
+    bool existSpaceInRemote(std::string_view space);
+
+    /**
+     * @brief Download a full namespace from the indexer to the local cmcrud store
+     *
+     * @param originSpace Define the source space in the indexer
+     * @param dstNamespace Define the destination namespace in the local store (Must not exist)
+     * @param consumerId Optional consumer ID to validate during policy retrieval
+     * @return true if the download succeeded, false if consumer is not ready
+     * @throws std::runtime_error on errors.
+     */
+    bool downloadNamespace(std::string_view originSpace,
+                           const cm::store::NamespaceId& dstNamespace,
+                           const std::optional<std::string_view>& consumerId = std::nullopt);
+
+    /**
+     * @brief Get remote policy hash and enabled status from the indexer
+     *
+     * @param space Space name in the indexer
+     * @param consumerId Optional consumer ID to validate within PIT
+     * @return An optional pair containing the policy hash and enabled status.
+     *         Returns std::nullopt if the consumer is provided and is not ready.
+     * @throws std::runtime_error on errors.
+     */
+    std::optional<std::pair<std::string, bool>>
+    getPolicyHashAndEnabledFromRemote(std::string_view space,
+                                      const std::optional<std::string_view>& consumerId = std::nullopt);
+
+    /**
+     * @brief Downloads a namespace from the indexer and enriches it with local assets
+     *
+     * This method performs a two-phase operation to prepare a complete namespace:
+     * 1. Downloads the policy and resources from the wazuh-indexer (KVDB, decoders, integrations, policy)
+     * 2. Enriches the namespace with local-only assets (outputs, filters, etc.)
+     *
+     * The method generates a unique temporary namespace ID to avoid conflicts and performs
+     * automatic rollback on failure, ensuring the local store remains consistent.
+     *
+     * @param originSpace The source space name in the wazuh-indexer to download from
+     * @param consumerId Optional consumer ID to validate during policy retrieval
+     * @return An optional NamespaceId. Returns std::nullopt if consumer is provided and not ready.
+     * @throws std::runtime_error if any step of the process fails
+     * @warning There is no ganrantee that the returned namespace is valid, should be verified by the router.
+     * @note If the operation fails at any point, the temporary namespace is automatically deleted
+     *       to maintain store consistency
+     */
+    std::optional<cm::store::NamespaceId>
+    downloadAndEnrichNamespace(std::string_view originSpace,
+                               const std::optional<std::string_view>& consumerId = std::nullopt);
+
+    /**
+     * @brief Syncs a namespace in the router by updating or creating its route
+     *
+     * This method ensures that the router has an up-to-date route for the specified
+     * namespace. If the route already exists, it updates it to point to the new
+     * namespace ID. If it does not exist, it creates a new route.
+     *
+     * @param nsState The state of the namespace being synchronized, including origin space and route name
+     * @param newNamespaceId The new namespace ID to be used in the router
+     * @throws std::runtime_error if the operation fails
+     */
+    void syncNamespaceInRoute(const SyncedNamespace& nsState, const cm::store::NamespaceId& newNamespaceId);
+
+    void addSpaceToSync(std::string_view space);      ///< Add a space to the sync list
+    void removeSpaceFromSync(std::string_view space); ///< Remove a space from the sync
+
+    void loadStateFromStore(); ///< Load sync state from the internal store
+    void dumpStateToStore();   ///< Dump sync state to the internal store
+
+public:
+    CMSync() = delete;
+    CMSync(const std::shared_ptr<wiconnector::IWIndexerConnector>& indexerPtr,
+           const std::shared_ptr<cm::crud::ICrudService>& cmcrudPtr,
+           const std::shared_ptr<::store::IStore>& storePtr,
+           const std::shared_ptr<router::IRouterAPI>& routerPtr,
+           const size_t attempts,
+           const size_t waitSeconds);
+    ~CMSync() override;
+
+    /**
+     * @brief Perform synchronization of all configured namespaces
+     *
+     * This method iterates through all namespaces configured for synchronization,
+     * checking for updates in the wazuh-indexer. If changes are detected, it
+     * downloads the updated namespace, enriches it with local assets, and updates
+     * the router accordingly.
+     *
+     * @throws std::runtime_error if any step of the synchronization process fails
+     */
+    void synchronize();
+
+    /**
+     * @copydoc ICMSync::requestShutdown
+     */
+    void requestShutdown() override;
+
+    /**
+     * @copydoc ICMSync::getSpacesStatus
+     */
+    std::vector<SpaceStatus> getSpacesStatus() const override;
+};
+
+} // namespace cm::sync
+
+#endif // _CMSYNC_CMSYNC

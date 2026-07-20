@@ -10,10 +10,11 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include <setjmp.h>
+#include <stdint.h>
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
-#include "headers/defs.h"
+#include "defs.h"
 #include "../common.h"
 
 fpos_t * test_position = NULL;

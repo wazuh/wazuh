@@ -1,0 +1,13 @@
+name: 4.X - Python - Code analysis
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 10 * * 2'
+
+jobs:
+  deprecated:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Warning
+        run: echo "This workflow is deprecated. Be careful, you have just run it from main."

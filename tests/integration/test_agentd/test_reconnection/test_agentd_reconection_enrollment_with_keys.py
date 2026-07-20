@@ -9,8 +9,8 @@ type: integration
 
 brief: The 'wazuh-agentd' program is the client-side daemon that communicates with the server.
        The objective is to check that, with different states in the 'clients.keys' file,
-       the agent successfully enrolls after losing connection with the 'wazuh-remoted' daemon.
-       The wazuh-remoted program is the server side daemon that communicates with the agents.
+       the agent successfully enrolls after losing connection with the 'wazuh-manager-remoted' daemon.
+       The wazuh-manager-remoted program is the server side daemon that communicates with the agents.
 
 components:
     - agentd
@@ -20,8 +20,8 @@ targets:
 
 daemons:
     - wazuh-agentd
-    - wazuh-authd
-    - wazuh-remoted
+    - wazuh-manager-authd
+    - wazuh-manager-remoted
 
 os_platform:
     - linux
@@ -85,8 +85,8 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
                                                  truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''
        description: Check how the agent behaves when losing communication with
-                 the 'wazuh-remoted' daemon and a new enrollment is sent to
-                 the 'wazuh-authd' daemon.
+                 the 'wazuh-manager-remoted' daemon and a new enrollment is sent to
+                 the 'wazuh-manager-authd' daemon.
                  In this case, the agent starts with keys.
 
     wazuh_min_version: 4.2.0
@@ -121,7 +121,7 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
 
     input_description: An external YAML file (wazuh_conf.yaml) includes configuration settings for the agent.
                        Two test cases are found in the test module and include parameters
-                       for the environment setup using the TCP and UDP protocols.
+                       for the environment setup using the TCP protocols.
 
     expected_output:
         - r'Valid key received'
@@ -135,7 +135,7 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
 
     try:
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol=test_metadata['PROTOCOL'])
+        remoted_server = RemotedSimulator(protocol = 'tcp')
         remoted_server.start()
 
         # Wait until Agent is connected
@@ -145,8 +145,7 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         remoted_server.destroy()
 
         # Start rejecting Agent
-        remoted_server = RemotedSimulator(
-            protocol=test_metadata['PROTOCOL'], mode='WRONG_KEY')
+        remoted_server = RemotedSimulator(protocol = 'tcp', mode = 'WRONG_KEY')
         remoted_server.start()
 
         # Start AuthdSimulator
@@ -160,7 +159,7 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         remoted_server.destroy()
 
         # Start responding Agent
-        remoted_server = RemotedSimulator(protocol=test_metadata['PROTOCOL'])
+        remoted_server = RemotedSimulator(protocol = 'tcp')
         remoted_server.start()
 
         # Wait until Agent is connected

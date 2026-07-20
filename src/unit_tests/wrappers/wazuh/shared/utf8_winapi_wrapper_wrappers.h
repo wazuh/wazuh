@@ -12,7 +12,7 @@
 
 #ifdef WIN32
 
-#include "../../../../headers/utf8_winapi_wrapper.h"
+#include "utf8_winapi_wrapper.h"
 
 wchar_t* __wrap_auto_to_wide(const char* input);
 
@@ -61,6 +61,16 @@ DWORD __wrap_utf8_SetNamedSecurityInfo(const char* utf8_path,
                                        PSID group,
                                        PACL dacl,
                                        PACL sacl);
+
+BOOL __wrap_utf8_LookupAccountSid(LPCSTR lpSystemName,
+                                  PSID lpSid,
+                                  char **lpName,
+                                  LPDWORD cchName,
+                                  char **lpReferencedDomainName,
+                                  LPDWORD cchReferencedDomainName,
+                                  PSID_NAME_USE peUse);
+
+void expect_utf8_LookupAccountSid_call(char *name, char *domain_name, int ret_value);
 
 #endif
 

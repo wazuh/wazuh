@@ -3,11 +3,9 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     RIDS_CLOSING_TIME: '0s'
   metadata:
     port: '1514'
-    connection: 'secure'
     rids_closing_time: '0s'
 
 
@@ -16,9 +14,7 @@
   configuration_parameters:
     PORT: '1514'
     PROTOCOL: 'TCP'
-    CONNECTION: 'secure'
     RIDS_CLOSING_TIME: '4S'
   metadata:
     port: '1514'
-    connection: 'secure'
     rids_closing_time: '4S'

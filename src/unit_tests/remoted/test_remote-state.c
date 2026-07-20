@@ -14,8 +14,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../../remoted/remoted.h"
-#include "../../remoted/state.h"
+#include "remoted.h"
+#include "../../remoted/src/state.h"
 
 #include "../wrappers/posix/time_wrappers.h"
 #include "../wrappers/wazuh/remoted/queue_wrappers.h"
@@ -23,7 +23,7 @@
 #include "../wrappers/common.h"
 #include "../wrappers/wazuh/shared/hash_op_wrappers.h"
 #include "../wrappers/wazuh/shared/cluster_utils_wrappers.h"
-#include "../wrappers/wazuh/wazuh_db/wdb_global_helpers_wrappers.h"
+#include "../wrappers/wazuh/shared/wazuhdb_queries_op_wrappers.h"
 
 typedef struct test_struct {
     remoted_agent_state_t *agent_state;
@@ -45,12 +45,15 @@ static int test_setup(void ** state) {
     remoted_state.recv_bytes = 123456;
     remoted_state.sent_bytes = 234567;
     remoted_state.keys_reload_count = 15;
-    remoted_state.recv_breakdown.evt_count = 1234;
+    remoted_state.recv_breakdown.events_count = 1234;
     remoted_state.recv_breakdown.ctrl_count = 2345;
+    remoted_state.recv_breakdown.states_count = 333;
+    remoted_state.recv_breakdown.upgrade_ack_count = 11;
     remoted_state.recv_breakdown.ping_count = 18;
     remoted_state.recv_breakdown.unknown_count = 8;
     remoted_state.recv_breakdown.dequeued_count = 4;
     remoted_state.recv_breakdown.discarded_count = 95;
+    remoted_state.recv_breakdown.events_failed_count = 7;
     remoted_state.recv_breakdown.ctrl_breakdown.keepalive_count = 1115;
     remoted_state.recv_breakdown.ctrl_breakdown.startup_count = 48;
     remoted_state.recv_breakdown.ctrl_breakdown.shutdown_count = 12;
@@ -58,7 +61,6 @@ static int test_setup(void ** state) {
     remoted_state.sent_breakdown.ack_count = 1114;
     remoted_state.sent_breakdown.shared_count = 2540;
     remoted_state.sent_breakdown.ar_count = 18;
-    remoted_state.sent_breakdown.sca_count = 8;
     remoted_state.sent_breakdown.request_count = 9;
     remoted_state.sent_breakdown.discarded_count = 85;
 
@@ -76,8 +78,10 @@ static int test_setup_agent(void ** state) {
     remoted_agents_state = __wrap_OSHash_Create();
 
     test_data->agent_state->uptime = 123456789;
-    test_data->agent_state->recv_evt_count = 12568;
+    test_data->agent_state->recv_events_count = 12568;
     test_data->agent_state->recv_ctrl_count = 2568;
+    test_data->agent_state->recv_states_count = 442;
+    test_data->agent_state->recv_upgrade_ack_count = 5;
     test_data->agent_state->ctrl_breakdown.keepalive_count = 1234;
     test_data->agent_state->ctrl_breakdown.startup_count = 2345;
     test_data->agent_state->ctrl_breakdown.shutdown_count = 234;
@@ -85,7 +89,6 @@ static int test_setup_agent(void ** state) {
     test_data->agent_state->sent_breakdown.ack_count = 2346;
     test_data->agent_state->sent_breakdown.shared_count = 235;
     test_data->agent_state->sent_breakdown.ar_count = 514;
-    test_data->agent_state->sent_breakdown.sca_count = 134;
     test_data->agent_state->sent_breakdown.request_count = 153;
     test_data->agent_state->sent_breakdown.discarded_count = 235;
 
@@ -177,10 +180,14 @@ void test_rem_create_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(messages, "received_breakdown"));
     cJSON* recv = cJSON_GetObjectItem(messages, "received_breakdown");
 
-    assert_non_null(cJSON_GetObjectItem(recv, "event"));
-    assert_int_equal(cJSON_GetObjectItem(recv, "event")->valueint, 1234);
+    assert_non_null(cJSON_GetObjectItem(recv, "events"));
+    assert_int_equal(cJSON_GetObjectItem(recv, "events")->valueint, 1234);
     assert_non_null(cJSON_GetObjectItem(recv, "control"));
     assert_int_equal(cJSON_GetObjectItem(recv, "control")->valueint, 2345);
+    assert_non_null(cJSON_GetObjectItem(recv, "states"));
+    assert_int_equal(cJSON_GetObjectItem(recv, "states")->valueint, 333);
+    assert_non_null(cJSON_GetObjectItem(recv, "upgrade_ack"));
+    assert_int_equal(cJSON_GetObjectItem(recv, "upgrade_ack")->valueint, 11);
     assert_non_null(cJSON_GetObjectItem(recv, "ping"));
     assert_int_equal(cJSON_GetObjectItem(recv, "ping")->valueint, 18);
     assert_non_null(cJSON_GetObjectItem(recv, "unknown"));
@@ -189,6 +196,8 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(recv, "dequeued_after")->valueint, 4);
     assert_non_null(cJSON_GetObjectItem(recv, "discarded"));
     assert_int_equal(cJSON_GetObjectItem(recv, "discarded")->valueint, 95);
+    assert_non_null(cJSON_GetObjectItem(recv, "events_failed"));
+    assert_int_equal(cJSON_GetObjectItem(recv, "events_failed")->valueint, 7);
 
     assert_non_null(cJSON_GetObjectItem(recv, "control_breakdown"));
     cJSON* ctrl = cJSON_GetObjectItem(recv, "control_breakdown");
@@ -211,8 +220,6 @@ void test_rem_create_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(sent, "shared")->valueint, 2540);
     assert_non_null(cJSON_GetObjectItem(sent, "ar"));
     assert_int_equal(cJSON_GetObjectItem(sent, "ar")->valueint, 18);
-    assert_non_null(cJSON_GetObjectItem(sent, "sca"));
-    assert_int_equal(cJSON_GetObjectItem(sent, "sca")->valueint, 8);
     assert_non_null(cJSON_GetObjectItem(sent, "request"));
     assert_int_equal(cJSON_GetObjectItem(sent, "request")->valueint, 9);
     assert_non_null(cJSON_GetObjectItem(sent, "discarded"));
@@ -270,8 +277,10 @@ void test_rem_create_agents_state_json(void ** state) {
     assert_non_null(cJSON_GetObjectItem(messages, "received_breakdown"));
     cJSON* messages_received_breakdown = cJSON_GetObjectItem(messages, "received_breakdown");
 
-    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "event")->valueint, 12568);
+    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "events")->valueint, 12568);
     assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "control")->valueint, 2568);
+    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "states")->valueint, 442);
+    assert_int_equal(cJSON_GetObjectItem(messages_received_breakdown, "upgrade_ack")->valueint, 5);
 
     assert_non_null(cJSON_GetObjectItem(messages_received_breakdown, "control_breakdown"));
     cJSON* control_breakdown = cJSON_GetObjectItem(messages_received_breakdown, "control_breakdown");
@@ -287,7 +296,6 @@ void test_rem_create_agents_state_json(void ** state) {
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ack")->valueint, 2346);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "shared")->valueint, 235);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "ar")->valueint, 514);
-    assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "sca")->valueint, 134);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "request")->valueint, 153);
     assert_int_equal(cJSON_GetObjectItem(messages_sent_breakdown, "discarded")->valueint, 235);
 

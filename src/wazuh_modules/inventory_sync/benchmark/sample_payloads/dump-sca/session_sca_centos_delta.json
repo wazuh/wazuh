@@ -1,0 +1,174 @@
+{
+  "session_id": 17814871816986338452,
+  "metadata": {
+    "agentid": "001",
+    "agentname": "wazuh-agent-5x-centos",
+    "module": "sca",
+    "mode": "ModuleDelta",
+    "option": "Sync",
+    "indices": [
+      "wazuh-states-sca"
+    ],
+    "architecture": "x86_64",
+    "hostname": "wazuh-agent-5x-centos",
+    "osname": "Rocky Linux",
+    "osplatform": "rocky",
+    "ostype": "linux",
+    "osversion": "8.10",
+    "agentversion": "v5.0.0",
+    "groups": [
+      "default"
+    ],
+    "cluster_name": "wazuh",
+    "cluster_node": "node01"
+  },
+  "items": [
+    {
+      "seq": 0,
+      "operation": "Upsert",
+      "id": "e0d2c296e401cd735180468d1efeba0ffe9f6788",
+      "index": "wazuh-states-sca",
+      "version": 1,
+      "data": {
+        "check": {
+          "compliance": {
+            "cmmc": [
+              "AC.L2-3.1.1",
+              "AC.L2-3.1.2",
+              "AC.L2-3.1.5",
+              "AC.L2-3.1.3",
+              "MP.L2-3.8.2"
+            ],
+            "fedramp": [
+              "AC-5",
+              "AC-6"
+            ],
+            "gdpr": [
+              "IV_32.1.a",
+              "IV_32.1.b",
+              "IV_32.1.c",
+              "IV_32.1.d",
+              "IV_32.2",
+              "IV_32.3",
+              "IV_32.4",
+              "IV_25.1",
+              "IV_25.2",
+              "IV_25.3",
+              "IV_30.1.a",
+              "IV_30.1.b",
+              "IV_30.1.c",
+              "IV_30.1.d",
+              "IV_30.1.e",
+              "IV_30.1.f",
+              "IV_30.1.g",
+              "IV_30.2.a",
+              "IV_30.2.b",
+              "IV_30.2.c",
+              "IV_30.2.d",
+              "IV_30.3",
+              "IV_30.4",
+              "IV_30.5"
+            ],
+            "hipaa": [
+              "164.312(a)(1)"
+            ],
+            "iso_27001": [
+              "A.8.2.3",
+              "A.8.3.1",
+              "A.8.3.2",
+              "A.10.1.1",
+              "A.13.2.1",
+              "A.18.1.4"
+            ],
+            "nis2": [
+              "21.2.g",
+              "21.2.j",
+              "21.2.i"
+            ],
+            "nist_800_171": [
+              "3.1.1",
+              "3.1.2",
+              "3.1.5",
+              "3.1.3",
+              "3.8.2"
+            ],
+            "nist_800_53": [
+              "AC-5",
+              "AC-6"
+            ],
+            "pci_dss": [
+              "7.1",
+              "1.3"
+            ],
+            "tsc": [
+              "CC5.2",
+              "CC6.1",
+              "C1.1",
+              "C1.2",
+              "CC6.2",
+              "CC6.3",
+              "CC6.4",
+              "CC6.5",
+              "CC6.6",
+              "CC6.7",
+              "CC6.8",
+              "P1.1",
+              "P2.1",
+              "P3.1",
+              "P4.1",
+              "P5.1",
+              "P6.1",
+              "P7.1",
+              "P8.1"
+            ]
+          },
+          "condition": "all",
+          "description": "The contents of the /etc/issue file are displayed to users prior to login for local terminals.",
+          "id": "30551",
+          "mitre": {
+            "subtechnique": [
+              "T1048.003",
+              "T1552.001"
+            ],
+            "tactic": [
+              "TA0009",
+              "TA0010"
+            ],
+            "technique": [
+              "T1005",
+              "T1025",
+              "T1041",
+              "T1567",
+              "T1573"
+            ]
+          },
+          "name": "Ensure permissions on /etc/issue are configured.",
+          "rationale": "If the /etc/issue file does not have the correct ownership it could be modified by unauthorized users with incorrect or misleading information.",
+          "remediation": "Run the following commands to set permissions on /etc/issue : # chown root:root /etc/issue # chmod u-x,go-wx /etc/issue.",
+          "result": "Failed",
+          "rules": [
+            "[\"c:stat /etc/issue -> r:Access:\\\\s*\\\\(0644/-rw-r--r--\\\\)\\\\s*Uid:\\\\s*\\\\(\\\\s*\\\\t*0/\\\\s*\\\\t*root\\\\)\\\\s*\\\\t*Gid:\\\\s*\\\\(\\\\s*\\\\t*0/\\\\s*\\\\t*root\\\\)\"]"
+          ]
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "39387e1b74f23760b62148063cb7f9d47201ba64"
+          }
+        },
+        "policy": {
+          "description": "This document provides prescriptive guidance for establishing a secure configuration posture for Rocky Linux 8 systems running on x86_64 platforms.This document was tested against Rocky Linux 8.",
+          "file": "cis_rocky_linux_8.yml",
+          "id": "cis_rocky_linux_8",
+          "name": "CIS Rocky Linux 8 Benchmark v1.0.0",
+          "references": [
+            "[\"https://www.cisecurity.org/cis-benchmarks/\"]"
+          ]
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-22T01:55:00.739Z"
+        }
+      }
+    }
+  ]
+}

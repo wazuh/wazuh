@@ -14,12 +14,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../headers/shared.h"
-#include "../headers/sec.h"
+#include "shared.h"
+#include "sec.h"
 #include "../../wrappers/common.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/rbtree_op_wrappers.h"
 #include "../../wrappers/libc/stdio_wrappers.h"
+#include "../../wrappers/wazuh/shared/file_op_wrappers.h"
+
 
 int OS_IsAllowedID(keystore *keys, const char *id);
 int w_get_agent_net_protocol_from_keystore(keystore * keys, const char * agent_id);

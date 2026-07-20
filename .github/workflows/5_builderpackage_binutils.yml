@@ -1,0 +1,126 @@
+name: 5.X - Build Binutils Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      binutils_major_version:
+        description: "Binutils major version"
+        required: true
+        default: "2"
+      binutils_minor_version:
+        description: "Binutils minor version"
+        required: true
+        default: "38"
+
+jobs:
+  build-deb:
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          BINUTILS_MAJOR_VERSION: ${{ github.event.inputs.binutils_major_version }}
+          BINUTILS_MINOR_VERSION: ${{ github.event.inputs.binutils_minor_version }}
+        run: |
+          docker build -t binutils-deb -f packages/debs/amd64/binutils/Dockerfile \
+            --build-arg BINUTILS_MAJOR_VERSION="$BINUTILS_MAJOR_VERSION" \
+            --build-arg BINUTILS_MINOR_VERSION="$BINUTILS_MINOR_VERSION" .
+          docker run -v /tmp:/tmp binutils-deb /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .deb artifact
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: binutils-deb
+          path: /tmp/*.deb
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  build-rpm:
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          BINUTILS_MAJOR_VERSION: ${{ github.event.inputs.binutils_major_version }}
+          BINUTILS_MINOR_VERSION: ${{ github.event.inputs.binutils_minor_version }}
+        run: |
+          docker build -t binutils-rpm -f packages/rpms/amd64/binutils/Dockerfile \
+            --build-arg BINUTILS_MAJOR_VERSION="$BINUTILS_MAJOR_VERSION" \
+            --build-arg BINUTILS_MINOR_VERSION="$BINUTILS_MINOR_VERSION" .
+          docker run -v /tmp:/tmp binutils-rpm /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .rpm artifact
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: binutils-rpm
+          path: /tmp/*.rpm
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  build-deb-arm64:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          BINUTILS_MAJOR_VERSION: ${{ github.event.inputs.binutils_major_version }}
+          BINUTILS_MINOR_VERSION: ${{ github.event.inputs.binutils_minor_version }}
+        run: |
+          docker build -t binutils-deb-arm64 -f packages/debs/arm64/binutils/Dockerfile \
+            --build-arg BINUTILS_MAJOR_VERSION="$BINUTILS_MAJOR_VERSION" \
+            --build-arg BINUTILS_MINOR_VERSION="$BINUTILS_MINOR_VERSION" .
+          docker run -v /tmp:/tmp binutils-deb-arm64 /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .deb artifact
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: binutils-deb-arm64
+          path: /tmp/*.deb
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+  build-rpm-arm64:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Docker build
+        env:
+          BINUTILS_MAJOR_VERSION: ${{ github.event.inputs.binutils_major_version }}
+          BINUTILS_MINOR_VERSION: ${{ github.event.inputs.binutils_minor_version }}
+        run: |
+          docker build -t binutils-rpm-arm64 -f packages/rpms/arm64/binutils/Dockerfile \
+            --build-arg BINUTILS_MAJOR_VERSION="$BINUTILS_MAJOR_VERSION" \
+            --build-arg BINUTILS_MINOR_VERSION="$BINUTILS_MINOR_VERSION" .
+          docker run -v /tmp:/tmp binutils-rpm-arm64 /bin/bash -c "cp /packages/* /tmp/"
+
+      - name: Upload .rpm artifact
+        uses: ./.github/actions/upload_s3_artifact
+        with:
+          name: binutils-rpm-arm64
+          path: /tmp/*.rpm
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

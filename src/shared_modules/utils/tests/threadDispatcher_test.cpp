@@ -9,10 +9,11 @@
  * Foundation.
  */
 
-#include <thread>
 #include <chrono>
-#include "threadDispatcher_test.h"
+#include <thread>
+
 #include "threadDispatcher.h"
+#include "threadDispatcher_test.h"
 
 void ThreadDispatcherTest::SetUp() {};
 
@@ -24,24 +25,21 @@ using namespace Utils;
 // LCOV_EXCL_START
 class FunctorWrapper
 {
-    public:
-        FunctorWrapper() {}
-        ~FunctorWrapper() {}
-        MOCK_METHOD(void, Operator, (const int), ());
-        void operator()(const int value)
-        {
-            Operator(value);
-        }
+public:
+    FunctorWrapper() {}
+    ~FunctorWrapper() {}
+    MOCK_METHOD(void, Operator, (const int), ());
+    void operator()(const int value)
+    {
+        Operator(value);
+    }
 };
 // LCOV_EXCL_STOP
 
 TEST_F(ThreadDispatcherTest, AsyncDispatcherPushAndRundown)
 {
     FunctorWrapper functor;
-    AsyncDispatcher<int, std::reference_wrapper<FunctorWrapper>> dispatcher
-    {
-        std::ref(functor)
-    };
+    AsyncDispatcher<int, std::reference_wrapper<FunctorWrapper>> dispatcher {std::ref(functor)};
     EXPECT_EQ(std::thread::hardware_concurrency(), dispatcher.numberOfThreads());
 
     for (int i = 0; i < 10; ++i)
@@ -62,10 +60,7 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherPushAndRundown)
 TEST_F(ThreadDispatcherTest, AsyncDispatcherCancel)
 {
     FunctorWrapper functor;
-    AsyncDispatcher<int, std::reference_wrapper<FunctorWrapper>> dispatcher
-    {
-        std::ref(functor)
-    };
+    AsyncDispatcher<int, std::reference_wrapper<FunctorWrapper>> dispatcher {std::ref(functor)};
     EXPECT_EQ(std::thread::hardware_concurrency(), dispatcher.numberOfThreads());
     dispatcher.cancel();
 
@@ -82,30 +77,27 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherCancel)
 
 TEST_F(ThreadDispatcherTest, AsyncDispatcherQueue)
 {
-    constexpr auto NUMBER_OF_THREADS { 1ul };
-    constexpr auto MAX_QUEUE_SIZE { 5ull };
-    constexpr auto NUMBER_OF_ITEMS { 1000 };
+    constexpr auto NUMBER_OF_THREADS {1ul};
+    constexpr auto MAX_QUEUE_SIZE {5ull};
+    constexpr auto NUMBER_OF_ITEMS {1000};
     std::mutex mutex;
     std::unique_lock<std::mutex> lock(mutex);
     std::condition_variable condition;
-    std::atomic<bool> firstCall { true };
+    std::atomic<bool> firstCall {true};
 
-    AsyncDispatcher<int, std::function<void(int)>> dispatcher
-    {
-        [&mutex, &condition, &firstCall](int)
-        {
-            std::unique_lock<std::mutex> lock(mutex);
-            condition.notify_one();
+    AsyncDispatcher<int, std::function<void(int)>> dispatcher {[&mutex, &condition, &firstCall](int)
+                                                               {
+                                                                   std::unique_lock<std::mutex> lock(mutex);
+                                                                   condition.notify_one();
 
-            if (firstCall)
-            {
-                firstCall = false;
-                condition.wait(lock);
-            }
-        }
-        , NUMBER_OF_THREADS
-        , MAX_QUEUE_SIZE
-    };
+                                                                   if (firstCall)
+                                                                   {
+                                                                       firstCall = false;
+                                                                       condition.wait(lock);
+                                                                   }
+                                                               },
+                                                               NUMBER_OF_THREADS,
+                                                               MAX_QUEUE_SIZE};
 
     dispatcher.push(0);
     condition.wait(lock);
@@ -121,3 +113,61 @@ TEST_F(ThreadDispatcherTest, AsyncDispatcherQueue)
     dispatcher.rundown();
 }
 
+TEST_F(ThreadDispatcherTest, CaptureWarningMsg)
+{
+    std::atomic<bool> warningCaptured {false};
+    std::promise<void> promise;
+    Log::deassignLogFunction();
+
+    // Custom function that will capture and compare the warning log message.
+    Log::assignLogFunction(
+        [&warningCaptured, &promise](const int logLevel,
+                                     const char* tag,
+                                     const char* file,
+                                     const int line,
+                                     const char* func,
+                                     const char* message,
+                                     va_list args)
+        {
+            // Receives the exception message from the dispatch method.
+            if (logLevel == Log::LOGLEVEL_DEBUG)
+            {
+                char buffer[4096];
+                vsnprintf(buffer, sizeof(buffer), message, args);
+                std::string formattedMsg(buffer);
+                // Compare expected message.
+                EXPECT_EQ("Dispatch handler error, Test exception", formattedMsg);
+                warningCaptured = true;
+                // Avoid multiple captures.
+                try
+                {
+                    promise.set_value();
+                }
+                catch (...)
+                {
+                }
+            }
+        });
+
+    std::string testMsg {"Test message"};
+    AsyncDispatcher<std::string, std::function<void(std::string)>> dispatcher(
+        [testMsg](const std::string& data)
+        {
+            EXPECT_EQ(testMsg, data);
+            throw std::runtime_error("Test exception");
+        });
+
+    dispatcher.push(testMsg);
+    dispatcher.rundown();
+
+    // Wait for the warning log to be captured.
+    auto status = promise.get_future().wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready);
+
+    EXPECT_TRUE(warningCaptured.load());
+
+    // Moving dispatcher.rundown() here does not work.
+    // Teardown
+    dispatcher.cancel();
+    Log::deassignLogFunction();
+}

@@ -9,10 +9,18 @@
 
 #include "firefox.hpp"
 #include <fstream>
+#include "stringHelper.h"
 
-FirefoxAddonsProvider::FirefoxAddonsProvider(std::shared_ptr<IBrowserExtensionsWrapper> firefoxAddonsWrapper) : m_firefoxAddonsWrapper(std::move(firefoxAddonsWrapper)) {}
+#include <filesystem_wrapper.hpp>
 
-FirefoxAddonsProvider::FirefoxAddonsProvider() : m_firefoxAddonsWrapper(std::make_shared<BrowserExtensionsWrapper>()) {}
+FirefoxAddonsProvider::FirefoxAddonsProvider(
+    std::shared_ptr<IBrowserExtensionsWrapper> firefoxAddonsWrapper,
+    std::unique_ptr<IFileSystemWrapper> fileSystemWrapper)
+    : m_firefoxAddonsWrapper(std::move(firefoxAddonsWrapper))
+    , m_fileSystemWrapper(fileSystemWrapper ? std::move(fileSystemWrapper) : std::make_unique<file_system::FileSystemWrapper>()) {}
+
+FirefoxAddonsProvider::FirefoxAddonsProvider() : m_firefoxAddonsWrapper(std::make_shared<BrowserExtensionsWrapper>())
+    , m_fileSystemWrapper(std::make_unique<file_system::FileSystemWrapper>()) {}
 
 nlohmann::json FirefoxAddonsProvider::toJson(const FirefoxAddons& addons)
 {
@@ -44,7 +52,7 @@ nlohmann::json FirefoxAddonsProvider::toJson(const FirefoxAddons& addons)
 
 bool FirefoxAddonsProvider::isValidFirefoxProfile(const std::string& profilePath)
 {
-    return Utils::existsRegular(Utils::joinPaths(profilePath, FIREFOX_ADDONS_FILE));
+    return m_fileSystemWrapper->is_regular_file(std::filesystem::path(profilePath) / FIREFOX_ADDONS_FILE);
 }
 
 bool FirefoxAddonsProvider::isValidPath(const std::string& path)
@@ -70,55 +78,55 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
         return firefoxAddons;
     }
 
-    for (auto userHome : Utils::enumerateDir(homePath))
+    for (auto userHome : m_fileSystemWrapper->list_directory(homePath))
     {
         // Ignore ".", ".." and hidden directories
-        if (Utils::startsWith(userHome, "."))
+        if (Utils::startsWith(userHome.filename().string(), "."))
         {
             continue;
         }
 
-        userHome = Utils::joinPaths(homePath, userHome);
+        userHome = std::filesystem::path(homePath) / userHome;
 
-        if (!Utils::existsDir(userHome) || !isValidPath(userHome))
+        if (!m_fileSystemWrapper->is_directory(userHome) || !isValidPath(userHome.string()))
         {
             continue;
         }
 
-        std::string username = Utils::getFilename(userHome);
+        std::string username = userHome.filename().string();
 
         for (const auto& path : FIREFOX_PATHS)
         {
-            const std::string firefoxInstallationPath = Utils::joinPaths(userHome, path);
+            const std::filesystem::path firefoxInstallationPath = userHome / path;
 
-            if (!Utils::existsDir(firefoxInstallationPath) || !isValidPath(firefoxInstallationPath))
+            if (!m_fileSystemWrapper->is_directory(firefoxInstallationPath) || !isValidPath(firefoxInstallationPath.string()))
             {
                 continue;
             }
 
-            for (auto entity : Utils::enumerateDir(firefoxInstallationPath))
+            for (auto entity : m_fileSystemWrapper->list_directory(firefoxInstallationPath))
             {
-                entity = Utils::joinPaths(firefoxInstallationPath, entity);
+                entity = firefoxInstallationPath / entity;
 
-                if (!Utils::existsDir(entity) || !isValidPath(entity))
+                if (!m_fileSystemWrapper->is_directory(entity) || !isValidPath(entity.string()))
                 {
                     continue;
                 }
 
-                if (Utils::getFilename(entity) == "Crash Reports" || Utils::getFilename(entity) == "Pending Pings")
+                if (entity.filename().string() == "Crash Reports" || entity.filename().string() == "Pending Pings")
                 {
                     continue;
                 }
 
-                if (!isValidFirefoxProfile(entity))
+                if (!isValidFirefoxProfile(entity.string()))
                 {
                     // not a valid profile directory, skip.
                     continue;
                 }
 
-                std::string extensionsFilePath = Utils::joinPaths(entity, FIREFOX_ADDONS_FILE);
+                std::filesystem::path extensionsFilePath = entity / FIREFOX_ADDONS_FILE;
 
-                if (!isValidPath(extensionsFilePath))
+                if (!isValidPath(extensionsFilePath.string()))
                 {
                     continue;
                 }
@@ -303,6 +311,13 @@ FirefoxAddons FirefoxAddonsProvider::getAddons()
 
 nlohmann::json FirefoxAddonsProvider::collect()
 {
-    FirefoxAddons firefoxAddons = getAddons();
-    return toJson(firefoxAddons);
+    try
+    {
+        FirefoxAddons firefoxAddons = getAddons();
+        return toJson(firefoxAddons);
+    }
+    catch (const std::filesystem::filesystem_error&)
+    {
+        return nlohmann::json::array();
+    }
 }

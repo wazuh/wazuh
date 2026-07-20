@@ -212,7 +212,25 @@ static sqlite3* openSQLiteDb(const std::string& path, const int flags = SQLITE_O
     {
         sqlite3_open_v2(path.c_str(), &pDb, flags, nullptr)
     };
-    checkSqliteResult(result, "Unspecified type during initialization of SQLite.");
+
+    if (SQLITE_OK != result)
+    {
+        std::string errorMsg = "Failed to open SQLite database at path '" + path + "': ";
+        errorMsg += sqlite3_errstr(result);
+
+        // If pDb is not null, we can get a more detailed error message
+        if (pDb)
+        {
+            errorMsg += " - " + std::string(sqlite3_errmsg(pDb));
+            sqlite3_close_v2(pDb);
+        }
+
+        throw sqlite_error
+        {
+            std::make_pair(result, errorMsg)
+        };
+    }
+
     return pDb;
 }
 
