@@ -128,7 +128,9 @@ typedef struct hc_config_t
     uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
 
     char version[HC_MAX_VERSION];       ///< Product version for Startup.
-    char config_checksum[HC_MAX_CHECKSUM]; ///< merged.mg checksum for Startup/Notify.
+    char config_checksum[HC_MAX_CHECKSUM]; ///< merged.mg checksum, reported on
+    ///< every Notify (agent.config_hash,
+    ///< #37733 C.2). Empty -> omitted.
 
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
     uint32_t stateful_timeout_ms; ///< /stateful requests; 0 -> 120000.
@@ -235,7 +237,13 @@ HC_EXPORTED bool hc_send_sync_session(const char* socket_path, const char* sessi
 
 /* ---- control plane ---- */
 
-/** @brief Queue a task result for the next /control Response. */
+/**
+ * @brief Queue a task result for the next /control Response. result_json
+ *        should be the #37733 C.3 result object ({"status", "data", "error"});
+ *        a non-object string is wrapped as the data of a completed result.
+ *        Whether a task type expects a response is the caller's call (C.3:
+ *        upgrade and info_request do; active_response and restart do not).
+ */
 HC_EXPORTED bool hc_submit_task_response(hc_handle* handle, const char* task_id,
                                          const char* result_json);
 

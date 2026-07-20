@@ -172,8 +172,20 @@ class FakeManager final
                     return;
                 }
 
+                // #37733 Appendix C: startup answers the handshake metadata;
+                // notify and response answer a plain ok.
                 response.status = 200;
-                response.set_content(R"({"limits":{"eps":0}})", "application/json");
+
+                if (request.body.find("\"type\":\"startup\"") != std::string::npos)
+                {
+                    response.set_content(
+                        R"({"limits":{"eps":0},"cluster":{"name":"fake","node":"node01"},)"
+                        R"("agent":{"groups":["default"],"config_hash":"abc"}})",
+                        "application/json");
+                    return;
+                }
+
+                response.set_content(R"({"status":"ok"})", "application/json");
             });
         }
 

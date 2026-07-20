@@ -25,13 +25,14 @@
 #include <vector>
 
 /**
- * @brief The /control client (D7): Startup, Notify and Response.
+ * @brief The /control client: Startup, Notify and Response, speaking the
+ *        message formats of #37733 Appendix C.
  *
  * Drives the pure ControlStateMachine: nextAction() decides the request,
  * step() performs it and feeds the result back as an event. Startup applies
- * the handshake JSON and releases the producer gate; Notify parses the state
- * block, deduped tasks[] (at-least-once), and the optional config_update, and
- * dispatches them through the sink; Response posts queued task results.
+ * the handshake JSON and releases the producer gate; Notify reports the
+ * config hash and dispatches the deduped tasks[] (at-least-once) through the
+ * sink; Response posts queued task results.
  */
 class ControlStream final
 {
@@ -41,7 +42,7 @@ class ControlStream final
 
         /// One control iteration. Returns whether Startup has been accepted (the
         /// producer gate is open) so the facade can gate the data streams.
-        bool step(Waiter& waiter, bool shuttingDown);
+        bool step(Waiter& waiter);
 
         /// Queue a task result for the next Response.
         void queueTaskResponse(const std::string& taskId, const std::string& resultJson);
@@ -57,7 +58,7 @@ class ControlStream final
 
     private:
         OutcomeClass sendStartup(Waiter& waiter);
-        OutcomeClass sendNotify(Waiter& waiter, bool shuttingDown);
+        OutcomeClass sendNotify(Waiter& waiter);
         void sendPendingResponses(Waiter& waiter);
         void applyEffects(const ControlStateMachine::Effects& effects, const std::string& handshake);
         void handleNotifyBody(const std::string& body);

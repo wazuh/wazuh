@@ -193,7 +193,7 @@ TEST_F(ComponentTest, StatefulSessionStreamsFromSpoolAndDedupsOnReplay)
 TEST_F(ComponentTest, ControlStartupReturnsHandshakeJson)
 {
     const auto response = sendSigned(m_performer, m_signer, "/control",
-                                     R"({"phase":"startup","version":"5.1.0"})");
+                                     R"({"type":"startup","version":"5.1.0"})");
     EXPECT_EQ(200, response.httpCode);
     EXPECT_NE(std::string::npos, response.body.find("\"limits\""));
 }
@@ -201,7 +201,7 @@ TEST_F(ComponentTest, ControlStartupReturnsHandshakeJson)
 TEST_F(ComponentTest, VersionRejectionSurfacesAs426)
 {
     const auto response = sendSigned(m_performer, m_signer, "/control",
-                                     R"({"phase":"startup"})", {"X-Reject-Version: 1"});
+                                     R"({"type":"startup"})", {"X-Reject-Version: 1"});
     EXPECT_EQ(426, response.httpCode);
     EXPECT_EQ(OutcomeClass::VersionRejected, classifyOutcome(response));
 }

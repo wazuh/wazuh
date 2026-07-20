@@ -38,6 +38,22 @@ namespace
 
         return it->is_string() ? it->get<std::string>() : it->dump();
     }
+
+    // One C.3 result entry (#37733): the queued result object ("status",
+    // "data", "error") plus the task id. A non-object result string is
+    // carried as the data field of a completed result.
+    nlohmann::json resultEntry(const std::string& taskId, const std::string& resultJson)
+    {
+        auto entry = nlohmann::json::parse(resultJson, nullptr, false);
+
+        if (!entry.is_object())
+        {
+            entry = {{"status", "completed"}, {"data", resultJson}, {"error", nullptr}};
+        }
+
+        entry["task_id"] = taskId;
+        return entry;
+    }
 } // namespace
 
 ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& performer,
@@ -51,7 +67,7 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     (void)clock;
 }
 
-bool ControlStream::step(Waiter& waiter, bool shuttingDown)
+bool ControlStream::step(Waiter& waiter)
 {
     switch (m_machine.nextAction())
     {
@@ -60,7 +76,7 @@ bool ControlStream::step(Waiter& waiter, bool shuttingDown)
             break;
 
         case ControlStateMachine::ActionKind::Notify:
-            sendNotify(waiter, shuttingDown);
+            sendNotify(waiter);
             sendPendingResponses(waiter);
             break;
 
@@ -89,10 +105,11 @@ bool ControlStream::isRegistered() const
 
 OutcomeClass ControlStream::sendStartup(Waiter& waiter)
 {
+    // C.1 (#37733): the startup request carries only the discriminator and the
+    // agent version; the config hash is reported on every Notify instead.
     nlohmann::json request;
-    request["phase"] = "startup";
+    request["type"] = "startup";
     request["version"] = m_config.version;
-    request["config_checksum"] = m_config.configChecksum;
     const std::string body = request.dump();
 
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
@@ -105,12 +122,22 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
     return result.outcome;
 }
 
-OutcomeClass ControlStream::sendNotify(Waiter& waiter, bool shuttingDown)
+OutcomeClass ControlStream::sendNotify(Waiter& waiter)
 {
+    // C.2 (#37733): the keepalive reports the current merged.mg hash nested
+    // under agent; the hash is omitted when the agent has no config yet.
+    // Appendix C defines no shutdown marker, so the final drain Notify is a
+    // plain keepalive (last-seen update).
+    nlohmann::json agent = nlohmann::json::object();
+
+    if (!m_config.configChecksum.empty())
+    {
+        agent["config_hash"] = m_config.configChecksum;
+    }
+
     nlohmann::json request;
-    request["phase"] = "notify";
-    request["status"] = shuttingDown ? "shutdown" : "active";
-    request["merged_sum"] = m_config.configChecksum;
+    request["type"] = "notify";
+    request["agent"] = agent;
     const std::string body = request.dump();
 
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
@@ -140,12 +167,12 @@ void ControlStream::sendPendingResponses(Waiter& waiter)
     }
 
     nlohmann::json request;
-    request["phase"] = "response";
+    request["type"] = "response";
     request["results"] = nlohmann::json::array();
 
     for (const auto& [taskId, resultJson] : pending)
     {
-        request["results"].push_back({{"task_id", taskId}, {"result", resultJson}});
+        request["results"].push_back(resultEntry(taskId, resultJson));
     }
 
     const std::string body = request.dump();
@@ -209,7 +236,7 @@ void ControlStream::dispatchTasks(const std::string& body)
             continue; // Duplicate (at-least-once) or unidentifiable.
         }
 
-        m_sink.onTask(taskId, jsonField(task, "type"), jsonField(task, "payload"));
+        m_sink.onTask(taskId, jsonField(task, "task_type"), jsonField(task, "payload"));
     }
 }
 

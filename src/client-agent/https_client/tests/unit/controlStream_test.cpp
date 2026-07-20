@@ -73,7 +73,7 @@ namespace
     };
 } // namespace
 
-TEST_F(ControlStreamTest, StartupBodyCarriesVersionAndChecksum)
+TEST_F(ControlStreamTest, StartupBodyCarriesTypeAndVersionOnly)
 {
     std::string sent;
     EXPECT_CALL(m_performer, perform(_))
@@ -85,10 +85,12 @@ TEST_F(ControlStreamTest, StartupBodyCarriesVersionAndChecksum)
         return response(TransportStatus::Ok, 200, R"({"limits":{}})");
     }));
 
-    EXPECT_TRUE(m_stream.step(m_waiter, false));
-    EXPECT_NE(std::string::npos, sent.find("\"phase\":\"startup\""));
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_NE(std::string::npos, sent.find("\"type\":\"startup\""));
     EXPECT_NE(std::string::npos, sent.find("\"version\":\"5.1.0\""));
-    EXPECT_NE(std::string::npos, sent.find("\"config_checksum\":\"abc\""));
+    // C.1: the config hash travels in Notify, never in the startup request.
+    EXPECT_EQ(std::string::npos, sent.find("config_hash"));
+    EXPECT_EQ(std::string::npos, sent.find("config_checksum"));
 }
 
 TEST_F(ControlStreamTest, StartupAcceptedRegistersAndDeliversHandshake)
@@ -98,7 +100,7 @@ TEST_F(ControlStreamTest, StartupAcceptedRegistersAndDeliversHandshake)
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{"eps":0}})")));
 
-    EXPECT_TRUE(m_stream.step(m_waiter, false));
+    EXPECT_TRUE(m_stream.step(m_waiter));
     EXPECT_TRUE(m_stream.isRegistered());
     EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
 }
@@ -108,7 +110,7 @@ TEST_F(ControlStreamTest, VersionRejectionGoesRejected)
     EXPECT_CALL(m_sink, onStateChange(HC_STATE_REJECTED));
     EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 426)));
 
-    EXPECT_FALSE(m_stream.step(m_waiter, false));
+    EXPECT_FALSE(m_stream.step(m_waiter));
     EXPECT_EQ(HC_STATE_REJECTED, m_stream.connState());
 }
 
@@ -117,11 +119,11 @@ TEST_F(ControlStreamTest, PersistentAuthFailureGoesAuthError)
     EXPECT_CALL(m_sink, onStateChange(HC_STATE_AUTH_ERROR));
     EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 401)));
 
-    EXPECT_FALSE(m_stream.step(m_waiter, false));
+    EXPECT_FALSE(m_stream.step(m_waiter));
     EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
 }
 
-TEST_F(ControlStreamTest, NotifyBodyReportsStatusAndChecksum)
+TEST_F(ControlStreamTest, NotifyBodyNestsTheConfigHashUnderAgent)
 {
     // First step registers; the second sends Notify.
     EXPECT_CALL(m_performer, perform(_))
@@ -130,18 +132,25 @@ TEST_F(ControlStreamTest, NotifyBodyReportsStatusAndChecksum)
                   [&](const HttpRequestSpec & spec)
     {
         const std::string body = bodyOf(spec);
-        EXPECT_NE(std::string::npos, body.find("\"phase\":\"notify\""));
-        EXPECT_NE(std::string::npos, body.find("\"status\":\"active\""));
-        EXPECT_NE(std::string::npos, body.find("\"merged_sum\":\"abc\""));
+        EXPECT_NE(std::string::npos, body.find("\"type\":\"notify\""));
+        EXPECT_NE(std::string::npos, body.find("\"agent\":{\"config_hash\":\"abc\"}"));
         return response(TransportStatus::Ok, 200, "{}");
     }));
 
-    m_stream.step(m_waiter, false); // Startup.
-    m_stream.step(m_waiter, false); // Notify.
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify.
 }
 
-TEST_F(ControlStreamTest, ShutdownNotifyCarriesShutdownStatus)
+TEST_F(ControlStreamTest, NotifyOmitsTheConfigHashWhenChecksumIsEmpty)
 {
+    hc_config_t raw {};
+    std::strncpy(raw.server_host, "127.0.0.1", sizeof(raw.server_host) - 1);
+    std::strncpy(raw.agent_id, "001", sizeof(raw.agent_id) - 1);
+    std::strncpy(raw.version, "5.1.0", sizeof(raw.version) - 1);
+    raw.verify_mode = HC_VERIFY_NONE; // No config_checksum: no config yet.
+    const ModuleConfig config = ModuleConfig::fromC(raw);
+    ControlStream stream(config, m_performer, m_signer, m_clock, m_random, m_sink);
+
     std::string notifyBody;
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
@@ -152,18 +161,21 @@ TEST_F(ControlStreamTest, ShutdownNotifyCarriesShutdownStatus)
         return response(TransportStatus::Ok, 200, "{}");
     }));
 
-    m_stream.step(m_waiter, false);
-    m_stream.step(m_waiter, true); // shuttingDown.
-    EXPECT_NE(std::string::npos, notifyBody.find("\"status\":\"shutdown\""));
+    stream.step(m_waiter);
+    stream.step(m_waiter);
+    EXPECT_NE(std::string::npos, notifyBody.find("\"agent\":{}"));
+    EXPECT_EQ(std::string::npos, notifyBody.find("config_hash"));
 }
 
 TEST_F(ControlStreamTest, NotifyTasksAreDispatchedAndDeduped)
 {
     const std::string notifyResponse =
-        R"({"tasks":[{"task_id":"t1","type":"active_response","payload":{"cmd":"x"}},)"
-        R"({"task_id":"t2","type":"agent_restart","payload":{}}]})";
+        R"({"status":"ok","tasks":[)"
+        R"({"task_id":"t1","task_type":"active_response","payload":{"cmd":"x"}},)"
+        R"({"task_id":"t2","task_type":"agent_restart","payload":{}}]})";
     const std::string repeatResponse =
-        R"({"tasks":[{"task_id":"t1","type":"active_response","payload":{"cmd":"x"}}]})";
+        R"({"status":"ok","tasks":[)"
+        R"({"task_id":"t1","task_type":"active_response","payload":{"cmd":"x"}}]})";
 
     EXPECT_CALL(m_performer, perform(_))
     .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))  // Startup.
@@ -174,9 +186,9 @@ TEST_F(ControlStreamTest, NotifyTasksAreDispatchedAndDeduped)
     EXPECT_CALL(m_sink, onTask("t1", "active_response", R"({"cmd":"x"})"));
     EXPECT_CALL(m_sink, onTask("t2", "agent_restart", "{}"));
 
-    m_stream.step(m_waiter, false); // Startup.
-    m_stream.step(m_waiter, false); // Notify -> t1, t2.
-    m_stream.step(m_waiter, false); // Notify -> t1 duplicate dropped.
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> t1, t2.
+    m_stream.step(m_waiter); // Notify -> t1 duplicate dropped.
 }
 
 TEST_F(ControlStreamTest, EmptyNotifyBodyIsIgnored)
@@ -186,8 +198,8 @@ TEST_F(ControlStreamTest, EmptyNotifyBodyIsIgnored)
     .WillOnce(Return(response(TransportStatus::Ok, 200, ""))); // Empty body.
     EXPECT_CALL(m_sink, onTask(_, _, _)).Times(0);
 
-    m_stream.step(m_waiter, false);
-    m_stream.step(m_waiter, false); // No dispatch, no crash.
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // No dispatch, no crash.
 }
 
 TEST_F(ControlStreamTest, TaskMissingOptionalFieldsStillDispatches)
@@ -199,8 +211,8 @@ TEST_F(ControlStreamTest, TaskMissingOptionalFieldsStillDispatches)
     .WillOnce(Return(response(TransportStatus::Ok, 200, body)));
     EXPECT_CALL(m_sink, onTask("only-id", "", ""));
 
-    m_stream.step(m_waiter, false);
-    m_stream.step(m_waiter, false);
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
 }
 
 TEST_F(ControlStreamTest, MalformedNotifyBodyIsIgnored)
@@ -210,8 +222,8 @@ TEST_F(ControlStreamTest, MalformedNotifyBodyIsIgnored)
     .WillOnce(Return(response(TransportStatus::Ok, 200, "not-json{{")));
     EXPECT_CALL(m_sink, onTask(_, _, _)).Times(0);
 
-    m_stream.step(m_waiter, false);
-    m_stream.step(m_waiter, false); // No crash, no dispatch.
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // No crash, no dispatch.
 }
 
 TEST_F(ControlStreamTest, QueuedTaskResultIsPostedInResponsePhase)
@@ -227,12 +239,39 @@ TEST_F(ControlStreamTest, QueuedTaskResultIsPostedInResponsePhase)
         return response(TransportStatus::Ok, 200);
     }));
 
-    m_stream.step(m_waiter, false); // Startup.
-    m_stream.queueTaskResponse("t1", R"({"status":"done"})");
-    m_stream.step(m_waiter, false); // Notify + Response.
+    m_stream.step(m_waiter); // Startup.
+    m_stream.queueTaskResponse("t1", R"({"status":"completed","data":"Upgraded","error":null})");
+    m_stream.step(m_waiter); // Notify + Response.
 
-    EXPECT_NE(std::string::npos, responseBody.find("\"phase\":\"response\""));
+    // C.3: the queued result object crosses verbatim, plus the task id.
+    EXPECT_NE(std::string::npos, responseBody.find("\"type\":\"response\""));
     EXPECT_NE(std::string::npos, responseBody.find("\"task_id\":\"t1\""));
+    EXPECT_NE(std::string::npos, responseBody.find("\"status\":\"completed\""));
+    EXPECT_NE(std::string::npos, responseBody.find("\"data\":\"Upgraded\""));
+    EXPECT_NE(std::string::npos, responseBody.find("\"error\":null"));
+}
+
+TEST_F(ControlStreamTest, PlainStringResultIsWrappedAsCompletedData)
+{
+    std::string responseBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))  // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))  // Notify.
+    .WillOnce(Invoke(                                            // Response.
+                  [&](const HttpRequestSpec & spec)
+    {
+        responseBody = bodyOf(spec);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    m_stream.step(m_waiter);
+    m_stream.queueTaskResponse("t2", "all good"); // Not a JSON object.
+    m_stream.step(m_waiter);
+
+    EXPECT_NE(std::string::npos, responseBody.find("\"task_id\":\"t2\""));
+    EXPECT_NE(std::string::npos, responseBody.find("\"status\":\"completed\""));
+    EXPECT_NE(std::string::npos, responseBody.find("\"data\":\"all good\""));
+    EXPECT_NE(std::string::npos, responseBody.find("\"error\":null"));
 }
 
 TEST_F(ControlStreamTest, FailedResponseIsRequeued)
@@ -251,8 +290,8 @@ TEST_F(ControlStreamTest, FailedResponseIsRequeued)
         return response(TransportStatus::Ok, 200);
     }));
 
-    m_stream.step(m_waiter, false);
-    m_stream.queueTaskResponse("t1", R"({"status":"done"})");
-    m_stream.step(m_waiter, false); // Response fails, re-queued.
-    m_stream.step(m_waiter, false); // Response retried successfully.
+    m_stream.step(m_waiter);
+    m_stream.queueTaskResponse("t1", R"({"status":"failed","data":null,"error":"boom"})");
+    m_stream.step(m_waiter); // Response fails, re-queued.
+    m_stream.step(m_waiter); // Response retried successfully.
 }

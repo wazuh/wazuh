@@ -135,7 +135,7 @@ void HttpsClientFacade::stop()
         m_statefulThread.join();
     }
 
-    drain(); // Best-effort final flush + shutdown Notify, from this thread.
+    drain(); // Best-effort final flush + final Notify, from this thread.
 
     m_dispatcher.onStateChange(HC_STATE_STOPPED);
     m_dispatcher.stop(); // Drains queued callbacks, then joins.
@@ -145,7 +145,7 @@ void HttpsClientFacade::controlLoop()
 {
     while (true)
     {
-        const bool registered = m_control.step(m_controlWaiter, false);
+        const bool registered = m_control.step(m_controlWaiter);
 
         if (registered)
         {
@@ -209,7 +209,7 @@ void HttpsClientFacade::drain()
     }
 
     m_stateless.tick(m_drainWaiter, true); // One final forced flush.
-    m_control.step(m_drainWaiter, true);   // Final Notify with shutdown status.
+    m_control.step(m_drainWaiter);         // Final Notify (last-seen update).
 }
 
 std::chrono::milliseconds HttpsClientFacade::controlInterval() const
