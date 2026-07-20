@@ -388,6 +388,39 @@ int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, co
     return retVal;
 }
 
+int validate_srcip(const char *srcip) {
+    if (!srcip || srcip[0] == '\0') {
+        return OS_INVALID;
+    }
+
+    size_t len = strlen(srcip);
+    // "::" is the shortest valid literal; 45 is the longest possible IPv6 text form.
+    if (len < 2 || len > 45) {
+        return OS_INVALID;
+    }
+
+    const bool is_ipv6 = (strchr(srcip, ':') != NULL);
+
+    for (size_t i = 0; i < len; i++) {
+        const char c = srcip[i];
+        const bool is_digit = (c >= '0' && c <= '9');
+        if (is_ipv6) {
+            // IPv6: hex digits, ':' and '.' (the latter for IPv4-mapped forms like ::ffff:1.2.3.4)
+            const bool is_hex = is_digit || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+            if (!is_hex && c != ':' && c != '.') {
+                return OS_INVALID;
+            }
+        } else {
+            // IPv4: decimal digits and '.' only
+            if (!is_digit && c != '.') {
+                return OS_INVALID;
+            }
+        }
+    }
+
+    return is_ipv6 ? 6 : 4;
+}
+
 #ifndef WIN32
 
 int lock(const char *lock_path, const char *lock_pid_path, const char *log_path, const char *proc_name) {

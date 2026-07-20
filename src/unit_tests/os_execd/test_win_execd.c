@@ -226,10 +226,10 @@ static void test_WinExecdRun_ar_reports_failure(void **state) {
                         "}"
                     "}";
 
-    expect_wfopen(AR_BINDIR "/block-ip", "r", (FILE *)1);
+    expect_wfopen(AR_BINDIR "/block-ip.exe", "r", (FILE *)1);
     expect_fclose((FILE *)1, 0);
 
-    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip {"
+    expect_string(__wrap__mdebug1, formatted_msg, "Executing command '" AR_BINDIR "/block-ip.exe {"
                                                                                         "\"wazuh\":{"
                                                                                             "\"active_response\":{"
                                                                                                 "\"name\":\"block-ip\","
@@ -318,7 +318,7 @@ static void test_WinExecdRun_ar_reports_failure(void **state) {
     will_return(wrap_fprintf, 0);
 
     /* On Windows, wpclose() returns the exit code directly; any nonzero value is a failure */
-    expect_string(__wrap__mwarn, formatted_msg, "Active response command '" AR_BINDIR "/block-ip' reported failure (exit code 3).");
+    expect_string(__wrap__mwarn, formatted_msg, "Active response command '" AR_BINDIR "/block-ip.exe' reported failure (exit code 3).");
     will_return(__wrap_wpclose, 3);
 
     ExecdRun(message);
