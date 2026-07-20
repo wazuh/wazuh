@@ -1,6 +1,8 @@
 #pragma once
 
+#include "interface_scanner.hpp"
 #include "network_scanner.hpp"
+#include "os_scanner.hpp"
 #include "package_scanner.hpp"
 #include "process_scanner.hpp"
 #include "rootfs_file_walker.hpp"
@@ -30,6 +32,9 @@ void ApplyIdentity(PortBaselineRow& row, const ContainerIdentity& id);
 void ApplyIdentity(UserBaselineRow& row, const ContainerIdentity& id);
 void ApplyIdentity(GroupBaselineRow& row, const ContainerIdentity& id);
 void ApplyIdentity(PackageBaselineRow& row, const ContainerIdentity& id);
+void ApplyIdentity(OsBaselineRow& row, const ContainerIdentity& id);
+void ApplyIdentity(InterfaceBaselineRow& row, const ContainerIdentity& id);
+void ApplyIdentity(NetworkAddressBaselineRow& row, const ContainerIdentity& id);
 
 /// @brief Build the sync-protocol payload for one FIM file baseline row.
 ///
@@ -67,5 +72,15 @@ std::pair<std::string, std::string> BuildGroupJson(const GroupBaselineRow& row);
 
 /// @brief Build the sync-protocol payload for one package baseline row (M4).
 std::pair<std::string, std::string> BuildPackageJson(const PackageBaselineRow& row);
+
+/// @brief Build the sync-protocol payload for the container's OS row.
+/// Same draft-schema caveat as BuildProcessJson().
+std::pair<std::string, std::string> BuildOsJson(const OsBaselineRow& row);
+
+/// @brief Build the sync-protocol payload for one interface baseline row.
+std::pair<std::string, std::string> BuildInterfaceJson(const InterfaceBaselineRow& row);
+
+/// @brief Build the sync-protocol payload for one bound-address baseline row.
+std::pair<std::string, std::string> BuildNetworkAddressJson(const NetworkAddressBaselineRow& row);
 
 } // namespace wazuh::container_baseline
