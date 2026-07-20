@@ -68,7 +68,7 @@ def get_file_and_test_info(test_name, test_mapping, module_name):
     if test_tag == 'test':
         # Integration tests themselves must be added. Unit tests must not
         related_tests = [test_name] if test_name.endswith('.yaml') else []
-    elif path.basename(module_name) == 'rbac':
+    elif module_name.startswith(path.join('framework', 'wazuh', 'rbac')):
         # Every file within the RBAC directory must be tagged as RBAC
         related_tests = test_mapping['rbac']
     elif test_tag in ['black', 'white']:
@@ -100,7 +100,7 @@ if __name__ == '__main__':
                 mappings['files'] = list()
                 for file in sorted(files):
                     if file.endswith(allowed_extensions):
-                        test_info = get_file_and_test_info(file, test_tags, module)
+                        test_info = get_file_and_test_info(file, test_tags, mappings['path'])
                         if test_info and test_info[2]:
                             mappings['files'].append({'name': test_info[0], 'tag': test_info[1], 'tests': test_info[2]})
 
