@@ -160,6 +160,10 @@ typedef struct hc_callbacks_t
     void (*on_startup_result)(bool accepted, const char* handshake_json, void* user_data);
     void (*on_task)(const char* task_id, const char* task_type, const char* payload_json,
                     void* user_data);
+    /// A Notify answered with a config push (#37733 C.2): a new merged
+    /// configuration, base64-encoded, with its hash. The agent writes it to
+    /// disk and reloads; the module only transports it.
+    void (*on_config_update)(const char* config_hash, const char* data_base64, void* user_data);
     void (*on_sync_response)(const char* session_id, int result, const char* body,
                              void* user_data);
     void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t

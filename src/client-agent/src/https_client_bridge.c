@@ -50,6 +50,16 @@ static void bridge_on_task(const char *task_id, const char *task_type, const cha
             task_type ? task_type : "?");
 }
 
+static void bridge_on_config_update(const char *config_hash, const char *data_base64,
+                                    void *user_data)
+{
+    /* Writing the pushed merged config to disk and reloading is a later
+     * integration workstream; the dev scaffold only logs the delivery. */
+    (void)data_base64;
+    (void)user_data;
+    mdebug1("https_client config update received (hash=%s)", config_hash ? config_hash : "?");
+}
+
 static void bridge_on_sync_response(const char *session_id, int result, const char *body,
                                     void *user_data)
 {
@@ -131,6 +141,7 @@ void w_https_client_start(void)
     callbacks.log = mtLoggingFunctionsWrapper;
     callbacks.on_startup_result = bridge_on_startup_result;
     callbacks.on_task = bridge_on_task;
+    callbacks.on_config_update = bridge_on_config_update;
     callbacks.on_sync_response = bridge_on_sync_response;
     callbacks.on_state_change = bridge_on_state_change;
     callbacks.on_buffer_level = bridge_on_buffer_level;

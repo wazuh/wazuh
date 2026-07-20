@@ -120,6 +120,19 @@ void CallbackDispatcher::onTask(const std::string& taskId, const std::string& ta
     });
 }
 
+void CallbackDispatcher::onConfigUpdate(const std::string& configHash, const std::string& dataBase64)
+{
+    if (m_callbacks.on_config_update == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, configHash, dataBase64]
+    {
+        m_callbacks.on_config_update(configHash.c_str(), dataBase64.c_str(), m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onSyncResponse(const std::string& sessionId, int result,
                                         const std::string& body)
 {

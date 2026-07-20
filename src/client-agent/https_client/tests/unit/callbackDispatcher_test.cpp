@@ -64,6 +64,11 @@ namespace
         recordTag(std::string {"sync:"} + sessionId, static_cast<Record*>(userData));
     }
 
+    void recordConfig(const char* configHash, const char*, void* userData)
+    {
+        recordTag(std::string {"config:"} + configHash, static_cast<Record*>(userData));
+    }
+
     void recordBuffer(int level, void* userData)
     {
         recordTag("buffer:" + std::to_string(level), static_cast<Record*>(userData));
@@ -74,6 +79,7 @@ namespace
         hc_callbacks_t callbacks {};
         callbacks.on_startup_result = recordStartup;
         callbacks.on_task = recordTask;
+        callbacks.on_config_update = recordConfig;
         callbacks.on_sync_response = recordSync;
         callbacks.on_state_change = recordState;
         callbacks.on_buffer_level = recordBuffer;
@@ -153,6 +159,7 @@ TEST(CallbackDispatcherTest, NullCallbacksAreSafe)
     dispatcher.start();
     dispatcher.onTask("x", "ar", "{}");
     dispatcher.onStateChange(HC_STATE_STARTING);
+    dispatcher.onConfigUpdate("h", "d");
     dispatcher.onSyncResponse("s", 0, "{}");
     dispatcher.onStartupResult(true, "{}");
     dispatcher.onBufferLevel(HC_BUFFER_NORMAL);
@@ -166,15 +173,18 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     dispatcher.start();
     dispatcher.onStartupResult(true, R"({"limits":{}})");
     dispatcher.onTask("t1", "active_response", "{}");
+    dispatcher.onConfigUpdate("def789", "Y29uZmln");
     dispatcher.onSyncResponse("sess-1", 0, R"({"ok":true})");
     dispatcher.onStateChange(HC_STATE_REGISTERED);
     dispatcher.onBufferLevel(HC_BUFFER_WARNING);
-    waitForCount(record, 5);
+    waitForCount(record, 6);
     dispatcher.stop();
 
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "startup:ok"));
     EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "t1"));
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(), "config:def789"));
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "sync:sess-1"));
     EXPECT_NE(record.order.end(),

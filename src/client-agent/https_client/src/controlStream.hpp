@@ -31,8 +31,8 @@
  * Drives the pure ControlStateMachine: nextAction() decides the request,
  * step() performs it and feeds the result back as an event. Startup applies
  * the handshake JSON and releases the producer gate; Notify reports the
- * config hash and dispatches the deduped tasks[] (at-least-once) through the
- * sink; Response posts queued task results.
+ * config hash and dispatches the config push and the deduped tasks[]
+ * (at-least-once) through the sink; Response posts queued task results.
  */
 class ControlStream final
 {
@@ -62,7 +62,6 @@ class ControlStream final
         void sendPendingResponses(Waiter& waiter);
         void applyEffects(const ControlStateMachine::Effects& effects, const std::string& handshake);
         void handleNotifyBody(const std::string& body);
-        void dispatchTasks(const std::string& body);
         ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
 
         const ModuleConfig& m_config;

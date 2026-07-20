@@ -54,6 +54,48 @@ namespace
         entry["task_id"] = taskId;
         return entry;
     }
+
+    // C.2 config push: {"config": {"hash": ..., "data": <base64>}} delivered
+    // through the sink; the agent side writes and reloads the merged config.
+    void dispatchConfig(const nlohmann::json& parsed, ICallbackSink& sink)
+    {
+        const auto config = parsed.find("config");
+
+        if (config == parsed.end() || !config->is_object())
+        {
+            return;
+        }
+
+        const std::string hash = jsonField(*config, "hash");
+        const std::string data = jsonField(*config, "data");
+
+        if (!hash.empty() && !data.empty())
+        {
+            sink.onConfigUpdate(hash, data);
+        }
+    }
+
+    void dispatchTasks(const nlohmann::json& parsed, ICallbackSink& sink, TaskDeduper& deduper)
+    {
+        const auto tasks = parsed.find("tasks");
+
+        if (tasks == parsed.end() || !tasks->is_array())
+        {
+            return;
+        }
+
+        for (const auto& task : *tasks)
+        {
+            const std::string taskId = jsonField(task, "task_id");
+
+            if (taskId.empty() || !deduper.markIfNew(taskId))
+            {
+                continue; // Duplicate (at-least-once) or unidentifiable.
+            }
+
+            sink.onTask(taskId, jsonField(task, "task_type"), jsonField(task, "payload"));
+        }
+    }
 } // namespace
 
 ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& performer,
@@ -203,16 +245,6 @@ void ControlStream::applyEffects(const ControlStateMachine::Effects& effects,
 
 void ControlStream::handleNotifyBody(const std::string& body)
 {
-    if (body.empty())
-    {
-        return;
-    }
-
-    dispatchTasks(body);
-}
-
-void ControlStream::dispatchTasks(const std::string& body)
-{
     const auto parsed = nlohmann::json::parse(body, nullptr, false);
 
     if (parsed.is_discarded() || !parsed.is_object())
@@ -220,24 +252,8 @@ void ControlStream::dispatchTasks(const std::string& body)
         return; // Tolerant: a malformed Notify body is ignored, never fatal.
     }
 
-    const auto tasks = parsed.find("tasks");
-
-    if (tasks == parsed.end() || !tasks->is_array())
-    {
-        return;
-    }
-
-    for (const auto& task : *tasks)
-    {
-        const std::string taskId = jsonField(task, "task_id");
-
-        if (taskId.empty() || !m_deduper.markIfNew(taskId))
-        {
-            continue; // Duplicate (at-least-once) or unidentifiable.
-        }
-
-        m_sink.onTask(taskId, jsonField(task, "task_type"), jsonField(task, "payload"));
-    }
+    dispatchConfig(parsed, m_sink);
+    dispatchTasks(parsed, m_sink, m_deduper);
 }
 
 ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const

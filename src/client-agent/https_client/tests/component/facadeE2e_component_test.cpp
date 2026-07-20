@@ -42,6 +42,7 @@ namespace
         std::mutex mutex;
         std::atomic<int> startupCount {0};
         std::atomic<int> syncCount {0};
+        std::atomic<int> configCount {0};
         std::vector<int> states;
     };
 
@@ -56,6 +57,11 @@ namespace
     void onSync(const char*, int, const char*, void* userData)
     {
         static_cast<Recorder*>(userData)->syncCount++;
+    }
+
+    void onConfig(const char*, const char*, void* userData)
+    {
+        static_cast<Recorder*>(userData)->configCount++;
     }
 
     void onState(int state, void* userData)
@@ -154,6 +160,7 @@ TEST_F(FacadeE2eTest, RegistersAndRunsTheDataStreams)
     callbacks.log = nullptr;
     callbacks.on_startup_result = onStartup;
     callbacks.on_sync_response = onSync;
+    callbacks.on_config_update = onConfig;
     callbacks.on_state_change = onState;
     callbacks.user_data = &recorder;
 
@@ -172,6 +179,9 @@ TEST_F(FacadeE2eTest, RegistersAndRunsTheDataStreams)
     const uint8_t session[] = "FULLSESSION:syscollector:body";
     EXPECT_TRUE(hc_submit_sync_session(handle, "sess-e2e", session, sizeof(session) - 1));
     EXPECT_TRUE(waitFor(recorder.syncCount, 1, 3000));
+
+    // Every notify answers with a config push (C.2): it reaches the callback.
+    EXPECT_TRUE(waitFor(recorder.configCount, 1, 3000));
 
     hc_destroy(handle); // Drains (final flush + Notify) and joins.
     EXPECT_EQ(HC_STATE_STOPPED, recorder.states.back());

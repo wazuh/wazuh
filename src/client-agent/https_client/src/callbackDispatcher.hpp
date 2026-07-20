@@ -46,6 +46,7 @@ class CallbackDispatcher final : public ICallbackSink
         void onStartupResult(bool accepted, const std::string& handshakeJson) override;
         void onTask(const std::string& taskId, const std::string& taskType,
                     const std::string& payloadJson) override;
+        void onConfigUpdate(const std::string& configHash, const std::string& dataBase64) override;
         void onSyncResponse(const std::string& sessionId, int result, const std::string& body) override;
         void onStateChange(hc_conn_state_t state) override;
         void onBufferLevel(hc_buffer_level_t level) override;

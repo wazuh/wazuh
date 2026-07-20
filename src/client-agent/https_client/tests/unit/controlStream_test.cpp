@@ -191,6 +191,35 @@ TEST_F(ControlStreamTest, NotifyTasksAreDispatchedAndDeduped)
     m_stream.step(m_waiter); // Notify -> t1 duplicate dropped.
 }
 
+TEST_F(ControlStreamTest, NotifyConfigPushIsDeliveredThroughTheSink)
+{
+    // C.2: a hash mismatch makes the manager attach the new merged config.
+    const std::string body =
+        R"({"status":"ok","config":{"hash":"def789","data":"Y29uZmlnLWJhc2U2NA=="}})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, body)));
+    EXPECT_CALL(m_sink, onConfigUpdate("def789", "Y29uZmlnLWJhc2U2NA=="));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> config push.
+}
+
+TEST_F(ControlStreamTest, ConfigPushMissingHashOrDataIsIgnored)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200,
+                              R"({"status":"ok","config":{"hash":"def789"}})")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200,
+                              R"({"status":"ok","config":"not-an-object"})")));
+    EXPECT_CALL(m_sink, onConfigUpdate(_, _)).Times(0);
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> config without data: ignored.
+    m_stream.step(m_waiter); // Notify -> config not an object: ignored.
+}
+
 TEST_F(ControlStreamTest, EmptyNotifyBodyIsIgnored)
 {
     EXPECT_CALL(m_performer, perform(_))

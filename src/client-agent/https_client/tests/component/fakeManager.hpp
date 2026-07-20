@@ -173,7 +173,9 @@ class FakeManager final
                 }
 
                 // #37733 Appendix C: startup answers the handshake metadata;
-                // notify and response answer a plain ok.
+                // notify gets a config push every time (the fake agent never
+                // updates its merged.mg, so the hash mismatch persists, C.2);
+                // response answers a plain ok.
                 response.status = 200;
 
                 if (request.body.find("\"type\":\"startup\"") != std::string::npos)
@@ -181,6 +183,14 @@ class FakeManager final
                     response.set_content(
                         R"({"limits":{"eps":0},"cluster":{"name":"fake","node":"node01"},)"
                         R"("agent":{"groups":["default"],"config_hash":"abc"}})",
+                        "application/json");
+                    return;
+                }
+
+                if (request.body.find("\"type\":\"notify\"") != std::string::npos)
+                {
+                    response.set_content(
+                        R"({"status":"ok","config":{"hash":"def789","data":"Y29uZmln"}})",
                         "application/json");
                     return;
                 }
