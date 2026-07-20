@@ -1087,6 +1087,54 @@ stages:
         extra_kwargs:
           expected_roles: [1]
 
+  - name: Log in with wazuh-wui and default rules and expect readonly permissions (wazuh-demo)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
+      headers:
+        Authorization: "Basic {basic_auth_context:s}"
+      method: POST
+      json:
+        user_name: "wazuh-demo" # Indexer default user
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_auth_context
+        extra_kwargs:
+          expected_roles: [2]
+
+  - name: Log in with wazuh-wui and default rules and expect readonly permissions (wazuh-readonly)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
+      headers:
+        Authorization: "Basic {basic_auth_context:s}"
+      method: POST
+      json:
+        user_name: "wazuh-readonly" # Indexer default user
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_auth_context
+        extra_kwargs:
+          expected_roles: [2]
+
+  - name: Log in with wazuh-wui and default rules and expect wazuh_indexer_admin permissions (wazuh-admin)
+    request:
+      verify: False
+      url: "{protocol:s}://{host:s}:{balanced_port:d}/security/user/authenticate/run_as"
+      headers:
+        Authorization: "Basic {basic_auth_context:s}"
+      method: POST
+      json:
+        user_name: "wazuh-admin" # Indexer default user
+    response:
+      status_code: 200
+      verify_response_with:
+        function: tavern_utils:test_validate_auth_context
+        extra_kwargs:
+          expected_roles: [8]
+
   - name: Log in with wazuh-wui and no matching rule
     request:
       verify: False
