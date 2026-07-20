@@ -16,6 +16,7 @@
 
 #include "https_client.h"
 
+#include <signal.h>
 #include <stdarg.h>
 #include <stdatomic.h>
 #include <stdio.h>
@@ -30,6 +31,15 @@ static struct timespec g_start;
  * must not call back into hc_*, so the C.3 response is submitted from main. */
 static char g_info_task_id[64];
 static atomic_int g_info_task_ready;
+
+/* Set by SIGINT/SIGTERM: ends sustained mode early with the clean drain. */
+static atomic_int g_stop;
+
+static void on_signal(int sig)
+{
+    (void)sig;
+    atomic_store(&g_stop, 1);
+}
 
 static long elapsed_ms(void)
 {
@@ -133,6 +143,12 @@ int main(int argc, char **argv)
     const char *sync_socket = argc > 4 ? argv[4] : NULL;
     clock_gettime(CLOCK_MONOTONIC, &g_start);
 
+    struct sigaction action;
+    memset(&action, 0, sizeof action);
+    action.sa_handler = on_signal;
+    sigaction(SIGINT, &action, NULL);
+    sigaction(SIGTERM, &action, NULL);
+
     hc_config_t config;
     memset(&config, 0, sizeof config);
     strncpy(config.server_host, argv[1], sizeof config.server_host - 1);
@@ -223,6 +239,26 @@ int main(int argc, char **argv)
         hc_notify_now(handle);
     }
     nap(3000);
+
+    /* Optional sustained mode: DEMO_SECONDS=<n> keeps the client alive after
+     * the scripted walkthrough, submitting an event every 2 s so the periodic
+     * Notify + /stateless traffic stays visible. SIGINT/SIGTERM (Ctrl-C,
+     * docker stop) ends it early through the same clean drain. */
+    const char *extra = getenv("DEMO_SECONDS");
+    const long extra_s = extra ? strtol(extra, NULL, 10) : 0;
+    if (extra_s > 0)
+    {
+        printf("== sustained mode: ~%ld s of keepalive traffic (Ctrl-C stops cleanly) ==\n",
+               extra_s);
+        fflush(stdout);
+        for (long tick = 0; tick * 2 < extra_s && !atomic_load(&g_stop); tick++)
+        {
+            char frame[80];
+            int n = snprintf(frame, sizeof frame, "1:/var/log/syslog:sustained event %ld", tick);
+            hc_submit_event(handle, (const uint8_t *)frame, (size_t)n);
+            nap(2000);
+        }
+    }
 
     printf("== stopping (drain + join) ==\n");
     hc_destroy(handle);

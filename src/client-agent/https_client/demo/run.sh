@@ -9,6 +9,9 @@
 #
 #   cd src && make TARGET=agent  (or the cmake+make flow used in development)
 #
+#   DEMO_SECONDS=60 ./run.sh   keeps the client running for ~60 s after the
+#                              scripted walkthrough (Ctrl-C stops it cleanly).
+#
 # Needs: cc, python3, the openssl CLI.
 set -euo pipefail
 cd "$(dirname "$0")"

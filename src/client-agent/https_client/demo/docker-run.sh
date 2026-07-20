@@ -6,6 +6,10 @@
 # builds the demo image, and runs it. No prior Wazuh build required; the module
 # is compiled inside the container against the distro's libcurl + OpenSSL.
 #
+#   DEMO_SECONDS=60 ./docker-run.sh   keeps the client running for ~60 s after
+#                                     the scripted walkthrough (Ctrl-C stops it
+#                                     cleanly at any point).
+#
 # Needs: docker.
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -31,4 +35,4 @@ echo "== building image ${IMAGE} =="
 docker build -t "$IMAGE" "$STAGE"
 
 echo "== running the demo in a container =="
-docker run --rm "$IMAGE"
+docker run --rm --init -e DEMO_SECONDS="${DEMO_SECONDS:-0}" "$IMAGE"

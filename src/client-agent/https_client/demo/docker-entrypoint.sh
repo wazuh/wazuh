@@ -33,6 +33,12 @@ echo "# The real https_client module talking to the mock over HTTPS.         #"
 echo "#   [client:N] = module log    >> = callbacks    [mock] = manager       #"
 echo "########################################################################"
 echo
-LD_LIBRARY_PATH=/demo /demo/demo_driver 127.0.0.1 "$PORT" "$KEY_HEX" /tmp/hc_demo_sync.sock || true
+# Run the driver in the background and relay INT/TERM to it (bash as PID 1
+# does not forward signals to a foreground child), so Ctrl-C / docker stop
+# reach the driver's handler and end sustained mode with the clean drain.
+LD_LIBRARY_PATH=/demo /demo/demo_driver 127.0.0.1 "$PORT" "$KEY_HEX" /tmp/hc_demo_sync.sock &
+DRIVER_PID=$!
+trap 'kill -TERM "$DRIVER_PID" 2>/dev/null || true' INT TERM
+wait "$DRIVER_PID" || true
 echo
 echo "== demo done =="
