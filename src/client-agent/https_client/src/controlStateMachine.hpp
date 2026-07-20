@@ -14,6 +14,8 @@
 
 #include "https_client.h"
 
+#include <atomic>
+
 /**
  * @brief The /control client state machine (D7), pure logic: no I/O, no time.
  *
@@ -61,6 +63,14 @@ class ControlStateMachine final
             bool resetCadence {false};   ///< Return to the normal Notify cadence.
         };
 
+        ControlStateMachine() = default;
+        // Movable (the atomic state is loaded) so it can be returned by value;
+        // production holds it as a plain member and never copies it.
+        ControlStateMachine(ControlStateMachine&& other) noexcept
+            : m_state(other.m_state.load())
+        {
+        }
+
         /// The next request to issue given the current state.
         ActionKind nextAction() const;
 
@@ -69,7 +79,7 @@ class ControlStateMachine final
 
         State state() const
         {
-            return m_state;
+            return m_state.load(std::memory_order_acquire);
         }
 
         /// Maps the internal state onto the ABI's hc_conn_state_t.
@@ -77,13 +87,16 @@ class ControlStateMachine final
 
         bool useSlowCadence() const
         {
-            return m_state == State::Rejected || m_state == State::AuthError;
+            const State current = state();
+            return current == State::Rejected || current == State::AuthError;
         }
 
     private:
         Effects transitionTo(State next);
 
-        State m_state {State::Starting};
+        /// Written by the control thread, read (via state()/connState()) by any
+        /// thread through the facade — so it is atomic.
+        std::atomic<State> m_state {State::Starting};
 };
 
 #endif // _HC_CONTROL_STATE_MACHINE_HPP
