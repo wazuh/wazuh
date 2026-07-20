@@ -6,7 +6,9 @@
 # enough to watch the REAL https_client module communicate: it verifies the
 # AES-CMAC of every request (via the openssl CLI, so it is an independent
 # implementation), then answers /control, /stateless and /stateful. Every
-# request is logged so the conversation is visible.
+# request is logged so the conversation is visible. A /stateful session that
+# is larger than the legacy 64 KB DGRAM cap gets spotlighted, since arriving
+# whole in one signed POST is exactly what the new STREAM intake makes possible.
 #
 # Not production code; a demo harness only.
 
@@ -20,6 +22,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 START = time.time()
 
+# The legacy module->agentd IPC is a DGRAM socket capped at OS_MAXSTR
+# (src/shared/include/defs.h), and agent_sync_protocol chunks a sync payload
+# at MAX_BATCH_PAYLOAD before sending. The new STREAM intake removes that
+# ceiling, so a whole multi-MB session now crosses as ONE signed /stateful POST.
+OS_MAXSTR = 65536
+MAX_BATCH_PAYLOAD = 60 * 1024
+
 
 def stamp():
     return f"[+{(time.time() - START) * 1000:7.0f} ms]"
@@ -27,6 +36,14 @@ def stamp():
 
 def log(msg):
     print(f"{stamp()} [mock] {msg}", flush=True)
+
+
+def human_size(n):
+    if n < 1024:
+        return f"{n} B"
+    if n < 1024 * 1024:
+        return f"{n / 1024:.1f} KB"
+    return f"{n / (1024 * 1024):.2f} MB"
 
 
 def cmac_hex(key_hex, message):
@@ -95,12 +112,7 @@ class Handler(BaseHTTPRequestHandler):
             self._reply(200)
             log(f"     {target:<11} -> 200  (events accepted)")
         elif target == "/stateful":
-            session = self.headers.get("X-Session-Id", "?")
-            result = {"status": "success", "sessionId": session,
-                      "itemsProcessed": max(0, len(body) - 25)}
-            self._reply(200, result)
-            log(f"     {target:<11} -> 200  session={session} "
-                f"itemsProcessed={result['itemsProcessed']}")
+            self._handle_stateful(body)
         else:
             self._reply(404)
 
@@ -136,6 +148,36 @@ class Handler(BaseHTTPRequestHandler):
             log(f"     /control    -> 200  RESPONSE (task results) acked")
         else:
             self._reply(400)
+
+    def _handle_stateful(self, body):
+        session = self.headers.get("X-Session-Id", "?")
+        module, payload_start = self._parse_session_header(body)
+        items = max(0, len(body) - payload_start)
+        self._reply(200, {"status": "success", "sessionId": session,
+                          "itemsProcessed": items})
+        log(f"     /stateful   -> 200  session={session} "
+            f"module={module} itemsProcessed={items}")
+        if len(body) > OS_MAXSTR:
+            self._announce_large_session(body, payload_start)
+
+    def _parse_session_header(self, body):
+        """Return (module, payload_start) from a 'FULLSESSION:<module>:' prefix."""
+        if not body.startswith(b"FULLSESSION:"):
+            return "?", 0
+        colon = body.find(b":", len("FULLSESSION:"))
+        if colon < 0:
+            return "?", 0
+        return body[len("FULLSESSION:"):colon].decode("latin-1"), colon + 1
+
+    def _announce_large_session(self, body, payload_start):
+        size = len(body)
+        chunks = -(-size // MAX_BATCH_PAYLOAD)  # ceil
+        intact = body.count(b"D", payload_start) == size - payload_start
+        log("──[ LARGE SESSION ]── streamed whole over the new intake socket ──")
+        log(f"     {human_size(size)} ({size} B) arrived as ONE CMAC-signed POST")
+        log(f"     = {size / OS_MAXSTR:.0f}x the 64 KB OS_MAXSTR DGRAM cap; the legacy")
+        log(f"       chunked path would need {chunks} x 60 KB datagrams reassembled")
+        log(f"     payload byte-exact after streaming: {'yes' if intact else 'NO'}")
 
 
 def main():
