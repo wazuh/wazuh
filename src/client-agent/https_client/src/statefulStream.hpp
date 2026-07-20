@@ -21,15 +21,19 @@
 
 #include <cstdint>
 #include <deque>
+#include <memory>
 #include <mutex>
 #include <string>
-#include <vector>
 
 /**
- * @brief The /stateful sender (NFR3). A whole sync session is submitted, held
- *        in a bounded queue, spooled to a temp file, and shipped as ONE
- *        streamed POST (flat memory). Retries reuse the same X-Session-Id so
- *        the manager LRU dedups; the outcome is delivered through the sink.
+ * @brief The /stateful sender (NFR3). A whole sync session is spooled to a
+ *        temp file at submit time and shipped as ONE streamed POST, so a
+ *        multi-MB session never sits in memory (flat memory). Sessions can be
+ *        submitted as a memory buffer (spooled here) or as an already-spooled
+ *        file (adopted from the intake, which streamed it off the local
+ *        socket) — the latter keeps the whole path off-heap. Retries reuse the
+ *        same X-Session-Id so the manager LRU dedups; the outcome is delivered
+ *        through the sink.
  */
 class StatefulStream final
 {
@@ -38,8 +42,14 @@ class StatefulStream final
                        IClock& clock, IRandom& random, ISpoolFileFactory& spoolFactory,
                        ICallbackSink& sink);
 
-        /// Intake: enqueue a session. Returns false when the queue is full.
+        /// Intake: spool the buffer to a temp file and enqueue it. Returns false
+        /// when the queue is full or the spool fails.
         bool submit(const std::string& sessionId, const uint8_t* buffer, size_t length);
+
+        /// Intake: adopt an already-spooled session file (the intake streamed it
+        /// off the local socket). The file is deleted after the session is sent.
+        /// Returns false when the queue is full.
+        bool submitFile(const std::string& sessionId, const std::string& filePath, uint64_t size);
 
         /// One sender iteration: send the next queued session (if any) and report
         /// its result. Returns true when a session was processed.
@@ -51,7 +61,8 @@ class StatefulStream final
         struct Session
         {
             std::string id;
-            std::vector<uint8_t> body;
+            std::shared_ptr<SpoolFile> spool; ///< RAII-deletes the temp file when done.
+            uint64_t size {0};
         };
 
         struct SendResult
@@ -60,6 +71,7 @@ class StatefulStream final
             std::string body;
         };
 
+        bool enqueue(Session session);
         bool popNext(Session& out);
         SendResult sendSession(const Session& session, Waiter& waiter);
 

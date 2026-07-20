@@ -38,6 +38,11 @@ namespace
         return value;
     }
 
+    bool fileExists(const std::string& path)
+    {
+        return std::ifstream {path}.good();
+    }
+
     std::unique_ptr<SpoolFile> makeSpoolAt(const std::string& path, const std::string& contents)
     {
         std::ofstream file {path, std::ios::binary};
@@ -54,6 +59,15 @@ namespace
                 , m_config(makeConfig())
                 , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_sink)
             {
+                // By default the spool factory writes the bytes to a unique temp
+                // file (submit spools now, so every submit needs a real file).
+                ON_CALL(m_spoolFactory, spool(_, _))
+                .WillByDefault(Invoke([this](const uint8_t* buffer, size_t length)
+                {
+                    const std::string path =
+                        ::testing::TempDir() + "hc_sf_" + std::to_string(m_spoolCounter++) + ".tmp";
+                    return makeSpoolAt(path, std::string(reinterpret_cast<const char*>(buffer), length));
+                }));
             }
 
             static ModuleConfig makeConfig()
@@ -80,6 +94,7 @@ namespace
             MockHttpPerformer m_performer;
             FakeWaiter m_waiter;
             StatefulStream m_stream;
+            int m_spoolCounter {0};
     };
 } // namespace
 
@@ -89,9 +104,10 @@ TEST_F(StatefulStreamTest, StepWithoutPendingDoesNothing)
     EXPECT_FALSE(m_stream.step(m_waiter));
 }
 
-TEST_F(StatefulStreamTest, SessionIsSpooledAndStreamedWithSessionHeader)
+TEST_F(StatefulStreamTest, SessionIsSpooledAtSubmitAndStreamedWithSessionHeader)
 {
     const std::string path = ::testing::TempDir() + "hc_stateful_1.tmp";
+    // Spooling now happens during submit(), not during the send.
     EXPECT_CALL(m_spoolFactory, spool(_, 8u))
     .WillOnce(Return(ByMove(makeSpoolAt(path, "12345678"))));
 
@@ -102,7 +118,7 @@ TEST_F(StatefulStreamTest, SessionIsSpooledAndStreamedWithSessionHeader)
     {
         headers = spec.headers;
         EXPECT_EQ("/stateful", spec.target);
-        EXPECT_EQ(path, spec.bodyFilePath);
+        EXPECT_EQ(path, spec.bodyFilePath); // Streamed from the spooled file.
         EXPECT_EQ(8u, spec.bodyFileSize);
         return response(TransportStatus::Ok, 200, R"({"itemsProcessed":42})");
     }));
@@ -113,13 +129,39 @@ TEST_F(StatefulStreamTest, SessionIsSpooledAndStreamedWithSessionHeader)
 
     ASSERT_FALSE(headers.empty());
     EXPECT_NE(headers.end(), std::find(headers.begin(), headers.end(), "X-Session-Id: sess-1"));
+    EXPECT_FALSE(fileExists(path)); // Deleted after the session was sent.
+}
+
+TEST_F(StatefulStreamTest, SubmitFileAdoptsAnAlreadySpooledSessionAndDeletesIt)
+{
+    // The intake streams a session off the local socket into this file; the
+    // stream adopts it (no re-spool) and deletes it after sending.
+    const std::string path = ::testing::TempDir() + "hc_intake_session.bin";
+    {
+        std::ofstream file {path, std::ios::binary};    // 200 KB > 64 KB
+        file << std::string(200000, 'Z');
+    }
+    ASSERT_TRUE(fileExists(path));
+
+    EXPECT_CALL(m_spoolFactory, spool(_, _)).Times(0); // submitFile never re-spools.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(path, spec.bodyFilePath);
+        EXPECT_EQ(200000u, spec.bodyFileSize); // The full session, well past the 64 KB cap.
+        return response(TransportStatus::Ok, 200, R"({"itemsProcessed":199975})");
+    }));
+    EXPECT_CALL(m_sink, onSyncResponse("intake-1", HC_RESULT_OK, _));
+
+    ASSERT_TRUE(m_stream.submitFile("intake-1", path, 200000));
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_FALSE(fileExists(path)); // Adopted file removed after send.
 }
 
 TEST_F(StatefulStreamTest, SameSessionIdAcrossRetries)
 {
     const std::string path = ::testing::TempDir() + "hc_stateful_retry.tmp";
-    // Two attempts inside one send: the spool factory is asked once, and the
-    // session id header is identical on both performer calls.
     EXPECT_CALL(m_spoolFactory, spool(_, _))
     .WillOnce(Return(ByMove(makeSpoolAt(path, "body"))));
 
@@ -159,14 +201,15 @@ TEST_F(StatefulStreamTest, SameSessionIdAcrossRetries)
     EXPECT_EQ("X-Session-Id: sess-retry", sessionHeader(secondHeaders));
 }
 
-TEST_F(StatefulStreamTest, SpoolFailureReportsErrorWithoutSending)
+TEST_F(StatefulStreamTest, SpoolFailureAtSubmitIsRejectedAndNothingIsQueued)
 {
     EXPECT_CALL(m_spoolFactory, spool(_, _)).WillOnce(Return(ByMove(nullptr)));
     EXPECT_CALL(m_performer, perform(_)).Times(0);
-    EXPECT_CALL(m_sink, onSyncResponse("sess-x", HC_RESULT_ERROR, std::string {}));
+    EXPECT_CALL(m_sink, onSyncResponse(_, _, _)).Times(0);
 
-    submit("sess-x", "body");
-    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_FALSE(submit("sess-x", "body")); // Rejected up front.
+    EXPECT_FALSE(m_stream.hasPending());
+    EXPECT_FALSE(m_stream.step(m_waiter));
 }
 
 TEST_F(StatefulStreamTest, FailureOutcomeCrossesTheSink)
@@ -182,11 +225,6 @@ TEST_F(StatefulStreamTest, FailureOutcomeCrossesTheSink)
 
 TEST_F(StatefulStreamTest, QueueIsFifo)
 {
-    const std::string path1 = ::testing::TempDir() + "hc_stateful_f1.tmp";
-    const std::string path2 = ::testing::TempDir() + "hc_stateful_f2.tmp";
-    EXPECT_CALL(m_spoolFactory, spool(_, _))
-    .WillOnce(Return(ByMove(makeSpoolAt(path1, "a"))))
-    .WillOnce(Return(ByMove(makeSpoolAt(path2, "bb"))));
     EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Ok, 200)));
 
     ::testing::InSequence sequence;
@@ -203,7 +241,8 @@ TEST_F(StatefulStreamTest, QueueIsFifo)
 
 TEST_F(StatefulStreamTest, BoundedQueueRejectsOverflow)
 {
-    // Fill the queue to its cap without stepping, then the next submit fails.
+    // Fill the queue to its cap without stepping (default spool succeeds), then
+    // the next submit is rejected.
     bool rejected = false;
 
     for (int index = 0; index < 200; index++)

@@ -201,6 +201,19 @@ bool HttpsClientFacade::submitSyncSession(const char* sessionId, const uint8_t* 
     return queued;
 }
 
+bool HttpsClientFacade::submitSyncSessionFile(const char* sessionId, const char* filePath,
+                                              uint64_t size)
+{
+    if (!m_started || sessionId == nullptr || filePath == nullptr)
+    {
+        return false;
+    }
+
+    const bool queued = m_stateful.submitFile(sessionId, filePath, size);
+    m_statefulWaiter.notify(); // Wake the sender promptly.
+    return queued;
+}
+
 bool HttpsClientFacade::submitTaskResponse(const char* taskId, const char* resultJson)
 {
     if (!m_started || taskId == nullptr || resultJson == nullptr)

@@ -209,6 +209,16 @@ HC_EXPORTED bool hc_submit_event(hc_handle* handle, const uint8_t* frame, size_t
 HC_EXPORTED bool hc_submit_sync_session(hc_handle* handle, const char* session_id,
                                         const uint8_t* buffer, size_t length);
 
+/**
+ * @brief Submit a whole sync session that is ALREADY spooled to a file (the
+ *        intake streamed it off the local sync socket, so a multi-MB session
+ *        never sat in memory). The module adopts the file and deletes it once
+ *        the session is sent. Asynchronous, like hc_submit_sync_session.
+ *        Returns false when the client is not running or the queue is full.
+ */
+HC_EXPORTED bool hc_submit_sync_session_file(hc_handle* handle, const char* session_id,
+                                             const char* file_path, uint64_t size);
+
 /* ---- control plane ---- */
 
 /** @brief Queue a task result for the next /control Response. */

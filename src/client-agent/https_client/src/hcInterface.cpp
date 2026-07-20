@@ -160,6 +160,24 @@ extern "C"
         }
     }
 
+    bool hc_submit_sync_session_file(hc_handle* handle, const char* session_id, const char* file_path,
+                                     uint64_t size)
+    {
+        if (handle == nullptr)
+        {
+            return false;
+        }
+
+        try
+        {
+            return handle->impl.submitSyncSessionFile(session_id, file_path, size);
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
     bool hc_submit_task_response(hc_handle* handle, const char* task_id, const char* result_json)
     {
         if (handle == nullptr)

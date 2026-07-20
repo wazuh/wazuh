@@ -60,6 +60,7 @@ class HttpsClientFacade final
 
         bool submitEvent(const uint8_t* frame, size_t length);
         bool submitSyncSession(const char* sessionId, const uint8_t* buffer, size_t length);
+        bool submitSyncSessionFile(const char* sessionId, const char* filePath, uint64_t size);
         bool submitTaskResponse(const char* taskId, const char* resultJson);
         void notifyNow();
         hc_conn_state_t state() const;
