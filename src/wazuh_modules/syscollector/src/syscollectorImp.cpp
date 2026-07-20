@@ -2292,6 +2292,19 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
                 // Report it as an expected event, not a WARNING.
                 m_logFunction(LOG_INFO, "Syscollector synchronization aborted: the module is stopping.");
             }
+            else if (result.managerNotReady && result.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // The manager is not ready for this agent yet, mostly right after a restart, and the
+                // sync has not failed enough times in a row to suspect it will not clear.
+                m_logFunction(LOG_INFO, "Syscollector synchronization deferred: " + result.failureReason +
+                              " Will retry next cycle.");
+            }
+            else if (result.managerNotReady)
+            {
+                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                m_logFunction(LOG_WARNING, "Syscollector synchronization failed " +
+                              std::to_string(result.consecutiveFailures) + " times in a row: " + result.failureReason);
+            }
             else
             {
                 m_logFunction(LOG_WARNING, "Syscollector synchronization failed" +
@@ -2342,6 +2355,19 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
             {
                 // Not a real failure: the VD sync was aborted because the module is stopping
                 m_logFunction(LOG_INFO, "Syscollector VD synchronization aborted: the module is stopping.");
+            }
+            else if (vdResult.managerNotReady && vdResult.consecutiveFailures <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // The manager is not ready for this agent yet, mostly right after a restart, and the
+                // sync has not failed enough times in a row to suspect it will not clear.
+                m_logFunction(LOG_INFO, "Syscollector VD synchronization deferred: " + vdResult.failureReason +
+                              " Will retry next cycle.");
+            }
+            else if (vdResult.managerNotReady)
+            {
+                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                m_logFunction(LOG_WARNING, "Syscollector VD synchronization failed " +
+                              std::to_string(vdResult.consecutiveFailures) + " times in a row: " + vdResult.failureReason);
             }
             else
             {
@@ -2929,7 +2955,40 @@ int Syscollector::executeFlushSync()
             if (!vdResult.success && !vdResult.failureReason.empty())
                 reason += (reason.empty() ? "" : "; VD: ") + vdResult.failureReason;
 
-            m_logFunction(LOG_WARNING, "Syscollector flush failed: " + failedQueues + (reason.empty() ? "" : ": " + reason));
+            const std::string reasonSuffix = reason.empty() ? "" : ": " + reason;
+
+            // A queue that failed counts as "manager not ready" only if that specific sync said so;
+            // a queue that succeeded does not veto the deferral.
+            const bool allFailuresManagerNotReady =
+                (result.success   || result.managerNotReady) &&
+                (vdResult.success || vdResult.managerNotReady);
+
+            // Longest manager-not-ready streak among the queues that actually failed.
+            unsigned int streak = 0;
+
+            if (!result.success && result.managerNotReady && result.consecutiveFailures > streak)
+                streak = result.consecutiveFailures;
+
+            if (!vdResult.success && vdResult.managerNotReady && vdResult.consecutiveFailures > streak)
+                streak = vdResult.consecutiveFailures;
+
+            if (allFailuresManagerNotReady && streak <= SYNC_MANAGER_NOT_READY_TOLERANCE)
+            {
+                // The manager is not ready for this agent yet, mostly right after a restart, and the
+                // sync has not failed enough times in a row to suspect it will not clear.
+                m_logFunction(LOG_INFO, "Syscollector flush deferred: " + failedQueues + reasonSuffix +
+                              " Will retry next cycle.");
+            }
+            else if (allFailuresManagerNotReady)
+            {
+                // Not a restart hiccup any more: the manager has not been ready for several cycles.
+                m_logFunction(LOG_WARNING, "Syscollector flush failed " + std::to_string(streak) +
+                              " times in a row: " + failedQueues + reasonSuffix);
+            }
+            else
+            {
+                m_logFunction(LOG_WARNING, "Syscollector flush failed: " + failedQueues + reasonSuffix);
+            }
         }
     }
 

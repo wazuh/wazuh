@@ -237,6 +237,32 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleReportsStoppedWhenStopRequested)
     EXPECT_TRUE(result.stopped);
 }
 
+// A local queue-open failure is not a "manager not ready yet" condition, so it must not be reported as
+// manager-not-ready: the calling module keeps it at WARNING.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleDoesNotReportTransientOnQueueFailure)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions failingStartMqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return -1; }, // Fail to start queue
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", failingStartMqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
+
+    SyncModuleResult result = protocol->synchronizeModule(
+                      Mode::DELTA
+                  );
+
+    EXPECT_FALSE(result.success);
+    EXPECT_FALSE(result.managerNotReady);
+}
+
 // Exercises the C interface (asp_sync_module -> SyncModuleResult_t.stopped): this is the path
 // FIM depends on to distinguish a shutdown-aborted sync from a genuine failure.
 TEST_F(AgentSyncProtocolTest, CInterfacePropagatesStoppedFlag)
@@ -452,9 +478,327 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleFullModeFailureKeepsInMemoryData)
 
     EXPECT_FALSE(result.success);  // Should fail due to timeout
     EXPECT_EQ(result.failureReason, "Timed out waiting for manager response to Start message.");
+    // The manager did not answer the handshake.
+    EXPECT_TRUE(result.managerNotReady);
+    // First failure of the streak: the module reports it at INFO and retries.
+    EXPECT_EQ(result.consecutiveFailures, 1u);
 
     // In-memory data should be kept for potential retry, so we can add more data
     EXPECT_NO_THROW(protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2));
+}
+
+// The consecutive-failure streak is what tells a brief post-restart hiccup apart from a lasting
+// condition (for example the manager having no indexer available, which also answers "not ready").
+// Without it the modules would demote a permanent sync outage to INFO forever.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleCountsConsecutiveFailures)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    // The queue opens fine and messages are sent, but no StartAck is ever parsed, so every attempt
+    // ends in a Start timeout: the manager is never ready. A queue-open failure would not do, since
+    // it returns before the streak is tracked.
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps,
+                                                   mockQueue);
+
+    EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+    .Times(0);
+    EXPECT_CALL(*mockQueue, resetSyncingItems())
+    .Times(0);
+
+    unsigned int previous = 0;
+
+    for (unsigned int attempt = 1; attempt <= SYNC_MANAGER_NOT_READY_TOLERANCE + 1; ++attempt)
+    {
+        // There must be something to synchronize on every attempt, otherwise the sync short-circuits
+        // as a success and never reaches the handshake.
+        protocol->clearInMemoryData();
+        protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
+
+        SyncModuleResult result = protocol->synchronizeModule(Mode::FULL);
+        EXPECT_FALSE(result.success);
+        EXPECT_TRUE(result.managerNotReady);
+        // The count grows while the condition does not clear, so the module escalates to WARNING once
+        // it goes past SYNC_MANAGER_NOT_READY_TOLERANCE.
+        EXPECT_EQ(result.consecutiveFailures, attempt);
+        previous = result.consecutiveFailures;
+    }
+
+    EXPECT_GT(previous, SYNC_MANAGER_NOT_READY_TOLERANCE);
+}
+
+// An Offline StartAck means the manager itself reports it cannot serve this agent yet. That is the
+// manager-not-ready condition modules demote to INFO for the first few cycles, so it must be surfaced
+// in the result (not just the Start timeout case).
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleOfflineStartAckReportsManagerNotReady)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    SyncModuleResult result;
+    std::thread syncThread([this, &result]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+        .WillOnce(Return(testData));
+
+        result = protocol->synchronizeModule(Mode::DELTA);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // StartAck with Offline status
+    flatbuffers::FlatBufferBuilder builder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(builder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Offline);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto message = Wazuh::SyncSchema::CreateMessage(
+                       builder,
+                       Wazuh::SyncSchema::MessageType::StartAck,
+                       startAckOffset.Union());
+    builder.Finish(message);
+    protocol->parseResponseBuffer(builder.GetBufferPointer(), builder.GetSize());
+
+    syncThread.join();
+
+    EXPECT_FALSE(result.success);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_EQ(result.consecutiveFailures, 1u);
+}
+
+// An Offline EndAck reports the same manager-not-ready condition once the session is already open.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleOfflineEndAckReportsManagerNotReady)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(max_timeout), retries, maxEps, mockQueue);
+
+    SyncModuleResult result;
+    std::thread syncThread([this, &result]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+        .WillOnce(Return(testData));
+
+        result = protocol->synchronizeModule(Mode::DELTA);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // StartAck Ok to open the session
+    flatbuffers::FlatBufferBuilder startBuilder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto startMessage = Wazuh::SyncSchema::CreateMessage(
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
+    startBuilder.Finish(startMessage);
+    protocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // EndAck with Offline status
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Offline);
+    endAckBuilder.add_session(session);
+    auto endAckOffset = endAckBuilder.Finish();
+    auto endMessage = Wazuh::SyncSchema::CreateMessage(
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+    protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+
+    syncThread.join();
+
+    EXPECT_FALSE(result.success);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_EQ(result.consecutiveFailures, 1u);
+}
+
+// A timeout waiting for the EndAck (session opened, but the manager never acknowledges the End) is
+// the same self-recovering manager-not-ready condition as a Start timeout.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleEndTimeoutReportsManagerNotReady)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+
+    SyncModuleResult result;
+    std::thread syncThread([this, &result]()
+    {
+        std::vector<PersistedData> testData =
+        {
+            {0, "test_id_1", "test_index_1", "test_data_1", Operation::CREATE, 1}
+        };
+        EXPECT_CALL(*mockQueue, fetchAndMarkForSync())
+        .WillOnce(Return(testData));
+
+        result = protocol->synchronizeModule(Mode::DELTA);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // StartAck Ok to open the session, then never send the EndAck so the End wait times out.
+    flatbuffers::FlatBufferBuilder startBuilder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto startMessage = Wazuh::SyncSchema::CreateMessage(
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
+    startBuilder.Finish(startMessage);
+    protocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
+
+    syncThread.join();
+
+    EXPECT_FALSE(result.success);
+    EXPECT_TRUE(result.managerNotReady);
+    EXPECT_EQ(result.consecutiveFailures, 1u);
+}
+
+// A sync aborted because a stop was requested says nothing about the manager, so it must not add to
+// the consecutive-failure streak.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleStoppedDoesNotCountTowardsStreak)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+
+    // First failure (Start timeout) puts the streak at 1.
+    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
+    SyncModuleResult firstFailure = protocol->synchronizeModule(Mode::FULL);
+    EXPECT_FALSE(firstFailure.success);
+    EXPECT_EQ(firstFailure.consecutiveFailures, 1u);
+
+    // A stop-aborted sync must leave the streak where it was.
+    protocol->stop();
+    protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2);
+    SyncModuleResult stoppedResult = protocol->synchronizeModule(Mode::FULL);
+    EXPECT_FALSE(stoppedResult.success);
+    EXPECT_TRUE(stoppedResult.stopped);
+    EXPECT_EQ(stoppedResult.consecutiveFailures, 1u);
+}
+
+// The first successful sync clears the streak, so a later manager-not-ready failure starts again at 1
+// and modules go back to reporting it at INFO instead of staying escalated.
+TEST_F(AgentSyncProtocolTest, SynchronizeModuleSuccessResetsConsecutiveFailures)
+{
+    mockQueue = std::make_shared<MockPersistentQueue>();
+    MQ_Functions mqFuncs =
+    {
+        .start = [](const char*, short int, short int) { return 0; },
+        .send_binary = [](int, const void*, size_t, const char*, char)
+        {
+            return 0;
+        }
+    };
+    LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
+    protocol = std::make_unique<AgentSyncProtocol>("test_module", ":memory:", mqFuncs, testLogger, std::chrono::seconds(syncEndDelay), std::chrono::seconds(min_timeout), retries, maxEps, mockQueue);
+
+    // First failure (Start timeout) puts the streak at 1.
+    protocol->persistDifferenceInMemory("memory_id_1", Operation::CREATE, "memory_index_1", "memory_data_1", 1);
+    SyncModuleResult firstFailure = protocol->synchronizeModule(Mode::FULL);
+    EXPECT_FALSE(firstFailure.success);
+    EXPECT_EQ(firstFailure.consecutiveFailures, 1u);
+
+    // Second sync: drive a full successful handshake, which must reset the streak to 0.
+    protocol->persistDifferenceInMemory("memory_id_2", Operation::MODIFY, "memory_index_2", "memory_data_2", 2);
+
+    SyncModuleResult successResult;
+    std::thread syncThread([this, &successResult]()
+    {
+        successResult = protocol->synchronizeModule(Mode::FULL);
+    });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // StartAck Ok
+    flatbuffers::FlatBufferBuilder startBuilder;
+    Wazuh::SyncSchema::StartAckBuilder startAckBuilder(startBuilder);
+    startAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    startAckBuilder.add_session(session);
+    auto startAckOffset = startAckBuilder.Finish();
+    auto startMessage = Wazuh::SyncSchema::CreateMessage(
+                            startBuilder,
+                            Wazuh::SyncSchema::MessageType::StartAck,
+                            startAckOffset.Union());
+    startBuilder.Finish(startMessage);
+    protocol->parseResponseBuffer(startBuilder.GetBufferPointer(), startBuilder.GetSize());
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    // EndAck Ok
+    flatbuffers::FlatBufferBuilder endBuilder;
+    Wazuh::SyncSchema::EndAckBuilder endAckBuilder(endBuilder);
+    endAckBuilder.add_status(Wazuh::SyncSchema::Status::Ok);
+    endAckBuilder.add_session(session);
+    auto endAckOffset = endAckBuilder.Finish();
+    auto endMessage = Wazuh::SyncSchema::CreateMessage(
+                          endBuilder,
+                          Wazuh::SyncSchema::MessageType::EndAck,
+                          endAckOffset.Union());
+    endBuilder.Finish(endMessage);
+    protocol->parseResponseBuffer(endBuilder.GetBufferPointer(), endBuilder.GetSize());
+
+    syncThread.join();
+
+    EXPECT_TRUE(successResult.success);
+    EXPECT_EQ(successResult.consecutiveFailures, 0u);
 }
 
 TEST_F(AgentSyncProtocolTest, SynchronizeModuleInvalidModeValidation)
@@ -1230,6 +1574,9 @@ TEST_F(AgentSyncProtocolTest, SynchronizeModuleWithReqRetAndDataResendFails)
                       );
         EXPECT_FALSE(result.success);
         EXPECT_EQ(result.failureReason, "Failed to communicate with the manager.");
+        // Failing to resend data in an established session is a real send failure, not the
+        // "manager is not ready yet" case: it must not be reported as such.
+        EXPECT_FALSE(result.managerNotReady);
     });
 
     // Wait for start
