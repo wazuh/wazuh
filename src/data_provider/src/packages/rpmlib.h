@@ -27,6 +27,19 @@ class RpmLib final : public IRpmLibWrapper
             ::rpmFreeRpmrc();
         }
 
+        void rpmFreeMacros() override
+        {
+            // rpmReadConfigFiles() (called from RpmPackageManager's constructor,
+            // once per scanPackages() cycle) calls rpmInitMacros() internally, which PUSHES
+            // built-in + config-file macros onto rpm's process-global macro context every time,
+            // without clearing it first (confirmed in rpm/rpmio/macro.c). rpmFreeRpmrc() alone
+            // does not undo this — it's a different subsystem (platform/arch tables). Only
+            // rpmFreeMacros() empties the macro table; rpm's own reference CLI (poptALL.c) calls
+            // both together on exit. Without this, every scan cycle permanently grows rpm's
+            // global macro table — a genuine accumulating leak in third-party library state.
+            ::rpmFreeMacros(nullptr);
+        }
+
         rpmtd rpmtdNew() override
         {
             return ::rpmtdNew();

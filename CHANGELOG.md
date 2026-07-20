@@ -100,4 +100,5 @@
 - Dropped orphan paths before promoting on agent startup to fix FIM. ([#36134](https://github.com/wazuh/wazuh/issues/36134))
 - Lowered the `wazuh-agentd` connection socket error log to debug level to avoid duplicating the "Lost connection with manager" error on transient disconnections. ([#37653](https://github.com/wazuh/wazuh/issues/37653))
 - Fixed a race condition when saving the Logcollector file status on shutdown. ([#37626](https://github.com/wazuh/wazuh/issues/37626))
+- Fixed an unbounded memory leak in `wazuh-modulesd` caused by a missing RPM macro context cleanup on every package scan cycle. ([#37656](https://github.com/wazuh/wazuh/issues/37656))
 
