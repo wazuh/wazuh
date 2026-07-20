@@ -657,3 +657,124 @@ TEST_F(ScaTest, SyncModule_UsesDeltaAfterFirstSyncCompleted)
 
     dbSync->closeAndDeleteDatabase();
 }
+
+// --- Manager-not-ready log-level decision (issue #37553) ------------------------------------------
+// These use MockDBSync so the log-level decision is exercised in isolation from real DB/transport.
+
+namespace
+{
+    // Makes selectRows report that the first synchronization already completed, so syncModule() takes
+    // the periodic (DELTA) path instead of the initial full snapshot.
+    void expectFirstSyncCompleted(std::shared_ptr<MockDBSync>& mockDBSync)
+    {
+        EXPECT_CALL(*mockDBSync, selectRows(::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke([](const nlohmann::json&,
+                                             std::function<void(ReturnTypeCallback, const nlohmann::json&)> callback)
+        {
+            callback(SELECTED, nlohmann::json{{"key", "first_sync_completed"}, {"value", 123456}});
+        }));
+    }
+}
+
+// While the manager is briefly not ready (streak within tolerance), the periodic sync is reported at
+// INFO as deferred, not as a WARNING.
+TEST_F(ScaTest, SyncModule_ManagerNotReadyWithinToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+    expectFirstSyncCompleted(mockDBSync);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization deferred: Failed to communicate with the manager. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA synchronization failed")));
+}
+
+// Past the tolerance the periodic sync escalates to a WARNING that names the streak.
+TEST_F(ScaTest, SyncModule_ManagerNotReadyPastToleranceLogsWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+    scaMock.pause();
+    expectFirstSyncCompleted(mockDBSync);
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+
+    m_logOutput.clear();
+    EXPECT_FALSE(scaMock.syncModule(Mode::DELTA));
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA synchronization failed " + std::to_string(streak) +
+                    " times in a row: Failed to communicate with the manager."));
+}
+
+// A flush that fails while the manager is briefly not ready is reported at INFO as deferred, not as
+// the ERROR it used to be.
+TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyWithinToleranceLogsDeferred)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, 1u}));
+
+    m_logOutput.clear();
+    EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA flush deferred: Failed to communicate with the manager. Will retry next cycle."));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("SCA flush failed")));
+}
+
+// A flush that keeps failing past the tolerance escalates to a WARNING naming the streak.
+TEST_F(ScaTest, ExecuteFlushSync_ManagerNotReadyPastToleranceLogsWarning)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+
+    const unsigned int streak = SYNC_MANAGER_NOT_READY_TOLERANCE + 1;
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Failed to communicate with the manager.", false, true, streak}));
+
+    m_logOutput.clear();
+    EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr(
+                    "SCA flush failed " + std::to_string(streak) +
+                    " times in a row: Failed to communicate with the manager."));
+}
+
+// A flush failure that is not a manager-not-ready condition keeps the original ERROR.
+TEST_F(ScaTest, ExecuteFlushSync_GenuineFailureKeepsError)
+{
+    auto mockDBSync = std::make_shared<MockDBSync>();
+    auto mockSyncProtocol = std::make_shared<MockAgentSyncProtocol>();
+    SCAMock scaMock(mockDBSync, nullptr);
+    scaMock.setSyncProtocol(mockSyncProtocol);
+
+    EXPECT_CALL(*mockSyncProtocol, synchronizeModule(Mode::DELTA, Option::SYNC))
+    .WillOnce(testing::Return(SyncModuleResult{false, "Manager sent an unexpected or invalid response.", false, false, 0u}));
+
+    m_logOutput.clear();
+    EXPECT_EQ(scaMock.callExecuteFlushSync(), -1);
+
+    EXPECT_THAT(m_logOutput, ::testing::HasSubstr("SCA flush failed"));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("deferred")));
+    EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("times in a row")));
+}
