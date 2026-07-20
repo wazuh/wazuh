@@ -7,8 +7,9 @@
  * local mock manager, printing every callback so the conversation is visible.
  *
  * It stands in for agentd: build a config, hc_create/hc_start, feed a few
- * events and one sync session, force a Notify, let the control loop run, then
- * hc_destroy. Not production code; a demo harness only.
+ * events, a small sync session and a multi-MB FIM full sync (over the intake
+ * socket), force a Notify, let the control loop run, then hc_destroy. Not
+ * production code; a demo harness only.
  */
 
 /* Expose POSIX clock_gettime/nanosleep under strict -std=c11 on glibc. */
@@ -133,6 +134,58 @@ static void nap(int ms)
     nanosleep(&t, NULL);
 }
 
+/* Deterministic hex filler (xorshift-style) for the fake file hashes. */
+static void fake_hex(char *dst, size_t hex_chars, uint64_t seed)
+{
+    static const char digits[] = "0123456789abcdef";
+    for (size_t i = 0; i < hex_chars; i++)
+    {
+        seed = seed * 6364136223846793005ULL + 1442695040888963407ULL;
+        dst[i] = digits[(seed >> 60) & 0xF];
+    }
+    dst[hex_chars] = '\0';
+}
+
+/* Builds a FIM full-sync session: "FULLSESSION:fim:" followed by one JSON
+ * entry per monitored file (path, attributes, md5/sha1/sha256), one per line.
+ * The shape mirrors what syscheck reports; the content is generated. */
+static unsigned char *build_fim_full_sync(size_t entries, size_t *out_len)
+{
+    const size_t cap = 32 + entries * 420;
+    unsigned char *buf = malloc(cap);
+    size_t len = (size_t)snprintf((char *)buf, cap, "FULLSESSION:fim:");
+    char md5[33], sha1[41], sha256[65];
+    for (size_t i = 0; i < entries; i++)
+    {
+        fake_hex(md5, 32, i * 3 + 1);
+        fake_hex(sha1, 40, i * 3 + 2);
+        fake_hex(sha256, 64, i * 3 + 3);
+        len += (size_t)snprintf((char *)buf + len, cap - len,
+                                "{\"path\":\"/usr/lib/pkg-%05zu/libcomponent-%zu.so\","
+                                "\"attributes\":{\"type\":\"file\",\"size\":%zu,"
+                                "\"perm\":\"rw-r--r--\",\"uid\":\"0\",\"gid\":\"0\","
+                                "\"inode\":%zu,\"mtime\":%ld,\"hash_md5\":\"%s\","
+                                "\"hash_sha1\":\"%s\",\"hash_sha256\":\"%s\"}}\n",
+                                i / 20, i, 4096 + i % 65536, 100000 + i,
+                                1784500000L + (long)(i % 86400), md5, sha1, sha256);
+    }
+    *out_len = len;
+    return buf;
+}
+
+/* Cheap integrity witness both sides can compute: sum of all bytes mod 2^32.
+ * The mock prints the same over what it received; equal values on screen mean
+ * the multi-MB session survived socket -> spool -> HTTPS byte-exact. */
+static uint32_t additive_checksum(const unsigned char *data, size_t len)
+{
+    uint32_t sum = 0;
+    for (size_t i = 0; i < len; i++)
+    {
+        sum += data[i];
+    }
+    return sum;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 4)
@@ -204,22 +257,26 @@ int main(int argc, char **argv)
     memset(session + 25, 'D', sizeof session - 25);
     hc_submit_sync_session(handle, "demo-sess-1", session, sizeof session);
 
+    unsigned char *fim_session = NULL;
+    size_t fim_len = 0;
     if (sync_socket)
     {
-        /* The producer path: stream a 3 MB session over the local intake
+        /* The producer path, playing the FIM module: a full sync sends every
+         * monitored file's entry as ONE FullSession over the local intake
          * socket. It bypasses the legacy 64 KB DGRAM cap entirely, is spooled
          * to disk by the module, and streamed to /stateful. */
-        printf("== streaming a 3 MB /stateful session over the intake socket "
-               "(no 64 KB cap) ==\n");
-        const size_t big_len = 3u * 1024 * 1024;
-        unsigned char *big = malloc(big_len);
-        memcpy(big, "FULLSESSION:syscollector:", 25);
-        memset(big + 25, 'D', big_len - 25);
-        if (!hc_send_sync_session(sync_socket, "demo-big-session", big, big_len))
+        const size_t entries = 100000; /* a mid-size server's file inventory */
+        printf("== FIM full sync: building %zu file entries ==\n", entries);
+        fflush(stdout);
+        fim_session = build_fim_full_sync(entries, &fim_len);
+        printf("== streaming the FIM full sync over the intake socket: %zu entries, "
+               "%.2f MB, checksum 0x%08x ==\n", entries, fim_len / (1024.0 * 1024.0),
+               additive_checksum(fim_session, fim_len));
+        fflush(stdout);
+        if (!hc_send_sync_session(sync_socket, "fim-full-sync-1", fim_session, fim_len))
         {
             printf("   (!) failed to stream the session to %s\n", sync_socket);
         }
-        free(big);
     }
 
     printf("== forcing an out-of-cycle Notify ==\n");
@@ -242,24 +299,36 @@ int main(int argc, char **argv)
 
     /* Optional sustained mode: DEMO_SECONDS=<n> keeps the client alive after
      * the scripted walkthrough, submitting an event every 2 s so the periodic
-     * Notify + /stateless traffic stays visible. SIGINT/SIGTERM (Ctrl-C,
-     * docker stop) ends it early through the same clean drain. */
+     * Notify + /stateless traffic stays visible, and re-running the FIM full
+     * sync every 60 s. SIGINT/SIGTERM (Ctrl-C, docker stop) ends it early
+     * through the same clean drain. */
     const char *extra = getenv("DEMO_SECONDS");
     const long extra_s = extra ? strtol(extra, NULL, 10) : 0;
     if (extra_s > 0)
     {
-        printf("== sustained mode: ~%ld s of keepalive traffic (Ctrl-C stops cleanly) ==\n",
-               extra_s);
+        printf("== sustained mode: ~%ld s of keepalive traffic, FIM full re-sync "
+               "every 60 s (Ctrl-C stops cleanly) ==\n", extra_s);
         fflush(stdout);
+        int fim_round = 1;
         for (long tick = 0; tick * 2 < extra_s && !atomic_load(&g_stop); tick++)
         {
             char frame[80];
             int n = snprintf(frame, sizeof frame, "1:/var/log/syslog:sustained event %ld", tick);
             hc_submit_event(handle, (const uint8_t *)frame, (size_t)n);
+            if (fim_session && tick > 0 && tick % 30 == 0)
+            {
+                char sid[48];
+                snprintf(sid, sizeof sid, "fim-full-sync-%d", ++fim_round);
+                printf("== periodic FIM full re-sync (%s, %.2f MB) ==\n", sid,
+                       fim_len / (1024.0 * 1024.0));
+                fflush(stdout);
+                hc_send_sync_session(sync_socket, sid, fim_session, fim_len);
+            }
             nap(2000);
         }
     }
 
+    free(fim_session);
     printf("== stopping (drain + join) ==\n");
     hc_destroy(handle);
     printf("== done ==\n");

@@ -182,13 +182,15 @@ class Handler(BaseHTTPRequestHandler):
     def _handle_stateful(self, body):
         session = self.headers.get("X-Session-Id", "?")
         module, payload_start = self._parse_session_header(body)
-        items = max(0, len(body) - payload_start)
+        payload = body[payload_start:]
+        # A FIM session carries one JSON entry per line; count entries, not bytes.
+        items = payload.count(b"\n") if module == "fim" else len(payload)
         self._reply(200, {"status": "success", "sessionId": session,
                           "itemsProcessed": items})
         log(f"     /stateful   -> 200  session={session} "
             f"module={module} itemsProcessed={items}")
         if len(body) > OS_MAXSTR:
-            self._announce_large_session(body, payload_start)
+            self._announce_large_session(body, payload_start, module)
 
     def _parse_session_header(self, body):
         """Return (module, payload_start) from a 'FULLSESSION:<module>:' prefix."""
@@ -199,15 +201,37 @@ class Handler(BaseHTTPRequestHandler):
             return "?", 0
         return body[len("FULLSESSION:"):colon].decode("latin-1"), colon + 1
 
-    def _announce_large_session(self, body, payload_start):
+    def _announce_large_session(self, body, payload_start, module):
         size = len(body)
         chunks = -(-size // MAX_BATCH_PAYLOAD)  # ceil
-        intact = body.count(b"D", payload_start) == size - payload_start
         log("──[ LARGE SESSION ]── streamed whole over the new intake socket ──")
         log(f"     {human_size(size)} ({size} B) arrived as ONE CMAC-signed POST")
         log(f"     = {size / OS_MAXSTR:.0f}x the 64 KB OS_MAXSTR DGRAM cap; the legacy")
         log(f"       chunked path would need {chunks} x 60 KB datagrams reassembled")
-        log(f"     payload byte-exact after streaming: {'yes' if intact else 'NO'}")
+        if module == "fim":
+            self._announce_fim_payload(body, payload_start)
+        else:
+            intact = body.count(b"D", payload_start) == size - payload_start
+            log(f"     payload byte-exact after streaming: {'yes' if intact else 'NO'}")
+
+    def _announce_fim_payload(self, body, payload_start):
+        """Parse the received FIM entries and print the same additive checksum
+        the producer printed: equal values mean the sync arrived byte-exact."""
+        lines = body[payload_start:].splitlines()
+        parsed = 0
+        for line in lines:
+            try:
+                json.loads(line)
+                parsed += 1
+            except ValueError:
+                break
+        first = json.loads(lines[0])["path"] if parsed else "?"
+        last = json.loads(lines[-1])["path"] if parsed == len(lines) else "?"
+        health = "all valid JSON" if parsed == len(lines) else f"INVALID at line {parsed}"
+        checksum = sum(body) & 0xFFFFFFFF
+        log(f"     FIM entries: {len(lines)} ({health})")
+        log(f"     first={first}  last={last}")
+        log(f"     checksum 0x{checksum:08x} (must match the producer's printed checksum)")
 
 
 def main():
