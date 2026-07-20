@@ -827,6 +827,7 @@ void test_send_exec_msg_reconnect_socket(void **state){
     char *exec_msg = "Message";
 
     expect_StartMQ_call(queue_path, WRITE, new_socket);
+    will_return(__wrap_OS_SetSendTimeout, 0);
     expect_OS_SendUnix_call(new_socket, exec_msg, 0, 0);
 
     send_exec_msg(&socket, queue_path, exec_msg);
@@ -856,15 +857,48 @@ void test_send_exec_msg_OS_SOCKBUSY(void **state){
     send_exec_msg(&socket, queue_path, exec_msg);
 }
 
-void test_send_exec_msg_OS_TIMEOUT(void **state){
+/* A send that times out must drop the message and invalidate the socket, never block */
+void test_send_exec_msg_send_timeout_drops_message(void **state){
     int socket = 10;
     char *queue_path = "/path/to/queue";
     char *exec_msg = "Message";
 
-    expect_OS_SendUnix_call(socket, exec_msg, 0, OS_TIMEOUT);
+    expect_OS_SendUnix_call(socket, exec_msg, 0, OS_SOCKTERR);
     expect_string(__wrap__merror, formatted_msg, "(1321): Error communicating with queue '/path/to/queue'.");
 
     send_exec_msg(&socket, queue_path, exec_msg);
+
+    assert_int_equal(socket, -1);
+}
+
+void test_connect_exec_queue(void **state){
+    char *queue_path = "/path/to/queue";
+
+    expect_StartMQ_call(queue_path, WRITE, 5);
+    will_return(__wrap_OS_SetSendTimeout, 0);
+
+    assert_int_equal(connect_exec_queue(queue_path), 5);
+}
+
+void test_connect_exec_queue_fail(void **state){
+    char *queue_path = "/path/to/queue";
+
+    expect_StartMQ_call(queue_path, WRITE, -1);
+
+    assert_int_equal(connect_exec_queue(queue_path), OS_INVALID);
+}
+
+/* A socket that cannot be given a send timeout must not be used */
+void test_connect_exec_queue_set_timeout_fail(void **state){
+    char *queue_path = "/path/to/queue";
+    errno = 1;
+
+    expect_StartMQ_call(queue_path, WRITE, 999);
+    will_return(__wrap_OS_SetSendTimeout, -1);
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1323): Cannot set send timeout on queue '/path/to/queue': Operation not permitted (1)");
+
+    assert_int_equal(connect_exec_queue(queue_path), OS_INVALID);
 }
 
 void test_get_ip_success(void **state)
@@ -925,7 +959,12 @@ int main(void)
         cmocka_unit_test(test_send_exec_msg_reconnect_socket),
         cmocka_unit_test(test_send_exec_msg_reconnect_socket_fail),
         cmocka_unit_test(test_send_exec_msg_OS_SOCKBUSY),
-        cmocka_unit_test(test_send_exec_msg_OS_TIMEOUT),
+        cmocka_unit_test(test_send_exec_msg_send_timeout_drops_message),
+
+        // connect_exec_queue
+        cmocka_unit_test(test_connect_exec_queue),
+        cmocka_unit_test(test_connect_exec_queue_fail),
+        cmocka_unit_test(test_connect_exec_queue_set_timeout_fail),
         };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
