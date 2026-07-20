@@ -25,11 +25,13 @@
 #include "statefulStream.hpp"
 #include "statelessStream.hpp"
 #include "stopToken.hpp"
+#include "syncIntake.hpp"
 #include "sysSeams.hpp"
 
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <thread>
 
@@ -69,6 +71,7 @@ class HttpsClientFacade final
         void controlLoop();
         void statelessLoop();
         void statefulLoop();
+        void startSyncIntake();
         void drain();
         std::chrono::milliseconds controlInterval() const;
 
@@ -99,6 +102,11 @@ class HttpsClientFacade final
         std::thread m_controlThread;
         std::thread m_statelessThread;
         std::thread m_statefulThread;
+
+        // Optional stateful sync intake (large sessions off a local STREAM
+        // socket). Constructed only when a socket path is configured; its sink
+        // feeds the stateful stream's file-based submit.
+        std::unique_ptr<SyncIntake> m_syncIntake;
 
         mutable std::mutex m_lifecycleMutex;
         bool m_started {false};

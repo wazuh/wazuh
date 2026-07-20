@@ -57,7 +57,40 @@ bool HttpsClientFacade::start()
     m_controlThread = std::thread(&HttpsClientFacade::controlLoop, this);
     m_statelessThread = std::thread(&HttpsClientFacade::statelessLoop, this);
     m_statefulThread = std::thread(&HttpsClientFacade::statefulLoop, this);
+    startSyncIntake();
     return true;
+}
+
+void HttpsClientFacade::startSyncIntake()
+{
+    if (m_config.syncSocketPath.empty())
+    {
+        return; // Large-session intake disabled; sessions arrive via the ABI only.
+    }
+
+    const std::string spoolDir = m_config.spoolDir.empty() ? std::string {"/tmp"} :
+                                 m_config.spoolDir;
+    m_syncIntake = std::make_unique<SyncIntake>(
+                       m_config.syncSocketPath, spoolDir,
+                       [this](const std::string & sessionId, const std::string & path, uint64_t size)
+    {
+        // The intake streamed the session to `path`; hand it to the stateful
+        // stream, which adopts and deletes it after sending.
+        m_stateful.submitFile(sessionId, path, size);
+        m_statefulWaiter.notify();
+    });
+
+    if (m_syncIntake->start())
+    {
+        LOGFN_INFO(m_logFn, "https_client sync intake listening on %s.",
+                   m_config.syncSocketPath.c_str());
+    }
+    else
+    {
+        LOGFN_ERROR(m_logFn, "https_client sync intake failed to bind %s.",
+                    m_config.syncSocketPath.c_str());
+        m_syncIntake.reset();
+    }
 }
 
 void HttpsClientFacade::stop()
@@ -73,6 +106,13 @@ void HttpsClientFacade::stop()
         m_started = false;
     }
     LOGFN_INFO(m_logFn, "Stopping https_client.");
+
+    // Stop the intake first so no new sessions arrive during the drain.
+    if (m_syncIntake)
+    {
+        m_syncIntake->stop();
+        m_syncIntake.reset();
+    }
 
     // Interrupt in-flight requests and break the loops; wake gated streams.
     m_controlWaiter.requestStop();

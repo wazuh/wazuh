@@ -137,6 +137,10 @@ typedef struct hc_config_t
     uint32_t drain_timeout_ms;    ///< Shutdown drain window; 0 -> 5000.
 
     char spool_dir[HC_MAX_PATH];  ///< Stateful spool dir; empty -> system tmp.
+
+    /// Local STREAM socket for the stateful sync intake (large sessions bypass
+    /// the 64 KB DGRAM event queue). Empty -> the intake is not started.
+    char sync_socket_path[HC_MAX_PATH];
 } hc_config_t;
 
 /**
