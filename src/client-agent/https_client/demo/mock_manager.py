@@ -13,6 +13,7 @@
 # Not production code; a demo harness only.
 
 import argparse
+import base64
 import json
 import ssl
 import subprocess
@@ -118,36 +119,65 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle_control(self, body):
         try:
-            phase = json.loads(body.decode()).get("phase", "?")
+            msg_type = json.loads(body.decode()).get("type", "?")
         except (ValueError, UnicodeDecodeError):
-            phase = "?"
+            msg_type = "?"
 
-        if phase == "startup":
-            handshake = {"limits": {"eps": 0}, "cluster_name": "demo",
-                         "cluster_node": "node01", "agent_groups": ["default"],
-                         "merged_sum": "d41d8cd98f00b204e9800998ecf8427e"}
-            self._reply(200, handshake)
-            log(f"     /control    -> 200  STARTUP accepted, sent handshake JSON")
-        elif phase == "notify":
-            Handler.notify_count += 1
-            tasks = []
-            if Handler.notify_count == 1:
-                # Hand the agent one task on the first Notify so we can watch
-                # it dispatch (and dedupe if re-sent).
-                tasks = [{"task_id": "018f9a-0001", "type": "active_response",
-                          "priority": 1, "payload": {"command": "restart-wazuh"},
-                          "created": int(time.time())}]
-            response = {"state": {"limits": {"eps": 0}, "merged_sum":
-                                  "d41d8cd98f00b204e9800998ecf8427e"},
-                        "tasks": tasks, "timestamp": int(time.time())}
-            self._reply(200, response)
-            log(f"     /control    -> 200  NOTIFY #{Handler.notify_count}, "
-                f"tasks={[t['task_id'] for t in tasks]}")
-        elif phase == "response":
-            self._reply(200)
-            log(f"     /control    -> 200  RESPONSE (task results) acked")
+        if msg_type == "startup":
+            self._control_startup()
+        elif msg_type == "notify":
+            self._control_notify()
+        elif msg_type == "response":
+            self._control_response(body)
         else:
             self._reply(400)
+
+    def _control_startup(self):
+        # C.1: nested handshake metadata. No config files or tasks at startup.
+        handshake = {"limits": {"fim": {"file": 100000},
+                                "syscollector": {"packages": 50000},
+                                "sca": {"checks": 10000}},
+                     "cluster": {"name": "demo", "node": "node01"},
+                     "agent": {"groups": ["default"],
+                               "config_hash": "d41d8cd98f00b204e9800998ecf8427e"}}
+        self._reply(200, handshake)
+        log("     /control    -> 200  STARTUP accepted, sent handshake JSON")
+
+    def _control_notify(self):
+        Handler.notify_count += 1
+        response = {"status": "ok"}
+        if Handler.notify_count == 1:
+            # One fire-and-forget AR task and one info request that expects a
+            # C.3 response, so the whole task round-trip is visible.
+            response["tasks"] = [
+                {"task_id": "018f9a-0001", "task_type": "active_response",
+                 "payload": {"command": "restart-wazuh"}},
+                {"task_id": "018f9a-0002", "task_type": "info_request",
+                 "payload": {"section": "client"}},
+            ]
+        elif Handler.notify_count == 2:
+            # C.2: config hash mismatch -> attach the new merged config.
+            merged = b"#default\n<agent_config>\n</agent_config>\n"
+            response["config"] = {"hash": "def789abc012",
+                                  "data": base64.b64encode(merged).decode()}
+        self._reply(200, response)
+        tasks = [t["task_id"] for t in response.get("tasks", [])]
+        extra = " + config push" if "config" in response else ""
+        log(f"     /control    -> 200  NOTIFY #{Handler.notify_count}, "
+            f"tasks={tasks}{extra}")
+
+    def _control_response(self, body):
+        try:
+            results = json.loads(body.decode()).get("results", [])
+        except (ValueError, UnicodeDecodeError):
+            results = []
+        self._reply(200, {"status": "ok"})
+        for result in results:
+            log(f"     /control    -> 200  RESPONSE task={result.get('task_id')} "
+                f"status={result.get('status')} "
+                f"data={json.dumps(result.get('data'))[:60]}")
+        if not results:
+            log("     /control    -> 200  RESPONSE (no results)")
 
     def _handle_stateful(self, body):
         session = self.headers.get("X-Session-Id", "?")

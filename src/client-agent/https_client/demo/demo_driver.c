@@ -17,6 +17,7 @@
 #include "https_client.h"
 
 #include <stdarg.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,11 @@
 #include <unistd.h>
 
 static struct timespec g_start;
+
+/* The info_request task id, stashed by on_task for the main thread: callbacks
+ * must not call back into hc_*, so the C.3 response is submitted from main. */
+static char g_info_task_id[64];
+static atomic_int g_info_task_ready;
 
 static long elapsed_ms(void)
 {
@@ -72,6 +78,20 @@ static void on_task(const char *task_id, const char *task_type, const char *payl
     (void)user_data;
     printf("[+%7ld ms] >> TASK received: id=%s type=%s payload=%s\n", elapsed_ms(), task_id,
            task_type, payload_json);
+    fflush(stdout);
+
+    if (strcmp(task_type, "info_request") == 0)
+    {
+        strncpy(g_info_task_id, task_id, sizeof g_info_task_id - 1);
+        atomic_store(&g_info_task_ready, 1);
+    }
+}
+
+static void on_config_update(const char *config_hash, const char *data_base64, void *user_data)
+{
+    (void)user_data;
+    printf("[+%7ld ms] >> CONFIG UPDATE: hash=%s (%zu base64 bytes of merged config)\n",
+           elapsed_ms(), config_hash, strlen(data_base64));
     fflush(stdout);
 }
 
@@ -138,6 +158,7 @@ int main(int argc, char **argv)
     callbacks.log = on_log;
     callbacks.on_startup_result = on_startup_result;
     callbacks.on_task = on_task;
+    callbacks.on_config_update = on_config_update;
     callbacks.on_sync_response = on_sync_response;
     callbacks.on_state_change = on_state_change;
     callbacks.on_buffer_level = on_buffer_level;
@@ -188,8 +209,20 @@ int main(int argc, char **argv)
     printf("== forcing an out-of-cycle Notify ==\n");
     hc_notify_now(handle);
 
-    /* Let the control loop run a few Notify cycles (tasks, responses). */
-    nap(6000);
+    /* Let the control loop deliver the tasks and the config push, then answer
+     * the info_request task with a C.3 result (fire-and-forget tasks like
+     * active_response get no response). */
+    nap(3000);
+    if (atomic_load(&g_info_task_ready))
+    {
+        printf("== answering the info_request task (C.3 response) ==\n");
+        fflush(stdout);
+        hc_submit_task_response(handle, g_info_task_id,
+                                "{\"status\":\"completed\","
+                                "\"data\":{\"client\":{\"notify_time\":2}},\"error\":null}");
+        hc_notify_now(handle);
+    }
+    nap(3000);
 
     printf("== stopping (drain + join) ==\n");
     hc_destroy(handle);
