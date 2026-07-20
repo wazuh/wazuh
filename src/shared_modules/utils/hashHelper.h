@@ -12,14 +12,14 @@
 #ifndef _HASH_HELPER_H
 #define _HASH_HELPER_H
 
-#include <memory>
-#include <vector>
-#include <stdexcept>
 #include "openssl/evp.h"
-#include <fstream>
 #include <array>
-#include <string>
+#include <fstream>
+#include <memory>
 #include <mutex>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
@@ -115,10 +115,13 @@ namespace Utils
                 // HashData construction (e.g. syscollector fanning out several RSync-backed
                 // checksum computations across its thread pool on its first evaluation cycle).
                 static std::once_flag cryptoInitFlag;
-                std::call_once(cryptoInitFlag, []()
-                {
-                    OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS | OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT, nullptr);
-                });
+                std::call_once(cryptoInitFlag,
+                               []()
+                               {
+                                   OPENSSL_init_crypto(OPENSSL_INIT_ADD_ALL_CIPHERS | OPENSSL_INIT_ADD_ALL_DIGESTS |
+                                                           OPENSSL_INIT_LOAD_CONFIG | OPENSSL_INIT_NO_ATEXIT,
+                                                       nullptr);
+                               });
 
                 auto ret{0};
 

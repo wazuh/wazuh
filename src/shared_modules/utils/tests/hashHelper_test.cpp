@@ -47,20 +47,21 @@ TEST_F(HashHelperTest, ConcurrentFirstInitializationIsThreadSafe)
 
     for (auto i {0u}; i < THREAD_COUNT; ++i)
     {
-        threads.emplace_back([i, &exceptions]()
-        {
-            try
+        threads.emplace_back(
+            [i, &exceptions]()
             {
-                HashData hash;
-                const std::string data {"HASH"};
-                hash.update(data.c_str(), data.size());
-                hash.hash();
-            }
-            catch (...)
-            {
-                exceptions[i] = std::current_exception();
-            }
-        });
+                try
+                {
+                    HashData hash;
+                    const std::string data {"HASH"};
+                    hash.update(data.c_str(), data.size());
+                    hash.hash();
+                }
+                catch (...)
+                {
+                    exceptions[i] = std::current_exception();
+                }
+            });
     }
 
     for (auto& thread : threads)
