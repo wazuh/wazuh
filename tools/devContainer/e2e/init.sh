@@ -146,50 +146,61 @@ function upsert_certs() {
         rm -rf certs
     fi
 
-    local wazuh_install_script="wazuh-install.sh"
-    local wazuh_install_url="https://packages.wazuh.com/4.14/wazuh-install.sh"
+    need_cmd curl
+
+    local certs_tool="wazuh-certs-tool.sh"
     local config_file="config.yml"
+    local manifest_tmp
+    manifest_tmp="$(mktemp)"
 
-    # Download wazuh-install.sh
-    echo "==> Downloading wazuh-install.sh..."
-    curl -sO "${wazuh_install_url}"
-    chmod +x "${wazuh_install_script}"
+    # Use the 5.0 certificates tool (matches the indexer/dashboard packages),
+    # resolved from the staging manifest (primary, then backup).
+    echo "==> Resolving the certificates tool from the manifest..."
+    if ! curl -fsSL "$WAZUH_5X_PRIMARY_MANIFEST_URL" -o "$manifest_tmp" 2>/dev/null \
+       || [[ -z "$(yaml_value "$manifest_tmp" "wazuh_certs_tool")" ]]; then
+      curl -fsSL "$WAZUH_5X_FALLBACK_MANIFEST_URL" -o "$manifest_tmp"
+    fi
+    local tool_url
+    tool_url="$(yaml_value "$manifest_tmp" "wazuh_certs_tool")"
+    rm -f "$manifest_tmp"
+    if [[ -z "$tool_url" ]]; then
+      echo "ERROR: 'wazuh_certs_tool' not found in the manifests." >&2
+      exit 1
+    fi
 
-    # Create config.yml
+    echo "==> Downloading the certificates tool..."
+    curl -fsSL "$tool_url" -o "$certs_tool"
+    chmod +x "$certs_tool"
+
+    # The indexer node carries the container name as a DNS SAN in addition to the
+    # loopback IP, so the host manager (127.0.0.1) and the cluster worker
+    # containers (wazuh-indexer) pass indexer TLS against the same bundle.
     echo "==> Creating config.yml..."
     cat > "${config_file}" << 'EOF'
 nodes:
-  # Wazuh indexer nodes
   indexer:
     - name: node-1
       ip: "127.0.0.1"
+      dns:
+        - "wazuh-indexer"
 
-  # Wazuh server nodes
-  server:
+  manager:
     - name: wazuh-1
       ip: "127.0.0.1"
 
-  # Wazuh dashboard nodes
   dashboard:
     - name: dashboard
       ip: "127.0.0.1"
 EOF
 
-    # Generate config files
-    echo "==> Generating configuration files..."
-    bash "${wazuh_install_script}" --generate-config-files
+    echo "==> Generating certificates..."
+    bash "${certs_tool}" -A
 
-    # Extract the tar file
-    echo "==> Extracting wazuh-install-files.tar..."
-    tar -xf wazuh-install-files.tar
+    echo "==> Renaming wazuh-certificates to certs..."
+    mv wazuh-certificates certs
 
-    # Rename wazuh-install-files to certs
-    echo "==> Renaming wazuh-install-files to certs..."
-    mv wazuh-install-files certs
-
-    # Clean up temporary files
     echo "==> Cleaning up temporary files..."
-    rm -f "${wazuh_install_script}" "${config_file}" wazuh-install-files.tar
+    rm -f "${certs_tool}" "${config_file}" wazuh-certificates-tool.log ./*.srl 2>/dev/null || true
 
     echo "==> Certificates created successfully."
 }
