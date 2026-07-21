@@ -30,6 +30,8 @@ target_include_directories(
   remoted_module_utest
   PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include
           ${CMAKE_CURRENT_LIST_DIR}/../interface
+          ${CMAKE_CURRENT_LIST_DIR}/../src # http_server/ internal headers
+          ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, singleton.hpp
           ${SRC_FOLDER}/shared_modules/common
           ${SRC_FOLDER}/external/cJSON)
 

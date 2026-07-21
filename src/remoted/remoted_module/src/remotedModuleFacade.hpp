@@ -12,8 +12,11 @@
 #ifndef _REMOTED_MODULE_FACADE_HPP
 #define _REMOTED_MODULE_FACADE_HPP
 
-#include "authServer.hpp"
 #include "clientKeysFileResolver.hpp"
+#include "http_server/IHttpServer.hpp"
+#include "http_server/authGateway.hpp"
+#include "http_server/httpServerConfig.hpp"
+#include "http_server/httpServerFactory.hpp"
 #include "loggerHelper.h"
 #include "remoted_module.h"
 #include "singleton.hpp"
@@ -34,8 +37,8 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
  * @brief Internal engine of the remoted module.
  *
  * Owns the worker std::thread and implements the canonical cooperative-shutdown
- * lifecycle (atomic flag + condition_variable + join). This is the skeleton the
- * real logic hangs off of: today the worker just logs a heartbeat.
+ * lifecycle (atomic flag + condition_variable + join), plus the HTTPS transport
+ * (our IHttpServer) and the framework-agnostic auth layer wired on top of it.
  */
 class RemotedModuleFacade final : public Singleton<RemotedModuleFacade>
 {
@@ -70,16 +73,20 @@ public:
                    m_config.node_name,
                    m_config.worker_node ? "true" : "false");
 
-        // Auth server: shape only until a concrete HTTP transport (RESTinio)
-        // is wired in (see authServer.cpp) -- configure()/start() below don't
-        // open a socket yet. No routes are registered: there is no endpoint
-        // logic to hang off it yet, and remoted_module_config_t doesn't carry
-        // the TLS/host/limit knobs a real listener would need, so ServerConfig
-        // and TlsConfig are left at their defaults for now.
-        m_keyResolver = std::make_shared<wazuh_auth::ClientKeysFileResolver>();
-        m_authServer.setKeyResolver(m_keyResolver);
-        m_authServer.configure(wazuh_auth::ServerConfig {}, wazuh_auth::TlsConfig {}, wazuh_auth::AuthConfig {});
-        m_authServer.start();
+        try
+        {
+            startHttpServer();
+        }
+        catch (const std::exception& e)
+        {
+            // Leave the module in a clean, not-running state if HTTPS init fails.
+            LOGFN_ERROR(m_logFn, "Failed to start remoted HTTP server: %s", e.what());
+            m_httpServer.reset();
+            m_authGateway.reset();
+            m_keyResolver.reset();
+            m_running = false;
+            throw;
+        }
 
         m_worker = std::thread(&RemotedModuleFacade::run, this);
     }
@@ -98,6 +105,15 @@ public:
 
             LOGFN_INFO(m_logFn, "Stopping remoted module.");
 
+            // Stop accepting/serving HTTPS before tearing down the rest.
+            if (m_httpServer)
+            {
+                m_httpServer->stop();
+                m_httpServer.reset();
+            }
+            m_authGateway.reset();
+            m_keyResolver.reset();
+
             {
                 std::lock_guard<std::mutex> waitLock(m_waitMutex);
                 m_stopping = true;
@@ -114,12 +130,45 @@ public:
             workerToJoin.join();
         }
 
-        m_authServer.stop();
-
         LOGFN_INFO(m_logFn, "remoted module stopped.");
     }
 
 private:
+    void startHttpServer()
+    {
+        const auto config = remoted::http::buildHttpServerConfig(m_config);
+
+        m_httpServer = remoted::http::makeHttpServer();
+
+        // Framework-agnostic auth layer: reads agent keys from client.keys and
+        // verifies the AES-CMAC of every authenticated request. Wired on top of
+        // OUR transport, so swapping the HTTP library never touches it.
+        m_keyResolver = std::make_shared<wazuh_auth::ClientKeysFileResolver>();
+        m_authGateway = std::make_unique<remoted::http::AuthGateway>(wazuh_auth::AuthConfig {}, m_keyResolver);
+
+        // Unauthenticated health probe (no request body, no auth).
+        m_httpServer->addRoute(
+            remoted::http::Method::Get,
+            "/",
+            [](const remoted::http::HttpRequest&, std::shared_ptr<remoted::http::IHttpResponder> responder)
+            {
+                responder->send(remoted::http::HttpResponse::json(200, R"({"status":"ok","module":"remoted"})"));
+            });
+
+        // Dummy /stateless: the gateway runs the full AES-CMAC validation and
+        // only calls this handler once auth succeeds. It intentionally does NOT
+        // parse the H/E payload or ingest anything -- it just validates and
+        // returns 200. The 400/401/413 rejections are produced by the gateway.
+        m_authGateway->addAuthenticatedRoute(
+            *m_httpServer,
+            remoted::http::Method::Post,
+            "/stateless",
+            [](const wazuh_auth::AuthenticatedRequest&)
+            { return remoted::http::HttpResponse {200, "", {}}; });
+
+        m_httpServer->start(config);
+    }
+
     void run()
     {
         LOGFN_INFO(m_logFn, "remoted module worker thread running.");
@@ -136,16 +185,17 @@ private:
     }
 
     const LogFn m_logFn {REMOTED_MODULE_LOGTAG};
-    std::mutex m_lifecycleMutex;         ///< Serializes start()/stop().
-    std::mutex m_waitMutex;              ///< Guards the heartbeat wait.
-    std::condition_variable m_waitCv;    ///< Wakes the worker on stop.
-    std::atomic_bool m_stopping {false}; ///< Cooperative-shutdown flag.
-    bool m_running {false};              ///< Whether the worker is active.
-    std::thread m_worker;                ///< The C++ thread launched for remoted.
-    remoted_module_config_t m_config {}; ///< Copy of the caller's configuration.
+    std::mutex m_lifecycleMutex;              ///< Serializes start()/stop().
+    std::mutex m_waitMutex;                   ///< Guards the heartbeat wait.
+    std::condition_variable m_waitCv;         ///< Wakes the worker on stop.
+    std::atomic_bool m_stopping {false};      ///< Cooperative-shutdown flag.
+    bool m_running {false};                   ///< Whether the worker is active.
+    std::thread m_worker;                     ///< The C++ thread launched for remoted.
+    remoted_module_config_t m_config {};      ///< Copy of the caller's configuration.
 
-    wazuh_auth::AuthServer m_authServer;                        ///< Auth server; shape/lifecycle only for now.
-    std::shared_ptr<wazuh_auth::IAgentKeyResolver> m_keyResolver; ///< Backs m_authServer's key lookups.
+    std::unique_ptr<remoted::http::IHttpServer> m_httpServer;    ///< HTTPS transport (behind our interface).
+    std::shared_ptr<wazuh_auth::IAgentKeyResolver> m_keyResolver; ///< Agent AES-key lookup (client.keys).
+    std::unique_ptr<remoted::http::AuthGateway> m_authGateway;   ///< Auth layer wired onto m_httpServer.
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP
