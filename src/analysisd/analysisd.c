@@ -912,7 +912,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 
 #ifndef LOCAL
         if (Config.ar & REMOTE_AR) {
-            if ((arq = StartMQ(ARQUEUE, WRITE, 1)) < 0) {
+            if ((arq = connect_exec_queue(ARQUEUE)) < 0) {
                 merror(ARQ_ERROR);
             } else {
                 minfo(CONN_TO, ARQUEUE, "active-response");
@@ -921,7 +921,7 @@ void OS_ReadMSG_analysisd(int m_queue)
 #endif
 
         if (Config.ar & LOCAL_AR) {
-            if ((execdq = StartMQ(EXECQUEUE, WRITE, 1)) < 0) {
+            if ((execdq = connect_exec_queue(EXECQUEUE)) < 0) {
                 merror(ARQ_ERROR);
             } else {
                 minfo(CONN_TO, EXECQUEUE, "exec");
