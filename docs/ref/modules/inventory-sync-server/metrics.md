@@ -49,7 +49,7 @@ Reading notes:
 - **Counters accumulate for the life of the process** and survive the module's internal
   restart retries (the registry is created once and never reset). There is no reset endpoint,
   and no rates in the dump: derive events-per-second by diffing counters between polls (the
-  in-repo scraper `src/engine/tools/devContainer/scripts/monitor.py` does exactly this).
+  in-repo scraper `tools/devContainer/scripts/monitor.py` does exactly this).
 - **The catalog is dynamic**: the `sync.shard.<i>.*` gauges exist once the pipeline is built
   (one pair per worker), and the seven `server.*` pulls appear only after the transport's
   first successful start. A manager still waiting on its startup gate answers `200` with a

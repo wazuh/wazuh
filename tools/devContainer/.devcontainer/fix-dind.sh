@@ -13,7 +13,8 @@
 #   3. Hard-restart the daemon (kill existing processes, clean up stale PID files,
 #      relaunch) so the new configuration is picked up from a clean slate.
 #
-# The script is idempotent: running it multiple times is safe.
+# The script is idempotent: if dockerd is already up with the nftables backend
+# already configured, it exits immediately instead of restarting the daemon.
 set -eu
 
 # ── 1. Redirect iptables tooling to the nftables-backed binaries ──────────────
@@ -21,8 +22,16 @@ update-alternatives --set iptables  /usr/sbin/iptables-nft
 update-alternatives --set ip6tables /usr/sbin/ip6tables-nft
 
 # ── 2. Configure dockerd to use the nftables firewall backend ─────────────────
+DAEMON_JSON=/etc/docker/daemon.json
+
+if [ -f "$DAEMON_JSON" ] && grep -q '"firewall-backend"[[:space:]]*:[[:space:]]*"nftables"' "$DAEMON_JSON" \
+   && docker info > /dev/null 2>&1; then
+    echo "dockerd already running with the nftables firewall backend."
+    exit 0
+fi
+
 mkdir -p /etc/docker
-cat > /etc/docker/daemon.json <<'EOF'
+cat > "$DAEMON_JSON" <<'EOF'
 {
   "firewall-backend": "nftables"
 }
@@ -43,7 +52,7 @@ nohup dockerd > /tmp/dockerd.log 2>&1 &
 
 # ── 4. Wait until the daemon is ready ────────────────────────────────────────
 # Poll docker info until the socket is responsive or the timeout is reached.
-TIMEOUT=30
+TIMEOUT=90
 ELAPSED=0
 printf 'Waiting for dockerd to be ready'
 until docker info > /dev/null 2>&1; do

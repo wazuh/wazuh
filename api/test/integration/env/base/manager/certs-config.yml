@@ -1,5 +1,5 @@
 # Certificate inventory of the API integration-test environment, read by
-# src/engine/tools/devContainer/scripts/wazuh-certs-tool.sh from manager.Dockerfile
+# tools/devContainer/scripts/wazuh-certs-tool.sh from manager.Dockerfile
 # (same shape as the installation assistant's config.yml: nodes.indexer|manager[]
 # with name, ip and dns). Keep comments on their own lines: the tool's parser does
 # not strip trailing comments.

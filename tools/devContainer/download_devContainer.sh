@@ -7,9 +7,9 @@ readonly OLD_PWD=$(pwd)
 
 # Constants
 readonly TMP_DIR="/tmp/wazuh_devContainer_$$"  # Use PID for unique temp dir
-readonly REPO_DEV_DIR="src/engine/tools/devContainer"
+readonly REPO_DEV_DIR="tools/devContainer"
 readonly REPO_URL="https://github.com/wazuh/wazuh.git"
-readonly DEFAULT_BRANCH="main"
+readonly DEFAULT_BRANCH="5.0.0"
 
 readonly EXCLUDED_FILES=(
     "download_devContainer.sh"
@@ -119,6 +119,15 @@ copy_devContainer() {
     for folder in "${EXCLUDE_FOLDERS[@]}"; do
         rm -rf "$DEV_CONTAINER_DESTINATION/$folder"
     done
+
+    # The source path exists on other branches without the devContainer config
+    # (e.g. only the CI reinstall-cmake.sh), which would copy a directory that
+    # cannot open as a devContainer. Fail loudly instead.
+    if [ ! -f "$DEV_CONTAINER_DESTINATION/.devcontainer/devcontainer.json" ]; then
+        echo "Error: no .devcontainer/devcontainer.json under '$REPO_DEV_DIR' on branch '$BRANCH'." >&2
+        echo "       Pick a branch that ships the devContainer (e.g. -b 5.0.0)." >&2
+        exit 1
+    fi
 }
 
 # Function to patch the devcontainer.json name with a unique suffix (MM-DD xx)
