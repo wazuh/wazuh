@@ -1,11 +1,14 @@
 #pragma once
 
+#include "hardware_scanner.hpp"
 #include "interface_scanner.hpp"
 #include "network_scanner.hpp"
 #include "os_scanner.hpp"
 #include "package_scanner.hpp"
 #include "process_scanner.hpp"
+#include "protocol_scanner.hpp"
 #include "rootfs_file_walker.hpp"
+#include "service_scanner.hpp"
 #include "user_scanner.hpp"
 
 #include <string>
@@ -35,6 +38,9 @@ void ApplyIdentity(PackageBaselineRow& row, const ContainerIdentity& id);
 void ApplyIdentity(OsBaselineRow& row, const ContainerIdentity& id);
 void ApplyIdentity(InterfaceBaselineRow& row, const ContainerIdentity& id);
 void ApplyIdentity(NetworkAddressBaselineRow& row, const ContainerIdentity& id);
+void ApplyIdentity(ProtocolBaselineRow& row, const ContainerIdentity& id);
+void ApplyIdentity(ServiceBaselineRow& row, const ContainerIdentity& id);
+void ApplyIdentity(HardwareBaselineRow& row, const ContainerIdentity& id);
 
 /// @brief Build the sync-protocol payload for one FIM file baseline row.
 ///
@@ -82,5 +88,14 @@ std::pair<std::string, std::string> BuildInterfaceJson(const InterfaceBaselineRo
 
 /// @brief Build the sync-protocol payload for one bound-address baseline row.
 std::pair<std::string, std::string> BuildNetworkAddressJson(const NetworkAddressBaselineRow& row);
+
+/// @brief Build the sync-protocol payload for one default-route (protocols) row.
+std::pair<std::string, std::string> BuildProtocolJson(const ProtocolBaselineRow& row);
+
+/// @brief Build the sync-protocol payload for one systemd service baseline row.
+std::pair<std::string, std::string> BuildServiceJson(const ServiceBaselineRow& row);
+
+/// @brief Build the sync-protocol payload for the container's virtual-hardware row.
+std::pair<std::string, std::string> BuildHardwareJson(const HardwareBaselineRow& row);
 
 } // namespace wazuh::container_baseline
