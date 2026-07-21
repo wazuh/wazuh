@@ -23,6 +23,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <cstdarg>
+#include <cstdio>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -73,21 +74,9 @@ public:
                    m_config.node_name,
                    m_config.worker_node ? "true" : "false");
 
-        try
-        {
-            startHttpServer();
-        }
-        catch (const std::exception& e)
-        {
-            // Leave the module in a clean, not-running state if HTTPS init fails.
-            LOGFN_ERROR(m_logFn, "Failed to start remoted HTTP server: %s", e.what());
-            m_httpServer.reset();
-            m_authGateway.reset();
-            m_keyResolver.reset();
-            m_running = false;
-            throw;
-        }
-
+        // The HTTPS server itself is started from run() (see tryStartHttpServer()),
+        // not here: that keeps start() fast and non-throwing even when the
+        // certificate/key aren't in place yet.
         m_worker = std::thread(&RemotedModuleFacade::run, this);
     }
 
@@ -169,16 +158,53 @@ private:
         m_httpServer->start(config);
     }
 
+    void tryStartHttpServer()
+    {
+        std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+
+        if (m_stopping || m_httpServer)
+        {
+            return;
+        }
+
+        try
+        {
+            startHttpServer();
+            LOGFN_INFO(m_logFn, "remoted HTTP server started.");
+        }
+        catch (const std::exception& e)
+        {
+            // Most likely cause: certificate/key not in place yet (fresh
+            // install). Leave everything reset and try again next heartbeat.
+            LOGFN_WARN(m_logFn, "remoted HTTP server not started yet, will retry: %s", e.what());
+            m_httpServer.reset();
+            m_authGateway.reset();
+            m_keyResolver.reset();
+        }
+    }
+
     void run()
     {
         LOGFN_INFO(m_logFn, "remoted module worker thread running.");
 
-        std::unique_lock<std::mutex> lock(m_waitMutex);
-        while (!m_stopping)
+        while (true)
         {
+            tryStartHttpServer();
+
+            std::unique_lock<std::mutex> lock(m_waitMutex);
+            if (m_stopping)
+            {
+                break;
+            }
+
             LOGFN_DEBUG1(m_logFn, "remoted module heartbeat.");
             m_waitCv.wait_for(
                 lock, std::chrono::seconds(REMOTED_MODULE_HEARTBEAT_SECS), [this]() { return m_stopping.load(); });
+
+            if (m_stopping)
+            {
+                break;
+            }
         }
 
         LOGFN_INFO(m_logFn, "remoted module worker thread finished.");
