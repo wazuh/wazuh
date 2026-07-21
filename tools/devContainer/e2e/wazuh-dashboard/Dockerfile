@@ -11,7 +11,7 @@ COPY . .
 
 # Install wazuh-dashboard
 RUN apt update && apt install -y adduser curl libcap2-bin bash sudo
-RUN apt install -y /tmp/wazuh-install/wazuh-dashboard_5.0.0-latest_amd64.deb
+RUN apt install -y /tmp/wazuh-install/wazuh-dashboard_5.0.0-latest.deb
 
 # Replace default indexer host `opensearch.hosts: https://localhost:9200` with `opensearch.hosts: https://wazuh-indexer:9200`
 RUN sed -i 's|^opensearch.hosts: .*|opensearch.hosts: ["https://wazuh-indexer:9200"]|' /etc/wazuh-dashboard/opensearch_dashboards.yml

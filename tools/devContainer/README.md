@@ -203,12 +203,14 @@ For full details, see [agents/README.md](e2e/agents/README.md).
 ### wazuh_copy_certs.sh
 Deploys generated certificates to an existing wazuh-manager installation:
 - Copies SSL/TLS certificates from `e2e/certs/` to `/var/wazuh-manager/etc/certs/`
-- Sets appropriate ownership (`wazuh-manager:wazuh-manager`) and permissions (640)
-- Maps certificate files to wazuh-manager expected names:
-  - `wazuh-1-key.pem` → `manager-key.pem`
-  - `wazuh-1.pem` → `manager.pem`
+- Applies the unified cert layout (wazuh/wazuh#38278): directory
+  `root:wazuh-manager` `1770` (sticky), files `root:wazuh-manager` `0640`
+- Maps certificate files to the names the installed manager expects:
+  - `wazuh-1-key.pem` → `indexer-connector-key.pem` (`manager-key.pem` on pre-#38278 packages)
+  - `wazuh-1.pem` → `indexer-connector.pem` (`manager.pem` on pre-#38278 packages)
   - `root-ca.pem` → `root-ca.pem`
-- Updates `ossec.conf` with indexer configuration
+- Opens the manager `<remote>` listeners (`0.0.0.0`) so containerised agents can
+  reach remoted over the docker bridge (they ship loopback-bound)
 
 **Important:** Must be executed after installing wazuh-manager and before starting the service.
 
