@@ -33,7 +33,15 @@ if(NOT OPENSSL_CRYPTO_LIB)
   message(STATUS "OpenSSL crypto library not found, using target name")
 endif()
 
-target_link_libraries(remoted_module PRIVATE pthread ${OPENSSL_CRYPTO_LIB})
+# restinio::restinio: our HTTPS transport (also pulls ssl/crypto transitively).
+# OPENSSL_CRYPTO_LIB: kept explicit for cmac.cpp's EVP_MAC (auth middleware).
+target_link_libraries(
+  remoted_module
+  PRIVATE
+    pthread
+    restinio::restinio
+    ${OPENSSL_CRYPTO_LIB}
+)
 
 set_target_properties(remoted_module PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                 BUILD_RPATH "$ORIGIN/../lib")
