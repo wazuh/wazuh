@@ -61,7 +61,11 @@ namespace Log
         int line;
         const char* func;
     };
-// Remove visibility of this extern function
+// Hidden visibility for everything below: GLOBAL_LOG_FUNCTION/GLOBAL_LOG_LEVEL must stay
+// private to each DSO, and so must every inline function/class that reads them --
+// otherwise the dynamic linker interposes same-named inline symbols across shared
+// objects (e.g. two .so's both defining isLevelEnabled()) and calls from one DSO can
+// end up executing another DSO's copy, silently reading *its* empty/unset globals.
 #pragma GCC visibility push(hidden)
 
     extern std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
@@ -69,7 +73,6 @@ namespace Log
 
     // Minimum level for LOGFN_* filtering. inline so each DSO gets its own copy.
     inline int GLOBAL_LOG_LEVEL {LOGLEVEL_DEBUG};
-#pragma GCC visibility pop
 
     inline bool isLevelEnabled(int level) noexcept
     {
@@ -404,6 +407,7 @@ namespace Log
     {
         return currentModuleLogFn().compose(libName);
     }
+#pragma GCC visibility pop
 } // namespace Log
 
 using LogFn = Log::LogFn;
