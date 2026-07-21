@@ -1,14 +1,14 @@
-# Engine Development Container
+# Wazuh Manager Development Container
 
-This development container provides a complete, ready-to-use environment for developing and testing the Wazuh Engine. It includes all necessary tools, dependencies, and pre-configured VS Code settings to streamline the development workflow.
+This development container provides a complete, ready-to-use environment for developing and testing the Wazuh Manager, covering all of its components (server, Engine, and framework). It includes all necessary tools, dependencies, and pre-configured VS Code settings to streamline the development workflow.
 
 ## Features
 
-- **Complete Build Environment**: Includes all required dependencies to compile the Wazuh engine from source (GCC, CMake, Python, Go, Docker CLI, and more)
+- **Complete Build Environment**: Includes all required dependencies to compile the Wazuh Manager from source — server, Engine and framework — (GCC, CMake, Python, Go, Docker CLI, and more)
 - **IDE Integration**: Pre-configured VS Code settings, tasks, and launch configurations for debugging and development
 - **Docker-in-Docker**: Full Docker support for running containerized services within the development environment
 - **Development Tools**: Git, GitHub CLI, SSH server, and various development utilities pre-installed
-- **Python & Go Support**: Configured Python and Go environments for extending engine functionality
+- **Python & Go Support**: Configured Python and Go environments for extending Manager functionality
 
 ## Getting Started
 
@@ -27,14 +27,14 @@ The following tools must be installed and running on your system before using th
 Download and set up the development container:
 
 ```bash
-curl -o download_devContainer.sh https://raw.githubusercontent.com/wazuh/wazuh/main/src/engine/tools/devContainer/download_devContainer.sh
+curl -o download_devContainer.sh https://raw.githubusercontent.com/wazuh/wazuh/5.0.0/tools/devContainer/download_devContainer.sh
 chmod +x download_devContainer.sh
 ./download_devContainer.sh -h
 ```
 
 **Options:**
 - `-d <destination>`: Specify destination directory (default: `./devContainer`)
-- `-b <branch>`: Specify Git branch to download from (default: `main`)
+- `-b <branch>`: Specify Git branch to download from (default: `5.0.0`)
 - `-h`: Show help message
 
 **Example:**
@@ -61,13 +61,13 @@ devContainer/
 └── .vscode/          # VS Code tasks, launch, and settings
 ```
 
-The `scripts/` and `e2e/` directories are **not** included in the download. They are available in the full Wazuh repository under `src/engine/tools/devContainer/`.
+The `scripts/` and `e2e/` directories are **not** included in the download. They are available in the full Wazuh repository under `tools/devContainer/`.
 
 
 ## Development Utilities (scripts/)
 
 > [!NOTE]
-> The `scripts/` directory is not downloaded by `download_devContainer.sh`. It is available in the Wazuh repository at `src/engine/tools/devContainer/scripts/`.
+> The `scripts/` directory is not downloaded by `download_devContainer.sh`. It is available in the Wazuh repository at `tools/devContainer/scripts/`.
 
 The `scripts/` directory contains various utilities to facilitate engine development and testing:
 
@@ -104,7 +104,7 @@ Located at `tools/purge_wazuh.sh` (Wazuh repository root), this script provides 
 ## E2E Testing Environment
 
 > [!NOTE]
-> The `e2e/` directory is not downloaded by `download_devContainer.sh`. It is available in the Wazuh repository at `src/engine/tools/devContainer/e2e/`.
+> The `e2e/` directory is not downloaded by `download_devContainer.sh`. It is available in the Wazuh repository at `tools/devContainer/e2e/`.
 
 The `e2e/` directory provides scripts to deploy a complete Wazuh ecosystem for end-to-end testing and development within the devContainer.
 

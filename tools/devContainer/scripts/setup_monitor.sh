@@ -15,7 +15,7 @@
 # It is idempotent: safe to run multiple times.
 #
 # Quick start (download from repo and run):
-#   curl -fsSL https://raw.githubusercontent.com/wazuh/wazuh/<branch>/src/engine/tools/devContainer/scripts/setup_monitor.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/wazuh/wazuh/<branch>/tools/devContainer/scripts/setup_monitor.sh | bash
 #
 # To also install charting dependencies (matplotlib, pandas, numpy):
 #   INSTALL_CHARTS=1 bash setup_monitor.sh
