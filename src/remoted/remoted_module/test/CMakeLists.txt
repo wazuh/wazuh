@@ -29,6 +29,7 @@ target_link_libraries(
 target_include_directories(
   remoted_module_utest
   PRIVATE ${CMAKE_CURRENT_LIST_DIR}/../include
+          ${CMAKE_CURRENT_LIST_DIR}/../interface
           ${SRC_FOLDER}/shared_modules/common
           ${SRC_FOLDER}/external/cJSON)
 
