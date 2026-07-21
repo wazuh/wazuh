@@ -10,7 +10,7 @@ WORKDIR /tmp/wazuh-install
 COPY . .
 
 # Install wazuh-indexer
-RUN apt install -y /tmp/wazuh-install/wazuh-indexer_5.0.0-latest_amd64.deb
+RUN apt install -y /tmp/wazuh-install/wazuh-indexer_5.0.0-latest.deb
 
 
 # Add Java security policy permissions for cgroup access

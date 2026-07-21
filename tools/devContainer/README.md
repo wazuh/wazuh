@@ -113,7 +113,7 @@ The `e2e/` directory provides scripts to deploy a complete Wazuh ecosystem for e
 Initializes the E2E environment by running three steps in order:
 
 1. **Package download** — downloads the Wazuh Indexer and Dashboard `.deb` packages into `wazuh-indexer/` and `wazuh-dashboard/` respectively. By default, package URLs are resolved from the staging nightly manifest, falling back to the nightly backup manifest when a package is missing. Use `--from-wf` to download from the latest successful GitHub Actions workflows instead.
-2. **Certificate generation** — downloads `wazuh-install.sh` from the official Wazuh 4.x repository, generates a temporary `config.yml`, runs `--generate-config-files` to produce the cert bundle, extracts it into `certs/`, and cleans up all temporary files. If `certs/` already exists the script prompts whether to regenerate.
+2. **Certificate generation** — resolves the 5.0 certificates tool from the staging manifest, generates a temporary `config.yml` (the indexer node carries the `wazuh-indexer` container name as a SAN), produces the bundle into `certs/`, and cleans up the temporary files. If `certs/` already exists the script prompts whether to regenerate.
 3. **Logging** — all output is mirrored to `init.log` in the same directory.
 
 **Prerequisites:**
@@ -203,12 +203,14 @@ For full details, see [agents/README.md](e2e/agents/README.md).
 ### wazuh_copy_certs.sh
 Deploys generated certificates to an existing wazuh-manager installation:
 - Copies SSL/TLS certificates from `e2e/certs/` to `/var/wazuh-manager/etc/certs/`
-- Sets appropriate ownership (`wazuh-manager:wazuh-manager`) and permissions (640)
-- Maps certificate files to wazuh-manager expected names:
-  - `wazuh-1-key.pem` → `manager-key.pem`
-  - `wazuh-1.pem` → `manager.pem`
+- Applies the unified cert layout (wazuh/wazuh#38278): directory
+  `root:wazuh-manager` `1770` (sticky), files `root:wazuh-manager` `0640`
+- Maps certificate files to the names the installed manager expects:
+  - `wazuh-1-key.pem` → `indexer-connector-key.pem` (`manager-key.pem` on pre-#38278 packages)
+  - `wazuh-1.pem` → `indexer-connector.pem` (`manager.pem` on pre-#38278 packages)
   - `root-ca.pem` → `root-ca.pem`
-- Updates `ossec.conf` with indexer configuration
+- Opens the manager `<remote>` listeners (`0.0.0.0`) so containerised agents can
+  reach remoted over the docker bridge (they ship loopback-bound)
 
 **Important:** Must be executed after installing wazuh-manager and before starting the service.
 

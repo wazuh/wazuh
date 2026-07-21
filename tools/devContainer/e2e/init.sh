@@ -66,10 +66,28 @@ done
 WAZUH_5X_PRIMARY_MANIFEST_URL="${WAZUH_5X_PRIMARY_MANIFEST_URL:-https://packages-staging.xdrsiem.wazuh.info/nightly/5.0.0/artifact-urls/artifact_urls_5.0.0-latest.yaml}"
 WAZUH_5X_FALLBACK_MANIFEST_URL="${WAZUH_5X_FALLBACK_MANIFEST_URL:-https://packages-staging.xdrsiem.wazuh.info/nightly-backup/artifact_urls_5.0.0-latest.yaml}"
 
-INDEXER_PACKAGE_KEY="wazuh_indexer_amd64_deb"
-INDEXER_PACKAGE_FILE="wazuh-indexer_5.0.0-latest_amd64.deb"
-DASHBOARD_PACKAGE_KEY="wazuh_dashboard_amd64_deb"
-DASHBOARD_PACKAGE_FILE="wazuh-dashboard_5.0.0-latest_amd64.deb"
+# Target architecture (autodetected; override with WAZUH_ARCH=amd64|arm64).
+WAZUH_ARCH="${WAZUH_ARCH:-}"
+if [ -z "$WAZUH_ARCH" ]; then
+  case "$(uname -m)" in
+    x86_64|amd64)  WAZUH_ARCH="amd64" ;;
+    aarch64|arm64) WAZUH_ARCH="arm64" ;;
+    *) echo "Unsupported architecture '$(uname -m)'. Set WAZUH_ARCH=amd64|arm64." >&2; exit 1 ;;
+  esac
+fi
+case "$WAZUH_ARCH" in
+  amd64) INDEXER_RUN_ARCH="x64";   DASHBOARD_RUN_ARCH="amd64" ;;
+  arm64) INDEXER_RUN_ARCH="arm64"; DASHBOARD_RUN_ARCH="arm64" ;;
+  *) echo "Invalid WAZUH_ARCH='$WAZUH_ARCH'. Use amd64 or arm64." >&2; exit 1 ;;
+esac
+
+# The architecture selects the artifact (KEY) but is kept out of the local
+# filename: the Dockerfiles install an exact name, so a re-run on a different
+# arch overwrites the previous package instead of leaving two in the context.
+INDEXER_PACKAGE_KEY="wazuh_indexer_${WAZUH_ARCH}_deb"
+INDEXER_PACKAGE_FILE="wazuh-indexer_5.0.0-latest.deb"
+DASHBOARD_PACKAGE_KEY="wazuh_dashboard_${WAZUH_ARCH}_deb"
+DASHBOARD_PACKAGE_FILE="wazuh-dashboard_5.0.0-latest.deb"
 
 WAZUH_MANAGER_HOME="${WAZUH_MANAGER_HOME:-/var/wazuh-manager}"
 
@@ -493,7 +511,7 @@ function get_packages_from_manifests() {
 function get_indexer_artifact() {
   local repo="wazuh/wazuh-indexer"
   local workflow_file="5_builderpackage_indexer.yml"
-  local run_name_prefix='Build [ \"deb\" ] Wazuh Indexer on [ \"x64\" ] | main_'
+  local run_name_prefix="Build [ \\\"deb\\\" ] Wazuh Indexer on [ \\\"${INDEXER_RUN_ARCH}\\\" ] | main_"
 
   echo "==> Searching for the first successful build for the Wazuh Indexer 5.x..."
   local run_id
@@ -516,7 +534,7 @@ function get_indexer_artifact() {
   #    save it as "wazuh-indexer_5.0.0-latest_amd64.deb"
   fetch_artifacts_with_patterns \
     "$repo" "$run_id" "wazuh-indexer" \
-    '^wazuh-indexer_5\.0\.0-[[:alnum:]]+_amd64\.deb$::wazuh-indexer_5.0.0-latest_amd64.deb'
+    "^wazuh-indexer_5\.0\.0-[[:alnum:]]+_${WAZUH_ARCH}\.deb$::${INDEXER_PACKAGE_FILE}"
 }
 
 
@@ -526,7 +544,7 @@ function get_indexer_artifact() {
 function get_dashboard_artifact() {
   local repo="wazuh/wazuh-dashboard"
   local workflow_file="5_builderpackage_dashboard.yml"
-  local run_name_prefix='Build deb wazuh-dashboard on amd64 - is stage - checksum main_'
+  local run_name_prefix="Build deb wazuh-dashboard on ${DASHBOARD_RUN_ARCH} - is stage - checksum main_"
 
   echo "==> Searching for the first successful build for the Wazuh Dashboard..."
   local run_id
@@ -549,7 +567,7 @@ function get_dashboard_artifact() {
   #    save it as "wazuh-dashboard_5.0.0-latest_amd64.deb"
   fetch_artifacts_with_patterns \
     "$repo" "$run_id" "wazuh-dashboard" \
-    '^wazuh-dashboard_5\.0\.0-[[:alnum:]]+_amd64\.deb$::wazuh-dashboard_5.0.0-latest_amd64.deb'
+    "^wazuh-dashboard_5\.0\.0-[[:alnum:]]+_${WAZUH_ARCH}\.deb$::${DASHBOARD_PACKAGE_FILE}"
 }
 
 ####################################################
