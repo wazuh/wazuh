@@ -1299,6 +1299,121 @@ if(NOT IS_AGENT)
   endif()
 endif()
 
+# ------------------------------------------------------------------------------
+# RESTinio (Linux manager only)
+# ------------------------------------------------------------------------------
+
+if(IS_LINUX AND NOT IS_AGENT)
+  find_package(Threads REQUIRED)
+
+  set(RESTINIO_ROOT "${EXTERNAL_DIR}/restinio-tmp")
+  set(RESTINIO_DEV_DIR "${RESTINIO_ROOT}/dev")
+
+  set(RESTINIO_INCLUDE_DIR "${RESTINIO_DEV_DIR}")
+  set(RESTINIO_ASIO_INCLUDE_DIR "${RESTINIO_DEV_DIR}/asio")
+  set(RESTINIO_EXPECTED_INCLUDE_DIR "${RESTINIO_DEV_DIR}/expected-lite")
+  set(RESTINIO_LLHTTP_ROOT "${RESTINIO_DEV_DIR}/nodejs/llhttp")
+
+  # The "full" release flattens llhttp's include/ and src/ directories into
+  # dev/nodejs/llhttp. This fallback also supports an unmodified llhttp archive.
+  if(EXISTS "${RESTINIO_LLHTTP_ROOT}/llhttp.c")
+    set(RESTINIO_LLHTTP_SOURCE_DIR "${RESTINIO_LLHTTP_ROOT}")
+    set(RESTINIO_LLHTTP_INCLUDE_DIR "${RESTINIO_LLHTTP_ROOT}")
+  elseif(EXISTS "${RESTINIO_LLHTTP_ROOT}/src/llhttp.c")
+    set(RESTINIO_LLHTTP_SOURCE_DIR "${RESTINIO_LLHTTP_ROOT}/src")
+    set(RESTINIO_LLHTTP_INCLUDE_DIR "${RESTINIO_LLHTTP_ROOT}/include")
+  else()
+    message(
+      FATAL_ERROR
+      "Unable to find llhttp sources under ${RESTINIO_LLHTTP_ROOT}"
+    )
+  endif()
+
+  foreach(REQUIRED_FILE
+      "${RESTINIO_INCLUDE_DIR}/restinio/core.hpp"
+      "${RESTINIO_INCLUDE_DIR}/restinio/tls.hpp"
+      "${RESTINIO_ASIO_INCLUDE_DIR}/asio.hpp"
+      "${RESTINIO_EXPECTED_INCLUDE_DIR}/nonstd/expected.hpp"
+      "${RESTINIO_LLHTTP_INCLUDE_DIR}/llhttp.h"
+      "${RESTINIO_LLHTTP_SOURCE_DIR}/api.c"
+      "${RESTINIO_LLHTTP_SOURCE_DIR}/http.c"
+      "${RESTINIO_LLHTTP_SOURCE_DIR}/llhttp.c")
+    if(NOT EXISTS "${REQUIRED_FILE}")
+      message(FATAL_ERROR "Missing RESTinio dependency file: ${REQUIRED_FILE}")
+    endif()
+  endforeach()
+
+  # llhttp is RESTinio's only mandatory compiled dependency.
+  add_library(
+    ext_restinio_llhttp
+    STATIC
+      "${RESTINIO_LLHTTP_SOURCE_DIR}/api.c"
+      "${RESTINIO_LLHTTP_SOURCE_DIR}/http.c"
+      "${RESTINIO_LLHTTP_SOURCE_DIR}/llhttp.c"
+  )
+
+  target_include_directories(
+    ext_restinio_llhttp
+    PUBLIC
+      "${RESTINIO_LLHTTP_INCLUDE_DIR}"
+  )
+
+  set_target_properties(
+    ext_restinio_llhttp
+    PROPERTIES
+      C_STANDARD 99
+      C_STANDARD_REQUIRED ON
+      POSITION_INDEPENDENT_CODE ON
+      OUTPUT_NAME llhttp
+  )
+
+  # RESTinio and standalone Asio are header-only.
+  add_library(ext_restinio INTERFACE)
+
+  target_include_directories(
+    ext_restinio
+    SYSTEM INTERFACE
+      "${RESTINIO_INCLUDE_DIR}"
+      "${RESTINIO_ASIO_INCLUDE_DIR}"
+      "${RESTINIO_EXPECTED_INCLUDE_DIR}"
+
+      # Reuse Wazuh's fmt instead of RESTinio's bundled copy.
+      "${EXTERNAL_DIR}/fmt/include"
+  )
+
+  target_compile_features(
+    ext_restinio
+    INTERFACE
+      cxx_std_17
+  )
+
+  target_compile_definitions(
+    ext_restinio
+    INTERFACE
+      ASIO_STANDALONE
+  )
+
+  target_link_libraries(
+    ext_restinio
+    INTERFACE
+      ext_restinio_llhttp
+      ext_fmt
+      ssl
+      crypto
+      Threads::Threads
+      ${CMAKE_DL_LIBS}
+  )
+
+  # Ensure external static libraries are ready before consumers are linked.
+  add_dependencies(
+    ext_restinio
+    fmt_external
+    openssl_external
+  )
+
+  add_library(restinio::restinio ALIAS ext_restinio)
+endif()
+
 # ==============================================================================
 # Section 5: libwazuhext — shared library bundling all core external deps
 # ==============================================================================
