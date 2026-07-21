@@ -1,5 +1,7 @@
 #pragma once
 
+#include "container_context.hpp"
+
 #include <sys/types.h>
 
 #include <cstdint>
@@ -31,13 +33,9 @@ struct FileBaselineRow
     std::string hash_sha1;
     std::string hash_sha256;
 
-    // Container context (same fields as whodata_evt's K8s block).
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    // Container context, resolved once per container and shared across rows.
+    std::string        container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Outcome of a walk, including what NFR3-style truncation happened.

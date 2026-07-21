@@ -2,6 +2,7 @@
 
 #include "hardware_scanner.hpp"
 #include "interface_scanner.hpp"
+#include "container_context.hpp"
 #include "network_scanner.hpp"
 #include "os_scanner.hpp"
 #include "package_scanner.hpp"
@@ -18,15 +19,13 @@ namespace wazuh::container_baseline {
 
 /// @brief Container identity to stamp onto every row produced for one container
 /// (looked up once per container via ContainerConnectorClient, not re-queried
-/// per file/process/socket).
+/// per file/process/socket). `context` is null when the container_instances
+/// lookup didn't resolve (e.g. cold cache, module unavailable) — rows still
+/// get `container_id` so they remain attributable and identifiable.
 struct ContainerIdentity
 {
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    std::string        container_id;
+    ContainerContextPtr context;
 };
 
 void ApplyIdentity(FileBaselineRow& row, const ContainerIdentity& id);
@@ -45,10 +44,10 @@ void ApplyIdentity(HardwareBaselineRow& row, const ContainerIdentity& id);
 /// @brief Build the sync-protocol payload for one FIM file baseline row.
 ///
 /// Shape matches FileItem::createJSON()'s "data" object field-for-field
-/// (src/syscheckd/src/db/src/dbFileItem.cpp) plus a "kubernetes" context block
-/// using the same field names as fim_handle_k8s_event()'s alert (src/syscheckd/
-/// src/file/file.c) — so a row produced here is structurally interchangeable
-/// with what the existing host-FIM and K8s-event paths already emit.
+/// (src/syscheckd/src/db/src/dbFileItem.cpp) plus a "container" block (generic
+/// runtime context: Docker, containerd, CRI-O, ...) and, only when the
+/// container originates from a Kubernetes pod, a sibling "kubernetes" block —
+/// see event_schema.md for the two-block rationale.
 ///
 /// @return {id, json} where `id` is the value to pass as asp_persist_diff's
 ///         diff-id (container_id + path is already unique per row within a
