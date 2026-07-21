@@ -1,5 +1,7 @@
 #pragma once
 
+#include "container_context.hpp"
+
 #include <sys/types.h>
 
 #include <cstdint>
@@ -27,12 +29,8 @@ struct InterfaceBaselineRow
     uint64_t    tx_errors{0};
     uint64_t    tx_dropped{0};
 
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    std::string        container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief One IP address bound inside the container's network namespace.
@@ -45,12 +43,8 @@ struct NetworkAddressBaselineRow
     std::string netmask;
     std::string broadcast; ///< Empty when the interface has none (lo, v6).
 
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    std::string        container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 struct InterfaceScan
