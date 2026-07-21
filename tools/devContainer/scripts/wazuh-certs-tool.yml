@@ -13,6 +13,11 @@ nodes:
   indexer:
     - name: node-1
       ip: 127.0.0.1
+      dns:
+        # wazuh-indexer: service name under which the dashboard and the e2e/cluster
+        # worker containers reach the indexer inside the compose network; both
+        # verify the certificate hostname against it.
+        - wazuh-indexer
 
   # Wazuh manager nodes. Every entry yields <name>.pem / <name>-key.pem (indexer
   # connector, mTLS client) and <name>-remoted.pem / <name>-remoted-key.pem (agent
