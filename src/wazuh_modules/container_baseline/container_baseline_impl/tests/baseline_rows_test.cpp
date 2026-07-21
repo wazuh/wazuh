@@ -6,43 +6,73 @@
 
 using namespace wazuh::container_baseline;
 
-TEST(ApplyIdentity, StampsAllContainerContextFieldsOntoFileRow)
+namespace {
+
+ContainerContextPtr MakeDockerContext()
+{
+    auto ctx = std::make_shared<ContainerContext>();
+    ctx->runtime       = "docker";
+    ctx->name          = "my-nginx";
+    ctx->image         = "nginx";
+    ctx->image_digest  = "sha256:abc";
+    ctx->restart_count = 2;
+    ctx->labels        = {{"team", "qa"}};
+    ctx->network        = {{"bridge", "172.17.0.2"}};
+    ctx->oci_mounts     = {{"/host/data", "/data", true}};
+    return ctx;
+}
+
+ContainerContextPtr MakeKubernetesContext()
+{
+    auto ctx = std::make_shared<ContainerContext>();
+    ctx->runtime = "kubernetes";
+    ctx->name    = "nginx";
+    ctx->image   = "nginx:1.25";
+
+    KubernetesContext k8s;
+    k8s.pod_uid       = "pod-uid";
+    k8s.pod_name      = "nginx-0";
+    k8s.k8s_namespace = "default";
+    k8s.node_name     = "worker-1";
+    ctx->kubernetes   = std::move(k8s);
+    return ctx;
+}
+
+} // namespace
+
+TEST(ApplyIdentity, StampsContainerIdAndSharedContextOntoFileRow)
 {
     FileBaselineRow row;
     ContainerIdentity id;
-    id.container_id   = "abc123";
-    id.pod_uid        = "pod-uid";
-    id.pod_name       = "nginx-0";
-    id.k8s_namespace  = "default";
-    id.container_name = "nginx";
-    id.image          = "nginx:1.25";
+    id.container_id = "abc123";
+    id.context       = MakeKubernetesContext();
 
     ApplyIdentity(row, id);
 
     EXPECT_EQ(row.container_id, "abc123");
-    EXPECT_EQ(row.pod_uid, "pod-uid");
-    EXPECT_EQ(row.pod_name, "nginx-0");
-    EXPECT_EQ(row.k8s_namespace, "default");
-    EXPECT_EQ(row.container_name, "nginx");
-    EXPECT_EQ(row.image, "nginx:1.25");
+    ASSERT_TRUE(row.container != nullptr);
+    EXPECT_EQ(row.container->name, "nginx");
+    ASSERT_TRUE(row.container->kubernetes.has_value());
+    EXPECT_EQ(row.container->kubernetes->pod_name, "nginx-0");
+    EXPECT_EQ(row.container->kubernetes->k8s_namespace, "default");
 }
 
 TEST(BuildFimFileJson, ProducesExpectedShapeAndStableId)
 {
     FileBaselineRow row;
-    row.path          = "/etc/passwd";
-    row.permissions   = "0644";
-    row.uid           = "0";
-    row.gid           = "0";
-    row.mtime         = 1700000000;
-    row.size          = 1234;
-    row.inode         = 5678;
-    row.device        = 9;
-    row.hash_md5      = "d41d8cd98f00b204e9800998ecf8427e";
-    row.hash_sha1     = "da39a3ee5e6b4b0d3255bfef95601890afd80709";
-    row.hash_sha256   = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
-    row.container_id  = "cid1";
-    row.k8s_namespace = "default";
+    row.path        = "/etc/passwd";
+    row.permissions = "0644";
+    row.uid         = "0";
+    row.gid         = "0";
+    row.mtime       = 1700000000;
+    row.size        = 1234;
+    row.inode       = 5678;
+    row.device      = 9;
+    row.hash_md5    = "d41d8cd98f00b204e9800998ecf8427e";
+    row.hash_sha1   = "da39a3ee5e6b4b0d3255bfef95601890afd80709";
+    row.hash_sha256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+    row.container_id = "cid1";
+    row.container     = MakeKubernetesContext();
 
     const auto [id, json_str] = BuildFimFileJson(row);
     EXPECT_EQ(id, "cid1:/etc/passwd");
@@ -54,9 +84,42 @@ TEST(BuildFimFileJson, ProducesExpectedShapeAndStableId)
     EXPECT_EQ(j.at("hash_sha1"), row.hash_sha1);
     EXPECT_EQ(j.at("hash_sha256"), row.hash_sha256);
     EXPECT_EQ(j.at("baseline"), true);
+
+    ASSERT_TRUE(j.contains("container"));
+    EXPECT_EQ(j.at("container").at("id"), "cid1");
+    EXPECT_EQ(j.at("container").at("name"), "nginx");
+    EXPECT_EQ(j.at("container").at("runtime"), "kubernetes");
+    EXPECT_EQ(j.at("container").at("image").at("name"), "nginx:1.25");
+
     ASSERT_TRUE(j.contains("kubernetes"));
-    EXPECT_EQ(j.at("kubernetes").at("container_id"), "cid1");
     EXPECT_EQ(j.at("kubernetes").at("namespace"), "default");
+    EXPECT_EQ(j.at("kubernetes").at("pod").at("uid"), "pod-uid");
+    EXPECT_EQ(j.at("kubernetes").at("pod").at("name"), "nginx-0");
+    EXPECT_EQ(j.at("kubernetes").at("node").at("name"), "worker-1");
+}
+
+TEST(BuildFimFileJson, DockerRowGetsContainerBlockButNoKubernetesBlock)
+{
+    FileBaselineRow row;
+    row.path         = "/test_dir/test.txt";
+    row.container_id = "cid-docker";
+    row.container     = MakeDockerContext();
+
+    const auto [id, json_str] = BuildFimFileJson(row);
+    (void)id;
+    const auto j = nlohmann::json::parse(json_str);
+
+    ASSERT_TRUE(j.contains("container"));
+    EXPECT_EQ(j.at("container").at("id"), "cid-docker");
+    EXPECT_EQ(j.at("container").at("runtime"), "docker");
+    EXPECT_EQ(j.at("container").at("image").at("name"), "nginx");
+    EXPECT_EQ(j.at("container").at("image").at("digest"), "sha256:abc");
+    EXPECT_EQ(j.at("container").at("labels").at("team"), "qa");
+    EXPECT_EQ(j.at("container").at("restart_count"), 2);
+    EXPECT_EQ(j.at("container").at("network")[0].at("ip"), "172.17.0.2");
+    EXPECT_EQ(j.at("container").at("oci_mounts")[0].at("destination"), "/data");
+
+    EXPECT_FALSE(j.contains("kubernetes"));
 }
 
 TEST(BuildFimFileJson, OmitsEmptyHashesForSymlinks)
@@ -92,7 +155,8 @@ TEST(BuildProcessJson, ProducesExpectedShapeAndStableId)
     EXPECT_EQ(j.at("process").at("pid"), "42");
     EXPECT_EQ(j.at("process").at("name"), "nginx");
     EXPECT_EQ(j.at("process").at("parent").at("pid"), 1);
-    EXPECT_EQ(j.at("container").at("container_id"), "cid2");
+    EXPECT_EQ(j.at("container").at("id"), "cid2");
+    EXPECT_FALSE(j.contains("kubernetes"));
 }
 
 TEST(BuildPortJson, ProducesExpectedShapeAndStableId)
