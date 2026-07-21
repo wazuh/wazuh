@@ -359,6 +359,29 @@ class LocalServerHandlerWorker(LocalServerHandler):
     The local server handler instance that runs in worker nodes.
     """
 
+    def not_connected_response(self, command: bytes) -> Tuple[bytes, bytes]:
+        """Answer a request with error 3023 when the worker is not connected to the master.
+
+        Being disconnected from the master is a transient, recoverable situation (the worker
+        periodically retries the connection), so it is logged as a warning instead of letting
+        the exception reach the generic handler, which would log it at ERROR level.
+
+        Parameters
+        ----------
+        command : bytes
+            Received command from client.
+
+        Returns
+        -------
+        bytes
+            Result.
+        bytes
+            Response message.
+        """
+        self.logger.warning(f"Request '{command.decode()}' could not be forwarded, "
+                            f"worker is not connected to the master yet. It was answered with code 3023.")
+        return b'err', json.dumps(WazuhClusterError(3023), cls=c_common.WazuhJSONEncoder).encode()
+
     def process_request(self, command: bytes, data: bytes):
         """Define available requests in the local server.
 
@@ -382,25 +405,25 @@ class LocalServerHandlerWorker(LocalServerHandler):
         self.logger.debug2(f"Command received: {command}")
         if command == b'dapi':
             if self.server.node.client is None:
-                raise WazuhClusterError(3023)
+                return self.not_connected_response(command)
             asyncio.create_task(self.log_exceptions(
                 self.server.node.client.send_request(b'dapi', self.name.encode() + b' ' + data)))
             return b'ok', b'Added request to API requests queue'
         elif command == b'sendsync':
             if self.server.node.client is None:
-                raise WazuhClusterError(3023)
+                return self.not_connected_response(command)
             asyncio.create_task(self.log_exceptions(
                 self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
             return None, None
         elif command == b'sendasync':
             if self.server.node.client is None:
-                raise WazuhClusterError(3023)
+                return self.not_connected_response(command)
             asyncio.create_task(self.log_exceptions(
                 self.server.node.client.send_request(b'sendsync', self.name.encode() + b' ' + data)))
             return b'ok', b'Added request to sendsync requests queue'
         elif command == b'sendrreload':
             if self.server.node.client is None:
-                raise WazuhClusterError(3023)
+                return self.not_connected_response(command)
             asyncio.create_task(self.log_exceptions(self.set_reload_ruleset_flag()))
             return b'ok', json.dumps({'success': True}).encode()
         else:
