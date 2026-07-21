@@ -1310,8 +1310,8 @@ if(IS_LINUX AND NOT IS_AGENT)
   set(RESTINIO_DEV_DIR "${RESTINIO_ROOT}/dev")
 
   set(RESTINIO_INCLUDE_DIR "${RESTINIO_DEV_DIR}")
-  set(RESTINIO_ASIO_INCLUDE_DIR "${RESTINIO_DEV_DIR}/asio")
-  set(RESTINIO_EXPECTED_INCLUDE_DIR "${RESTINIO_DEV_DIR}/expected-lite")
+  set(RESTINIO_ASIO_INCLUDE_DIR "${RESTINIO_DEV_DIR}/asio/include")
+  set(RESTINIO_EXPECTED_INCLUDE_DIR "${RESTINIO_DEV_DIR}/expected-lite/include")
   set(RESTINIO_LLHTTP_ROOT "${RESTINIO_DEV_DIR}/nodejs/llhttp")
 
   # The "full" release flattens llhttp's include/ and src/ directories into
