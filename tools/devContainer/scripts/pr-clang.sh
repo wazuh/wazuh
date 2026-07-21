@@ -11,7 +11,7 @@ set -euo pipefail
 # ------------------------------------------------------------------------------
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-WAZUH_REPO="${WAZUH_REPO:-$(cd "$SCRIPT_DIR/../../../../.." && pwd)}"
+WAZUH_REPO="${WAZUH_REPO:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
 CLANG_FORMAT="${CLANG_FORMAT:-clang-format}"
 CHECK_ONLY=0
 

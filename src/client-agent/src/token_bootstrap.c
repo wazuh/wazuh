@@ -1218,7 +1218,7 @@ w_token_enroll_status_t w_agent_token_enroll(const w_token_enroll_opts_t *opts,
     token_snapshot_discard(&snapshot);
     w_etoken_free(&token);
     /* The "Token bootstrap: " prefix is not decoration. The end-to-end check in
-     * engine/tools/devContainer/e2e/agents/verify_agents.sh greps ossec.log for this exact
+     * tools/devContainer/e2e/agents/verify_agents.sh greps ossec.log for this exact
      * phrase to decide whether an agent enrolled over POST /enroll. */
     minfo(anchor_changed
               ? "Token bootstrap: enrollment succeeded; the manager's CA is now the agent's trust anchor."

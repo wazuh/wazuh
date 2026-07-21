@@ -117,7 +117,7 @@ python3 $WAZUH_DEV_SCRIPTS/bench_samples.py results_<label>              # every
 python3 $WAZUH_DEV_SCRIPTS/bench_samples.py results_<label> --src remoted --out-dir /tmp
 ```
 
-It writes the full projection, so the export has every metric rather than the aliased subset. The format and that projection are defined by `src/engine/tools/devContainer/scripts/bench_samples.py`.
+It writes the full projection, so the export has every metric rather than the aliased subset. The format and that projection are defined by `tools/devContainer/scripts/bench_samples.py`.
 
 A run recorded before the samples file existed is **not chartable by this build**: the legacy CSV readers went with the CSVs. Re-run the scenario.
 

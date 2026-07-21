@@ -27,7 +27,7 @@
 set -u
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-REPO_DIR="${WAZUH_REPO:-$(cd "$SCRIPT_DIR/../../../../.." && pwd)}"   # e2e → devContainer → tools → engine → src → repo
+REPO_DIR="${WAZUH_REPO:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"   # e2e → devContainer → tools → repo
 
 usage() {
   cat <<EOF

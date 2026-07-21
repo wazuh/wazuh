@@ -196,7 +196,7 @@
             "name": "E2E Init script",
             "type": "bashdb",
             "request": "launch",
-            "program": "${env:ENGINE_SRC}/tools/devContainer/e2e/init.sh",
+            "program": "${env:WAZUH_REPO}/tools/devContainer/e2e/init.sh",
             "args": [],
             "cwd": "${env:ENGINE_SRC}",
             "showDebugOutput": true,

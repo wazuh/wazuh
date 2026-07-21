@@ -241,7 +241,7 @@ def workspace_root():
     repo = os.environ.get("WAZUH_REPO")
     if repo:
         return str(Path(repo).resolve().parent)
-    return str(script_dir().parents[6])
+    return str(script_dir().parents[4])
 
 
 def make_nonce():

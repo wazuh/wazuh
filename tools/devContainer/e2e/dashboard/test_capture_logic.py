@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Unit tests of the capture decisions — no network, no browser, no manager.
 
-    cd src/engine/tools/devContainer/e2e/dashboard && python3 -m unittest -v test_capture_logic
+    cd tools/devContainer/e2e/dashboard && python3 -m unittest -v test_capture_logic
 
 They cover what a green capture run must not be able to fake: a view that landed somewhere
 else, on another tab or on another dashboard; a row that is merely SIMILAR to the document

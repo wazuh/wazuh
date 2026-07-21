@@ -2227,7 +2227,7 @@ decoded, verified or forwarded for it to have an outcome about). Auth-gateway re
 and appear only in `remoted.auth.reject.*`; a handler's own pre-forward rejection (empty body,
 payload identity) counts in its `responses.*` (the "what") and, where it is an AuthError, in
 `remoted.auth.reject.*` too (the "why"). EPS/rates are deliberately NOT computed in-process —
-the scraper (`engine/tools/devContainer/scripts/monitor.py`) derives rates by diffing counters
+the scraper (`tools/devContainer/scripts/monitor.py`) derives rates by diffing counters
 per interval, which is exactly what its `_REMOTED_MODULE_SCALARS`/`_REMOTED_MODULE_HISTOGRAMS`
 catalogs consume.
 

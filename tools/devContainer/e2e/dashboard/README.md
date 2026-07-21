@@ -172,7 +172,7 @@ inside the venv and after the re-exec — or to `--browsers-path`.
 ## Usage
 
 ```bash
-WORKSPACE=$(dirname "$WAZUH_REPO"); D=$WAZUH_REPO/src/engine/tools/devContainer/e2e/dashboard
+WORKSPACE=$(dirname "$WAZUH_REPO"); D=$WAZUH_REPO/tools/devContainer/e2e/dashboard
 sudo python3 $D/capture.py --setup                        # once (installs apt deps)
 sudo python3 $D/capture.py --views agents,discover,inventory,vd --exec-docker
 (cd $D && python3 -m unittest -v test_capture_logic)      # the decision logic, no stack needed

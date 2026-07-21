@@ -175,7 +175,7 @@ fleet's detail lives — the CSV would be unreadable with a column per (fleet ×
 
 The sender **MAY** scrape `GET /metrics` (F9a) itself in `uds` mode; in `agent` mode the socket may not be reachable from where the sender runs, and the orchestration's monitor does it (F9c-3).
 
-The format is NDJSON, one object per scrape, defined by `src/engine/tools/devContainer/scripts/bench_samples.py` — the orchestration's monitor and the `scrape_metrics.sh` fallback write the same lines, and every source shares one file:
+The format is NDJSON, one object per scrape, defined by `tools/devContainer/scripts/bench_samples.py` — the orchestration's monitor and the `scrape_metrics.sh` fallback write the same lines, and every source shares one file:
 
 ```text
 {"kind":"run","r":"<run id>","started":"...Z","label":"<run label>"}
