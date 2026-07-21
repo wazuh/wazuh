@@ -299,7 +299,9 @@ void HandleSecure()
         remoted_module_config_t rm_config = {0};
         rm_config.worker_threads = worker_pool;
         rm_config.queue_size = (int)logr.queue_size;
-        rm_config.port = logr.port;
+        // rm_config.port is the HTTPS listening port, unrelated to logr.port (remoted's
+        // own classic TCP/UDP port, already bound by the time we get here). Left at 0
+        // so the module falls back to WAZUH_REMOTED_HTTPS_PORT/its own default.
         rm_config.worker_node = logr.worker_node;
 
         char *rm_cluster_name = get_cluster_name();
