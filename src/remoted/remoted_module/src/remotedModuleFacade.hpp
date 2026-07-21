@@ -12,6 +12,8 @@
 #ifndef _REMOTED_MODULE_FACADE_HPP
 #define _REMOTED_MODULE_FACADE_HPP
 
+#include "authServer.hpp"
+#include "clientKeysFileResolver.hpp"
 #include "loggerHelper.h"
 #include "remoted_module.h"
 #include "singleton.hpp"
@@ -19,6 +21,7 @@
 #include <condition_variable>
 #include <cstdarg>
 #include <functional>
+#include <memory>
 #include <mutex>
 #include <thread>
 
@@ -37,10 +40,10 @@ constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
 class RemotedModuleFacade final : public Singleton<RemotedModuleFacade>
 {
 public:
-    void start(
-        const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
-            logFunction,
-        const remoted_module_config_t& configuration)
+    void
+    start(const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
+              logFunction,
+          const remoted_module_config_t& configuration)
     {
         std::lock_guard<std::mutex> lock(m_lifecycleMutex);
 
@@ -66,6 +69,17 @@ public:
                    m_config.cluster_name,
                    m_config.node_name,
                    m_config.worker_node ? "true" : "false");
+
+        // Auth server: shape only until a concrete HTTP transport (RESTinio)
+        // is wired in (see authServer.cpp) -- configure()/start() below don't
+        // open a socket yet. No routes are registered: there is no endpoint
+        // logic to hang off it yet, and remoted_module_config_t doesn't carry
+        // the TLS/host/limit knobs a real listener would need, so ServerConfig
+        // and TlsConfig are left at their defaults for now.
+        m_keyResolver = std::make_shared<wazuh_auth::ClientKeysFileResolver>();
+        m_authServer.setKeyResolver(m_keyResolver);
+        m_authServer.configure(wazuh_auth::ServerConfig {}, wazuh_auth::TlsConfig {}, wazuh_auth::AuthConfig {});
+        m_authServer.start();
 
         m_worker = std::thread(&RemotedModuleFacade::run, this);
     }
@@ -100,6 +114,8 @@ public:
             workerToJoin.join();
         }
 
+        m_authServer.stop();
+
         LOGFN_INFO(m_logFn, "remoted module stopped.");
     }
 
@@ -120,13 +136,16 @@ private:
     }
 
     const LogFn m_logFn {REMOTED_MODULE_LOGTAG};
-    std::mutex m_lifecycleMutex;              ///< Serializes start()/stop().
-    std::mutex m_waitMutex;                   ///< Guards the heartbeat wait.
-    std::condition_variable m_waitCv;         ///< Wakes the worker on stop.
-    std::atomic_bool m_stopping {false};      ///< Cooperative-shutdown flag.
-    bool m_running {false};                   ///< Whether the worker is active.
-    std::thread m_worker;                     ///< The C++ thread launched for remoted.
-    remoted_module_config_t m_config {};      ///< Copy of the caller's configuration.
+    std::mutex m_lifecycleMutex;         ///< Serializes start()/stop().
+    std::mutex m_waitMutex;              ///< Guards the heartbeat wait.
+    std::condition_variable m_waitCv;    ///< Wakes the worker on stop.
+    std::atomic_bool m_stopping {false}; ///< Cooperative-shutdown flag.
+    bool m_running {false};              ///< Whether the worker is active.
+    std::thread m_worker;                ///< The C++ thread launched for remoted.
+    remoted_module_config_t m_config {}; ///< Copy of the caller's configuration.
+
+    wazuh_auth::AuthServer m_authServer;                        ///< Auth server; shape/lifecycle only for now.
+    std::shared_ptr<wazuh_auth::IAgentKeyResolver> m_keyResolver; ///< Backs m_authServer's key lookups.
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP
