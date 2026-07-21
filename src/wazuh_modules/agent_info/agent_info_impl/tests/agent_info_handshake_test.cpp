@@ -225,6 +225,94 @@ TEST_F(AgentInfoHandshakeTest, LiveHandshakeQueryFailure_KeepsLastKnownValue)
     EXPECT_THAT(m_logOutput, ::testing::Not(::testing::HasSubstr("Set sync flag for agent_metadata to 1")));
 }
 
+TEST_F(AgentInfoHandshakeTest, LiveClusterNameChange_DoesNotFreezeGroupsFromHandshake)
+{
+    // Regression guard for a review finding on #37543: the live re-query is scoped to
+    // cluster_name/cluster_node only. agent_groups must keep tracking merged.mg on every
+    // cycle exactly as before - it must NOT get "frozen" at whatever agent_groups value
+    // the live handshake callback happens to report, even though that callback succeeds
+    // (and reports a non-empty, changing agent_groups string) on every cycle here.
+    EXPECT_CALL(*m_mockFileSystem, exists(::testing::_))
+    .WillRepeatedly(::testing::Return(true));
+
+    // populateAgentMetadata() calls readLineByLine() twice per cycle, always in the same
+    // order: client.keys first (readClientKeys), then merged.mg (readAgentGroups). gmock's
+    // WillOnce chain is consumed strictly in call order regardless of the path argument, so
+    // each action below must match exactly which file that specific call reads - two actions
+    // per cycle (client.keys, then merged.mg), not one action per cycle.
+    EXPECT_CALL(*m_mockFileIO, readLineByLine(::testing::_, ::testing::_))
+    // Cycle 1: client.keys
+    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("001 test-agent 10.0.0.1 key");
+    }))
+    // Cycle 1: merged.mg
+    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("#group-cycle-1");
+    }))
+    // Cycle 2: client.keys
+    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("001 test-agent 10.0.0.1 key");
+    }))
+    // Cycle 2: merged.mg
+    .WillOnce(::testing::Invoke([](const std::filesystem::path&, const std::function<bool(const std::string&)>& callback)
+    {
+        callback("#group-cycle-2");
+    }));
+
+    nlohmann::json osData =
+    {
+        {"os_name", "TestOS"}, {"architecture", "x86_64"}, {"os_type", "linux"},
+        {"os_platform", "ubuntu"}, {"os_version", "22.04"}, {"hostname", "test-host"}
+    };
+
+    EXPECT_CALL(*m_mockSysInfo, os())
+    .WillOnce(::testing::Return(osData))
+    .WillOnce(::testing::Return(osData));
+
+    // The live handshake succeeds on BOTH cycles and reports a non-empty (and changing)
+    // agent_groups string each time - if that value leaked into group selection, groups
+    // would stay stuck at "handshake-group-1" forever instead of tracking merged.mg.
+    handshake_query_callback_t handshakeFunc =
+        [](char* clusterName, size_t clusterNameSize, char* clusterNode, size_t clusterNodeSize,
+           char* agentGroups, size_t agentGroupsSize) -> bool
+    {
+        writeField(clusterName, clusterNameSize, "wazuh");
+        writeField(clusterNode, clusterNodeSize, "node01");
+        writeField(agentGroups, agentGroupsSize, "handshake-group-1,handshake-group-2");
+        return true;
+    };
+
+    m_agentInfo = std::make_shared<AgentInfoImpl>(
+                      ":memory:",
+                      m_reportDiffFunc,
+                      m_logFunc,
+                      m_queryModuleFunc,
+                      nullptr, // Real DBSync
+                      m_mockSysInfo,
+                      m_mockFileIO,
+                      m_mockFileSystem,
+                      handshakeFunc
+                  );
+
+    runSingleIteration();
+    EXPECT_THAT(m_reportedEvents, ::testing::Contains(::testing::HasSubstr("group-cycle-1")));
+
+    m_reportedEvents.clear();
+    m_logOutput.clear();
+
+    runSingleIteration();
+    EXPECT_THAT(m_reportedEvents, ::testing::Contains(::testing::HasSubstr("group-cycle-2")));
+
+    // Neither cycle should have used the handshake-reported groups
+    for (const auto& event : m_reportedEvents)
+    {
+        EXPECT_THAT(event, ::testing::Not(::testing::HasSubstr("handshake-group")));
+    }
+}
+
 TEST_F(AgentInfoHandshakeTest, NoHandshakeCallback_FallsBackToCachedGetters)
 {
     // Regression guard: constructing AgentInfoImpl without the 9th argument (as every

@@ -298,7 +298,9 @@ class AgentInfoImpl
         module_query_callback_t m_queryModuleFunction;
 
         /// @brief Function to query agentd for fresh handshake data (cluster_name, cluster_node,
-        /// agent_groups) on every populateAgentMetadata() cycle, instead of a one-time cached copy
+        /// agent_groups) on every populateAgentMetadata() cycle, instead of a one-time cached copy.
+        /// Only cluster_name/cluster_node are tracked from it - see populateAgentMetadata() for why
+        /// agent_groups deliberately keeps its own, separate one-shot-at-startup handling.
         handshake_query_callback_t m_handshakeQueryFunction;
 
         /// @brief True once a live handshake query has succeeded at least once. Until then,
@@ -307,10 +309,9 @@ class AgentInfoImpl
         /// of reverting all the way back to the (possibly long-stale) startup cache.
         bool m_hasLiveHandshakeSucceededOnce = false;
 
-        /// @brief Last successfully live-queried cluster_name/cluster_node/agent_groups
+        /// @brief Last successfully live-queried cluster_name/cluster_node
         std::string m_lastLiveClusterName;
         std::string m_lastLiveClusterNode;
-        std::string m_lastLiveAgentGroups;
 
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;

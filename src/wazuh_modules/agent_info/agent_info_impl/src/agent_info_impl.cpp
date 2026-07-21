@@ -466,6 +466,11 @@ void AgentInfoImpl::populateAgentMetadata()
     // one-time cached copy (see #37543): a manager-side cluster_name change is picked up
     // by agentd on reconnect, but was never re-read here, so it stayed stale until the
     // agent process restarted.
+    //
+    // Scoped to cluster_name/cluster_node only. agent_groups is intentionally NOT taken
+    // from this live query (see the groups block below for why) - the callback still
+    // reports it, since agentd's gethandshake returns all three fields together, but the
+    // value is discarded here rather than tracked across cycles.
     if (m_handshakeQueryFunction)
     {
         char clusterNameBuf[256] = {0};
@@ -481,7 +486,6 @@ void AgentInfoImpl::populateAgentMetadata()
         {
             m_lastLiveClusterName = clusterNameBuf;
             m_lastLiveClusterNode = clusterNodeBuf;
-            m_lastLiveAgentGroups = agentGroupsBuf;
             m_hasLiveHandshakeSucceededOnce = true;
         }
         else
@@ -505,12 +509,26 @@ void AgentInfoImpl::populateAgentMetadata()
     agentMetadata["cluster_node"] = cluster_node;
 
     // Get agent groups (only for agents)
-    // Priority: 1) Groups from live/last-known-good handshake, 2) Groups from merged.mg
+    // Priority: 1) Groups from handshake, 2) Groups from merged.mg
+    //
+    // Deliberately out of scope for #37543 (which is about cluster_name/cluster_node
+    // staying live): group reassignments are pushed by remoted via merged.mg without
+    // necessarily forcing a reconnect, whereas agentd's handshake-sourced group list is
+    // only refreshed on (re)connect. Preferring the live handshake groups on every cycle
+    // (as cluster_name/cluster_node now do) would freeze group membership at the last
+    // handshake value and ignore merged.mg-driven changes until the next reconnect - a
+    // regression from the pre-existing behavior below. So groups keep the original
+    // one-shot-at-startup consumption, independent of the live cluster_name/cluster_node
+    // re-query above.
     std::vector<std::string> groups;
 
-    auto parseCsvGroups = [](const std::string & groups_str)
+    // First, try to get groups from handshake (received from manager)
+    const char* handshake_groups = agent_info_get_agent_groups();
+
+    if (handshake_groups && handshake_groups[0] != '\0')
     {
-        std::vector<std::string> parsed;
+        // Parse CSV groups from handshake
+        std::string groups_str(handshake_groups);
         std::istringstream iss(groups_str);
         std::string group;
 
@@ -518,42 +536,20 @@ void AgentInfoImpl::populateAgentMetadata()
         {
             if (!group.empty())
             {
-                parsed.push_back(group);
+                groups.push_back(group);
             }
         }
 
-        return parsed;
-    };
+        m_logFunction(LOG_DEBUG, "Using " + std::to_string(groups.size()) + " groups from manager handshake");
 
-    if (m_hasLiveHandshakeSucceededOnce)
-    {
-        if (!m_lastLiveAgentGroups.empty())
-        {
-            groups = parseCsvGroups(m_lastLiveAgentGroups);
-            m_logFunction(LOG_DEBUG, "Using " + std::to_string(groups.size()) + " groups from manager handshake");
-        }
-        else
-        {
-            // Legitimate "no groups assigned by the manager" state
-            groups = readAgentGroups();
-        }
+        // Clear handshake groups after consuming them
+        // Subsequent calls will read from merged.mg
+        agent_info_clear_agent_groups();
     }
     else
     {
-        // No live query has ever succeeded: preserve the previous one-shot-at-startup
-        // behavior (consume the cached handshake groups once, then fall back to merged.mg)
-        const char* cached_handshake_groups = agent_info_get_agent_groups();
-
-        if (cached_handshake_groups && cached_handshake_groups[0] != '\0')
-        {
-            groups = parseCsvGroups(cached_handshake_groups);
-            m_logFunction(LOG_DEBUG, "Using " + std::to_string(groups.size()) + " groups from manager handshake");
-            agent_info_clear_agent_groups();
-        }
-        else
-        {
-            groups = readAgentGroups();
-        }
+        // Fall back to reading from merged.mg
+        groups = readAgentGroups();
     }
 
     // Update the global metadata provider BEFORE updateChanges
