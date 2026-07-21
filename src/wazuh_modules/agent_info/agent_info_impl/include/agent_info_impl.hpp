@@ -367,6 +367,16 @@ class AgentInfoImpl
         /// @brief Mutex for synchronizing access to m_dBSync (prevents race conditions during cleanup/transactions)
         std::mutex m_dbSyncMutex;
 
+        /// @brief Serializes destruction of m_spSyncProtocol in stop()
+        std::mutex m_syncProtocolMutex;
+
+        /// @brief Clean-stop handshake: stop() blocks until the run loop (start()) has
+        /// exited, so the sync-protocol connection can be closed with no other thread
+        /// using it.
+        std::mutex m_shutdownMutex;
+        std::condition_variable m_shutdownCv;
+        bool m_runLoopActive = false;
+
         /// @brief Flag set during updateChanges callback when cluster_name changed
         bool m_clusterNameChanged = false;
 };
