@@ -16,7 +16,7 @@
 #include "ipackageWrapper.h"
 #include "registryHelper.h"
 #include "windowsHelper.h"
-#include "fileVersionHelper.h"
+#include "packagesWindowsParserHelper.h"
 #include "stringHelper.h"
 #include "sharedDefs.h"
 
@@ -44,7 +44,7 @@ struct AppxExeVersionReader
 {
     static std::string read(const std::string& exePath)
     {
-        return Utils::getFileProductVersion(exePath);
+        return PackageWindowsHelper::getProductVersion(exePath);
     }
 };
 

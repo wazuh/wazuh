@@ -22,6 +22,7 @@ All notable changes to this project will be documented in this file.
 
 - Prevent a race condition in `randombytes` during the initialization of the Windows RSA key container ([#37701](https://github.com/wazuh/wazuh/pull/37701))
 - Fixed missing macOS SSH authentication logs by adding the `sshd-session` and `sshd-auth` processes to the default Unified Logging query. ([#37769](https://github.com/wazuh/wazuh/pull/37769))
+- Fixed the name, version and PyPI packages reported for Microsoft Store Python installations. ([#37441](https://github.com/wazuh/wazuh/pull/37441))
 
 #### Added
 
@@ -35,12 +36,6 @@ All notable changes to this project will be documented in this file.
 - Fixed typo in `/etc/security/opasswd` permission check on Debian 10, Ubuntu 20.04 and Ubuntu 22.04 SCA rules. ([#37652](https://github.com/wazuh/wazuh/pull/37652))
 - Fixed the LLMNR SCA check expected value on Windows Server 2016 and 2012. ([#37765](https://github.com/wazuh/wazuh/pull/37765))
 - Fixed typo in `/etc/shells` permission check on Debian 10, Ubuntu 20.04 and Ubuntu 22.04 SCA rules. ([#37770](https://github.com/wazuh/wazuh/pull/37770))
-
-### Agent
-
-#### Fixed
-
-- Fixed the name, version and PyPI packages reported for Microsoft Store Python installations. ([#37441](https://github.com/wazuh/wazuh/pull/37441))
 
 ## [v4.14.7]
 
