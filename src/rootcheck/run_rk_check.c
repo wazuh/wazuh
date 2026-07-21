@@ -45,10 +45,21 @@ int notify_rk(int rk_type, const char *msg)
         mtdebug1(ARGV0, QUEUE_SEND);
 
         if ((rootcheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
+            /* StartMQPredicated aborts the reconnection when a shutdown is in
+             * progress: the queue being unavailable is expected in that case,
+             * so exit quietly instead of reporting a fatal error (1211). */
+            if (fim_shutdown_process_on()) {
+                mtdebug1(ARGV0, "Rootcheck queue unavailable during shutdown. Skipping notification.");
+                return (0);
+            }
             mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQUEUE);
         }
 
         if (SendMSG(rootcheck.queue, msg, ROOTCHECK, ROOTCHECK_MQ) < 0) {
+            if (fim_shutdown_process_on()) {
+                mtdebug1(ARGV0, "Rootcheck queue unavailable during shutdown. Skipping notification.");
+                return (0);
+            }
             mterror_exit(ARGV0, QUEUE_FATAL, DEFAULTQUEUE);
         }
     }

@@ -83,6 +83,13 @@ STATIC void fim_send_msg(char mq, const char * location, const char * msg) {
         mdebug1(QUEUE_SEND);
 
         if ((syscheck.queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, fim_shutdown_process_on)) < 0) {
+            /* StartMQPredicated aborts the reconnection when a shutdown is in
+             * progress: the queue being unavailable is expected in that case,
+             * so return quietly instead of reporting a fatal error (1211). */
+            if (fim_shutdown_process_on()) {
+                mdebug1("FIM queue unavailable during shutdown. Skipping message.");
+                return;
+            }
             merror_exit(QUEUE_FATAL, DEFAULTQUEUE);
         }
 
