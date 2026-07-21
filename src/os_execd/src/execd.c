@@ -18,6 +18,7 @@
 #include "active_responses.h"
 #include "startup_gate_op.h"
 
+
 #ifdef WAZUH_UNIT_TESTING
 // Remove static qualifier when unit testing
 #define STATIC
