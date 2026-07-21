@@ -1,0 +1,33 @@
+# Multi-node cluster overlay for the e2e environment. The master is the manager
+# running on the host; this overlay only adds worker container(s) that join it.
+# There is no load balancer. Run from the e2e/ directory (the project directory):
+#
+#   ./init.sh                          # certs + indexer/dashboard packages
+#   ./cluster/init.sh                  # worker manager artifact + cluster key (cluster/.env)
+#   ./cluster/setup-master.sh          # turn the host manager into the cluster master
+#   docker compose --env-file cluster/.env -f docker-compose.yml -f cluster/docker-compose.yml up -d --build
+#   docker compose --env-file cluster/.env -f docker-compose.yml -f cluster/docker-compose.yml up -d --build --scale wazuh-worker=3
+#
+# Default single-node usage (base compose alone) is unchanged.
+
+services:
+  wazuh-worker:
+    build:
+      context: ./cluster/node
+    image: dev-wazuh-node
+    pull_policy: build
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      CLUSTER_NAME: "wazuh"
+      CLUSTER_KEY: "${WAZUH_CLUSTER_KEY:?run ./cluster/init.sh to generate the cluster key}"
+      NODE_TYPE: "worker"
+      MASTER_ADDR: "host.docker.internal"
+      INDEXER_HOST: "wazuh-indexer"
+      INDEXER_USER: "${INDEXER_USER:-admin}"
+      INDEXER_PASSWORD: "${INDEXER_PASSWORD:-admin}"
+    volumes:
+      - ./certs:/certs:ro
+    depends_on:
+      - wazuh-indexer
