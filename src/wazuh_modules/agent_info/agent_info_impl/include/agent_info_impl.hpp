@@ -30,8 +30,8 @@ using module_query_callback_t = std::function<int(const std::string& module_name
 // Returns true if the query succeeded (buffers may still be empty if legitimately unset).
 using handshake_query_callback_t =
     std::function<bool(char* cluster_name, size_t cluster_name_size,
-                        char* cluster_node, size_t cluster_node_size,
-                        char* agent_groups, size_t agent_groups_size)>;
+                       char* cluster_node, size_t cluster_node_size,
+                       char* agent_groups, size_t agent_groups_size)>;
 
 class AgentInfoImpl
 {

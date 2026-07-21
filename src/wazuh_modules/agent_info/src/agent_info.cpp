@@ -221,16 +221,16 @@ void agent_info_set_query_handshake_function(query_handshake_callback_t callback
     if (g_query_handshake_callback)
     {
         g_query_handshake_function_wrapper = [](char* cluster_name,
-                                                 size_t cluster_name_size,
-                                                 char* cluster_node,
-                                                 size_t cluster_node_size,
-                                                 char* agent_groups,
-                                                 size_t agent_groups_size)
+                                                size_t cluster_name_size,
+                                                char* cluster_node,
+                                                size_t cluster_node_size,
+                                                char* agent_groups,
+                                                size_t agent_groups_size)
         {
             if (g_query_handshake_callback)
             {
                 return g_query_handshake_callback(
-                    cluster_name, cluster_name_size, cluster_node, cluster_node_size, agent_groups, agent_groups_size);
+                           cluster_name, cluster_name_size, cluster_node, cluster_node_size, agent_groups, agent_groups_size);
             }
 
             return false;
