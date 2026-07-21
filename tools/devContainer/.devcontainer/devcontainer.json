@@ -64,7 +64,7 @@
 		// Set the workspace folder to the container workspace folder.
 		"WAZUH_REPO": "${containerWorkspaceFolder}/wazuh",
 		"WAZUH_HOME": "/var/wazuh-manager",
-		"WAZUH_DEV_SCRIPTS": "${containerWorkspaceFolder}/wazuh/src/engine/tools/devContainer/scripts/",
+		"WAZUH_DEV_SCRIPTS": "${containerWorkspaceFolder}/wazuh/tools/devContainer/scripts/",
 		"ENGINE_SRC": "${containerWorkspaceFolder}/wazuh/src/engine",
 		"ENGINE_BUILD": "${containerWorkspaceFolder}/wazuh/src/build/engine",
 		"ENGINE_RULESET": "${containerWorkspaceFolder}/intelligence-data/ruleset",
@@ -84,15 +84,17 @@
 	},
 
 	"postCreateCommand": {
-		// Fix Docker-in-Docker networking for nftables-based kernels
-		"fix_dind": "sh ${containerWorkspaceFolder}/wazuh/src/engine/tools/devContainer/.devcontainer/fix-dind.sh",
+		// Runs fix-dind.sh then clones the repo, in sequence: postCreateCommand entries
+		// otherwise run in parallel and the clone starves fix-dind.sh's dockerd restart
+		// of CPU/IO. Guards on .git, wiping a partial checkout first, so an interrupted
+		// clone gets retried instead of accepted as done. Uses the workspace folder
+		// directly; remoteEnv's WAZUH_REPO is not populated in this lifecycle command.
+		"fix_dind_then_clone": "sh ${containerWorkspaceFolder}/.devcontainer/fix-dind.sh; REPO=\"${containerWorkspaceFolder}/wazuh\"; if [ ! -e \"$REPO/.git\" ]; then rm -rf \"$REPO\"; git clone --recursive https://github.com/wazuh/wazuh.git \"$REPO\"; fi; git config --global --add safe.directory \"$REPO\";",
 		// Configure zsh
 	    "zsh_cnf_0": "echo \"setopt APPEND_HISTORY;setopt INC_APPEND_HISTORY\" >> ~/.zshrc",
 		"zsh_cnf_1": "echo \"export HISTFILE=${containerWorkspaceFolder}/.zsh_history\" >> ~/.zshrc",
 		"zsh_cnf_2": "echo \"export HISTSIZE=1000000000\" >> ~/.zshrc",
-		"zsh_cnf_3": "echo \"export SAVEHIST=1000000000\" >> ~/.zshrc",
-		// Download repo and install engine
-		"clone_and_install": "if [ ! -d \"${WAZUH_REPO}\" ]; then git clone --recursive https://github.com/wazuh/wazuh.git \"${WAZUH_REPO}\" ; fi; git config --global --add safe.directory \"${WAZUH_REPO}\";"
+		"zsh_cnf_3": "echo \"export SAVEHIST=1000000000\" >> ~/.zshrc"
 	},
 
 	// Post start commands
