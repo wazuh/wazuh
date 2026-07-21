@@ -1,5 +1,7 @@
 #pragma once
 
+#include "container_context.hpp"
+
 #include <sys/types.h>
 
 #include <string>
@@ -26,12 +28,8 @@ struct OsBaselineRow
     std::string family;    ///< ID_LIKE= first token ("debian" on ubuntu).
     std::string kernel;    ///< Host kernel release (shared with the container).
 
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    std::string        container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Parse one os-release(5) "KEY=value" line. Values may be bare or

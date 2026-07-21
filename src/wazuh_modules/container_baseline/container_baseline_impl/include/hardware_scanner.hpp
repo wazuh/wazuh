@@ -1,5 +1,7 @@
 #pragma once
 
+#include "container_context.hpp"
+
 #include <sys/types.h>
 
 #include <cstdint>
@@ -27,12 +29,8 @@ struct HardwareBaselineRow
     int64_t     memory_free{0};  ///< bytes — memory_total − memory_used.
     int64_t     memory_used{0};  ///< bytes — memory.current.
 
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    std::string        container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Effective core count from a cgroup v2 cpu.max value ("<quota> <period>"

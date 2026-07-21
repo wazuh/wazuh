@@ -33,32 +33,80 @@ constexpr int kOperationCreate = 0;
 constexpr int kListRetryAttempts = 10;
 constexpr auto kListRetryDelay = std::chrono::milliseconds{500};
 
-ContainerIdentity IdentityFromMetaJson(const std::string& container_id, const std::string& meta_json)
+/// Parses container_instances' "resolve" reply "data" object (see
+/// wire_protocol.hpp's recordToJson()) into the shared runtime context. Pod/
+/// namespace/node/annotations/owner_refs are only ever present when the
+/// module reports runtime == "kubernetes"; a Docker-origin container leaves
+/// `kubernetes` unset entirely (event_schema.md's two-block rule).
+ContainerContextPtr ContextFromResolveData(const nlohmann::json& data)
 {
-    ContainerIdentity id;
-    id.container_id = container_id;
+    auto ctx = std::make_shared<ContainerContext>();
+    ctx->runtime       = data.value("runtime", "");
+    ctx->name          = data.value("container_name", "");
+    ctx->image         = data.value("image", "");
+    ctx->image_digest  = data.value("image_digest", "");
+    ctx->restart_count = data.value("restart_count", 0);
 
-    auto j = nlohmann::json::parse(meta_json, nullptr, false);
-    if (j.is_discarded() || !j.is_object()) return id;
+    if (const auto it = data.find("labels"); it != data.end() && it->is_object())
+    {
+        for (const auto& [key, value] : it->items())
+        {
+            if (value.is_string()) ctx->labels.emplace(key, value.get<std::string>());
+        }
+    }
+    if (const auto it = data.find("network"); it != data.end() && it->is_array())
+    {
+        for (const auto& iface : *it)
+        {
+            NetworkEndpoint entry;
+            entry.name = iface.value("name", "");
+            entry.ip   = iface.value("ip", "");
+            ctx->network.push_back(std::move(entry));
+        }
+    }
+    if (const auto it = data.find("oci_mounts"); it != data.end() && it->is_array())
+    {
+        for (const auto& mount : *it)
+        {
+            OciMountEntry entry;
+            entry.source      = mount.value("source", "");
+            entry.destination = mount.value("destination", "");
+            entry.read_only   = mount.value("ro", false);
+            ctx->oci_mounts.push_back(std::move(entry));
+        }
+    }
 
-    if (const auto it = j.find("name"); it != j.end() && it->is_string()) {
-        id.container_name = it->get<std::string>();
-    }
-    if (const auto it = j.find("image"); it != j.end() && it->is_string()) {
-        id.image = it->get<std::string>();
-    }
-    if (const auto pod_it = j.find("pod"); pod_it != j.end() && pod_it->is_object()) {
-        if (const auto it = pod_it->find("uid"); it != pod_it->end() && it->is_string()) {
-            id.pod_uid = it->get<std::string>();
+    if (ctx->runtime == "kubernetes")
+    {
+        KubernetesContext k8s;
+        k8s.pod_uid       = data.value("pod_uid", "");
+        k8s.pod_name      = data.value("pod_name", "");
+        k8s.k8s_namespace = data.value("namespace", "");
+        k8s.node_name     = data.value("node_name", "");
+
+        if (const auto it = data.find("annotations"); it != data.end() && it->is_object())
+        {
+            for (const auto& [key, value] : it->items())
+            {
+                if (value.is_string()) k8s.annotations.emplace(key, value.get<std::string>());
+            }
         }
-        if (const auto it = pod_it->find("name"); it != pod_it->end() && it->is_string()) {
-            id.pod_name = it->get<std::string>();
+        if (const auto it = data.find("owner_refs"); it != data.end() && it->is_array())
+        {
+            for (const auto& owner : *it)
+            {
+                OwnerReference ref;
+                ref.kind = owner.value("kind", "");
+                ref.name = owner.value("name", "");
+                ref.uid  = owner.value("uid", "");
+                k8s.owner_refs.push_back(std::move(ref));
+            }
         }
-        if (const auto it = pod_it->find("namespace"); it != pod_it->end() && it->is_string()) {
-            id.k8s_namespace = it->get<std::string>();
-        }
+
+        ctx->kubernetes = std::move(k8s);
     }
-    return id;
+
+    return ctx;
 }
 
 ContainerIdentity IdentityFromResolveJson(const std::string& container_id, const std::string& reply_json)
@@ -78,28 +126,7 @@ ContainerIdentity IdentityFromResolveJson(const std::string& container_id, const
         return id;
     }
 
-    const auto& data = *dataIt;
-    if (const auto it = data.find("container_name"); it != data.end() && it->is_string())
-    {
-        id.container_name = it->get<std::string>();
-    }
-    if (const auto it = data.find("image"); it != data.end() && it->is_string())
-    {
-        id.image = it->get<std::string>();
-    }
-    if (const auto it = data.find("pod_uid"); it != data.end() && it->is_string())
-    {
-        id.pod_uid = it->get<std::string>();
-    }
-    if (const auto it = data.find("pod_name"); it != data.end() && it->is_string())
-    {
-        id.pod_name = it->get<std::string>();
-    }
-    if (const auto it = data.find("namespace"); it != data.end() && it->is_string())
-    {
-        id.k8s_namespace = it->get<std::string>();
-    }
-
+    id.context = ContextFromResolveData(*dataIt);
     return id;
 }
 
@@ -128,7 +155,7 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
         const auto lookup = client.resolveByCgroupId(ref.cgroupId, ref.containerId);
         if (lookup.status != wazuh::container_instances_client::LookupStatus::resolved)
         {
-            out.push_back(ContainerIdentity{ref.containerId, {}, {}, {}, {}, {}});
+            out.push_back(ContainerIdentity{ref.containerId, nullptr});
             continue;
         }
         out.push_back(IdentityFromResolveJson(ref.containerId, lookup.json));

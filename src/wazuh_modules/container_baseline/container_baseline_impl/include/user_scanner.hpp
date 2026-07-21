@@ -1,5 +1,7 @@
 #pragma once
 
+#include "container_context.hpp"
+
 #include <sys/types.h>
 
 #include <cstdint>
@@ -32,12 +34,8 @@ struct UserBaselineRow
     std::string home;
     std::string shell;
 
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    std::string        container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief One group read from a container's own /etc/group. Same userns
@@ -53,12 +51,8 @@ struct GroupBaselineRow
     int64_t     gid{0};
     std::vector<std::string> members;
 
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    std::string        container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Parse one passwd(5) line ("name:passwd:uid:gid:gecos:home:shell").

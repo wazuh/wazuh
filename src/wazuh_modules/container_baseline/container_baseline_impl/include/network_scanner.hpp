@@ -1,5 +1,7 @@
 #pragma once
 
+#include "container_context.hpp"
+
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -20,12 +22,8 @@ struct PortBaselineRow
     std::string process_name;
     uint64_t    file_inode{0};
 
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    std::string        container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Baseline the container's network namespace: listening/established

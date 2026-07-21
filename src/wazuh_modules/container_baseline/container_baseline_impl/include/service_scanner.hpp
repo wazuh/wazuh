@@ -1,5 +1,7 @@
 #pragma once
 
+#include "container_context.hpp"
+
 #include <sys/types.h>
 
 #include <string>
@@ -26,12 +28,8 @@ struct ServiceBaselineRow
     std::string executable;  ///< [Service] ExecStart= binary (argv[0], exec prefixes stripped).
     std::string file_path;   ///< Unit file path as seen inside the container.
 
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    std::string        container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Pull Description= and the ExecStart= binary (argv[0], with systemd's
