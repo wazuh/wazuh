@@ -30,6 +30,8 @@ struct file_event {
     __u32 ppid;
     __u32 uid;
     __u32 gid;
+    __u32 euid;
+    __u32 login_uid;
     uint64_t inode;
     uint64_t dev;
     char comm[TASK_COMM_LEN];
@@ -49,6 +51,8 @@ struct dynamic_file_event {
     uint32_t ppid;
     uint32_t uid;
     uint32_t gid;
+    uint32_t euid;
+    uint32_t login_uid;
     uint64_t inode;
     uint64_t dev;
 };
@@ -141,48 +145,19 @@ typedef struct {
 
 
 inline bool w_bpf_deinit(std::unique_ptr<w_bpf_helpers_t>& bpf_helpers) {
-    bool result = false;
-
-    if (bpf_helpers) {
-        // Reset function pointers to NULL
-        bpf_helpers->bpf_object_open_file = NULL;
-        bpf_helpers->bpf_object_load = NULL;
-        bpf_helpers->ring_buffer_new = NULL;
-        bpf_helpers->ring_buffer_poll = NULL;
-        bpf_helpers->ring_buffer_free = NULL;
-        bpf_helpers->bpf_object_close = NULL;
-        bpf_helpers->bpf_object_next_program = NULL;
-        bpf_helpers->bpf_program_attach = NULL;
-        bpf_helpers->bpf_object_find_map_fd_by_name = NULL;
-        bpf_helpers->bpf_program_set_autoload = NULL;
-        bpf_helpers->bpf_program_autoload = NULL;
-        bpf_helpers->bpf_program_section_name = NULL;
-        bpf_helpers->bpf_program_name = NULL;
-
-        // Reset skeleton-specific function pointers to NULL
-        bpf_helpers->bpf_object_open_skeleton = NULL;
-        bpf_helpers->bpf_object_destroy_skeleton = NULL;
-        bpf_helpers->bpf_object_load_skeleton = NULL;
-        bpf_helpers->bpf_object_attach_skeleton = NULL;
-        bpf_helpers->bpf_object_detach_skeleton = NULL;
-
-        // eBPF FIM generic functions
-	    bpf_helpers->init_ring_buffer = NULL;
-	    bpf_helpers->ebpf_pop_events = NULL;
-	    bpf_helpers->check_invalid_kernel_version = NULL;
-	    bpf_helpers->init_libbpf = NULL;
-	    bpf_helpers->init_bpfobj = NULL;
-
-        // Free the loaded module (library)
-        if (bpf_helpers->module != NULL) {
-            dlclose(bpf_helpers->module);
-            bpf_helpers.reset();
-        }
-
-        result = true;
+    if (!bpf_helpers) {
+        return false;
     }
 
-    return result;
+    void* mod = bpf_helpers->module;
+    *bpf_helpers = w_bpf_helpers_t{};
+
+    if (mod) {
+        dlclose(mod);
+        bpf_helpers.reset();
+    }
+
+    return true;
 }
 
 
