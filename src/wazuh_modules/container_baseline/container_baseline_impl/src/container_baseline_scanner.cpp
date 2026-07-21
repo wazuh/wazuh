@@ -2,13 +2,16 @@
 
 #include "baseline_rows.hpp"
 #include "container_instances_client.hpp"
+#include "hardware_scanner.hpp"
 #include "interface_scanner.hpp"
 #include "network_scanner.hpp"
 #include "os_scanner.hpp"
 #include "package_scanner.hpp"
 #include "pid_resolver.hpp"
 #include "process_scanner.hpp"
+#include "protocol_scanner.hpp"
 #include "rootfs_file_walker.hpp"
+#include "service_scanner.hpp"
 #include "user_scanner.hpp"
 
 #include <json.hpp>
@@ -206,19 +209,14 @@ int RunSyscollectorBaseline(const std::string& connector_socket_path, const RowS
             sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-packages", json, 1});
         }
 
-        // Remaining container-relevant syscollector classes: the image's OS
-        // identity (rootfs os-release via the same /proc/<pid>/root family) and
-        // the container netns' interfaces/addresses (setns hop — see
-        // interface_scanner.hpp). Hardware/hotfixes/services/browser-extensions
-        // are deliberately absent: hardware is the host's (already reported by
-        // host syscollector), hotfixes are Windows-only, and services/browser
-        // extensions don't exist in single-process container workloads.
+        // Image OS identity (rootfs os-release via the /proc/<pid>/root family).
         for (auto row : ScanContainerOs(pid)) {
             ApplyIdentity(row, identity);
             auto [id, json] = BuildOsJson(row);
             sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-system", json, 1});
         }
 
+        // Container netns interfaces/addresses (setns hop — see interface_scanner.hpp).
         auto ifscan = ScanContainerInterfaces(pid);
         for (auto row : ifscan.interfaces) {
             ApplyIdentity(row, identity);
@@ -229,6 +227,31 @@ int RunSyscollectorBaseline(const std::string& connector_socket_path, const RowS
             ApplyIdentity(row, identity);
             auto [id, json] = BuildNetworkAddressJson(row);
             sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-networks", json, 1});
+        }
+
+        // Default routes (protocols) from the container netns' /proc/<pid>/net/route.
+        for (auto row : ScanContainerProtocols(pid)) {
+            ApplyIdentity(row, identity);
+            auto [id, json] = BuildProtocolJson(row);
+            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-protocols", json, 1});
+        }
+
+        // systemd services from the rootfs unit files (static view; runtime state
+        // needs the container's own systemd over D-Bus — see service_scanner.hpp).
+        for (auto row : ScanContainerServices(pid)) {
+            ApplyIdentity(row, identity);
+            auto [id, json] = BuildServiceJson(row);
+            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-services", json, 1});
+        }
+
+        // Virtual hardware: the container's cgroup resource envelope (memory.max /
+        // cpu.max) mapped onto the hardware schema; cpu name/speed are the shared
+        // host silicon. Hotfixes (Windows-only) and browser-extensions (no browser
+        // in a server container) are the only host collectors left uncovered.
+        for (auto row : ScanContainerHardware(pid)) {
+            ApplyIdentity(row, identity);
+            auto [id, json] = BuildHardwareJson(row);
+            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-hardware", json, 1});
         }
     }
 

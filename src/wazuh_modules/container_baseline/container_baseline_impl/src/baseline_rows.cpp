@@ -94,6 +94,36 @@ void ApplyIdentity(NetworkAddressBaselineRow& row, const ContainerIdentity& id)
     row.image          = id.image;
 }
 
+void ApplyIdentity(ProtocolBaselineRow& row, const ContainerIdentity& id)
+{
+    row.container_id   = id.container_id;
+    row.pod_uid        = id.pod_uid;
+    row.pod_name       = id.pod_name;
+    row.k8s_namespace  = id.k8s_namespace;
+    row.container_name = id.container_name;
+    row.image          = id.image;
+}
+
+void ApplyIdentity(ServiceBaselineRow& row, const ContainerIdentity& id)
+{
+    row.container_id   = id.container_id;
+    row.pod_uid        = id.pod_uid;
+    row.pod_name       = id.pod_name;
+    row.k8s_namespace  = id.k8s_namespace;
+    row.container_name = id.container_name;
+    row.image          = id.image;
+}
+
+void ApplyIdentity(HardwareBaselineRow& row, const ContainerIdentity& id)
+{
+    row.container_id   = id.container_id;
+    row.pod_uid        = id.pod_uid;
+    row.pod_name       = id.pod_name;
+    row.k8s_namespace  = id.k8s_namespace;
+    row.container_name = id.container_name;
+    row.image          = id.image;
+}
+
 namespace {
 
 nlohmann::json KubernetesBlock(const std::string& container_id,
@@ -309,6 +339,67 @@ std::pair<std::string, std::string> BuildNetworkAddressJson(const NetworkAddress
     // iface + address is unique within one netns; protocol is implied by the
     // address family but kept out of the key (an address string is unambiguous).
     const std::string id = row.container_id + ":net:" + row.interface_name + ":" + row.address;
+    return {id, data.dump()};
+}
+
+std::pair<std::string, std::string> BuildProtocolJson(const ProtocolBaselineRow& row)
+{
+    nlohmann::json data;
+    data["interface"] = {{"name", row.interface_name}};
+    nlohmann::json network;
+    network["type"]   = row.type;
+    if (!row.gateway.empty()) network["gateway"] = row.gateway; // typed `ip` — omit when absent.
+    network["dhcp"]   = row.dhcp;
+    network["metric"] = row.metric;
+    data["network"]   = network;
+    data["baseline"]  = true;
+    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
+                                         row.k8s_namespace, row.container_name, row.image);
+
+    const std::string id = row.container_id + ":proto:" + row.interface_name + ":" + row.type;
+    return {id, data.dump()};
+}
+
+std::pair<std::string, std::string> BuildServiceJson(const ServiceBaselineRow& row)
+{
+    nlohmann::json data;
+    nlohmann::json service;
+    service["name"]        = row.name;
+    service["id"]          = row.name;
+    service["description"] = row.description;
+    service["state"]       = row.state;
+    service["enabled"]     = row.enabled;
+    service["type"]        = row.type;
+    data["service"]   = service;
+    // process.executable / file.path mirror the host row's fragment/source paths;
+    // omit when a unit has no ExecStart (target/socket units).
+    if (!row.executable.empty()) data["process"] = {{"executable", row.executable}};
+    if (!row.file_path.empty())  data["file"]    = {{"path", row.file_path}};
+    data["baseline"]  = true;
+    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
+                                         row.k8s_namespace, row.container_name, row.image);
+
+    const std::string id = row.container_id + ":svc:" + row.name;
+    return {id, data.dump()};
+}
+
+std::pair<std::string, std::string> BuildHardwareJson(const HardwareBaselineRow& row)
+{
+    nlohmann::json data;
+    nlohmann::json host;
+    // serial_number is the host row's primary key; for a container's virtual
+    // hardware the container_id fills that slot, and the manager splits real vs
+    // virtual on the container block below.
+    host["serial_number"] = row.container_id;
+    host["cpu"]    = {{"name", row.cpu_name}, {"cores", row.cpu_cores},
+                      {"speed", static_cast<int64_t>(row.cpu_speed)}};
+    host["memory"] = {{"total", row.memory_total}, {"free", row.memory_free}, {"used", row.memory_used}};
+    data["host"]      = host;
+    data["baseline"]  = true;
+    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
+                                         row.k8s_namespace, row.container_name, row.image);
+
+    const std::string id = row.container_id + ":hw";
     return {id, data.dump()};
 }
 
