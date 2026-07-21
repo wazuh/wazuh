@@ -1,5 +1,7 @@
 #pragma once
 
+#include "container_context.hpp"
+
 #include <sys/types.h>
 
 #include <cstdint>
@@ -27,12 +29,8 @@ struct PackageBaselineRow
     std::string source;
     std::string format;
 
-    std::string container_id;
-    std::string pod_uid;
-    std::string pod_name;
-    std::string k8s_namespace;
-    std::string container_name;
-    std::string image;
+    std::string        container_id;
+    ContainerContextPtr container; ///< null until ApplyIdentity() stamps it.
 };
 
 /// @brief Which package database(s) a rootfs carries. A normal image has

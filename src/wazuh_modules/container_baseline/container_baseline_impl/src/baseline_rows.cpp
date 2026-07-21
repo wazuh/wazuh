@@ -6,141 +6,157 @@ namespace wazuh::container_baseline {
 
 void ApplyIdentity(FileBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(ProcessBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(PortBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(UserBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(GroupBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(PackageBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(OsBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(InterfaceBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(NetworkAddressBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(ProtocolBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(ServiceBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 void ApplyIdentity(HardwareBaselineRow& row, const ContainerIdentity& id)
 {
-    row.container_id   = id.container_id;
-    row.pod_uid        = id.pod_uid;
-    row.pod_name       = id.pod_name;
-    row.k8s_namespace  = id.k8s_namespace;
-    row.container_name = id.container_name;
-    row.image          = id.image;
+    row.container_id = id.container_id;
+    row.container     = id.context;
 }
 
 namespace {
 
-nlohmann::json KubernetesBlock(const std::string& container_id,
-                                const std::string& pod_uid,
-                                const std::string& pod_name,
-                                const std::string& k8s_namespace,
-                                const std::string& container_name,
-                                const std::string& image)
+/// Generic runtime context block, always present for a containerized row.
+/// Fields default to empty/zero when `ctx` is null (container_instances
+/// lookup didn't resolve) so callers still get a well-formed "container"
+/// object carrying at least the id.
+nlohmann::json ContainerBlock(const std::string& container_id, const ContainerContextPtr& ctx)
 {
-    nlohmann::json k8s;
-    if (!k8s_namespace.empty())  k8s["namespace"]       = k8s_namespace;
-    if (!pod_name.empty())       k8s["pod_name"]        = pod_name;
-    if (!pod_uid.empty())        k8s["pod_uid"]         = pod_uid;
-    if (!container_name.empty()) k8s["container_name"]  = container_name;
-    if (!container_id.empty())   k8s["container_id"]    = container_id;
-    if (!image.empty())          k8s["image"]           = image;
-    return k8s;
+    nlohmann::json block;
+    block["id"]      = container_id;
+    block["name"]    = ctx ? ctx->name : std::string {};
+    block["runtime"] = ctx ? ctx->runtime : std::string {};
+
+    nlohmann::json image;
+    image["name"]   = ctx ? ctx->image : std::string {};
+    image["digest"] = ctx ? ctx->image_digest : std::string {};
+    block["image"] = std::move(image);
+
+    block["labels"]        = ctx ? ctx->labels : std::map<std::string, std::string> {};
+    block["restart_count"] = ctx ? ctx->restart_count : 0;
+
+    auto network = nlohmann::json::array();
+    if (ctx) {
+        for (const auto& iface : ctx->network) {
+            network.push_back({{"name", iface.name}, {"ip", iface.ip}});
+        }
+    }
+    block["network"] = std::move(network);
+
+    auto mounts = nlohmann::json::array();
+    if (ctx) {
+        for (const auto& mount : ctx->oci_mounts) {
+            mounts.push_back(
+                {{"source", mount.source}, {"destination", mount.destination}, {"ro", mount.read_only}});
+        }
+    }
+    block["oci_mounts"] = std::move(mounts);
+
+    return block;
+}
+
+/// Kubernetes-only enrichment block. Omitted entirely (not an empty object)
+/// when the container isn't Kubernetes-origin, per event_schema.md: host and
+/// Docker rows must not carry a misleading empty "kubernetes" key.
+std::optional<nlohmann::json> KubernetesBlock(const ContainerContextPtr& ctx)
+{
+    if (!ctx || !ctx->kubernetes) {
+        return std::nullopt;
+    }
+    const auto& k8s = *ctx->kubernetes;
+
+    nlohmann::json block;
+    if (!k8s.k8s_namespace.empty()) block["namespace"] = k8s.k8s_namespace;
+
+    nlohmann::json pod;
+    if (!k8s.pod_uid.empty())  pod["uid"]  = k8s.pod_uid;
+    if (!k8s.pod_name.empty()) pod["name"] = k8s.pod_name;
+    if (!pod.empty()) block["pod"] = std::move(pod);
+
+    if (!k8s.node_name.empty()) block["node"] = {{"name", k8s.node_name}};
+    if (!k8s.annotations.empty()) block["annotations"] = k8s.annotations;
+
+    if (!k8s.owner_refs.empty()) {
+        auto owners = nlohmann::json::array();
+        for (const auto& owner : k8s.owner_refs) {
+            owners.push_back({{"kind", owner.kind}, {"name", owner.name}, {"uid", owner.uid}});
+        }
+        block["owner_refs"] = std::move(owners);
+    }
+
+    return block;
+}
+
+/// Stamps the "container" block, and the "kubernetes" block when present,
+/// onto `data`. Shared by every Build*Json() below.
+void StampContainerContext(nlohmann::json& data, const std::string& container_id, const ContainerContextPtr& ctx)
+{
+    data["container"] = ContainerBlock(container_id, ctx);
+    if (auto kubernetes = KubernetesBlock(ctx)) {
+        data["kubernetes"] = std::move(*kubernetes);
+    }
 }
 
 } // namespace
@@ -164,8 +180,7 @@ std::pair<std::string, std::string> BuildFimFileJson(const FileBaselineRow& row)
     data["is_symlink"] = row.is_symlink;
     data["baseline"]   = true; // marks this row as baseline-sourced, not eBPF-diff-sourced.
 
-    data["kubernetes"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                          row.k8s_namespace, row.container_name, row.image);
+    StampContainerContext(data, row.container_id, row.container);
 
     const std::string id = row.container_id + ":" + row.path;
     return {id, data.dump()};
@@ -175,20 +190,20 @@ std::pair<std::string, std::string> BuildProcessJson(const ProcessBaselineRow& r
 {
     nlohmann::json data;
     nlohmann::json process;
-    process["pid"]              = row.pid;
-    process["name"]             = row.name;
-    process["state"]            = row.state;
-    process["parent"]           = {{"pid", row.parent_pid}};
-    process["command_line"]     = row.command_line;
-    process["args"]             = row.args;
-    process["args_count"]       = row.args_count;
-    process["start"]            = row.start;
-    process["utime"]            = row.utime;
-    process["stime"]            = row.stime;
-    data["process"]   = process;
-    data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    process["pid"]          = row.pid;
+    process["name"]         = row.name;
+    process["state"]        = row.state;
+    process["parent"]       = {{"pid", row.parent_pid}};
+    process["command_line"] = row.command_line;
+    process["args"]         = row.args;
+    process["args_count"]   = row.args_count;
+    process["start"]        = row.start;
+    process["utime"]        = row.utime;
+    process["stime"]        = row.stime;
+    data["process"]  = process;
+    data["baseline"] = true;
+
+    StampContainerContext(data, row.container_id, row.container);
 
     const std::string id = row.container_id + ":" + row.pid;
     return {id, data.dump()};
@@ -197,17 +212,17 @@ std::pair<std::string, std::string> BuildProcessJson(const ProcessBaselineRow& r
 std::pair<std::string, std::string> BuildPortJson(const PortBaselineRow& row)
 {
     nlohmann::json data;
-    data["network"] = {{"transport", row.network_transport}};
-    data["source"]      = {{"ip", row.source_ip},      {"port", row.source_port}};
-    data["destination"] = {{"ip", row.destination_ip}, {"port", row.destination_port}};
+    data["network"]        = {{"transport", row.network_transport}};
+    data["source"]         = {{"ip", row.source_ip},      {"port", row.source_port}};
+    data["destination"]    = {{"ip", row.destination_ip}, {"port", row.destination_port}};
     data["interface_state"] = row.interface_state;
     data["file_inode"]      = row.file_inode;
     if (row.process_pid != 0) {
         data["process"] = {{"pid", row.process_pid}, {"name", row.process_name}};
     }
-    data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    data["baseline"] = true;
+
+    StampContainerContext(data, row.container_id, row.container);
 
     const std::string id = row.container_id + ":" + row.network_transport + ":" +
                             row.source_ip + ":" + std::to_string(row.source_port) + ":" +
@@ -224,11 +239,11 @@ std::pair<std::string, std::string> BuildUserJson(const UserBaselineRow& row)
     user["group"]       = {{"id", row.gid}};
     user["description"] = row.description;
     user["home"]        = row.home;
-    user["shell"]       = row.shell;
-    data["user"]      = user;
-    data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    user["shell"]        = row.shell;
+    data["user"]     = user;
+    data["baseline"] = true;
+
+    StampContainerContext(data, row.container_id, row.container);
 
     // Keyed by name, not uid: /etc/passwd allows duplicate uids (e.g. root
     // aliases) but a name appears once per file.
@@ -243,10 +258,10 @@ std::pair<std::string, std::string> BuildGroupJson(const GroupBaselineRow& row)
     group["name"]  = row.name;
     group["id"]    = row.gid;
     group["users"] = row.members;
-    data["group"]     = group;
-    data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    data["group"]    = group;
+    data["baseline"] = true;
+
+    StampContainerContext(data, row.container_id, row.container);
 
     const std::string id = row.container_id + ":group:" + row.name;
     return {id, data.dump()};
@@ -266,10 +281,10 @@ std::pair<std::string, std::string> BuildPackageJson(const PackageBaselineRow& r
     package["category"]     = row.category;
     package["source"]       = row.source;
     package["type"]         = row.format;
-    data["package"]   = package;
-    data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    data["package"]  = package;
+    data["baseline"] = true;
+
+    StampContainerContext(data, row.container_id, row.container);
 
     // name+arch+version identifies a package row; multiarch dpkg installs the
     // same name for several architectures, so arch must be part of the key.
@@ -292,8 +307,7 @@ std::pair<std::string, std::string> BuildOsJson(const OsBaselineRow& row)
     os["type"]     = "linux";
     data["os"]        = os;
     data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    StampContainerContext(data, row.container_id, row.container);
 
     // One OS row per container.
     const std::string id = row.container_id + ":os";
@@ -315,8 +329,7 @@ std::pair<std::string, std::string> BuildInterfaceJson(const InterfaceBaselineRo
         {"tx", {{"bytes", row.tx_bytes}, {"packets", row.tx_packets}, {"errors", row.tx_errors}, {"dropped", row.tx_dropped}}},
     };
     data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    StampContainerContext(data, row.container_id, row.container);
 
     const std::string id = row.container_id + ":iface:" + row.name;
     return {id, data.dump()};
@@ -333,8 +346,7 @@ std::pair<std::string, std::string> BuildNetworkAddressJson(const NetworkAddress
     if (!row.broadcast.empty()) network["broadcast"] = row.broadcast;
     data["network"]   = network;
     data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    StampContainerContext(data, row.container_id, row.container);
 
     // iface + address is unique within one netns; protocol is implied by the
     // address family but kept out of the key (an address string is unambiguous).
@@ -353,8 +365,7 @@ std::pair<std::string, std::string> BuildProtocolJson(const ProtocolBaselineRow&
     network["metric"] = row.metric;
     data["network"]   = network;
     data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    StampContainerContext(data, row.container_id, row.container);
 
     const std::string id = row.container_id + ":proto:" + row.interface_name + ":" + row.type;
     return {id, data.dump()};
@@ -376,8 +387,7 @@ std::pair<std::string, std::string> BuildServiceJson(const ServiceBaselineRow& r
     if (!row.executable.empty()) data["process"] = {{"executable", row.executable}};
     if (!row.file_path.empty())  data["file"]    = {{"path", row.file_path}};
     data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    StampContainerContext(data, row.container_id, row.container);
 
     const std::string id = row.container_id + ":svc:" + row.name;
     return {id, data.dump()};
@@ -396,8 +406,7 @@ std::pair<std::string, std::string> BuildHardwareJson(const HardwareBaselineRow&
     host["memory"] = {{"total", row.memory_total}, {"free", row.memory_free}, {"used", row.memory_used}};
     data["host"]      = host;
     data["baseline"]  = true;
-    data["container"] = KubernetesBlock(row.container_id, row.pod_uid, row.pod_name,
-                                         row.k8s_namespace, row.container_name, row.image);
+    StampContainerContext(data, row.container_id, row.container);
 
     const std::string id = row.container_id + ":hw";
     return {id, data.dump()};
