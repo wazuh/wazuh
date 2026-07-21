@@ -65,7 +65,7 @@ Reading notes:
 - **Counters** are cumulative since the module started, and survive internal HTTP-server
   restart retries. There are no rates in the dump: derive events-per-second externally by
   diffing counters between polls (the in-repo scraper
-  `src/engine/tools/devContainer/scripts/monitor.py` does exactly this).
+  `tools/devContainer/scripts/monitor.py` does exactly this).
 - **Pull metrics** (`"type": "pull"`) are read at dump time from live components. While the
   module is stopped (or a component is torn down) they read `0` — the documented quiesced
   value, not an error.

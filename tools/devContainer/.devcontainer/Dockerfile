@@ -31,8 +31,9 @@ RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
 RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-14 14 \
     && update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-14 14
 
-# Install cmoka
- RUN git clone https://git.cryptomilk.org/projects/cmocka.git \
+# Install cmocka from its official GitLab repository (git.cryptomilk.org, the
+# old self-hosted upstream, no longer serves the repo).
+RUN git clone https://gitlab.com/cmocka/cmocka.git \
     && cd cmocka && git checkout stable-1.1 \
     && mkdir build && cd build \
     && cmake -DCMAKE_BUILD_TYPE=Release .. && make && make install \
