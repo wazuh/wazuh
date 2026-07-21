@@ -27,13 +27,10 @@ int OS_AddNewAgent(
     keystore* keys, const char* id, const char* name, const char* ip, const char* key, unsigned int max_agents);
 int OS_IsValidID(const char* id);
 char* getNameById(const char* id);
-int IDExist(const char* id, int discard_removed);
 int OS_IsValidName(const char* u_name);
 void OS_ConvertToValidAgentName(char* u_name);
 int NameExist(const char* u_name);
 char* IPExist(const char* u_ip);
-void OS_AddAgentTimestamp(const char* id, const char* name, const char* ip, time_t now);
 void OS_RemoveAgentTimestamp(const char* id);
-void FormatID(char* id);
 
 #endif // AGENT_VALIDATE_OP_H

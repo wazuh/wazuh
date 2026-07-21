@@ -52,25 +52,6 @@ void OSList_Destroy(OSList *list) {
     return;
 }
 
-/* Set the maximum number of elements in the list
- * Returns 0 on error or 1 on success
- */
-int OSList_SetMaxSize(OSList *list, int max_size)
-{
-    if (!list) {
-        return (0);
-    }
-
-    /* Minimum size is 1 */
-    if (max_size <= 1) {
-        return (0);
-    }
-
-    list->max_size = max_size;
-
-    return (1);
-}
-
 /* Set the pointer to the function to free the memory data */
 int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *))
 {
@@ -167,32 +148,6 @@ OSListNode *OSList_GetCurrentlyNode(OSList *list)
     node = list->cur_node;
     w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
     return node;
-}
-
-/* Delete first node from list */
-void OSList_DeleteOldestNode(OSList *list)
-{
-    OSListNode *next;
-
-    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
-    w_mutex_lock((pthread_mutex_t *)&list->mutex);
-    if (list->first_node) {
-        next = list->first_node->next;
-        if (next) {
-            next->prev = NULL;
-        } else {
-            list->last_node = next;
-        }
-
-        free(list->first_node);
-        list->first_node = next;
-    } else {
-        merror("No Oldest node to delete");
-    }
-    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
-    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
-
-    return;
 }
 
 /* Delete this node from list
@@ -379,32 +334,6 @@ void OSList_CleanNodes(OSList *list) {
             list->free_data_function(aux_node->data);
         }
         free(aux_node);
-    }
-
-    list->last_node = NULL;
-    list->cur_node = NULL;
-    list->first_node = NULL;
-
-    list->currently_size = 0;
-
-    w_mutex_unlock((pthread_mutex_t *)&list->mutex);
-    w_rwlock_unlock((pthread_rwlock_t *)&list->wr_mutex);
-}
-
-void OSList_CleanOnlyNodes(OSList *list) {
-    if (list == NULL) {
-        return;
-    }
-
-    w_rwlock_wrlock((pthread_rwlock_t *)&list->wr_mutex);
-    w_mutex_lock((pthread_mutex_t *)&list->mutex);
-
-    OSListNode *aux_node = NULL;
-
-    while(list->first_node != NULL) {
-        aux_node = list->first_node;
-        list->first_node = aux_node->next;
-        os_free(aux_node);
     }
 
     list->last_node = NULL;
