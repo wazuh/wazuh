@@ -40,17 +40,8 @@ OSStore *OSStore_Create(void);
 OSStore *OSStore_Free(OSStore *list) __attribute__((nonnull));
 
 int OSStore_Put(OSStore *list, const char *key, void *data) __attribute__((nonnull(1, 2)));
-int OSStore_Put_ex(OSStore *list, const char *key, void *data) __attribute__((nonnull(1, 2)));
-int OSStore_Check(OSStore *list, const char *key) __attribute__((nonnull));
-int OSStore_NCheck(OSStore *list, const char *key) __attribute__((nonnull));
-int OSStore_NCaseCheck(OSStore *list, const char *key) __attribute__((nonnull));
 int OSStore_GetPosition(OSStore *list, const char *key) __attribute__((nonnull));
-int OSStore_GetPosition_ex(OSStore *list, const char *key) __attribute__((nonnull));
 void *OSStore_Get(OSStore *list, const char *key) __attribute__((nonnull));
 OSStoreNode *OSStore_GetFirstNode(OSStore *list) __attribute__((nonnull));
-int OSStore_Sort(OSStore *list, void *(sort_data_function)(void *d1, void *d2)) __attribute__((nonnull));
-
-int OSStore_SetMaxSize(OSStore *list, int max_size);
-int OSStore_SetFreeDataPointer(OSStore *list, void (free_data_function)(void *));
 
 #endif /* OS_STORE */

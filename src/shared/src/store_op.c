@@ -74,118 +74,6 @@ OSStore *OSStore_Free(OSStore *list)
     return (list);
 }
 
-/* Set the maximum number of elements in the storage
- * Returns 0 on error or 1 on success
- */
-int OSStore_SetMaxSize(OSStore *list, int max_size)
-{
-    if (!list) {
-        return (0);
-    }
-
-    /* Minimum size is 1 */
-    if (max_size <= 1) {
-        return (0);
-    }
-
-    list->max_size = max_size;
-
-    return (1);
-}
-
-/* Set the pointer to the function to free the memory data */
-int OSStore_SetFreeDataPointer(OSStore *list, void (free_data_function)(void *))
-{
-    if (!list) {
-        return (0);
-    }
-
-    list->free_data_function = free_data_function;
-    return (1);
-}
-
-/* Sort the storage by size */
-int OSStore_Sort(OSStore *list, void *(sort_data_function)(void *d1, void *d2))
-{
-    OSStoreNode *newnode = NULL;
-    OSStoreNode *movenode = NULL;
-    list->cur_node = list->first_node;
-
-    while (list->cur_node) {
-        movenode = list->cur_node->prev;
-
-        /* Check for all the previous entries, using sort */
-        while (movenode) {
-
-            if (sort_data_function(list->cur_node->data, movenode->data)) {
-                movenode = movenode->prev;
-            }
-
-            /* This node should stay where it is */
-            else if (movenode == list->cur_node->prev) {
-                break;
-            }
-
-            /* Replace the nodes */
-            else {
-                newnode = list->cur_node;
-
-                if (list->cur_node->prev) {
-                    list->cur_node->prev->next = list->cur_node->next;
-                }
-
-                if (list->cur_node->next) {
-                    list->cur_node->next->prev = list->cur_node->prev;
-                } else {
-                    list->last_node = list->cur_node->prev;
-                }
-
-                list->cur_node = list->cur_node->prev;
-
-                newnode->next = movenode->next;
-                newnode->prev = movenode;
-
-                if (movenode->next) {
-                    movenode->next->prev = newnode;
-                }
-
-                movenode->next = newnode;
-
-                break;
-            }
-        }
-
-        /* If movenode is not set, put the current node in first */
-        if (!movenode && (list->cur_node != list->first_node)) {
-            newnode = list->cur_node;
-
-            if (list->cur_node->prev) {
-                list->cur_node->prev->next = list->cur_node->next;
-            }
-
-            if (list->cur_node->next) {
-                list->cur_node->next->prev = list->cur_node->prev;
-            } else {
-                list->last_node = list->cur_node->prev;
-            }
-
-            if ((list->cur_node = list->cur_node->prev) == NULL) {
-                return (1);
-            }
-
-            newnode->prev = NULL;
-            newnode->next = list->first_node;
-            list->first_node->prev = newnode;
-
-            list->first_node = newnode;
-        }
-
-        list->cur_node = list->cur_node->next;
-    }
-
-    return (1);
-}
-
 /* Get key position from storage
  * Returns 0 if not present or the key if available
  * (position may change after each PUT)
@@ -210,26 +98,6 @@ int OSStore_GetPosition(OSStore *list, const char *key)
         pos++;
     }
     return (0);
-}
-
-/**
- * @brief Get key position from storage
- *
- * Thread safe version of OSStore_GetPosition
- * @param list Storage list
- * @param key Key to search
- * @return int Position of the key in the list
- * @retval 0 if not present
- * @warning Position may change after each PUT
- */
-int OSStore_GetPosition_ex(OSStore * list, const char * key) {
-
-    // Write lock because change the current node
-    w_rwlock_wrlock((pthread_rwlock_t *) &list->wr_mutex);
-    int pos = OSStore_GetPosition(list, key);
-    w_rwlock_unlock((pthread_rwlock_t *) &list->wr_mutex);
-
-    return pos;
 }
 
 /* Get first node from storage
@@ -262,74 +130,6 @@ void *OSStore_Get(OSStore *list, const char *key)
         list->cur_node = list->cur_node->next;
     }
     return (NULL);
-}
-
-/* Check if key is present on storage
- * Returns 0 if not present
- */
-int OSStore_Check(OSStore *list, const char *key)
-{
-    int chk_rc;
-    list->cur_node = list->first_node;
-
-    while (list->cur_node) {
-        if ((chk_rc = strcmp(list->cur_node->key, key)) >= 0) {
-            /* Found */
-            if (chk_rc == 0) {
-                return (1);
-            }
-
-            /* Not found */
-            return (0);
-        }
-
-        list->cur_node = list->cur_node->next;
-    }
-    return (0);
-}
-
-/* Check if key is present on storage (using strncmp)
- * Returns 0 if not present
- */
-int OSStore_NCheck(OSStore *list, const char *key)
-{
-    int chk_rc;
-    list->cur_node = list->first_node;
-
-    while (list->cur_node) {
-        if ((chk_rc = strncmp(list->cur_node->key, key,
-                              list->cur_node->key_size)) >= 0) {
-            /* Found */
-            if (chk_rc == 0) {
-                return (1);
-            }
-
-            /* Not found */
-            return (0);
-        }
-
-        list->cur_node = list->cur_node->next;
-    }
-    return (0);
-}
-
-/* Check if key is present on storage (case insensitive)
- * Returns 0 if not present
- */
-int OSStore_NCaseCheck(OSStore *list, const char *key)
-{
-    int chk_rc;
-    list->cur_node = list->first_node;
-
-    while (list->cur_node) {
-        if (chk_rc = strncasecmp(list->cur_node->key, key,
-                                 list->cur_node->key_size), chk_rc == 0) {
-            return (1);
-        }
-
-        list->cur_node = list->cur_node->next;
-    }
-    return (0);
 }
 
 /* Add data to the list
@@ -405,22 +205,4 @@ int OSStore_Put(OSStore *list, const char *key, void *data)
     list->currently_size++;
 
     return (1);
-}
-
-/**
- * @brief Add data to the list
- *
- * Thread safe version of OSStore_Put 
- * @param list Storage list
- * @param key Key to store
- * @param data Data to store
- * @return int 1 on success, 0 on failure
- */
-int OSStore_Put_ex(OSStore * list, const char * key, void * data) {
-
-    w_rwlock_wrlock((pthread_rwlock_t *) &list->wr_mutex);
-    int ret = OSStore_Put(list, key, data);
-    w_rwlock_unlock((pthread_rwlock_t *) &list->wr_mutex);
-
-    return ret;
 }

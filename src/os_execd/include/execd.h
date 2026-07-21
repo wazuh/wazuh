@@ -41,8 +41,6 @@ extern int max_restart_lock;
 cJSON *getARConfig(void);
 cJSON *getExecdInternalOptions(void);
 cJSON *getClusterConfig(void);
-void ExecCmd(char *const *cmd) __attribute__((nonnull));
-void ExecCmd_Win32(char *cmd);
 int ExecdConfig(const char *cfgfile) __attribute__((nonnull));
 
 #ifdef WIN32
