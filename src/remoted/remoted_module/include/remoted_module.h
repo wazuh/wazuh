@@ -47,12 +47,12 @@ extern "C"
      */
     typedef struct remoted_module_config_t
     {
-        int worker_threads;      ///< Number of worker threads the module should run.
-        int queue_size;          ///< Input queue capacity.
-        int port;                ///< remoted listening port (informational).
-        bool worker_node;        ///< true if this manager is a cluster worker node.
-        char cluster_name[256];  ///< Cluster name.
-        char node_name[256];     ///< Cluster node name.
+        int worker_threads;     ///< Number of worker threads the module should run.
+        int queue_size;         ///< Input queue capacity.
+        int port;               ///< remoted listening port (informational).
+        bool worker_node;       ///< true if this manager is a cluster worker node.
+        char cluster_name[256]; ///< Cluster name.
+        char node_name[256];    ///< Cluster node name.
     } remoted_module_config_t;
 
     /**
