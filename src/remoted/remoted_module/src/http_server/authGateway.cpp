@@ -98,19 +98,19 @@ void AuthGateway::addAuthenticatedRoute(IHttpServer& server,
             const std::string authorization = headerValue(request.headers, "authorization");
 
             // Steps 1-5: protocol-version + Authorization + timestamp window + key + CMAC prefix.
-            auto begun = middleware->beginSession(protocolVersion,
+            auto begin = middleware->beginSession(protocolVersion,
                                                   authorization,
                                                   methodStr,
                                                   request.target,
                                                   static_cast<std::int64_t>(std::time(nullptr)));
 
-            if (std::holds_alternative<wazuh_auth::AuthError>(begun))
+            if (std::holds_alternative<wazuh_auth::AuthError>(begin))
             {
-                responder->send(errorResponse(std::get<wazuh_auth::AuthError>(begun)));
+                responder->send(errorResponse(std::get<wazuh_auth::AuthError>(begin)));
                 return;
             }
 
-            auto session = std::get<wazuh_auth::AuthMiddleware::Session>(std::move(begun));
+            auto session = std::get<wazuh_auth::AuthMiddleware::Session>(std::move(begin));
 
             // Step 6: feed the exact body bytes (enforces the max-body cap).
             if (!request.body.empty())
