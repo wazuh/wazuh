@@ -23,6 +23,7 @@
 #include "../../wrappers/libc/stdlib_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/wazuh_modules/wmodules_wrappers.h"
+#include "../../wrappers/wazuh/wazuh_modules/wm_exec_wrappers.h"
 #include "../../wrappers/wazuh/shared/mq_op_wrappers.h"
 
 #define TEST_MAX_DATES 5
@@ -34,6 +35,7 @@ static OS_XML *lxml;
 extern int test_mode;
 
 extern void wm_aws_run_s3(wm_aws_bucket *bucket);
+extern void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscriber);
 
 void wm_aws_run_s3(wm_aws_bucket *exec_bucket) {
     // Will wrap this function to check running times in order to check scheduling
@@ -268,6 +270,34 @@ void test_read_scheduling_interval_configuration(void **state) {
     assert_int_equal(module_data->scan_config.scan_wday, -1);
 }
 
+void test_subscriber_discard_regex_with_spaces(void **state) {
+    wm_aws config = {0};
+    wm_aws_subscriber subscriber = {0};
+
+    config.queue_fd = 1;
+    subscriber.type = "security_hub";
+    subscriber.sqs_name = "security-hub-queue";
+    subscriber.discard_field = "detail-type";
+    subscriber.discard_regex = "Security Hub Insight Results";
+
+    expect_string(__wrap_wm_state_io, tag, "aws-s3");
+    expect_value(__wrap_wm_state_io, op, WM_IO_READ);
+    expect_value(__wrap_wm_state_io, state, &config.state);
+    expect_value(__wrap_wm_state_io, size, sizeof(config.state));
+    will_return(__wrap_wm_state_io, 1);
+
+    expect_wm_exec(
+        "wodles/aws/aws-s3 --subscriber security_hub --queue security-hub-queue --discard-field detail-type --discard-regex \"Security Hub Insight Results\"",
+        0,
+        NULL,
+        "",
+        0,
+        0
+    );
+
+    wm_aws_run_subscriber(&config, &subscriber);
+}
+
 int main(void) {
     const struct CMUnitTest tests_with_startup[] = {
         cmocka_unit_test_setup_teardown(test_interval_execution, setup_test_executions, teardown_test_executions)
@@ -277,7 +307,8 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_read_scheduling_monthday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_weekday_configuration, setup_test_read, teardown_test_read),
         cmocka_unit_test_setup_teardown(test_read_scheduling_daytime_configuration, setup_test_read, teardown_test_read),
-        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read)
+        cmocka_unit_test_setup_teardown(test_read_scheduling_interval_configuration, setup_test_read, teardown_test_read),
+        cmocka_unit_test(test_subscriber_discard_regex_with_spaces)
     };
     int result;
     result = cmocka_run_group_tests(tests_with_startup, setup_module, teardown_module);

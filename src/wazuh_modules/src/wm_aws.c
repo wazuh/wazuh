@@ -30,6 +30,7 @@ static void wm_aws_check();                             // Check configuration, 
 static void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *bucket);       // Run a s3 bucket
 static void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *service);// Run a AWS service such as Inspector
 static void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *subscriber); //Run an AWS subscriber
+static void wm_aws_append_quoted_argument(char **command, const char *argument);
 cJSON *wm_aws_dump(const wm_aws *aws_config);
 
 // Command module context definition
@@ -365,6 +366,24 @@ void wm_aws_check() {
 
 }
 
+void wm_aws_append_quoted_argument(char **command, const char *argument) {
+    char *quoted_argument = NULL;
+
+    wm_strcat(&quoted_argument, "\"", '\0');
+    for (const char *character = argument; *character; ++character) {
+        if (*character == '\\' || *character == '"') {
+            wm_strcat(&quoted_argument, "\\\\", '\0');
+        }
+
+        char value[] = {*character, '\0'};
+        wm_strcat(&quoted_argument, value, '\0');
+    }
+    wm_strcat(&quoted_argument, "\"", '\0');
+
+    wm_strcat(command, quoted_argument, ' ');
+    os_free(quoted_argument);
+}
+
 // Run a bucket parsing
 #ifdef WAZUH_UNIT_TESTING
 __attribute__((weak))
@@ -451,7 +470,7 @@ void wm_aws_run_s3(wm_aws *aws_config, wm_aws_bucket *exec_bucket) {
     }
     if (exec_bucket->discard_regex) {
         wm_strcat(&command, "--discard-regex", ' ');
-        wm_strcat(&command, exec_bucket->discard_regex, ' ');
+        wm_aws_append_quoted_argument(&command, exec_bucket->discard_regex);
     }
     if (exec_bucket->sts_endpoint) {
         wm_strcat(&command, "--sts_endpoint", ' ');
@@ -622,7 +641,7 @@ void wm_aws_run_service(wm_aws *aws_config, wm_aws_service *exec_service) {
     }
     if (exec_service->discard_regex) {
         wm_strcat(&command, "--discard-regex", ' ');
-        wm_strcat(&command, exec_service->discard_regex, ' ');
+        wm_aws_append_quoted_argument(&command, exec_service->discard_regex);
     }
     if (exec_service->sts_endpoint) {
         wm_strcat(&command, "--sts_endpoint", ' ');
@@ -776,7 +795,7 @@ void wm_aws_run_subscriber(wm_aws *aws_config, wm_aws_subscriber *exec_subscribe
     }
     if (exec_subscriber->discard_regex) {
         wm_strcat(&command, "--discard-regex", ' ');
-        wm_strcat(&command, exec_subscriber->discard_regex, ' ');
+        wm_aws_append_quoted_argument(&command, exec_subscriber->discard_regex);
     }
 
     if (isDebug()) {
