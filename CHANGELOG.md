@@ -9,6 +9,7 @@ All notable changes to this project will be documented in this file.
 
 - Fixed AES connection getting reset to blowfish on keystore rebuild. ([#37524](https://github.com/wazuh/wazuh/pull/37524))
 - Fixed a deadlock in `wazuh-analysisd` that stopped alert generation when the Active Response queue filled up. ([#37764](https://github.com/wazuh/wazuh/pull/37764))
+- Restricted the upgrade commands accepted from the agent message channel in Analysisd. ([#37745](https://github.com/wazuh/wazuh/pull/37745))
 
 ### Agent
 

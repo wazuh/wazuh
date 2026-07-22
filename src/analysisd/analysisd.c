@@ -66,6 +66,7 @@ int DecodeCiscat(Eventinfo *lf, int *socket);
 int DecodeWinevt(Eventinfo *lf);
 int DecodeSCA(Eventinfo *lf, int *socket);
 void DispatchDBSync(dbsync_context_t * ctx, Eventinfo * lf);
+void DispatchUpgradeModule(Eventinfo * lf);
 
 // Init sdb and decoder struct
 void sdb_init(_sdb *localsdb, OSDecoderInfo *fim_decoder);
@@ -1947,41 +1948,52 @@ void * w_dispatch_upgrade_module_thread(__attribute__((unused)) void * args) {
 
             w_inc_modules_upgrade_decoded_events(lf->agent_id);
 
-            // Inserts agent id into incomming message and sends it to upgrade module
-            cJSON *message_obj = cJSON_Parse(lf->log);
-
-            if (message_obj) {
-                cJSON *message_params = cJSON_GetObjectItem(message_obj, "parameters");
-
-                if (message_params) {
-                    int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
-
-                    if (sock == OS_SOCKTERR) {
-                        merror("Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
-                    } else {
-                        int agent = atoi(lf->agent_id);
-                        cJSON* agents = cJSON_CreateIntArray(&agent, 1);
-                        cJSON_AddItemToObject(message_params, "agents", agents);
-
-                        char *message = cJSON_PrintUnformatted(message_obj);
-                        OS_SendSecureTCP(sock, strlen(message), message);
-                        os_free(message);
-
-                        close(sock);
-                    }
-                } else {
-                    merror("Could not get parameters from upgrade message: %s", lf->log);
-                }
-                cJSON_Delete(message_obj);
-            } else {
-                merror("Could not parse upgrade message: %s", lf->log);
-            }
+            DispatchUpgradeModule(lf);
 
             Free_Eventinfo(lf);
         }
     }
 
     return NULL;
+}
+
+// Inserts agent id into incomming message and sends it to upgrade module
+void DispatchUpgradeModule(Eventinfo * lf) {
+    cJSON *message_obj = cJSON_Parse(lf->log);
+
+    if (message_obj) {
+        cJSON *message_command = cJSON_GetObjectItem(message_obj, "command");
+        cJSON *message_params = cJSON_GetObjectItem(message_obj, "parameters");
+
+        // Agents may only report their own upgrade status; any other command
+        // (e.g. "upgrade", "upgrade_custom") must come from the management API,
+        // never from the agent-message channel.
+        if (!message_command || message_command->type != cJSON_String ||
+            strcmp(message_command->valuestring, "upgrade_update_status") != 0) {
+            mdebug1("Agent '%s' is not allowed to request the upgrade command received on the agent channel", lf->agent_id);
+        } else if (message_params) {
+            int sock = OS_ConnectUnixDomain(WM_UPGRADE_SOCK, SOCK_STREAM, OS_MAXSTR);
+
+            if (sock == OS_SOCKTERR) {
+                merror("Could not connect to upgrade module socket at '%s'. Error: %s", WM_UPGRADE_SOCK, strerror(errno));
+            } else {
+                int agent = atoi(lf->agent_id);
+                cJSON* agents = cJSON_CreateIntArray(&agent, 1);
+                cJSON_AddItemToObject(message_params, "agents", agents);
+
+                char *message = cJSON_PrintUnformatted(message_obj);
+                OS_SendSecureTCP(sock, strlen(message), message);
+                os_free(message);
+
+                close(sock);
+            }
+        } else {
+            merror("Could not get parameters from upgrade message: %s", lf->log);
+        }
+        cJSON_Delete(message_obj);
+    } else {
+        merror("Could not parse upgrade message: %s", lf->log);
+    }
 }
 
 void * w_process_event_thread(__attribute__((unused)) void * id){
