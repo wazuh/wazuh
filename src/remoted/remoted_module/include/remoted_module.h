@@ -47,12 +47,16 @@ extern "C"
      */
     typedef struct remoted_module_config_t
     {
-        int worker_threads;      ///< Number of worker threads the module should run.
-        int queue_size;          ///< Input queue capacity.
-        int port;                ///< remoted listening port (informational).
-        bool worker_node;        ///< true if this manager is a cluster worker node.
-        char cluster_name[256];  ///< Cluster name.
-        char node_name[256];     ///< Cluster node name.
+        int worker_threads;         ///< Number of worker threads the module should run.
+        int queue_size;             ///< Input queue capacity.
+        int port;                   ///< HTTPS listening port (<=0 -> module default/env).
+        bool worker_node;           ///< true if this manager is a cluster worker node.
+        char cluster_name[256];     ///< Cluster name.
+        char node_name[256];        ///< Cluster node name.
+        char certificate_path[512]; ///< TLS certificate chain (PEM) path (empty -> default/env).
+        char private_key_path[512]; ///< TLS private key (PEM) path (empty -> default/env).
+        int io_threads;             ///< HTTPS I/O threads (<=0 -> module default/env).
+        int http_worker_threads;    ///< HTTPS handler worker-pool size (<=0 -> worker_threads/default/env).
     } remoted_module_config_t;
 
     /**

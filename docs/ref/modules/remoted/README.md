@@ -9,13 +9,15 @@ The `remoted` module is responsible for managing secure communication between Wa
 - **Agent Keep-Alive Processing**: Monitoring and tracking agent connection status
 - **Event Batching**: High-performance event aggregation and forwarding
 - **Group Management**: Dynamic agent group assignment and configuration distribution
+- **HTTPS Events API** *(experimental)*: TLS listener with per-agent AES-CMAC authentication for event ingestion
 
 ## Components
 
 - [Architecture](architecture.md) - Overview of remoted's internal architecture
 - [Stateless Metadata](stateless-metadata.md) - Agent metadata enrichment for stateless events
-- [Configuration](configuration.md) - Configuration options and tuning parameters
 - [Event Protocol](event-protocol.md) - Event framing and message format specification
+- [HTTPS Events API](https-events-api.md) - TLS endpoint + AES-CMAC agent authentication (experimental)
+- [Configuration](configuration.md) - Configuration options and tuning parameters
 
 ## Overview
 
