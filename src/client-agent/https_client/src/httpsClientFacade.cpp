@@ -21,6 +21,7 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_performer(m_config, defaultCurlHandleFactory())
     , m_dispatcher(callbacks)
     , m_configHash(m_config.configChecksum)
+    , m_stateless(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_authGate)
     , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_spoolFactory,
                 m_configHash, m_cluster, m_authGate)
 {
@@ -55,6 +56,7 @@ bool HttpsClientFacade::start()
     m_dispatcher.start();
     m_dispatcher.onStateChange(HC_STATE_STARTING);
     m_controlThread = std::thread(&HttpsClientFacade::controlLoop, this);
+    m_statelessThread = std::thread(&HttpsClientFacade::statelessLoop, this);
     return true;
 }
 
@@ -74,6 +76,7 @@ void HttpsClientFacade::stop()
 
     // Interrupt in-flight requests and break the loops; wake gated streams.
     m_controlWaiter.requestStop();
+    m_statelessWaiter.requestStop();
     m_gate.abort();
 
     if (m_controlThread.joinable())
@@ -81,7 +84,12 @@ void HttpsClientFacade::stop()
         m_controlThread.join();
     }
 
-    drain(); // Best-effort final shutdown message, from this thread.
+    if (m_statelessThread.joinable())
+    {
+        m_statelessThread.join();
+    }
+
+    drain(); // Best-effort final flush + final shutdown message, from this thread.
 
     m_dispatcher.onStateChange(HC_STATE_STOPPED);
     m_dispatcher.stop(); // Drains queued callbacks, then joins.
@@ -105,6 +113,24 @@ void HttpsClientFacade::controlLoop()
     }
 }
 
+void HttpsClientFacade::statelessLoop()
+{
+    if (!m_gate.wait())
+    {
+        return; // Aborted before registration.
+    }
+
+    while (true)
+    {
+        m_stateless.tick(m_statelessWaiter, false);
+
+        if (!m_statelessWaiter.waitFor(std::chrono::milliseconds {m_config.batchIntervalMs}))
+        {
+            break;
+        }
+    }
+}
+
 void HttpsClientFacade::drain()
 {
     if (m_authGate.paused() || m_control.connState() != HC_STATE_REGISTERED)
@@ -112,6 +138,7 @@ void HttpsClientFacade::drain()
         return; // Paused (dead key) or never registered: nothing to flush.
     }
 
+    m_stateless.drain(m_drainWaiter);   // Flush the backlog in bounded batches.
     m_control.drainStep(m_drainWaiter); // Final shutdown message.
 }
 
@@ -120,6 +147,16 @@ std::chrono::milliseconds HttpsClientFacade::controlInterval() const
     const uint32_t seconds =
         m_control.useSlowCadence() ? m_config.rejectedRetryIntervalS : m_config.notifyIntervalS;
     return std::chrono::seconds {seconds};
+}
+
+bool HttpsClientFacade::submitEvent(const uint8_t* frame, size_t length)
+{
+    if (!m_started || frame == nullptr || length == 0)
+    {
+        return false;
+    }
+
+    return m_stateless.submit(frame, length);
 }
 
 void HttpsClientFacade::notifyNow()

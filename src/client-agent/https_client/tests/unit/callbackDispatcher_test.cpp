@@ -61,6 +61,14 @@ namespace
         record->count++;
     }
 
+    void recordBuffer(int level, void* userData)
+    {
+        auto* record = static_cast<Record*>(userData);
+        std::lock_guard<std::mutex> lock(record->mutex);
+        record->order.push_back("buffer:" + std::to_string(level));
+        record->count++;
+    }
+
     void recordStartup(bool accepted, const char*, void* userData)
     {
         auto* record = static_cast<Record*>(userData);
@@ -77,6 +85,7 @@ namespace
         callbacks.on_task = recordTask;
         callbacks.on_reenroll_required = recordReenroll;
         callbacks.on_state_change = recordState;
+        callbacks.on_buffer_level = recordBuffer;
         callbacks.user_data = record;
         return callbacks;
     }
@@ -155,6 +164,7 @@ TEST(CallbackDispatcherTest, NullCallbacksAreSafe)
     dispatcher.onStateChange(HC_STATE_STARTING);
     dispatcher.onReenrollRequired();
     dispatcher.onStartupResult(true, "{}");
+    dispatcher.onBufferLevel(HC_BUFFER_NORMAL);
     dispatcher.stop(); // No crash despite null handlers.
 }
 
@@ -167,7 +177,8 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     dispatcher.onTask("t1", "active_response", "{}");
     dispatcher.onReenrollRequired();
     dispatcher.onStateChange(HC_STATE_REGISTERED);
-    waitForCount(record, 4);
+    dispatcher.onBufferLevel(HC_BUFFER_WARNING);
+    waitForCount(record, 5);
     dispatcher.stop();
 
     EXPECT_NE(record.order.end(),
@@ -178,6 +189,9 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(),
                         "state:" + std::to_string(HC_STATE_REGISTERED)));
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(),
+                        "buffer:" + std::to_string(HC_BUFFER_WARNING)));
 }
 
 namespace

@@ -144,6 +144,13 @@ static void on_state_change(int state, void *user_data)
     fflush(stdout);
 }
 
+static void on_buffer_level(int level, void *user_data)
+{
+    (void)user_data;
+    printf("[+%7ld ms] ~~ buffer level -> %d\n", elapsed_ms(), level);
+    fflush(stdout);
+}
+
 static void nap(int ms)
 {
     struct timespec t = {ms / 1000, (long)(ms % 1000) * 1000000L};
@@ -173,6 +180,7 @@ int main(int argc, char **argv)
     strncpy(config.agent_key, argv[3], sizeof config.agent_key - 1);
     config.verify_mode = HC_VERIFY_NONE; /* demo mock uses a self-signed cert */
     config.notify_interval_s = 2;        /* Notify every 2 s so we see a few   */
+    config.batch_interval_ms = 1000;     /* flush events every 1 s             */
     config.request_timeout_ms = 10000;
     config.backoff_base_ms = 200;
     config.backoff_cap_ms = 2000;
@@ -191,6 +199,7 @@ int main(int argc, char **argv)
     callbacks.on_task = on_task;
     callbacks.on_config_downloaded = on_config_downloaded;
     callbacks.on_state_change = on_state_change;
+    callbacks.on_buffer_level = on_buffer_level;
 
     printf("== creating + starting the https_client (target %s:%s) ==\n", argv[1], argv[2]);
     hc_handle *handle = hc_create(&config, &callbacks);
@@ -203,6 +212,14 @@ int main(int argc, char **argv)
 
     /* Give the control thread a moment to run Startup + register. */
     nap(800);
+
+    printf("== feeding 5 events into the /stateless stream ==\n");
+    for (int i = 0; i < 5; i++)
+    {
+        char frame[64];
+        int n = snprintf(frame, sizeof frame, "1:/var/log/syslog:demo event %d", i);
+        hc_submit_event(handle, (const uint8_t *)frame, (size_t)n);
+    }
 
     printf("== forcing an out-of-cycle Notify ==\n");
     hc_notify_now(handle);
@@ -217,9 +234,9 @@ int main(int argc, char **argv)
     nap(7000);
 
     /* Optional sustained mode: DEMO_SECONDS=<n> keeps the client alive after
-     * the scripted walkthrough so the periodic Notify traffic (and the key
-     * rotation at notify #7) stays visible. SIGINT/SIGTERM (Ctrl-C, docker
-     * stop) ends it early through the same clean drain. */
+     * the scripted walkthrough, submitting an event every 2 s so the periodic
+     * Notify + /stateless traffic stays visible. SIGINT/SIGTERM (Ctrl-C,
+     * docker stop) ends it early through the same clean drain. */
     const char *extra = getenv("DEMO_SECONDS");
     const long extra_s = extra ? strtol(extra, NULL, 10) : 0;
     if (extra_s > 0)
@@ -229,6 +246,25 @@ int main(int argc, char **argv)
         fflush(stdout);
         for (long tick = 0; tick * 2 < extra_s && !atomic_load(&g_stop); tick++)
         {
+            char frame[80];
+            int n = snprintf(frame, sizeof frame, "1:/var/log/syslog:sustained event %ld", tick);
+            hc_submit_event(handle, (const uint8_t *)frame, (size_t)n);
+
+            /* Every 10 s, burst enough events to exceed the mock's /stateless
+             * payload cap, so the 413 -> split -> resend path is visible. */
+            if (tick > 0 && tick % 5 == 0)
+            {
+                printf("== bursting 120 events (exceeds the /stateless cap -> 413 "
+                       "split/resend) ==\n");
+                fflush(stdout);
+                for (int burst = 0; burst < 120; burst++)
+                {
+                    char big[96];
+                    int m = snprintf(big, sizeof big,
+                                     "1:/var/log/burst:event %ld-%d payload-padding", tick, burst);
+                    hc_submit_event(handle, (const uint8_t *)big, (size_t)m);
+                }
+            }
             nap(2000);
         }
     }

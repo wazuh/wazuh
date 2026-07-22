@@ -39,6 +39,10 @@ struct ModuleConfig
         std::string clientKey;
         std::string ciphers;
 
+        uint64_t batchSizeBytes {1024 * 1024};
+        uint32_t batchIntervalMs {10000};
+        uint32_t bufferCapMultiplier {4};
+
         uint32_t notifyIntervalS {20};
         uint32_t rejectedRetryIntervalS {60};
 

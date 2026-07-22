@@ -54,6 +54,11 @@ class Handler(BaseHTTPRequestHandler):
     CONFIG_FLIP_AT = 3
     SETTINGS_FLIP_AT = 5
 
+    # /stateless payload cap: a bigger body gets 413, so the client must split
+    # and resend smaller (#37835). Small here so the burst in sustained mode
+    # triggers it visibly.
+    STATELESS_MAX_BODY = 2048
+
     # Credential rotation (#37828): after this notify the mock verifies ONLY
     # against ROTATED_KEY, so the agent's old key starts getting 401 and must
     # re-enroll. The demo driver swaps to ROTATED_KEY via hc_set_agent_key.
@@ -155,6 +160,8 @@ class Handler(BaseHTTPRequestHandler):
 
         if target == "/control":
             self._handle_control(body)
+        elif target == "/stateless":
+            self._handle_stateless(body)
         elif target == "/download":
             self._handle_download(body)
         else:
@@ -237,6 +244,16 @@ class Handler(BaseHTTPRequestHandler):
         self._reply_chunked(blob)
         log(f"     /download   -> 200  chunked, {len(blob)} B "
             f"(sha256 {hashlib.sha256(blob).hexdigest()[:8]}..)")
+
+    def _handle_stateless(self, body):
+        if len(body) > Handler.STATELESS_MAX_BODY:
+            self._reply(413, {"error": "payload too large"})
+            log(f"     /stateless  -> 413  ({len(body)} B > "
+                f"{Handler.STATELESS_MAX_BODY} B cap; client halves + resends)")
+            return
+        events = body.count(b"\nE ") + (1 if b"\nE " not in body and b"E " in body else 0)
+        self._reply(200)  # 200 with an empty body per #37732
+        log(f"     /stateless  -> 200  ({len(body)} B, ~{events} events accepted)")
 
 
 def main():

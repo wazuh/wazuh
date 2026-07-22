@@ -38,6 +38,9 @@ TEST(ModuleConfigTest, DefaultsAppliedOnZeroFields)
 {
     const auto typed = ModuleConfig::fromC(minimalConfig());
     EXPECT_EQ(443, typed.serverPort);
+    EXPECT_EQ(1024u * 1024u, typed.batchSizeBytes);
+    EXPECT_EQ(10000u, typed.batchIntervalMs);
+    EXPECT_EQ(4u, typed.bufferCapMultiplier);
     EXPECT_EQ(20u, typed.notifyIntervalS);
     EXPECT_EQ(60u, typed.rejectedRetryIntervalS);
     EXPECT_EQ(10000u, typed.requestTimeoutMs);
@@ -59,12 +62,12 @@ TEST(ModuleConfigTest, ExplicitValuesAreKept)
 {
     auto config = minimalConfig();
     config.server_port = 27840;
+    config.batch_size_bytes = 2048;
     config.notify_interval_s = 5;
-    config.request_timeout_ms = 5000;
     const auto typed = ModuleConfig::fromC(config);
     EXPECT_EQ(27840, typed.serverPort);
+    EXPECT_EQ(2048u, typed.batchSizeBytes);
     EXPECT_EQ(5u, typed.notifyIntervalS);
-    EXPECT_EQ(5000u, typed.requestTimeoutMs);
 }
 
 TEST(ModuleConfigTest, UnterminatedFixedFieldIsBounded)
