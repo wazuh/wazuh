@@ -12,6 +12,8 @@
 #include "hashHelper_test.h"
 #include "hashHelper.h"
 #include <filesystem>
+#include <thread>
+#include <vector>
 
 void HashHelperTest::SetUp() {};
 
@@ -26,6 +28,55 @@ const std::filesystem::path INPUT_FILES_DIR {std::filesystem::current_path() / "
 
 // Test file used for hashing.
 const std::filesystem::path TEST_FILE {INPUT_FILES_DIR / "test_file.xyz"};
+
+// Regression test for a race in HashData::initializeContext(): the OpenSSL crypto init guard
+// was a plain, process-wide `static bool` read/written with no synchronization, so concurrent
+// *first-time* construction of HashData from multiple threads could make EVP_DigestInit()
+// transiently fail ("Error initializing EVP_MD_CTX."). Syscollector hits exactly this pattern on
+// its first evaluation cycle, fanning out several RSync-backed checksum computations across its
+// thread pool. MUST be the first HashData-constructing test in this binary: the guard being
+// exercised here only ever runs once per process, so any earlier construction elsewhere in this
+// binary would silently defeat this test. Run under ThreadSanitizer for a deterministic result —
+// without it, the actual EVP_DigestInit failure is timing-dependent and may not reproduce on
+// every run even with the bug present.
+TEST_F(HashHelperTest, ConcurrentFirstInitializationIsThreadSafe)
+{
+    constexpr auto THREAD_COUNT {16u};
+    std::vector<std::thread> threads;
+    std::vector<std::exception_ptr> exceptions(THREAD_COUNT);
+
+    for (auto i {0u}; i < THREAD_COUNT; ++i)
+    {
+        threads.emplace_back(
+            [i, &exceptions]()
+            {
+                try
+                {
+                    HashData hash;
+                    const std::string data {"HASH"};
+                    hash.update(data.c_str(), data.size());
+                    hash.hash();
+                }
+                catch (...)
+                {
+                    exceptions[i] = std::current_exception();
+                }
+            });
+    }
+
+    for (auto& thread : threads)
+    {
+        thread.join();
+    }
+
+    for (const auto& exceptionPtr : exceptions)
+    {
+        if (exceptionPtr)
+        {
+            EXPECT_NO_THROW(std::rethrow_exception(exceptionPtr));
+        }
+    }
+}
 
 TEST_F(HashHelperTest, UnsupportedHashType)
 {

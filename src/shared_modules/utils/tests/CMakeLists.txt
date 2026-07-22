@@ -38,6 +38,11 @@ file(GLOB UTIL_CXX_UNITTEST_COMMON_SRC
     "byteArrayHelper_test.cpp"
     "cmdHelper_test.cpp"
     "cacheLRU_test.cpp"
+    # hashHelper_test.cpp's ConcurrentFirstInitializationIsThreadSafe test relies on being the
+    # first test in the utils_unit_test binary to construct Utils::HashData, so it can exercise
+    # HashData::initializeContext()'s one-time OpenSSL init guard under real concurrency. Keep
+    # this entry ahead of any other test file that constructs Utils::HashData (currently
+    # zlibHelper_test.cpp, in UTIL_CXX_UNITTEST_LINUX_SRC below, linked after this list).
     "hashHelper_test.cpp"
     "mapWrapperSafe_test.cpp"
     "msgDispatcher_test.cpp"
