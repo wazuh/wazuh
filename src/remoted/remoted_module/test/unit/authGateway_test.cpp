@@ -9,8 +9,8 @@
  * Foundation.
  */
 
+#include "endpoints/authGateway.hpp"
 #include "http_server/IHttpServer.hpp"
-#include "http_server/authGateway.hpp"
 
 #include <gtest/gtest.h>
 
@@ -22,6 +22,7 @@
 #include <vector>
 
 using namespace remoted::http;
+using namespace remoted::endpoints;
 
 namespace
 {
@@ -92,7 +93,9 @@ TEST(AuthGatewayTest, RegistersRouteOnTheServer)
     auto gateway = makeGateway();
 
     gateway.addAuthenticatedRoute(server, Method::Post, "/stateless",
-                                  [](const wazuh_auth::AuthenticatedRequest&) { return HttpResponse{200, "", {}}; });
+                                  [](const wazuh_auth::AuthenticatedRequest&,
+                                     std::shared_ptr<IHttpResponder> responder)
+                                  { responder->send(HttpResponse{200, "", {}}); });
 
     EXPECT_TRUE(server.hasRoute(Method::Post, "/stateless"));
 }
@@ -104,10 +107,11 @@ TEST(AuthGatewayTest, MissingProtocolVersionYields400AndSkipsHandler)
 
     bool handlerCalled = false;
     gateway.addAuthenticatedRoute(server, Method::Post, "/stateless",
-                                  [&handlerCalled](const wazuh_auth::AuthenticatedRequest&)
+                                  [&handlerCalled](const wazuh_auth::AuthenticatedRequest&,
+                                                   std::shared_ptr<IHttpResponder> responder)
                                   {
                                       handlerCalled = true;
-                                      return HttpResponse{200, "", {}};
+                                      responder->send(HttpResponse{200, "", {}});
                                   });
 
     HttpRequest request;
@@ -130,10 +134,11 @@ TEST(AuthGatewayTest, MissingAuthorizationYields401AndSkipsHandler)
 
     bool handlerCalled = false;
     gateway.addAuthenticatedRoute(server, Method::Post, "/stateless",
-                                  [&handlerCalled](const wazuh_auth::AuthenticatedRequest&)
+                                  [&handlerCalled](const wazuh_auth::AuthenticatedRequest&,
+                                                   std::shared_ptr<IHttpResponder> responder)
                                   {
                                       handlerCalled = true;
-                                      return HttpResponse{200, "", {}};
+                                      responder->send(HttpResponse{200, "", {}});
                                   });
 
     HttpRequest request;
@@ -155,7 +160,9 @@ TEST(AuthGatewayTest, HeaderLookupIsCaseInsensitive)
     auto gateway = makeGateway();
 
     gateway.addAuthenticatedRoute(server, Method::Post, "/stateless",
-                                  [](const wazuh_auth::AuthenticatedRequest&) { return HttpResponse{200, "", {}}; });
+                                  [](const wazuh_auth::AuthenticatedRequest&,
+                                     std::shared_ptr<IHttpResponder> responder)
+                                  { responder->send(HttpResponse{200, "", {}}); });
 
     HttpRequest request;
     request.method = Method::Post;

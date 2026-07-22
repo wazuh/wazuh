@@ -18,9 +18,9 @@
 
 #include <gtest/gtest.h>
 
-#include "authMiddleware.hpp"
-#include "clientKeysFileResolver.hpp"
-#include "cmac.hpp"
+#include "auth/authMiddleware.hpp"
+#include "auth/clientKeysFileResolver.hpp"
+#include "auth/cmac.hpp"
 
 using namespace wazuh_auth;
 

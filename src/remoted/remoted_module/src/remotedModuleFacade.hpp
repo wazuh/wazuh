@@ -12,9 +12,9 @@
 #ifndef _REMOTED_MODULE_FACADE_HPP
 #define _REMOTED_MODULE_FACADE_HPP
 
-#include "clientKeysFileResolver.hpp"
+#include "auth/clientKeysFileResolver.hpp"
+#include "endpoints/authGateway.hpp"
 #include "http_server/IHttpServer.hpp"
-#include "http_server/authGateway.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
 #include "loggerHelper.h"
@@ -133,7 +133,7 @@ private:
         // verifies the AES-CMAC of every authenticated request. Wired on top of
         // OUR transport, so swapping the HTTP library never touches it.
         m_keyResolver = std::make_shared<wazuh_auth::ClientKeysFileResolver>();
-        m_authGateway = std::make_unique<remoted::http::AuthGateway>(wazuh_auth::AuthConfig {}, m_keyResolver);
+        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(wazuh_auth::AuthConfig {}, m_keyResolver);
 
         // Unauthenticated health probe (no request body, no auth).
         m_httpServer->addRoute(
@@ -152,8 +152,8 @@ private:
             *m_httpServer,
             remoted::http::Method::Post,
             "/stateless",
-            [](const wazuh_auth::AuthenticatedRequest&)
-            { return remoted::http::HttpResponse {200, "", {}}; });
+            [](const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<remoted::http::IHttpResponder> responder)
+            { responder->send(remoted::http::HttpResponse {200, "", {}}); });
 
         m_httpServer->start(config);
     }
@@ -221,7 +221,7 @@ private:
 
     std::unique_ptr<remoted::http::IHttpServer> m_httpServer;    ///< HTTPS transport (behind our interface).
     std::shared_ptr<wazuh_auth::IAgentKeyResolver> m_keyResolver; ///< Agent AES-key lookup (client.keys).
-    std::unique_ptr<remoted::http::AuthGateway> m_authGateway;   ///< Auth layer wired onto m_httpServer.
+    std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP
