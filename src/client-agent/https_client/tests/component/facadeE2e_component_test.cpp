@@ -12,16 +12,19 @@
 /*
  * Facade end to end over the C ABI against a TLS fake manager. This is what
  * exercises the composition root's registered path: the control loop reaching
- * REGISTERED and the drain-on-stop. The client speaks real HTTPS
+ * REGISTERED, the gate releasing the data streams, the stateless/stateful
+ * sender loops flushing, and the drain-on-stop. The client speaks real HTTPS
  * (HC_VERIFY_NONE against the fake manager's self-signed cert).
  */
 
 #include "fakeManager.hpp"
 #include "https_client.h"
+#include "syncIntake.hpp"
 
 #include <gtest/gtest.h>
 
 #include <cstdio>
+#include <unistd.h>
 
 #include <algorithm>
 #include <atomic>
@@ -43,6 +46,7 @@ namespace
     {
         std::mutex mutex;
         std::atomic<int> startupCount {0};
+        std::atomic<int> syncCount {0};
         std::vector<int> states;
     };
 
@@ -52,6 +56,11 @@ namespace
         {
             static_cast<Recorder*>(userData)->startupCount++;
         }
+    }
+
+    void onSync(const char*, int, const char*, void* userData)
+    {
+        static_cast<Recorder*>(userData)->syncCount++;
     }
 
     void onState(int state, void* userData)
@@ -250,6 +259,36 @@ TEST_F(FacadeE2eTest, SizeThresholdFlushesBeforeTheBatchInterval)
 
     hc_destroy(handle);
     EXPECT_NE(std::string::npos, received.find("size-wakeup-first"));
+}
+
+TEST_F(FacadeE2eTest, LargeSyncSessionFromTheIntakeSocketReachesTheManager)
+{
+    // The full chain: a producer streams a multi-MB session over the local
+    // STREAM intake socket -> the module spools it -> the stateful sender
+    // streams it to the manager over HTTPS. Nothing hits the 64 KB cap.
+    Recorder recorder;
+    const std::string sockPath = "/tmp/hc_facade_si_" + std::to_string(getpid()) + ".sock";
+
+    hc_config_t config = tlsConfig();
+    std::strncpy(config.sync_socket_path, sockPath.c_str(), sizeof(config.sync_socket_path) - 1);
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.on_sync_response = onSync;
+    callbacks.on_state_change = onState;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000)); // Registered.
+
+    std::string body(2u * 1024 * 1024, 'S'); // 2 MB, far past the 64 KB DGRAM cap.
+    ASSERT_TRUE(sendSyncSession(sockPath, "intake-session-1",
+                                reinterpret_cast<const uint8_t*>(body.data()), body.size()));
+
+    // The session crossed the socket, was spooled, and was POSTed to the mock.
+    EXPECT_TRUE(waitFor(recorder.syncCount, 1, 5000));
+    hc_destroy(handle);
 }
 
 namespace

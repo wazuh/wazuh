@@ -1,0 +1,254 @@
+/*
+ * Wazuh agent HTTPS client (C++ transport module)
+ * Copyright (C) 2015, Wazuh Inc.
+ * July 17, 2026.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "syncIntake.hpp"
+
+#include "syncFrame.hpp"
+
+#include <utility>
+
+SyncIntake::SyncIntake(std::string socketPath, std::string spoolDir, SessionSink sink)
+    : m_socketPath(std::move(socketPath))
+    , m_spoolDir(std::move(spoolDir))
+    , m_sink(std::move(sink))
+{
+}
+
+SyncIntake::~SyncIntake()
+{
+    stop();
+}
+
+#ifndef _WIN32
+
+#include <array>
+#include <cstdio>
+#include <cstring>
+
+#include <poll.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
+
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0 // macOS: SIGPIPE is ignored process-wide by the agent instead.
+#endif
+
+namespace
+{
+    void closeFd(int& fd)
+    {
+        if (fd >= 0)
+        {
+            close(fd);
+            fd = -1;
+        }
+    }
+
+    /// Streams the framed session on peerFd into a fresh temp file. Returns the
+    /// spool path (and fills id/size) on success, or an empty string.
+    std::string spoolConnection(int peerFd, const std::string& spoolDir, std::string& sessionId,
+                                uint64_t& size)
+    {
+        std::string tmpl = spoolDir + "/hc_sync_intake_XXXXXX";
+        const int fd = mkstemp(tmpl.data());
+
+        if (fd < 0)
+        {
+            return {};
+        }
+
+        std::FILE* out = fdopen(fd, "wb");
+
+        if (out == nullptr)
+        {
+            close(fd);
+            unlink(tmpl.c_str());
+            return {};
+        }
+
+        const auto read = [peerFd](void* buffer, size_t n) -> long
+        {
+            return static_cast<long>(recv(peerFd, buffer, n, 0));
+        };
+        const SyncFrameResult result = readSyncSessionFrame(read, out, sessionId, size);
+        fclose(out);
+
+        if (result != SyncFrameResult::Ok)
+        {
+            unlink(tmpl.c_str());
+            return {};
+        }
+
+        return tmpl;
+    }
+} // namespace
+
+bool SyncIntake::start()
+{
+    if (m_running)
+    {
+        return true;
+    }
+
+    if (pipe(m_stopPipe) != 0)
+    {
+        return false; // LCOV_EXCL_LINE: pipe() failure is not reproducible in tests.
+    }
+
+    m_listenFd = socket(AF_UNIX, SOCK_STREAM, 0);
+
+    if (m_listenFd < 0)
+    {
+        closeFd(m_stopPipe[0]); // LCOV_EXCL_LINE
+        closeFd(m_stopPipe[1]); // LCOV_EXCL_LINE
+        return false;           // LCOV_EXCL_LINE
+    }
+
+    sockaddr_un addr {};
+    addr.sun_family = AF_UNIX;
+    std::strncpy(addr.sun_path, m_socketPath.c_str(), sizeof(addr.sun_path) - 1);
+    unlink(m_socketPath.c_str());
+
+    if (bind(m_listenFd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0 ||
+            listen(m_listenFd, 16) != 0)
+    {
+        closeFd(m_listenFd);
+        closeFd(m_stopPipe[0]);
+        closeFd(m_stopPipe[1]);
+        return false;
+    }
+
+    m_running = true;
+    m_thread = std::thread(&SyncIntake::acceptLoop, this);
+    return true;
+}
+
+void SyncIntake::stop()
+{
+    if (!m_running.exchange(false))
+    {
+        return;
+    }
+
+    const char wake = 'x';
+    (void)!write(m_stopPipe[1], &wake, 1); // Wake poll(); ignore the result.
+
+    if (m_thread.joinable())
+    {
+        m_thread.join();
+    }
+
+    closeFd(m_listenFd);
+    closeFd(m_stopPipe[0]);
+    closeFd(m_stopPipe[1]);
+    unlink(m_socketPath.c_str());
+}
+
+void SyncIntake::acceptLoop()
+{
+    while (m_running)
+    {
+        std::array<pollfd, 2> fds {{{m_listenFd, POLLIN, 0}, {m_stopPipe[0], POLLIN, 0}}};
+
+        if (poll(fds.data(), fds.size(), -1) < 0)
+        {
+            continue; // LCOV_EXCL_LINE: EINTR/spurious — just re-poll.
+        }
+
+        if ((fds[1].revents & POLLIN) != 0)
+        {
+            break; // Stop requested.
+        }
+
+        if ((fds[0].revents & POLLIN) == 0)
+        {
+            continue; // LCOV_EXCL_LINE
+        }
+
+        const int peer = accept(m_listenFd, nullptr, nullptr);
+
+        if (peer < 0)
+        {
+            continue; // LCOV_EXCL_LINE
+        }
+
+        handleConnection(peer);
+        close(peer);
+    }
+}
+
+void SyncIntake::handleConnection(int peerFd)
+{
+    std::string sessionId;
+    uint64_t size = 0;
+    const std::string path = spoolConnection(peerFd, m_spoolDir, sessionId, size);
+
+    if (!path.empty() && m_sink)
+    {
+        m_sink(sessionId, path, size);
+    }
+}
+
+bool sendSyncSession(const std::string& socketPath, const std::string& sessionId,
+                     const uint8_t* body, size_t length)
+{
+    const int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+
+    if (fd < 0)
+    {
+        return false; // LCOV_EXCL_LINE
+    }
+
+    sockaddr_un addr {};
+    addr.sun_family = AF_UNIX;
+    std::strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
+
+    if (connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0)
+    {
+        close(fd);
+        return false;
+    }
+
+    const auto write = [fd](const void* buffer, size_t n) -> long
+    {
+        return static_cast<long>(send(fd, buffer, n, MSG_NOSIGNAL));
+    };
+    const bool ok = writeSyncSessionFrame(write, sessionId, body, length);
+    close(fd);
+    return ok;
+}
+
+#else // _WIN32 — the Windows agent runs modules in-process; no local socket intake.
+
+bool SyncIntake::start()
+{
+    return false;
+}
+
+void SyncIntake::stop()
+{
+}
+
+void SyncIntake::acceptLoop()
+{
+}
+
+void SyncIntake::handleConnection(int)
+{
+}
+
+bool sendSyncSession(const std::string&, const std::string&, const uint8_t*, size_t)
+{
+    return false;
+}
+
+#endif // _WIN32

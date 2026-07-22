@@ -578,6 +578,14 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     }
 }
 
+static void bridge_on_sync_response(const char *session_id, int result, const char *body,
+                                    void *user_data)
+{
+    (void)body;
+    (void)user_data;
+    mdebug1("https_client /stateful session=%s result=%d", session_id ? session_id : "?", result);
+}
+
 static void bridge_on_state_change(int state, void *user_data)
 {
     (void)user_data;
@@ -789,6 +797,13 @@ static bool bridge_build_config(hc_config_t *config)
         strncpy(config->config_checksum, config_sha256, sizeof(config->config_checksum) - 1);
     }
 
+    /* Stateful sync sessions arrive on a separate STREAM socket so a whole
+     * (multi-MB) session bypasses the 64 KB DGRAM event queue; the module
+     * streams it to disk and then to /stateful. Stateless events keep using
+     * the DGRAM queue. Producers connect via sendSyncSession() (the eventual
+     * agent_sync_protocol transport swap). */
+    strncpy(config->sync_socket_path, SYNCQUEUE, sizeof(config->sync_socket_path) - 1);
+
     return true;
 }
 
@@ -819,6 +834,7 @@ void w_https_client_start(void)
     callbacks.on_task = bridge_on_task;
     callbacks.on_manager_config_hash = bridge_on_manager_config_hash;
     callbacks.on_config_downloaded = bridge_on_config_downloaded;
+    callbacks.on_sync_response = bridge_on_sync_response;
     callbacks.on_state_change = bridge_on_state_change;
     callbacks.on_buffer_level = bridge_on_buffer_level;
 
