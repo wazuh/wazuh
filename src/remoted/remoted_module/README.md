@@ -14,32 +14,26 @@ directory is C++, and the only file remoted's C sources include is
 
 ```
 remoted_module/
-├── include/
-│   ├── remoted_module.h            # C-ABI: config struct + start/stop (the only C↔C++ contact)
-│   ├── remotedModule.hpp           # public C++ Singleton facade
-│   ├── cmac.hpp                    # incremental AES-CMAC wrapper (auth middleware)
-│   ├── clientKeysFileResolver.hpp  # IAgentKeyResolver over a direct read of client.keys
-│   └── authMiddleware.hpp          # auth middleware public API
-├── interface/                      # framework-agnostic auth contract
-│   ├── authTypes.hpp               # AuthenticatedRequest / AuthError / publicErrorFor / AuthConfig
-│   └── iAgentKeyResolver.hpp       # agent id -> pre-shared AES key
+├── include/                        # public surface (the only C↔C++ contact)
+│   ├── remoted_module.h            # C-ABI: config struct + start/stop
+│   └── remotedModule.hpp           # public C++ Singleton facade
 ├── src/
 │   ├── remotedModule.cpp           # extern "C" shims + facade delegation + log sink definition
-│   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth layer
-│   ├── cmac.cpp                    # incremental AES-CMAC over OpenSSL's EVP_MAC
-│   ├── authMiddleware.cpp          # canonical-request + timestamp-window + MAC verification
-│   ├── clientKeysFileResolver.cpp  # client.keys parsing + in-memory lookup
-│   └── http_server/                # transport-agnostic HTTP(S) sub-layer + auth gateway (see below)
-└── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth middleware)
+│   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
+│   ├── auth/                       # ns wazuh_auth — framework-agnostic AES-CMAC auth (see below)
+│   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
+│   └── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below)
+└── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 ```
 
-To grow the module, add sub-libraries under `src/<submodule>/` each with their own
-`CMakeLists.txt` (the `vulnerability_scanner` pattern) and link them into `remoted_module`.
+Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
+`"auth/...`", `"http_server/...`", `"endpoints/...`" — since `src/` is on the include path). New
+endpoints get their own folder under `src/endpoints/<name>/`.
 
 ## HTTP(S) server sub-layer (`src/http_server/`)
 
-The module exposes an HTTPS endpoint behind a **transport-agnostic interface** so the
-underlying library (today RESTinio, likely `Boost.Beast + Boost.Asio` later) can be swapped
+Transport only. The module exposes an HTTPS endpoint behind a **transport-agnostic interface** so
+the underlying library (today RESTinio, likely `Boost.Beast + Boost.Asio` later) can be swapped
 without touching any registered endpoint.
 
 ```
@@ -48,12 +42,10 @@ src/http_server/
 │                            #   IHttpResponder/HttpServerConfig). No transport types leak here.
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
-├── authGateway.hpp/.cpp     # runs the auth middleware, then calls a post-auth endpoint handler
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
 ```
 
-- **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`. The facade
-  registers a dummy `GET /` returning `{"status":"ok","module":"remoted"}`.
+- **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`.
 - **Async handlers (non-blocking I/O threads):** a raw handler is
   `void(const HttpRequest&, std::shared_ptr<IHttpResponder>)`. Each request is dispatched to a
   bounded worker pool with a **deferred response**, so RESTinio's I/O threads never block on
@@ -66,33 +58,41 @@ src/http_server/
 - **Swapping the library:** implement a new `IHttpServer` and return it from `makeHttpServer()`;
   nothing else changes.
 
-### Auth gateway (`src/http_server/authGateway.*`)
+## Endpoints (`src/endpoints/`)
 
-Header/auth validation is common to (almost) every endpoint and is always **synchronous** (it is
-AES-CMAC over CPU, not I/O), so it is centralized here instead of repeated per endpoint.
-`AuthGateway` owns an `AuthMiddleware` (below) and exposes:
+Ties the transport and the auth layer together and defines the endpoint contract; future endpoints
+each get a folder here.
 
-```cpp
-using AuthenticatedHandler = std::function<HttpResponse(const wazuh_auth::AuthenticatedRequest&)>;
-void addAuthenticatedRoute(IHttpServer&, Method, const std::string& path, AuthenticatedHandler);
+```
+src/endpoints/
+├── endpoint.hpp             # shared contract: type aliases (Method/HttpResponse/IHttpResponder/
+│                            #   AuthenticatedRequest) + the async AuthenticatedHandler typedef
+└── authGateway.hpp/.cpp     # runs the auth middleware, then hands the verified request + responder
+                             #   to the endpoint handler
 ```
 
-It registers a raw async route on the server whose worker-thread body runs the full validation
-(`beginSession → update → finish`), maps any `AuthError` through `publicErrorFor()` to the
-client-visible status/message, and only on success calls the endpoint handler with the verified
-`AuthenticatedRequest`. Because our transport already dispatches to the worker pool, this
-synchronous validation never blocks the I/O threads. The facade registers a **dummy
-`POST /stateless`** this way: it validates the request (auth only) and returns `200` **without**
-parsing the H/E payload or ingesting anything; `400`/`401`/`413` come straight from the gateway.
+- **Endpoint handler (async):**
+  `using AuthenticatedHandler = std::function<void(const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder>)>;`
+  It runs on the worker pool after auth succeeds and **owns delivering the response** — inline or
+  later (async), by calling `responder->send(...)` exactly once.
+- **`AuthGateway`** owns one `AuthMiddleware` and exposes
+  `addAuthenticatedRoute(IHttpServer&, Method, path, AuthenticatedHandler)`. It registers a raw
+  async route whose worker-thread body runs the full validation (`beginSession → update → finish`,
+  always synchronous — AES-CMAC over CPU, off the I/O threads), maps any `AuthError` through
+  `publicErrorFor()` to the client status/message on failure, and on success calls the handler with
+  the verified `AuthenticatedRequest` and the responder. The facade registers a **dummy
+  `POST /stateless`** this way: it validates the request (auth only) and answers `200` **without**
+  parsing the H/E payload or ingesting anything; `400`/`401`/`413` come straight from the gateway.
 
-### Agent<->manager auth middleware
+## Agent<->manager auth middleware (`src/auth/`)
 
 Framework-agnostic implementation of the agent<->manager request authentication protocol:
 canonical request construction, incremental AES-CMAC, timestamp window and constant-time
-comparison. `interface/` holds the contract (`AuthenticatedRequest`/`AuthError`/`AuthConfig` and
-the `IAgentKeyResolver`); `include/` + `src/` hold the implementation (`AuthMiddleware`, `Cmac`,
-`ClientKeysFileResolver`). It knows nothing about RESTinio or sockets -- the `AuthGateway` above is
-the only adapter between it and our transport. Depends on OpenSSL (linked into `remoted_module`).
+comparison. `authTypes.hpp` holds the shared contract (`AuthenticatedRequest`/`AuthError`/
+`publicErrorFor`/`AuthConfig`) and `iAgentKeyResolver.hpp` the key-lookup interface; `authMiddleware`,
+`cmac`, `clientKeysFileResolver` are the implementation. It knows nothing about RESTinio or sockets
+-- the `AuthGateway` (in `endpoints/`) is the only adapter between it and our transport. Depends on
+OpenSSL (linked into `remoted_module`).
 
 Unit tests under `test/unit/` (`cmac_test.cpp`, `authMiddleware_test.cpp`,
 `clientKeysFileResolver_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware` against a

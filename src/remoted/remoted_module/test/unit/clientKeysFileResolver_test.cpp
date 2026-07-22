@@ -15,7 +15,7 @@
 
 #include <gtest/gtest.h>
 
-#include "clientKeysFileResolver.hpp"
+#include "auth/clientKeysFileResolver.hpp"
 
 using namespace wazuh_auth;
 
