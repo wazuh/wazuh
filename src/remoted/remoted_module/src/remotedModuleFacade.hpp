@@ -12,7 +12,7 @@
 #ifndef _REMOTED_MODULE_FACADE_HPP
 #define _REMOTED_MODULE_FACADE_HPP
 
-#include "auth/clientKeysFileResolver.hpp"
+#include "auth/keystore.hpp"
 #include "endpoints/authGateway.hpp"
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerConfig.hpp"
@@ -101,7 +101,7 @@ public:
                 m_httpServer.reset();
             }
             m_authGateway.reset();
-            m_keyResolver.reset();
+            m_keystore.reset();
 
             {
                 std::lock_guard<std::mutex> waitLock(m_waitMutex);
@@ -132,8 +132,8 @@ private:
         // Framework-agnostic auth layer: reads agent keys from client.keys and
         // verifies the AES-CMAC of every authenticated request. Wired on top of
         // OUR transport, so swapping the HTTP library never touches it.
-        m_keyResolver = std::make_shared<wazuh_auth::ClientKeysFileResolver>();
-        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(wazuh_auth::AuthConfig {}, m_keyResolver);
+        m_keystore = std::make_shared<remoted::auth::Keystore>();
+        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(remoted::auth::AuthConfig {}, m_keystore);
 
         // Unauthenticated health probe (no request body, no auth).
         m_httpServer->addRoute(
@@ -146,11 +146,14 @@ private:
         // only calls this handler once auth succeeds. It intentionally does NOT
         // parse the H/E payload or ingest anything -- it just validates and
         // returns 200. The 400/401/413 rejections are produced by the gateway.
+        // TODO: parse the H/E payload's header (a JSON library is needed) and
+        // check its embedded agent id against AuthenticatedRequest::agentId,
+        // rejecting a mismatch with AuthError::PayloadAgentMismatch.
         m_authGateway->addAuthenticatedRoute(
             *m_httpServer,
             remoted::http::Method::Post,
             "/stateless",
-            [](const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<remoted::http::IHttpResponder> responder)
+            [](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<remoted::http::IHttpResponder> responder)
             { responder->send(remoted::http::HttpResponse {200, "", {}}); });
 
         m_httpServer->start(config);
@@ -177,7 +180,7 @@ private:
             LOGFN_WARN(m_logFn, "remoted HTTP server not started yet, will retry: %s", e.what());
             m_httpServer.reset();
             m_authGateway.reset();
-            m_keyResolver.reset();
+            m_keystore.reset();
         }
     }
 
@@ -218,7 +221,7 @@ private:
     remoted_module_config_t m_config {}; ///< Copy of the caller's configuration.
 
     std::unique_ptr<remoted::http::IHttpServer> m_httpServer;       ///< HTTPS transport (behind our interface).
-    std::shared_ptr<wazuh_auth::IAgentKeyResolver> m_keyResolver;   ///< Agent AES-key lookup (client.keys).
+    std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent AES-key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
 };
 

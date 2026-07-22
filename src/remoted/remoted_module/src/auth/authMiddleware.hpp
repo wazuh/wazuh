@@ -22,30 +22,27 @@
 
 #include "authTypes.hpp"
 #include "cmac.hpp"
-#include "iAgentKeyResolver.hpp"
+#include "iAgentKeystore.hpp"
 
-namespace wazuh_auth
+namespace remoted::auth
 {
 
     /**
      * @brief Framework-agnostic implementation of the agent<->manager auth protocol.
      *
      * Handles canonical request construction, incremental AES-CMAC, the
-     * timestamp window and constant-time comparison. Knows nothing about
-     * Beast, RESTinio, sockets or TLS -- a transport only has to supply the
-     * raw method/target/headers and stream body bytes through
-     * Session::update(). This is the piece that must NOT be reimplemented
-     * per-library; only a thin adapter around it changes when the HTTP
-     * library changes.
+     * timestamp window and constant-time comparison. A transport supplies
+     * the raw method/target/headers and streams body bytes through
+     * Session::update().
      */
     class AuthMiddleware
     {
     public:
         /**
          * @param config   Auth-protocol tunables (protocol version, timestamp window, max body size).
-         * @param resolver Used to look up an agent's pre-shared key; must outlive this object.
+         * @param keystore Used to look up an agent's pre-shared key; must outlive this object.
          */
-        AuthMiddleware(AuthConfig config, std::shared_ptr<IAgentKeyResolver> resolver);
+        AuthMiddleware(AuthConfig config, std::shared_ptr<IAgentKeystore> keystore);
 
         /**
          * @brief Per-request auth state, from a resolved key up to a verified MAC.
@@ -137,7 +134,7 @@ namespace wazuh_auth
 
     private:
         AuthConfig m_config;
-        std::shared_ptr<IAgentKeyResolver> m_resolver;
+        std::shared_ptr<IAgentKeystore> m_keystore;
     };
 
-} // namespace wazuh_auth
+} // namespace remoted::auth

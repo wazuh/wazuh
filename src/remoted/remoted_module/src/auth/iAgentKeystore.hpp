@@ -16,21 +16,16 @@
 #include <string>
 #include <vector>
 
-namespace wazuh_auth
+namespace remoted::auth
 {
 
     /**
-     * @brief Resolves an agent id to its pre-shared AES key.
-     *
-     * Kept as its own interface so a client.keys-backed resolver can later be
-     * swapped for whatever the manager actually uses (agent registry,
-     * database, cache) without touching AuthMiddleware or any transport
-     * implementation.
+     * @brief Relates agent ids to their pre-shared AES key.
      */
-    class IAgentKeyResolver
+    class IAgentKeystore
     {
     public:
-        virtual ~IAgentKeyResolver() = default;
+        virtual ~IAgentKeystore() = default;
 
         /**
          * @brief Look up an agent's key.
@@ -40,7 +35,7 @@ namespace wazuh_auth
          *         pre-shared AES key (16, 24 or 32 bytes); empty if the agent
          *         is known but its on-disk key could not be used as-is.
          */
-        virtual std::optional<std::vector<std::uint8_t>> resolve(const std::string& agentId) const = 0;
+        virtual std::optional<std::vector<std::uint8_t>> keyFor(const std::string& agentId) const = 0;
     };
 
-} // namespace wazuh_auth
+} // namespace remoted::auth

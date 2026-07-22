@@ -20,7 +20,7 @@ remoted_module/
 ├── src/
 │   ├── remotedModule.cpp           # extern "C" shims + facade delegation + log sink definition
 │   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
-│   ├── auth/                       # ns wazuh_auth — framework-agnostic AES-CMAC auth (see below)
+│   ├── auth/                       # ns remoted::auth — framework-agnostic AES-CMAC auth (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
 │   └── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below)
 └── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
@@ -72,7 +72,7 @@ src/endpoints/
 ```
 
 - **Endpoint handler (async):**
-  `using AuthenticatedHandler = std::function<void(const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder>)>;`
+  `using AuthenticatedHandler = std::function<void(const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder>)>;`
   It runs on the worker pool after auth succeeds and **owns delivering the response** — inline or
   later (async), by calling `responder->send(...)` exactly once.
 - **`AuthGateway`** owns one `AuthMiddleware` and exposes
@@ -89,17 +89,17 @@ src/endpoints/
 Framework-agnostic implementation of the agent<->manager request authentication protocol:
 canonical request construction, incremental AES-CMAC, timestamp window and constant-time
 comparison. `authTypes.hpp` holds the shared contract (`AuthenticatedRequest`/`AuthError`/
-`publicErrorFor`/`AuthConfig`) and `iAgentKeyResolver.hpp` the key-lookup interface; `authMiddleware`,
-`cmac`, `clientKeysFileResolver` are the implementation. It knows nothing about RESTinio or sockets
+`publicErrorFor`/`AuthConfig`) and `iAgentKeystore.hpp` the key-lookup interface; `authMiddleware`,
+`cmac`, `keystore` are the implementation. It knows nothing about RESTinio or sockets
 -- the `AuthGateway` (in `endpoints/`) is the only adapter between it and our transport. Depends on
 OpenSSL (linked into `remoted_module`).
 
 Unit tests under `test/unit/` (`cmac_test.cpp`, `authMiddleware_test.cpp`,
-`clientKeysFileResolver_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware` against a
-scratch `client.keys` file it writes to `/tmp`, through `ClientKeysFileResolver` -- there is no
-in-memory stand-in resolver.
+`keystore_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware` against a
+scratch `client.keys` file it writes to `/tmp`, through `Keystore` -- there is no
+in-memory stand-in.
 
-**Agent key resolution:** `ClientKeysFileResolver` reads `etc/client.keys` directly and parses it
+**Agent key lookup:** `Keystore` reads `etc/client.keys` directly and parses it
 the same way the manager's own `OS_ReadKeys()` does (id/name/ip/key columns, `#`/`!`-marked removed
 entries skipped), independent of remoted's C `keystore`. This was a deliberate choice over reaching
 into remoted's live `keystore`: remoted loads it in `W_ENCRYPTION_KEY` mode (see `secure.c`), which
