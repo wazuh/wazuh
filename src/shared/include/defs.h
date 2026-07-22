@@ -120,6 +120,10 @@ https://www.gnu.org/licenses/gpl.html\n"
 /* Default queue */
 #define DEFAULTQUEUE "queue/sockets/queue"
 
+/* Stateful sync-session intake (HTTPS agent): a STREAM socket separate from
+ * the DGRAM DEFAULTQUEUE, so whole sync sessions bypass the 64 KB cap. */
+#define SYNCQUEUE "queue/sockets/queue-sync"
+
 // Authd local socket
 #define AUTH_LOCAL_SOCK "queue/sockets/auth"
 

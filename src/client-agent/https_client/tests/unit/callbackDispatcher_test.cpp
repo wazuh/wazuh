@@ -52,30 +52,31 @@ namespace
         record->count++;
     }
 
-    void recordReenroll(void* userData)
+    void recordTag(const std::string& tag, Record* record)
     {
-        auto* record = static_cast<Record*>(userData);
         std::lock_guard<std::mutex> lock(record->mutex);
-        record->order.push_back("reenroll");
-        record->threads.push_back(std::this_thread::get_id());
-        record->count++;
-    }
-
-    void recordBuffer(int level, void* userData)
-    {
-        auto* record = static_cast<Record*>(userData);
-        std::lock_guard<std::mutex> lock(record->mutex);
-        record->order.push_back("buffer:" + std::to_string(level));
+        record->order.push_back(tag);
         record->count++;
     }
 
     void recordStartup(bool accepted, const char*, void* userData)
     {
-        auto* record = static_cast<Record*>(userData);
-        std::lock_guard<std::mutex> lock(record->mutex);
-        record->order.push_back(accepted ? "startup:ok" : "startup:no");
-        record->threads.push_back(std::this_thread::get_id());
-        record->count++;
+        recordTag(accepted ? "startup:ok" : "startup:no", static_cast<Record*>(userData));
+    }
+
+    void recordReenroll(void* userData)
+    {
+        recordTag("reenroll", static_cast<Record*>(userData));
+    }
+
+    void recordSync(const char* sessionId, int, const char*, void* userData)
+    {
+        recordTag(std::string {"sync:"} + sessionId, static_cast<Record*>(userData));
+    }
+
+    void recordBuffer(int level, void* userData)
+    {
+        recordTag("buffer:" + std::to_string(level), static_cast<Record*>(userData));
     }
 
     hc_callbacks_t makeCallbacks(Record* record)
@@ -84,6 +85,7 @@ namespace
         callbacks.on_startup_result = recordStartup;
         callbacks.on_task = recordTask;
         callbacks.on_reenroll_required = recordReenroll;
+        callbacks.on_sync_response = recordSync;
         callbacks.on_state_change = recordState;
         callbacks.on_buffer_level = recordBuffer;
         callbacks.user_data = record;
@@ -162,7 +164,7 @@ TEST(CallbackDispatcherTest, NullCallbacksAreSafe)
     dispatcher.start();
     dispatcher.onTask("x", "ar", "{}");
     dispatcher.onStateChange(HC_STATE_STARTING);
-    dispatcher.onReenrollRequired();
+    dispatcher.onSyncResponse("s", 0, "{}");
     dispatcher.onStartupResult(true, "{}");
     dispatcher.onBufferLevel(HC_BUFFER_NORMAL);
     dispatcher.stop(); // No crash despite null handlers.
@@ -176,9 +178,10 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     dispatcher.onStartupResult(true, R"({"limits":{}})");
     dispatcher.onTask("t1", "active_response", "{}");
     dispatcher.onReenrollRequired();
+    dispatcher.onSyncResponse("sess-1", 0, R"({"ok":true})");
     dispatcher.onStateChange(HC_STATE_REGISTERED);
     dispatcher.onBufferLevel(HC_BUFFER_WARNING);
-    waitForCount(record, 5);
+    waitForCount(record, 6);
     dispatcher.stop();
 
     EXPECT_NE(record.order.end(),
@@ -186,6 +189,8 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "t1"));
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "reenroll"));
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(), "sync:sess-1"));
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(),
                         "state:" + std::to_string(HC_STATE_REGISTERED)));
