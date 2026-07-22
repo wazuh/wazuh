@@ -67,6 +67,17 @@ typedef enum hc_conn_state_t
     ///< until hc_set_agent_key() supplies a new key.
 } hc_conn_state_t;
 
+/* Occupancy level of the stateless accumulator. Replaces the legacy client
+ * buffer levels so the manager-side flood alerts (rules 202-205 analogues)
+ * keep working. */
+typedef enum hc_buffer_level_t
+{
+    HC_BUFFER_NORMAL = 0,
+    HC_BUFFER_WARNING,
+    HC_BUFFER_FULL,
+    HC_BUFFER_FLOOD
+} hc_buffer_level_t;
+
 /* Outcome classes of a request/submission (D9 classification). */
 typedef enum hc_result_t
 {
@@ -109,6 +120,12 @@ typedef struct hc_config_t
     char client_cert[HC_MAX_PATH]; ///< Optional mTLS certificate (FR11.3).
     char client_key[HC_MAX_PATH];  ///< Optional mTLS private key.
     char ciphers[HC_MAX_CIPHERS];  ///< Optional cipher list.
+
+    uint64_t batch_size_bytes;      ///< Max /stateless payload per request
+    ///< (adaptive: halves on 413, ramps back on
+    ///< success); 0 -> 1 MiB.
+    uint32_t batch_interval_ms;     ///< <batch><interval>; 0 -> 10000.
+    uint32_t buffer_cap_multiplier; ///< Accumulator cap = N x batch size; 0 -> 4.
 
     uint32_t notify_interval_s;         ///< notify_time; 0 -> 20.
     uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
@@ -157,6 +174,7 @@ typedef struct hc_callbacks_t
     void (*on_config_downloaded)(const char* config_hash, const char* file_path,
                                  void* user_data);
     void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t
+    void (*on_buffer_level)(int level, void* user_data);  ///< hc_buffer_level_t
     void* user_data;
 } hc_callbacks_t;
 
@@ -181,16 +199,26 @@ HC_EXPORTED hc_handle* hc_create(const hc_config_t* config, const hc_callbacks_t
 HC_EXPORTED bool hc_start(hc_handle* handle);
 
 /**
- * @brief Stop the client: drains within the configured window (final
- *        Notify), aborts in-flight requests explicitly and joins every
- *        thread. No callback fires after this returns. Terminal (single-shot):
- *        the instance cannot be restarted afterwards. Safe without a prior
- *        start.
+ * @brief Stop the client: drains within the configured window (stateless
+ *        flush + final Notify), aborts in-flight requests explicitly and
+ *        joins every thread. No callback fires after this returns. Terminal
+ *        (single-shot): the instance cannot be restarted afterwards. Safe
+ *        without a prior start.
  */
 HC_EXPORTED void hc_stop(hc_handle* handle);
 
 /** @brief Destroy the instance. Implies hc_stop(). NULL-safe. */
 HC_EXPORTED void hc_destroy(hc_handle* handle);
+
+/* ---- data plane (called from agentd's EventForward seam) ---- */
+
+/**
+ * @brief Submit one event frame ("queue:location:message" bytes) for the
+ *        /stateless batch. Returns false when the client is not running
+ *        or the accumulator is full (drop-newest; the occupancy ladder is
+ *        surfaced via on_buffer_level).
+ */
+HC_EXPORTED bool hc_submit_event(hc_handle* handle, const uint8_t* frame, size_t length);
 
 /* ---- control plane ---- */
 
