@@ -43,8 +43,10 @@ struct ModuleConfig
         uint32_t rejectedRetryIntervalS {60};
 
         std::string version;
+        std::string configChecksum;
 
         uint32_t requestTimeoutMs {10000};
+        uint32_t statefulTimeoutMs {120000};
         uint32_t backoffBaseMs {1000};
         uint32_t backoffCapMs {60000};
         uint32_t drainTimeoutMs {5000};
