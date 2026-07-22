@@ -45,6 +45,8 @@ class CallbackDispatcher final : public ICallbackSink
 
         void onStartupResult(bool accepted, const std::string& handshakeJson) override;
         void onReenrollRequired() override;
+        void onTask(const std::string& taskId, const std::string& taskType,
+                    const std::string& payloadJson) override;
         void onConfigDownloaded(const std::string& configHash,
                                 std::shared_ptr<SpoolFile> file) override;
         void onStateChange(hc_conn_state_t state) override;

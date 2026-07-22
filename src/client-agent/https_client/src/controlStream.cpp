@@ -12,6 +12,7 @@
 #include "controlStream.hpp"
 
 #include "digest.hpp"
+#include "taskBatch.hpp"
 
 #include "external/nlohmann/json.hpp"
 
@@ -56,6 +57,37 @@ namespace
 
         return "default";
     }
+
+    /// The Notify batch after dedup: fresh, identifiable tasks only.
+    /// Deliberately deduped BEFORE planning, so a task dropped as redundant is
+    /// still marked seen and an at-least-once redelivery stays dropped (a
+    /// restart landing after its subsuming upgrade would be harmful).
+    std::vector<NotifyTask> collectFreshTasks(const nlohmann::json& parsed, TaskDeduper& deduper,
+                                              std::chrono::steady_clock::time_point now)
+    {
+        std::vector<NotifyTask> batch;
+        const auto tasks = parsed.find("tasks");
+
+        if (tasks == parsed.end() || !tasks->is_array())
+        {
+            return batch;
+        }
+
+        for (const auto& task : *tasks)
+        {
+            std::string taskId = jsonField(task, "task_id");
+
+            if (taskId.empty() || !deduper.markIfNew(taskId, now))
+            {
+                continue; // Duplicate (at-least-once) or unidentifiable.
+            }
+
+            batch.push_back({std::move(taskId), jsonField(task, "task_type"),
+                             jsonField(task, "payload")});
+        }
+
+        return batch;
+    }
 } // namespace
 
 ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& performer,
@@ -66,11 +98,13 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, &authGate)
+    , m_clock(clock)
     , m_sink(sink)
     , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate)
     , m_configHash(configHash)
     , m_cluster(cluster)
     , m_authGate(authGate)
+    , m_deduper(config.taskDedupMax, std::chrono::seconds {config.taskDedupTtlS})
 {
 }
 
@@ -247,6 +281,9 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         return; // Tolerant: a malformed Notify body is ignored, never fatal.
     }
 
+    // Tasks first, then the hash checks: a slow config download must never
+    // delay task delivery.
+    dispatchPlannedTasks(collectFreshTasks(parsed, m_deduper, m_clock.steadyNow()));
     maybeArmSettingsRefresh(jsonField(parsed, "settings_hash"));
 
     const auto agent = parsed.find("agent");
@@ -313,6 +350,22 @@ void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
     m_refreshedForSettingsHash = incoming;
     m_settingsLoopWarned = false;
     m_machine.onEvent(ControlStateMachine::Event::SettingsChanged);
+}
+
+void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch)
+{
+    auto plan = planTaskBatch(std::move(batch));
+
+    for (const auto& [task, subsumer] : plan.dropped)
+    {
+        LOGFN_INFO(m_logFn, "Task %s (%s) dropped: covered by a %s in the same batch.",
+                   task.id.c_str(), task.type.c_str(), subsumer.c_str());
+    }
+
+    for (const auto& task : plan.ordered)
+    {
+        m_sink.onTask(task.id, task.type, task.payloadJson);
+    }
 }
 
 ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
