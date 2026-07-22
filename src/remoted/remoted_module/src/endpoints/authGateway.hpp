@@ -9,29 +9,20 @@
  * Foundation.
  */
 
-#ifndef _REMOTED_HTTP_AUTH_GATEWAY_HPP
-#define _REMOTED_HTTP_AUTH_GATEWAY_HPP
+#ifndef _REMOTED_ENDPOINTS_AUTH_GATEWAY_HPP
+#define _REMOTED_ENDPOINTS_AUTH_GATEWAY_HPP
 
-#include "IHttpServer.hpp"
-#include "authMiddleware.hpp"    // wazuh_auth::AuthMiddleware
-#include "authTypes.hpp"         // wazuh_auth::AuthenticatedRequest, AuthConfig
-#include "iAgentKeyResolver.hpp" // wazuh_auth::IAgentKeyResolver
+#include "auth/authMiddleware.hpp"     // wazuh_auth::AuthMiddleware
+#include "auth/authTypes.hpp"          // wazuh_auth::AuthConfig
+#include "auth/iAgentKeyResolver.hpp"  // wazuh_auth::IAgentKeyResolver
+#include "endpoint.hpp"                // AuthenticatedHandler + shared type aliases
+#include "http_server/IHttpServer.hpp" // remoted::http::IHttpServer
 
-#include <functional>
 #include <memory>
 #include <string>
 
-namespace remoted::http
+namespace remoted::endpoints
 {
-
-/**
- * @brief Post-authentication endpoint handler.
- *
- * Runs only after the AES-CMAC validation succeeds and receives the verified
- * request as a parameter. Synchronous: it executes on the server's worker pool
- * (never on the I/O threads), so it may block without stalling the transport.
- */
-using AuthenticatedHandler = std::function<HttpResponse(const wazuh_auth::AuthenticatedRequest&)>;
 
 /**
  * @brief Applies the agent<->manager auth protocol in front of endpoint handlers.
@@ -43,7 +34,7 @@ using AuthenticatedHandler = std::function<HttpResponse(const wazuh_auth::Authen
  *   1. runs the full validation (protocol-version + Authorization + timestamp
  *      window + key resolution + AES-CMAC over the exact body bytes),
  *   2. on failure, answers with publicErrorFor()'s status/message, and
- *   3. on success, calls the AuthenticatedHandler with the verified request.
+ *   3. on success, hands the verified request and the responder to the handler.
  *
  * The gateway is the only adapter between wazuh_auth (framework-agnostic) and
  * remoted::http (our transport); swapping the HTTP library never touches it.
@@ -63,14 +54,17 @@ public:
      * @param server  Transport to register the route on.
      * @param method  HTTP method to match.
      * @param path    Path to match (the query string is not matched, but IS part of the MAC).
-     * @param handler Invoked only after authentication succeeds.
+     * @param handler Invoked only after authentication succeeds; owns sending the response.
      */
-    void addAuthenticatedRoute(IHttpServer& server, Method method, const std::string& path, AuthenticatedHandler handler);
+    void addAuthenticatedRoute(remoted::http::IHttpServer& server,
+                               Method method,
+                               const std::string& path,
+                               AuthenticatedHandler handler);
 
 private:
     std::shared_ptr<wazuh_auth::AuthMiddleware> m_middleware;
 };
 
-} // namespace remoted::http
+} // namespace remoted::endpoints
 
-#endif // _REMOTED_HTTP_AUTH_GATEWAY_HPP
+#endif // _REMOTED_ENDPOINTS_AUTH_GATEWAY_HPP
