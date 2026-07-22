@@ -50,8 +50,6 @@ namespace
         recorder->states.push_back(state);
     }
 
-    // Points at a closed localhost port with tiny timeouts and backoff so the
-    // control loop churns quickly and stop is near-instant.
     hc_config_t makeConfig()
     {
         hc_config_t config {};
@@ -188,6 +186,7 @@ TEST_F(HcInterfaceTest, NullHandleIsSafeEverywhere)
     EXPECT_FALSE(hc_start(nullptr));
     hc_stop(nullptr);
     hc_destroy(nullptr);
+    EXPECT_FALSE(hc_set_agent_key(nullptr, "000102030405060708090a0b0c0d0e0f"));
     EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(nullptr));
 }
 

@@ -554,6 +554,11 @@ InstallCommon()
             ${INSTALL} -m 0750 -o root -g 0 build/lib/libagent_metadata.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libagent_metadata.dylib ${INSTALLDIR}/lib/libagent_metadata.dylib
         fi
+        if [ -f build/lib/libhttps_client.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libhttps_client.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libhttps_client.dylib ${INSTALLDIR}/lib/libhttps_client.dylib
+        fi
     elif [ -f build/lib/libdbsync.so ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libdbsync.so ${INSTALLDIR}/lib
@@ -576,6 +581,14 @@ InstallCommon()
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_metadata.so
+        fi
+    fi
+    if [ -f build/lib/libhttps_client.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libhttps_client.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libhttps_client.so
         fi
     fi
 
