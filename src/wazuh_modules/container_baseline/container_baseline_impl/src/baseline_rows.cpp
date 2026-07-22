@@ -159,6 +159,20 @@ void StampContainerContext(nlohmann::json& data, const std::string& container_id
     }
 }
 
+/// Emit an all-digit string as a JSON number so it satisfies schema fields typed
+/// `long` (pid) or `date` (epoch seconds); the strict validator rejects a numeric
+/// value carried as a string. No-op (returns false) for empty/non-numeric input,
+/// so the caller can omit the field entirely — strict mode allows missing keys.
+bool SetNumericIfDigits(nlohmann::json& obj, const char* key, const std::string& s)
+{
+    if (s.empty()) return false;
+    for (const char c : s) {
+        if (c < '0' || c > '9') return false;
+    }
+    obj[key] = static_cast<int64_t>(std::stoll(s));
+    return true;
+}
+
 } // namespace
 
 std::pair<std::string, std::string> BuildFimFileJson(const FileBaselineRow& row)
@@ -190,14 +204,14 @@ std::pair<std::string, std::string> BuildProcessJson(const ProcessBaselineRow& r
 {
     nlohmann::json data;
     nlohmann::json process;
-    process["pid"]          = row.pid;
+    SetNumericIfDigits(process, "pid", row.pid); // schema: process.pid is `long`
     process["name"]         = row.name;
     process["state"]        = row.state;
     process["parent"]       = {{"pid", row.parent_pid}};
     process["command_line"] = row.command_line;
     process["args"]         = row.args;
     process["args_count"]   = row.args_count;
-    process["start"]        = row.start;
+    SetNumericIfDigits(process, "start", row.start); // schema: process.start is `date` (epoch)
     process["utime"]        = row.utime;
     process["stime"]        = row.stime;
     data["process"]  = process;
@@ -215,8 +229,8 @@ std::pair<std::string, std::string> BuildPortJson(const PortBaselineRow& row)
     data["network"]        = {{"transport", row.network_transport}};
     data["source"]         = {{"ip", row.source_ip},      {"port", row.source_port}};
     data["destination"]    = {{"ip", row.destination_ip}, {"port", row.destination_port}};
-    data["interface_state"] = row.interface_state;
-    data["file_inode"]      = row.file_inode;
+    data["interface"] = {{"state", row.interface_state}};
+    data["file"]      = {{"inode", std::to_string(row.file_inode)}}; // schema: file.inode is `keyword`
     if (row.process_pid != 0) {
         data["process"] = {{"pid", row.process_pid}, {"name", row.process_name}};
     }
@@ -235,9 +249,9 @@ std::pair<std::string, std::string> BuildUserJson(const UserBaselineRow& row)
     nlohmann::json data;
     nlohmann::json user;
     user["name"]        = row.name;
-    user["id"]          = row.uid;
-    user["group"]       = {{"id", row.gid}};
-    user["description"] = row.description;
+    user["id"]          = std::to_string(row.uid); // schema: user.id is `keyword`
+    user["group"]       = {{"id", row.gid}};        // schema: user.group.id is `unsigned_long`
+    user["full_name"]   = row.description;          // schema has no user.description; GECOS -> full_name
     user["home"]        = row.home;
     user["shell"]        = row.shell;
     data["user"]     = user;
@@ -277,7 +291,11 @@ std::pair<std::string, std::string> BuildPackageJson(const PackageBaselineRow& r
     package["description"]  = row.description;
     package["size"]         = row.size;
     package["vendor"]       = row.vendor;
-    package["installed"]    = row.install_time;
+    // schema: package.installed is `date` — omit when empty, epoch digits -> number,
+    // otherwise pass through as an ISO8601 string.
+    if (!row.install_time.empty() && !SetNumericIfDigits(package, "installed", row.install_time)) {
+        package["installed"] = row.install_time;
+    }
     package["category"]     = row.category;
     package["source"]       = row.source;
     package["type"]         = row.format;
@@ -296,17 +314,18 @@ std::pair<std::string, std::string> BuildPackageJson(const PackageBaselineRow& r
 std::pair<std::string, std::string> BuildOsJson(const OsBaselineRow& row)
 {
     nlohmann::json data;
+    // schema: wazuh-states-inventory-system nests the OS under host.os (no top-level
+    // "os", and no "family" slot — ID_LIKE is dropped). Kernel release -> host.os.kernel.release.
     nlohmann::json os;
     os["name"]     = row.name;
     os["full"]     = row.full;
     os["version"]  = row.version;
     os["codename"] = row.codename;
     os["platform"] = row.platform;
-    os["family"]   = row.family;
-    os["kernel"]   = row.kernel;
     os["type"]     = "linux";
-    data["os"]        = os;
-    data["baseline"]  = true;
+    if (!row.kernel.empty()) os["kernel"] = {{"release", row.kernel}};
+    data["host"]["os"] = os;
+    data["baseline"]   = true;
     StampContainerContext(data, row.container_id, row.container);
 
     // One OS row per container.
@@ -319,15 +338,20 @@ std::pair<std::string, std::string> BuildInterfaceJson(const InterfaceBaselineRo
     nlohmann::json data;
     nlohmann::json iface;
     iface["name"]  = row.name;
-    iface["mac"]   = row.mac;
     iface["mtu"]   = row.mtu;
     iface["state"] = row.state;
     iface["type"]  = row.type;
-    data["interface"]  = iface;
-    data["statistics"] = {
-        {"rx", {{"bytes", row.rx_bytes}, {"packets", row.rx_packets}, {"errors", row.rx_errors}, {"dropped", row.rx_dropped}}},
-        {"tx", {{"bytes", row.tx_bytes}, {"packets", row.tx_packets}, {"errors", row.tx_errors}, {"dropped", row.tx_dropped}}},
-    };
+    data["interface"] = iface;
+
+    // schema (wazuh-states-inventory-interfaces): the link-layer address is host.mac
+    // (keyword), not interface.mac, and the RX/TX counters live under
+    // host.network.ingress/egress — there is no top-level "statistics" object, and
+    // the drop counter is named "drops", not "dropped".
+    if (!row.mac.empty()) data["host"]["mac"] = row.mac;
+    data["host"]["network"]["ingress"] = {{"bytes", row.rx_bytes}, {"packets", row.rx_packets},
+                                          {"errors", row.rx_errors}, {"drops", row.rx_dropped}};
+    data["host"]["network"]["egress"]  = {{"bytes", row.tx_bytes}, {"packets", row.tx_packets},
+                                          {"errors", row.tx_errors}, {"drops", row.tx_dropped}};
     data["baseline"]  = true;
     StampContainerContext(data, row.container_id, row.container);
 
@@ -338,12 +362,18 @@ std::pair<std::string, std::string> BuildInterfaceJson(const InterfaceBaselineRo
 std::pair<std::string, std::string> BuildNetworkAddressJson(const NetworkAddressBaselineRow& row)
 {
     nlohmann::json data;
+    // schema (wazuh-states-inventory-networks): the interface name is the top-level
+    // interface.name keyword, matching the host network-address row — not
+    // network.interface (which the schema does not define).
+    data["interface"] = {{"name", row.interface_name}};
+
     nlohmann::json network;
-    network["interface"] = row.interface_name;
-    network["protocol"]  = row.protocol;
-    network["ip"]        = row.address;
-    network["netmask"]   = row.netmask;
+    network["ip"]      = row.address;
+    network["netmask"] = row.netmask;
     if (!row.broadcast.empty()) network["broadcast"] = row.broadcast;
+    // schema has no network.protocol: the address family ("ipv4"/"ipv6") is carried
+    // in network.type (keyword), the same slot the host row uses.
+    if (!row.protocol.empty()) network["type"] = row.protocol;
     data["network"]   = network;
     data["baseline"]  = true;
     StampContainerContext(data, row.container_id, row.container);
@@ -361,7 +391,9 @@ std::pair<std::string, std::string> BuildProtocolJson(const ProtocolBaselineRow&
     nlohmann::json network;
     network["type"]   = row.type;
     if (!row.gateway.empty()) network["gateway"] = row.gateway; // typed `ip` — omit when absent.
-    network["dhcp"]   = row.dhcp;
+    // schema: network.dhcp is boolean. The scanner can only ever report "unknown" for
+    // a container rootfs (no distro ifcfg files), so omit the field rather than emit a
+    // non-boolean string the strict validator would reject (strict mode allows missing).
     network["metric"] = row.metric;
     data["network"]   = network;
     data["baseline"]  = true;

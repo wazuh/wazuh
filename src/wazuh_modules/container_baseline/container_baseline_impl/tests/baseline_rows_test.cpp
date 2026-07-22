@@ -180,7 +180,8 @@ TEST(BuildPortJson, ProducesExpectedShapeAndStableId)
     EXPECT_EQ(j.at("network").at("transport"), "tcp");
     EXPECT_EQ(j.at("source").at("ip"), "10.0.0.5");
     EXPECT_EQ(j.at("source").at("port"), 8080);
-    EXPECT_EQ(j.at("interface_state"), "listen");
+    EXPECT_EQ(j.at("interface").at("state"), "listen");
+    EXPECT_EQ(j.at("file").at("inode"), "123456"); // schema: file.inode is keyword
     EXPECT_EQ(j.at("process").at("name"), "nginx");
 }
 
@@ -198,4 +199,85 @@ TEST(BuildPortJson, OmitsProcessBlockWhenUnattributed)
     (void)id;
     const auto j = nlohmann::json::parse(json_str);
     EXPECT_FALSE(j.contains("process"));
+}
+
+TEST(BuildInterfaceJson, MapsCountersToHostNetworkAndMacToHost)
+{
+    InterfaceBaselineRow row;
+    row.name         = "eth0";
+    row.mac          = "02:42:ac:11:00:02";
+    row.mtu          = 1500;
+    row.state        = "up";
+    row.type         = "ethernet";
+    row.rx_bytes     = 100;
+    row.rx_packets   = 10;
+    row.rx_errors    = 1;
+    row.rx_dropped   = 2;
+    row.tx_bytes     = 200;
+    row.tx_packets   = 20;
+    row.tx_errors    = 3;
+    row.tx_dropped   = 4;
+    row.container_id = "cid-if";
+
+    const auto [id, json_str] = BuildInterfaceJson(row);
+    EXPECT_EQ(id, "cid-if:iface:eth0");
+
+    const auto j = nlohmann::json::parse(json_str);
+    // interface.* keeps name/mtu/state/type; mac is NOT here (schema has no interface.mac).
+    EXPECT_EQ(j.at("interface").at("name"), "eth0");
+    EXPECT_EQ(j.at("interface").at("mtu"), 1500);
+    EXPECT_FALSE(j.at("interface").contains("mac"));
+    // Link-layer address and counters live under host.* per the schema.
+    EXPECT_EQ(j.at("host").at("mac"), "02:42:ac:11:00:02");
+    EXPECT_EQ(j.at("host").at("network").at("ingress").at("bytes"), 100);
+    EXPECT_EQ(j.at("host").at("network").at("ingress").at("drops"), 2);
+    EXPECT_EQ(j.at("host").at("network").at("egress").at("packets"), 20);
+    // No top-level "statistics" object (not in the strict schema).
+    EXPECT_FALSE(j.contains("statistics"));
+}
+
+TEST(BuildNetworkAddressJson, UsesInterfaceNameAndNetworkTypeNotProtocol)
+{
+    NetworkAddressBaselineRow row;
+    row.interface_name = "eth0";
+    row.protocol        = "ipv4";
+    row.address         = "172.17.0.2";
+    row.netmask         = "255.255.0.0";
+    row.broadcast       = "172.17.255.255";
+    row.container_id    = "cid-net";
+
+    const auto [id, json_str] = BuildNetworkAddressJson(row);
+    EXPECT_EQ(id, "cid-net:net:eth0:172.17.0.2");
+
+    const auto j = nlohmann::json::parse(json_str);
+    EXPECT_EQ(j.at("interface").at("name"), "eth0");
+    EXPECT_EQ(j.at("network").at("ip"), "172.17.0.2");
+    EXPECT_EQ(j.at("network").at("netmask"), "255.255.0.0");
+    EXPECT_EQ(j.at("network").at("broadcast"), "172.17.255.255");
+    EXPECT_EQ(j.at("network").at("type"), "ipv4"); // family carried in network.type
+    // schema defines neither network.interface nor network.protocol.
+    EXPECT_FALSE(j.at("network").contains("interface"));
+    EXPECT_FALSE(j.at("network").contains("protocol"));
+}
+
+TEST(BuildProtocolJson, OmitsDhcpBecauseSchemaTypeIsBoolean)
+{
+    ProtocolBaselineRow row;
+    row.interface_name = "eth0";
+    row.type            = "ipv4";
+    row.gateway         = "172.17.0.1";
+    row.dhcp            = "unknown";
+    row.metric          = 100;
+    row.container_id    = "cid-proto";
+
+    const auto [id, json_str] = BuildProtocolJson(row);
+    EXPECT_EQ(id, "cid-proto:proto:eth0:ipv4");
+
+    const auto j = nlohmann::json::parse(json_str);
+    EXPECT_EQ(j.at("interface").at("name"), "eth0");
+    EXPECT_EQ(j.at("network").at("type"), "ipv4");
+    EXPECT_EQ(j.at("network").at("gateway"), "172.17.0.1");
+    EXPECT_EQ(j.at("network").at("metric"), 100);
+    // "unknown" is not a boolean; the field is dropped rather than fail strict validation.
+    EXPECT_FALSE(j.at("network").contains("dhcp"));
 }
