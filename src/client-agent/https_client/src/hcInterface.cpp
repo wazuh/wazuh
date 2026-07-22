@@ -142,6 +142,24 @@ extern "C"
         }
     }
 
+    bool hc_set_config_hash(hc_handle* handle, const char* config_hash)
+    {
+        if (handle == nullptr || config_hash == nullptr)
+        {
+            return false;
+        }
+
+        try
+        {
+            handle->impl.setConfigHash(config_hash);
+            return true;
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
     bool hc_set_agent_key(hc_handle* handle, const char* key_hex)
     {
         if (handle == nullptr)

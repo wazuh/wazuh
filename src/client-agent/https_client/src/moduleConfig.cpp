@@ -44,7 +44,9 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.notifyIntervalS = orDefault<uint32_t>(config.notify_interval_s, 20);
     typed.rejectedRetryIntervalS = orDefault<uint32_t>(config.rejected_retry_interval_s, 60);
     typed.version = boundedString(config.version, sizeof(config.version));
+    typed.configChecksum = boundedString(config.config_checksum, sizeof(config.config_checksum));
     typed.requestTimeoutMs = orDefault<uint32_t>(config.request_timeout_ms, 10000);
+    typed.statefulTimeoutMs = orDefault<uint32_t>(config.stateful_timeout_ms, 120000);
     typed.backoffBaseMs = orDefault<uint32_t>(config.backoff_base_ms, 1000);
     typed.backoffCapMs = orDefault<uint32_t>(config.backoff_cap_ms, 60000);
     typed.drainTimeoutMs = orDefault<uint32_t>(config.drain_timeout_ms, 5000);

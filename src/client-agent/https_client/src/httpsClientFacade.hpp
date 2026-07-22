@@ -16,6 +16,7 @@
 #include "callbackDispatcher.hpp"
 #include "clusterIdentity.hpp"
 #include "cmacSigner.hpp"
+#include "configHashState.hpp"
 #include "controlStream.hpp"
 #include "curlPerformer.hpp"
 #include "https_client.h"
@@ -23,6 +24,7 @@
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
 #include "registrationGate.hpp"
+#include "spoolFile.hpp"
 #include "stopToken.hpp"
 #include "sysSeams.hpp"
 
@@ -54,6 +56,7 @@ class HttpsClientFacade final
         void stop();
 
         void notifyNow();
+        void setConfigHash(const char* configHash);
         bool setAgentKey(const char* keyHex);
         hc_conn_state_t state() const;
 
@@ -71,8 +74,10 @@ class HttpsClientFacade final
         FsProbe m_fsProbe;
         ConfigKeyProvider m_keyProvider;
         CmacSigner m_signer;
+        TempSpoolFactory m_spoolFactory;
         CurlPerformer m_performer;
         CallbackDispatcher m_dispatcher;
+        ConfigHashState m_configHash;
         ClusterIdentity m_cluster;
         // Wakes the control loop so it publishes AUTH_ERROR / recovers promptly.
         // The wake lambda runs later, so referencing m_controlWaiter (declared

@@ -193,6 +193,20 @@ static agent_status_t bridge_map_agent_status(int hc_state)
     }
 }
 
+static void bridge_on_config_downloaded(const char *config_hash, const char *file_path,
+                                        void *user_data)
+{
+    /* Production hookup (later integration workstream): copy the file inside
+     * this callback (the module deletes it right after), then run the legacy
+     * apply chain -- write SHAREDCFG_DIR/merged.mg, UnmergeFiles(), verify
+     * with getsharedfiles(), reloadAgent() under auto_restart (receiver.c /
+     * reload_agent.c) -- and call hc_set_config_hash() if the applied hash
+     * diverges. The dev scaffold only logs the delivery. */
+    (void)user_data;
+    mdebug1("https_client config downloaded (hash=%s, file=%s)",
+            config_hash ? config_hash : "?", file_path ? file_path : "?");
+}
+
 static void bridge_on_state_change(int state, void *user_data)
 {
     (void)user_data;
@@ -283,6 +297,15 @@ static bool bridge_build_config(hc_config_t *config)
         strncpy(config->ciphers, agt->ssl.ciphers, sizeof(config->ciphers) - 1);
     }
 
+    config->notify_interval_s = (uint32_t)agt->notify_time;
+    strncpy(config->version, __wazuh_version, sizeof(config->version) - 1);
+
+    char *checksum = getsharedfiles();
+    if (checksum) {
+        strncpy(config->config_checksum, checksum, sizeof(config->config_checksum) - 1);
+        os_free(checksum);
+    }
+
     return true;
 }
 
@@ -307,6 +330,7 @@ void w_https_client_start(void)
     callbacks.log = mtLoggingFunctionsWrapper;
     callbacks.on_startup_result = bridge_on_startup_result;
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
+    callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_state_change = bridge_on_state_change;
 
     g_https_client = hc_create(&config, &callbacks);

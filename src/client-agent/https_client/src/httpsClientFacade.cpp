@@ -17,10 +17,12 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     : m_config(ModuleConfig::fromC(config))
     , m_keyProvider(m_config.agentKeyHex)
     , m_signer(m_config.agentId, m_keyProvider)
+    , m_spoolFactory(m_config.spoolDir)
     , m_performer(m_config, defaultCurlHandleFactory())
     , m_dispatcher(callbacks)
-    , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_cluster,
-                m_authGate)
+    , m_configHash(m_config.configChecksum)
+    , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_spoolFactory,
+                m_configHash, m_cluster, m_authGate)
 {
 }
 
@@ -140,6 +142,13 @@ bool HttpsClientFacade::setAgentKey(const char* keyHex)
 
     m_authGate.release();
     return true;
+}
+
+void HttpsClientFacade::setConfigHash(const char* configHash)
+{
+    // Deliberately no lifecycle lock: callable from inside callbacks (the
+    // dispatcher thread) without deadlocking; only its own mutex is taken.
+    m_configHash.set(configHash);
 }
 
 hc_conn_state_t HttpsClientFacade::state() const
