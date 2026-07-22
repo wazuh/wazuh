@@ -14,7 +14,7 @@
 // plumbing is correct before trusting it inside the auth middleware.
 #include <gtest/gtest.h>
 
-#include "cmac.hpp"
+#include "auth/cmac.hpp"
 
 using wazuh_auth::Cmac;
 using wazuh_auth::fromLowerHex;

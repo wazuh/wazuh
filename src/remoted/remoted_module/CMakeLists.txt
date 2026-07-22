@@ -16,7 +16,8 @@ add_library(remoted_module SHARED ${REMOTED_MODULE_SRC})
 
 target_include_directories(
   remoted_module
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/interface
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include
+  # src/ is on the path so submodules resolve by prefix: "auth/...", "endpoints/...", "http_server/...".
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, singleton.hpp
           ${SRC_FOLDER}/shared_modules/common # commonDefs.h

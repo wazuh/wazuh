@@ -72,7 +72,7 @@ remoted::http::HttpResponse errorResponse(wazuh_auth::AuthError err)
 }
 } // namespace
 
-namespace remoted::http
+namespace remoted::endpoints
 {
 
 AuthGateway::AuthGateway(wazuh_auth::AuthConfig config, std::shared_ptr<wazuh_auth::IAgentKeyResolver> resolver)
@@ -80,7 +80,7 @@ AuthGateway::AuthGateway(wazuh_auth::AuthConfig config, std::shared_ptr<wazuh_au
 {
 }
 
-void AuthGateway::addAuthenticatedRoute(IHttpServer& server,
+void AuthGateway::addAuthenticatedRoute(remoted::http::IHttpServer& server,
                                         Method method,
                                         const std::string& path,
                                         AuthenticatedHandler handler)
@@ -132,9 +132,11 @@ void AuthGateway::addAuthenticatedRoute(IHttpServer& server,
                 return;
             }
 
-            // Authenticated: hand the verified request to the endpoint handler.
-            responder->send(handler(std::get<wazuh_auth::AuthenticatedRequest>(finished)));
+            // Authenticated: hand the verified request AND the responder to the
+            // endpoint handler, which now owns delivering the response (inline or
+            // asynchronously). The gateway no longer sends on the success path.
+            handler(std::get<wazuh_auth::AuthenticatedRequest>(finished), std::move(responder));
         });
 }
 
-} // namespace remoted::http
+} // namespace remoted::endpoints
