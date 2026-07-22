@@ -421,6 +421,10 @@ def delete_decoder_file(filename: Union[str, list], relative_dirname: str = None
         if wazuh_error:
             raise wazuh_error
 
+        base_path = join(common.WAZUH_PATH, relative_dirname)
+        if commonpath([realpath(full_path), realpath(base_path)]) != realpath(base_path):
+            raise WazuhError(1508)
+
         if exists(full_path):
             try:
                 remove(full_path)
