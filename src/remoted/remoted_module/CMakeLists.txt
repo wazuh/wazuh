@@ -21,28 +21,9 @@ target_include_directories(
   PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src
           ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, singleton.hpp
           ${SRC_FOLDER}/shared_modules/common # commonDefs.h
-          ${SRC_FOLDER}/external/cJSON # cJSON.h (pulled by commonDefs.h)
-          ${SRC_FOLDER}/external/openssl/include) # cmac.cpp (EVP_MAC)
+          ${SRC_FOLDER}/external/cJSON) # cJSON.h (pulled by commonDefs.h)
 
-find_library(
-  OPENSSL_CRYPTO_LIB crypto
-  HINTS ${SRC_FOLDER}/external/openssl
-  NO_DEFAULT_PATH)
-
-if(NOT OPENSSL_CRYPTO_LIB)
-  set(OPENSSL_CRYPTO_LIB crypto)
-  message(STATUS "OpenSSL crypto library not found, using target name")
-endif()
-
-# restinio::restinio: our HTTPS transport (also pulls ssl/crypto transitively).
-# OPENSSL_CRYPTO_LIB: kept explicit for cmac.cpp's EVP_MAC (auth middleware).
-target_link_libraries(
-  remoted_module
-  PRIVATE
-    pthread
-    restinio::restinio
-    ${OPENSSL_CRYPTO_LIB}
-)
+target_link_libraries(remoted_module PRIVATE pthread ext_restinio)
 
 set_target_properties(remoted_module PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                 BUILD_RPATH "$ORIGIN/../lib")
