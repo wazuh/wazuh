@@ -273,6 +273,11 @@ namespace remoted::http
         settings.address(config.bindAddress)
             .port(config.port)
             .protocol(asio::ip::tcp::v4())
+            // Set SO_REUSEADDR on the listening socket so a restart can rebind the port
+            // immediately instead of failing with EADDRINUSE while a previous socket lingers
+            // in TIME_WAIT. (RESTinio enables this by default; kept explicit for intent.)
+            .acceptor_options_setter([](auto& options)
+                                     { options.set_option(asio::ip::tcp::acceptor::reuse_address(true)); })
             .request_handler(std::move(requestRouter))
             .tls_context(std::move(tlsContext))
             .buffer_size(8192)

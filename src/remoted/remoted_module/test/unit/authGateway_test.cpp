@@ -9,14 +9,18 @@
  * Foundation.
  */
 
+#include "auth/cmac.hpp"
 #include "endpoints/authGateway.hpp"
 #include "http_server/IHttpServer.hpp"
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <ctime>
 #include <map>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
@@ -86,6 +90,40 @@ namespace
     AuthGateway makeGateway()
     {
         return AuthGateway {remoted::auth::AuthConfig {}, std::make_shared<FakeKeystore>()};
+    }
+
+    // Build a valid "Wazuh <id>:<ts>:<mac>" Authorization for agent 001, signing the same
+    // canonical byte sequence AuthMiddleware verifies, with the key FakeKeystore returns.
+    std::string
+    buildAuthorization(const std::string& method, const std::string& target, const std::string& body, std::int64_t ts)
+    {
+        const std::vector<std::uint8_t> key(16, 0x0A); // matches FakeKeystore::keyFor("001")
+        remoted::auth::Cmac cmac(key);
+        cmac.update("WAZUH-REQUEST\n");
+        cmac.update("1\n"); // protocol-version
+        cmac.update(method);
+        cmac.update("\n");
+        cmac.update(target);
+        cmac.update("\n");
+        cmac.update("001\n"); // agent id
+        cmac.update(std::to_string(ts));
+        cmac.update("\n");
+        cmac.update(body);
+        const auto mac = cmac.finalize();
+        return "Wazuh 001:" + std::to_string(ts) + ":" + remoted::auth::toLowerHex(mac.data(), mac.size());
+    }
+
+    // A request that authenticates cleanly for agent 001 against makeGateway().
+    HttpRequest signedRequest(const std::string& body)
+    {
+        const auto ts = static_cast<std::int64_t>(std::time(nullptr));
+        HttpRequest request;
+        request.method = Method::Post;
+        request.target = "/stateless";
+        request.body = body;
+        request.headers.emplace("protocol-version", "1");
+        request.headers.emplace("authorization", buildAuthorization("POST", "/stateless", body, ts));
+        return request;
     }
 } // namespace
 
@@ -185,4 +223,54 @@ TEST(AuthGatewayTest, HeaderLookupIsCaseInsensitive)
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(responder->captured->status, 401); // missing Authorization, not missing protocol-version
+}
+
+TEST(AuthGatewayTest, ValidAuthReachesHandlerWithVerifiedRequest)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    std::string seenAgentId;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&seenAgentId](const remoted::auth::AuthenticatedRequest& authReq, std::shared_ptr<IHttpResponder> responder)
+        {
+            seenAgentId = authReq.agentId;
+            responder->send(HttpResponse::json(200, R"({"ok":true})"));
+        });
+
+    const auto request = signedRequest("some-body");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 200);
+    EXPECT_EQ(seenAgentId, "001"); // the handler received the authenticated identity
+}
+
+TEST(AuthGatewayTest, HandlerExceptionYields500)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    bool handlerCalled = false;
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&handlerCalled](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder>)
+        {
+            handlerCalled = true;
+            throw std::runtime_error("boom"); // handler fails after auth succeeded
+        });
+
+    const auto request = signedRequest("some-body");
+    auto responder = std::make_shared<CapturingResponder>();
+    server.dispatch(Method::Post, "/stateless", request, responder);
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_TRUE(handlerCalled);                  // auth passed, the handler ran
+    EXPECT_EQ(responder->captured->status, 500); // ... then the gateway caught the throw
 }
