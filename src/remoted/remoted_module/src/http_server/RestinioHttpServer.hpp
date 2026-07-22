@@ -20,32 +20,32 @@
 namespace remoted::http
 {
 
-/**
- * @brief RESTinio + OpenSSL implementation of IHttpServer.
- *
- * All RESTinio/asio types are hidden behind a PImpl so this header (and every
- * translation unit that owns the server, e.g. the facade) stays free of the
- * transport library. Handlers run on a bounded worker pool and complete their
- * responses via a deferred responder, so the RESTinio I/O threads are never
- * blocked by slow handler work.
- */
-class RestinioHttpServer final : public IHttpServer
-{
-public:
-    RestinioHttpServer();
-    ~RestinioHttpServer() override;
+    /**
+     * @brief RESTinio + OpenSSL implementation of IHttpServer.
+     *
+     * All RESTinio/asio types are hidden behind a PImpl so this header (and every
+     * translation unit that owns the server, e.g. the facade) stays free of the
+     * transport library. Handlers run on a bounded worker pool and complete their
+     * responses via a deferred responder, so the RESTinio I/O threads are never
+     * blocked by slow handler work.
+     */
+    class RestinioHttpServer final : public IHttpServer
+    {
+    public:
+        RestinioHttpServer();
+        ~RestinioHttpServer() override;
 
-    RestinioHttpServer(const RestinioHttpServer&) = delete;
-    RestinioHttpServer& operator=(const RestinioHttpServer&) = delete;
+        RestinioHttpServer(const RestinioHttpServer&) = delete;
+        RestinioHttpServer& operator=(const RestinioHttpServer&) = delete;
 
-    void addRoute(Method method, const std::string& path, RouteHandler handler) override;
-    void start(const HttpServerConfig& config) override;
-    void stop() noexcept override;
+        void addRoute(Method method, const std::string& path, RouteHandler handler) override;
+        void start(const HttpServerConfig& config) override;
+        void stop() noexcept override;
 
-private:
-    struct Impl;
-    std::unique_ptr<Impl> m_impl;
-};
+    private:
+        struct Impl;
+        std::unique_ptr<Impl> m_impl;
+    };
 
 } // namespace remoted::http
 

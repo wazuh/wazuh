@@ -19,17 +19,17 @@
 namespace remoted::http
 {
 
-/**
- * @brief Create the default HTTP(S) server implementation.
- *
- * This is the single swap point for the transport library: today it returns the
- * RESTinio-backed server; a future Boost.Beast implementation only needs a new
- * IHttpServer subclass and a one-line change here. Callers never see the
- * underlying library.
- *
- * @return An owned IHttpServer.
- */
-std::unique_ptr<IHttpServer> makeHttpServer();
+    /**
+     * @brief Create the default HTTP(S) server implementation.
+     *
+     * This is the single swap point for the transport library: today it returns the
+     * RESTinio-backed server; a future Boost.Beast implementation only needs a new
+     * IHttpServer subclass and a one-line change here. Callers never see the
+     * underlying library.
+     *
+     * @return An owned IHttpServer.
+     */
+    std::unique_ptr<IHttpServer> makeHttpServer();
 
 } // namespace remoted::http
 
