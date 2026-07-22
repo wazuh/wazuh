@@ -165,6 +165,11 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
                   "AgentInfo module started with interval: " + std::to_string(interval) +
                   " seconds, integrity interval: " + std::to_string(integrityInterval) + " seconds.");
 
+    {
+        std::lock_guard<std::mutex> lock(m_shutdownMutex);
+        m_runLoopActive = true;
+    }
+
     // Load sync flags from database at startup
     loadSyncFlags();
 
@@ -252,6 +257,14 @@ void AgentInfoImpl::start(int interval, int integrityInterval, std::function<boo
     while (!m_stopped && (shouldContinue ? shouldContinue() : true));
 
     m_logFunction(LOG_INFO, "AgentInfo module loop ended.");
+
+    // Publish that the run loop has fully exited so stop() can tear down the sync
+    // protocol without racing synchronizeMetadataOrGroups().
+    {
+        std::lock_guard<std::mutex> shutdownLock(m_shutdownMutex);
+        m_runLoopActive = false;
+    }
+    m_shutdownCv.notify_all();
 }
 
 void AgentInfoImpl::stop()
@@ -269,6 +282,37 @@ void AgentInfoImpl::stop()
 
     m_cv.notify_one(); // Wake up the sleeping thread immediately
 
+    // Unblock any in-flight synchronizeModule() so the run loop returns promptly.
+    {
+        std::lock_guard<std::mutex> lock(m_syncProtocolMutex);
+
+        if (m_spSyncProtocol)
+        {
+            m_spSyncProtocol->stop();
+        }
+    }
+
+    // Wait for the run loop to exit before freeing shared resources, so we don't
+    // free m_dBSync / the sync protocol while synchronizeMetadataOrGroups() is
+    // still using them. Time-bounded so a stuck loop can't hang shutdown.
+    constexpr auto SHUTDOWN_WAIT_SECONDS = std::chrono::seconds(10);  // max wait for the run loop to finish teardown
+    bool runLoopExited = false;
+    {
+        std::unique_lock<std::mutex> lock(m_shutdownMutex);
+        runLoopExited = m_shutdownCv.wait_for(lock, SHUTDOWN_WAIT_SECONDS, [this] { return !m_runLoopActive; });
+    }
+
+    if (!runLoopExited)
+    {
+        // The run loop is still active. Freeing m_dBSync / the sync protocol now
+        // would be a use-after-free (the loop can still call synchronizeMetadataOrGroups()),
+        // so skip the teardown and let process exit reclaim the handles instead.
+        m_logFunction(LOG_WARNING, "Timeout waiting for AgentInfo run loop to exit; skipping database teardown.");
+        m_logFunction(LOG_INFO, "AgentInfo module stopped.");
+        return;
+    }
+
+    // Close the main DB connection.
     {
         std::lock_guard<std::mutex> dbLock(m_dbSyncMutex);
 
@@ -280,11 +324,12 @@ void AgentInfoImpl::stop()
         }
     }
 
-    // Signal sync protocol to stop any ongoing operations AFTER DBSync is cleaned up
-    // This ensures no new sync operations are started from DBSync callbacks
-    if (m_spSyncProtocol)
+    // Destroy the sync protocol so its SQLite connection to the persistent-queue
+    // db is closed BEFORE stop() returns. Guarded against parseResponseBuffer(),
+    // which runs on another thread.
     {
-        m_spSyncProtocol->stop();
+        std::lock_guard<std::mutex> lock(m_syncProtocolMutex);
+        m_spSyncProtocol.reset();
     }
 
     m_logFunction(LOG_INFO, "AgentInfo module stopped.");
@@ -338,12 +383,16 @@ void AgentInfoImpl::setIsShuttingDownFunction(std::function<bool()> isShuttingDo
 
 bool AgentInfoImpl::parseResponseBuffer(const uint8_t* data, size_t length)
 {
+    std::lock_guard<std::mutex> lock(m_syncProtocolMutex);
+
     if (m_spSyncProtocol && data)
     {
         return m_spSyncProtocol->parseResponseBuffer(data, length);
     }
 
-    m_logFunction(LOG_WARNING, "Sync protocol not initialized or invalid data");
+    // A late manager response can arrive after stop() has torn the sync protocol
+    // down; that is expected during shutdown, so don't raise it to WARNING then.
+    m_logFunction(m_stopped ? LOG_DEBUG : LOG_WARNING, "Sync protocol not initialized or invalid data");
     return false;
 }
 
