@@ -80,6 +80,7 @@ EXTERNAL_RPM=external/rpm/
 EXTERNAL_POPT=external/popt/
 EXTERNAL_LIBBPF=external/libbpf-bootstrap/
 EXTERNAL_DBUS=external/dbus/
+EXTERNAL_LLHTTP=external/llhttp/
 # XXX Becareful NO EXTRA Spaces here
 ifeq ($(TARGET),manager)
 WAZUH_USER?=wazuh-manager
@@ -503,7 +504,7 @@ endif
 # Manager-only dependencies.
 ifneq (${TARGET},agent)
 ifneq (${TARGET},winagent)
-	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib restinio-tmp
+	EXTERNAL_RES += $(CPYTHON) libffi jemalloc rocksdb simdjson abseil-cpp spdlog yaml-cpp pugixml libmaxminddb protobuf date fmt re2 rapidjson taskflow RxCpp concurrentqueue fast_float geo_db tzdata cpp-httplib asio expected-lite llhttp restinio
 endif
 endif
 
@@ -849,6 +850,7 @@ ifneq ($(wildcard external/*/*),)
 	rm -rf $(EXTERNAL_LZMA)build
 	rm -rf $(EXTERNAL_POPT)build
 	rm -rf $(EXTERNAL_RPM)builddir
+	rm -rf $(EXTERNAL_LLHTTP)build
 # Manually-compiled dependencies - remove object files and build artifacts
 	rm -f $(EXTERNAL_JSON)*.o $(EXTERNAL_JSON)*.a
 	rm -f $(EXTERNAL_SQLITE)*.o $(EXTERNAL_SQLITE)*.a

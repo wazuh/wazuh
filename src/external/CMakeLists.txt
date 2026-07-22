@@ -1001,6 +1001,54 @@ if(NOT IS_AGENT AND NOT IS_WINDOWS)
   set_target_properties(ext_fmt PROPERTIES IMPORTED_LOCATION
                                            ${EXTERNAL_DIR}/fmt/build/libfmt.a)
   add_dependencies(ext_fmt fmt_external)
+  target_include_directories(ext_fmt INTERFACE ${EXTERNAL_DIR}/fmt/include)
+endif()
+
+# ------------------------------------------------------------------------------
+# llhttp (server only)
+# ------------------------------------------------------------------------------
+
+if(NOT IS_AGENT AND NOT IS_WINDOWS)
+  if(EXISTS ${EXTERNAL_DIR}/llhttp/build/libllhttp.a)
+    message(STATUS "Using precompiled llhttp library")
+    add_library(ext_llhttp STATIC IMPORTED GLOBAL)
+    set_target_properties(
+      ext_llhttp PROPERTIES IMPORTED_LOCATION
+                            ${EXTERNAL_DIR}/llhttp/build/libllhttp.a)
+    target_include_directories(ext_llhttp INTERFACE
+                               ${EXTERNAL_DIR}/llhttp/include)
+  else()
+    add_library(
+      ext_llhttp STATIC
+      ${EXTERNAL_DIR}/llhttp/src/llhttp.c ${EXTERNAL_DIR}/llhttp/src/http.c
+      ${EXTERNAL_DIR}/llhttp/src/api.c)
+    set_target_properties(
+      ext_llhttp PROPERTIES POSITION_INDEPENDENT_CODE ON
+                            C_STANDARD 99
+                            OUTPUT_NAME llhttp
+                            ARCHIVE_OUTPUT_DIRECTORY
+                            ${EXTERNAL_DIR}/llhttp/build)
+    target_include_directories(ext_llhttp PUBLIC ${EXTERNAL_DIR}/llhttp/include)
+  endif()
+endif()
+
+# ------------------------------------------------------------------------------
+# RESTinio (server only)
+# ------------------------------------------------------------------------------
+
+if(NOT IS_AGENT AND NOT IS_WINDOWS)
+  add_library(ext_asio INTERFACE)
+  target_include_directories(ext_asio SYSTEM INTERFACE ${EXTERNAL_DIR}/asio/include)
+
+  add_library(ext_expected_lite INTERFACE)
+  target_include_directories(ext_expected_lite SYSTEM
+                             INTERFACE ${EXTERNAL_DIR}/expected-lite/include)
+
+  add_library(ext_restinio INTERFACE)
+  target_include_directories(ext_restinio SYSTEM
+                             INTERFACE ${EXTERNAL_DIR}/restinio/dev)
+  target_link_libraries(ext_restinio INTERFACE ext_asio ext_llhttp ext_fmt
+                                              ext_expected_lite ssl crypto)
 endif()
 
 # ------------------------------------------------------------------------------
