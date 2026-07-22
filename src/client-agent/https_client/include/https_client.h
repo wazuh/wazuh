@@ -78,7 +78,8 @@ typedef enum hc_buffer_level_t
     HC_BUFFER_FLOOD
 } hc_buffer_level_t;
 
-/* Outcome classes of a request/submission (D9 classification). */
+/* Outcome classes of a request/submission (D9 classification). Crosses the
+ * ABI in the on_sync_response callback. */
 typedef enum hc_result_t
 {
     HC_RESULT_OK = 0,
@@ -154,12 +155,17 @@ typedef struct hc_config_t
     ///< a mismatch triggers /download.
 
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
-    uint32_t stateful_timeout_ms; ///< Large transfers (/download); 0 -> 120000.
+    uint32_t stateful_timeout_ms; ///< Large transfers (/stateful, /download);
+    ///< 0 -> 120000.
     uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.
     uint32_t backoff_cap_ms;      ///< Full-jitter cap; 0 -> 60000.
     uint32_t drain_timeout_ms;    ///< Shutdown drain window; 0 -> 5000.
 
     char spool_dir[HC_MAX_PATH];  ///< Spool dir for temp files; empty -> system tmp.
+
+    /// Local STREAM socket for the stateful sync intake (large sessions bypass
+    /// the 64 KB DGRAM event queue). Empty -> the intake is not started.
+    char sync_socket_path[HC_MAX_PATH];
 } hc_config_t;
 
 /**
@@ -198,6 +204,8 @@ typedef struct hc_callbacks_t
     /// agent's startup hash gate) can reconcile it even when nothing needs
     /// downloading. Empty when the manager reported none.
     void (*on_manager_config_hash)(const char* config_hash, void* user_data);
+    void (*on_sync_response)(const char* session_id, int result, const char* body,
+                             void* user_data);
     void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t
     void (*on_buffer_level)(int level, void* user_data);  ///< hc_buffer_level_t
     void* user_data;
@@ -244,6 +252,35 @@ HC_EXPORTED void hc_destroy(hc_handle* handle);
  *        surfaced via on_buffer_level).
  */
 HC_EXPORTED bool hc_submit_event(hc_handle* handle, const uint8_t* frame, size_t length);
+
+/**
+ * @brief Submit a whole sync session for /stateful. Asynchronous: the
+ *        outcome arrives via on_sync_response with the same session_id.
+ *        Returns false when the client is not running or the session
+ *        queue is full.
+ */
+HC_EXPORTED bool hc_submit_sync_session(hc_handle* handle, const char* session_id,
+                                        const uint8_t* buffer, size_t length);
+
+/**
+ * @brief Submit a whole sync session that is ALREADY spooled to a file (the
+ *        intake streamed it off the local sync socket, so a multi-MB session
+ *        never sat in memory). The module adopts the file and deletes it once
+ *        the session is sent. Asynchronous, like hc_submit_sync_session.
+ *        Returns false when the client is not running or the queue is full.
+ */
+HC_EXPORTED bool hc_submit_sync_session_file(hc_handle* handle, const char* session_id,
+                                             const char* file_path, uint64_t size);
+
+/**
+ * @brief Producer-side helper: stream a whole sync session to the agent's
+ *        sync intake socket (the STREAM socket that bypasses the 64 KB DGRAM
+ *        cap). Standalone (no handle) — a producer process calls this in place
+ *        of chunked DGRAM sends. Returns false on connect/write failure.
+ *        Unix-only.
+ */
+HC_EXPORTED bool hc_send_sync_session(const char* socket_path, const char* session_id,
+                                      const uint8_t* body, size_t length);
 
 /* ---- control plane ---- */
 

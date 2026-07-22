@@ -35,7 +35,7 @@
  *        idiom). It validates the AES-CMAC of every request server-side with
  *        the shared key, so a 200 proves real cross-implementation auth
  *        interop; a mismatch yields 401. It supports a one-shot 503 (back-
- *        pressure) and a 426 mode.
+ *        pressure), a session LRU-of-one (dedup), and a 426 mode.
  *
  * The child process runs the server; the parent asserts on the responses it
  * receives (the two sides do not share memory).
@@ -144,6 +144,7 @@ class FakeManager final
                 :
                 sha256Hex(configBlob.data(), configBlob.size());
             auto backpressureArmed = std::make_shared<std::atomic<bool>>(true);
+            auto lastSession = std::make_shared<std::string>();
             auto notifyCount = std::make_shared<std::atomic<int>>(0);
 
             // The key every endpoint verifies against: after the configured
@@ -204,6 +205,26 @@ class FakeManager final
                 std::lock_guard<std::mutex> lock(*acceptedMutex);
                 response.status = 200;
                 response.set_content(*acceptedEvents, "text/plain");
+            });
+
+            server.Post("/stateful",
+                        [verify, lastSession](const httplib::Request & request, httplib::Response & response)
+            {
+                if (!verify("/stateful", request))
+                {
+                    response.status = 401;
+                    return;
+                }
+
+                const auto session = request.get_header_value("X-Session-Id");
+                const bool cached = (*lastSession == session);
+                *lastSession = session;
+                response.status = 200;
+                response.set_content(
+                    std::string {"{\"sessionId\":\""} + session + "\",\"cached\":" +
+                    (cached ? "true" : "false") + ",\"bytes\":" +
+                    std::to_string(request.body.size()) + "}",
+                    "application/json");
             });
 
             server.Post("/download",
