@@ -12,7 +12,7 @@
 #ifndef _REMOTED_ENDPOINTS_ENDPOINT_HPP
 #define _REMOTED_ENDPOINTS_ENDPOINT_HPP
 
-#include "auth/authTypes.hpp"          // wazuh_auth::AuthenticatedRequest
+#include "auth/authTypes.hpp"          // remoted::auth::AuthenticatedRequest
 #include "http_server/IHttpServer.hpp" // remoted::http::{HttpRequest,HttpResponse,IHttpResponder,Method}
 
 #include <functional>
@@ -21,26 +21,25 @@
 namespace remoted::endpoints
 {
 
-// Shared types an endpoint unit needs, re-exported so a new endpoint includes
-// only this contract header (plus its own logic). As more endpoints are added,
-// each lives in its own folder under src/endpoints/<name>/ and depends on this.
-using remoted::http::HttpRequest;
-using remoted::http::HttpResponse;
-using remoted::http::IHttpResponder;
-using remoted::http::Method;
-using wazuh_auth::AuthenticatedRequest;
+    // Shared types an endpoint unit needs, re-exported so a new endpoint includes
+    // only this contract header (plus its own logic). As more endpoints are added,
+    // each lives in its own folder under src/endpoints/<name>/ and depends on this.
+    using remoted::auth::AuthenticatedRequest;
+    using remoted::http::HttpRequest;
+    using remoted::http::HttpResponse;
+    using remoted::http::IHttpResponder;
+    using remoted::http::Method;
 
-/**
- * @brief Post-authentication endpoint handler.
- *
- * Invoked only after the AES-CMAC validation succeeds, with the verified request
- * and the responder. Asynchronous by contract: the handler owns delivering the
- * response and may do so inline or later, from any thread (it runs on the
- * server's worker pool, so it never stalls the I/O threads). It must call
- * responder->send(...) exactly once.
- */
-using AuthenticatedHandler =
-    std::function<void(const AuthenticatedRequest&, std::shared_ptr<IHttpResponder>)>;
+    /**
+     * @brief Post-authentication endpoint handler.
+     *
+     * Invoked only after the AES-CMAC validation succeeds, with the verified request
+     * and the responder. Asynchronous by contract: the handler owns delivering the
+     * response and may do so inline or later, from any thread (it runs on the
+     * server's worker pool, so it never stalls the I/O threads). It must call
+     * responder->send(...) exactly once.
+     */
+    using AuthenticatedHandler = std::function<void(const AuthenticatedRequest&, std::shared_ptr<IHttpResponder>)>;
 
 } // namespace remoted::endpoints
 

@@ -15,14 +15,14 @@
 
 #include <gtest/gtest.h>
 
-#include "auth/clientKeysFileResolver.hpp"
+#include "auth/keystore.hpp"
 
-using namespace wazuh_auth;
+using namespace remoted::auth;
 
 namespace
 {
 
-    class ClientKeysFileResolverTest : public ::testing::Test
+    class KeystoreTest : public ::testing::Test
     {
     protected:
         void SetUp() override
@@ -46,75 +46,75 @@ namespace
         std::string m_path;
     };
 
-    TEST_F(ClientKeysFileResolverTest, LoadsAValidEntry)
+    TEST_F(KeystoreTest, LoadsAValidEntry)
     {
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
-        ClientKeysFileResolver resolver(m_path);
+        Keystore keystore(m_path);
 
-        const auto key = resolver.resolve("3824");
+        const auto key = keystore.keyFor("3824");
         ASSERT_TRUE(key.has_value());
         EXPECT_EQ(key->size(), 32u);
     }
 
-    TEST_F(ClientKeysFileResolverTest, UnknownAgentIsNullopt)
+    TEST_F(KeystoreTest, UnknownAgentIsNullopt)
     {
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
-        ClientKeysFileResolver resolver(m_path);
+        Keystore keystore(m_path);
 
-        EXPECT_FALSE(resolver.resolve("9999").has_value());
+        EXPECT_FALSE(keystore.keyFor("9999").has_value());
     }
 
-    TEST_F(ClientKeysFileResolverTest, CommentAndBlankLinesAreSkipped)
+    TEST_F(KeystoreTest, CommentAndBlankLinesAreSkipped)
     {
         writeFile("# a comment\n"
                   " # another, indented\n"
                   "3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
-        ClientKeysFileResolver resolver(m_path);
+        Keystore keystore(m_path);
 
-        EXPECT_TRUE(resolver.resolve("3824").has_value());
+        EXPECT_TRUE(keystore.keyFor("3824").has_value());
     }
 
-    TEST_F(ClientKeysFileResolverTest, RemovedEntryIsSkipped)
+    TEST_F(KeystoreTest, RemovedEntryIsSkipped)
     {
         writeFile("3824 !debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
-        ClientKeysFileResolver resolver(m_path);
+        Keystore keystore(m_path);
 
-        EXPECT_FALSE(resolver.resolve("3824").has_value());
+        EXPECT_FALSE(keystore.keyFor("3824").has_value());
     }
 
-    TEST_F(ClientKeysFileResolverTest, MalformedLineIsSkipped)
+    TEST_F(KeystoreTest, MalformedLineIsSkipped)
     {
         writeFile("3824 debian10 any\n"); // missing key column
-        ClientKeysFileResolver resolver(m_path);
+        Keystore keystore(m_path);
 
-        EXPECT_FALSE(resolver.resolve("3824").has_value());
+        EXPECT_FALSE(keystore.keyFor("3824").has_value());
     }
 
-    TEST_F(ClientKeysFileResolverTest, NonHexKeyResolvesToAnEmptyKey)
+    TEST_F(KeystoreTest, NonHexKeyResolvesToAnEmptyKey)
     {
         writeFile("3824 debian10 any not-hex-at-all\n");
-        ClientKeysFileResolver resolver(m_path);
+        Keystore keystore(m_path);
 
-        const auto key = resolver.resolve("3824");
+        const auto key = keystore.keyFor("3824");
         ASSERT_TRUE(key.has_value());
         EXPECT_TRUE(key->empty());
     }
 
-    TEST_F(ClientKeysFileResolverTest, MissingFileLeavesResolverEmpty)
+    TEST_F(KeystoreTest, MissingFileLeavesKeystoreEmpty)
     {
-        ClientKeysFileResolver resolver(m_path + "-does-not-exist");
-        EXPECT_FALSE(resolver.resolve("3824").has_value());
+        Keystore keystore(m_path + "-does-not-exist");
+        EXPECT_FALSE(keystore.keyFor("3824").has_value());
     }
 
-    TEST_F(ClientKeysFileResolverTest, ReloadPicksUpChanges)
+    TEST_F(KeystoreTest, ReloadPicksUpChanges)
     {
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
-        ClientKeysFileResolver resolver(m_path);
-        ASSERT_TRUE(resolver.resolve("3824").has_value());
+        Keystore keystore(m_path);
+        ASSERT_TRUE(keystore.keyFor("3824").has_value());
 
         writeFile("3824 !debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
-        EXPECT_EQ(resolver.reload(), 0);
-        EXPECT_FALSE(resolver.resolve("3824").has_value());
+        EXPECT_EQ(keystore.reload(), 0);
+        EXPECT_FALSE(keystore.keyFor("3824").has_value());
     }
 
 } // namespace
