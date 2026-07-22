@@ -32,6 +32,8 @@ class ICallbackSink
         /// The signing credential was rejected (401); the module has paused all
         /// traffic. Fired once per incident until the key is replaced.
         virtual void onReenrollRequired() = 0;
+        virtual void onTask(const std::string& taskId, const std::string& taskType,
+                            const std::string& payloadJson) = 0;
         /// The file lives while the callback chain holds the shared_ptr; the
         /// production sink drops it right after the C callback returns.
         virtual void onConfigDownloaded(const std::string& configHash,
