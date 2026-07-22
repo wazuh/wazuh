@@ -19,10 +19,10 @@
 #include <gtest/gtest.h>
 
 #include "auth/authMiddleware.hpp"
-#include "auth/clientKeysFileResolver.hpp"
 #include "auth/cmac.hpp"
+#include "auth/keystore.hpp"
 
-using namespace wazuh_auth;
+using namespace remoted::auth;
 
 namespace
 {
@@ -31,8 +31,8 @@ namespace
     const std::vector<std::uint8_t> kKey = {
         0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c};
 
-    // Writes a one-agent client.keys to a scratch path so ClientKeysFileResolver
-    // has something real to parse, instead of a resolver built just for tests.
+    // Writes a one-agent client.keys to a scratch path so Keystore has
+    // something real to parse, instead of a stub built just for tests.
     std::string writeClientKeysFile(const std::string& agentId, const std::vector<std::uint8_t>& key)
     {
         const std::string path = "/tmp/authMiddleware_test_" + std::to_string(getpid()) + ".keys";
@@ -44,7 +44,7 @@ namespace
     struct Fixture
     {
         std::string path = writeClientKeysFile("001", kKey);
-        std::shared_ptr<ClientKeysFileResolver> keyStore = std::make_shared<ClientKeysFileResolver>(path);
+        std::shared_ptr<Keystore> keyStore = std::make_shared<Keystore>(path);
         AuthMiddleware middleware {AuthConfig {}, keyStore};
 
         ~Fixture()
