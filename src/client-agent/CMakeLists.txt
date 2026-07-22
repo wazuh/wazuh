@@ -43,6 +43,7 @@ include_directories(
   ${SRC_FOLDER}/wazuh_modules/sca/include/
   ${SRC_FOLDER}/shared_modules/agent_metadata/include/
   ${SRC_FOLDER}/shared_modules/common/
+  ${CMAKE_CURRENT_SOURCE_DIR}/https_client/include/
   ${CMAKE_CURRENT_SOURCE_DIR}/include/
   ${CMAKE_CURRENT_SOURCE_DIR}/src/)
 
@@ -61,6 +62,9 @@ endif()
 set(LIB_DIR ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${LIB_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${LIB_DIR})
+
+# C++ HTTPS transport module (before the C glob so its sources never enter it)
+add_subdirectory(https_client)
 
 # Collect source files
 file(GLOB AGENTD_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
@@ -81,7 +85,7 @@ if(UNIT_TEST)
 endif()
 
 target_link_libraries(agentd_lib PUBLIC wazuhext pthread agent_metadata config
-                                        wazuh_modulesd_lib wazuh)
+                                        wazuh_modulesd_lib wazuh https_client)
 
 if(UNIX)
   target_link_libraries(agentd_lib PUBLIC dl)
@@ -98,7 +102,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_compile_definitions(wazuh-agentd PRIVATE WAZUH_UNIT_TESTING)
   endif()
   target_link_libraries(wazuh-agentd PRIVATE wazuhext pthread agent_metadata
-                                             config wazuh_modulesd_lib wazuh)
+                                             config wazuh_modulesd_lib wazuh
+                                             https_client)
   # Only build Unix executable when not running unit tests
 elseif(NOT UNIT_TEST)
   add_executable(wazuh-agentd "${CMAKE_CURRENT_SOURCE_DIR}/src/main.c")
