@@ -25,6 +25,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstring>
+#include <fstream>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -132,6 +133,64 @@ TEST_F(FacadeE2eTest, RegistersOverTlsAndStopsCleanly)
 
 namespace
 {
+    struct ConfigRecorder
+    {
+        std::atomic<int> count {0};
+        std::mutex mutex;
+        std::string hash;
+        std::string content;
+    };
+
+    void onConfigDownloaded(const char* configHash, const char* filePath, void* userData)
+    {
+        auto* recorder = static_cast<ConfigRecorder*>(userData);
+        std::lock_guard<std::mutex> lock(recorder->mutex);
+        recorder->hash = configHash;
+        std::ifstream file {filePath, std::ios::binary};
+        recorder->content.assign(std::istreambuf_iterator<char>(file),
+                                 std::istreambuf_iterator<char>());
+        recorder->count++;
+    }
+} // namespace
+
+TEST_F(FacadeE2eTest, ConfigMismatchDownloadsOverTlsAndDeliversOnce)
+{
+    // A dedicated manager advertising a config blob: the client (seeded with
+    // a different local hash) downloads it through the chunked /download,
+    // reads it inside the callback, and the optimistic hash update keeps the
+    // count at one across further notifies.
+    const uint16_t port = TLS_PORT + 2;
+    const std::string blob = "#merged.mg v2\n<agent_config></agent_config>\n";
+    FakeManager manager {port, KEY_HEX, /*tls=*/true, /*settingsFlipAfter=*/0, blob};
+
+    ConfigRecorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    std::strncpy(config.config_checksum, "0000-local-out-of-date",
+                 sizeof(config.config_checksum) - 1);
+    hc_callbacks_t callbacks {};
+    callbacks.on_config_downloaded = onConfigDownloaded;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+
+    ASSERT_TRUE(waitFor(recorder.count, 1, 5000)); // Downloaded + delivered.
+
+    // notify_interval_s = 1: give two more notify cycles a chance to
+    // (wrongly) re-download; the optimistic update must keep it at one.
+    std::this_thread::sleep_for(std::chrono::milliseconds {2500});
+    EXPECT_EQ(1, recorder.count.load());
+    hc_destroy(handle);
+
+    std::lock_guard<std::mutex> lock(recorder.mutex);
+    EXPECT_EQ(blob, recorder.content); // Byte-exact through chunked TLS.
+    EXPECT_EQ(64u, recorder.hash.size()); // A SHA-256 hex.
+}
+
+namespace
+{
     struct ReenrollRecorder
     {
         std::atomic<int> reenrollCount {0};
@@ -175,7 +234,7 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentKeyRecovers)
     const uint16_t port = TLS_PORT + 4;
     const std::string oldKey = KEY_HEX;
     const std::string newKey = "0f0e0d0c0b0a09080706050403020100";
-    FakeManager manager {port, oldKey, /*tls=*/true, 0, /*rotateKeyAfterNotifies=*/2, newKey};
+    FakeManager manager {port, oldKey, /*tls=*/true, 0, {}, /*rotateKeyAfterNotifies=*/2, newKey};
 
     ReenrollRecorder recorder;
     hc_config_t config = tlsConfig();
