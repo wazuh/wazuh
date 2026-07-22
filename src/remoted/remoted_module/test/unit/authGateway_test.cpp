@@ -56,11 +56,11 @@ namespace
         std::map<std::pair<Method, std::string>, RouteHandler> m_routes;
     };
 
-    // Resolver stub: knows one agent; anything else is unknown.
-    class FakeResolver final : public wazuh_auth::IAgentKeyResolver
+    // Keystore stub: knows one agent; anything else is unknown.
+    class FakeKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
-        std::optional<std::vector<std::uint8_t>> resolve(const std::string& agentId) const override
+        std::optional<std::vector<std::uint8_t>> keyFor(const std::string& agentId) const override
         {
             if (agentId == "001")
             {
@@ -85,7 +85,7 @@ namespace
 
     AuthGateway makeGateway()
     {
-        return AuthGateway {wazuh_auth::AuthConfig {}, std::make_shared<FakeResolver>()};
+        return AuthGateway {remoted::auth::AuthConfig {}, std::make_shared<FakeKeystore>()};
     }
 } // namespace
 
@@ -94,11 +94,12 @@ TEST(AuthGatewayTest, RegistersRouteOnTheServer)
     FakeHttpServer server;
     auto gateway = makeGateway();
 
-    gateway.addAuthenticatedRoute(server,
-                                  Method::Post,
-                                  "/stateless",
-                                  [](const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
-                                  { responder->send(HttpResponse {200, "", {}}); });
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
+        { responder->send(HttpResponse {200, "", {}}); });
 
     EXPECT_TRUE(server.hasRoute(Method::Post, "/stateless"));
 }
@@ -113,7 +114,7 @@ TEST(AuthGatewayTest, MissingProtocolVersionYields400AndSkipsHandler)
         server,
         Method::Post,
         "/stateless",
-        [&handlerCalled](const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
+        [&handlerCalled](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
         {
             handlerCalled = true;
             responder->send(HttpResponse {200, "", {}});
@@ -142,7 +143,7 @@ TEST(AuthGatewayTest, MissingAuthorizationYields401AndSkipsHandler)
         server,
         Method::Post,
         "/stateless",
-        [&handlerCalled](const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
+        [&handlerCalled](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
         {
             handlerCalled = true;
             responder->send(HttpResponse {200, "", {}});
@@ -166,11 +167,12 @@ TEST(AuthGatewayTest, HeaderLookupIsCaseInsensitive)
     FakeHttpServer server;
     auto gateway = makeGateway();
 
-    gateway.addAuthenticatedRoute(server,
-                                  Method::Post,
-                                  "/stateless",
-                                  [](const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
-                                  { responder->send(HttpResponse {200, "", {}}); });
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
+        { responder->send(HttpResponse {200, "", {}}); });
 
     HttpRequest request;
     request.method = Method::Post;
