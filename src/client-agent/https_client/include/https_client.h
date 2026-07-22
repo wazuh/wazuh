@@ -113,6 +113,13 @@ typedef struct hc_config_t
     uint32_t notify_interval_s;         ///< notify_time; 0 -> 20.
     uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
 
+    /// Interim task-dedup bounds (TODO #37833: replaced by the durable
+    /// agent-info task_id registry). Max ids kept; 0 -> 4096.
+    uint32_t task_dedup_max;
+    /// Interim task-dedup TTL in seconds; a duplicate re-delivered after this
+    /// is accepted again; 0 -> 3600 (TODO #37833).
+    uint32_t task_dedup_ttl_s;
+
     char version[HC_MAX_VERSION];       ///< Product version for Startup.
     char config_checksum[HC_MAX_CHECKSUM]; ///< Local merged.mg MD5 seed. Compared
     ///< against the manager-reported
@@ -147,6 +154,8 @@ typedef struct hc_callbacks_t
     /// band (the authd flow, caller-owned retries) and call hc_set_agent_key()
     /// with the new key to resume.
     void (*on_reenroll_required)(void* user_data);
+    void (*on_task)(const char* task_id, const char* task_type, const char* payload_json,
+                    void* user_data);
     /// A Notify reported a merged-config hash differing from the local one;
     /// the module fetched the new configuration via POST /download and
     /// verified its MD5. file_path is a module-owned temp file valid ONLY

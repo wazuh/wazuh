@@ -98,6 +98,17 @@ static void on_reenroll_required(void *user_data)
     fflush(stdout);
 }
 
+static void on_task(const char *task_id, const char *task_type, const char *payload_json,
+                    void *user_data)
+{
+    (void)user_data;
+    printf("[+%7ld ms] >> TASK received: id=%s type=%s payload=%s\n", elapsed_ms(), task_id,
+           task_type, payload_json);
+    fflush(stdout);
+    /* All four contract types are fire-and-forget (#37733): nothing is
+     * reported back; a real agent routes them to their handlers here. */
+}
+
 /* The new-config delivery: the file lives only until this returns, so a real
  * consumer copies it here, applies it (write merged.mg, unmerge, reload) and
  * corrects the module's hash view if the apply fails. */
@@ -177,6 +188,7 @@ int main(int argc, char **argv)
     callbacks.log = on_log;
     callbacks.on_startup_result = on_startup_result;
     callbacks.on_reenroll_required = on_reenroll_required;
+    callbacks.on_task = on_task;
     callbacks.on_config_downloaded = on_config_downloaded;
     callbacks.on_state_change = on_state_change;
 
@@ -195,10 +207,11 @@ int main(int argc, char **argv)
     printf("== forcing an out-of-cycle Notify ==\n");
     hc_notify_now(handle);
 
-    /* Let the control loop run: the mock flips its config at notify #3
-     * (-> /download), its settings at notify #5 (-> the client refreshes
-     * startup in place) and rotates its key at #7 (-> 401, one re-enroll
-     * callback, hc_set_agent_key recovery). */
+    /* Let the control loop deliver the fire-and-forget task batch (notify
+     * #2); nothing is reported back (#37733: no response message). Then the
+     * mock flips its config at #3 (-> /download), its settings at #5 (-> an
+     * in-place startup refresh) and rotates its key at #7 (-> 401, one
+     * re-enroll callback, hc_set_agent_key recovery). */
     nap(3000);
     hc_notify_now(handle);
     nap(7000);

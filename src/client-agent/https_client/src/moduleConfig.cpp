@@ -43,6 +43,8 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.ciphers = boundedString(config.ciphers, sizeof(config.ciphers));
     typed.notifyIntervalS = orDefault<uint32_t>(config.notify_interval_s, 20);
     typed.rejectedRetryIntervalS = orDefault<uint32_t>(config.rejected_retry_interval_s, 60);
+    typed.taskDedupMax = orDefault<uint32_t>(config.task_dedup_max, 4096);
+    typed.taskDedupTtlS = orDefault<uint32_t>(config.task_dedup_ttl_s, 3600);
     typed.version = boundedString(config.version, sizeof(config.version));
     typed.configChecksum = boundedString(config.config_checksum, sizeof(config.config_checksum));
     typed.requestTimeoutMs = orDefault<uint32_t>(config.request_timeout_ms, 10000);

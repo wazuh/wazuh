@@ -42,6 +42,11 @@ struct ModuleConfig
         uint32_t notifyIntervalS {20};
         uint32_t rejectedRetryIntervalS {60};
 
+        // TODO(#37833): interim in-memory dedup bounds; retired by the durable
+        // agent-info task_id registry.
+        uint32_t taskDedupMax {4096};
+        uint32_t taskDedupTtlS {3600};
+
         std::string version;
         std::string configChecksum;
 

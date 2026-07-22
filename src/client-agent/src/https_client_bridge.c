@@ -193,6 +193,15 @@ static agent_status_t bridge_map_agent_status(int hc_state)
     }
 }
 
+static void bridge_on_task(const char *task_id, const char *task_type, const char *payload_json,
+                           void *user_data)
+{
+    (void)payload_json;
+    (void)user_data;
+    mdebug1("https_client task received: id=%s type=%s", task_id ? task_id : "?",
+            task_type ? task_type : "?");
+}
+
 static void bridge_on_config_downloaded(const char *config_hash, const char *file_path,
                                         void *user_data)
 {
@@ -330,6 +339,7 @@ void w_https_client_start(void)
     callbacks.log = mtLoggingFunctionsWrapper;
     callbacks.on_startup_result = bridge_on_startup_result;
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
+    callbacks.on_task = bridge_on_task;
     callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_state_change = bridge_on_state_change;
 
