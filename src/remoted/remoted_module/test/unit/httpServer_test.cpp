@@ -26,42 +26,42 @@ using namespace remoted::http;
 
 namespace
 {
-// Responder stub that captures whatever a handler sends (once).
-class CapturingResponder final : public IHttpResponder
-{
-public:
-    void send(HttpResponse response) override
+    // Responder stub that captures whatever a handler sends (once).
+    class CapturingResponder final : public IHttpResponder
     {
-        if (!captured.has_value())
+    public:
+        void send(HttpResponse response) override
         {
-            captured = std::move(response);
+            if (!captured.has_value())
+            {
+                captured = std::move(response);
+            }
+        }
+
+        std::optional<HttpResponse> captured;
+    };
+
+    // Zero-initialized C-ABI config, like remoted's `= {0}`.
+    remoted_module_config_t zeroedConfig()
+    {
+        remoted_module_config_t config;
+        std::memset(&config, 0, sizeof(config));
+        return config;
+    }
+
+    void clearHttpEnvironment()
+    {
+        for (const auto* name : {"WAZUH_REMOTED_HTTPS_ADDRESS",
+                                 "WAZUH_REMOTED_HTTPS_PORT",
+                                 "WAZUH_REMOTED_HTTPS_IO_THREADS",
+                                 "WAZUH_REMOTED_HTTPS_WORKER_THREADS",
+                                 "WAZUH_REMOTED_HTTPS_MAX_BODY_SIZE",
+                                 "WAZUH_REMOTED_HTTPS_CERTIFICATE",
+                                 "WAZUH_REMOTED_HTTPS_PRIVATE_KEY"})
+        {
+            unsetenv(name);
         }
     }
-
-    std::optional<HttpResponse> captured;
-};
-
-// Zero-initialized C-ABI config, like remoted's `= {0}`.
-remoted_module_config_t zeroedConfig()
-{
-    remoted_module_config_t config;
-    std::memset(&config, 0, sizeof(config));
-    return config;
-}
-
-void clearHttpEnvironment()
-{
-    for (const auto* name : {"WAZUH_REMOTED_HTTPS_ADDRESS",
-                             "WAZUH_REMOTED_HTTPS_PORT",
-                             "WAZUH_REMOTED_HTTPS_IO_THREADS",
-                             "WAZUH_REMOTED_HTTPS_WORKER_THREADS",
-                             "WAZUH_REMOTED_HTTPS_MAX_BODY_SIZE",
-                             "WAZUH_REMOTED_HTTPS_CERTIFICATE",
-                             "WAZUH_REMOTED_HTTPS_PRIVATE_KEY"})
-    {
-        unsetenv(name);
-    }
-}
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -123,9 +123,13 @@ TEST(HttpServerTest, RegisterRoutesDoesNotThrow)
     ASSERT_NE(server, nullptr);
 
     EXPECT_NO_THROW({
-        server->addRoute(Method::Get, "/", [](const HttpRequest&, std::shared_ptr<IHttpResponder> r)
+        server->addRoute(Method::Get,
+                         "/",
+                         [](const HttpRequest&, std::shared_ptr<IHttpResponder> r)
                          { r->send(HttpResponse::json(200, "{}")); });
-        server->addRoute(Method::Post, "/events", [](const HttpRequest&, std::shared_ptr<IHttpResponder> r)
+        server->addRoute(Method::Post,
+                         "/events",
+                         [](const HttpRequest&, std::shared_ptr<IHttpResponder> r)
                          { r->send(HttpResponse::json(202, "{}")); });
     });
 }
@@ -159,7 +163,9 @@ TEST(HttpServerTest, StopWithoutStartIsSafe)
 TEST(HttpResponderContractTest, ImmediateResponseMapping)
 {
     RouteHandler handler = [](const HttpRequest&, std::shared_ptr<IHttpResponder> responder)
-    { responder->send(HttpResponse::json(201, R"({"created":true})")); };
+    {
+        responder->send(HttpResponse::json(201, R"({"created":true})"));
+    };
 
     HttpRequest request;
     request.method = Method::Post;
@@ -182,7 +188,9 @@ TEST(HttpResponderContractTest, DeferredResponseFromAnotherThread)
 
     // Handler defers: it stashes the responder and returns without answering.
     RouteHandler handler = [&held](const HttpRequest&, std::shared_ptr<IHttpResponder> responder)
-    { held = std::move(responder); };
+    {
+        held = std::move(responder);
+    };
 
     auto responder = std::make_shared<CapturingResponder>();
     handler(HttpRequest {}, responder);

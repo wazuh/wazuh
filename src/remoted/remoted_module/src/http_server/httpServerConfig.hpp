@@ -18,26 +18,26 @@
 namespace remoted::http
 {
 
-/**
- * @brief Translate the module's C-ABI config into an HttpServerConfig.
- *
- * Fields left empty/zero by the caller (remoted fills the struct with {0}) fall
- * back to environment variables and then to built-in defaults, so the server is
- * usable today without wiring every value from the C side:
- *   - port          <- config.port  | WAZUH_REMOTED_HTTPS_PORT          | 9443
- *   - ioThreads     <- config.io_threads | WAZUH_REMOTED_HTTPS_IO_THREADS | 2
- *   - workerThreads <- config.http_worker_threads | config.worker_threads
- *                        | WAZUH_REMOTED_HTTPS_WORKER_THREADS | 4
- *   - certificate   <- config.certificate_path | WAZUH_REMOTED_HTTPS_CERTIFICATE  | default
- *   - private key   <- config.private_key_path | WAZUH_REMOTED_HTTPS_PRIVATE_KEY  | default
- *   - bind address  <- WAZUH_REMOTED_HTTPS_ADDRESS | 127.0.0.1
- *   - max body size <- WAZUH_REMOTED_HTTPS_MAX_BODY_SIZE | 2 MiB
- *
- * @param config Configuration handed by remoted.
- * @return Resolved HttpServerConfig.
- * @throws std::invalid_argument if an environment override is not a valid integer in range.
- */
-HttpServerConfig buildHttpServerConfig(const remoted_module_config_t& config);
+    /**
+     * @brief Translate the module's C-ABI config into an HttpServerConfig.
+     *
+     * Fields left empty/zero by the caller (remoted fills the struct with {0}) fall
+     * back to environment variables and then to built-in defaults, so the server is
+     * usable today without wiring every value from the C side:
+     *   - port          <- config.port  | WAZUH_REMOTED_HTTPS_PORT          | 9443
+     *   - ioThreads     <- config.io_threads | WAZUH_REMOTED_HTTPS_IO_THREADS | 2
+     *   - workerThreads <- config.http_worker_threads | config.worker_threads
+     *                        | WAZUH_REMOTED_HTTPS_WORKER_THREADS | 4
+     *   - certificate   <- config.certificate_path | WAZUH_REMOTED_HTTPS_CERTIFICATE  | default
+     *   - private key   <- config.private_key_path | WAZUH_REMOTED_HTTPS_PRIVATE_KEY  | default
+     *   - bind address  <- WAZUH_REMOTED_HTTPS_ADDRESS | 127.0.0.1
+     *   - max body size <- WAZUH_REMOTED_HTTPS_MAX_BODY_SIZE | 2 MiB
+     *
+     * @param config Configuration handed by remoted.
+     * @return Resolved HttpServerConfig.
+     * @throws std::invalid_argument if an environment override is not a valid integer in range.
+     */
+    HttpServerConfig buildHttpServerConfig(const remoted_module_config_t& config);
 
 } // namespace remoted::http
 

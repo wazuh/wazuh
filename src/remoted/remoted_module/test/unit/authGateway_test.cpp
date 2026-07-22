@@ -26,65 +26,67 @@ using namespace remoted::endpoints;
 
 namespace
 {
-// Fake transport: stores registered routes so a test can dispatch them directly
-// (synchronously, no sockets), exactly as the gateway's wrapper would run on a
-// worker thread.
-class FakeHttpServer final : public IHttpServer
-{
-public:
-    void addRoute(Method method, const std::string& path, RouteHandler handler) override
+    // Fake transport: stores registered routes so a test can dispatch them directly
+    // (synchronously, no sockets), exactly as the gateway's wrapper would run on a
+    // worker thread.
+    class FakeHttpServer final : public IHttpServer
     {
-        m_routes[{method, path}] = std::move(handler);
-    }
-    void start(const HttpServerConfig&) override {}
-    void stop() noexcept override {}
-
-    void dispatch(Method method, const std::string& path, const HttpRequest& request,
-                  std::shared_ptr<IHttpResponder> responder)
-    {
-        m_routes.at({method, path})(request, std::move(responder));
-    }
-
-    bool hasRoute(Method method, const std::string& path) const
-    {
-        return m_routes.count({method, path}) != 0;
-    }
-
-private:
-    std::map<std::pair<Method, std::string>, RouteHandler> m_routes;
-};
-
-// Resolver stub: knows one agent; anything else is unknown.
-class FakeResolver final : public wazuh_auth::IAgentKeyResolver
-{
-public:
-    std::optional<std::vector<std::uint8_t>> resolve(const std::string& agentId) const override
-    {
-        if (agentId == "001")
+    public:
+        void addRoute(Method method, const std::string& path, RouteHandler handler) override
         {
-            return std::vector<std::uint8_t>(16, 0x0A); // 16-byte AES-128 key
+            m_routes[{method, path}] = std::move(handler);
         }
-        return std::nullopt;
-    }
-};
+        void start(const HttpServerConfig&) override {}
+        void stop() noexcept override {}
 
-class CapturingResponder final : public IHttpResponder
-{
-public:
-    void send(HttpResponse response) override
-    {
-        if (!captured.has_value())
+        void dispatch(Method method,
+                      const std::string& path,
+                      const HttpRequest& request,
+                      std::shared_ptr<IHttpResponder> responder)
         {
-            captured = std::move(response);
+            m_routes.at({method, path})(request, std::move(responder));
         }
-    }
-    std::optional<HttpResponse> captured;
-};
 
-AuthGateway makeGateway()
-{
-    return AuthGateway {wazuh_auth::AuthConfig {}, std::make_shared<FakeResolver>()};
-}
+        bool hasRoute(Method method, const std::string& path) const
+        {
+            return m_routes.count({method, path}) != 0;
+        }
+
+    private:
+        std::map<std::pair<Method, std::string>, RouteHandler> m_routes;
+    };
+
+    // Resolver stub: knows one agent; anything else is unknown.
+    class FakeResolver final : public wazuh_auth::IAgentKeyResolver
+    {
+    public:
+        std::optional<std::vector<std::uint8_t>> resolve(const std::string& agentId) const override
+        {
+            if (agentId == "001")
+            {
+                return std::vector<std::uint8_t>(16, 0x0A); // 16-byte AES-128 key
+            }
+            return std::nullopt;
+        }
+    };
+
+    class CapturingResponder final : public IHttpResponder
+    {
+    public:
+        void send(HttpResponse response) override
+        {
+            if (!captured.has_value())
+            {
+                captured = std::move(response);
+            }
+        }
+        std::optional<HttpResponse> captured;
+    };
+
+    AuthGateway makeGateway()
+    {
+        return AuthGateway {wazuh_auth::AuthConfig {}, std::make_shared<FakeResolver>()};
+    }
 } // namespace
 
 TEST(AuthGatewayTest, RegistersRouteOnTheServer)
@@ -92,10 +94,11 @@ TEST(AuthGatewayTest, RegistersRouteOnTheServer)
     FakeHttpServer server;
     auto gateway = makeGateway();
 
-    gateway.addAuthenticatedRoute(server, Method::Post, "/stateless",
-                                  [](const wazuh_auth::AuthenticatedRequest&,
-                                     std::shared_ptr<IHttpResponder> responder)
-                                  { responder->send(HttpResponse{200, "", {}}); });
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [](const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
+                                  { responder->send(HttpResponse {200, "", {}}); });
 
     EXPECT_TRUE(server.hasRoute(Method::Post, "/stateless"));
 }
@@ -106,13 +109,15 @@ TEST(AuthGatewayTest, MissingProtocolVersionYields400AndSkipsHandler)
     auto gateway = makeGateway();
 
     bool handlerCalled = false;
-    gateway.addAuthenticatedRoute(server, Method::Post, "/stateless",
-                                  [&handlerCalled](const wazuh_auth::AuthenticatedRequest&,
-                                                   std::shared_ptr<IHttpResponder> responder)
-                                  {
-                                      handlerCalled = true;
-                                      responder->send(HttpResponse{200, "", {}});
-                                  });
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&handlerCalled](const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
+        {
+            handlerCalled = true;
+            responder->send(HttpResponse {200, "", {}});
+        });
 
     HttpRequest request;
     request.method = Method::Post;
@@ -133,13 +138,15 @@ TEST(AuthGatewayTest, MissingAuthorizationYields401AndSkipsHandler)
     auto gateway = makeGateway();
 
     bool handlerCalled = false;
-    gateway.addAuthenticatedRoute(server, Method::Post, "/stateless",
-                                  [&handlerCalled](const wazuh_auth::AuthenticatedRequest&,
-                                                   std::shared_ptr<IHttpResponder> responder)
-                                  {
-                                      handlerCalled = true;
-                                      responder->send(HttpResponse{200, "", {}});
-                                  });
+    gateway.addAuthenticatedRoute(
+        server,
+        Method::Post,
+        "/stateless",
+        [&handlerCalled](const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
+        {
+            handlerCalled = true;
+            responder->send(HttpResponse {200, "", {}});
+        });
 
     HttpRequest request;
     request.method = Method::Post;
@@ -159,10 +166,11 @@ TEST(AuthGatewayTest, HeaderLookupIsCaseInsensitive)
     FakeHttpServer server;
     auto gateway = makeGateway();
 
-    gateway.addAuthenticatedRoute(server, Method::Post, "/stateless",
-                                  [](const wazuh_auth::AuthenticatedRequest&,
-                                     std::shared_ptr<IHttpResponder> responder)
-                                  { responder->send(HttpResponse{200, "", {}}); });
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [](const wazuh_auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
+                                  { responder->send(HttpResponse {200, "", {}}); });
 
     HttpRequest request;
     request.method = Method::Post;
