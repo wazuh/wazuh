@@ -28,6 +28,8 @@
 
 static struct timespec g_start;
 
+/* For hc_set_config_hash inside on_config_downloaded (the one hc_* call that
+ * IS callback-safe). */
 static hc_handle *g_handle;
 
 /* The key the mock rotates to at ROTATE_KEY_AT; the re-enroll callback swaps
@@ -96,6 +98,34 @@ static void on_reenroll_required(void *user_data)
     fflush(stdout);
 }
 
+/* The new-config delivery: the file lives only until this returns, so a real
+ * consumer copies it here, applies it (write merged.mg, unmerge, reload) and
+ * corrects the module's hash view if the apply fails. */
+static void on_config_downloaded(const char *config_hash, const char *file_path, void *user_data)
+{
+    (void)user_data;
+    FILE *file = fopen(file_path, "rb");
+    long size = 0;
+    char first_line[96] = "(empty)";
+    if (file)
+    {
+        if (fgets(first_line, sizeof first_line, file))
+        {
+            first_line[strcspn(first_line, "\n")] = '\0';
+        }
+        fseek(file, 0, SEEK_END);
+        size = ftell(file);
+        fclose(file);
+    }
+    printf("[+%7ld ms] >> CONFIG DOWNLOADED: hash=%.12s.. %ld B, first line: %s\n",
+           elapsed_ms(), config_hash, size, first_line);
+    printf("[+%7ld ms]    (a real agent would write merged.mg, unmerge and reload here;\n"
+           "                demonstrating the callback-safe hc_set_config_hash: %s)\n",
+           elapsed_ms(),
+           hc_set_config_hash(g_handle, config_hash) ? "accepted" : "rejected");
+    fflush(stdout);
+}
+
 static void on_state_change(int state, void *user_data)
 {
     (void)user_data;
@@ -136,12 +166,18 @@ int main(int argc, char **argv)
     config.backoff_base_ms = 200;
     config.backoff_cap_ms = 2000;
     strncpy(config.version, "5.1.0", sizeof config.version - 1);
+    /* SHA-256 of the empty merged.mg the mock starts with: in sync at boot,
+     * so the scripted config flip is a real transition. */
+    strncpy(config.config_checksum,
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            sizeof config.config_checksum - 1);
 
     hc_callbacks_t callbacks;
     memset(&callbacks, 0, sizeof callbacks);
     callbacks.log = on_log;
     callbacks.on_startup_result = on_startup_result;
     callbacks.on_reenroll_required = on_reenroll_required;
+    callbacks.on_config_downloaded = on_config_downloaded;
     callbacks.on_state_change = on_state_change;
 
     printf("== creating + starting the https_client (target %s:%s) ==\n", argv[1], argv[2]);
@@ -159,9 +195,10 @@ int main(int argc, char **argv)
     printf("== forcing an out-of-cycle Notify ==\n");
     hc_notify_now(handle);
 
-    /* Let the control loop run: the mock flips its settings at notify #5
-     * (-> the client refreshes startup in place) and rotates its key at #7
-     * (-> 401, one re-enroll callback, hc_set_agent_key recovery). */
+    /* Let the control loop run: the mock flips its config at notify #3
+     * (-> /download), its settings at notify #5 (-> the client refreshes
+     * startup in place) and rotates its key at #7 (-> 401, one re-enroll
+     * callback, hc_set_agent_key recovery). */
     nap(3000);
     hc_notify_now(handle);
     nap(7000);

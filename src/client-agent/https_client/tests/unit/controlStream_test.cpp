@@ -19,6 +19,8 @@
 #include <gtest/gtest.h>
 
 #include <cstring>
+#include <fstream>
+#include <memory>
 #include <vector>
 
 using ::testing::_;
@@ -48,9 +50,11 @@ namespace
             ControlStreamTest()
                 : m_signer("001", m_keyProvider)
                 , m_config(makeConfig())
+                , m_spoolFactory(::testing::TempDir())
+                , m_configHash("abc")
                 , m_authGate(m_sink, [] {})
                 , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink,
-                           m_cluster, m_authGate)
+                           m_spoolFactory, m_configHash, m_cluster, m_authGate)
             {
             }
 
@@ -60,6 +64,7 @@ namespace
                 std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
                 std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
                 std::strncpy(config.version, "5.1.0", sizeof(config.version) - 1);
+                std::strncpy(config.config_checksum, "abc", sizeof(config.config_checksum) - 1);
                 config.verify_mode = HC_VERIFY_NONE;
                 return ModuleConfig::fromC(config);
             }
@@ -71,6 +76,8 @@ namespace
             ScriptedRandom m_random {{0.0}};
             NiceMock<MockCallbackSink> m_sink;
             MockHttpPerformer m_performer;
+            TempSpoolFactory m_spoolFactory;
+            ConfigHashState m_configHash;
             ClusterIdentity m_cluster;
             AuthGate m_authGate;
             FakeWaiter m_waiter;
@@ -292,6 +299,144 @@ TEST_F(ControlStreamTest, StaleSettingsHashDoesNotLoopStartups)
                                          "notify"
                                         }),
               requestTypes);
+}
+
+TEST_F(ControlStreamTest, ConfigMismatchDownloadsVerifiesAndDelivers)
+{
+    // The manager reports a config_hash != local ("abc"): the client POSTs
+    // /download with the reported group, the body lands in the response file,
+    // its SHA-256 matches, the local hash updates and the file is delivered.
+    const std::string blob = "merged-config-bytes";
+    const std::string blobHash = sha256Hex(blob.data(), blob.size());
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["web-servers"],"config_hash":")" + blobHash +
+        R"("}})";
+
+    std::string downloadBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))    // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))  // Notify.
+    .WillOnce(Invoke(                                              // /download.
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ("/download", spec.target);
+        EXPECT_EQ(m_config.statefulTimeoutMs, spec.timeoutMs);
+        downloadBody = bodyOf(spec);
+        std::ofstream file {spec.responseFilePath, std::ios::binary};
+        file << blob;
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    std::shared_ptr<SpoolFile> delivered;
+    EXPECT_CALL(m_sink, onConfigDownloaded(blobHash, _))
+    .WillOnce(Invoke([&](const std::string&, std::shared_ptr<SpoolFile> file)
+    {
+        delivered = std::move(file);
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> download -> deliver.
+
+    EXPECT_EQ(R"({"resource_type":"config","resource_id":"web-servers"})", downloadBody);
+    EXPECT_EQ(blobHash, m_configHash.get()); // Optimistic update.
+    ASSERT_NE(nullptr, delivered);
+    std::ifstream file {delivered->path(), std::ios::binary};
+    const std::string content {std::istreambuf_iterator<char>(file),
+                               std::istreambuf_iterator<char>()};
+    EXPECT_EQ(blob, content);
+}
+
+TEST_F(ControlStreamTest, MatchingConfigHashDoesNotDownload)
+{
+    // Local hash is "abc": a notify reporting "abc" triggers nothing, and
+    // after a successful download+update, the same hash stays quiet (the
+    // optimistic update prevents a re-download every notify).
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default"],"config_hash":"abc"}})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)));
+    EXPECT_CALL(m_sink, onConfigDownloaded(_, _)).Times(0);
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: in sync, no download.
+    m_stream.step(m_waiter); // Still in sync.
+}
+
+TEST_F(ControlStreamTest, HashMismatchOnTheDownloadedFileDiscardsIt)
+{
+    // The downloaded bytes do not match the advertised MD5: no delivery, no
+    // local-hash update; the next notify triggers a fresh download attempt.
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default"],"config_hash":"1111111111111111)"
+        R"(1111111111111111"}})";
+
+    int downloads = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/download")
+        {
+            downloads++;
+            std::ofstream file {spec.responseFilePath, std::ios::binary};
+            file << "bytes-with-a-different-hash";
+            return response(TransportStatus::Ok, 200);
+        }
+
+        if (bodyOf(spec).find("startup") != std::string::npos)
+        {
+            return response(TransportStatus::Ok, 200, "{}");
+        }
+
+        return response(TransportStatus::Ok, 200, notify);
+    }));
+    EXPECT_CALL(m_sink, onConfigDownloaded(_, _)).Times(0);
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> download (discarded).
+    m_stream.step(m_waiter); // Notify -> retried (still mismatching).
+
+    EXPECT_EQ(2, downloads);
+    EXPECT_EQ("abc", m_configHash.get()); // Never updated.
+}
+
+TEST_F(ControlStreamTest, FailedDownloadRetriesOnTheNextNotify)
+{
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default"],"config_hash":"ffff"}})";
+
+    int downloads = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        if (spec.target == "/download")
+        {
+            downloads++;
+            return response(TransportStatus::ConnectFail, 0); // Transport down.
+        }
+
+        if (bodyOf(spec).find("startup") != std::string::npos)
+        {
+            return response(TransportStatus::Ok, 200, "{}");
+        }
+
+        return response(TransportStatus::Ok, 200, notify);
+    }));
+    EXPECT_CALL(m_sink, onConfigDownloaded(_, _)).Times(0);
+
+    // One backoff wait happens between the two attempts of each failed
+    // download; let both proceed (an unscripted FakeWaiter reads as stop).
+    m_waiter.script({true, true});
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify -> download fails (2 attempts).
+    m_stream.step(m_waiter); // Notify -> re-armed, fails again.
+
+    EXPECT_EQ(4, downloads); // 2 notifies x DOWNLOAD_MAX_ATTEMPTS(2).
+    EXPECT_EQ("abc", m_configHash.get());
 }
 
 TEST_F(ControlStreamTest, DrainStepSendsBareShutdown)
