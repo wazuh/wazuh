@@ -24,6 +24,7 @@
 #include "keyProvider.hpp"
 #include "moduleConfig.hpp"
 #include "retrySender.hpp"
+#include "spoolFile.hpp"
 #include "sysSeams.hpp"
 
 #include <gtest/gtest.h>
@@ -226,6 +227,41 @@ TEST_F(ComponentTest, AuthorizationHeaderMatchesTheContractFormat)
     EXPECT_EQ("protocol-version: 1", headers->protocolVersion);
     const std::regex expected {R"(^Authorization: Wazuh \d{1,}:\d+:[0-9a-f]{32}$)"};
     EXPECT_TRUE(std::regex_match(headers->authorization, expected));
+}
+
+TEST_F(ComponentTest, StatefulSessionStreamsFromSpoolAndDedupsOnReplay)
+{
+    TempSpoolFactory factory {::testing::TempDir()};
+    std::string payload(64 * 1024, 'D'); // Larger than one read chunk.
+    std::memcpy(&payload[0], "FULLSESSION:syscollector:", 25);
+    const auto spool = factory.spool(reinterpret_cast<const uint8_t*>(payload.data()), payload.size());
+    ASSERT_NE(nullptr, spool);
+
+    auto sendSession = [&](const std::string & sessionId)
+    {
+        const auto headers = m_signer.signFile("POST", "/stateful", spool->path(),
+                                               SystemClock {}.wallSeconds());
+        HttpRequestSpec spec;
+        spec.target = "/stateful";
+        spec.bodyFilePath = spool->path();
+        spec.bodyFileSize = payload.size();
+        spec.timeoutMs = 3000;
+        spec.headers = {"X-Session-Id: " + sessionId, headers->protocolVersion,
+                        headers->authorization
+                       };
+        return m_performer.perform(spec);
+    };
+
+    const auto first = sendSession("sess-cmp-1");
+    EXPECT_EQ(200, first.httpCode);
+    // The server saw the whole streamed body (65536 bytes).
+    EXPECT_NE(std::string::npos, first.body.find("\"bytes\":65536"));
+    EXPECT_NE(std::string::npos, first.body.find("\"cached\":false"));
+
+    // Same session id replayed: the manager reports it as a cached/dedup hit.
+    const auto replay = sendSession("sess-cmp-1");
+    EXPECT_EQ(200, replay.httpCode);
+    EXPECT_NE(std::string::npos, replay.body.find("\"cached\":true"));
 }
 
 TEST_F(ComponentTest, ControlStartupReturnsHandshakeJson)
