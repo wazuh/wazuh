@@ -295,13 +295,21 @@ void AgentInfoImpl::stop()
     // Wait for the run loop to exit before freeing shared resources, so we don't
     // free m_dBSync / the sync protocol while synchronizeMetadataOrGroups() is
     // still using them. Time-bounded so a stuck loop can't hang shutdown.
+    constexpr auto SHUTDOWN_WAIT_SECONDS = std::chrono::seconds(10);  // max wait for the run loop to finish teardown
+    bool runLoopExited = false;
     {
         std::unique_lock<std::mutex> lock(m_shutdownMutex);
+        runLoopExited = m_shutdownCv.wait_for(lock, SHUTDOWN_WAIT_SECONDS, [this] { return !m_runLoopActive; });
+    }
 
-        if (!m_shutdownCv.wait_for(lock, std::chrono::seconds(10), [this] { return !m_runLoopActive; }))
-        {
-            m_logFunction(LOG_WARNING, "Timeout waiting for AgentInfo run loop to exit.");
-        }
+    if (!runLoopExited)
+    {
+        // The run loop is still active. Freeing m_dBSync / the sync protocol now
+        // would be a use-after-free (the loop can still call synchronizeMetadataOrGroups()),
+        // so skip the teardown and let process exit reclaim the handles instead.
+        m_logFunction(LOG_WARNING, "Timeout waiting for AgentInfo run loop to exit; skipping database teardown.");
+        m_logFunction(LOG_INFO, "AgentInfo module stopped.");
+        return;
     }
 
     // Close the main DB connection.

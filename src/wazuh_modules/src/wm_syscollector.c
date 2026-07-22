@@ -835,9 +835,10 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
 
     if (need_shutdown_wait && !called_from_sys_main_thread)
     {
+        const time_t SHUTDOWN_WAIT_SECONDS = 10;  // max wait for the run loop to finish teardown
         struct timespec ts;
         clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_sec += 10;
+        ts.tv_sec += SHUTDOWN_WAIT_SECONDS;
 
         while (need_shutdown_wait)
         {

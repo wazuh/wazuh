@@ -654,6 +654,15 @@ static int wm_sca_start(wm_sca_t *sca) {
     g_sca_queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_sca_is_shutting_down);
     if (g_sca_queue < 0) {
         merror("Cannot initialize SCA message queue.");
+        // StartMQPredicated only gives up when shutdown started mid-startup, so a
+        // wm_sca_stop() is already waiting on the condition. Clear the flag and
+        // signal it here (there are no resources to release yet) instead of leaving
+        // it to block for the full timeout.
+        w_mutex_lock(&sca_stop_mutex);
+        sca_need_shutdown_wait = false;
+        sca_main_thread_initialized = false;
+        w_cond_signal(&sca_stop_condition);
+        w_mutex_unlock(&sca_stop_mutex);
         return -1;
     }
 
@@ -769,9 +778,10 @@ void wm_sca_stop(__attribute__((unused)) wm_sca_t* data)
 
     if (sca_need_shutdown_wait && !called_from_sca_main_thread)
     {
+        const time_t SHUTDOWN_WAIT_SECONDS = 10;  // max wait for the run loop to finish teardown
         struct timespec ts;
         clock_gettime(CLOCK_REALTIME, &ts);
-        ts.tv_sec += 10;
+        ts.tv_sec += SHUTDOWN_WAIT_SECONDS;
 
         while (sca_need_shutdown_wait)
         {
