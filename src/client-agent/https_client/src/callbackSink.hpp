@@ -39,6 +39,7 @@ class ICallbackSink
         virtual void onConfigDownloaded(const std::string& configHash,
                                         std::shared_ptr<SpoolFile> file) = 0;
         virtual void onManagerConfigHash(const std::string& configHash) = 0;
+        virtual void onSyncResponse(const std::string& sessionId, int result, const std::string& body) = 0;
         virtual void onStateChange(hc_conn_state_t state) = 0;
         virtual void onBufferLevel(hc_buffer_level_t level) = 0;
 };

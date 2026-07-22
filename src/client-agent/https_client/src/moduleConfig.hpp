@@ -66,6 +66,7 @@ struct ModuleConfig
         uint32_t drainTimeoutMs {5000};
 
         std::string spoolDir;
+        std::string syncSocketPath; ///< Stateful sync-intake STREAM socket; empty = disabled.
 
         // Always "https" in production (fromC never changes it); the component
         // test overrides it to "http" to drive the real curl path against a

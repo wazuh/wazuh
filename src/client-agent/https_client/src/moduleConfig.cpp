@@ -59,6 +59,7 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.backoffCapMs = orDefault<uint32_t>(config.backoff_cap_ms, 60000);
     typed.drainTimeoutMs = orDefault<uint32_t>(config.drain_timeout_ms, 5000);
     typed.spoolDir = boundedString(config.spool_dir, sizeof(config.spool_dir));
+    typed.syncSocketPath = boundedString(config.sync_socket_path, sizeof(config.sync_socket_path));
     return typed;
 }
 
