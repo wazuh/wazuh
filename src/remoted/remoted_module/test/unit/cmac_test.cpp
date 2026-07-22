@@ -16,9 +16,9 @@
 
 #include "auth/cmac.hpp"
 
-using wazuh_auth::Cmac;
-using wazuh_auth::fromLowerHex;
-using wazuh_auth::toLowerHex;
+using remoted::auth::Cmac;
+using remoted::auth::fromLowerHex;
+using remoted::auth::toLowerHex;
 
 namespace
 {
@@ -69,8 +69,8 @@ TEST(Cmac, ConstantTimeEqualsAgreesWithMemcmp)
     const std::array<std::uint8_t, 4> a {1, 2, 3, 4};
     const std::array<std::uint8_t, 4> b {1, 2, 3, 4};
     const std::array<std::uint8_t, 4> c {1, 2, 3, 5};
-    EXPECT_TRUE(wazuh_auth::constantTimeEquals(a.data(), b.data(), a.size()));
-    EXPECT_FALSE(wazuh_auth::constantTimeEquals(a.data(), c.data(), a.size()));
+    EXPECT_TRUE(remoted::auth::constantTimeEquals(a.data(), b.data(), a.size()));
+    EXPECT_FALSE(remoted::auth::constantTimeEquals(a.data(), c.data(), a.size()));
 }
 
 TEST(Cmac, HexRoundTrip)

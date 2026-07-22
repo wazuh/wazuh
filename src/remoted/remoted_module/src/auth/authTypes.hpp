@@ -15,16 +15,15 @@
 #include <string>
 #include <vector>
 
-namespace wazuh_auth
+namespace remoted::auth
 {
 
     /**
      * @brief Identity + payload an endpoint handler receives once the MAC has
      *        been verified.
      *
-     * This struct is the contract between the transport (Beast, RESTinio,
-     * whatever comes next) and endpoint-specific code, so it must never carry
-     * a library-specific type.
+     * This struct is the contract between the transport and endpoint-specific
+     * code, so it must never carry a transport-specific type.
      */
     struct AuthenticatedRequest
     {
@@ -55,7 +54,7 @@ namespace wazuh_auth
         ExpiredRequest,
         FutureRequest,
         InvalidMac,
-        PayloadAgentMismatch,
+        PayloadAgentMismatch, ///< TODO: not yet raised by any endpoint (needs a JSON library to parse the payload).
         BodyTooLarge,
     };
 
@@ -79,8 +78,8 @@ namespace wazuh_auth
     /**
      * @brief Single source of truth for the client-visible status/message.
      *
-     * Shared by every transport so a Beast server and a RESTinio server answer
-     * identically instead of each re-deriving the error-response mapping.
+     * Shared by every transport so they all answer identically instead of
+     * each re-deriving the error-response mapping.
      *
      * @param err Internal failure reason returned by AuthMiddleware.
      * @return The status/message pair the transport must send to the client.
@@ -90,8 +89,8 @@ namespace wazuh_auth
     /**
      * @brief Auth-protocol tunables shared by every transport.
      *
-     * A Beast implementation and a RESTinio implementation must configure the
-     * exact same knobs the same way.
+     * Every transport implementation must configure the exact same knobs the
+     * same way.
      */
     struct AuthConfig
     {
@@ -101,4 +100,4 @@ namespace wazuh_auth
         std::size_t maxBodySize = 10 * 1024 * 1024; ///< Hard cap on the authenticated body size (10 MiB).
     };
 
-} // namespace wazuh_auth
+} // namespace remoted::auth

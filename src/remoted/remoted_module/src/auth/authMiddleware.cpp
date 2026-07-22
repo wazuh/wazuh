@@ -14,7 +14,7 @@
 #include <algorithm>
 #include <charconv>
 
-namespace wazuh_auth
+namespace remoted::auth
 {
 
     const char* toString(AuthError err)
@@ -141,9 +141,9 @@ namespace wazuh_auth
 
     } // namespace
 
-    AuthMiddleware::AuthMiddleware(AuthConfig config, std::shared_ptr<IAgentKeyResolver> resolver)
+    AuthMiddleware::AuthMiddleware(AuthConfig config, std::shared_ptr<IAgentKeystore> keystore)
         : m_config(std::move(config))
-        , m_resolver(std::move(resolver))
+        , m_keystore(std::move(keystore))
     {
     }
 
@@ -195,9 +195,9 @@ namespace wazuh_auth
             return AuthError::FutureRequest;
         }
 
-        // Step 4: resolve the agent key.
+        // Step 4: look up the agent key.
         const std::string agentId(parsed->agentId);
-        const auto agentKey = m_resolver->resolve(agentId);
+        const auto agentKey = m_keystore->keyFor(agentId);
         if (!agentKey)
         {
             return AuthError::UnknownAgent;
@@ -276,4 +276,4 @@ namespace wazuh_auth
         return req;
     }
 
-} // namespace wazuh_auth
+} // namespace remoted::auth

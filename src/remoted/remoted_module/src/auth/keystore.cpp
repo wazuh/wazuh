@@ -9,14 +9,14 @@
  * Foundation.
  */
 
-#include "clientKeysFileResolver.hpp"
+#include "keystore.hpp"
 
 #include <fstream>
 #include <sstream>
 
 #include "cmac.hpp"
 
-namespace wazuh_auth
+namespace remoted::auth
 {
 
     namespace
@@ -48,13 +48,13 @@ namespace wazuh_auth
         }
     } // namespace
 
-    ClientKeysFileResolver::ClientKeysFileResolver(std::string path)
+    Keystore::Keystore(std::string path)
         : m_path(std::move(path))
     {
         reload();
     }
 
-    int ClientKeysFileResolver::reload()
+    int Keystore::reload()
     {
         std::ifstream file(m_path);
         if (!file.is_open())
@@ -96,7 +96,7 @@ namespace wazuh_auth
         return count;
     }
 
-    std::optional<std::vector<std::uint8_t>> ClientKeysFileResolver::resolve(const std::string& agentId) const
+    std::optional<std::vector<std::uint8_t>> Keystore::keyFor(const std::string& agentId) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         const auto it = m_keys.find(agentId);
@@ -107,4 +107,4 @@ namespace wazuh_auth
         return it->second;
     }
 
-} // namespace wazuh_auth
+} // namespace remoted::auth

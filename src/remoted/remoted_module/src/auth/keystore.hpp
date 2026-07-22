@@ -15,13 +15,13 @@
 #include <string>
 #include <unordered_map>
 
-#include "iAgentKeyResolver.hpp"
+#include "iAgentKeystore.hpp"
 
-namespace wazuh_auth
+namespace remoted::auth
 {
 
     /**
-     * @brief IAgentKeyResolver backed by a direct read of client.keys.
+     * @brief IAgentKeystore backed by a direct read of client.keys.
      *
      * Parses the manager's client.keys file the same way the manager's own
      * OS_ReadKeys() does (shared/os_crypto/shared/keys.c): each line is
@@ -29,8 +29,8 @@ namespace wazuh_auth
      * entry whose name field starts with '#' or '!' is a removed/disabled
      * agent and is skipped, exactly like OS_ReadKeys() discards it.
      *
-     * This resolver is independent of remoted's own C keystore: it reads
-     * the file itself and keeps its own in-memory copy, so it never touches
+     * It is independent of remoted's own C keystore: it reads the file
+     * itself and keeps its own in-memory copy, so it never touches
      * remoted's `keystore`/`keyentry` types. That also means it does not
      * see the `encryption_key` remoted derives from `W_ENCRYPTION_KEY` mode
      * -- it works directly off the key column, as written on disk.
@@ -39,9 +39,9 @@ namespace wazuh_auth
      * manage_agents/authd); it is hex-decoded into raw bytes and used as-is,
      * with no further derivation. It must decode to 16, 24 or 32 bytes to be
      * usable as an AES-CMAC key; AuthMiddleware reports AuthError::MissingKey
-     * for a resolved agent whose key does not (see resolve()).
+     * for an agent whose key does not (see keyFor()).
      */
-    class ClientKeysFileResolver : public IAgentKeyResolver
+    class Keystore : public IAgentKeystore
     {
     public:
         /// Path to client.keys, relative to the manager's home directory.
@@ -49,10 +49,10 @@ namespace wazuh_auth
 
         /**
          * @param path Path to client.keys. Loaded immediately; a missing or
-         *             unreadable file is not an error -- the resolver just
+         *             unreadable file is not an error -- the keystore just
          *             starts empty (see reload()).
          */
-        explicit ClientKeysFileResolver(std::string path = kDefaultPath);
+        explicit Keystore(std::string path = kDefaultPath);
 
         /**
          * @brief Re-read client.keys from disk, replacing the in-memory copy.
@@ -72,7 +72,7 @@ namespace wazuh_auth
          *         entries, which are never loaded). Otherwise the agent's key,
          *         empty if the on-disk key column failed to hex-decode.
          */
-        std::optional<std::vector<std::uint8_t>> resolve(const std::string& agentId) const override;
+        std::optional<std::vector<std::uint8_t>> keyFor(const std::string& agentId) const override;
 
     private:
         std::string m_path;
@@ -80,4 +80,4 @@ namespace wazuh_auth
         std::unordered_map<std::string, std::vector<std::uint8_t>> m_keys;
     };
 
-} // namespace wazuh_auth
+} // namespace remoted::auth
