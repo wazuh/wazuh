@@ -440,6 +440,18 @@ def test_upload_rule_file_path_traversal(mock_safe_move, mock_upload_file):
         mock_upload_file.assert_not_called()
 
 
+def test_delete_rule_file_path_traversal():
+    """Test that a crafted filename resolving outside the rules directory is rejected and the
+    file is not removed."""
+    with patch('wazuh.core.configuration.get_ossec_conf', return_value=get_rule_file_ossec_conf):
+        with patch('wazuh.rule.remove') as mock_remove:
+            result = rule.delete_rule_file(filename='../../../../../../tmp/poc_rule_traversal')
+            assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+            assert result.render()['data']['failed_items'][0]['error']['code'] == 1212, \
+                'Error code not expected.'
+            mock_remove.assert_not_called()
+
+
 @pytest.mark.parametrize('file, relative_dirname', [
     ('test_rules.xml', None),
     ('test_rules.xml', 'tests/data/etc/rules'),

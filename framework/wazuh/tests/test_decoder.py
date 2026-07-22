@@ -374,6 +374,17 @@ def test_upload_decoder_file_path_traversal(mock_safe_move, mock_upload_file):
     mock_upload_file.assert_not_called()
 
 
+def test_delete_decoder_file_path_traversal():
+    """Test that a crafted filename resolving outside the decoders directory is rejected and the
+    file is not removed."""
+    with patch('wazuh.decoder.remove') as mock_remove:
+        result = decoder.delete_decoder_file(filename='../../../../../../tmp/poc_decoder_traversal')
+        assert isinstance(result, AffectedItemsWazuhResult), 'No expected result type'
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1508, \
+            'Error code not expected.'
+        mock_remove.assert_not_called()
+
+
 @pytest.mark.parametrize('filename, relative_dirname', [
     ('test1_decoders.xml', None),
     ('test3_decoders.xml', None),
