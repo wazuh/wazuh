@@ -1,0 +1,262 @@
+/*
+ * Wazuh agent HTTPS client (C++ transport module)
+ * Copyright (C) 2015, Wazuh Inc.
+ * July 17, 2026.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+/*
+ * The ONLY translation unit that touches libcurl. Everything here is a thin
+ * pass-through exercised end to end by the component test; the unreachable
+ * error branches carry explicit LCOV exclusions.
+ */
+
+#include "curlHandle.hpp"
+
+#include <curl/curl.h>
+
+#include <cstring>
+#include <map>
+#include <mutex>
+
+#include <strings.h>
+
+namespace
+{
+    void ensureCurlGlobalInit()
+    {
+        // Process-wide, once; intentionally never cleaned up (daemon lifetime).
+        static std::once_flag initialized;
+        std::call_once(initialized, [] { curl_global_init(CURL_GLOBAL_DEFAULT); });
+    }
+
+    const std::map<CurlOption, CURLoption>& optionMap()
+    {
+        static const std::map<CurlOption, CURLoption> map
+        {
+            {CurlOption::Url, CURLOPT_URL},
+            {CurlOption::Post, CURLOPT_POST},
+            {CurlOption::PostFields, CURLOPT_POSTFIELDS},
+            {CurlOption::PostFieldSize, CURLOPT_POSTFIELDSIZE},
+            {CurlOption::TimeoutMs, CURLOPT_TIMEOUT_MS},
+            {CurlOption::VerifyPeer, CURLOPT_SSL_VERIFYPEER},
+            {CurlOption::VerifyHost, CURLOPT_SSL_VERIFYHOST},
+            {CurlOption::CaInfo, CURLOPT_CAINFO},
+            {CurlOption::SslCert, CURLOPT_SSLCERT},
+            {CurlOption::SslKey, CURLOPT_SSLKEY},
+            {CurlOption::SslCiphers, CURLOPT_SSL_CIPHER_LIST},
+            {CurlOption::FollowLocation, CURLOPT_FOLLOWLOCATION},
+            {CurlOption::NoSignal, CURLOPT_NOSIGNAL}};
+        return map;
+    }
+
+    // curl callbacks are C: nothing may throw across them.
+    size_t writeTrampoline(char* data, size_t size, size_t nmemb, void* userData)
+    {
+        auto* output = static_cast<std::string*>(userData);
+        const size_t total = size * nmemb;
+
+        try
+        {
+            output->append(data, total);
+        }
+        catch (...)
+        {
+            return 0; // LCOV_EXCL_LINE: allocation failure aborts the transfer.
+        }
+
+        return total;
+    }
+
+    size_t fileWriteTrampoline(char* data, size_t size, size_t nmemb, void* userData)
+    {
+        // A short count aborts the transfer (write error / disk full).
+        return std::fwrite(data, 1, size * nmemb, static_cast<std::FILE*>(userData));
+    }
+
+    size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
+    {
+        const size_t total = size * nmemb;
+        auto* retryAfter = static_cast<long*>(userData);
+        constexpr size_t prefixLength = 12; // "Retry-After:"
+
+        if (total > prefixLength && strncasecmp(data, "Retry-After:", prefixLength) == 0)
+        {
+            *retryAfter = std::strtol(data + prefixLength, nullptr, 10);
+        }
+
+        return total;
+    }
+
+    size_t readTrampoline(char* buffer, size_t size, size_t nmemb, void* userData)
+    {
+        return std::fread(buffer, 1, size * nmemb, static_cast<std::FILE*>(userData));
+    }
+
+    int abortTrampoline(void* userData, curl_off_t, curl_off_t, curl_off_t, curl_off_t)
+    {
+        const auto* flag = static_cast<const std::atomic<bool>*>(userData);
+        return (flag != nullptr && flag->load()) ? 1 : 0;
+    }
+
+    TransportStatus statusFromCurlCode(CURLcode code)
+    {
+        switch (code)
+        {
+            case CURLE_OK:
+                return TransportStatus::Ok;
+
+            case CURLE_OPERATION_TIMEDOUT:
+                return TransportStatus::Timeout;
+
+            case CURLE_COULDNT_RESOLVE_HOST:
+            case CURLE_COULDNT_RESOLVE_PROXY:
+            case CURLE_COULDNT_CONNECT:
+                return TransportStatus::ConnectFail;
+
+            case CURLE_SSL_CONNECT_ERROR:
+            case CURLE_PEER_FAILED_VERIFICATION:
+            case CURLE_SSL_CERTPROBLEM:
+            case CURLE_SSL_CIPHER:
+            case CURLE_SSL_CACERT_BADFILE:
+            case CURLE_SSL_ISSUER_ERROR:
+                return TransportStatus::TlsFail;
+
+            case CURLE_ABORTED_BY_CALLBACK:
+                return TransportStatus::Aborted;
+
+            default:
+                return TransportStatus::OtherError;
+        }
+    }
+
+    class CurlHandle final : public ICurlHandle
+    {
+        public:
+            CurlHandle()
+            {
+                ensureCurlGlobalInit();
+                m_handle = curl_easy_init();
+            }
+
+            ~CurlHandle() override
+            {
+                if (m_headers != nullptr)
+                {
+                    curl_slist_free_all(m_headers);
+                }
+
+                if (m_handle != nullptr)
+                {
+                    curl_easy_cleanup(m_handle);
+                }
+            }
+
+            CurlHandle(const CurlHandle&) = delete;
+            CurlHandle& operator=(const CurlHandle&) = delete;
+
+            bool valid() const
+            {
+                return m_handle != nullptr;
+            }
+
+            bool setOptionLong(CurlOption option, long value) override
+            {
+                return curl_easy_setopt(m_handle, optionMap().at(option), value) == CURLE_OK;
+            }
+
+            bool setOptionString(CurlOption option, const std::string& value) override
+            {
+                return curl_easy_setopt(m_handle, optionMap().at(option), value.c_str()) == CURLE_OK;
+            }
+
+            bool setOptionPtr(CurlOption option, const void* value) override
+            {
+                return curl_easy_setopt(m_handle, optionMap().at(option), value) == CURLE_OK;
+            }
+
+            void appendHeader(const std::string& header) override
+            {
+                m_headers = curl_slist_append(m_headers, header.c_str());
+            }
+
+            void captureResponseBody(std::string* output) override
+            {
+                curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, writeTrampoline);
+                curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, output);
+            }
+
+            void captureResponseToFile(std::FILE* file) override
+            {
+                // Chunked transfer decoding is native curl; the trampoline
+                // receives decoded bytes.
+                curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, fileWriteTrampoline);
+                curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, file);
+            }
+
+            void captureRetryAfter(long* output) override
+            {
+                curl_easy_setopt(m_handle, CURLOPT_HEADERFUNCTION, headerTrampoline);
+                curl_easy_setopt(m_handle, CURLOPT_HEADERDATA, output);
+            }
+
+            void streamBodyFromFile(std::FILE* file, uint64_t size) override
+            {
+                // UPLOAD + INFILESIZE_LARGE streams from the read callback with a
+                // fixed Content-Length (no chunked encoding); CUSTOMREQUEST keeps
+                // it a POST.
+                curl_easy_setopt(m_handle, CURLOPT_UPLOAD, 1L);
+                curl_easy_setopt(m_handle, CURLOPT_CUSTOMREQUEST, "POST");
+                curl_easy_setopt(m_handle, CURLOPT_READFUNCTION, readTrampoline);
+                curl_easy_setopt(m_handle, CURLOPT_READDATA, file);
+                curl_easy_setopt(m_handle, CURLOPT_INFILESIZE_LARGE, static_cast<curl_off_t>(size));
+            }
+
+            void wireAbort(const std::atomic<bool>* abortFlag) override
+            {
+                curl_easy_setopt(m_handle, CURLOPT_XFERINFOFUNCTION, abortTrampoline);
+                curl_easy_setopt(m_handle, CURLOPT_XFERINFODATA, abortFlag);
+                curl_easy_setopt(m_handle, CURLOPT_NOPROGRESS, 0L);
+            }
+
+            TransportStatus perform() override
+            {
+                if (m_headers != nullptr)
+                {
+                    curl_easy_setopt(m_handle, CURLOPT_HTTPHEADER, m_headers);
+                }
+
+                return statusFromCurlCode(curl_easy_perform(m_handle));
+            }
+
+            long responseCode() override
+            {
+                long code = 0;
+                curl_easy_getinfo(m_handle, CURLINFO_RESPONSE_CODE, &code);
+                return code;
+            }
+
+        private:
+            CURL* m_handle {nullptr};
+            curl_slist* m_headers {nullptr};
+    };
+} // namespace
+
+CurlHandleFactory defaultCurlHandleFactory()
+{
+    return []() -> std::unique_ptr<ICurlHandle>
+    {
+        auto handle = std::make_unique<CurlHandle>();
+
+        if (!handle->valid())
+        {
+            return nullptr; // LCOV_EXCL_LINE: curl_easy_init failure is not reproducible.
+        }
+
+        return handle;
+    };
+}

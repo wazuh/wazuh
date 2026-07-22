@@ -210,6 +210,9 @@
                     <Component Id="AGENT_SYNC_PROTOCOL_DLL" DiskId="1" Guid="0B6A98BA-DC42-4DD4-8F60-E18987A36A75">
                         <File Id="AGENT_SYNC_PROTOCOL_DLL" Name="libagent_sync_protocol.dll" Source="..\build\bin\libagent_sync_protocol.dll" />
                     </Component>
+                    <Component Id="HTTPS_CLIENT_DLL" DiskId="1" Guid="A1B2C3D4-E5F6-4A7B-8C9D-0E1F2A3B4C5D">
+                        <File Id="HTTPS_CLIENT_DLL" Name="libhttps_client.dll" Source="..\build\bin\libhttps_client.dll" />
+                    </Component>
                     <Component Id="SCHEMA_VALIDATOR_DLL" DiskId="1" Guid="7F3C8E9D-4A2B-4E5F-9C1D-8B6A5E3F2C1A">
                         <File Id="SCHEMA_VALIDATOR_DLL" Name="schema_validator.dll" Source="..\build\bin\schema_validator.dll" />
                     </Component>
@@ -614,6 +617,7 @@
             <ComponentRef Id="DBSYNC_DLL" />
             <ComponentRef Id="SYSINFO_DLL" />
             <ComponentRef Id="AGENT_SYNC_PROTOCOL_DLL" />
+            <ComponentRef Id="HTTPS_CLIENT_DLL" />
             <ComponentRef Id="SCHEMA_VALIDATOR_DLL" />
             <ComponentRef Id="AGENT_METADATA_DLL" />
             <ComponentRef Id="LOCAL_INTERNAL_OPTIONS.CONF" />
