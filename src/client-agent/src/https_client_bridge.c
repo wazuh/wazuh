@@ -145,7 +145,14 @@ static DWORD WINAPI bridge_reenroll_thread_win(LPVOID arg)
 
 /* Received-work callbacks. The production hookups still pending (later
  * integration workstreams): execd/module-com routing for on_task-equivalent
- * work and the .state metrics wiring for on_state_change. */
+ * work. */
+static void bridge_on_startup_result(bool accepted, const char *metadata_json, void *user_data)
+{
+    (void)user_data;
+    mdebug1("https_client startup %s: %s", accepted ? "accepted" : "rejected",
+            metadata_json ? metadata_json : "(no metadata)");
+}
+
 static void bridge_on_reenroll_required(void *user_data)
 {
     (void)user_data;
@@ -298,6 +305,7 @@ void w_https_client_start(void)
     hc_callbacks_t callbacks;
     memset(&callbacks, 0, sizeof(callbacks));
     callbacks.log = mtLoggingFunctionsWrapper;
+    callbacks.on_startup_result = bridge_on_startup_result;
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
     callbacks.on_state_change = bridge_on_state_change;
 

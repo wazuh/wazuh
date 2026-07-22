@@ -94,6 +94,17 @@ void CallbackDispatcher::run()
     }
 }
 
+void CallbackDispatcher::onStartupResult(bool accepted, const std::string& handshakeJson)
+{
+    if (m_callbacks.on_startup_result == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, accepted, handshakeJson]
+    { m_callbacks.on_startup_result(accepted, handshakeJson.c_str(), m_callbacks.user_data); });
+}
+
 void CallbackDispatcher::onReenrollRequired()
 {
     if (m_callbacks.on_reenroll_required == nullptr)
