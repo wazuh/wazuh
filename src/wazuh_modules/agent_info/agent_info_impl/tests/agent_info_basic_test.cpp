@@ -347,12 +347,26 @@ TEST_F(AgentInfoImplTest, StopWaitsForRunLoopToExit)
 
 // After stop() tears down the sync protocol, the asynchronous MQ response path
 // (parseResponseBuffer, called on the dispatch thread) must fail gracefully
-// instead of dereferencing a freed sync protocol.
+// instead of dereferencing the freed sync protocol.
 TEST_F(AgentInfoImplTest, ParseResponseBufferAfterStopIsSafe)
 {
-    m_agentInfo->stop();
+    // Initialize a real (in-memory, no DB file) sync protocol so that stop()
+    // genuinely destroys it and the call below exercises the m_syncProtocolMutex
+    // guard, not the trivial "was never initialized" path.
+    const MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) -> int { return 0; },
+        [](int, const void*, size_t, const char*, char) -> int { return 0; }
+    };
+    m_agentInfo->initSyncProtocol("agent_info", mqFuncs);
 
     const uint8_t data[] = {0x01, 0x02, 0x03};
+
+    // stop() destroys the sync protocol under m_syncProtocolMutex.
+    m_agentInfo->stop();
+
+    // The now-torn-down protocol must be rejected safely (no use-after-free).
+    clearLogOutput();
     EXPECT_FALSE(m_agentInfo->parseResponseBuffer(data, sizeof(data)));
     EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("Sync protocol not initialized"));
 }
