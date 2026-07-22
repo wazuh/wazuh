@@ -43,6 +43,7 @@ class CallbackDispatcher final : public ICallbackSink
         void start();
         void stop(); ///< Drains queued callbacks, then joins. Idempotent.
 
+        void onStartupResult(bool accepted, const std::string& handshakeJson) override;
         void onReenrollRequired() override;
         void onStateChange(hc_conn_state_t state) override;
 

@@ -83,6 +83,7 @@ typedef enum hc_result_t
 #define HC_MAX_KEY 256
 #define HC_MAX_PATH 1024
 #define HC_MAX_CIPHERS 256
+#define HC_MAX_VERSION 64
 
 /**
  * @brief Configuration passed from the agent (C) to the C++ module.
@@ -108,9 +109,15 @@ typedef struct hc_config_t
     char client_key[HC_MAX_PATH];  ///< Optional mTLS private key.
     char ciphers[HC_MAX_CIPHERS];  ///< Optional cipher list.
 
+    uint32_t notify_interval_s;         ///< notify_time; 0 -> 20.
+    uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
+
+    char version[HC_MAX_VERSION];       ///< Product version for Startup.
+
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
     uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.
     uint32_t backoff_cap_ms;      ///< Full-jitter cap; 0 -> 60000.
+    uint32_t drain_timeout_ms;    ///< Shutdown drain window; 0 -> 5000.
 
     char spool_dir[HC_MAX_PATH];  ///< Spool dir for temp files; empty -> system tmp.
 } hc_config_t;
@@ -127,6 +134,7 @@ typedef struct hc_config_t
 typedef struct hc_callbacks_t
 {
     full_log_fnc_t log;
+    void (*on_startup_result)(bool accepted, const char* handshake_json, void* user_data);
     /// The signing credential was rejected (401 on any endpoint), so the
     /// module has paused all outbound traffic and entered HC_STATE_AUTH_ERROR.
     /// Fired once per incident from the dispatcher thread. Re-enroll out of
@@ -156,9 +164,10 @@ HC_EXPORTED hc_handle* hc_create(const hc_config_t* config, const hc_callbacks_t
 HC_EXPORTED bool hc_start(hc_handle* handle);
 
 /**
- * @brief Stop the client: aborts in-flight requests explicitly and joins
- *        every thread. No callback fires after this returns. Safe without
- *        a prior start.
+ * @brief Stop the client: drains within the configured window (final
+ *        Notify), aborts in-flight requests explicitly and joins every
+ *        thread. No callback fires after this returns. Safe without a
+ *        prior start.
  */
 HC_EXPORTED void hc_stop(hc_handle* handle);
 
@@ -166,6 +175,9 @@ HC_EXPORTED void hc_stop(hc_handle* handle);
 HC_EXPORTED void hc_destroy(hc_handle* handle);
 
 /* ---- control plane ---- */
+
+/** @brief Force an out-of-cycle Notify (config change, restart...). */
+HC_EXPORTED void hc_notify_now(hc_handle* handle);
 
 /**
  * @brief Swap the AES-CMAC credential at runtime (hex; 16/24/32 bytes decoded)

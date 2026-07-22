@@ -164,6 +164,22 @@ TEST_F(ComponentTest, AuthorizationHeaderMatchesTheContractFormat)
     EXPECT_TRUE(std::regex_match(headers->authorization, expected));
 }
 
+TEST_F(ComponentTest, ControlStartupReturnsHandshakeJson)
+{
+    const auto response = sendSigned(m_performer, m_signer, "/control",
+                                     R"({"type":"startup","version":"5.1.0"})");
+    EXPECT_EQ(200, response.httpCode);
+    EXPECT_NE(std::string::npos, response.body.find("\"limits\""));
+}
+
+TEST_F(ComponentTest, VersionRejectionSurfacesAs426)
+{
+    const auto response = sendSigned(m_performer, m_signer, "/control",
+                                     R"({"type":"startup"})", {"X-Reject-Version: 1"});
+    EXPECT_EQ(426, response.httpCode);
+    EXPECT_EQ(OutcomeClass::VersionRejected, classifyOutcome(response));
+}
+
 TEST_F(ComponentTest, BackPressureIsHonoredAndEachRetryReSigns)
 {
     SystemClock clock;

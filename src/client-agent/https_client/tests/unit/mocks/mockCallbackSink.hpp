@@ -19,6 +19,7 @@
 class MockCallbackSink : public ICallbackSink
 {
     public:
+        MOCK_METHOD(void, onStartupResult, (bool accepted, const std::string& handshakeJson), (override));
         MOCK_METHOD(void, onReenrollRequired, (), (override));
         MOCK_METHOD(void, onStateChange, (hc_conn_state_t state), (override));
 };
