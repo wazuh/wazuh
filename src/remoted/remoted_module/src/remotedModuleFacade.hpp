@@ -140,9 +140,7 @@ private:
             remoted::http::Method::Get,
             "/",
             [](const remoted::http::HttpRequest&, std::shared_ptr<remoted::http::IHttpResponder> responder)
-            {
-                responder->send(remoted::http::HttpResponse::json(200, R"({"status":"ok","module":"remoted"})"));
-            });
+            { responder->send(remoted::http::HttpResponse::json(200, R"({"status":"ok","module":"remoted"})")); });
 
         // Dummy /stateless: the gateway runs the full AES-CMAC validation and
         // only calls this handler once auth succeeds. It intentionally does NOT
@@ -211,16 +209,16 @@ private:
     }
 
     const LogFn m_logFn {REMOTED_MODULE_LOGTAG};
-    std::mutex m_lifecycleMutex;              ///< Serializes start()/stop().
-    std::mutex m_waitMutex;                   ///< Guards the heartbeat wait.
-    std::condition_variable m_waitCv;         ///< Wakes the worker on stop.
-    std::atomic_bool m_stopping {false};      ///< Cooperative-shutdown flag.
-    bool m_running {false};                   ///< Whether the worker is active.
-    std::thread m_worker;                     ///< The C++ thread launched for remoted.
-    remoted_module_config_t m_config {};      ///< Copy of the caller's configuration.
+    std::mutex m_lifecycleMutex;         ///< Serializes start()/stop().
+    std::mutex m_waitMutex;              ///< Guards the heartbeat wait.
+    std::condition_variable m_waitCv;    ///< Wakes the worker on stop.
+    std::atomic_bool m_stopping {false}; ///< Cooperative-shutdown flag.
+    bool m_running {false};              ///< Whether the worker is active.
+    std::thread m_worker;                ///< The C++ thread launched for remoted.
+    remoted_module_config_t m_config {}; ///< Copy of the caller's configuration.
 
-    std::unique_ptr<remoted::http::IHttpServer> m_httpServer;    ///< HTTPS transport (behind our interface).
-    std::shared_ptr<wazuh_auth::IAgentKeyResolver> m_keyResolver; ///< Agent AES-key lookup (client.keys).
+    std::unique_ptr<remoted::http::IHttpServer> m_httpServer;       ///< HTTPS transport (behind our interface).
+    std::shared_ptr<wazuh_auth::IAgentKeyResolver> m_keyResolver;   ///< Agent AES-key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
 };
 
