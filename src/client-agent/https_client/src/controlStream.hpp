@@ -23,8 +23,11 @@
 #include "retrySender.hpp"
 #include "stopToken.hpp"
 #include "sysSeams.hpp"
+#include "taskBatch.hpp"
+#include "taskDeduper.hpp"
 
 #include <string>
+#include <vector>
 
 /**
  * @brief The /control client: Startup, Notify and shutdown, speaking the
@@ -32,10 +35,9 @@
  *
  * Drives the pure ControlStateMachine: nextAction() decides the request,
  * step() performs it and feeds the result back as an event. Startup applies
- * the handshake JSON and releases the producer gate; Notify compares the
- * manager-reported hashes (config_hash -> /download, settings_hash ->
- * startup refresh). Task dispatch (#37833) mounts on the Notify response in
- * its own workstream.
+ * the handshake JSON and releases the producer gate; Notify dispatches the
+ * planned task batch and compares the manager-reported hashes (config_hash
+ * -> /download, settings_hash -> startup refresh).
  */
 class ControlStream final
 {
@@ -69,6 +71,7 @@ class ControlStream final
         void applyEffects(const ControlStateMachine::Effects& effects, const std::string& handshake);
         void applyClusterIdentity(const std::string& startupBody);
         void handleNotifyBody(const std::string& body, Waiter& waiter);
+        void dispatchPlannedTasks(std::vector<NotifyTask> batch);
         void maybeArmSettingsRefresh(const std::string& incoming);
         void maybeDownloadConfig(const std::string& managerHash, const std::string& group,
                                  Waiter& waiter);
@@ -77,12 +80,14 @@ class ControlStream final
         const ModuleConfig& m_config;
         Backoff m_backoff;
         RetrySender m_sender;
+        IClock& m_clock;
         ICallbackSink& m_sink;
         ConfigFetcher m_fetcher;
         ConfigHashState& m_configHash;
         ClusterIdentity& m_cluster;
         AuthGate& m_authGate;
         ControlStateMachine m_machine;
+        TaskDeduper m_deduper;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 
         /// SHA-256 of the exact startup-response bytes (the local settings
