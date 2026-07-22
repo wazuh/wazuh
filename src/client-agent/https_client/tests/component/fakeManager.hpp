@@ -25,6 +25,7 @@
 #include <csignal>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -48,17 +49,21 @@ class FakeManager final
         /// configBlob non-empty: /download serves it (chunked octet-stream)
         /// and every notify reports agent.config_hash = MD5(configBlob), so a
         /// client whose local hash differs downloads it.
+        /// statelessMaxBody > 0: a /stateless POST whose body exceeds it gets
+        /// 413, so the client must split and resend smaller (#37835).
         /// rotateKeyAfterNotifies > 0 with rotatedKeyHex set: after that many
         /// notifies the server verifies ONLY against rotatedKeyHex, so the old
         /// key starts getting 401 (#37828 re-enrollment).
         FakeManager(uint16_t port, const std::string& keyHex, bool tls = false,
                     int settingsFlipAfter = 0, std::string configBlob = {},
-                    int rotateKeyAfterNotifies = 0, std::string rotatedKeyHex = {})
+                    size_t statelessMaxBody = 0, int rotateKeyAfterNotifies = 0,
+                    std::string rotatedKeyHex = {})
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
             , m_settingsFlipAfter(settingsFlipAfter)
             , m_configBlob(std::move(configBlob))
+            , m_statelessMaxBody(statelessMaxBody)
             , m_rotateKeyAfterNotifies(rotateKeyAfterNotifies)
             , m_rotatedKeyHex(std::move(rotatedKeyHex))
         {
@@ -133,6 +138,7 @@ class FakeManager final
             const std::string keyHex = m_keyHex;
             const int settingsFlipAfter = m_settingsFlipAfter;
             const std::string configBlob = m_configBlob;
+            const size_t statelessMaxBody = m_statelessMaxBody;
             const std::string configHash =
                 configBlob.empty() ? std::string {}
                 :
@@ -153,9 +159,15 @@ class FakeManager final
                 return verifyCmac(rotated ? rotatedKey : keyHex, target, request);
             };
 
+            // Accumulates accepted /stateless bodies so the fork parent can
+            // read them back via GET /peek/stateless (fork servers share no
+            // memory; a peek endpoint is the observability channel).
+            auto acceptedEvents = std::make_shared<std::string>();
+            auto acceptedMutex = std::make_shared<std::mutex>();
+
             server.Post("/stateless",
-                        [verify, backpressureArmed](const httplib::Request & request,
-                                                    httplib::Response & response)
+                        [verify, backpressureArmed, statelessMaxBody, acceptedEvents, acceptedMutex](
+                            const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/stateless", request))
                 {
@@ -170,8 +182,28 @@ class FakeManager final
                     return;
                 }
 
+                if (statelessMaxBody > 0 && request.body.size() > statelessMaxBody)
+                {
+                    response.status = 413; // Payload too large: the client must split + resend.
+                    return;
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(*acceptedMutex);
+                    *acceptedEvents += request.body; // Record the accepted batch.
+                }
+
                 response.status = 200;
                 response.set_content(request.body, "text/plain"); // Echo for body assertions.
+            });
+
+            server.Get("/peek/stateless",
+                       [acceptedEvents, acceptedMutex](const httplib::Request&,
+                                                       httplib::Response & response)
+            {
+                std::lock_guard<std::mutex> lock(*acceptedMutex);
+                response.status = 200;
+                response.set_content(*acceptedEvents, "text/plain");
             });
 
             server.Post("/download",
@@ -342,6 +374,7 @@ class FakeManager final
         bool m_tls {false};
         int m_settingsFlipAfter {0};
         std::string m_configBlob;
+        size_t m_statelessMaxBody {0};
         int m_rotateKeyAfterNotifies {0};
         std::string m_rotatedKeyHex;
 };
