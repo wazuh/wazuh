@@ -132,6 +132,7 @@
     - [Architecture](ref/modules/remoted/architecture.md)
     - [Stateless Metadata](ref/modules/remoted/stateless-metadata.md)
     - [Event Protocol](ref/modules/remoted/event-protocol.md)
+    - [HTTPS Events API](ref/modules/remoted/https-events-api.md)
     - [Configuration](ref/modules/remoted/configuration.md)
     - [Quick Reference](ref/modules/remoted/quick-reference.md)
   - [Server API](ref/modules/server-api/README.md)

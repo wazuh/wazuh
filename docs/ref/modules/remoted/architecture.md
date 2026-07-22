@@ -101,6 +101,16 @@ Forwards enriched event batches to analysisd:
 - **Socket Path**: `/var/wazuh-manager/queue/sockets/queue`
 - **Protocol**: x-wev1 (custom event framing)
 
+### 6. HTTPS Events Listener (C++ module) — *experimental*
+
+A self-contained C++ module (`remoted_module`) embedded in `remoted` runs a separate **HTTPS
+listener** (RESTinio + OpenSSL, default `127.0.0.1:9443`) for agent-authenticated event ingestion,
+independent of the AES-encrypted TCP/UDP channel above. Each request is authenticated with a
+per-agent **AES-CMAC** signature (`Authorization: Wazuh <agent-id>:<timestamp>:<mac>`). It is
+Linux-manager only and starts lazily (retried on the module's 60 s heartbeat) only when a TLS
+certificate/key are present. Currently it authenticates and validates requests but does not yet
+parse or ingest the payload. See [HTTPS Events API](https-events-api.md).
+
 ## Data Flow
 
 Agent sends event → Network Listener → Decrypt & Validate → Message Classification:
@@ -126,4 +136,5 @@ For complete configuration options, see [Configuration](configuration.md).
 
 - [Stateless Metadata](stateless-metadata.md)
 - [Event Protocol](event-protocol.md)
+- [HTTPS Events API](https-events-api.md)
 - [Configuration](configuration.md)
