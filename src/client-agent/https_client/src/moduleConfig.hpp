@@ -39,9 +39,15 @@ struct ModuleConfig
         std::string clientKey;
         std::string ciphers;
 
+        uint32_t notifyIntervalS {20};
+        uint32_t rejectedRetryIntervalS {60};
+
+        std::string version;
+
         uint32_t requestTimeoutMs {10000};
         uint32_t backoffBaseMs {1000};
         uint32_t backoffCapMs {60000};
+        uint32_t drainTimeoutMs {5000};
 
         std::string spoolDir;
 

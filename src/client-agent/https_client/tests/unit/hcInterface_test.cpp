@@ -11,10 +11,11 @@
 
 /*
  * Black-box tests over the C ABI (include/https_client.h), the
- * remoted_module_test style: only the public header is included.
- * State-change callbacks are asynchronous (serialized on the dispatcher and
- * fully drained by hc_stop), so the lifecycle is asserted on the drained
- * record after destroy.
+ * remoted_module_test style: only the public header is included. The client
+ * points at a closed local port with tiny timeouts, so Startup never
+ * succeeds and every test stops quickly. State-change callbacks are
+ * asynchronous (serialized on the dispatcher and fully drained by hc_stop),
+ * so the lifecycle is asserted on the drained record after destroy.
  */
 
 #include "https_client.h"
@@ -23,6 +24,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstring>
 #include <mutex>
 #include <vector>
@@ -61,6 +63,10 @@ namespace
         config.request_timeout_ms = 200;
         config.backoff_base_ms = 1;
         config.backoff_cap_ms = 5;
+        config.notify_interval_s = 1;
+        config.rejected_retry_interval_s = 1;
+        config.drain_timeout_ms = 100;
+        std::strncpy(config.version, "5.1.0", sizeof(config.version) - 1);
         return config;
     }
 
@@ -142,6 +148,21 @@ TEST_F(HcInterfaceTest, DestroyImpliesStop)
     EXPECT_EQ(HC_STATE_STOPPED, m_recorder.states.back());
 }
 
+TEST_F(HcInterfaceTest, DrainReturnsWithinDeadlineAgainstADeadServer)
+{
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+
+    const auto begin = std::chrono::steady_clock::now();
+    hc_stop(handle); // Must not hang despite the unreachable server.
+    const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
+                             std::chrono::steady_clock::now() - begin)
+                         .count();
+    EXPECT_LT(elapsed, 5);
+    hc_destroy(handle);
+}
+
 TEST_F(HcInterfaceTest, StartRejectsMissingMandatoryFields)
 {
     hc_config_t badConfig = m_config;
@@ -186,6 +207,7 @@ TEST_F(HcInterfaceTest, NullHandleIsSafeEverywhere)
     EXPECT_FALSE(hc_start(nullptr));
     hc_stop(nullptr);
     hc_destroy(nullptr);
+    hc_notify_now(nullptr);
     EXPECT_FALSE(hc_set_agent_key(nullptr, "000102030405060708090a0b0c0d0e0f"));
     EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(nullptr));
 }
