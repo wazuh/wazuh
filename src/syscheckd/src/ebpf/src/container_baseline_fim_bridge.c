@@ -12,7 +12,120 @@
 #include "shared.h"
 #include "syscheck.h"
 
+#include <stdio.h>
+#include <time.h>
 #include <unistd.h>
+
+static void copy_if_present(cJSON* source, cJSON* target, const char* source_key, const char* target_key)
+{
+    cJSON* item = cJSON_GetObjectItem(source, source_key);
+    if (item == NULL) {
+        return;
+    }
+
+    cJSON* dup = cJSON_Duplicate(item, 1);
+    if (dup != NULL) {
+        cJSON_AddItemToObject(target, target_key, dup);
+    }
+}
+
+static void copy_number_as_string_if_present(cJSON* source, cJSON* target, const char* source_key, const char* target_key)
+{
+    cJSON* item = cJSON_GetObjectItem(source, source_key);
+    if (item == NULL) {
+        return;
+    }
+
+    if (cJSON_IsString(item) && item->valuestring != NULL) {
+        cJSON_AddStringToObject(target, target_key, item->valuestring);
+    } else if (cJSON_IsNumber(item)) {
+        char numeric_buf[64];
+        snprintf(numeric_buf, sizeof(numeric_buf), "%.0f", item->valuedouble);
+        cJSON_AddStringToObject(target, target_key, numeric_buf);
+    }
+}
+
+static void copy_mtime_to_iso8601_if_present(cJSON* source, cJSON* target)
+{
+    cJSON* mtime = cJSON_GetObjectItem(source, "mtime");
+    if (mtime == NULL) {
+        return;
+    }
+
+    if (cJSON_IsString(mtime) && mtime->valuestring != NULL) {
+        cJSON_AddStringToObject(target, "mtime", mtime->valuestring);
+        return;
+    }
+
+    if (cJSON_IsNumber(mtime)) {
+        time_t timestamp = (time_t)mtime->valuedouble;
+        struct tm tm_info;
+        char iso[32] = {0};
+
+        if (gmtime_r(&timestamp, &tm_info) && strftime(iso, sizeof(iso), "%Y-%m-%dT%H:%M:%S.000Z", &tm_info) > 0) {
+            cJSON_AddStringToObject(target, "mtime", iso);
+        } else {
+            cJSON_AddNumberToObject(target, "mtime", mtime->valuedouble);
+        }
+    }
+}
+
+static void normalize_container_fim_row(cJSON* msg)
+{
+    if (msg == NULL || !cJSON_IsObject(msg)) {
+        return;
+    }
+
+    cJSON* file_obj = cJSON_GetObjectItem(msg, "file");
+    if (file_obj == NULL || !cJSON_IsObject(file_obj)) {
+        file_obj = cJSON_CreateObject();
+        if (file_obj == NULL) {
+            return;
+        }
+        cJSON_AddItemToObject(msg, "file", file_obj);
+    }
+
+    copy_if_present(msg, file_obj, "path", "path");
+    copy_if_present(msg, file_obj, "permissions", "permissions");
+    copy_if_present(msg, file_obj, "uid", "uid");
+    copy_if_present(msg, file_obj, "gid", "gid");
+    copy_if_present(msg, file_obj, "owner", "owner");
+    copy_if_present(msg, file_obj, "group_", "group");
+    copy_if_present(msg, file_obj, "size", "size");
+    copy_number_as_string_if_present(msg, file_obj, "inode", "inode");
+    copy_number_as_string_if_present(msg, file_obj, "device", "device");
+    copy_mtime_to_iso8601_if_present(msg, file_obj);
+
+    cJSON* file_hash_obj = cJSON_GetObjectItem(file_obj, "hash");
+    if (file_hash_obj == NULL || !cJSON_IsObject(file_hash_obj)) {
+        file_hash_obj = cJSON_CreateObject();
+        if (file_hash_obj != NULL) {
+            cJSON_AddItemToObject(file_obj, "hash", file_hash_obj);
+        }
+    }
+
+    if (file_hash_obj != NULL) {
+        copy_if_present(msg, file_hash_obj, "hash_md5", "md5");
+        copy_if_present(msg, file_hash_obj, "hash_sha1", "sha1");
+        copy_if_present(msg, file_hash_obj, "hash_sha256", "sha256");
+    }
+
+    // Remove flat fields not accepted by the strict fim-files schema.
+    cJSON_DeleteItemFromObject(msg, "path");
+    cJSON_DeleteItemFromObject(msg, "permissions");
+    cJSON_DeleteItemFromObject(msg, "uid");
+    cJSON_DeleteItemFromObject(msg, "gid");
+    cJSON_DeleteItemFromObject(msg, "owner");
+    cJSON_DeleteItemFromObject(msg, "group_");
+    cJSON_DeleteItemFromObject(msg, "mtime");
+    cJSON_DeleteItemFromObject(msg, "size");
+    cJSON_DeleteItemFromObject(msg, "inode");
+    cJSON_DeleteItemFromObject(msg, "device");
+    cJSON_DeleteItemFromObject(msg, "hash_md5");
+    cJSON_DeleteItemFromObject(msg, "hash_sha1");
+    cJSON_DeleteItemFromObject(msg, "hash_sha256");
+    cJSON_DeleteItemFromObject(msg, "is_symlink");
+}
 
 int fim_collect_k8s_monitored_paths(cb_monitored_path_t** out_paths, size_t* out_count)
 {
@@ -113,6 +226,82 @@ void fim_persist_baseline_row(const char* id, int operation, const char* index, 
         return;
     }
 
-    persist_syscheck_msg(id, (Operation_t)operation, index, msg, version);
+    normalize_container_fim_row(msg);
+
+    // Keep parity with host FIM stateful rows by adding checksum/state envelope
+    // fields before persistence.
+    cJSON* checksum_obj = cJSON_GetObjectItem(msg, "checksum");
+    if (checksum_obj == NULL || !cJSON_IsObject(checksum_obj)) {
+        checksum_obj = cJSON_CreateObject();
+        if (checksum_obj != NULL) {
+            cJSON_AddItemToObject(msg, "checksum", checksum_obj);
+        }
+    }
+
+    if (checksum_obj != NULL) {
+        cJSON* hash_obj = cJSON_GetObjectItem(checksum_obj, "hash");
+        if (hash_obj == NULL || !cJSON_IsObject(hash_obj)) {
+            hash_obj = cJSON_CreateObject();
+            if (hash_obj != NULL) {
+                cJSON_AddItemToObject(checksum_obj, "hash", hash_obj);
+            }
+        }
+
+        if (hash_obj != NULL) {
+            const char* sha1_value = NULL;
+
+            cJSON* top_sha1 = cJSON_GetObjectItem(msg, "hash_sha1");
+            if (top_sha1 != NULL && cJSON_IsString(top_sha1) && top_sha1->valuestring != NULL) {
+                sha1_value = top_sha1->valuestring;
+            } else {
+                cJSON* file_obj = cJSON_GetObjectItem(msg, "file");
+                if (file_obj != NULL && cJSON_IsObject(file_obj)) {
+                    cJSON* file_hash_obj = cJSON_GetObjectItem(file_obj, "hash");
+                    if (file_hash_obj != NULL && cJSON_IsObject(file_hash_obj)) {
+                        cJSON* file_sha1 = cJSON_GetObjectItem(file_hash_obj, "sha1");
+                        if (file_sha1 != NULL && cJSON_IsString(file_sha1) && file_sha1->valuestring != NULL) {
+                            sha1_value = file_sha1->valuestring;
+                        }
+                    }
+                }
+            }
+
+            if (sha1_value != NULL) {
+                cJSON_DeleteItemFromObject(hash_obj, "sha1");
+                cJSON_AddStringToObject(hash_obj, "sha1", sha1_value);
+            }
+        }
+    }
+
+    cJSON* state_obj = cJSON_GetObjectItem(msg, "state");
+    if (state_obj == NULL || !cJSON_IsObject(state_obj)) {
+        state_obj = cJSON_CreateObject();
+        if (state_obj != NULL) {
+            cJSON_AddItemToObject(msg, "state", state_obj);
+        }
+    }
+
+    if (state_obj != NULL) {
+        char modified_at_time[32];
+        get_iso8601_utc_time(modified_at_time, sizeof(modified_at_time));
+        cJSON_DeleteItemFromObject(state_obj, "modified_at");
+        cJSON_DeleteItemFromObject(state_obj, "document_version");
+        cJSON_AddStringToObject(state_obj, "modified_at", modified_at_time);
+        cJSON_AddNumberToObject(state_obj, "document_version", (double)version);
+    }
+
+    char item_desc[128];
+    snprintf(item_desc, sizeof(item_desc), "container FIM baseline row %s", id ? id : "<null>");
+    validate_and_persist_fim_event(msg,
+                                   id,
+                                   (Operation_t)operation,
+                                   index,
+                                   version,
+                                   item_desc,
+                                   false,
+                                   NULL,
+                                   NULL,
+                                   1);
+
     cJSON_Delete(msg);
 }

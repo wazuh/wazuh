@@ -205,14 +205,15 @@ class EXPORTED Syscollector final
         void scanBrowserExtensions();
         /// @brief Baseline process + network inventory for every container currently
         /// known to the container-connector module (spike #37532). Unlike the other
-        /// scan* methods this does not read dbsync_processes/dbsync_ports — the
-        /// draft JSON shape emitted for container-sourced rows is not yet aligned
-        /// with ecsData()'s field contract (pending #37203-4's schema decision), so
-        /// rows are pushed straight through persistDifference() instead of the
-        /// normal DBSync-diff pipeline. See container_baseline_scanner.hpp.
+        /// scan* methods this does not read dbsync_processes/dbsync_ports — rows are
+        /// produced by the container_baseline module and then enriched here with the
+        /// stateful envelope (checksum/state) before persistence. This keeps the
+        /// payload shape source-specific while preserving sync-protocol parity with
+        /// host Syscollector state rows. See container_baseline_scanner.hpp.
         void scanContainerBaseline();
         /// @brief cb_row_sink_t-shaped trampoline: `userData` is always `this`,
-        /// forwarding straight into persistDifference(). See scanContainerBaseline().
+        /// enriching container rows with stateful fields and forwarding to
+        /// persistDifference(). See scanContainerBaseline().
         static void ContainerBaselineSink(const char* id, int operation, const char* index, const char* json,
                                           uint64_t version, void* userData);
         void scan();

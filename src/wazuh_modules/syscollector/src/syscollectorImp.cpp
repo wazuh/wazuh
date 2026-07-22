@@ -1822,7 +1822,50 @@ void Syscollector::ContainerBaselineSink(const char* id, int operation, const ch
                                          uint64_t version, void* userData)
 {
     auto* self = static_cast<Syscollector*>(userData);
-    self->persistDifference(id, static_cast<Operation>(operation), index, json, version);
+
+    if (!self || !id || !index || !json)
+    {
+        return;
+    }
+
+    nlohmann::json statefulPayload;
+
+    try
+    {
+        statefulPayload = nlohmann::json::parse(json);
+    }
+    catch (const std::exception& ex)
+    {
+        if (self->m_logFunction)
+        {
+            self->m_logFunction(LOG_ERROR,
+                                std::string("Container baseline row discarded: invalid JSON payload: ") + ex.what());
+        }
+
+        return;
+    }
+
+    // Keep parity with host Syscollector stateful rows: payload + checksum + state envelope.
+    statefulPayload["checksum"]["hash"]["sha1"] = getItemChecksum(statefulPayload);
+    statefulPayload["state"]["modified_at"] = Utils::getCurrentISO8601();
+    statefulPayload["state"]["document_version"] = version;
+
+    const auto statefulToSend = statefulPayload.dump();
+    const std::string context = std::string("container baseline index: ") + index;
+
+    if (!self->validateSchemaAndLog(statefulToSend, index, context))
+    {
+        if (self->m_logFunction)
+        {
+            self->m_logFunction(LOG_ERROR,
+                                std::string("Container baseline row discarded after schema validation failure for index ") +
+                                    index);
+        }
+
+        return;
+    }
+
+    self->persistDifference(id, static_cast<Operation>(operation), index, statefulToSend, version);
 }
 #endif
 
@@ -1831,10 +1874,10 @@ void Syscollector::scanContainerBaseline()
 #if defined(__linux__)
     m_logFunction(LOG_DEBUG_VERBOSE, "Starting container baseline scan");
 
-    // No DBSync/notifyChange here: this row's JSON shape is a draft (see the
-    // header comment on this method) and is pushed straight to the sync
-    // protocol instead of going through the normal insertData/checksum-diff
-    // pipeline the other scan* methods use.
+    // No DBSync/notifyChange here: these rows are produced externally by the
+    // container_baseline module. ContainerBaselineSink enriches them with the
+    // same stateful envelope fields Syscollector uses (checksum/state) and then
+    // persists them through sync protocol.
     const int baselined =
         cbaseline_run_syscollector(CB_DEFAULT_CONNECTOR_SOCKET_PATH, &Syscollector::ContainerBaselineSink, this);
 
