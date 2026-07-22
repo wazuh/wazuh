@@ -26,10 +26,15 @@ else
   echo "[entrypoint] WARN: <client> block not found in ${OSSEC_CONF}."
 fi
 
-if [[ -n "${AUTHD_PASSWORD}" ]]; then
-  /var/ossec/bin/agent-auth -A "${AGENT_NAME}" -m "${MANAGER_HOST}" -p "${AUTHD_PORT}" -P "${AUTHD_PASSWORD}" || true
-else
-  /var/ossec/bin/agent-auth -A "${AGENT_NAME}" -m "${MANAGER_HOST}" -p "${AUTHD_PORT}" || true
+# 4.x agents register with agent-auth. 5.x agents have no agent-auth: their
+# enrollment (manager address + registration password) is configured at install
+# time from WAZUH_MANAGER/WAZUH_REGISTRATION_PASSWORD and runs on start.
+if [[ -x /var/ossec/bin/agent-auth ]]; then
+  if [[ -n "${AUTHD_PASSWORD}" ]]; then
+    /var/ossec/bin/agent-auth -A "${AGENT_NAME}" -m "${MANAGER_HOST}" -p "${AUTHD_PORT}" -P "${AUTHD_PASSWORD}" || true
+  else
+    /var/ossec/bin/agent-auth -A "${AGENT_NAME}" -m "${MANAGER_HOST}" -p "${AUTHD_PORT}" || true
+  fi
 fi
 
 /var/ossec/bin/wazuh-control start

@@ -6,7 +6,7 @@ RUN dnf -y update \
  && dnf clean all \
  && rm -rf /var/cache/dnf
 
-COPY pkgs/wazuh-agent-4*.x86_64.rpm /tmp/wazuh-agent.rpm
+COPY pkgs/wazuh-agent_4x.rpm /tmp/wazuh-agent.rpm
 RUN dnf -y install /tmp/wazuh-agent.rpm \
  && rm -f /tmp/wazuh-agent.rpm \
  && dnf clean all \
