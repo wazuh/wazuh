@@ -1,0 +1,201 @@
+#!/usr/bin/env python3
+# Wazuh agent HTTPS client — demo mock manager.
+# Copyright (C) 2015, Wazuh Inc.
+#
+# A tiny TLS "manager" that speaks the proposed #37732/#37733 contract just
+# enough to watch the REAL https_client module communicate: it verifies the
+# AES-CMAC of every request (via the openssl CLI, so it is an independent
+# implementation), then answers /control. Every request is logged so the
+# conversation is visible.
+#
+# Not production code; a demo harness only.
+
+import argparse
+import hashlib
+import json
+import ssl
+import subprocess
+import sys
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+START = time.time()
+
+
+def stamp():
+    return f"[+{(time.time() - START) * 1000:7.0f} ms]"
+
+
+def log(msg):
+    print(f"{stamp()} [mock] {msg}", flush=True)
+
+
+def cmac_hex(key_hex, message):
+    """AES-CMAC(key, message) as lowercase hex, via the openssl CLI. The
+    cipher follows the key length (16/24/32 bytes -> AES-128/192/256), the
+    same rule as the manager's client.keys resolver."""
+    cipher = {32: "AES-128-CBC", 48: "AES-192-CBC", 64: "AES-256-CBC"}[len(key_hex)]
+    out = subprocess.run(
+        ["openssl", "mac", "-macopt", f"cipher:{cipher}",
+         "-macopt", f"hexkey:{key_hex}", "CMAC"],
+        input=message, capture_output=True, check=True,
+    )
+    return out.stdout.decode().strip().lower()
+
+
+class Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+    key_hex = "000102030405060708090a0b0c0d0e0f"
+    notify_count = 0
+
+    # Timeline (driven by the notify counter): the settings flip makes the
+    # client re-send startup for fresh limits while staying registered.
+    SETTINGS_FLIP_AT = 5
+
+    # Credential rotation (#37828): after this notify the mock verifies ONLY
+    # against ROTATED_KEY, so the agent's old key starts getting 401 and must
+    # re-enroll. The demo driver swaps to ROTATED_KEY via hc_set_agent_key.
+    ROTATE_KEY_AT = 7
+    ROTATED_KEY = "0f0e0d0c0b0a09080706050403020100"
+
+    # Exact startup-response bytes, kept verbatim: settings_hash is the SHA256
+    # of precisely what goes on the wire (#37733 5.1.1).
+    STARTUP_V1 = json.dumps(
+        {"limits": {"fim": {"file": 100000}, "syscollector": {"packages": 50000},
+                    "sca": {"checks": 10000}},
+         "cluster": {"name": "demo", "node": "node01"},
+         "agent": {"groups": ["default"]}}).encode()
+    STARTUP_V2 = json.dumps(
+        {"limits": {"fim": {"file": 200000}, "syscollector": {"packages": 50000},
+                    "sca": {"checks": 20000}},
+         "cluster": {"name": "demo", "node": "node01"},
+         "agent": {"groups": ["default"]}}).encode()
+
+    @classmethod
+    def _startup_body(cls):
+        return cls.STARTUP_V2 if cls.notify_count >= cls.SETTINGS_FLIP_AT else cls.STARTUP_V1
+
+    def log_message(self, *_):  # silence the default noisy logging
+        pass
+
+    def _verify(self, target, body):
+        auth = self.headers.get("Authorization", "")
+        version = self.headers.get("protocol-version", "")
+        if not auth.startswith("Wazuh ") or version != "1":
+            return None, "missing/!=1 protocol-version or Authorization"
+        try:
+            agent_id, ts, mac = auth[len("Wazuh "):].split(":", 2)
+        except ValueError:
+            return None, "malformed Authorization"
+        canonical = (b"WAZUH-REQUEST\n1\nPOST\n" + target.encode() + b"\n"
+                     + agent_id.encode() + b"\n" + ts.encode() + b"\n" + body)
+        active_key = (Handler.ROTATED_KEY
+                      if Handler.notify_count >= Handler.ROTATE_KEY_AT
+                      else Handler.key_hex)
+        expected = cmac_hex(active_key, canonical)
+        if expected != mac.lower():
+            return None, f"CMAC mismatch (got {mac[:12]}.., want {expected[:12]}.. - rotated?)"
+        return (agent_id, ts, mac), None
+
+    def _reply(self, code, payload=None, headers=None):
+        body = b"" if payload is None else json.dumps(payload).encode()
+        self._reply_raw(code, body, headers=headers)
+
+    def _reply_raw(self, code, body, content_type="application/json", headers=None):
+        self.send_response(code)
+        for key, value in (headers or {}).items():
+            self.send_header(key, value)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if body:
+            self.wfile.write(body)
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length)
+        target = self.path
+
+        identity, err = self._verify(target, body)
+        if err:
+            log(f"POST {target:<11} -> 401  ({err})")
+            self._reply(401, {"error": "unauthorized"})
+            return
+
+        agent_id, ts, mac = identity
+        preview = body[:70].decode("latin-1").replace("\n", "\\n")
+        log(f"POST {target:<11} <- id={agent_id} ts={ts} mac={mac[:10]}.. "
+            f"auth OK ({len(body)} B) body='{preview}'")
+
+        if target == "/control":
+            self._handle_control(body)
+        else:
+            self._reply(404)
+
+    def _handle_control(self, body):
+        try:
+            msg_type = json.loads(body.decode()).get("type", "?")
+        except (ValueError, UnicodeDecodeError):
+            msg_type = "?"
+
+        if msg_type == "startup":
+            self._control_startup()
+        elif msg_type == "notify":
+            self._control_notify()
+        elif msg_type == "shutdown":
+            self._reply(200, {})
+            log("     /control    -> 200  SHUTDOWN received - marking agent disconnected")
+        else:
+            self._reply(400)
+            log(f"     /control    -> 400  (unknown type '{msg_type}')")
+
+    def _control_startup(self):
+        # 5.1.1: exact stored bytes (their SHA256 is the settings_hash).
+        body = self._startup_body()
+        version = "v2" if body is Handler.STARTUP_V2 else "v1"
+        self._reply_raw(200, body)
+        log(f"     /control    -> 200  STARTUP accepted ({version} settings)")
+
+    def _control_notify(self):
+        Handler.notify_count += 1
+        n = Handler.notify_count
+        startup = self._startup_body()
+        response = {"agent": {"groups": ["default"]},
+                    "settings_hash": hashlib.sha256(startup).hexdigest()}
+        self._reply(200, response)
+        markers = []
+        if n == Handler.SETTINGS_FLIP_AT:
+            markers.append("SETTINGS FLIPPED (new settings_hash)")
+        if n == Handler.ROTATE_KEY_AT:
+            markers.append("KEY ROTATED - old key now 401s, agent must re-enroll")
+        marker = (" <- " + ", ".join(markers)) if markers else ""
+        log(f"     /control    -> 200  NOTIFY #{n} "
+            f"set={response['settings_hash'][:8]}..{marker}")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=27860)
+    parser.add_argument("--cert", required=True)
+    parser.add_argument("--key", required=True)
+    parser.add_argument("--key-hex", default="000102030405060708090a0b0c0d0e0f")
+    args = parser.parse_args()
+
+    Handler.key_hex = args.key_hex
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(args.cert, args.key)
+
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    server.socket = context.wrap_socket(server.socket, server_side=True)
+    log(f"HTTPS manager on https://127.0.0.1:{args.port} "
+        f"(agent key {args.key_hex[:8]}..)")
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        server.server_close()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
