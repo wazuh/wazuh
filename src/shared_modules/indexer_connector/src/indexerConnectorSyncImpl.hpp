@@ -111,6 +111,95 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
 }
 
 /**
+ * @brief Painless merge body shared by the scripted upserts.
+ *
+ * Replaces the stored document with the incoming one while carrying over
+ * top-level fields the incoming document does not contain. Documents may be
+ * enriched by the user through the Indexer/Dashboard (e.g. triage fields);
+ * those fields must survive agent-driven updates. On a scripted upsert of a
+ * new document ctx._source equals the upsert body, so no extra fields are
+ * ever created. params.doc is read-only in Painless, hence the copy.
+ */
+constexpr std::string_view PRESERVE_MERGE_SCRIPT {
+    R"(def merged = new HashMap(params.doc); for (entry in ctx._source.entrySet()) { if (!merged.containsKey(entry.getKey())) { merged.put(entry.getKey(), entry.getValue()) } } ctx._source = merged)"};
+
+/**
+ * @brief Builds an update operation with Painless script for version checking
+ * @param bulkData The string to append the update operation to
+ * @param index Index name
+ * @param id Document ID (will be escaped if needed)
+ * @param version Document version to check against state.document_version
+ * @param data Document data (JSON string)
+ *
+ * The script implements external_gte behavior on state.document_version:
+ * - Updates if state.document_version is null or <= provided version,
+ *   preserving top-level fields the incoming document does not carry
+ *   (user enrichment)
+ * - No-op if state.document_version > provided version
+ */
+inline void appendScriptedUpdate(
+    std::string& bulkData, std::string_view index, std::string_view id, std::string_view version, std::string_view data)
+{
+    // Build update operation metadata. retry_on_conflict re-runs the
+    // get+script cycle if a concurrent write (e.g. a user editing enrichment
+    // fields) bumps the internal version between fetch and reindex; the
+    // script's version guard keeps retries idempotent.
+    bulkData.append(R"({"update":{"_index":")");
+    bulkData.append(index);
+    bulkData.append(R"(","_id":")");
+    appendEscapedId(bulkData, id);
+    bulkData.append(R"(","retry_on_conflict":3}})");
+    bulkData.append("\n");
+
+    // Build script that checks state.document_version field
+    bulkData.append(R"({"script":{"source":")");
+    bulkData.append(
+        R"(if (ctx._source?.state?.document_version == null || ctx._source.state.document_version <= params.doc_version) { )");
+    bulkData.append(PRESERVE_MERGE_SCRIPT);
+    bulkData.append(R"( } else { ctx.op = 'noop' })");
+    bulkData.append(R"(","lang":"painless","params":{"doc_version":)");
+    bulkData.append(version);
+    bulkData.append(R"(,"doc":)");
+    bulkData.append(data);
+    bulkData.append(R"(}},"upsert":)");
+    bulkData.append(data);
+    bulkData.append(R"(,"scripted_upsert":true})");
+    bulkData.append("\n");
+}
+
+/**
+ * @brief Builds an update operation that upserts a document while preserving
+ *        top-level fields the incoming document does not carry
+ * @param bulkData The string to append the update operation to
+ * @param index Index name
+ * @param id Document ID (will be escaped if needed)
+ * @param data Document data (JSON string)
+ *
+ * Versionless counterpart of appendScriptedUpdate(): the incoming document
+ * always wins, but user enrichment fields (unknown to the sender) survive.
+ * A missing document is created exactly as sent (scripted_upsert).
+ */
+inline void
+appendPreservingUpsert(std::string& bulkData, std::string_view index, std::string_view id, std::string_view data)
+{
+    bulkData.append(R"({"update":{"_index":")");
+    bulkData.append(index);
+    bulkData.append(R"(","_id":")");
+    appendEscapedId(bulkData, id);
+    bulkData.append(R"(","retry_on_conflict":3}})");
+    bulkData.append("\n");
+
+    bulkData.append(R"({"script":{"source":")");
+    bulkData.append(PRESERVE_MERGE_SCRIPT);
+    bulkData.append(R"(","lang":"painless","params":{"doc":)");
+    bulkData.append(data);
+    bulkData.append(R"(}},"upsert":)");
+    bulkData.append(data);
+    bulkData.append(R"(,"scripted_upsert":true})");
+    bulkData.append("\n");
+}
+
+/**
  * @brief Validates bulk API response at document level
  * @param response The bulk API response JSON string
  * @return true if all operations succeeded (or had acceptable version conflicts), false otherwise
@@ -1359,6 +1448,59 @@ public:
         m_bulkData.append("\n");
         m_bulkData.append(data);
         m_bulkData.append("\n");
+        m_boundaries.push_back(m_bulkData.size());
+    }
+
+    void bulkUpsertPreserving(std::string_view id, std::string_view index, std::string_view data)
+    {
+        constexpr auto FORMATTED_SIZE {FORMATTED_LENGTH};
+
+        // Validate input parameters
+        if (!isSafeIndexName(index))
+        {
+            LOGFN_ERROR(m_logFn,
+                        "Refusing bulkUpsertPreserving for unsafe index name '%.*s' (empty or contains characters "
+                        "outside [a-zA-Z0-9._*-]) on document '%.*s'",
+                        static_cast<int>(index.size()),
+                        index.data(),
+                        static_cast<int>(id.size()),
+                        id.data());
+            throw IndexerConnectorException("Unsafe index name");
+        }
+
+        if (id.empty())
+        {
+            LOGFN_ERROR(m_logFn, "Id must be provided for bulkUpsertPreserving");
+            throw IndexerConnectorException("Id must be provided for bulkUpsertPreserving");
+        }
+
+        if (data.empty())
+        {
+            LOGFN_WARN(m_logFn,
+                       "Empty data provided for document %.*s in index %.*s",
+                       static_cast<int>(id.size()),
+                       id.data(),
+                       static_cast<int>(index.size()),
+                       index.data());
+        }
+
+        // The scripted upsert carries the document twice (params.doc + upsert body).
+        const auto totalSize = m_bulkData.length() + FORMATTED_SIZE + PRESERVE_MERGE_SCRIPT.size() + index.size() +
+                               id.size() + (2 * data.size());
+
+        // Only flush if there is data already buffered.
+        if (!m_bulkData.empty() && totalSize > m_maxBulkSize)
+        {
+            processBulk();
+        }
+
+        appendPreservingUpsert(m_bulkData, index, id, data);
+
+        LOGFN_DEBUG2(m_logFn,
+                     "Preserving upsert for document %.*s (user enrichment fields are kept)",
+                     static_cast<int>(id.size()),
+                     id.data());
+
         m_boundaries.push_back(m_bulkData.size());
     }
 

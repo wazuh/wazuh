@@ -1803,6 +1803,18 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
     EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version":"12345")"));
     EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version_type":"external_gte")"));
 
+    // Verify the versioned script preserves fields the incoming document does
+    // not carry (user enrichment added via the Indexer/Dashboard)
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr("new HashMap(params.doc)"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr("merged.containsKey"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("retry_on_conflict":3)"));
+
+    // Verify the versioned script preserves fields the incoming document does
+    // not carry (user enrichment added via the Indexer/Dashboard)
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr("new HashMap(params.doc)"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr("merged.containsKey"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("retry_on_conflict":3)"));
+
     // Verify doc2 does not have version information
     std::size_t doc2_pos = capturedBulkData.find("doc2");
     EXPECT_NE(doc2_pos, std::string::npos);
@@ -1810,6 +1822,84 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
     std::string doc2_metadata = capturedBulkData.substr(doc2_pos, doc2_end - doc2_pos);
     EXPECT_THAT(doc2_metadata, ::testing::Not(::testing::HasSubstr("version")));
 }
+
+// Test that bulkUpsertPreserving builds a scripted update that keeps user
+// enrichment fields while fully replacing the fields the sender owns
+TEST_F(IndexerConnectorSyncTest, BulkUpsertPreservingBuildsPreservingScriptedUpdate)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> processingCompletedPromise;
+    std::future<void> processingCompletedFuture = processingCompletedPromise.get_future();
+    std::string capturedBulkData;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(1)
+        .WillOnce(Invoke(
+            [&capturedBulkData, &processingCompletedPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                std::visit([&capturedBulkData](auto&& request) { capturedBulkData = request.data; }, requestParams);
+
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess("{}");
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess("{}");
+                }
+                processingCompletedPromise.set_value();
+            }));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkUpsertPreserving("doc1", "index1", R"({"field":"value1"})");
+
+    connector.flush();
+
+    auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for preserving upsert processing";
+
+    // Update action with conflict retries, no version guard
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("update":{"_index":"index1","_id":"doc1")"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("retry_on_conflict":3)"));
+    EXPECT_THAT(capturedBulkData, ::testing::Not(::testing::HasSubstr("doc_version")));
+
+    // Merge script keeps top-level fields absent from the incoming document
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr("new HashMap(params.doc)"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr("merged.containsKey"));
+
+    // A missing document is created exactly as sent (no extra fields)
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("upsert":{"field":"value1"})"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("scripted_upsert":true)"));
+}
+
+// Test that bulkUpsertPreserving rejects an empty document ID
+TEST_F(IndexerConnectorSyncTest, BulkUpsertPreservingRequiresId)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkUpsertPreserving("", "index1", R"({"field":"value"})"), IndexerConnectorException);
+}
+
+// Test that bulkUpsertPreserving rejects unsafe index names
+TEST_F(IndexerConnectorSyncTest, BulkUpsertPreservingRejectsUnsafeIndexName)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplSmallBulk connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+
+    EXPECT_THROW(connector.bulkUpsertPreserving("doc1", "bad index!", R"({"field":"value"})"),
+                 IndexerConnectorException);
+}
+
+// TODO: does retry on conflict is tested?
 
 // Test escaping special characters in document IDs for bulkIndex
 TEST_F(IndexerConnectorSyncTest, BulkIndexEscapesSpecialCharactersInId)

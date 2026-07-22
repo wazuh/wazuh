@@ -1263,7 +1263,11 @@ public:
                                     }
                                     else
                                     {
-                                        m_indexerConnector->bulkIndex(elementId, rawIndex, dataString);
+                                        // TODO: double check if this is the actual scenario where we want to use bulkUpsertPreserving instead of bulkIndex.
+                                        // No agent-provided version: still go through the preserving
+                                        // upsert so user enrichment fields survive the update (the
+                                        // versioned path above preserves them via its own script).
+                                        m_indexerConnector->bulkUpsertPreserving(elementId, rawIndex, dataString);
                                     }
                                 }
                                 else

@@ -239,12 +239,34 @@ public:
     /**
      * @brief Bulk index with version.
      *
+     * Scripted upsert guarded by state.document_version (external_gte
+     * semantics). Top-level fields present in the stored document but absent
+     * from @p data are preserved: documents may be enriched by the user
+     * through the Indexer/Dashboard and that data must survive updates.
+     *
      * @param id ID.
      * @param index Index name.
      * @param data Data.
      * @param version Document version for external versioning.
      */
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version);
+
+    /**
+     * @brief Bulk upsert that preserves user enrichment fields.
+     *
+     * Versionless counterpart of the versioned bulkIndex(): the document is
+     * fully replaced by @p data, except that top-level fields present in the
+     * stored document but absent from @p data (e.g. triage fields added by
+     * the user through the Indexer/Dashboard) are preserved. A missing
+     * document is created exactly as sent, without any extra fields.
+     *
+     * Unlike bulkIndex(), @p id is mandatory.
+     *
+     * @param id ID (must not be empty).
+     * @param index Index name.
+     * @param data Data.
+     */
+    void bulkUpsertPreserving(std::string_view id, std::string_view index, std::string_view data);
 
     /**
      * @brief Flush the bulk data.
