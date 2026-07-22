@@ -21,6 +21,8 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdio>
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -70,6 +72,7 @@ namespace
         config.backoff_base_ms = 10;
         config.backoff_cap_ms = 50;
         config.notify_interval_s = 1;
+        config.batch_interval_ms = 200;
         config.drain_timeout_ms = 1000;
         std::strncpy(config.version, "5.1.0", sizeof(config.version) - 1);
         return config;
@@ -234,7 +237,7 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentKeyRecovers)
     const uint16_t port = TLS_PORT + 4;
     const std::string oldKey = KEY_HEX;
     const std::string newKey = "0f0e0d0c0b0a09080706050403020100";
-    FakeManager manager {port, oldKey, /*tls=*/true, 0, {}, /*rotateKeyAfterNotifies=*/2, newKey};
+    FakeManager manager {port, oldKey, /*tls=*/true, 0, {}, 0, /*rotateKeyAfterNotifies=*/2, newKey};
 
     ReenrollRecorder recorder;
     hc_config_t config = tlsConfig();
@@ -267,6 +270,77 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentKeyRecovers)
               std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_AUTH_ERROR));
     EXPECT_NE(recorder.states.end(),
               std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
+}
+
+TEST_F(FacadeE2eTest, OversizedBatchIsSplitAndResentWithoutLoss)
+{
+    // The manager 413s any /stateless body over ~600 bytes; the client must
+    // split and resend smaller so every event lands exactly once (#37835).
+    const uint16_t port = TLS_PORT + 3;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true, 0, {}, /*statelessMaxBody=*/600};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    // Max payload 1024 straddles the 600-byte manager limit, so a 413 halves
+    // the effective size down under it and the split succeeds.
+    config.batch_size_bytes = 1024;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.on_state_change = onState;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
+
+    // 40 distinctly-numbered events; each "E evt-NN:payload...\n" ~30 bytes,
+    // so the full batch (~1200 B) exceeds the 600-byte limit and must split.
+    constexpr int total = 40;
+    for (int index = 0; index < total; index++)
+    {
+        char frame[64];
+        const int n = std::snprintf(frame, sizeof frame, "1:/loc:evt-%02d-payload", index);
+        EXPECT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(frame),
+                                    static_cast<size_t>(n)));
+    }
+
+    // Poll the manager's accumulated view until all events land (or time out).
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    std::string received;
+    for (int attempt = 0; attempt < 300; attempt++)
+    {
+        if (auto result = peek.Get("/peek/stateless"))
+        {
+            received = result->body;
+            int seen = 0;
+            for (int index = 0; index < total; index++)
+            {
+                char needle[32];
+                std::snprintf(needle, sizeof needle, "evt-%02d-", index);
+                seen += received.find(needle) != std::string::npos ? 1 : 0;
+            }
+            if (seen == total)
+            {
+                break;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds {20});
+    }
+    hc_destroy(handle);
+
+    // Every event delivered exactly once, none dropped despite the 413s.
+    for (int index = 0; index < total; index++)
+    {
+        char needle[32];
+        std::snprintf(needle, sizeof needle, "evt-%02d-", index);
+        const size_t first = received.find(needle);
+        ASSERT_NE(std::string::npos, first) << "missing event " << index;
+        EXPECT_EQ(std::string::npos, received.find(needle, first + 1))
+                << "duplicated event " << index;
+    }
 }
 
 TEST_F(FacadeE2eTest, SettingsChangeRefreshesStartupWithoutLeavingRegistered)
