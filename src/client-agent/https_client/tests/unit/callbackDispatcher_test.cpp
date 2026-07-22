@@ -15,9 +15,13 @@
 
 #include <algorithm>
 #include <atomic>
+#include <fstream>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
+
+#include <unistd.h>
 
 namespace
 {
@@ -162,6 +166,76 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(),
                         "state:" + std::to_string(HC_STATE_REGISTERED)));
+}
+
+namespace
+{
+    struct ConfigRecord
+    {
+        std::atomic<int> count {0};
+        std::string hash;
+        std::string path;
+        bool existedDuringCallback {false};
+    };
+
+    void recordConfigDownload(const char* configHash, const char* filePath, void* userData)
+    {
+        auto* record = static_cast<ConfigRecord*>(userData);
+        record->hash = configHash;
+        record->path = filePath;
+        std::ifstream probe {filePath};
+        record->existedDuringCallback = probe.good();
+        record->count++;
+    }
+
+    std::string makeTempConfigFile(const std::string& content)
+    {
+        const std::string path =
+            ::testing::TempDir() + "hc_dispatcher_config_" + std::to_string(::getpid()) + ".tmp";
+        std::ofstream file {path, std::ios::binary};
+        file << content;
+        return path;
+    }
+} // namespace
+
+TEST(CallbackDispatcherTest, ConfigFileLivesForTheCallbackAndDiesAfterStop)
+{
+    ConfigRecord record;
+    hc_callbacks_t callbacks {};
+    callbacks.on_config_downloaded = recordConfigDownload;
+    callbacks.user_data = &record;
+
+    const std::string path = makeTempConfigFile("merged-bytes");
+    CallbackDispatcher dispatcher {callbacks};
+    dispatcher.start();
+    dispatcher.onConfigDownloaded("hash-1", std::make_shared<SpoolFile>(path));
+
+    while (record.count.load() < 1)
+    {
+        std::this_thread::yield();
+    }
+
+    dispatcher.stop(); // Drains: the task (and its file reference) is gone.
+
+    EXPECT_EQ("hash-1", record.hash);
+    EXPECT_EQ(path, record.path);
+    EXPECT_TRUE(record.existedDuringCallback);
+    std::ifstream after {path};
+    EXPECT_FALSE(after.good()); // Deleted right after the callback returned.
+}
+
+TEST(CallbackDispatcherTest, NullConfigCallbackDeletesTheFileImmediately)
+{
+    hc_callbacks_t callbacks {}; // No on_config_downloaded.
+    const std::string path = makeTempConfigFile("merged-bytes");
+    CallbackDispatcher dispatcher {callbacks};
+    dispatcher.start();
+    dispatcher.onConfigDownloaded("hash-1", std::make_shared<SpoolFile>(path));
+
+    // The early return dropped the last reference synchronously.
+    std::ifstream probe {path};
+    EXPECT_FALSE(probe.good());
+    dispatcher.stop();
 }
 
 TEST(CallbackDispatcherTest, DoubleStartAndDoubleStopAreSafe)
