@@ -32,6 +32,7 @@ include_directories(
   ${SRC_FOLDER}/shared/os_xml/
   ${SRC_FOLDER}/config/include/
   ${SRC_FOLDER}/client-agent/include/
+  ${SRC_FOLDER}/client-agent/https_client/include/
   ${SRC_FOLDER}/logcollector/include/
   ${SRC_FOLDER}/os_execd/include/
   ${SRC_FOLDER}/syscheckd/include/
@@ -141,6 +142,7 @@ target_link_libraries(
           fimdb
           agent_metadata
           agent_sync_protocol
+          https_client
           schema_validator
           config
           wazuh-modulesd
@@ -171,6 +173,7 @@ target_link_libraries(
           fimdb
           agent_metadata
           agent_sync_protocol
+          https_client
           schema_validator
           config
           wazuh-modulesd
