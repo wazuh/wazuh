@@ -1,0 +1,338 @@
+/*
+ * Wazuh agent HTTPS client (C++ transport module)
+ * Copyright (C) 2015, Wazuh Inc.
+ * July 17, 2026.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+#include "controlStream.hpp"
+#include "digest.hpp"
+#include "fakeSysSeams.hpp"
+#include "mockCallbackSink.hpp"
+#include "mockHttpPerformer.hpp"
+
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+
+#include <cstring>
+#include <vector>
+
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::NiceMock;
+using ::testing::Return;
+
+namespace
+{
+    HttpResponse response(TransportStatus status, long code, const std::string& body = {})
+    {
+        HttpResponse value;
+        value.status = status;
+        value.httpCode = code;
+        value.body = body;
+        return value;
+    }
+
+    std::string bodyOf(const HttpRequestSpec& spec)
+    {
+        return std::string {reinterpret_cast<const char*>(spec.body), spec.bodyLength};
+    }
+
+    class ControlStreamTest : public ::testing::Test
+    {
+        protected:
+            ControlStreamTest()
+                : m_signer("001", m_keyProvider)
+                , m_config(makeConfig())
+                , m_authGate(m_sink, [] {})
+                , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink,
+                           m_cluster, m_authGate)
+            {
+            }
+
+            static ModuleConfig makeConfig()
+            {
+                hc_config_t config {};
+                std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
+                std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
+                std::strncpy(config.version, "5.1.0", sizeof(config.version) - 1);
+                config.verify_mode = HC_VERIFY_NONE;
+                return ModuleConfig::fromC(config);
+            }
+
+            ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
+            CmacSigner m_signer;
+            ModuleConfig m_config;
+            FakeClock m_clock;
+            ScriptedRandom m_random {{0.0}};
+            NiceMock<MockCallbackSink> m_sink;
+            MockHttpPerformer m_performer;
+            ClusterIdentity m_cluster;
+            AuthGate m_authGate;
+            FakeWaiter m_waiter;
+            ControlStream m_stream;
+    };
+} // namespace
+
+TEST_F(ControlStreamTest, StartupBodyCarriesTypeAndVersionOnly)
+{
+    std::string sent;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sent = bodyOf(spec);
+        EXPECT_EQ("/control", spec.target);
+        return response(TransportStatus::Ok, 200, R"({"limits":{}})");
+    }));
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_NE(std::string::npos, sent.find("\"type\":\"startup\""));
+    EXPECT_NE(std::string::npos, sent.find("\"version\":\"5.1.0\""));
+    // 5.1.1: hashes travel in the Notify response, never in the startup request.
+    EXPECT_EQ(std::string::npos, sent.find("config_hash"));
+    EXPECT_EQ(std::string::npos, sent.find("config_checksum"));
+}
+
+TEST_F(ControlStreamTest, StartupStoresManagerAuthoritativeClusterIdentity)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200,
+                              R"({"cluster":{"name":"prod","node":"node07"}})")));
+    m_stream.step(m_waiter);
+    EXPECT_EQ("prod", m_cluster.get().name);
+    EXPECT_EQ("node07", m_cluster.get().node);
+}
+
+TEST_F(ControlStreamTest, StartupWithoutClusterOverwritesToEmpty)
+{
+    // A prior identity must not linger when the manager reports none.
+    m_cluster.set("stale", "stale-node");
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{}})")));
+    m_stream.step(m_waiter);
+    EXPECT_TRUE(m_cluster.get().name.empty());
+    EXPECT_TRUE(m_cluster.get().node.empty());
+}
+
+TEST_F(ControlStreamTest, SettingsRefreshStartupAlsoOverwritesCluster)
+{
+    const std::string startupV1 = R"({"limits":{"eps":0},"cluster":{"name":"c1","node":"n1"}})";
+    const std::string startupV2 = R"({"limits":{"eps":9},"cluster":{"name":"c2","node":"n2"}})";
+    const std::string notifyV2 =
+        R"({"settings_hash":")" + sha256Hex(startupV2.data(), startupV2.size()) + R"("})";
+
+    int calls = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        const bool startup = bodyOf(spec).find("startup") != std::string::npos;
+        calls++;
+
+        if (calls == 1)
+        {
+            return response(TransportStatus::Ok, 200, startupV1);
+        }
+
+        return response(TransportStatus::Ok, 200, startup ? startupV2 : notifyV2);
+    }));
+
+    m_stream.step(m_waiter); // Startup v1.
+    EXPECT_EQ("c1", m_cluster.get().name);
+    m_stream.step(m_waiter); // Notify: settings mismatch -> arm refresh.
+    m_stream.step(m_waiter); // Refresh startup v2.
+    EXPECT_EQ("c2", m_cluster.get().name);
+    EXPECT_EQ("n2", m_cluster.get().node);
+}
+
+TEST_F(ControlStreamTest, StartupAcceptedRegistersAndDeliversHandshake)
+{
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_REGISTERED));
+    EXPECT_CALL(m_sink, onStartupResult(true, R"({"limits":{"eps":0}})"));
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, R"({"limits":{"eps":0}})")));
+
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_TRUE(m_stream.isRegistered());
+    EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
+}
+
+TEST_F(ControlStreamTest, VersionRejectionGoesRejected)
+{
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_REJECTED));
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 426)));
+
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_EQ(HC_STATE_REJECTED, m_stream.connState());
+}
+
+TEST_F(ControlStreamTest, PersistentAuthFailureGoesAuthError)
+{
+    EXPECT_CALL(m_sink, onStateChange(HC_STATE_AUTH_ERROR));
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 401)));
+
+    EXPECT_FALSE(m_stream.step(m_waiter));
+    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+}
+
+TEST_F(ControlStreamTest, PausedGateSkipsHttpAndReleaseResumesWithAFreshStartup)
+{
+    // First step: 401 startup engages the gate (via RetrySender) -> AUTH_ERROR.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 401)))   // Startup -> 401.
+    .WillOnce(Invoke(                                       // Post-release startup.
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_NE(std::string::npos, bodyOf(spec).find("\"type\":\"startup\""));
+        return response(TransportStatus::Ok, 200, R"({"limits":{}})");
+    }));
+
+    m_stream.step(m_waiter);
+    EXPECT_TRUE(m_authGate.paused());
+    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+
+    // While paused, a step performs NO HTTP and stays AUTH_ERROR.
+    m_stream.step(m_waiter);
+    EXPECT_EQ(HC_STATE_AUTH_ERROR, m_stream.connState());
+
+    // A new key releases the gate; the next step re-registers.
+    m_authGate.release();
+    EXPECT_TRUE(m_stream.step(m_waiter));
+    EXPECT_EQ(HC_STATE_REGISTERED, m_stream.connState());
+}
+
+TEST_F(ControlStreamTest, NotifyRequestIsBare)
+{
+    // 5.1.2: the agent sends nothing but the discriminator; the manager
+    // reports groups/config_hash/settings_hash in the response.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(R"({"type":"notify"})", bodyOf(spec));
+        return response(TransportStatus::Ok, 200, "{}");
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify.
+}
+
+TEST_F(ControlStreamTest, SettingsMismatchTriggersOneStartupRefresh)
+{
+    const std::string startupV1 = R"({"limits":{"eps":0}})";
+    const std::string startupV2 = R"({"limits":{"eps":100}})";
+    const std::string hashV2 = sha256Hex(startupV2.data(), startupV2.size());
+    const std::string notifyWithV2 =
+        R"({"status":"ok","settings_hash":")" + hashV2 + R"("})";
+
+    std::vector<std::string> requestTypes;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        const std::string body = bodyOf(spec);
+        requestTypes.push_back(body.find("startup") != std::string::npos ? "startup"
+                               : "notify");
+
+        if (requestTypes.size() == 1)
+        {
+            return response(TransportStatus::Ok, 200, startupV1);
+        }
+
+        if (requestTypes.back() == "startup")
+        {
+            return response(TransportStatus::Ok, 200, startupV2);
+        }
+
+        return response(TransportStatus::Ok, 200, notifyWithV2);
+    }));
+
+    m_stream.step(m_waiter); // Startup (v1 baseline).
+    m_stream.step(m_waiter); // Notify: settings_hash(v2) != sha256(v1) -> arm.
+    m_stream.step(m_waiter); // Refresh Startup (returns v2, new baseline).
+    m_stream.step(m_waiter); // Notify again: hash matches now, no re-arm.
+    m_stream.step(m_waiter); // Still Notify.
+
+    EXPECT_EQ((std::vector<std::string> {"startup", "notify", "startup", "notify", "notify"}),
+              requestTypes);
+}
+
+TEST_F(ControlStreamTest, StaleSettingsHashDoesNotLoopStartups)
+{
+    // The refresh returns the SAME startup body, yet the manager keeps
+    // reporting a different settings_hash (non-deterministic serialization).
+    // The latch holds after one refresh: no startup storm.
+    const std::string startupBody = R"({"limits":{"eps":0}})";
+    const std::string staleNotify = R"({"status":"ok","settings_hash":"never-matching"})";
+
+    std::vector<std::string> requestTypes;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        const bool isStartup = bodyOf(spec).find("startup") != std::string::npos;
+        requestTypes.push_back(isStartup ? "startup" : "notify");
+        return response(TransportStatus::Ok, 200, isStartup ? startupBody : staleNotify);
+    }));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: mismatch -> arm (first and only refresh).
+    m_stream.step(m_waiter); // Refresh Startup (same body).
+    m_stream.step(m_waiter); // Notify: same stale hash -> latched, no re-arm.
+    m_stream.step(m_waiter); // Notify.
+    m_stream.step(m_waiter); // Notify.
+
+    EXPECT_EQ((std::vector<std::string> {"startup", "notify", "startup", "notify", "notify",
+                                         "notify"
+                                        }),
+              requestTypes);
+}
+
+TEST_F(ControlStreamTest, DrainStepSendsBareShutdown)
+{
+    // Even with a settings refresh armed and a content-bearing response, the
+    // drain sends exactly {"type":"shutdown"} and handles no body.
+    const std::string armingNotify = R"({"status":"ok","settings_hash":"different"})";
+    const std::string shutdownResponse =
+        R"({"agent":{"groups":["default"]},"settings_hash":"even-more-different"})";
+
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))            // Startup.
+    .WillOnce(Return(response(TransportStatus::Ok, 200, armingNotify)))    // Arms refresh.
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        EXPECT_EQ(R"({"type":"shutdown"})", bodyOf(spec));
+        return response(TransportStatus::Ok, 200, shutdownResponse);
+    }));
+
+    m_stream.step(m_waiter);      // Startup.
+    m_stream.step(m_waiter);      // Notify arms the refresh.
+    m_stream.drainStep(m_waiter); // Drain: bare shutdown, no side actions.
+}
+
+TEST_F(ControlStreamTest, EmptyNotifyBodyIsIgnored)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, ""))); // Empty body.
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // No crash.
+}
+
+TEST_F(ControlStreamTest, MalformedNotifyBodyIsIgnored)
+{
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "not-json{{")));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter); // No crash.
+}
