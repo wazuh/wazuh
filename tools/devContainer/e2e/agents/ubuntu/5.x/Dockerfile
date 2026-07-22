@@ -7,7 +7,8 @@ RUN apt-get update \
         ca-certificates curl procps hostname tini \
  && rm -rf /var/lib/apt/lists/*
 
-COPY pkgs/wazuh-agent_5*_amd64.deb /tmp/wazuh-agent.deb
+# agents/init.sh saves the package for the target arch under a fixed name.
+COPY pkgs/wazuh-agent_5x.deb /tmp/wazuh-agent.deb
 RUN apt-get update \
  && apt-get install -y --no-install-recommends /tmp/wazuh-agent.deb \
  && rm -f /tmp/wazuh-agent.deb \

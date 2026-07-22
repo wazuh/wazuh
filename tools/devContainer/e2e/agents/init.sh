@@ -37,6 +37,8 @@ Downloads the four Wazuh agent installers used by docker-compose into ./pkgs/:
   - 4.x .deb / .rpm from packages.wazuh.com (WAZUH_4X_VERSION, default 4.14.3-1)
   - 5.x .deb / .rpm from the staging nightly manifests (primary, then the nightly-backup fallback
     — the same pair e2e/init.sh uses for indexer and dashboard)
+for this machine's architecture (WAZUH_ARCH=amd64|arm64 overrides the detection), saved under the
+fixed names wazuh-agent_{4x,5x}.{deb,rpm} that the Dockerfiles install by exact name.
 
 A 5.x package already in pkgs/ is re-downloaded when its size differs from the remote one (the
 "latest" file is rebuilt every night; an old copy silently lacks new agent features such as the
@@ -63,8 +65,23 @@ done
 # Configuration
 # ------------------------------------------------------------------------------
 WAZUH_4X_VERSION="${WAZUH_4X_VERSION:-4.14.3-1}"
-WAZUH_4X_DEB_URL="https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_${WAZUH_4X_VERSION}_amd64.deb"
-WAZUH_4X_RPM_URL="https://packages.wazuh.com/4.x/yum/wazuh-agent-${WAZUH_4X_VERSION}.x86_64.rpm"
+
+# Target architecture (autodetected; override with WAZUH_ARCH=amd64|arm64).
+WAZUH_ARCH="${WAZUH_ARCH:-}"
+if [ -z "$WAZUH_ARCH" ]; then
+  case "$(uname -m)" in
+    x86_64|amd64)  WAZUH_ARCH="amd64" ;;
+    aarch64|arm64) WAZUH_ARCH="arm64" ;;
+    *) echo "Unsupported architecture '$(uname -m)'. Set WAZUH_ARCH=amd64|arm64." >&2; exit 1 ;;
+  esac
+fi
+case "$WAZUH_ARCH" in
+  amd64) DEB_ARCH="amd64"; RPM_ARCH="x86_64" ;;
+  arm64) DEB_ARCH="arm64"; RPM_ARCH="aarch64" ;;
+  *) echo "Invalid WAZUH_ARCH='$WAZUH_ARCH'. Use amd64 or arm64." >&2; exit 1 ;;
+esac
+WAZUH_4X_DEB_URL="https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_${WAZUH_4X_VERSION}_${DEB_ARCH}.deb"
+WAZUH_4X_RPM_URL="https://packages.wazuh.com/4.x/yum/wazuh-agent-${WAZUH_4X_VERSION}.${RPM_ARCH}.rpm"
 
 WAZUH_5X_PRIMARY_MANIFEST_URL="${WAZUH_5X_PRIMARY_MANIFEST_URL:-https://packages-staging.xdrsiem.wazuh.info/nightly/5.0.0/artifact-urls/artifact_urls_5.0.0-latest.yaml}"
 WAZUH_5X_FALLBACK_MANIFEST_URL="${WAZUH_5X_FALLBACK_MANIFEST_URL:-https://packages-staging.xdrsiem.wazuh.info/nightly-backup/artifact_urls_5.0.0-latest.yaml}"
@@ -125,9 +142,9 @@ function download_to() {
 # 4.x (production repos)
 # ------------------------------------------------------------------------------
 function download_4x_packages() {
-  echo "==> Wazuh agent ${WAZUH_4X_VERSION} (4.x) packages..."
-  download_to "$WAZUH_4X_DEB_URL" "${PKGS_DIR}/wazuh-agent_${WAZUH_4X_VERSION}_amd64.deb" versioned
-  download_to "$WAZUH_4X_RPM_URL" "${PKGS_DIR}/wazuh-agent-${WAZUH_4X_VERSION}.x86_64.rpm" versioned
+  echo "==> Wazuh agent ${WAZUH_4X_VERSION} (4.x, ${WAZUH_ARCH}) packages..."
+  download_to "$WAZUH_4X_DEB_URL" "${PKGS_DIR}/wazuh-agent_4x.deb" versioned
+  download_to "$WAZUH_4X_RPM_URL" "${PKGS_DIR}/wazuh-agent_4x.rpm" versioned
   echo ""
 }
 
@@ -163,13 +180,14 @@ function download_5x_packages() {
   echo "    fallback: $WAZUH_5X_FALLBACK_MANIFEST_URL ($([[ -s "$m_fallback" ]] && echo fetched || echo unavailable))"
 
   local deb_url rpm_url
-  deb_url="$(resolve_key wazuh_agent_amd64_deb "$m_primary" "$m_fallback")" || { echo "ERROR: key 'wazuh_agent_amd64_deb' in neither manifest" >&2; return 1; }
-  rpm_url="$(resolve_key wazuh_agent_x86_64_rpm "$m_primary" "$m_fallback")" || { echo "ERROR: key 'wazuh_agent_x86_64_rpm' in neither manifest" >&2; return 1; }
+  local deb_key="wazuh_agent_${DEB_ARCH}_deb" rpm_key="wazuh_agent_${RPM_ARCH}_rpm"
+  deb_url="$(resolve_key "$deb_key" "$m_primary" "$m_fallback")" || { echo "ERROR: key '${deb_key}' in neither manifest" >&2; return 1; }
+  rpm_url="$(resolve_key "$rpm_key" "$m_primary" "$m_fallback")" || { echo "ERROR: key '${rpm_key}' in neither manifest" >&2; return 1; }
   echo "    deb URL: $deb_url"
   echo "    rpm URL: $rpm_url"
 
-  download_to "$deb_url" "${PKGS_DIR}/$(basename "$deb_url")" latest
-  download_to "$rpm_url" "${PKGS_DIR}/$(basename "$rpm_url")" latest
+  download_to "$deb_url" "${PKGS_DIR}/wazuh-agent_5x.deb" latest
+  download_to "$rpm_url" "${PKGS_DIR}/wazuh-agent_5x.rpm" latest
   echo ""
 }
 

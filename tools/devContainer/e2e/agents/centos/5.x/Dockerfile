@@ -6,7 +6,8 @@ RUN dnf -y update \
  && dnf clean all \
  && rm -rf /var/cache/dnf
 
-COPY pkgs/wazuh-agent-5*.x86_64.rpm /tmp/wazuh-agent.rpm
+# agents/init.sh saves the package for the target arch under a fixed name.
+COPY pkgs/wazuh-agent_5x.rpm /tmp/wazuh-agent.rpm
 RUN dnf -y install /tmp/wazuh-agent.rpm \
  && rm -f /tmp/wazuh-agent.rpm \
  && dnf clean all \

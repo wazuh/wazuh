@@ -9,7 +9,7 @@ VS Code tasks `E2E Scripts: [Agent] …` and the Claude skill `agent-env` run.
 
 ```
 agents/
-├── init.sh              downloads the four installers into pkgs/ (4.x from packages.wazuh.com, 5.x from the nightly manifests)
+├── init.sh              downloads the four installers into pkgs/ (4.x from packages.wazuh.com, 5.x from the nightly manifests) for this machine's arch
 ├── create_token.sh      mints an enrollment token on the manager → env file (token + authd password), 0600
 ├── docker-compose.yml   agent_{4x,5x}_{centos,ubuntu}; credentials come from `--env-file`
 ├── entrypoint.sh        4.x: agent-auth (1515, password) · 5.x: token → <endpoint> + etc/enrollment_token → POST /enroll
@@ -48,6 +48,10 @@ rm -f /tmp/wazuh-e2e-agents.env                         # the containers already
 VS Code: `[Agent] Init setup (download pkgs)` → `[Agent] Create enrollment token` → `[Agent] Up (start containers)`
 → `[Agent] Verify enrollment`; `[Agent] Reset (down -v)` wipes the volumes (and therefore the enrolled keys);
 `[Agent] Check packages (--check)` / `[Agent] Re-download packages (--force)` manage `pkgs/`.
+
+`init.sh` detects the architecture (amd64 or arm64; `WAZUH_ARCH` overrides it) and saves the packages under
+the fixed names `wazuh-agent_{4x,5x}.{deb,rpm}` that the Dockerfiles install by exact name, so a re-run for
+another arch overwrites the previous set.
 
 The 5.x package must be one that carries the token bootstrap (`--show-token` in `wazuh-agentd`): the nightly
 `5.0.0-latest` does; `init.sh --check` tells you whether `pkgs/` is stale. A 5.x package without it cannot enroll

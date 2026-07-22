@@ -7,7 +7,7 @@ RUN apt-get update \
         ca-certificates curl procps hostname tini \
  && rm -rf /var/lib/apt/lists/*
 
-COPY pkgs/wazuh-agent_4*_amd64.deb /tmp/wazuh-agent.deb
+COPY pkgs/wazuh-agent_4x.deb /tmp/wazuh-agent.deb
 RUN apt-get update \
  && apt-get install -y --no-install-recommends /tmp/wazuh-agent.deb \
  && rm -f /tmp/wazuh-agent.deb \
