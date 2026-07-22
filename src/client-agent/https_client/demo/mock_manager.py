@@ -199,6 +199,25 @@ class Handler(BaseHTTPRequestHandler):
         response = {"agent": {"groups": ["default"],
                               "config_hash": hashlib.sha256(blob).hexdigest()},
                     "settings_hash": hashlib.sha256(startup).hexdigest()}
+        if n == 2:
+            # Deliberately shuffled 4-type batch (#37733: all fire-and-forget):
+            # the client dispatches AR then upgrade; restart and reload are
+            # covered by the upgrade and dropped with a log line.
+            response["tasks"] = [
+                {"task_id": "018f9a-0003", "task_type": "agent_restart",
+                 "payload": {}},
+                {"task_id": "018f9a-0001", "task_type": "active_response",
+                 "payload": {"wazuh": {"active_response": {
+                     "name": "firewall-drop", "executable": "firewall-drop",
+                     "extra_arguments": "192.168.1.100"}},
+                     "rule": {"id": 5503}}},
+                {"task_id": "018f9a-0005", "task_type": "remote_upgrade",
+                 "payload": {"wpk_file": "wazuh_agent_v5.1.0_linux_x86_64.wpk",
+                             "wpk_sha1": "a1b2c3d4e5f6",
+                             "installer": "upgrade.sh"}},
+                {"task_id": "018f9a-0004", "task_type": "agent_reload",
+                 "payload": {}},
+            ]
         self._reply(200, response)
         markers = []
         if n == Handler.CONFIG_FLIP_AT:
@@ -207,10 +226,11 @@ class Handler(BaseHTTPRequestHandler):
             markers.append("SETTINGS FLIPPED (new settings_hash)")
         if n == Handler.ROTATE_KEY_AT:
             markers.append("KEY ROTATED - old key now 401s, agent must re-enroll")
+        tasks = [t["task_id"] for t in response.get("tasks", [])]
         marker = (" <- " + ", ".join(markers)) if markers else ""
         log(f"     /control    -> 200  NOTIFY #{n} "
             f"cfg={response['agent']['config_hash'][:8]}.. "
-            f"set={response['settings_hash'][:8]}..{marker}")
+            f"set={response['settings_hash'][:8]}.. tasks={tasks}{marker}")
 
     def _handle_download(self, body):
         # 5.2: signed request for a resource, chunked octet-stream back.
