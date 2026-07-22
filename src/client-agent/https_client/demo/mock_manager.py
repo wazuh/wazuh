@@ -5,8 +5,10 @@
 # A tiny TLS "manager" that speaks the proposed #37732/#37733 contract just
 # enough to watch the REAL https_client module communicate: it verifies the
 # AES-CMAC of every request (via the openssl CLI, so it is an independent
-# implementation), then answers /control. Every request is logged so the
-# conversation is visible.
+# implementation), then answers /control, /stateless and /stateful. Every
+# request is logged so the conversation is visible. A /stateful session that
+# is larger than the legacy 64 KB DGRAM cap gets spotlighted, since arriving
+# whole in one signed POST is exactly what the new STREAM intake makes possible.
 #
 # Not production code; a demo harness only.
 
@@ -21,6 +23,13 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 START = time.time()
 
+# The legacy module->agentd IPC is a DGRAM socket capped at OS_MAXSTR
+# (src/shared/include/defs.h), and agent_sync_protocol chunks a sync payload
+# at MAX_BATCH_PAYLOAD before sending. The new STREAM intake removes that
+# ceiling, so a whole multi-MB session now crosses as ONE signed /stateful POST.
+OS_MAXSTR = 65536
+MAX_BATCH_PAYLOAD = 60 * 1024
+
 
 def stamp():
     return f"[+{(time.time() - START) * 1000:7.0f} ms]"
@@ -28,6 +37,14 @@ def stamp():
 
 def log(msg):
     print(f"{stamp()} [mock] {msg}", flush=True)
+
+
+def human_size(n):
+    if n < 1024:
+        return f"{n} B"
+    if n < 1024 * 1024:
+        return f"{n / 1024:.1f} KB"
+    return f"{n / (1024 * 1024):.2f} MB"
 
 
 def cmac_hex(key_hex, message):
@@ -162,6 +179,8 @@ class Handler(BaseHTTPRequestHandler):
             self._handle_control(body)
         elif target == "/stateless":
             self._handle_stateless(body)
+        elif target == "/stateful":
+            self._handle_stateful(body)
         elif target == "/download":
             self._handle_download(body)
         else:
@@ -254,6 +273,60 @@ class Handler(BaseHTTPRequestHandler):
         events = body.count(b"\nE ") + (1 if b"\nE " not in body and b"E " in body else 0)
         self._reply(200)  # 200 with an empty body per #37732
         log(f"     /stateless  -> 200  ({len(body)} B, ~{events} events accepted)")
+
+    def _handle_stateful(self, body):
+        session = self.headers.get("X-Session-Id", "?")
+        module, payload_start = self._parse_session_header(body)
+        payload = body[payload_start:]
+        # A FIM session carries one JSON entry per line; count entries, not bytes.
+        items = payload.count(b"\n") if module == "fim" else len(payload)
+        self._reply(200, {"status": "success", "sessionId": session,
+                          "itemsProcessed": items})
+        log(f"     /stateful   -> 200  session={session} "
+            f"module={module} itemsProcessed={items}")
+        if len(body) > OS_MAXSTR:
+            self._announce_large_session(body, payload_start, module)
+
+    def _parse_session_header(self, body):
+        """Return (module, payload_start) from a 'FULLSESSION:<module>:' prefix."""
+        if not body.startswith(b"FULLSESSION:"):
+            return "?", 0
+        colon = body.find(b":", len("FULLSESSION:"))
+        if colon < 0:
+            return "?", 0
+        return body[len("FULLSESSION:"):colon].decode("latin-1"), colon + 1
+
+    def _announce_large_session(self, body, payload_start, module):
+        size = len(body)
+        chunks = -(-size // MAX_BATCH_PAYLOAD)  # ceil
+        log("──[ LARGE SESSION ]── streamed whole over the new intake socket ──")
+        log(f"     {human_size(size)} ({size} B) arrived as ONE CMAC-signed POST")
+        log(f"     = {size / OS_MAXSTR:.0f}x the 64 KB OS_MAXSTR DGRAM cap; the legacy")
+        log(f"       chunked path would need {chunks} x 60 KB datagrams reassembled")
+        if module == "fim":
+            self._announce_fim_payload(body, payload_start)
+        else:
+            intact = body.count(b"D", payload_start) == size - payload_start
+            log(f"     payload byte-exact after streaming: {'yes' if intact else 'NO'}")
+
+    def _announce_fim_payload(self, body, payload_start):
+        """Parse the received FIM entries and print the same additive checksum
+        the producer printed: equal values mean the sync arrived byte-exact."""
+        lines = body[payload_start:].splitlines()
+        parsed = 0
+        for line in lines:
+            try:
+                json.loads(line)
+                parsed += 1
+            except ValueError:
+                break
+        first = json.loads(lines[0])["path"] if parsed else "?"
+        last = json.loads(lines[-1])["path"] if parsed == len(lines) else "?"
+        health = "all valid JSON" if parsed == len(lines) else f"INVALID at line {parsed}"
+        checksum = sum(body) & 0xFFFFFFFF
+        log(f"     FIM entries: {len(lines)} ({health})")
+        log(f"     first={first}  last={last}")
+        log(f"     checksum 0x{checksum:08x} (must match the producer's printed checksum)")
 
 
 def main():

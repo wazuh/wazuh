@@ -25,26 +25,29 @@
 #include "moduleLog.hpp"
 #include "registrationGate.hpp"
 #include "spoolFile.hpp"
+#include "statefulStream.hpp"
 #include "statelessStream.hpp"
 #include "stopToken.hpp"
+#include "syncIntake.hpp"
 #include "sysSeams.hpp"
 
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <thread>
 
 /**
  * @brief Composition root of the agent HTTPS client behind the C ABI.
  *
- * Builds every seam (curl performer, signer, dispatcher) and owns the
- * module's threads: the control loop, the stateless sender and the
- * dispatcher. The data streams idle behind a registration gate until Startup
- * is accepted. Shutdown is cooperative: interrupt in-flight requests, join
- * the loops, drain (final flush + final shutdown message), then stop the
- * dispatcher — no callback outlives stop(). The lifecycle skeleton mirrors
- * the manager-side RemotedModuleFacade.
+ * Builds every seam (curl performer, signer, spool factory, dispatcher) and
+ * owns the module's threads: the control loop, the stateless sender, the
+ * stateful sender and the dispatcher. The data streams idle behind a
+ * registration gate until Startup is accepted. Shutdown is cooperative:
+ * interrupt in-flight requests, join the loops, drain (final flush + final
+ * shutdown message), then stop the dispatcher — no callback outlives stop().
+ * The lifecycle skeleton mirrors the manager-side RemotedModuleFacade.
  */
 class HttpsClientFacade final
 {
@@ -59,6 +62,8 @@ class HttpsClientFacade final
         void stop();
 
         bool submitEvent(const uint8_t* frame, size_t length);
+        bool submitSyncSession(const char* sessionId, const uint8_t* buffer, size_t length);
+        bool submitSyncSessionFile(const char* sessionId, const char* filePath, uint64_t size);
         void notifyNow();
         void setConfigHash(const char* configHash);
         bool setAgentKey(const char* keyHex);
@@ -67,6 +72,8 @@ class HttpsClientFacade final
     private:
         void controlLoop();
         void statelessLoop();
+        void statefulLoop();
+        void startSyncIntake();
         void drain();
         std::chrono::milliseconds controlInterval() const;
 
@@ -90,16 +97,24 @@ class HttpsClientFacade final
         AuthGate m_authGate {m_dispatcher, [this] { m_controlWaiter.notify(); }};
 
         StatelessStream m_stateless;
+        StatefulStream m_stateful;
         ControlStream m_control;
 
         // One waiter per stream thread; the stop flag doubles as the abort flag.
         Waiter m_controlWaiter;
         Waiter m_statelessWaiter;
+        Waiter m_statefulWaiter;
         Waiter m_drainWaiter; ///< Fresh (never stopped) so the final drain can run.
         RegistrationGate m_gate;
 
         std::thread m_controlThread;
         std::thread m_statelessThread;
+        std::thread m_statefulThread;
+
+        // Optional stateful sync intake (large sessions off a local STREAM
+        // socket). Constructed only when a socket path is configured; its sink
+        // feeds the stateful stream's file-based submit.
+        std::unique_ptr<SyncIntake> m_syncIntake;
 
         mutable std::mutex m_lifecycleMutex;
         bool m_started {false};
