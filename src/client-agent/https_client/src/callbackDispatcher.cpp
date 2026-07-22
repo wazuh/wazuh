@@ -105,6 +105,21 @@ void CallbackDispatcher::onStartupResult(bool accepted, const std::string& hands
     { m_callbacks.on_startup_result(accepted, handshakeJson.c_str(), m_callbacks.user_data); });
 }
 
+void CallbackDispatcher::onTask(const std::string& taskId, const std::string& taskType,
+                                const std::string& payloadJson)
+{
+    if (m_callbacks.on_task == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, taskId, taskType, payloadJson]
+    {
+        m_callbacks.on_task(taskId.c_str(), taskType.c_str(), payloadJson.c_str(),
+                            m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onReenrollRequired()
 {
     if (m_callbacks.on_reenroll_required == nullptr)

@@ -34,6 +34,15 @@ namespace
         std::atomic<int> count {0};
     };
 
+    void recordTask(const char* taskId, const char*, const char*, void* userData)
+    {
+        auto* record = static_cast<Record*>(userData);
+        std::lock_guard<std::mutex> lock(record->mutex);
+        record->order.emplace_back(taskId);
+        record->threads.push_back(std::this_thread::get_id());
+        record->count++;
+    }
+
     void recordState(int state, void* userData)
     {
         auto* record = static_cast<Record*>(userData);
@@ -73,6 +82,7 @@ namespace
     {
         hc_callbacks_t callbacks {};
         callbacks.on_startup_result = recordStartup;
+        callbacks.on_task = recordTask;
         callbacks.on_reenroll_required = recordReenroll;
         callbacks.on_state_change = recordState;
         callbacks.on_buffer_level = recordBuffer;
@@ -95,10 +105,9 @@ TEST(CallbackDispatcherTest, DeliversInSubmissionOrderOnOneThread)
     CallbackDispatcher dispatcher {makeCallbacks(&record)};
     dispatcher.start();
 
-    // A cycling state sequence: any reorder breaks the expected labels below.
     for (int index = 0; index < 20; index++)
     {
-        dispatcher.onStateChange(static_cast<hc_conn_state_t>(index % 5));
+        dispatcher.onTask("task-" + std::to_string(index), "ar", "{}");
     }
 
     waitForCount(record, 20);
@@ -108,7 +117,7 @@ TEST(CallbackDispatcherTest, DeliversInSubmissionOrderOnOneThread)
 
     for (int index = 0; index < 20; index++)
     {
-        EXPECT_EQ("state:" + std::to_string(index % 5), record.order[index]); // FIFO.
+        EXPECT_EQ("task-" + std::to_string(index), record.order[index]); // FIFO.
     }
 
     // Every callback ran on the same (single) dispatcher thread.
@@ -129,7 +138,7 @@ TEST(CallbackDispatcherTest, StopDrainsQueuedCallbacks)
     for (int index = 0; index < 50; index++)
     {
         dispatcher.onStateChange(HC_STATE_REGISTERED);
-        dispatcher.onReenrollRequired();
+        dispatcher.onTask("t" + std::to_string(index), "ar", "{}");
     }
 
     dispatcher.stop(); // Must run everything already queued before joining.
@@ -142,7 +151,7 @@ TEST(CallbackDispatcherTest, PostAfterStopIsRejected)
     CallbackDispatcher dispatcher {makeCallbacks(&record)};
     dispatcher.start();
     dispatcher.stop();
-    dispatcher.onStateChange(HC_STATE_STARTING);
+    dispatcher.onTask("late", "ar", "{}");
     EXPECT_EQ(0, record.count.load());
 }
 
@@ -151,6 +160,7 @@ TEST(CallbackDispatcherTest, NullCallbacksAreSafe)
     hc_callbacks_t callbacks {}; // All function pointers null.
     CallbackDispatcher dispatcher {callbacks};
     dispatcher.start();
+    dispatcher.onTask("x", "ar", "{}");
     dispatcher.onStateChange(HC_STATE_STARTING);
     dispatcher.onReenrollRequired();
     dispatcher.onStartupResult(true, "{}");
@@ -164,14 +174,16 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     CallbackDispatcher dispatcher {makeCallbacks(&record)};
     dispatcher.start();
     dispatcher.onStartupResult(true, R"({"limits":{}})");
+    dispatcher.onTask("t1", "active_response", "{}");
     dispatcher.onReenrollRequired();
     dispatcher.onStateChange(HC_STATE_REGISTERED);
     dispatcher.onBufferLevel(HC_BUFFER_WARNING);
-    waitForCount(record, 4);
+    waitForCount(record, 5);
     dispatcher.stop();
 
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "startup:ok"));
+    EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "t1"));
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "reenroll"));
     EXPECT_NE(record.order.end(),
@@ -258,7 +270,7 @@ TEST(CallbackDispatcherTest, DoubleStartAndDoubleStopAreSafe)
     CallbackDispatcher dispatcher {makeCallbacks(&record)};
     dispatcher.start();
     dispatcher.start(); // Ignored.
-    dispatcher.onReenrollRequired();
+    dispatcher.onTask("one", "ar", "{}");
     waitForCount(record, 1);
     dispatcher.stop();
     dispatcher.stop(); // Ignored.
