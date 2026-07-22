@@ -25,10 +25,13 @@
 #include "moduleLog.hpp"
 #include "registrationGate.hpp"
 #include "spoolFile.hpp"
+#include "statelessStream.hpp"
 #include "stopToken.hpp"
 #include "sysSeams.hpp"
 
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <mutex>
 #include <thread>
 
@@ -36,12 +39,12 @@
  * @brief Composition root of the agent HTTPS client behind the C ABI.
  *
  * Builds every seam (curl performer, signer, dispatcher) and owns the
- * module's threads: the control loop and the dispatcher. The data streams
- * (#37835, #37836) will idle behind the registration gate until Startup is
- * accepted. Shutdown is cooperative: interrupt in-flight requests, join the
- * loops, drain (final shutdown message), then stop the dispatcher — no
- * callback outlives stop(). The lifecycle skeleton mirrors the manager-side
- * RemotedModuleFacade.
+ * module's threads: the control loop, the stateless sender and the
+ * dispatcher. The data streams idle behind a registration gate until Startup
+ * is accepted. Shutdown is cooperative: interrupt in-flight requests, join
+ * the loops, drain (final flush + final shutdown message), then stop the
+ * dispatcher — no callback outlives stop(). The lifecycle skeleton mirrors
+ * the manager-side RemotedModuleFacade.
  */
 class HttpsClientFacade final
 {
@@ -55,6 +58,7 @@ class HttpsClientFacade final
         bool start();
         void stop();
 
+        bool submitEvent(const uint8_t* frame, size_t length);
         void notifyNow();
         void setConfigHash(const char* configHash);
         bool setAgentKey(const char* keyHex);
@@ -62,6 +66,7 @@ class HttpsClientFacade final
 
     private:
         void controlLoop();
+        void statelessLoop();
         void drain();
         std::chrono::milliseconds controlInterval() const;
 
@@ -84,14 +89,17 @@ class HttpsClientFacade final
         // below) is safe.
         AuthGate m_authGate {m_dispatcher, [this] { m_controlWaiter.notify(); }};
 
+        StatelessStream m_stateless;
         ControlStream m_control;
 
         // One waiter per stream thread; the stop flag doubles as the abort flag.
         Waiter m_controlWaiter;
+        Waiter m_statelessWaiter;
         Waiter m_drainWaiter; ///< Fresh (never stopped) so the final drain can run.
         RegistrationGate m_gate;
 
         std::thread m_controlThread;
+        std::thread m_statelessThread;
 
         mutable std::mutex m_lifecycleMutex;
         bool m_started {false};

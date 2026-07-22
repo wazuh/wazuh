@@ -125,6 +125,23 @@ extern "C"
         }
     }
 
+    bool hc_submit_event(hc_handle* handle, const uint8_t* frame, size_t length)
+    {
+        if (handle == nullptr)
+        {
+            return false;
+        }
+
+        try
+        {
+            return handle->impl.submitEvent(frame, length);
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
     void hc_notify_now(hc_handle* handle)
     {
         if (handle == nullptr)
