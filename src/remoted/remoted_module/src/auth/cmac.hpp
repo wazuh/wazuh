@@ -18,11 +18,11 @@
 #include <string_view>
 #include <vector>
 
-namespace wazuh_auth
+namespace remoted::auth
 {
 
     /**
-     * @brief Incremental AES-CMAC over OpenSSL's EVP_MAC API (OpenSSL >= 3.0).
+     * @brief Incremental AES-CMAC.
      *
      * The payload requires only one cryptographic pass, computed incrementally
      * as body chunks arrive via update().
@@ -37,7 +37,7 @@ namespace wazuh_auth
          *
          * @param key Must be 16, 24 or 32 bytes (AES-128/192/256).
          * @throws std::invalid_argument if key's size is not 16, 24 or 32.
-         * @throws std::runtime_error if the underlying OpenSSL EVP_MAC calls fail.
+         * @throws std::runtime_error if the underlying cryptographic calls fail.
          */
         explicit Cmac(const std::vector<std::uint8_t>& key);
         ~Cmac();
@@ -55,11 +55,11 @@ namespace wazuh_auth
         /**
          * @brief Finalize the MAC over everything fed via update() so far.
          *
-         * May only be called once; consumes the underlying OpenSSL context.
+         * May only be called once; consumes the underlying context.
          *
          * @return The kMacSize-byte MAC.
          * @throws std::logic_error if called twice.
-         * @throws std::runtime_error if the underlying EVP_MAC_final call fails.
+         * @throws std::runtime_error if the underlying finalize call fails.
          */
         std::array<std::uint8_t, kMacSize> finalize();
 
@@ -92,4 +92,4 @@ namespace wazuh_auth
      */
     bool constantTimeEquals(const std::uint8_t* a, const std::uint8_t* b, std::size_t len);
 
-} // namespace wazuh_auth
+} // namespace remoted::auth

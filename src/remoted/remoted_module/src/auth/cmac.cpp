@@ -17,7 +17,7 @@
 
 #include <stdexcept>
 
-namespace wazuh_auth
+namespace remoted::auth
 {
 
     namespace
@@ -178,4 +178,4 @@ namespace wazuh_auth
         return diff == 0;
     }
 
-} // namespace wazuh_auth
+} // namespace remoted::auth
