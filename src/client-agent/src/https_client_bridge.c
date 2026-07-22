@@ -214,6 +214,12 @@ static void bridge_on_state_change(int state, void *user_data)
     w_agentd_state_update(UPDATE_STATUS, (void *)bridge_map_agent_status(state));
 }
 
+static void bridge_on_buffer_level(int level, void *user_data)
+{
+    (void)user_data;
+    mdebug2("https_client buffer level -> %d", level);
+}
+
 /* Maps the agent config parser's verification_mode enum onto the module
  * ABI's hc_verify_mode_t. The two are defined in independent headers with
  * matching values by convention (both documented "FULL is 0, fails closed");
@@ -332,6 +338,7 @@ void w_https_client_start(void)
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
     callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_state_change = bridge_on_state_change;
+    callbacks.on_buffer_level = bridge_on_buffer_level;
 
     g_https_client = hc_create(&config, &callbacks);
     if (!g_https_client) {
