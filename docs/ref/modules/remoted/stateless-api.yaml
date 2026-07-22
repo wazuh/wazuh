@@ -1,0 +1,196 @@
+openapi: 3.0.3
+
+info:
+  title: Wazuh Manager Stateless Events API (remoted HTTPS)
+  version: 0.1.0-experimental
+  description: |
+    HTTPS endpoint exposed by `wazuh-manager-remoted` for agent-authenticated event ingestion.
+
+    **Experimental / work in progress.** Only authentication and request validation are
+    implemented today. On a valid request the endpoint answers `200` with an empty body and does
+    **not** parse the H/E payload or ingest anything. The listener also only runs when a TLS
+    certificate and key are present on disk.
+
+    All requests MUST use HTTP/1.1 over TLS (>= 1.2). Requests are authenticated with AES-CMAC and
+    the agent's pre-shared AES key; the key is never transmitted. The MAC covers the protocol
+    version, HTTP method, request target, agent id, timestamp and the exact request body.
+
+servers:
+  - url: https://127.0.0.1:9443
+    description: Default local bind (configurable via WAZUH_REMOTED_HTTPS_ADDRESS/PORT)
+
+tags:
+  - name: Events
+    description: Event ingestion endpoints
+  - name: Health
+    description: Liveness probe
+
+paths:
+  /:
+    get:
+      tags: [Health]
+      operationId: healthProbe
+      summary: Health probe (unauthenticated)
+      description: Returns a small JSON object indicating the module is up. No authentication.
+      responses:
+        "200":
+          description: The module is running.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  module: { type: string, example: remoted }
+
+  /stateless:
+    post:
+      tags: [Events]
+      operationId: ingestStatelessEvents
+      summary: Ingest stateless events (authenticated)
+      security:
+        - WazuhAuthentication: []
+      parameters:
+        - $ref: "#/components/parameters/ProtocolVersion"
+      description: |
+        Accepts a batch of events using the Wazuh H/E wire protocol.
+
+        The request MUST include:
+
+        ```text
+        protocol-version: 1
+        Authorization: Wazuh <agent-id>:<timestamp>:<mac>
+        ```
+
+        `mac` is the complete AES-CMAC (16 bytes, 32 lowercase hex chars) computed over the
+        following byte sequence (each line break is a single LF, `0x0A`):
+
+        ```text
+        WAZUH-REQUEST\n
+        <protocol-version>\n
+        <uppercase-method>\n
+        <request-target>\n
+        <agent-id>\n
+        <timestamp>\n
+        <request-body>
+        ```
+
+        The `request-target` is the raw path + query exactly as sent (no percent-decoding, no query
+        reordering, no normalization). The body is authenticated using its exact bytes. The
+        timestamp must be within 300 s in the past and 30 s in the future.
+
+        **Not yet implemented (planned):** parsing/validation of the H/E batch (which would produce
+        `400 Invalid event batch`) and the check that the payload's `wazuh.agent.id` matches the
+        authenticated `agent-id` (`PayloadAgentMismatch`). Today the endpoint validates
+        authentication only and does not read the payload.
+      requestBody:
+        required: true
+        content:
+          "*/*":
+            schema:
+              type: string
+              minLength: 1
+              description: |
+                Request payload. Authentication is independent of Content-Type; the exact bytes are
+                included in the AES-CMAC calculation. (Not parsed yet — see the description above.)
+            examples:
+              singleLineEvents:
+                summary: H/E batch (two events)
+                value: |-
+                  H {"wazuh":{"agent":{"id":"001","name":"srv1"}}}
+                  E 1:/var/log/syslog:May 07 10:00:00 srv1 sshd: Accepted publickey
+                  E 2:/var/log/auth.log:session opened for user root
+      responses:
+        "200":
+          description: |
+            Request authenticated and accepted. The response body is empty. Acceptance means the
+            request was successfully authenticated and validated; it does NOT (yet) mean events were
+            parsed or processed.
+        "400":
+          description: |
+            The `protocol-version` header is missing or unsupported.
+
+            (Planned: also returned for an invalid H/E batch, once payload parsing is implemented.)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                missingProtocolVersion:
+                  value: { error: "Missing required header: protocol-version", code: 400 }
+                unsupportedProtocolVersion:
+                  value: { error: "Unsupported protocol-version", code: 400 }
+        "401":
+          description: |
+            Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
+            header, an unknown agent, an unusable key, an out-of-window timestamp and an invalid MAC
+            all return the same response so the specific reason is not exposed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                invalidAuthentication:
+                  value: { error: "Invalid client authentication", code: 401 }
+        "413":
+          description: The request body exceeds the configured auth body limit (10 MiB).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                payloadTooLarge:
+                  value: { error: "Request payload is too large", code: 413 }
+        "500":
+          description: Unexpected internal error while handling the request.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                internalError:
+                  value: { error: "Internal server error", code: 500 }
+
+components:
+  securitySchemes:
+    WazuhAuthentication:
+      type: http
+      scheme: Wazuh
+      description: |
+        AES-CMAC authentication with a pre-shared per-agent AES key.
+
+        ```text
+        Authorization: Wazuh <agent-id>:<timestamp>:<mac>
+        ```
+
+        - `agent-id`: `A-Z a-z 0-9 . _ -`
+        - `timestamp`: UNIX seconds (window: -300 s .. +30 s)
+        - `mac`: 16-byte AES-CMAC, 32 lowercase hex characters
+
+        The key is selected by `agent-id` from `client.keys` and is never sent in the request.
+
+  parameters:
+    ProtocolVersion:
+      name: protocol-version
+      in: header
+      required: true
+      description: Version of the Wazuh request authentication protocol. Only `1` is supported.
+      schema:
+        type: string
+        enum: ["1"]
+      example: "1"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error, code]
+      properties:
+        error:
+          type: string
+          minLength: 1
+          description: Human-readable error message.
+          example: "Invalid client authentication"
+        code:
+          type: integer
+          format: int32
+          minimum: 400
+          maximum: 599
+          description: HTTP status code.
+          example: 401
