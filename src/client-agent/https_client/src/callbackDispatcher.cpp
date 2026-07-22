@@ -115,6 +115,23 @@ void CallbackDispatcher::onReenrollRequired()
     enqueue([this] { m_callbacks.on_reenroll_required(m_callbacks.user_data); });
 }
 
+void CallbackDispatcher::onConfigDownloaded(const std::string& configHash,
+                                            std::shared_ptr<SpoolFile> file)
+{
+    if (m_callbacks.on_config_downloaded == nullptr)
+    {
+        return; // Last reference dropped here: the temp file is deleted now.
+    }
+
+    // The lambda owns the file; run() destroys the task right after invoking
+    // it, so the file is deleted as soon as the C callback returns.
+    enqueue([this, configHash, file = std::move(file)]
+    {
+        m_callbacks.on_config_downloaded(configHash.c_str(), file->path().c_str(),
+        m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onStateChange(hc_conn_state_t state)
 {
     if (m_callbacks.on_state_change == nullptr)

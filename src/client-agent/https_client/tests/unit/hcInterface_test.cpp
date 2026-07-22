@@ -208,8 +208,18 @@ TEST_F(HcInterfaceTest, NullHandleIsSafeEverywhere)
     hc_stop(nullptr);
     hc_destroy(nullptr);
     hc_notify_now(nullptr);
+    EXPECT_FALSE(hc_set_config_hash(nullptr, "abc"));
     EXPECT_FALSE(hc_set_agent_key(nullptr, "000102030405060708090a0b0c0d0e0f"));
     EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(nullptr));
+}
+
+TEST_F(HcInterfaceTest, SetConfigHashAcceptsAValidHashAndRejectsNull)
+{
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    EXPECT_TRUE(hc_set_config_hash(handle, "d41d8cd98f00b204e9800998ecf8427e"));
+    EXPECT_FALSE(hc_set_config_hash(handle, nullptr));
+    hc_destroy(handle);
 }
 
 TEST_F(HcInterfaceTest, SetAgentKeyValidatesTheMaterial)
