@@ -23,7 +23,9 @@ remoted_module/
 │   ├── auth/                       # ns remoted::auth — framework-agnostic AES-CMAC auth (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
 │   └── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below)
-└── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
+├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
+└── tools/
+    └── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
 ```
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
@@ -55,6 +57,9 @@ src/http_server/
   `port`, `certificate_path`, `private_key_path`, `io_threads`, `http_worker_threads`.
   Environment overrides: `WAZUH_REMOTED_HTTPS_{ADDRESS,PORT,IO_THREADS,WORKER_THREADS,
   MAX_BODY_SIZE,CERTIFICATE,PRIVATE_KEY}`.
+- **Restart-friendly bind:** the RESTinio acceptor sets `SO_REUSEADDR`
+  (`acceptor_options_setter`), so a manager restart rebinds the port immediately instead of
+  failing with `EADDRINUSE` while the previous socket lingers in `TIME_WAIT`.
 - **Swapping the library:** implement a new `IHttpServer` and return it from `makeHttpServer()`;
   nothing else changes.
 
@@ -83,6 +88,10 @@ src/endpoints/
   the verified `AuthenticatedRequest` and the responder. The facade registers a **dummy
   `POST /stateless`** this way: it validates the request (auth only) and answers `200` **without**
   parsing the H/E payload or ingesting anything; `400`/`401`/`413` come straight from the gateway.
+- **Handler exceptions → 500:** if an endpoint handler throws, the gateway catches it, logs a
+  warning and answers `500` (`{"error":"Internal server error","code":500}`), so an exception never
+  escapes onto the worker-pool thread (which would `std::terminate`). The responder's send-once
+  guarantee makes the 500 a no-op if the handler had already replied.
 
 ## Agent<->manager auth middleware (`src/auth/`)
 
@@ -134,8 +143,24 @@ void remoted_module_stop(void);
 
 ## Tests
 
-Built when `UNIT_TEST` is enabled:
+Unit tests (built when `UNIT_TEST` is enabled) live in `test/unit/`: `remotedModule_test.cpp`
+(C-ABI black-box), `httpServer_test.cpp` (transport config + responder contract),
+`authGateway_test.cpp` (gateway: 400/401 paths, valid-auth success, handler-exception → 500), plus
+the auth core `cmac_test.cpp`, `authMiddleware_test.cpp`, `keystore_test.cpp`.
 
 ```bash
 ctest --test-dir <build> -R remoted_module_utest -V
+```
+
+### Manual / end-to-end (`tools/send_stateless.py`)
+
+Signs and sends `POST /stateless` requests exactly as `AuthMiddleware` expects (AES-CMAC over the
+canonical byte sequence, agent key read straight from `client.keys`). Requires
+`pip install requests cryptography`.
+
+```bash
+python3 tools/send_stateless.py            # one valid signed request -> 200
+python3 tools/send_stateless.py --tamper   # modified body -> 401 (InvalidMac)
+python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes
+# options: --url (default https://127.0.0.1:9443), --agent-id, --body, --client-keys
 ```
