@@ -48,9 +48,19 @@ namespace
         record->count++;
     }
 
+    void recordStartup(bool accepted, const char*, void* userData)
+    {
+        auto* record = static_cast<Record*>(userData);
+        std::lock_guard<std::mutex> lock(record->mutex);
+        record->order.push_back(accepted ? "startup:ok" : "startup:no");
+        record->threads.push_back(std::this_thread::get_id());
+        record->count++;
+    }
+
     hc_callbacks_t makeCallbacks(Record* record)
     {
         hc_callbacks_t callbacks {};
+        callbacks.on_startup_result = recordStartup;
         callbacks.on_reenroll_required = recordReenroll;
         callbacks.on_state_change = recordState;
         callbacks.user_data = record;
@@ -130,6 +140,7 @@ TEST(CallbackDispatcherTest, NullCallbacksAreSafe)
     dispatcher.start();
     dispatcher.onStateChange(HC_STATE_STARTING);
     dispatcher.onReenrollRequired();
+    dispatcher.onStartupResult(true, "{}");
     dispatcher.stop(); // No crash despite null handlers.
 }
 
@@ -138,11 +149,14 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     Record record;
     CallbackDispatcher dispatcher {makeCallbacks(&record)};
     dispatcher.start();
+    dispatcher.onStartupResult(true, R"({"limits":{}})");
     dispatcher.onReenrollRequired();
     dispatcher.onStateChange(HC_STATE_REGISTERED);
-    waitForCount(record, 2);
+    waitForCount(record, 3);
     dispatcher.stop();
 
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(), "startup:ok"));
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "reenroll"));
     EXPECT_NE(record.order.end(),

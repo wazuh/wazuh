@@ -125,6 +125,23 @@ extern "C"
         }
     }
 
+    void hc_notify_now(hc_handle* handle)
+    {
+        if (handle == nullptr)
+        {
+            return;
+        }
+
+        try
+        {
+            handle->impl.notifyNow();
+        }
+        catch (...)
+        {
+            // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
     bool hc_set_agent_key(hc_handle* handle, const char* key_hex)
     {
         if (handle == nullptr)

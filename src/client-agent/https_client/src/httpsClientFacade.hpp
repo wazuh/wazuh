@@ -14,25 +14,32 @@
 
 #include "authGate.hpp"
 #include "callbackDispatcher.hpp"
+#include "clusterIdentity.hpp"
 #include "cmacSigner.hpp"
+#include "controlStream.hpp"
 #include "curlPerformer.hpp"
 #include "https_client.h"
 #include "keyProvider.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
+#include "registrationGate.hpp"
+#include "stopToken.hpp"
 #include "sysSeams.hpp"
 
+#include <chrono>
 #include <mutex>
+#include <thread>
 
 /**
  * @brief Composition root of the agent HTTPS client behind the C ABI.
  *
- * Builds every seam (curl performer, signer, dispatcher) and owns the module
- * lifecycle. The stream loops (/control, /stateless, /stateful) mount on this
- * skeleton in their own workstreams; the foundation carries configuration
- * validation (fail-closed TLS), the signing credential and its runtime swap
- * (hc_set_agent_key after a re-enrollment), and the callback dispatcher. The
- * lifecycle skeleton mirrors the manager-side RemotedModuleFacade.
+ * Builds every seam (curl performer, signer, dispatcher) and owns the
+ * module's threads: the control loop and the dispatcher. The data streams
+ * (#37835, #37836) will idle behind the registration gate until Startup is
+ * accepted. Shutdown is cooperative: interrupt in-flight requests, join the
+ * loops, drain (final shutdown message), then stop the dispatcher — no
+ * callback outlives stop(). The lifecycle skeleton mirrors the manager-side
+ * RemotedModuleFacade.
  */
 class HttpsClientFacade final
 {
@@ -46,10 +53,15 @@ class HttpsClientFacade final
         bool start();
         void stop();
 
+        void notifyNow();
         bool setAgentKey(const char* keyHex);
         hc_conn_state_t state() const;
 
     private:
+        void controlLoop();
+        void drain();
+        std::chrono::milliseconds controlInterval() const;
+
         ModuleConfig m_config;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 
@@ -61,10 +73,20 @@ class HttpsClientFacade final
         CmacSigner m_signer;
         CurlPerformer m_performer;
         CallbackDispatcher m_dispatcher;
-        // Pauses all outbound traffic on a 401 and surfaces re-enrollment once
-        // per incident; hc_set_agent_key -> release() resumes. The wake hook
-        // is a no-op until the control loop (#37830) mounts and hooks it.
-        AuthGate m_authGate {m_dispatcher, [] {}};
+        ClusterIdentity m_cluster;
+        // Wakes the control loop so it publishes AUTH_ERROR / recovers promptly.
+        // The wake lambda runs later, so referencing m_controlWaiter (declared
+        // below) is safe.
+        AuthGate m_authGate {m_dispatcher, [this] { m_controlWaiter.notify(); }};
+
+        ControlStream m_control;
+
+        // One waiter per stream thread; the stop flag doubles as the abort flag.
+        Waiter m_controlWaiter;
+        Waiter m_drainWaiter; ///< Fresh (never stopped) so the final drain can run.
+        RegistrationGate m_gate;
+
+        std::thread m_controlThread;
 
         mutable std::mutex m_lifecycleMutex;
         bool m_started {false};

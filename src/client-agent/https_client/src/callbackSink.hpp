@@ -26,6 +26,7 @@ class ICallbackSink
     public:
         virtual ~ICallbackSink() = default;
 
+        virtual void onStartupResult(bool accepted, const std::string& handshakeJson) = 0;
         /// The signing credential was rejected (401); the module has paused all
         /// traffic. Fired once per incident until the key is replaced.
         virtual void onReenrollRequired() = 0;
