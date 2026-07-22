@@ -4,6 +4,8 @@ link_directories(${SRC_FOLDER}/build/lib)
 include_directories(${SRC_FOLDER}/shared_modules/router/include)
 include_directories(${SRC_FOLDER}/remoted/include)
 include_directories(${SRC_FOLDER}/remoted/src)
+# secure.c includes "remoted_module.h" (the C++ module's C-ABI header).
+include_directories(${SRC_FOLDER}/remoted/remoted_module/include)
 
 #include wrappers
 include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
@@ -120,6 +122,15 @@ foreach(counter RANGE ${count})
         ${WAZUHEXT}
         remoted_lib
         ${TEST_DEPS}
+    )
+
+    # secure.c (in remoted_lib) calls the C++ module's extern "C" entry points. The legacy
+    # tests don't link libremoted_module.so, so mock them via __wrap_* (defined in
+    # wrappers/wazuh/shared_modules/remoted_module_wrappers.c). Harmless for tests that don't
+    # pull secure.c in.
+    target_link_libraries(
+        ${remoted_test_name}
+        "-Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop"
     )
 
     if(NOT remoted_test_flags STREQUAL " ")
