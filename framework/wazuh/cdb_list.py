@@ -98,7 +98,11 @@ def get_list_file(filename: list = None, raw: bool = None) -> AffectedItemsWazuh
 
     try:
         # Recursively search for filename inside {wazuh_path}/etc/lists/
-        content = get_list_from_file(get_filenames_paths(filename)[0], raw)
+        full_path = get_filenames_paths(filename)[0]
+        # Ensure the resolved path stays inside the lists directory.
+        if commonpath([realpath(full_path), realpath(common.USER_LISTS_PATH)]) != realpath(common.USER_LISTS_PATH):
+            raise WazuhError(1804, extra_message=f"{filename[0]} is outside the lists directory")
+        content = get_list_from_file(full_path, raw)
         if raw:
             result = content
         else:
