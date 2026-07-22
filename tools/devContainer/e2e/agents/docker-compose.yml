@@ -1,5 +1,9 @@
 name: dev-env-engine-agents
 
+# WAZUH_REGISTRATION_PASSWORD must be set to the manager's enrollment password
+# (its etc/authd.pass) before building. 5.x agents bake it in at install time;
+# 4.x agents use it at runtime via agent-auth.
+
 x-agent-defaults: &agent_defaults
   pull_policy: build
   restart: unless-stopped
@@ -20,6 +24,7 @@ services:
       MANAGER_PORT: "1514"
       AUTHD_PORT: "1515"
       AGENT_NAME: "agent-4x-centos"
+      AUTHD_PASSWORD: "${WAZUH_REGISTRATION_PASSWORD:-}"
     volumes:
       - agent_4x_centos_var:/var/ossec
 
@@ -36,6 +41,7 @@ services:
       MANAGER_PORT: "1514"
       AUTHD_PORT: "1515"
       AGENT_NAME: "agent-4x-ubuntu"
+      AUTHD_PASSWORD: "${WAZUH_REGISTRATION_PASSWORD:-}"
     volumes:
       - agent_4x_ubuntu_var:/var/ossec
 
@@ -45,13 +51,13 @@ services:
       context: .
       dockerfile: centos/5.x/Dockerfile
       network: host
+      args:
+        WAZUH_MANAGER: "host.docker.internal"
+        WAZUH_REGISTRATION_PASSWORD: "${WAZUH_REGISTRATION_PASSWORD:-}"
     container_name: wazuh-agent-5x-centos
     hostname: wazuh-agent-5x-centos
     environment:
       MANAGER_HOST: "host.docker.internal"
-      MANAGER_PORT: "1514"
-      AUTHD_PORT: "1515"
-      AGENT_NAME: "agent-5x-centos"
     volumes:
       - agent_5x_centos_var:/var/ossec
 
@@ -61,13 +67,13 @@ services:
       context: .
       dockerfile: ubuntu/5.x/Dockerfile
       network: host
+      args:
+        WAZUH_MANAGER: "host.docker.internal"
+        WAZUH_REGISTRATION_PASSWORD: "${WAZUH_REGISTRATION_PASSWORD:-}"
     container_name: wazuh-agent-5x-ubuntu
     hostname: wazuh-agent-5x-ubuntu
     environment:
       MANAGER_HOST: "host.docker.internal"
-      MANAGER_PORT: "1514"
-      AUTHD_PORT: "1515"
-      AGENT_NAME: "agent-5x-ubuntu"
     volumes:
       - agent_5x_ubuntu_var:/var/ossec
 
