@@ -59,20 +59,10 @@ int wm_agent_upgrade_validate_id(int agent_id) {
     int return_code = WM_UPGRADE_SUCCESS;
 
     if (agent_id <= 0) {
-        return_code = WM_UPGRADE_UPGRADE_ERROR;
+        return_code = WM_UPGRADE_PARSING_REQUIRED_PARAMETER;
     }
 
      return return_code;
-}
-
-int wm_agent_upgrade_validate_status(const char* connection_status) {
-    int return_code = WM_UPGRADE_AGENT_IS_NOT_ACTIVE;
-
-    if (connection_status && !strcmp(AGENT_CS_ACTIVE, connection_status)) {
-        return_code = WM_UPGRADE_SUCCESS;
-    }
-
-    return return_code;
 }
 
 int wm_agent_upgrade_validate_system(const char *platform, const char *os_major, const char *os_minor, const char *arch, char **package_type) {
@@ -507,7 +497,7 @@ int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) {
     return return_code;
 }
 
-int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) {
+int wm_agent_upgrade_validate_wpk_custom(wm_upgrade_custom_task *task) {
     int return_code = WM_UPGRADE_SUCCESS;
     FILE *wpk_file = NULL;
 
@@ -515,67 +505,25 @@ int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) {
         if (wpk_file = wfopen(task->custom_file_path, "rb"), !wpk_file) {
             return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
         } else {
-            // WPK file exists
+            // WPK file exists, calculate SHA1
             fclose(wpk_file);
+
+            char *calculated_sha1 = NULL;
+            os_calloc(41, sizeof(char), calculated_sha1);
+
+            if (OS_SHA1_File(task->custom_file_path, calculated_sha1, OS_BINARY) != 0) {
+                mtdebug1(WM_AGENT_UPGRADE_LOGTAG, "Failed to calculate SHA1 for custom WPK: %s", task->custom_file_path);
+                os_free(calculated_sha1);
+                return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
+            } else {
+                // Save calculated SHA1 in task structure
+                os_free(task->wpk_sha1);
+                task->wpk_sha1 = calculated_sha1;
+            }
         }
     } else {
         return_code = WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST;
     }
 
     return return_code;
-}
-
-bool wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id) {
-    if (input_json) {
-        cJSON *error_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR]);
-        cJSON *data_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR_MESSAGE]);
-        cJSON *status_object = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_STATUS]);
-        cJSON *agent_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_AGENT_ID]);
-
-        if (error_object && (error_object->type == cJSON_Number) && data_object && (data_object->type == cJSON_String) && agent_json
-            && (agent_json->type == cJSON_Number)) {
-
-            if (agent_id) {
-                *agent_id = agent_json->valueint;
-            }
-
-            if (error_object->valueint == WM_UPGRADE_SUCCESS) {
-                if (status && status_object && status_object->type == cJSON_String) {
-                    os_strdup(status_object->valuestring, *status);
-                }
-                return true;
-            } else {
-                mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_TASK_UPDATE_ERROR, error_object->valueint, data_object->valuestring);
-            }
-        } else {
-            mterror(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_REQUIRED_PARAMETERS);
-        }
-    }
-    return false;
-}
-
-bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char** data) {
-    if (input_json) {
-        cJSON *agent_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_AGENT_ID]);
-        cJSON *data_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_ERROR_MESSAGE]);
-        cJSON *task_json = cJSON_GetObjectItem(input_json, task_manager_json_keys[WM_TASK_TASK_ID]);
-
-        if (agent_id && agent_json && (agent_json->type == cJSON_Number)) {
-            *agent_id = agent_json->valueint;
-        } else {
-            return false;
-        }
-
-        if (data && data_json && (data_json->type == cJSON_String)) {
-            os_strdup(data_json->valuestring, *data);
-        } else {
-            return false;
-        }
-
-        if (task_id && task_json && (task_json->type == cJSON_Number)) {
-            *task_id = task_json->valueint;
-        }
-        return true;
-    }
-    return false;
 }
