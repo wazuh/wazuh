@@ -30,10 +30,6 @@ int teardown_hash_table() {
     return 0;
 }
 
-int __wrap_wm_agent_upgrade_check_status(__attribute__((unused)) const wm_agent_configs* agent_config) {
-    return mock();
-}
-
 void __wrap_wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled) {
     check_expected(manager_configs);
     check_expected(enabled);
@@ -61,45 +57,6 @@ char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_id
     check_expected_ptr(task);
 
     return mock_type(char *);
-}
-
-cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command, cJSON *agents_array, const char* status, const char* error) {
-    check_expected(command);
-
-    cJSON *ret = mock_type(cJSON *);
-    // Note: The agents_array is typically already embedded in the returned mock JSON
-    // If the mock JSON doesn't have it, we should add it to a "parameters" object
-    if (ret && agents_array) {
-        cJSON *parameters = cJSON_GetObjectItem(ret, "parameters");
-        if (parameters && !cJSON_GetObjectItem(parameters, "agents")) {
-            cJSON_AddItemToObject(parameters, "agents", agents_array);
-        }
-    }
-
-    if (status) check_expected(status);
-    if (error) check_expected(error);
-
-    return ret;
-}
-
-OSHashNode* __wrap_wm_agent_upgrade_get_first_node(unsigned int *index) {
-    if (mock()) {
-        return mock_type(OSHashNode *);
-    } else {
-        return OSHash_Begin(hash_table, index);
-    }
-}
-
-OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int *index, OSHashNode *current) {
-    if (mock()) {
-        return mock_type(OSHashNode *);
-    } else {
-        return OSHash_Next(hash_table, index, current);
-    }
-}
-
-cJSON* __wrap_wm_agent_upgrade_get_agent_ids() {
-    return mock_type(cJSON*);
 }
 
 int __wrap_wm_agent_upgrade_validate_id(int agent_id) {
@@ -146,23 +103,6 @@ int __wrap_wm_agent_upgrade_validate_wpk_custom(__attribute__((unused)) const wm
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_task) {
-    check_expected(agent_id);
-
-    char key[128];
-    sprintf(key, "%d", agent_id);
-    OSHash_Add_ex(hash_table, key, ag_task);
-
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_remove_entry(int agent_id, int free) {
-    check_expected(agent_id);
-    check_expected(free);
-
-    return mock();
-}
-
 cJSON* __wrap_wm_agent_upgrade_parse_data_response(int error_id, const char* message, const int* agent_id) {
     int agent_int;
 
@@ -195,23 +135,8 @@ cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON *data) {
     return ret;
 }
 
-char* __wrap_wm_agent_upgrade_send_command_to_agent(const char *command, const size_t command_size) {
-    check_expected(command);
-    check_expected(command_size);
-
-    return mock_type(char *);
-}
-
 cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON *message_object) {
     check_expected(message_object);
 
     return mock_type(cJSON *);
-}
-
-int __wrap_wm_agent_upgrade_prepare_upgrades() {
-    return mock();
-}
-
-int __wrap_wm_agent_upgrade_cancel_pending_upgrades() {
-    return mock();
 }
