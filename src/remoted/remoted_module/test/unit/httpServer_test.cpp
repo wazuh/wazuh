@@ -15,7 +15,6 @@
 
 #include <gtest/gtest.h>
 
-#include <cstdlib>
 #include <cstring>
 #include <memory>
 #include <optional>
@@ -48,20 +47,6 @@ namespace
         std::memset(&config, 0, sizeof(config));
         return config;
     }
-
-    void clearHttpEnvironment()
-    {
-        for (const auto* name : {"WAZUH_REMOTED_HTTPS_ADDRESS",
-                                 "WAZUH_REMOTED_HTTPS_PORT",
-                                 "WAZUH_REMOTED_HTTPS_IO_THREADS",
-                                 "WAZUH_REMOTED_HTTPS_WORKER_THREADS",
-                                 "WAZUH_REMOTED_HTTPS_MAX_BODY_SIZE",
-                                 "WAZUH_REMOTED_HTTPS_CERTIFICATE",
-                                 "WAZUH_REMOTED_HTTPS_PRIVATE_KEY"})
-        {
-            unsetenv(name);
-        }
-    }
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -70,26 +55,44 @@ namespace
 
 TEST(HttpServerConfigTest, DefaultsWhenEmpty)
 {
-    clearHttpEnvironment();
-
     const auto config = buildHttpServerConfig(zeroedConfig());
 
     EXPECT_EQ(config.bindAddress, "127.0.0.1");
     EXPECT_EQ(config.port, 9443);
     EXPECT_EQ(config.ioThreads, 2U);
     EXPECT_EQ(config.workerThreads, 4U);
+    EXPECT_EQ(config.maxBodySize, 16U * 1024U * 1024U);
+    EXPECT_EQ(config.readTimeoutSec, 10U);
+    EXPECT_EQ(config.writeTimeoutSec, 10U);
+    EXPECT_EQ(config.requestTimeoutSec, 30U);
+    EXPECT_EQ(config.maxUrlSize, 2048U);
+    EXPECT_EQ(config.maxHeaderNameSize, 256U);
+    EXPECT_EQ(config.maxHeaderValueSize, 8192U);
+    EXPECT_EQ(config.maxHeaderCount, 64U);
+    EXPECT_EQ(config.maxPipelinedRequests, 4U);
+    EXPECT_EQ(config.concurrentAccepts, 2U);
+    EXPECT_EQ(config.bufferSize, 8192U);
     EXPECT_EQ(config.certificatePath, "/etc/remoted-https/server.crt");
     EXPECT_EQ(config.privateKeyPath, "/etc/remoted-https/server.key");
 }
 
 TEST(HttpServerConfigTest, StructValuesWin)
 {
-    clearHttpEnvironment();
-
     auto raw = zeroedConfig();
     raw.port = 12345;
     raw.io_threads = 3;
     raw.http_worker_threads = 7;
+    raw.http_max_body_size = 1048576;
+    raw.http_read_timeout = 20;
+    raw.http_write_timeout = 15;
+    raw.http_request_timeout = 45;
+    raw.http_max_url_size = 4096;
+    raw.http_max_header_name_size = 512;
+    raw.http_max_header_value_size = 16384;
+    raw.http_max_header_count = 128;
+    raw.http_max_pipelined_requests = 8;
+    raw.http_concurrent_accepts = 4;
+    raw.http_buffer_size = 16384;
     std::snprintf(raw.certificate_path, sizeof(raw.certificate_path), "/custom/cert.pem");
     std::snprintf(raw.private_key_path, sizeof(raw.private_key_path), "/custom/key.pem");
 
@@ -98,19 +101,37 @@ TEST(HttpServerConfigTest, StructValuesWin)
     EXPECT_EQ(config.port, 12345);
     EXPECT_EQ(config.ioThreads, 3U);
     EXPECT_EQ(config.workerThreads, 7U);
+    EXPECT_EQ(config.maxBodySize, 1048576U);
+    EXPECT_EQ(config.readTimeoutSec, 20U);
+    EXPECT_EQ(config.writeTimeoutSec, 15U);
+    EXPECT_EQ(config.requestTimeoutSec, 45U);
+    EXPECT_EQ(config.maxUrlSize, 4096U);
+    EXPECT_EQ(config.maxHeaderNameSize, 512U);
+    EXPECT_EQ(config.maxHeaderValueSize, 16384U);
+    EXPECT_EQ(config.maxHeaderCount, 128U);
+    EXPECT_EQ(config.maxPipelinedRequests, 8U);
+    EXPECT_EQ(config.concurrentAccepts, 4U);
+    EXPECT_EQ(config.bufferSize, 16384U);
     EXPECT_EQ(config.certificatePath, "/custom/cert.pem");
     EXPECT_EQ(config.privateKeyPath, "/custom/key.pem");
 }
 
-TEST(HttpServerConfigTest, WorkerThreadsFallBackToGenericWorkerThreads)
+// Negative values can't come from remoted (getDefine_Int_default's own min bound
+// keeps them out), but buildHttpServerConfig() only trusts "positive", so a
+// leftover/garbage negative must fall back to the default like 0 does, not
+// underflow when cast to the unsigned HttpServerConfig fields.
+TEST(HttpServerConfigTest, NegativeValuesFallBackToDefaults)
 {
-    clearHttpEnvironment();
-
     auto raw = zeroedConfig();
-    raw.worker_threads = 9;      // generic
-    raw.http_worker_threads = 0; // not set -> use generic
+    raw.port = -1;
+    raw.io_threads = -5;
+    raw.http_max_url_size = -2048;
 
-    EXPECT_EQ(buildHttpServerConfig(raw).workerThreads, 9U);
+    const auto config = buildHttpServerConfig(raw);
+
+    EXPECT_EQ(config.port, 9443);
+    EXPECT_EQ(config.ioThreads, 2U);
+    EXPECT_EQ(config.maxUrlSize, 2048U);
 }
 
 // ---------------------------------------------------------------------------

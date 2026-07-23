@@ -375,6 +375,101 @@ Event count threshold for logging compression statistics.
 - **Allowed values:** Integer from `10` to `999999` (event count)
 - **Note:** Compression stats logged after this many events processed
 
+### HTTPS Agent Server (`remoted_module`)
+
+Advanced tuning for the experimental HTTPS agent server (see
+[HTTPS Events API](https-events-api.md)). These are RESTinio transport settings, not part
+of the regular `<remote>` configuration -- bind address, port and max body size are
+regular `<remote>` settings instead (see [HTTPS Events API](https-events-api.md#configuration)).
+An option present in `wazuh-manager-internal-options.conf` but out of its allowed range (or
+non-numeric) prevents `remoted` from starting, same as every other internal option.
+
+#### remoted.http_io_threads
+
+Number of I/O threads (accept + read/write) for the HTTPS agent server.
+
+- **Default value:** `2`
+- **Allowed values:** Integer from `1` to `64`
+
+#### remoted.http_worker_threads
+
+Number of worker threads that run endpoint handlers (auth + business logic), off the I/O threads.
+
+- **Default value:** `4`
+- **Allowed values:** Integer from `1` to `256`
+
+#### remoted.http_read_timeout
+
+Seconds to wait for a full request to arrive on a connection.
+
+- **Default value:** `10`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** The clock starts as soon as the connection is established, so this also bounds a
+  stalled TLS handshake -- there is no separate handshake timeout
+
+#### remoted.http_write_timeout
+
+Seconds to wait for a response write to complete.
+
+- **Default value:** `10`
+- **Allowed values:** Integer from `1` to `300`
+
+#### remoted.http_request_timeout
+
+Seconds a request may take to be handled end-to-end.
+
+- **Default value:** `30`
+- **Allowed values:** Integer from `1` to `600`
+
+#### remoted.http_max_url_size
+
+Maximum accepted URL size, in bytes.
+
+- **Default value:** `2048`
+- **Allowed values:** Integer from `1` to `65536`
+
+#### remoted.http_max_header_name_size
+
+Maximum accepted HTTP header name size, in bytes.
+
+- **Default value:** `256`
+- **Allowed values:** Integer from `1` to `8192`
+
+#### remoted.http_max_header_value_size
+
+Maximum accepted HTTP header value size, in bytes.
+
+- **Default value:** `8192`
+- **Allowed values:** Integer from `1` to `65536`
+
+#### remoted.http_max_header_count
+
+Maximum number of HTTP headers accepted per request.
+
+- **Default value:** `64`
+- **Allowed values:** Integer from `1` to `1024`
+
+#### remoted.http_max_pipelined_requests
+
+Maximum in-flight unanswered requests per connection (HTTP pipelining depth).
+
+- **Default value:** `4`
+- **Allowed values:** Integer from `1` to `64`
+
+#### remoted.http_concurrent_accepts
+
+Maximum concurrent in-progress TCP accepts for the HTTPS agent server.
+
+- **Default value:** `2`
+- **Allowed values:** Integer from `1` to `64`
+
+#### remoted.http_buffer_size
+
+Socket read buffer size for the HTTPS agent server, in bytes.
+
+- **Default value:** `8192`
+- **Allowed values:** Integer from `1` to `1048576` (1 MiB)
+
 ---
 
 ## Configuration Examples
