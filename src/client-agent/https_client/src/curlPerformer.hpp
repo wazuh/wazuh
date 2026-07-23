@@ -38,7 +38,10 @@ class CurlPerformer final : public IHttpPerformer
                               HttpResponse& response) const;
         void applyTls(ICurlHandle& handle) const;
 
-        const ModuleConfig& m_config;
+        // By value: callers routinely build a ModuleConfig as a temporary
+        // (e.g. makeConfig()-style test helpers); a reference member would
+        // dangle the moment that temporary's full expression ends.
+        ModuleConfig m_config;
         CurlHandleFactory m_factory;
 };
 
