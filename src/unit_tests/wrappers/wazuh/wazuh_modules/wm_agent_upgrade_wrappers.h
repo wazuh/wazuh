@@ -18,8 +18,6 @@ int setup_hash_table(void(free_data_function)(wm_agent_task* agent_task));
 
 int teardown_hash_table();
 
-int __wrap_wm_agent_upgrade_check_status(const wm_agent_configs* agent_config);
-
 void __wrap_wm_agent_upgrade_start_manager_module(const wm_manager_configs* manager_configs, const int enabled);
 
 int __wrap_wm_agent_upgrade_parse_message(const char* buffer, void** task, int** agent_ids, char** error);
@@ -31,17 +29,6 @@ char* __wrap_wm_agent_upgrade_process_upgrade_command(const int* agent_ids,
 char* __wrap_wm_agent_upgrade_process_upgrade_custom_command(const int* agent_ids,
                                                              wm_upgrade_custom_task* task,
                                                              const wm_manager_configs* manager_configs);
-
-cJSON* __wrap_wm_agent_upgrade_parse_task_module_request(wm_upgrade_command command,
-                                                         cJSON* agents_array,
-                                                         const char* status,
-                                                         const char* error);
-
-OSHashNode* __wrap_wm_agent_upgrade_get_first_node(unsigned int* index);
-
-OSHashNode* __wrap_wm_agent_upgrade_get_next_node(unsigned int* index, OSHashNode* current);
-
-cJSON* __wrap_wm_agent_upgrade_get_agent_ids();
 
 int __wrap_wm_agent_upgrade_validate_id(int agent_id);
 
@@ -61,20 +48,10 @@ int __wrap_wm_agent_upgrade_validate_wpk(const wm_upgrade_task* task);
 
 int __wrap_wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task* task);
 
-int __wrap_wm_agent_upgrade_create_task_entry(int agent_id, wm_agent_task* ag_task);
-
-int __wrap_wm_agent_upgrade_remove_entry(int agent_id, int free);
-
 cJSON* __wrap_wm_agent_upgrade_parse_data_response(int error_id, const char* message, const int* agent_id);
 
 cJSON* __wrap_wm_agent_upgrade_parse_response(int error_id, cJSON* data);
 
-char* __wrap_wm_agent_upgrade_send_command_to_agent(const char* command, const size_t command_size);
-
 cJSON* __wrap_wm_agent_upgrade_send_tasks_information(const cJSON* message_object);
-
-int __wrap_wm_agent_upgrade_prepare_upgrades();
-
-int __wrap_wm_agent_upgrade_cancel_pending_upgrades();
 
 #endif
