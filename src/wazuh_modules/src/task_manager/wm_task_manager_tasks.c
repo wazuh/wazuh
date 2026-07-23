@@ -77,6 +77,11 @@ char* wm_task_manager_generate_task_id(
 
 // Initialize cache
 void wm_task_cache_init(int ttl) {
+    // Clean up existing cache if any
+    if (g_task_cache) {
+        wm_task_cache_destroy();
+    }
+
     g_task_cache = calloc(1, sizeof(task_cache_t));
     if (!g_task_cache) {
         mterror(WM_TASK_MANAGER_LOGTAG, "Failed to allocate task cache");
@@ -191,4 +196,28 @@ void wm_task_cache_invalidate(const char *agent_id) {
     }
 
     pthread_rwlock_unlock(&g_task_cache->lock);
+}
+
+// Destroy cache
+void wm_task_cache_destroy(void) {
+    if (!g_task_cache) return;
+
+    pthread_rwlock_wrlock(&g_task_cache->lock);
+
+    // Free all cache entries
+    cache_entry_t *entry = g_task_cache->head;
+    while (entry) {
+        cache_entry_t *next = entry->next;
+        free(entry->agent_id);
+        cJSON_Delete(entry->tasks);
+        free(entry);
+        entry = next;
+    }
+
+    pthread_rwlock_unlock(&g_task_cache->lock);
+    pthread_rwlock_destroy(&g_task_cache->lock);
+
+    // Free cache structure
+    free(g_task_cache);
+    g_task_cache = NULL;
 }

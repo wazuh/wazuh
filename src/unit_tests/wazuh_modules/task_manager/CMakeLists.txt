@@ -27,7 +27,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 list(APPEND task_names "test_wm_task_manager")
 list(APPEND task_flags "-Wl,--wrap,pthread_exit -Wl,--wrap,CreateThread -Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,select -Wl,--wrap,close \
                         -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,w_is_worker -Wl,--wrap,wm_task_manager_parse_message -Wl,--wrap,wm_task_manager_process_task \
-                        -Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,getpid -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+                        -Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,getpid -Wl,--wrap,w_query_agentd -Wl,--wrap,wm_task_cache_init -Wl,--wrap,w_create_thread ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND task_names "test_wm_task_manager_parsing")
 list(APPEND task_flags "-Wl,--wrap,w_get_timestamp ${DEBUG_OP_WRAPPERS}")
@@ -35,7 +35,12 @@ list(APPEND task_flags "-Wl,--wrap,w_get_timestamp ${DEBUG_OP_WRAPPERS}")
 list(APPEND task_names "test_wm_task_manager_commands")
 list(APPEND task_flags "-Wl,--wrap,wm_task_manager_parse_data_response -Wl,--wrap,wm_task_manager_parse_data_result \
                         -Wl,--wrap,wdbc_query_ex -Wl,--wrap,wdbc_parse_result -Wl,--wrap,time -Wl,--wrap,w_sleep_until \
+                        -Wl,--wrap,wm_task_cache_get -Wl,--wrap,wm_task_cache_set -Wl,--wrap,wm_task_cache_invalidate \
+                        -Wl,--wrap,wm_task_manager_generate_task_id \
                         ${DEBUG_OP_WRAPPERS}")
+
+list(APPEND task_names "test_wm_task_manager_tasks")
+list(APPEND task_flags "${DEBUG_OP_WRAPPERS}")
 
 # Compilig tests
 list(LENGTH task_names count)
