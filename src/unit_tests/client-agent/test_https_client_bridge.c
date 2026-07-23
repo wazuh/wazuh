@@ -164,18 +164,6 @@ static int teardown_test(void **state)
     return 0;
 }
 
-/* Gate */
-
-static void test_disabled_gate_never_creates_the_client(void **state)
-{
-    (void)state;
-    will_return(__wrap_getDefine_Int_default, 0);
-
-    w_https_client_start();
-    /* No expectation queued for hc_create: cmocka fails the test if the
-     * disabled gate still reaches it. */
-}
-
 /* verify_mode mapping + TLS field copying (the point of this workstream) */
 
 static void test_full_verify_mode_and_ca_reach_the_module(void **state)
@@ -184,8 +172,7 @@ static void test_full_verify_mode_and_ca_reach_the_module(void **state)
     os_strdup("/etc/wazuh/ca.pem", agt->ssl.certificate_authorities);
     agt->ssl.verification_mode = AGENT_VERIFY_FULL;
 
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -209,8 +196,7 @@ static void test_certificate_verify_mode_maps_to_hc_verify_cert(void **state)
     (void)state;
     agt->ssl.verification_mode = AGENT_VERIFY_CERT;
 
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -229,8 +215,7 @@ static void test_none_verify_mode_maps_to_hc_verify_none(void **state)
     (void)state;
     agt->ssl.verification_mode = AGENT_VERIFY_NONE;
 
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -251,8 +236,7 @@ static void test_client_cert_key_and_ciphers_are_copied(void **state)
     os_strdup("/etc/wazuh/agent.key", agt->ssl.key);
     os_strdup("HIGH:!aNULL", agt->ssl.ciphers);
 
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -277,8 +261,7 @@ static void test_missing_key_refuses_to_start(void **state)
     os_free(keys.keyentries[0]->raw_key);
     keys.keyentries[0]->raw_key = NULL;
 
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
                   "https_client: agent key is missing or has an invalid length for AES-CMAC "
                   "(expected 32, 48 or 64 hex characters); refusing to start.");
@@ -293,8 +276,7 @@ static void test_wrong_length_key_refuses_to_start(void **state)
     os_free(keys.keyentries[0]->raw_key);
     os_strdup("aabbccdd", keys.keyentries[0]->raw_key); /* 8 hex chars: not 32/48/64 */
 
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
                   "https_client: agent key is missing or has an invalid length for AES-CMAC "
                   "(expected 32, 48 or 64 hex characters); refusing to start.");
@@ -309,8 +291,7 @@ static void test_non_hex_key_refuses_to_start(void **state)
     /* Right length (32 chars) but 'z' is not a hex digit. */
     os_strdup("zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz", keys.keyentries[0]->raw_key);
 
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_string(__wrap__merror, formatted_msg,
                   "https_client: agent key is missing or has an invalid length for AES-CMAC "
                   "(expected 32, 48 or 64 hex characters); refusing to start.");
@@ -324,8 +305,7 @@ static void test_valid_48_char_key_is_accepted(void **state)
     os_free(keys.keyentries[0]->raw_key);
     os_strdup("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", keys.keyentries[0]->raw_key); /* 48 hex chars */
 
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -345,8 +325,7 @@ static void test_valid_48_char_key_is_accepted(void **state)
 static void test_hc_create_failure_is_logged(void **state)
 {
     (void)state;
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, NULL);
     expect_string(__wrap__merror, formatted_msg, "https_client: failed to create the client instance.");
@@ -358,8 +337,7 @@ static void test_hc_create_failure_is_logged(void **state)
 static void test_hc_start_failure_destroys_and_logs(void **state)
 {
     (void)state;
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -376,8 +354,7 @@ static void test_hc_start_failure_destroys_and_logs(void **state)
 
 static void start_client_successfully(void)
 {
-    will_return(__wrap_getDefine_Int_default, 1);
-    expect_string(__wrap__minfo, formatted_msg, "https_client: enabled (agent.https_client=1).");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -527,7 +504,6 @@ static void test_reenroll_thread_logs_error_when_new_key_fails_validation(void *
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_disabled_gate_never_creates_the_client, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_full_verify_mode_and_ca_reach_the_module, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_certificate_verify_mode_maps_to_hc_verify_cert, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
