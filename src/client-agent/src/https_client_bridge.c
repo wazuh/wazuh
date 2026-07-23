@@ -132,6 +132,17 @@ void *bridge_reenroll_thread(void *arg)
     return NULL;
 }
 
+#ifdef WIN32
+/* Win32 thread entry adapting the POSIX-signature worker. Casting a cdecl
+ * function to stdcall (LPTHREAD_START_ROUTINE) would corrupt the stack on the
+ * 32-bit build, so wrap it instead. */
+static DWORD WINAPI bridge_reenroll_thread_win(LPVOID arg)
+{
+    bridge_reenroll_thread(arg);
+    return 0;
+}
+#endif
+
 /* Received-work callbacks. The production hookups still pending (later
  * integration workstreams): execd/module-com routing for on_task-equivalent
  * work and the .state metrics wiring for on_state_change. */
@@ -146,7 +157,11 @@ static void bridge_on_reenroll_required(void *user_data)
         return;
     }
 
+#ifdef WIN32
+    w_create_thread(NULL, 0, bridge_reenroll_thread_win, g_https_client, 0, NULL);
+#else
     w_create_thread(bridge_reenroll_thread, g_https_client);
+#endif
 }
 
 /* Maps the module's connection FSM onto the .state file's coarser 3-value
