@@ -11,11 +11,7 @@
 
 #include "httpServerConfig.hpp"
 
-#include <charconv>
-#include <cstdlib>
-#include <stdexcept>
 #include <string>
-#include <string_view>
 
 namespace
 {
@@ -27,64 +23,27 @@ namespace
     // 10 MiB) so an oversized batch reaches the middleware and gets a clean 413 there, while this
     // still bounds memory as a backstop.
     constexpr std::size_t DEFAULT_MAX_BODY_SIZE {16U * 1024U * 1024U};
+    constexpr std::size_t DEFAULT_READ_TIMEOUT_SEC {10};
+    constexpr std::size_t DEFAULT_WRITE_TIMEOUT_SEC {10};
+    constexpr std::size_t DEFAULT_REQUEST_TIMEOUT_SEC {30};
+    constexpr std::size_t DEFAULT_MAX_URL_SIZE {2048};
+    constexpr std::size_t DEFAULT_MAX_HEADER_NAME_SIZE {256};
+    constexpr std::size_t DEFAULT_MAX_HEADER_VALUE_SIZE {8192};
+    constexpr std::size_t DEFAULT_MAX_HEADER_COUNT {64};
+    constexpr std::size_t DEFAULT_MAX_PIPELINED_REQUESTS {4};
+    constexpr std::size_t DEFAULT_CONCURRENT_ACCEPTS {2};
+    constexpr std::size_t DEFAULT_BUFFER_SIZE {8192};
 
     // These paths are evaluated after remoted has entered its chroot.
     // Host paths: /var/ossec/etc/remoted-https/server.{crt,key}
     constexpr auto DEFAULT_CERTIFICATE_PATH {"/etc/remoted-https/server.crt"};
     constexpr auto DEFAULT_PRIVATE_KEY_PATH {"/etc/remoted-https/server.key"};
 
-    std::string readStringEnvironment(const char* name, std::string defaultValue)
+    // A positive caller value wins; otherwise the built-in default. remoted is expected to
+    // always pass an already-validated value read from the `remoted.http_*` internal options.
+    std::size_t resolveUnsigned(const int configValue, const std::size_t defaultValue)
     {
-        const auto* value = std::getenv(name);
-
-        if (value == nullptr || *value == '\0')
-        {
-            return defaultValue;
-        }
-
-        return value;
-    }
-
-    std::size_t readUnsignedEnvironment(const char* name,
-                                        const std::size_t defaultValue,
-                                        const std::size_t minimum,
-                                        const std::size_t maximum)
-    {
-        const auto* rawValue = std::getenv(name);
-
-        if (rawValue == nullptr || *rawValue == '\0')
-        {
-            return defaultValue;
-        }
-
-        const std::string_view value {rawValue};
-
-        std::size_t parsedValue {};
-        const auto result = std::from_chars(value.data(), value.data() + value.size(), parsedValue);
-
-        if (result.ec != std::errc {} || result.ptr != value.data() + value.size() || parsedValue < minimum ||
-            parsedValue > maximum)
-        {
-            throw std::invalid_argument(std::string {name} + " must be an integer between " + std::to_string(minimum) +
-                                        " and " + std::to_string(maximum));
-        }
-
-        return parsedValue;
-    }
-
-    // Positive C-ABI int wins; otherwise fall back to env (which itself defaults).
-    std::size_t resolveUnsigned(const int configValue,
-                                const char* envName,
-                                const std::size_t defaultValue,
-                                const std::size_t minimum,
-                                const std::size_t maximum)
-    {
-        if (configValue > 0)
-        {
-            return static_cast<std::size_t>(configValue);
-        }
-
-        return readUnsignedEnvironment(envName, defaultValue, minimum, maximum);
+        return configValue > 0 ? static_cast<std::size_t>(configValue) : defaultValue;
     }
 } // namespace
 
@@ -95,31 +54,29 @@ namespace remoted::http
     {
         HttpServerConfig result;
 
-        result.bindAddress = readStringEnvironment("WAZUH_REMOTED_HTTPS_ADDRESS", DEFAULT_BIND_ADDRESS);
+        result.bindAddress = DEFAULT_BIND_ADDRESS;
 
-        result.port = static_cast<std::uint16_t>(
-            resolveUnsigned(config.port, "WAZUH_REMOTED_HTTPS_PORT", DEFAULT_HTTPS_PORT, 1, 65535));
-
-        result.ioThreads =
-            resolveUnsigned(config.io_threads, "WAZUH_REMOTED_HTTPS_IO_THREADS", DEFAULT_IO_THREADS, 1, 64);
-
-        // Worker pool: dedicated field first, then the module's generic worker_threads, then env/default.
-        const int workerHint = config.http_worker_threads > 0 ? config.http_worker_threads : config.worker_threads;
-        result.workerThreads =
-            resolveUnsigned(workerHint, "WAZUH_REMOTED_HTTPS_WORKER_THREADS", DEFAULT_WORKER_THREADS, 1, 256);
-
-        result.maxBodySize =
-            readUnsignedEnvironment("WAZUH_REMOTED_HTTPS_MAX_BODY_SIZE", DEFAULT_MAX_BODY_SIZE, 1, 64U * 1024U * 1024U);
+        result.port = static_cast<std::uint16_t>(resolveUnsigned(config.port, DEFAULT_HTTPS_PORT));
+        result.ioThreads = resolveUnsigned(config.io_threads, DEFAULT_IO_THREADS);
+        result.workerThreads = resolveUnsigned(config.http_worker_threads, DEFAULT_WORKER_THREADS);
+        result.maxBodySize = resolveUnsigned(config.http_max_body_size, DEFAULT_MAX_BODY_SIZE);
+        result.readTimeoutSec = resolveUnsigned(config.http_read_timeout, DEFAULT_READ_TIMEOUT_SEC);
+        result.writeTimeoutSec = resolveUnsigned(config.http_write_timeout, DEFAULT_WRITE_TIMEOUT_SEC);
+        result.requestTimeoutSec = resolveUnsigned(config.http_request_timeout, DEFAULT_REQUEST_TIMEOUT_SEC);
+        result.maxUrlSize = resolveUnsigned(config.http_max_url_size, DEFAULT_MAX_URL_SIZE);
+        result.maxHeaderNameSize = resolveUnsigned(config.http_max_header_name_size, DEFAULT_MAX_HEADER_NAME_SIZE);
+        result.maxHeaderValueSize = resolveUnsigned(config.http_max_header_value_size, DEFAULT_MAX_HEADER_VALUE_SIZE);
+        result.maxHeaderCount = resolveUnsigned(config.http_max_header_count, DEFAULT_MAX_HEADER_COUNT);
+        result.maxPipelinedRequests =
+            resolveUnsigned(config.http_max_pipelined_requests, DEFAULT_MAX_PIPELINED_REQUESTS);
+        result.concurrentAccepts = resolveUnsigned(config.http_concurrent_accepts, DEFAULT_CONCURRENT_ACCEPTS);
+        result.bufferSize = resolveUnsigned(config.http_buffer_size, DEFAULT_BUFFER_SIZE);
 
         result.certificatePath =
-            config.certificate_path[0] != '\0'
-                ? std::string {config.certificate_path}
-                : readStringEnvironment("WAZUH_REMOTED_HTTPS_CERTIFICATE", DEFAULT_CERTIFICATE_PATH);
+            config.certificate_path[0] != '\0' ? std::string {config.certificate_path} : DEFAULT_CERTIFICATE_PATH;
 
         result.privateKeyPath =
-            config.private_key_path[0] != '\0'
-                ? std::string {config.private_key_path}
-                : readStringEnvironment("WAZUH_REMOTED_HTTPS_PRIVATE_KEY", DEFAULT_PRIVATE_KEY_PATH);
+            config.private_key_path[0] != '\0' ? std::string {config.private_key_path} : DEFAULT_PRIVATE_KEY_PATH;
 
         return result;
     }

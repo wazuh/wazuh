@@ -31,9 +31,10 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
   `/etc/remoted-https/server.crt` and `/etc/remoted-https/server.key` — i.e. host paths
   `/var/wazuh-manager/etc/remoted-https/server.{crt,key}`. The private key must be readable by the
   `wazuh` user that `remoted` runs as.
-- **Message limits (fixed):** max URL 2048 B, max header name 256 B, max header value 8192 B, max
-  64 header fields, and a transport body cap of 16 MiB. Handshake/read timeouts are 10 s, request
-  timeout 30 s.
+- **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
+  max 64 header fields, and a transport body cap of 16 MiB by default; read/handshake timeout 10 s,
+  write timeout 10 s, request timeout 30 s. All tunable via `remoted.http_*` internal options -- see
+  [Configuration](#configuration) below.
 
 Generate a self-signed certificate for testing:
 
@@ -109,22 +110,47 @@ The machine-readable contract is published as OpenAPI — see the
 
 ## Configuration
 
-All settings resolve as **caller value (C-ABI struct) → environment variable → built-in default**.
-`remoted` currently leaves the C-ABI fields unset, so in practice values come from the environment
-or the defaults below.
+Advanced RESTinio settings resolve as **caller value → built-in default**. `remoted` populates the
+caller value by reading the `remoted.http_*` internal options
+(`etc/wazuh-manager-internal-options.conf`) in `secure.c` and passing the result to
+`remoted_module` through its C-ABI struct; an option present in the file but out of range (or
+non-numeric) prevents `remoted` from starting, same as every other internal option. See
+[Internal Options](configuration.md#internal-options) for the full reference (allowed ranges,
+notes).
 
-| Setting | Default | Environment override |
+| Setting | Default | Internal option |
 |---|---|---|
-| Bind address | `127.0.0.1` | `WAZUH_REMOTED_HTTPS_ADDRESS` |
-| Port | `9443` | `WAZUH_REMOTED_HTTPS_PORT` |
-| I/O threads | `2` | `WAZUH_REMOTED_HTTPS_IO_THREADS` |
-| Handler worker threads | `4` | `WAZUH_REMOTED_HTTPS_WORKER_THREADS` |
-| Transport max body size | `16 MiB` | `WAZUH_REMOTED_HTTPS_MAX_BODY_SIZE` |
-| TLS certificate chain | `/etc/remoted-https/server.crt` | `WAZUH_REMOTED_HTTPS_CERTIFICATE` |
-| TLS private key | `/etc/remoted-https/server.key` | `WAZUH_REMOTED_HTTPS_PRIVATE_KEY` |
+| I/O threads | `2` | `remoted.http_io_threads` |
+| Handler worker threads | `4` | `remoted.http_worker_threads` |
+| Read / handshake timeout | `10 s` | `remoted.http_read_timeout` |
+| Write timeout | `10 s` | `remoted.http_write_timeout` |
+| Request timeout | `30 s` | `remoted.http_request_timeout` |
+| Max URL size | `2048 B` | `remoted.http_max_url_size` |
+| Max header name size | `256 B` | `remoted.http_max_header_name_size` |
+| Max header value size | `8192 B` | `remoted.http_max_header_value_size` |
+| Max header count | `64` | `remoted.http_max_header_count` |
+| Max pipelined requests per connection | `4` | `remoted.http_max_pipelined_requests` |
+| Concurrent TCP accepts | `2` | `remoted.http_concurrent_accepts` |
+| Socket read buffer size | `8192 B` | `remoted.http_buffer_size` |
+
+Bind address, port, max body size and the certificate/private key paths are **not** internal
+options -- these belong in the regular `<remote>` configuration (`wazuh-manager.conf`), not
+`wazuh-manager-internal-options.conf` (bind address/port/max body size are regular, user-facing
+settings; the certificate/private key paths have no string-valued internal-option mechanism to use
+even if they were advanced tuning). That `<remote>` wiring doesn't exist yet, so all five resolve as
+**caller value (C-ABI struct) → built-in default**, and `remoted` currently leaves those C-ABI
+fields unset -- in practice the built-in defaults below apply.
+
+| Setting | Default |
+|---|---|
+| Bind address | `127.0.0.1` |
+| Port | `9443` |
+| Transport max body size | `16 MiB` |
+| TLS certificate chain | `/etc/remoted-https/server.crt` |
+| TLS private key | `/etc/remoted-https/server.key` |
 
 > There is no `ossec.conf` (`<remote>`) setting for the HTTPS listener yet; configuration is
-> limited to the environment variables above and the certificate files on disk.
+> limited to the internal options above and the certificate files on disk.
 
 ## Testing
 
