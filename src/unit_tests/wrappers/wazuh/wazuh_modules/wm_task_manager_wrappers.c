@@ -14,32 +14,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-cJSON* __wrap_wm_task_manager_parse_message(const char *msg) {
-    check_expected(msg);
-
-    return mock_type(cJSON*);
-}
-
-cJSON* __wrap_wm_task_manager_parse_data_response(int error_code, int agent_id, int task_id, char *status) {
-    check_expected(error_code);
-    check_expected(agent_id);
-    check_expected(task_id);
-    if (status) check_expected(status);
-
-    return mock_type(cJSON*);
-}
-
-void __wrap_wm_task_manager_parse_data_result(__attribute__ ((__unused__)) cJSON *response, const char *node, const char *module, const char *command, char *status, char *error, int create_time, int last_update_time, char *request_command) {
-    check_expected(node);
-    check_expected(module);
-    check_expected(command);
-    check_expected(status);
-    check_expected(error);
-    check_expected(create_time);
-    check_expected(last_update_time);
-    check_expected(request_command);
-}
-
 void __wrap_wm_task_cache_init(__attribute__ ((__unused__)) int cache_ttl) {
     // No-op wrapper - cache init doesn't need mocking for these tests
 }
