@@ -131,8 +131,9 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
         maxfd = agt->sock;
     }
 
-    /* HTTPS client (development scaffold, off by default; independent of the
-     * legacy transport). See client-agent/https_client and the bridge. */
+    /* HTTPS client: the agent's transport, unconditionally. Still runs
+     * independently of the legacy TCP path below until that is retired
+     * (later workstream). See client-agent/https_client and the bridge. */
     w_https_client_start();
     atexit(w_https_client_stop);
 
