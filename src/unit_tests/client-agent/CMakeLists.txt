@@ -127,6 +127,12 @@ list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \
                                 -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                                 -Wl,--wrap,CreateSecMSG \
                                 -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_CloseSocket")
+
+list(APPEND client-agent_names "test_https_client_bridge")
+list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
+                                -Wl,--wrap,getDefine_Int_default \
+                                -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
+                                ${DEBUG_OP_WRAPPERS}")
 endif()
 
 list(LENGTH client-agent_names count)
@@ -164,3 +170,8 @@ foreach(counter RANGE ${count})
     endif()
     add_test(NAME ${client-agent_test_name} COMMAND ${client-agent_test_name})
 endforeach()
+
+if(TARGET test_https_client_bridge)
+    # https_client.h (the module's C ABI) isn't on the global include path.
+    target_include_directories(test_https_client_bridge PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
+endif()
