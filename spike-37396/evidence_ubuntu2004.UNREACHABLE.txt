@@ -1,0 +1,3 @@
+### spike#37396 on-kernel evidence — VM=ubuntu2004  2026-07-22T06:09:08Z
+Connection timed out during banner exchange
+Connection to 172.31.224.1 port 2222 timed out

@@ -1,0 +1,120 @@
+### spike#37396 on-kernel evidence — VM=alma9  2026-07-23T06:32:08Z
+
+=====[ ENV: kernel / os ]=====
+5.14.0-611.54.6.el9_7.x86_64
+NAME="AlmaLinux"
+VERSION="9.7 (Moss Jungle Cat)"
+
+=====[ ENV: active LSM list (bpf present? -> LSM path eligible) ]=====
+lockdown,capability,landlock,yama,selinux,bpf
+=====[ ENV: BTF present? (CO-RE viability) ]=====
+-r--r--r--. 1 root root 5180765 Jul 23 06:32 /sys/kernel/btf/vmlinux
+
+=====[ ENV: cgroup mode (cgroup2fs == v2 unified) ]=====
+cgroup2fs
+
+=====[ ENV: capabilities of this (root) process ]=====
+CapEff:	000001ffffffffff
+CapBnd:	000001ffffffffff
+cap_dac_read_search
+cap_sys_admin
+cap_perfmon
+cap_bpf
+
+=====[ INSTALL toolchain ]=====
+  installed clang
+  installed llvm
+  installed libbpf-devel
+  installed bpftool
+  installed make
+  installed gcc
+  installed kernel-devel
+  installed elfutils-libelf-devel
+clang: /bin/clang clang version 21.1.8 (AlmaLinux OS Foundation 21.1.8-2.el9)
+bpftool: /sbin/bpftool bpftool v7.5.0
+libbpf: /usr/lib64/libbpf.so
+make: /bin/make  gcc: /bin/gcc
+
+=====[ PROBE: bpftool feature — ringbuf / key helpers / LSM prog type ]=====
+eBPF program_type kprobe is available
+eBPF program_type tracepoint is available
+eBPF program_type tracing is available
+eBPF program_type lsm is available
+eBPF map_type ringbuf is available
+--- key helpers present anywhere in probe ---
+  YES bpf_d_path
+  YES bpf_get_current_cgroup_id
+  YES bpf_get_ns_current_pid_tgid
+  YES bpf_ktime_get_boot_ns
+
+=====[ BUILD: make bpf (generates vmlinux.h from BTF, compiles bpf .o + dispatcher) ]=====
+bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
+clang -O2 -g -target bpf -D__TARGET_ARCH_x86 \
+    -I. -c file_open.bpf.c -o file_open.bpf.o
+cc -O2 -Wall -Wextra -pthread -o poc_bpf dispatcher.c fanout.c -lbpf
+--- build artifacts ---
+-rw-r--r--. 1 root root 1129608 Jul 23 06:33 file_open.bpf.o
+-rwxr-xr-x. 1 root root  581808 Jul 23 06:33 poc_bpf
+-rw-r--r--. 1 root root 2739821 Jul 23 06:33 vmlinux.h
+
+=====[ INSPECT: which SEC programs are in the object ]=====
+  3 kprobe/vfs_open        0001a9a0 0000000000000000 TEXT
+  4 .relkprobe/vfs_open    00000020 0000000000000000 
+  5 lsm/file_open          00000200 0000000000000000 TEXT
+  6 .rellsm/file_open      00000020 0000000000000000 
+
+=====[ RUN PoC [auto]  (auto-detect unless flag) ]=====
+-- creating files under /etc and /tmp --
+---- attach strategy + event lines ----
+attach strategy: lsm/file_open
+[syscollector] pid=1552   cgroup_id=3913         path=/etc/poc_test
+[syscollector] pid=1374   cgroup_id=3913         path=/etc/poc_test
+[fim         ] pid=1552   cgroup_id=3913         path=/etc/poc_test
+[syscollector] pid=1553   cgroup_id=3913         path=/tmp/poc_test
+[syscollector] pid=1374   cgroup_id=3913         path=/tmp/poc_test
+[fim         ] pid=1374   cgroup_id=3913         path=/etc/poc_test
+---- fan-out stats ----
+=== fan-out stats ===
+produced: 5
+  consumer 'fim': delivered=2 dropped=0  (slow)
+  consumer 'syscollector': delivered=5 dropped=0
+
+=====[ RUN PoC [kprobe]  (auto-detect unless flag) ]=====
+-- creating files under /etc and /tmp --
+---- attach strategy + event lines ----
+attach strategy: kprobe/vfs_open
+[syscollector] pid=1566   cgroup_id=3913         path=/etc/poc_test
+[syscollector] pid=1374   cgroup_id=3913         path=/etc/poc_test
+[fim         ] pid=1566   cgroup_id=3913         path=/etc/poc_test
+[fim         ] pid=1374   cgroup_id=3913         path=/etc/poc_test
+[syscollector] pid=1567   cgroup_id=3913         path=/tmp/poc_test
+[syscollector] pid=1374   cgroup_id=3913         path=/tmp/poc_test
+---- fan-out stats ----
+=== fan-out stats ===
+produced: 5
+  consumer 'fim': delivered=2 dropped=0  (slow)
+  consumer 'syscollector': delivered=5 dropped=0
+
+=====[ PROBE: cgroup_id (in-kernel) == cgroupfs st_ino ?  [v2 only] ]=====
+cgroup dir: /sys/fs/cgroup/spike37396.test
+userspace stat -c %i  : 3952
+in-kernel cgroup_id lines for /etc/poc_test:
+[syscollector] pid=1584   cgroup_id=3913         path=/etc/poc_test
+[syscollector] pid=1583   cgroup_id=3913         path=/etc/poc_test
+[fim         ] pid=1584   cgroup_id=3913         path=/etc/poc_test
+[fim         ] pid=1583   cgroup_id=3913         path=/etc/poc_test
+(compare the cgroup_id above against a parent cgroup st_ino; exact match requires the toucher to be in that cgroup)
+--- st_ino of common cgroups for reference ---
+  1  /sys/fs/cgroup
+  24  /sys/fs/cgroup/init.scope
+  3952  /sys/fs/cgroup/spike37396.test
+
+=====[ PROBE: exec via tracepoint/sched_process_exec ]=====
+---- exec events ----
+EXEC pid=1596 ppid=1374 cgroup_id=3952 comm=echo
+EXEC pid=1597 ppid=1374 cgroup_id=3952 comm=id
+EXEC pid=1598 ppid=1374 cgroup_id=3952 comm=ls
+EXEC pid=1599 ppid=1374 cgroup_id=3952 comm=sleep
+---- (build log tail if failed) ----
+
+=====[ DONE ]=====

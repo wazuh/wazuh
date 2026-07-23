@@ -1,0 +1,101 @@
+### spike#37396 on-kernel evidence — VM=amazonlinux2  2026-07-22T06:04:46Z
+
+=====[ ENV: kernel / os ]=====
+5.10.260-259.1053.amzn2.x86_64
+NAME="Amazon Linux"
+VERSION="2"
+
+=====[ ENV: active LSM list (bpf present? -> LSM path eligible) ]=====
+capability,lockdown,yama,selinux,bpf
+=====[ ENV: BTF present? (CO-RE viability) ]=====
+-r--r--r-- 1 root root 4063320 Jul 22 06:01 /sys/kernel/btf/vmlinux
+
+=====[ ENV: cgroup mode (cgroup2fs == v2 unified) ]=====
+tmpfs
+
+=====[ ENV: capabilities of this (root) process ]=====
+CapEff:	000001ffffffffff
+CapBnd:	000001ffffffffff
+cap_dac_read_search
+cap_sys_admin
+cap_perfmon
+cap_bpf
+
+=====[ INSTALL toolchain ]=====
+  installed clang
+  installed llvm
+  installed libbpf-devel
+  installed bpftool
+  installed make
+  installed gcc
+  installed kernel-devel
+  installed elfutils-libelf-devel
+clang: /bin/clang clang version 11.1.0 (Amazon Linux 2 11.1.0-1.amzn2.0.2)
+bpftool: /sbin/bpftool bpftool v5.10.260-259.1053.amzn2.x86_64
+libbpf: /usr/lib64/libbpf.so
+make: /bin/make  gcc: /bin/gcc
+
+=====[ PROBE: bpftool feature — ringbuf / key helpers / LSM prog type ]=====
+eBPF program_type kprobe is available
+eBPF program_type tracepoint is available
+eBPF program_type tracing is NOT available
+eBPF program_type lsm is NOT available
+eBPF map_type ringbuf is available
+--- key helpers present anywhere in probe ---
+  YES bpf_d_path
+  YES bpf_get_current_cgroup_id
+  YES bpf_get_ns_current_pid_tgid
+  YES bpf_ktime_get_boot_ns
+
+=====[ BUILD: make bpf (generates vmlinux.h from BTF, compiles bpf .o + dispatcher) ]=====
+bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
+clang -O2 -g -target bpf -D__TARGET_ARCH_x86 \
+    -I. -c file_open.bpf.c -o file_open.bpf.o
+cc -O2 -Wall -Wextra -pthread -o poc_bpf dispatcher.c fanout.c -lbpf
+--- build artifacts ---
+-rw-r--r-- 1 root root  908360 Jul 22 06:05 file_open.bpf.o
+-rwxr-xr-x 1 root root  576624 Jul 22 06:05 poc_bpf
+-rw-r--r-- 1 root root 2074385 Jul 22 06:05 vmlinux.h
+
+=====[ INSPECT: which SEC programs are in the object ]=====
+  3 kprobe/vfs_open     000001f8 0000000000000000 TEXT
+  4 .relkprobe/vfs_open 00000010 0000000000000000 
+  5 lsm/file_open       000001f0 0000000000000000 TEXT
+  6 .rellsm/file_open   00000010 0000000000000000 
+
+=====[ RUN PoC [auto]  (auto-detect unless flag) ]=====
+-- creating files under /etc and /tmp --
+---- attach strategy + event lines ----
+attach strategy: lsm/file_open
+[syscollector] pid=21566  cgroup_id=1            path=poc_test
+[syscollector] pid=21459  cgroup_id=1            path=poc_test
+[syscollector] pid=21567  cgroup_id=1            path=poc_test
+[syscollector] pid=21459  cgroup_id=1            path=poc_test
+---- fan-out stats ----
+=== fan-out stats ===
+produced: 5
+  consumer 'fim': delivered=0 dropped=0  (slow)
+  consumer 'syscollector': delivered=5 dropped=0
+
+=====[ RUN PoC [kprobe]  (auto-detect unless flag) ]=====
+-- creating files under /etc and /tmp --
+---- attach strategy + event lines ----
+attach strategy: kprobe/vfs_open
+[syscollector] pid=21580  cgroup_id=1            path=poc_test
+[syscollector] pid=21459  cgroup_id=1            path=poc_test
+[syscollector] pid=21581  cgroup_id=1            path=poc_test
+[syscollector] pid=21459  cgroup_id=1            path=poc_test
+---- fan-out stats ----
+=== fan-out stats ===
+produced: 5
+  consumer 'fim': delivered=0 dropped=0  (slow)
+  consumer 'syscollector': delivered=5 dropped=0
+
+=====[ PROBE: cgroup_id (in-kernel) == cgroupfs st_ino ?  [v2 only] ]=====
+cgroup v1 (or unknown) -> bpf_get_current_cgroup_id ambiguous; skipping equality (see RT_F_CGROUP_V1).
+
+=====[ PROBE: exec via tracepoint/sched_process_exec ]=====
+---- exec events ----
+---- (build log tail if failed) ----
+
+=====[ DONE ]=====

@@ -1,0 +1,39 @@
+
+=====[ ENV ]=====
+5.14.0-611.54.6.el9_7.x86_64
+cgroup2fs
+
+=====[ INSTALL docker ]=====
+docker: 29.6.2
+  driver-type: io.containerd.snapshotter.v1
+ Cgroup Driver: systemd
+ Cgroup Version: 2
+ Runtimes: io.containerd.runc.v2 runc
+ Default Runtime: runc
+ containerd version: 11ce9d5f3c68c941867e82890e93e815c1304f1b
+
+=====[ PULL busybox ]=====
+docker.io/library/busybox:latest
+
+=====[ RUN poc_bpf (kprobe) + a container creating /etc/spikecont_* files ]=====
+container full id: 07535f339abdf319...
+container cgroupfs path: /sys/fs/cgroup/system.slice/docker-07535f339abdf319bf4bf120504ff9e6d896d20b7c30cb61347ab42f186406af.scope
+container cgroup st_ino (userspace): 5351
+
+=====[ EVENTS emitted from inside the container (path contains spikecont) ]=====
+[syscollector] pid=4618   cgroup_id=5351         path=/etc/spikecont_1
+[fim         ] pid=4618   cgroup_id=5351         path=/etc/spikecont_1
+[syscollector] pid=4621   cgroup_id=5351         path=/etc/spikecont_2
+[fim         ] pid=4621   cgroup_id=5351         path=/etc/spikecont_2
+[syscollector] pid=4623   cgroup_id=5351         path=/etc/spikecont_3
+[fim         ] pid=4623   cgroup_id=5351         path=/etc/spikecont_3
+[syscollector] pid=4625   cgroup_id=5351         path=/etc/spikecont_4
+[fim         ] pid=4625   cgroup_id=5351         path=/etc/spikecont_4
+--- distinct cgroup_id values seen for container events ---
+cgroup_id=5351
+
+=====[ REFERENCE host cgroups ]=====
+root /sys/fs/cgroup st_ino: 1
+VERDICT: container-event cgroup_id should equal the container cgroupfs st_ino above.
+
+=====[ DONE ]=====
