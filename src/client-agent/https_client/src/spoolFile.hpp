@@ -50,8 +50,10 @@ class ISpoolFileFactory
         virtual std::unique_ptr<SpoolFile> spool(const uint8_t* buffer, size_t length) = 0;
 };
 
-/// Writes the buffer to a uniquely-named temp file under the configured spool
-/// directory (portable across POSIX and Windows; no mkstemp dependency).
+/// Writes the buffer to a temp file under the configured spool directory,
+/// created atomically and exclusively (O_EXCL) with owner-only permissions so
+/// a shared dir (/tmp) cannot be used to hijack or read the spooled bytes.
+/// Portable across POSIX and Windows.
 class TempSpoolFactory final : public ISpoolFileFactory
 {
     public:
