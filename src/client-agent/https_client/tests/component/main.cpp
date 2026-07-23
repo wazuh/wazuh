@@ -11,6 +11,18 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdarg>
+#include <functional>
+
+namespace Log
+{
+    // Per-binary definition of loggerHelper.h's hidden DSO-global log sink.
+    // libhttps_client exports its own copy hidden, so the test executable must
+    // define its own (mirrors hcInterface.cpp).
+    std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>
+    GLOBAL_LOG_FUNCTION;
+} // namespace Log
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
