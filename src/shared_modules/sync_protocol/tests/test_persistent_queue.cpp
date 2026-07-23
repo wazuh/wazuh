@@ -13,6 +13,8 @@
 #include "ipersistent_queue_storage.hpp"
 #include "persistent_queue.hpp"
 
+#include <filesystem>
+
 using ::testing::_;
 using ::testing::Return;
 using ::testing::SaveArg;
@@ -29,6 +31,8 @@ class MockPersistentQueueStorage : public IPersistentQueueStorage
         MOCK_METHOD(void, removeByIndex, (const std::string& index), (override));
         MOCK_METHOD(void, removeAllDataContext, (), (override));
         MOCK_METHOD(void, deleteDatabase, (), (override));
+        MOCK_METHOD(std::vector<QueueRow>, fetchAll, (), (override));
+        MOCK_METHOD(void, saveAll, (const std::vector<QueueRow>& rows), (override));
 };
 
 TEST(PersistentQueueTest, ConstructorCallsLoadAllForEachModule)
@@ -68,32 +72,29 @@ TEST(PersistentQueueTest, ConstructorThrowsWhenResetAllSyncingFails)
     }, std::runtime_error);
 }
 
-TEST(PersistentQueueTest, SubmitStoresInMemoryAndStorage)
+TEST(PersistentQueueTest, SubmitCallsStorageSubmitOrCoalesce)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    std::vector<PersistedData> flushedBatch;
-    EXPECT_CALL(*mockStorage, submitBatch(_))
+    PersistedData captured;
+    EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
     .Times(1)
-    .WillOnce(SaveArg<0>(&flushedBatch));
+    .WillOnce(SaveArg<0>(&captured));
 
     LoggerFunc testLogger = [](modules_log_level_t, const std::string&) {};
-    {
-        PersistentQueue queue(":memory:", testLogger, mockStorage);
-        queue.submit("id1", "index1", "{}", Operation::CREATE, 1);
-    } // destructor joins flush thread, ensuring submitBatch has been called
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+    queue.submit("id1", "index1", "{}", Operation::CREATE, 1);
 
-    ASSERT_EQ(flushedBatch.size(), 1u);
-    EXPECT_EQ(flushedBatch[0].id, "id1");
+    EXPECT_EQ(captured.id, "id1");
 }
 
-TEST(PersistentQueueTest, SubmitRollbackSequenceOnPersistError)
+TEST(PersistentQueueTest, SubmitDoesNotThrowOnPersistError)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    // With double-buffer design, submitBatch errors are caught in flushBuffer().
-    // submit() itself never throws — events are buffered and flushed asynchronously.
-    EXPECT_CALL(*mockStorage, submitBatch(_))
+    // submitOrCoalesce() now runs synchronously on the caller's thread; submit()
+    // must still never throw — a failed item is logged and dropped, not surfaced.
+    EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
     .WillOnce(testing::Throw(std::runtime_error("Simulated DB error")))
     .WillRepeatedly(testing::Return());
 
@@ -108,7 +109,7 @@ TEST(PersistentQueueTest, SubmitLogsErrorWhenPersistingFails)
 {
     auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
 
-    EXPECT_CALL(*mockStorage, submitBatch(_))
+    EXPECT_CALL(*mockStorage, submitOrCoalesce(_))
     .WillOnce(testing::Throw(std::runtime_error("Simulated persistence error")));
 
     // Capture the log message
@@ -120,58 +121,13 @@ TEST(PersistentQueueTest, SubmitLogsErrorWhenPersistingFails)
         capturedLogMessage = message;
     };
 
-    {
-        PersistentQueue queue(":memory:", testLogger, mockStorage);
-        queue.submit("id1", "idx1", "{}", Operation::CREATE, 0);
-    } // destructor joins flush thread — guarantees log was written before assertions
+    PersistentQueue queue(":memory:", testLogger, mockStorage);
+    queue.submit("id1", "idx1", "{}", Operation::CREATE, 0);
 
     // Verify that the specific error message was logged
     EXPECT_EQ(capturedLogLevel, LOG_ERROR);
-    EXPECT_TRUE(capturedLogMessage.find("PersistentQueue: Error flushing batch to storage:") != std::string::npos);
+    EXPECT_TRUE(capturedLogMessage.find("PersistentQueue: Error submitting item to storage:") != std::string::npos);
     EXPECT_TRUE(capturedLogMessage.find("Simulated persistence error") != std::string::npos);
-}
-
-TEST(PersistentQueueTest, FailedBatchIsRetainedAndRetriedOnNextFlushCycle)
-{
-    // Verifies the fix: a transient submitBatch() failure must not drop the batch.
-    // The failed events stay in their buffer slot and are merged with newly
-    // submitted events on the next flush of that slot.
-    //
-    // Drives every flush explicitly via fetchAndMarkForSync() (which calls the
-    // synchronous flushPendingBuffer()) so the sequence is deterministic and
-    // never depends on the background flush thread's timing.
-    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
-    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
-
-    std::vector<PersistedData> retryBatch;
-
-    EXPECT_CALL(*mockStorage, submitBatch(_))
-    .WillOnce(::testing::Throw(std::runtime_error("Simulated transient storage error")))
-    .WillOnce(Return())
-    .WillOnce(SaveArg<0>(&retryBatch));
-
-    EXPECT_CALL(*mockStorage, fetchAndMarkForSync())
-    .WillRepeatedly(Return(std::vector<PersistedData> {}));
-
-    {
-        PersistentQueue queue(":memory:", logger, mockStorage);
-
-        // Buffer A gets "id1" and its flush fails -- the event must stay buffered.
-        queue.submit("id1", "idx", "{}", Operation::CREATE, 1);
-        queue.fetchAndMarkForSync();
-
-        // Buffer B gets "id2" and its flush succeeds, flipping back to buffer A.
-        queue.submit("id2", "idx", "{}", Operation::CREATE, 2);
-        queue.fetchAndMarkForSync();
-
-        // Buffer A now holds the still-unflushed "id1" plus this new "id3".
-        queue.submit("id3", "idx", "{}", Operation::CREATE, 3);
-        queue.fetchAndMarkForSync();
-    }
-
-    ASSERT_EQ(retryBatch.size(), 2u);
-    EXPECT_EQ(retryBatch[0].id, "id1");
-    EXPECT_EQ(retryBatch[1].id, "id3");
 }
 
 TEST(PersistentQueueTest, FetchAllReturnsAllMessages)
@@ -494,45 +450,35 @@ TEST(PersistentQueueTest, clearAllDataContext_ExceptionHandling)
 }
 
 // ========================================
-// Tests for graceful shutdown / destructor
+// Tests for graceful shutdown / disk persistence
 // ========================================
+//
+// PersistentQueue itself no longer owns any disk-persistence logic — with no storage
+// injected, it defaults to InMemoryQueueStorage, which loads from disk on construction
+// and saves to disk on destruction (see test_in_memory_queue_storage.cpp for the
+// coalescing-state round trip). This is an end-to-end check that PersistentQueue really
+// wires up that default and that the save/load boundary works through the public API.
 
-TEST(PersistentQueueTest, DestructorFlushesBufferedEventsOnGracefulShutdown)
+TEST(PersistentQueueTest, DefaultStorageRoundTripsThroughDiskAcrossRestarts)
 {
-    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
+    const auto dbPath = (std::filesystem::temp_directory_path() / "persistent_queue_roundtrip_test.db").string();
+    std::filesystem::remove(dbPath);
+
     LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
 
-    std::vector<PersistedData> flushedBatch;
-    EXPECT_CALL(*mockStorage, submitBatch(_))
-    .Times(1)
-    .WillOnce(SaveArg<0>(&flushedBatch));
-
     {
-        PersistentQueue queue(":memory:", logger, mockStorage);
+        PersistentQueue queue(dbPath, logger); // no storage injected -> InMemoryQueueStorage
         queue.submit("id1", "idx", R"({"k":1})", Operation::CREATE, 1);
-        queue.submit("id2", "idx", R"({"k":2})", Operation::MODIFY, 2);
-        queue.submit("id3", "idx", R"({"k":3})", Operation::DELETE_, 3);
-        // Destructor: sets m_stop=true, notifies flush thread, joins.
-        // Flush thread wakes up, sees m_stop, swaps buffer, calls submitBatch.
-    }
+    } // destructor: InMemoryQueueStorage saves the pending item to dbPath
 
-    // join() in destructor guarantees submitBatch has returned before we assert.
-    ASSERT_EQ(flushedBatch.size(), 3u);
-    EXPECT_EQ(flushedBatch[0].id, "id1");
-    EXPECT_EQ(flushedBatch[1].id, "id2");
-    EXPECT_EQ(flushedBatch[2].id, "id3");
-}
-
-TEST(PersistentQueueTest, DestructorWithEmptyBufferDoesNotCallSubmitBatch)
-{
-    // Verify that no spurious write happens when the buffer is empty at shutdown.
-    auto mockStorage = std::make_shared<MockPersistentQueueStorage>();
-    LoggerFunc logger = [](modules_log_level_t, const std::string&) {};
-
-    EXPECT_CALL(*mockStorage, submitBatch(_)).Times(0);
+    ASSERT_TRUE(std::filesystem::exists(dbPath));
 
     {
-        PersistentQueue queue(":memory:", logger, mockStorage);
-        // No events submitted — destructor must not call submitBatch.
+        PersistentQueue queue(dbPath, logger); // loads the snapshot saved above
+        auto pending = queue.fetchPendingItems(false);
+        ASSERT_EQ(pending.size(), 1u);
+        EXPECT_EQ(pending[0].id, "id1");
     }
+
+    std::filesystem::remove(dbPath);
 }
