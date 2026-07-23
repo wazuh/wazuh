@@ -13,6 +13,7 @@
 - Added new CVE 5.0 schema fields to the Vulnerability Detector content model. ([#36000](https://github.com/wazuh/wazuh/issues/36000))
 - Added manager watermarks. ([#35579](https://github.com/wazuh/wazuh/issues/35579))
 - Added byte-based capacity limits to wazuh-manager-remoted. ([#37052](https://github.com/wazuh/wazuh/issues/37052))
+- Added configurable throttling for centralized configuration distribution in wazuh-manager-remoted, staggering config downloads and agent restarts to avoid load spikes in large deployments. ([#37527](https://github.com/wazuh/wazuh/issues/37527))
 - Added default API role mappings for the indexer users wazuh-admin, wazuh-readonly and wazuh-demo. ([#37706](https://github.com/wazuh/wazuh/issues/37706))
 
 #### Changed

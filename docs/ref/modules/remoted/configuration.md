@@ -85,6 +85,23 @@ Time in seconds before allowing a new connection to overtake an existing agent c
 - **Allowed values:** Integer from `0` to `3600` (seconds)
 - **Note:** Set to `0` to disable overtake protection (allows immediate reconnection); higher values provide more protection against connection hijacking while requiring longer wait for legitimate agent restarts
 
+### shared_config_batch_size
+
+Maximum number of agents that are served an updated group (centralized) configuration during each `shared_config_interval` window. This paces the distribution of `merged.mg` after a group configuration changes, which in turn staggers the restarts agents perform when they receive the new configuration. It prevents load spikes in large deployments where thousands of agents would otherwise download the configuration and restart within the same few seconds.
+
+- **Default value:** `0` (throttling disabled: the configuration is served as fast as possible, preserving the legacy behavior)
+- **Allowed values:** Integer from `0` to `100000` (agents)
+- **Note:** The rate limiter is applied independently by each cluster node to the agents connected to it. The first window allows a burst of up to `shared_config_batch_size` agents; afterwards agents are served at a rate of `shared_config_batch_size` per `shared_config_interval` seconds.
+- **Note:** Throttling parks the serving `sender_pool` threads while they wait for their turn. Very restrictive settings (a small batch size over a long interval) can therefore keep all sender threads waiting for the duration of a window, delaying every `merged.mg` push accordingly. Size `shared_config_batch_size`/`shared_config_interval` with `remoted.sender_pool` in mind.
+
+### shared_config_interval
+
+Length, in seconds, of the window used by `shared_config_batch_size` to pace the distribution of updated group configuration.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `3600` (seconds)
+- **Note:** Only takes effect when `shared_config_batch_size` is greater than `0`. For example, `shared_config_batch_size` = `100` with `shared_config_interval` = `5` distributes the configuration to at most 100 agents every 5 seconds (20 agents per second).
+
 ---
 
 ## Internal Options

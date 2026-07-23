@@ -16,6 +16,7 @@ The `remoted` module is responsible for managing secure communication between Wa
 - [Stateless Metadata](stateless-metadata.md) - Agent metadata enrichment for stateless events
 - [Configuration](configuration.md) - Configuration options and tuning parameters
 - [Event Protocol](event-protocol.md) - Event framing and message format specification
+- [Config Distribution Throttling](config-distribution-throttling.md) - Progressive distribution of centralized configuration updates and staggered agent restarts
 
 ## Overview
 
