@@ -77,6 +77,23 @@ TEST(ModuleConfigTest, BaseUrlFormat)
     EXPECT_EQ("https://manager.example:27840", ModuleConfig::fromC(config).baseUrl());
 }
 
+TEST(ModuleConfigTest, BaseUrlBracketsIpv6Literals)
+{
+    auto config = minimalConfig();
+    std::strncpy(config.server_host, "2001:db8::1", sizeof(config.server_host) - 1);
+    config.server_port = 443;
+    // The IPv6 literal must be bracketed so the last group is not read as a port.
+    EXPECT_EQ("https://[2001:db8::1]:443", ModuleConfig::fromC(config).baseUrl());
+}
+
+TEST(ModuleConfigTest, BaseUrlLeavesIpv4AndHostnamesUnbracketed)
+{
+    auto ipv4 = minimalConfig();
+    std::strncpy(ipv4.server_host, "10.0.0.1", sizeof(ipv4.server_host) - 1);
+    ipv4.server_port = 8443;
+    EXPECT_EQ("https://10.0.0.1:8443", ModuleConfig::fromC(ipv4).baseUrl());
+}
+
 TEST(ModuleConfigTest, ValidateRejectsMissingHostOrId)
 {
     NiceMock<MockFsProbe> fsProbe;
