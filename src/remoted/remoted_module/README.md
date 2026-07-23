@@ -53,10 +53,16 @@ src/http_server/
   bounded worker pool with a **deferred response**, so RESTinio's I/O threads never block on
   slow handler work (disk, calls to other APIs). A handler may respond inline or capture the
   responder, offload the blocking work, and call `responder->send(...)` later from any thread.
-- **Configuration** (via the C-ABI struct, each with env/default fallback when empty/0):
-  `port`, `certificate_path`, `private_key_path`, `io_threads`, `http_worker_threads`.
-  Environment overrides: `WAZUH_REMOTED_HTTPS_{ADDRESS,PORT,IO_THREADS,WORKER_THREADS,
-  MAX_BODY_SIZE,CERTIFICATE,PRIVATE_KEY}`.
+- **Configuration** (via the C-ABI struct, each field falling back to a built-in default when
+  <=0/empty): `port`, `certificate_path`, `private_key_path`, `io_threads`, `http_worker_threads`,
+  `http_max_body_size`, `http_read_timeout`, `http_write_timeout`, `http_request_timeout`,
+  `http_max_url_size`, `http_max_header_name_size`, `http_max_header_value_size`,
+  `http_max_header_count`, `http_max_pipelined_requests`, `http_concurrent_accepts`,
+  `http_buffer_size`. `remoted` populates the RESTinio tuning fields (`io_threads`,
+  `http_worker_threads`, the timeouts, and the header/URL/pipelining/accept/buffer limits) from the
+  `remoted.http_*` internal options in `secure.c`. `port`, `http_max_body_size` and the two paths are
+  regular `<remote>` settings instead (not wired yet -- built-in defaults apply) -- see
+  [HTTPS Events API](../../../docs/ref/modules/remoted/https-events-api.md#configuration).
 - **Restart-friendly bind:** the RESTinio acceptor sets `SO_REUSEADDR`
   (`acceptor_options_setter`), so a manager restart rebinds the port immediately instead of
   failing with `EADDRINUSE` while the previous socket lingers in `TIME_WAIT`.
