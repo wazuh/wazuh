@@ -33,6 +33,8 @@
 #include <regex>
 #include <string>
 
+#include <unistd.h>
+
 namespace
 {
     constexpr uint16_t FAKE_PORT = 44853; // Distinct from http-request's 44441.
@@ -142,6 +144,44 @@ TEST_F(ComponentTest, ResponseStreamsToAFileThroughTheRealCurlPath)
                                std::istreambuf_iterator<char>()};
     EXPECT_EQ(body, content);
     std::remove(path.c_str());
+}
+
+TEST_F(ComponentTest, ResponseFileOpenRefusesToFollowASymlink)
+{
+    // The /download target is pre-created owner-only by the spool factory; if
+    // it is swapped for a symlink to a victim before curl reopens it, the open
+    // must refuse (O_NOFOLLOW) rather than truncate the victim through the link.
+    const std::string victim = ::testing::TempDir() + "hc_resp_victim_" + std::to_string(::getpid());
+    {
+        std::ofstream file {victim, std::ios::binary};
+        file << "precious";
+    }
+    const std::string link = ::testing::TempDir() + "hc_resp_link_" + std::to_string(::getpid());
+    ::unlink(link.c_str());
+    ASSERT_EQ(0, ::symlink(victim.c_str(), link.c_str()));
+
+    const std::string body = "H {}\nE 1:l:x\n";
+    const auto headers = m_signer.sign("POST", "/stateless",
+                                       reinterpret_cast<const uint8_t*>(body.data()), body.size(),
+                                       SystemClock {}.wallSeconds());
+    HttpRequestSpec spec;
+    spec.target = "/stateless";
+    spec.body = reinterpret_cast<const uint8_t*>(body.data());
+    spec.bodyLength = body.size();
+    spec.timeoutMs = 3000;
+    spec.responseFilePath = link; // A symlink to the victim.
+    spec.headers = {headers->protocolVersion, headers->authorization};
+
+    const auto response = m_performer.perform(spec);
+    EXPECT_NE(TransportStatus::Ok, response.status); // Open refused before any HTTP.
+
+    std::ifstream check {victim, std::ios::binary};
+    const std::string content {std::istreambuf_iterator<char> {check},
+                               std::istreambuf_iterator<char> {}};
+    EXPECT_EQ("precious", content); // Untouched through the link.
+
+    ::unlink(link.c_str());
+    ::unlink(victim.c_str());
 }
 
 TEST_F(ComponentTest, ServerRecomputesMacSoTamperingIsRejected)
