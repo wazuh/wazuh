@@ -54,8 +54,7 @@ typedef enum _command_error_codes {
     ERROR_CLEAN_DIRECTORY,
     ERROR_UNMERGE,
     ERROR_CHMOD,
-    ERROR_EXEC,
-    ERROR_CLEAR_UPGRADE_FILE
+    ERROR_EXEC
 } command_error_codes;
 
 STATIC const char * error_messages[] = {
@@ -77,8 +76,7 @@ STATIC const char * error_messages[] = {
     [ERROR_CLEAN_DIRECTORY] = "Could not clean up upgrade directory",
     [ERROR_UNMERGE] = "Error unmerging file",
     [ERROR_CHMOD] = "Could not chmod",
-    [ERROR_EXEC] = "Error executing command",
-    [ERROR_CLEAR_UPGRADE_FILE] = "Could not erase upgrade_result file"
+    [ERROR_EXEC] = "Error executing command"
 };
 
 // Variable used to allow new upgrades after confirming the result of the previous upgrade
@@ -147,11 +145,6 @@ STATIC char * wm_agent_upgrade_com_sha1(const cJSON* json_object) __attribute__(
  * */
 STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) __attribute__((nonnull));
 
-/**
- * Process a command that clears the upgrade_result file
- * */
-STATIC char * wm_agent_upgrade_com_clear_result();
-
 /* Helpers methods */
 STATIC int _jailfile(char finalpath[PATH_MAX + 1], const char * basedir, const char * filename);
 STATIC int _unsign(const char * source, char dest[PATH_MAX + 1]);
@@ -161,15 +154,13 @@ size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
     cJSON *buffer_obj = cJSON_Parse(buffer);
 
     if (buffer_obj) {
-        cJSON *command_obj = cJSON_GetObjectItem(buffer_obj, task_manager_json_keys[WM_TASK_COMMAND]);
+        cJSON *command_obj = cJSON_GetObjectItem(buffer_obj, upgrade_json_keys[WM_UPGRADE_COMMAND]);
 
         if (command_obj && (command_obj->type == cJSON_String)) {
             const char* command = command_obj->valuestring;
 
-            if (strcmp(command, "clear_upgrade_result") == 0) {
-                *output = wm_agent_upgrade_com_clear_result();
-            } else if (allow_upgrades) {
-                const cJSON *parameters = cJSON_GetObjectItem(buffer_obj, task_manager_json_keys[WM_TASK_PARAMETERS]);
+            if (allow_upgrades) {
+                const cJSON *parameters = cJSON_GetObjectItem(buffer_obj, upgrade_json_keys[WM_UPGRADE_PARAMETERS]);
                 if (!parameters) {
                     *output = wm_agent_upgrade_command_ack(ERROR_PARAMETERS_NOT_FOUND, error_messages[ERROR_PARAMETERS_NOT_FOUND]);
                 } else if (strcmp(command, "open") == 0) {
@@ -200,9 +191,9 @@ size_t wm_agent_upgrade_process_command(const char *buffer, char **output) {
 
 STATIC char* wm_agent_upgrade_command_ack(int error_code, const char* message) {
     cJSON* root = cJSON_CreateObject();
-    cJSON_AddNumberToObject(root, task_manager_json_keys[WM_TASK_ERROR], error_code);
-    cJSON_AddStringToObject(root, task_manager_json_keys[WM_TASK_ERROR_MESSAGE], message);
-    cJSON_AddItemToObject(root, task_manager_json_keys[WM_TASK_DATA], cJSON_CreateArray());
+    cJSON_AddNumberToObject(root, upgrade_json_keys[WM_UPGRADE_ERROR], error_code);
+    cJSON_AddStringToObject(root, upgrade_json_keys[WM_UPGRADE_ERROR_MESSAGE], message);
+    cJSON_AddItemToObject(root, upgrade_json_keys[WM_UPGRADE_DATA], cJSON_CreateArray());
     char *msg_string = cJSON_PrintUnformatted(root);
     cJSON_Delete(root);
     return msg_string;
@@ -384,17 +375,6 @@ STATIC char * wm_agent_upgrade_com_upgrade(const cJSON* json_object) {
         sprintf(status_str, "%d", status);
         os_free(out);
         return wm_agent_upgrade_command_ack(ERROR_OK, status_str);
-    }
-}
-
-STATIC char * wm_agent_upgrade_com_clear_result() {
-    const char * PATH = WM_AGENT_UPGRADE_RESULT_FILE;
-    if (remove(PATH) == 0) {
-        allow_upgrades = true;
-        return wm_agent_upgrade_command_ack(ERROR_OK, error_messages[ERROR_OK]);
-    } else {
-        mtdebug1(WM_AGENT_UPGRADE_LOGTAG, WM_UPGRADE_ERASE_FILE_ERROR, "clear_upgrade_result", PATH);
-        return wm_agent_upgrade_command_ack(ERROR_CLEAR_UPGRADE_FILE, error_messages[ERROR_CLEAR_UPGRADE_FILE]);
     }
 }
 

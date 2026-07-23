@@ -23,15 +23,6 @@
 int wm_agent_upgrade_validate_id(int agent_id);
 
 /**
- * Check if agent status is active
- * @param connection_status connection status of the agent to validate
- * @return return_code
- * @retval WM_UPGRADE_SUCCESS
- * @retval WM_UPGRADE_AGENT_IS_NOT_ACTIVE
- * */
-int wm_agent_upgrade_validate_status(const char* connection_status);
-
-/**
  * Check if WPK exists for this agent
  * @param platform platform of agent to validate
  * @param os_major OS major version of agent to validate
@@ -93,52 +84,12 @@ int wm_agent_upgrade_validate_wpk_version(wm_agent_info *agent_info, wm_upgrade_
 int wm_agent_upgrade_validate_wpk(const wm_upgrade_task *task) __attribute__((nonnull));
 
 /**
- * Check if WPK custom file exist
+ * Check if WPK custom file exists and calculate its SHA1 hash
  * @param task pointer to task with the params
  * @return return_code
  * @retval WM_UPGRADE_SUCCESS
  * @retval WM_UPGRADE_WPK_FILE_DOES_NOT_EXIST
  * */
-int wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task *task) __attribute__((nonnull));
-
-/**
- * Validate a status response from the task manager module
- * @param response JSON to be validated
- * @param status string to save the status of the task
- * @param agent_id (optional) pointer to variable where the agent_id will be extracted and stored
- * Example formats:
- * 1. {
- *      "error": 0,
- *      "data": "Success",
- *      "agent": 1,
- *      "status": "Done"
- *  }
- * 2. {
- *      "error": 7,
- *      "data": "No task in DB",
- *      "agent": 2,
- *      "status": "Done"
- *  }
- * */
-bool wm_agent_upgrade_validate_task_status_message(const cJSON *input_json, char **status, int *agent_id);
-
-/**
- * Validate an upgrade response from the task manager module
- * @param input_json JSON to be validated
- * @param agent_id pointer to a variable where the agent_id will be stored
- * @param taks_id pointer to a variable where the task_id will be stored
- * @param data pointer to a variable where the data string will be stored
- * @return
- * @retval true if format is correct
- * @retval false if format is incorrrect
- * Example format:
- * {
- *      "error": 0,
- *      "data": "Success",
- *      "agent": 1,
- *      "task_id": 201
- *  }
- * */
-bool wm_agent_upgrade_validate_task_ids_message(const cJSON *input_json, int *agent_id, int *task_id, char** data);
+int wm_agent_upgrade_validate_wpk_custom(wm_upgrade_custom_task *task) __attribute__((nonnull));
 
 #endif

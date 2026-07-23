@@ -23,7 +23,6 @@
 #include "wm_agent_upgrade_agent.h"
 #else
 #include "wm_agent_upgrade_manager.h"
-#include "manager/wm_agent_upgrade_upgrades.h"
 #endif
 
 /**
@@ -37,6 +36,17 @@ STATIC void* wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config);
 STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config);
 STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config);
 STATIC void wm_agent_upgrade_stop(wm_agent_upgrade* upgrade_config);
+
+/* JSON keys for agent upgrade socket protocol */
+const char *upgrade_json_keys[] = {
+    [WM_UPGRADE_COMMAND] = "command",
+    [WM_UPGRADE_PARAMETERS] = "parameters",
+    [WM_UPGRADE_AGENTS] = "agents",
+    [WM_UPGRADE_ERROR] = "error",
+    [WM_UPGRADE_DATA] = "data",
+    [WM_UPGRADE_ERROR_MESSAGE] = "message",
+    [WM_UPGRADE_AGENT_ID] = "agent"
+};
 
 /* Context definition */
 const wm_context WM_AGENT_UPGRADE_CONTEXT = {
@@ -70,9 +80,6 @@ STATIC void *wm_agent_upgrade_main(wm_agent_upgrade* upgrade_config) {
 
 STATIC void wm_agent_upgrade_stop(wm_agent_upgrade* upgrade_config) {
     (void)upgrade_config;
-#ifndef CLIENT
-    wm_agent_upgrade_stop_dispatch();
-#endif
 }
 
 STATIC void wm_agent_upgrade_destroy(wm_agent_upgrade* upgrade_config) {
@@ -93,8 +100,6 @@ STATIC cJSON *wm_agent_upgrade_dump(const wm_agent_upgrade* upgrade_config){
         cJSON_AddStringToObject(wm_info,"enabled","no");
     }
     #ifndef CLIENT
-    cJSON_AddNumberToObject(wm_info, "max_threads", upgrade_config->manager_config.max_threads);
-    cJSON_AddNumberToObject(wm_info, "chunk_size", upgrade_config->manager_config.chunk_size);
     if (upgrade_config->manager_config.wpk_repository) {
         cJSON_AddStringToObject(wm_info, "wpk_repository", upgrade_config->manager_config.wpk_repository);
     }
