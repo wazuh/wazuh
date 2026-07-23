@@ -927,10 +927,32 @@ const std::set<std::string> getPythonDirectories()
         pythonDirList.insert(pythonDir + R"(Lib\dist-packages)");
     };
 
+    const auto storePostAction = [&](const std::string & packageRootFolder)
+    {
+        /*
+         * Only the Python Store packages bundle a site-packages directory. The prefix is
+         * anchored to the folder name; PackageRootFolder has no trailing separator, unlike
+         * InstallPath.
+         */
+        if (packageRootFolder.find(std::string(R"(\)") + PYTHON_STORE_PACKAGE_PREFIX) != std::string::npos)
+        {
+            pythonDirList.insert(packageRootFolder + R"(\Lib\site-packages)");
+        }
+    };
+
     try
     {
         expandFromRegistry(HKEY_USERS, R"(*\SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
         expandFromRegistry(HKEY_LOCAL_MACHINE, R"(SOFTWARE\Python\PythonCore\*\InstallPath)", "", postAction);
+        /*
+         * Microsoft Store Python does not expose its PEP 514 registration under HKEY_USERS
+         * (it lives in the MSIX virtualized hive), so its site-packages directory is derived
+         * from the package location kept on the AppModel repository.
+         */
+        expandFromRegistry(HKEY_USERS,
+                           std::string(R"(*\)") + APPLICATION_STORE_REGISTRY + R"(\*)",
+                           "PackageRootFolder",
+                           storePostAction);
     }
     catch (const std::exception&)
     {
