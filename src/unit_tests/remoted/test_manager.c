@@ -5339,6 +5339,54 @@ static void test_build_handshake_json_with_empty_agent_groups(void **state) {
     os_free(json_str);
 }
 
+/* Tests shared_config_bucket_update (token-bucket pacing math) */
+
+static void test_shared_config_bucket_grant_when_tokens_available(void **state) {
+    (void) state;
+    double wait_seconds = -1;
+
+    // 5 tokens available, no time elapsed -> a token is granted immediately
+    double tokens = shared_config_bucket_update(5.0, 0.0, 100, 5, &wait_seconds);
+
+    assert_int_equal((int)(wait_seconds * 1000), 0);
+    assert_int_equal((int)(tokens * 1000), 4000);
+}
+
+static void test_shared_config_bucket_refills_over_time(void **state) {
+    (void) state;
+    double wait_seconds = -1;
+
+    // batch_size=100, interval=5 -> 20 tokens/s. 2s elapsed adds 40 tokens.
+    double tokens = shared_config_bucket_update(0.0, 2.0, 100, 5, &wait_seconds);
+
+    assert_int_equal((int)(wait_seconds * 1000), 0);
+    // 40 refilled, 1 consumed -> 39
+    assert_int_equal((int)(tokens * 1000), 39000);
+}
+
+static void test_shared_config_bucket_caps_at_batch_size(void **state) {
+    (void) state;
+    double wait_seconds = -1;
+
+    // Long idle period must not accumulate more than batch_size tokens
+    double tokens = shared_config_bucket_update(0.0, 3600.0, 50, 5, &wait_seconds);
+
+    assert_int_equal((int)(wait_seconds * 1000), 0);
+    // Capped at 50, minus 1 consumed -> 49
+    assert_int_equal((int)(tokens * 1000), 49000);
+}
+
+static void test_shared_config_bucket_waits_when_empty(void **state) {
+    (void) state;
+    double wait_seconds = -1;
+
+    // No tokens and no elapsed time: must report how long to wait for one token.
+    // rate = 100/5 = 20 tokens/s -> 1 token in 0.05s. Tokens unchanged (not granted).
+    double tokens = shared_config_bucket_update(0.0, 0.0, 100, 5, &wait_seconds);
+
+    assert_int_equal((int)(wait_seconds * 1000), 50);
+    assert_int_equal((int)(tokens * 1000), 0);
+}
 
 int main(void)
 {
@@ -5479,6 +5527,11 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_build_handshake_json_with_single_agent_group, setup_cluster_globals, teardown_cluster_globals),
         cmocka_unit_test_setup_teardown(test_build_handshake_json_with_no_agent_groups, setup_cluster_globals, teardown_cluster_globals),
         cmocka_unit_test_setup_teardown(test_build_handshake_json_with_empty_agent_groups, setup_cluster_globals, teardown_cluster_globals),
+        // Tests shared_config_bucket_update
+        cmocka_unit_test(test_shared_config_bucket_grant_when_tokens_available),
+        cmocka_unit_test(test_shared_config_bucket_refills_over_time),
+        cmocka_unit_test(test_shared_config_bucket_caps_at_batch_size),
+        cmocka_unit_test(test_shared_config_bucket_waits_when_empty),
     };
     return cmocka_run_group_tests(tests, test_setup_group, test_teardown_group);
 }

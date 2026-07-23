@@ -76,6 +76,8 @@ static remoted *create_remoted() {
     logr->queue_size = 0;
     logr->rids_closing_time = 0;
     logr->connection_overtake_time = 60;
+    logr->shared_config_batch_size = REMOTED_SHARED_CONFIG_BATCH_SIZE_DEFAULT;
+    logr->shared_config_interval = REMOTED_SHARED_CONFIG_INTERVAL_DEFAULT;
     logr->lip = NULL;
     return logr;
 }
@@ -487,6 +489,72 @@ static void test_read_remote_denied_ips_section(void **state) {
     free_node_array(nodes);
 }
 
+static void test_read_remote_valid_shared_config_batch_size(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("shared_config_batch_size", "200")
+    );
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->shared_config_batch_size, 200);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_invalid_shared_config_batch_size(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("shared_config_batch_size", "-5")
+    );
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Invalid value for element 'shared_config_batch_size':'-5'. Setting to default value: '0'.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->shared_config_batch_size, REMOTED_SHARED_CONFIG_BATCH_SIZE_DEFAULT);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_valid_shared_config_interval(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("shared_config_interval", "10")
+    );
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->shared_config_interval, 10);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_invalid_shared_config_interval(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("shared_config_interval", "0")
+    );
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "Invalid value for element 'shared_config_interval':'0'. Setting to default value: '5'.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->shared_config_interval, REMOTED_SHARED_CONFIG_INTERVAL_DEFAULT);
+
+    free_node_array(nodes);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -509,6 +577,10 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_read_remote_connection_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_allowed_ips_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_denied_ips_section, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_valid_shared_config_batch_size, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_invalid_shared_config_batch_size, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_valid_shared_config_interval, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_invalid_shared_config_interval, setup, teardown),
 
     };
 

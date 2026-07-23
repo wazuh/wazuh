@@ -1,0 +1,32 @@
+- name: Shared config distribution disabled (default)
+  description: Throttling disabled with batch size 0
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP'
+    SHARED_CONFIG_BATCH_SIZE: '0'
+    SHARED_CONFIG_INTERVAL: '5'
+  metadata:
+    shared_config_batch_size: 0
+    shared_config_interval: 5
+
+- name: Shared config distribution with small batch
+  description: Progressive distribution of 10 agents every 2 seconds
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP'
+    SHARED_CONFIG_BATCH_SIZE: '10'
+    SHARED_CONFIG_INTERVAL: '2'
+  metadata:
+    shared_config_batch_size: 10
+    shared_config_interval: 2
+
+- name: Shared config distribution with large batch
+  description: Progressive distribution of 500 agents every 30 seconds
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP'
+    SHARED_CONFIG_BATCH_SIZE: '500'
+    SHARED_CONFIG_INTERVAL: '30'
+  metadata:
+    shared_config_batch_size: 500
+    shared_config_interval: 30

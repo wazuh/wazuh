@@ -1,0 +1,13 @@
+- name: Staggered shared configuration distribution
+  description: With a batch size of 1 agent every 3 seconds, the config pushes to a group of agents must be spread over time
+  configuration_parameters:
+    PROTOCOL: 'TCP'
+    SHARED_CONFIG_BATCH_SIZE: '1'
+    SHARED_CONFIG_INTERVAL: '3'
+  metadata:
+    protocol: 'TCP'
+    agents_number: 4
+    shared_config_batch_size: 1
+    shared_config_interval: 3
+    # Initial burst equals batch_size (1), so the remaining agents are paced one per interval.
+    min_distribution_span: 5

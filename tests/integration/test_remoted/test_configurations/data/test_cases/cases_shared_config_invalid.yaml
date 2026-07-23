@@ -1,0 +1,39 @@
+- name: Negative shared_config_batch_size
+  description: A negative batch size must be rejected and fall back to the default
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP'
+    SHARED_CONFIG_BATCH_SIZE: '-1'
+    SHARED_CONFIG_INTERVAL: '5'
+  metadata:
+    invalid_element: 'shared_config_batch_size'
+
+- name: Non numeric shared_config_batch_size
+  description: A non numeric batch size must be rejected and fall back to the default
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP'
+    SHARED_CONFIG_BATCH_SIZE: 'abc'
+    SHARED_CONFIG_INTERVAL: '5'
+  metadata:
+    invalid_element: 'shared_config_batch_size'
+
+- name: Zero shared_config_interval
+  description: An interval below the minimum must be rejected and fall back to the default
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP'
+    SHARED_CONFIG_BATCH_SIZE: '10'
+    SHARED_CONFIG_INTERVAL: '0'
+  metadata:
+    invalid_element: 'shared_config_interval'
+
+- name: Out of range shared_config_interval
+  description: An interval above the maximum must be rejected and fall back to the default
+  configuration_parameters:
+    PORT: '1514'
+    PROTOCOL: 'TCP'
+    SHARED_CONFIG_BATCH_SIZE: '10'
+    SHARED_CONFIG_INTERVAL: '99999'
+  metadata:
+    invalid_element: 'shared_config_interval'

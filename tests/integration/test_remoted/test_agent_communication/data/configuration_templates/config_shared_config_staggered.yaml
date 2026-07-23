@@ -1,0 +1,11 @@
+- sections:
+    - section: remote
+      elements:
+        - port:
+            value: '1514'
+        - protocol:
+            value: PROTOCOL
+        - shared_config_batch_size:
+            value: SHARED_CONFIG_BATCH_SIZE
+        - shared_config_interval:
+            value: SHARED_CONFIG_INTERVAL
