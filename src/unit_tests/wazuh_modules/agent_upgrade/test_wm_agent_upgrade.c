@@ -69,8 +69,6 @@ void test_wm_agent_upgrade_dump_enabled(void **state)
 
     #ifdef TEST_SERVER
     os_strdup("wazuh.com/packages", config->manager_config.wpk_repository);
-    config->manager_config.chunk_size = 512;
-    config->manager_config.max_threads = 8;
     #else
     config->agent_config.enable_ca_verification = 1;
     os_calloc(2, sizeof(char*), wcom_ca_store);
@@ -88,8 +86,6 @@ void test_wm_agent_upgrade_dump_enabled(void **state)
     assert_non_null(cJSON_GetObjectItem(conf, "enabled"));
     assert_string_equal(cJSON_GetObjectItem(conf, "enabled")->valuestring, "yes");
     #ifdef TEST_SERVER
-    assert_int_equal(cJSON_GetObjectItem(conf, "max_threads")->valueint, 8);
-    assert_int_equal(cJSON_GetObjectItem(conf, "chunk_size")->valueint, 512);
     assert_non_null(cJSON_GetObjectItem(conf, "wpk_repository"));
     assert_string_equal(cJSON_GetObjectItem(conf, "wpk_repository")->valuestring, "wazuh.com/packages");
     #else
