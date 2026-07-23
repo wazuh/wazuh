@@ -14,22 +14,16 @@
 #include "agent_sync_protocol_types.hpp"
 
 #include <string>
-#include <array>
-#include <map>
 #include <vector>
-#include <optional>
 #include <mutex>
-#include <condition_variable>
-#include <thread>
-#include <chrono>
 #include <memory>
-#include <atomic>
 
 /// @brief Implementation of IPersistentQueue with persistent storage backend.
 ///
 /// This class provides a module-scoped message queue.
 /// Messages are held in memory and synchronized with a storage backend
-/// implementing IPersistentQueueStorage (e.g., SQLite).
+/// implementing IPersistentQueueStorage — by default InMemoryQueueStorage, which itself
+/// only touches disk at construction (load) and destruction (save).
 ///
 /// Each module has its own queue and sequence counter, ensuring isolation and ordering.
 class PersistentQueue : public IPersistentQueue
@@ -87,47 +81,12 @@ class PersistentQueue : public IPersistentQueue
         void deleteDatabase() override;
 
     private:
-        /// @brief Maximum number of buffered events before triggering an immediate flush.
-        static constexpr std::size_t FLUSH_BATCH_SIZE = 100;
-
-        /// @brief Maximum time to wait before flushing a non-full buffer.
-        static constexpr std::chrono::milliseconds FLUSH_INTERVAL{500};
-
-        /// @brief Mutex protecting m_buffers.
-        std::mutex m_mutex;
-
         /// @brief Mutex serializing all m_storage access across threads.
         std::mutex m_storageMutex;
-
-        /// @brief Condition variable signalling the flush thread.
-        std::condition_variable m_cv;
-
-        /// @brief Double buffer (ping-pong): producers write to m_buffers[m_currentIdx],
-        ///        the flush thread swaps the index and drains the old slot.
-        std::array<std::vector<PersistedData>, 2> m_buffers;
-
-        /// @brief Index (0 or 1) of the buffer currently accepting new events.
-        std::size_t m_currentIdx{0};
-
-        /// @brief Background thread that drains m_buffers into storage.
-        std::thread m_flushThread;
-
-        /// @brief Set to true to request flush thread shutdown.
-        std::atomic<bool> m_stop{false};
 
         /// @brief Storage backend to persist and restore messages.
         std::shared_ptr<IPersistentQueueStorage> m_storage;
 
         /// @brief Logger function
         LoggerFunc m_logger;
-
-        /// @brief Main loop executed by m_flushThread.
-        void flushLoop();
-
-        /// @brief Writes a batch to storage in a single transaction.
-        /// @return true if the batch was persisted successfully, false otherwise.
-        bool flushBuffer(const std::vector<PersistedData>& batch);
-
-        /// @brief Steals any items currently in m_buffers and flushes them to storage.
-        void flushPendingBuffer();
 };
