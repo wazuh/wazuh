@@ -1141,6 +1141,17 @@ if((UNIT_TEST OR WAZUH_ENGINE_TEST) AND NOT IS_AGENT)
       INSTALL_COMMAND ""
       BUILD_BYPRODUCTS ${EXTERNAL_DIR}/benchmark/build/src/libbenchmark.a)
   endif()
+
+  add_library(benchmark STATIC IMPORTED GLOBAL)
+  set_target_properties(
+    benchmark PROPERTIES IMPORTED_LOCATION
+                         ${EXTERNAL_DIR}/benchmark/build/src/libbenchmark.a)
+  add_dependencies(benchmark benchmark_external)
+  target_include_directories(benchmark
+                             INTERFACE ${EXTERNAL_DIR}/benchmark/include)
+
+  # Create the benchmark::benchmark alias that benchmark tests expect
+  add_library(benchmark::benchmark ALIAS benchmark)
 endif()
 
 # ==============================================================================
