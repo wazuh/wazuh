@@ -82,7 +82,7 @@ msg_create_session = dumps(create_session_data)
 wazuh_log_monitor = file_monitor.FileMonitor(WAZUH_LOG_PATH)
 
 # Test daemons to restart.
-daemons_handler_configuration = {'all_daemons': True}
+daemons_handler_configuration = {'all_daemons': True, 'extra_sockets': [LOGTEST_SOCKET_PATH]}
 
 
 # Test
