@@ -1,77 +1,114 @@
 # Agent Upgrade
 
-The agent upgrade module orchestrates remote agent upgrades from the manager. It distributes WPK (Wazuh Package Kit) files to agents over the existing agent connection, validates checksums, executes the installer, and tracks the result through the task manager.
+The agent upgrade module handles remote agent upgrades using WPK (Wazuh Package Kit) files. It has two roles depending on where it runs:
 
-Source: `src/wazuh_modules/src/agent_upgrade/`
+- **Manager side** — validates upgrade requests coming from the Server API, resolves the target WPK for each agent, and creates a `remote_upgrade` task in the [Task Manager](../task_manager/README.md) with the metadata the agent will need to fetch and install the package.
+- **Agent side** — listens on the agent's local `queue/sockets/upgrade` socket and executes the file-transfer / install commands (`open`, `write`, `close`, `sha1`, `upgrade`) issued by the agent daemon after the WPK has been received.
+
+Source: [src/wazuh_modules/src/agent_upgrade/](../../../../src/wazuh_modules/src/agent_upgrade/)
 
 For configuration options see [Agent Upgrade Configuration](configuration.md).
 
+---
+
 ## What is a WPK file
 
-A WPK is a gzip-compressed tar archive containing the Wazuh agent binaries and an installer script (`pkg_install.sh`) for a specific platform and version. WPK files are identified by a SHA-1 checksum distributed alongside them from the WPK repository.
+A WPK is a signed, compressed archive containing the Wazuh agent binaries and an installer script (`upgrade.sh` on Linux/macOS, `upgrade.bat` on Windows) for a specific platform and version. Each WPK is distributed together with a SHA-1 checksum used to validate the file end-to-end.
 
-Default repository: `packages.wazuh.com/<major>.x/wpk/` (auto-derived from the manager version). A custom URL can be set with `wpk_repository` in the configuration.
+The default repository URL is auto-derived from the manager version as `packages.wazuh.com/<major>.x/wpk/`. A custom URL can be set with the `wpk_repository` option in the manager configuration.
 
-## Upgrade flow
+---
+
+## Manager-side flow
 
 ```
-API request  →  Agent Upgrade module
-                 ↓
-            Validate agent (active, version ≥ v3.0.0, no upgrade in progress)
-                 ↓
-            Create task in Task Manager (status: Pending)
-                 ↓
-            Download WPK + verify SHA-1
-                 ↓
-            ┌─── Thread pool (max_threads concurrent upgrades) ─────────────┐
-            │  1. lock_restart          — freeze agent restart               │
-            │  2. open <wpk_file> wb    — create file on agent               │
-            │  3. write <chunk>×N       — transfer WPK in 32 KB chunks       │
-            │  4. close                 — finalize file                      │
-            │  5. sha1                  — agent verifies checksum            │
-            │  6. upgrade               — agent runs pkg_install.sh          │
-            └───────────────────────────────────────────────────────────────┘
-                 ↓
-            Agent reboots and reports result via Router topic upgrade_notifications
-                 ↓
-            Task Manager updated (status: Done / Failed / Timeout)
+API / agent_upgrade CLI  ──►  queue/tasks/upgrade  (agent_upgrade manager)
+                                     │
+                                     ▼
+                       Validate agent, platform and version
+                                     │
+                                     ▼
+             Resolve WPK, download and SHA-1-verify it locally
+                                     │
+                                     ▼
+                       queue/tasks/task  (Task Manager)
+                       ┌──────────────────────────────────┐
+                       │ action:      create_task         │
+                       │ task_type:   remote_upgrade      │
+                       │ agent_id:    <id>                │
+                       │ create_time: <request timestamp> │
+                       │ payload:                         │
+                       │   wpk_file:  <WPK filename>      │
+                       │   wpk_sha1:  <hex digest>        │
+                       │   installer: upgrade.sh|.bat     │
+                       └──────────────────────────────────┘
 ```
+
+The manager-side module does **not** send WPK data to the agent directly. Once the task has been stored in the Task Manager, the module is done with that request. Task delivery depends on the target agent's version:
+
+- **5.x agents** pull the task from the manager's HTTPS control endpoint on their next poll, download the WPK through the same HTTPS interface, and hand the file off to their local upgrade module for installation.
+- **4.x agents** are served by the manager's compatibility push path, which reads pending tasks from the Task Manager and forwards the WPK to the agent through the existing agent-manager channel using the same `open` / `write` / `close` / `sha1` / `upgrade` commands understood by the agent-side listener.
+
+Because task IDs are derived deterministically from `agent_id`, `task_type`, `create_time`, and the request timestamp forwarded from the API, the same upgrade request routed to different manager nodes produces the same `task_id` and does not double-schedule the upgrade.
 
 ### Version constraints
 
-| Condition | Behaviour |
-|-----------|-----------|
-| Agent < v3.0.0 | Rejected — minimum supported version |
-| Upgrade to v5.0.0 from < v4.14.0 | Intermediate upgrade to v4.14.0 required first |
-| Agent version ≥ manager version | Rejected unless `force_upgrade` is set |
+| Condition                                                       | Behavior                                                                                   |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Agent below `v3.0.0`                                            | Rejected — minimum supported version                                                       |
+| Upgrade target ≥ `v5.0.0` and current agent version < `v4.14.0` | Rejected with `Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first` |
+| Target version ≤ current agent version                          | Rejected unless `force_upgrade` is set                                                     |
+| Target version > manager version                                | Rejected unless `force_upgrade` is set                                                     |
 
-## Task states
+### Manager-side sockets
 
-| Status | Meaning |
-|--------|---------|
-| `Pending` | Task created, waiting for dispatch |
-| `In progress` | WPK transfer and installation running |
-| `Done` | Agent reported success |
-| `Failed` | Agent reported error |
-| `Timeout` | No result received within `task_timeout` (default 15 m) |
-| `Cancelled` | Task cancelled before completion |
+| Socket                | Direction | Purpose                                                            |
+| --------------------- | --------- | ------------------------------------------------------------------ |
+| `queue/tasks/upgrade` | Inbound   | Receives `upgrade` / `upgrade_custom` commands from the Server API |
+| `queue/tasks/task`    | Outbound  | Sends `create_task` requests to the Task Manager                   |
 
-## Sockets
+The manager-side module no longer connects directly to Remoted or drives a WPK transfer thread pool from the API request path. For 5.x agents, WPK bytes flow from the manager to the agent through the HTTPS server on the manager, driven by the agent's poll. For 4.x agents, the manager's compatibility push path reads the pending task from the Task Manager and delivers the WPK over the existing agent-manager channel.
 
-| Socket | Direction | Purpose |
-|--------|-----------|---------|
-| `queue/tasks/upgrade` | Inbound | Receives upgrade requests from the server API |
-| `queue/tasks/task` | Outbound | Sends task create/update commands to Task Manager |
-| `queue/sockets/ar` | Outbound | Sends WPK commands to agents via Remoted |
-| Router topic `upgrade_notifications` | Inbound | Receives agent upgrade results via Router |
+---
+
+## Agent-side flow
+
+On the agent, the upgrade module runs a listener on the local Unix domain socket `queue/sockets/upgrade` (`AGENT_UPGRADE_SOCK`). It accepts JSON commands issued by the agent daemon after a `remote_upgrade` task has been delivered and the WPK has been retrieved:
+
+| Command   | Parameters                          | Purpose                                                                                            |
+| --------- | ----------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `open`    | `file`, `mode` (`w` / `wb`)         | Create the WPK file inside the agent's incoming directory                                          |
+| `write`   | `file`, `buffer` (base64), `length` | Append a chunk of WPK data to the opened file                                                      |
+| `close`   | `file`                              | Close and flush the WPK file                                                                       |
+| `sha1`    | `file`                              | Compute and return the SHA-1 of the received file for validation                                   |
+| `upgrade` | `file`, `installer`                 | Verify the WPK signature, uncompress, unmerge into the upgrade directory and execute the installer |
+
+All five commands are gated by the `allow_upgrades` flag, which reflects the agent's `<agent-upgrade><enabled>` setting. When disabled, every command is answered with `Upgrade module is disabled or not ready yet` (error code `ERROR_UPGRADES_NOT_ALLOWED`).
+
+The `upgrade` command:
+1. Verifies the WPK signature against the CA store (see `ca_verification` / `ca_store`).
+2. Uncompresses the archive and unmerges its contents into the upgrade directory.
+3. Applies executable permissions to the installer (`chmod 0750` on POSIX).
+4. Executes the installer with the request timeout defined by `execd.request_timeout`.
+
+### Agent-side sockets
+
+| Socket                  | Direction | Purpose                                                             |
+| ----------------------- | --------- | ------------------------------------------------------------------- |
+| `queue/sockets/upgrade` | Inbound   | Receives upgrade commands from the agent daemon (Linux/Unix agents) |
+
+Windows agents accept the same JSON commands but through the agentd IPC layer instead of a Unix domain socket.
+
+---
 
 ## Key source files
 
-| File | Purpose |
-|------|---------|
-| `manager/wm_agent_upgrade_manager.c` | Listener on `queue/tasks/upgrade`, Router subscriber |
-| `manager/wm_agent_upgrade_upgrades.c` | Thread pool, WPK transfer loop |
-| `manager/wm_agent_upgrade_tasks.c` | In-memory task tracking, Task Manager IPC |
-| `manager/wm_agent_upgrade_validate.c` | Version and eligibility checks |
-| `agent/wm_agent_upgrade_com.c` | Agent-side: open/write/close/sha1/upgrade commands |
-| `agent/wm_agent_upgrade_agent.c` | Agent-side: listener and post-reboot result reporter |
+| File                                  | Purpose                                                                   |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| `wm_agent_upgrade.c` / `.h`           | Module entry point and dump/destroy hooks (manager and agent)             |
+| `manager/wm_agent_upgrade_manager.c`  | Manager listener on `queue/tasks/upgrade`; sends requests to Task Manager |
+| `manager/wm_agent_upgrade_commands.c` | Per-agent validation, WPK resolution and Task Manager task creation       |
+| `manager/wm_agent_upgrade_parsing.c`  | Parses API messages and formats responses                                 |
+| `manager/wm_agent_upgrade_validate.c` | Version / platform / WPK integrity checks                                 |
+| `agent/wm_agent_upgrade_agent.c`      | Agent-side listener on `queue/sockets/upgrade` (POSIX)                    |
+| `agent/wm_agent_upgrade_com.c`        | Implementation of `open`, `write`, `close`, `sha1`, `upgrade`             |
