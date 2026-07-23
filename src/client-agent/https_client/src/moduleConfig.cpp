@@ -110,5 +110,11 @@ bool ModuleConfig::validateClientCert(const IFsProbe& fsProbe, const LogFn& logF
 
 std::string ModuleConfig::baseUrl() const
 {
-    return scheme + "://" + serverHost + ":" + std::to_string(serverPort);
+    // A bare IPv6 literal (which contains ':') must be bracketed in a URL
+    // authority, or its trailing group is misparsed as the port:
+    // https://[2001:db8::1]:443, not https://2001:db8::1:443. Hostnames and
+    // IPv4 never contain ':'; an already-bracketed value is left as is.
+    const bool ipv6 = serverHost.find(':') != std::string::npos && serverHost.front() != '[';
+    const std::string host = ipv6 ? "[" + serverHost + "]" : serverHost;
+    return scheme + "://" + host + ":" + std::to_string(serverPort);
 }
