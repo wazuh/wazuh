@@ -11,7 +11,14 @@
 
 #include "curlPerformer.hpp"
 
+#include <cstdio>
 #include <memory>
+
+#ifndef WIN32
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
 
 namespace
 {
@@ -99,9 +106,23 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
         return true;
     }
 
-    // "wb" per attempt: a retry truncates the previous attempt's partial
-    // body, so the file never mixes bytes from two attempts.
+    // Open the response target WITHOUT following a symlink and owner-only: if
+    // it was swapped for a link to a victim in a shared spool dir (the caller
+    // pre-creates it there), the open fails instead of truncating the victim
+    // through the link. Truncate (like "wb") so a retry never mixes bytes from
+    // two attempts.
+#ifdef WIN32
     std::FILE* file = std::fopen(spec.responseFilePath.c_str(), "wb");
+#else
+    const int fd = ::open(spec.responseFilePath.c_str(),
+                          O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, S_IRUSR | S_IWUSR);
+    std::FILE* file = fd >= 0 ? ::fdopen(fd, "wb") : nullptr;
+
+    if (file == nullptr && fd >= 0)
+    {
+        ::close(fd); // LCOV_EXCL_LINE: fdopen failing on a good fd is not reproducible.
+    }
+#endif
 
     if (file == nullptr)
     {
