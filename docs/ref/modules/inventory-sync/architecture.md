@@ -10,12 +10,18 @@ This is the orchestration layer.
 
 Responsibilities:
 
-- Creates and clears the local RocksDB session store in `inventory_sync/`.
+- Creates and clears the local RocksDB session store in `queue/inventory_sync/`.
 - Subscribes to the Router topic `inventory-states` with subscriber id `inventory-sync-module`.
-- Validates and dispatches `Start`, `DataValue`, `DataBatch`, `DataContext`, `DataClean`, `ChecksumModule`, `End`, and `ReqRet` protocol messages.
-- Owns the worker queue for inbound messages and the queue that serializes indexer-side completion work.
+- Validates and dispatches the FlatBuffer protocol messages: `Start`, `DataValue`, `DataBatch`, `DataContext`, `DataClean`, `ChecksumModule`, and `End`.
+- Also accepts a **JSON control message** on the same topic — `{"command":"delete_agent","agent_id":"<id>"}` — which issues a `deleteByQuery` for that agent across `wazuh-states-*` (scoped to the cluster). This is how agent removal purges state documents.
+- Owns the multi-threaded input worker queue (`cpp_get_nproc()` threads) and the single-threaded queue that serializes indexer-side completion work.
+- Enforces an **index allowlist** (`isAgentScopedStateIndex`): only `wazuh-states-inventory-*`, `wazuh-states-fim-*`, `wazuh-states-sca`/`-*`, and `wazuh-states-vulnerabilities` are accepted; `wazuh-states-vulnerabilities` may only be targeted by `DataClean`, never written by an agent.
+- Overlays manager-controlled `wazuh.agent.*` / `wazuh.cluster.name` metadata on every upserted document, so an agent cannot spoof another agent or cluster.
 - Executes bulk indexing, delete-by-query, update-by-query, checksum verification, stale-session cleanup, and agent deletion.
-- Triggers the Vulnerability Scanner for sessions marked with `VDFirst` or `VDSync`.
+- Triggers the Vulnerability Scanner for sessions marked with `VDFirst` or `VDSync`, and coordinates with the scanner's feed-update rescan.
+- Runs a small **keystore socket server** on `queue/sockets/keystore` (`GET`/`PUT`/`DELETE` against the manager keystore column families) used by dependent components.
+
+Document `_id` values are built as `{clusterName}_{agentId}_{DataValue.id}`, and the optional `DataValue.version` is forwarded to the indexer as the external document version.
 
 ### `src/wazuh_modules/inventory_sync/src/agentSession.hpp`
 
@@ -45,7 +51,7 @@ Responsibilities:
 
 ### `src/wazuh_modules/inventory_sync/src/responseDispatcher.hpp`
 
-This component sends `StartAck`, `EndAck`, and retransmission requests back to the agent through the Router/response path.
+This component sends `StartAck`, `EndAck`, and `ReqRet` (retransmission) messages back to the agent. Responses are written to the manager active-response datagram socket `queue/sockets/ar` (`ARQUEUE_PATH`), framed as `(msg_to_agent) [] N!s <agentId> <size> <module>_sync <flatbuffer>`. `remoted` forwards them to the agent, where the module's Agent Sync Protocol instance parses them (`parseResponseBuffer`). Note this is a **different channel** from the inbound path: requests arrive over the Router topic `inventory-states`, replies leave over the AR socket.
 
 ### `src/wazuh_modules/inventory_sync/src/inventorySyncQueryBuilder.hpp`
 
@@ -83,13 +89,21 @@ flowchart LR
   Ack --> Agent
 ```
 
+For the full call sequence across agent, manager, and indexer — plus a level-by-level walkthrough from concept down to specific functions — see [Data Flow and Sequence of Calls](data-flow.md).
+
 The protocol is organized around three phases:
 
 1. **Start**
 
 - The agent opens a session with module name, mode, option, message count, target indices, agent identity, groups, and cluster fields.
-- The manager assigns a 64-bit session id and replies with `StartAck`.
-- The session is rejected if the indexer is unavailable, the agent is locked for metadata or group maintenance, or the configured session limit is reached.
+- The manager assigns a random 64-bit session id and replies with `StartAck(Status_Ok, session)`.
+- Start is rejected before a session is created when:
+  - the agent is **locked** (metadata/group reconciliation or feed-update scan in progress) → `StartAck(Status_Error)`;
+  - the indexer is **unavailable** → `StartAck(Status_Offline)`;
+  - the **session limit** (`maxSessions`) is reached → `StartAck(Status_Offline)`;
+  - the global **DataValue quota** cannot cover the declared `size` → `StartAck(Status_Offline)`.
+- A stale session for the same `{agent, module}` pair is cleaned up first, so an agent or `modulesd` restart does not leak the previous session.
+- The `module` field is `syscollector`, `fim`, `sca`, or `syscollector_vd` (the vulnerability-detector data stream, see below). `syscollector_vd` Start messages are exempt from the global all-agents lock (held during shutdown) but still honor the per-agent lock.
 
 2. **Data**
 
@@ -102,9 +116,10 @@ The protocol is organized around three phases:
 
 3. **End**
 
-- Once `End` is received and all required chunks are present, the session is moved to the indexer completion queue.
-- The manager executes indexing, deletion, update-by-query, checksum verification, or vulnerability scanning according to the session mode.
-- The session store is deleted and `EndAck` is returned when processing completes.
+- When `End` arrives with all required chunks present, the manager immediately replies with `EndAck(Status_Processing)` and moves the session to the indexer completion queue. The agent treats `Processing` as "keep waiting" — it does not resend `End` and does not consume a retry.
+- If chunks are still missing, the manager replies with `ReqRet` carrying the missing sequence ranges instead, and the agent retransmits.
+- The completion worker then executes indexing, deletion, update-by-query, checksum verification, or vulnerability scanning according to the session mode.
+- When processing finishes, the session store is deleted and a final `EndAck` is returned: `Status_Ok`, `Status_Error`, or (for `ModuleCheck`) `Status_ChecksumMismatch`.
 
 ## Synchronization modes
 
@@ -135,9 +150,9 @@ Inventory Sync supports these synchronization modes:
 ### `DataContext`
 
 - Stored in RocksDB as `{session}_{seq}_context`.
-- Excluded from indexer replay.
+- Excluded from indexer replay (the bulk loop skips `_context` keys).
 - Participates in gap tracking and retransmission.
-- Can still be consumed by downstream session logic, including vulnerability-scanner flows that use the session RocksDB contents.
+- **Consumed by the Vulnerability Scanner** for `VDSync` sessions: it is the surrounding, unchanged inventory (e.g. the OS row for a changed package) that the scanner needs to correlate a delta. The scanner reads it straight from the session RocksDB store. (Note: an in-code comment still describes this as a "future implementation" — that comment is stale; the scanner reads these entries today.)
 
 ### `DataClean`
 
@@ -172,16 +187,28 @@ Inventory Sync includes several consistency mechanisms:
 - **Stale-session cleanup** for sessions inactive for **20 minutes**.
 - **Periodic cleanup sweep** every **10 minutes**.
 - **Checksum validation** with retry logic for `ModuleCheck` to tolerate indexer propagation delays.
-- **Startup cleanup** of the `inventory_sync/` RocksDB directory before the module starts serving new sessions.
+- **Startup cleanup** of the `queue/inventory_sync/` RocksDB directory (`remove_all`) before the module starts serving new sessions.
 
 ## Vulnerability Scanner integration
 
-When the Start option is `VDFirst` or `VDSync`, Inventory Sync can invoke the Vulnerability Scanner after session persistence and indexer work setup.
+The `syscollector_vd` module is a second Agent Sync Protocol stream inside the agent's syscollector, dedicated to vulnerability-relevant inventory (packages, OS/system, hotfixes). Its sessions carry a `VDFirst` or `VDSync` option, and Inventory Sync invokes the Vulnerability Scanner after the inventory documents have been persisted and the indexer work is set up.
 
-Current behavior:
+- **`VDFirst`** — the agent's first vulnerability sync. Everything is sent as `DataValue`. The scanner deletes the agent's prior vulnerability documents and runs a full first scan.
+- **`VDSync`** — an incremental sync. Only changed rows are sent as `DataValue`; the surrounding unchanged inventory the scanner needs for correlation (e.g. the OS row for a changed package, plus hotfixes on Windows) is sent as `DataContext`. The scanner runs a package-delta scan, escalating to a full scan when the OS/hotfix data changed.
 
-- If the Vulnerability Scanner is disabled, Inventory Sync skips the scan and still completes the session.
-- If the scanner is enabled but the CVE feed is not ready, the session waits until the scanner reports readiness or stops.
-- Once ready, the scanner builds its own context from the same Inventory Sync session data stored in RocksDB.
+How the hand-off works ([`inventorySyncFacade.hpp`](../../../../src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp) End-processing branch):
 
-This means Inventory Sync is not only an indexing service. It is also the synchronization boundary that feeds downstream vulnerability analysis.
+- If the Vulnerability Scanner is not initialized/disabled, Inventory Sync skips the scan and still completes the session.
+- If the scanner is enabled but the CVE feed is not ready (e.g. first manager startup while the feed downloads), the session blocks in `waitForFeedReady()`. The agent has already received `EndAck(Status_Processing)` and keeps waiting; it gets the final `Status_Ok` once the scan finishes.
+- Once ready, the scanner reads the **same session data from RocksDB** (`{session}_*` keys, including the `_context` DataContext entries) to build its own `ScanContext`; it does **not** re-read the indexed documents. Inventory Sync passes the shared `Context` and the RocksDB store handle into `VulnerabilityScannerFacade::runScanner(store, context)`.
+- The scanner writes its results to `wazuh-states-vulnerabilities` through its **own** Indexer Connector. Inventory Sync never writes that index.
+
+### Feed-update rescan coordination
+
+When the CVE feed updates, the scanner runs a full rescan of every agent. This is coordinated with in-flight `syscollector_vd` sessions so no agent is scanned against half-written data and no agent is scanned twice:
+
+- Before it marks the feed ready, the scanner snapshots agents that currently hold a `VDFirst` session (`getAgentsWithActiveSessionForModule("syscollector_vd", VDFirst)`) — those agents are already getting a full scan and are excluded from the feed-update rescan.
+- The scanner then calls back into Inventory Sync via `waitForAllVDSyncSessions(60s, 5)` to let active `VDSync` sessions drain. Those sessions see `isFeedUpdateScanInProgress()` and self-skip their own delta scan, because the feed-update full scan already covers them.
+- Concurrent `VDFirst` scans for the same agent are de-duplicated (`m_activeVDFirstScans`) to prevent racing vulnerability-cleanup passes. After a `VDFirst` scan completes, the agent is registered as feed-update-covered.
+
+This makes Inventory Sync not only an indexing service but the synchronization boundary that feeds — and paces — downstream vulnerability analysis.
