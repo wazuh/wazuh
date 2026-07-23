@@ -449,7 +449,6 @@ void w_inc_global_sleep_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-
 void w_inc_task() {
     w_mutex_lock(&db_state_t_mutex);
     wdb_state.queries_breakdown.task_queries++;
@@ -468,15 +467,51 @@ void w_inc_task_sql_time(struct timeval time) {
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_task_set_timeout() {
+void w_inc_task_create() {
     w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.tasks.set_timeout_queries++;
+    wdb_state.queries_breakdown.task_breakdown.tasks.create_queries++;
     w_mutex_unlock(&db_state_t_mutex);
 }
 
-void w_inc_task_set_timeout_time(struct timeval time) {
+void w_inc_task_create_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.set_timeout_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.set_timeout_time);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.create_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.create_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_get_pending() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.tasks.get_pending_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_get_pending_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.get_pending_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.get_pending_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_mark_delivered() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.tasks.mark_delivered_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_mark_delivered_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.mark_delivered_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.mark_delivered_time);
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_cleanup_expired() {
+    w_mutex_lock(&db_state_t_mutex);
+    wdb_state.queries_breakdown.task_breakdown.tasks.cleanup_expired_queries++;
+    w_mutex_unlock(&db_state_t_mutex);
+}
+
+void w_inc_task_cleanup_expired_time(struct timeval time) {
+    w_mutex_lock(&db_state_t_mutex);
+    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.cleanup_expired_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.cleanup_expired_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
@@ -489,78 +524,6 @@ void w_inc_task_delete_old() {
 void w_inc_task_delete_old_time(struct timeval time) {
     w_mutex_lock(&db_state_t_mutex);
     timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.delete_old_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_custom() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_custom_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_custom_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_custom_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_custom_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_get_status() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_get_status_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_get_status_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_get_status_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_get_status_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_update_status() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_update_status_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_update_status_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_update_status_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_update_status_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_result() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_result_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_result_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_result_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_result_time);
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_cancel_tasks() {
-    w_mutex_lock(&db_state_t_mutex);
-    wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_queries++;
-    w_mutex_unlock(&db_state_t_mutex);
-}
-
-void w_inc_task_upgrade_cancel_tasks_time(struct timeval time) {
-    w_mutex_lock(&db_state_t_mutex);
-    timeradd(&wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_time, &time, &wdb_state.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_time);
     w_mutex_unlock(&db_state_t_mutex);
 }
 
@@ -691,14 +654,11 @@ cJSON* wdb_create_state_json() {
     cJSON *_task_tables_tasks = cJSON_CreateObject();
     cJSON_AddItemToObject(_task_tables, "tasks", _task_tables_tasks);
 
+    cJSON_AddNumberToObject(_task_tables_tasks, "create", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.create_queries);
+    cJSON_AddNumberToObject(_task_tables_tasks, "get_pending", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.get_pending_queries);
+    cJSON_AddNumberToObject(_task_tables_tasks, "mark_delivered", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.mark_delivered_queries);
+    cJSON_AddNumberToObject(_task_tables_tasks, "cleanup_expired", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.cleanup_expired_queries);
     cJSON_AddNumberToObject(_task_tables_tasks, "delete_old", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.delete_old_queries);
-    cJSON_AddNumberToObject(_task_tables_tasks, "set_timeout", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.set_timeout_queries);
-    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_queries);
-    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade_cancel_tasks", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_queries);
-    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade_custom", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_custom_queries);
-    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade_get_status", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_get_status_queries);
-    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade_result", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_result_queries);
-    cJSON_AddNumberToObject(_task_tables_tasks, "upgrade_update_status", wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_update_status_queries);
 
     cJSON *_time = cJSON_CreateObject();
     cJSON_AddItemToObject(_metrics, "time", _time);
@@ -792,14 +752,11 @@ cJSON* wdb_create_state_json() {
     cJSON *_task_tables_tasks_t = cJSON_CreateObject();
     cJSON_AddItemToObject(_task_tables_t, "tasks", _task_tables_tasks_t);
 
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "create", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.create_time));
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "get_pending", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.get_pending_time));
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "mark_delivered", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.mark_delivered_time));
+    cJSON_AddNumberToObject(_task_tables_tasks_t, "cleanup_expired", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.cleanup_expired_time));
     cJSON_AddNumberToObject(_task_tables_tasks_t, "delete_old", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.delete_old_time));
-    cJSON_AddNumberToObject(_task_tables_tasks_t, "set_timeout", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.set_timeout_time));
-    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_time));
-    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade_cancel_tasks", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_time));
-    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade_custom", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_custom_time));
-    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade_get_status", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_get_status_time));
-    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade_result", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_result_time));
-    cJSON_AddNumberToObject(_task_tables_tasks_t, "upgrade_update_status", timeval_to_milis(wdb_state_cpy.queries_breakdown.task_breakdown.tasks.upgrade_update_status_time));
 
     return wdb_state_json;
 }
@@ -847,13 +804,10 @@ STATIC uint64_t get_global_time(wdb_state_t *state){
 STATIC uint64_t get_task_time(wdb_state_t *state){
     struct timeval task_time;
 
-    timeradd(&state->queries_breakdown.task_breakdown.sql_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_time, &task_time);
-    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_custom_time, &task_time);
-    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_get_status_time, &task_time);
-    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_update_status_time, &task_time);
-    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_result_time, &task_time);
-    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.upgrade_cancel_tasks_time, &task_time);
-    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.set_timeout_time, &task_time);
+    timeradd(&state->queries_breakdown.task_breakdown.sql_time, &state->queries_breakdown.task_breakdown.tasks.create_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.get_pending_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.mark_delivered_time, &task_time);
+    timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.cleanup_expired_time, &task_time);
     timeradd(&task_time, &state->queries_breakdown.task_breakdown.tasks.delete_old_time, &task_time);
 
     return timeval_to_milis(task_time);

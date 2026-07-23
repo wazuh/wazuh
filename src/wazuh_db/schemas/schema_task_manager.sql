@@ -1,33 +1,28 @@
 /*
  * SQL Schema for task manager database
  * Copyright (C) 2015, Wazuh Inc.
- * July 13, 2020.
  * This program is a free software, you can redistribute it
  * and/or modify it under the terms of GPLv2.
  */
 
-PRAGMA user_version = 1;
+PRAGMA user_version = 2;
 
 BEGIN;
 
 CREATE TABLE IF NOT EXISTS TASKS (
-    TASK_ID INTEGER PRIMARY KEY AUTOINCREMENT,
-    AGENT_ID INT NOT NULL,
-    NODE TEXT NOT NULL,
-    MODULE TEXT NOT NULL,
-    COMMAND TEXT NOT NULL,
-    CREATE_TIME INTEGER NOT NULL,
-    LAST_UPDATE_TIME INTEGER,
-    STATUS TEXT NOT NULL,
-    ERROR_MESSAGE TEXT DEFAULT NULL
+    TASK_ID TEXT PRIMARY KEY,              -- Deterministic hash-based UUID
+    AGENT_ID TEXT NOT NULL,                -- TEXT to support non-numeric agent IDs
+    TASK_TYPE TEXT NOT NULL,               -- active_response, remote_upgrade, agent_restart, agent_reload
+    PAYLOAD TEXT NOT NULL,                 -- Complete JSON payload for agent
+    CREATE_TIME INTEGER NOT NULL,          -- Unix timestamp (seconds)
+    DELIVERY_TIME INTEGER,                 -- When delivered to agent (NULL if not delivered yet)
+    STATUS TEXT NOT NULL                   -- pending, delivered, expired
 );
-CREATE INDEX IF NOT EXISTS IN_TASK_AGENT ON TASKS (AGENT_ID);
-CREATE INDEX IF NOT EXISTS IN_TASK_NODE ON TASKS (NODE);
-CREATE INDEX IF NOT EXISTS IN_TASK_MODULE ON TASKS (MODULE);
-CREATE INDEX IF NOT EXISTS IN_TASK_COMMAND ON TASKS (COMMAND);
-CREATE INDEX IF NOT EXISTS IN_TASK_CREATE_TIME ON TASKS (CREATE_TIME);
-CREATE INDEX IF NOT EXISTS IN_TASK_LAST_UPDATE_TIME ON TASKS (LAST_UPDATE_TIME);
-CREATE INDEX IF NOT EXISTS IN_TASK_STATUS ON TASKS (STATUS);
+
+-- Optimized indexes for new query patterns
+CREATE INDEX IF NOT EXISTS idx_agent_status ON TASKS (AGENT_ID, STATUS);
+CREATE INDEX IF NOT EXISTS idx_create_time ON TASKS (CREATE_TIME);
+CREATE INDEX IF NOT EXISTS idx_status ON TASKS (STATUS);
 
 CREATE TABLE IF NOT EXISTS metadata (
     key   TEXT PRIMARY KEY,
