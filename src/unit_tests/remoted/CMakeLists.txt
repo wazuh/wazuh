@@ -4,7 +4,6 @@ link_directories(${SRC_FOLDER}/build/lib)
 include_directories(${SRC_FOLDER}/shared_modules/router/include)
 include_directories(${SRC_FOLDER}/remoted/include)
 include_directories(${SRC_FOLDER}/remoted/src)
-# secure.c includes "remoted_module.h" (the C++ module's C-ABI header).
 include_directories(${SRC_FOLDER}/remoted/remoted_module/include)
 
 #include wrappers
@@ -40,7 +39,8 @@ list(APPEND remoted_flags "-Wl,--wrap,_mdebug2 -Wl,--wrap,_mdebug1 -Wl,--wrap,w_
                             -Wl,--wrap,rem_inc_recv_ctrl_startup -Wl,--wrap,rem_inc_recv_ctrl_shutdown -Wl,--wrap,pthread_mutex_lock \
                             -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,wdb_get_distinct_agent_groups -Wl,--wrap,unlink -Wl,--wrap,getpid \
                             -Wl,--wrap,w_create_sendsync_payload -Wl,--wrap,w_send_clustered_message \
-                            -Wl,--wrap,get_cluster_name -Wl,--wrap,get_node_name -Wl,--wrap,w_query_agentd")
+                            -Wl,--wrap,get_cluster_name -Wl,--wrap,get_node_name -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
+                            -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_secure")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accept -Wl,--wrap,close \
@@ -64,6 +64,7 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,rem_inc_recv_events_failed \
                             -Wl,--wrap,OS_DupKeyEntry -Wl,--wrap,OS_FreeKey ${DEBUG_OP_WRAPPERS} \
                             -Wl,--wrap,router_provider_send -Wl,--wrap,router_provider_send_sync \
+                            -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
                             -Wl,--wrap,w_query_agentd ${HASH_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_save_ctrlmsg_thread")
@@ -72,24 +73,28 @@ list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,accep
                             -Wl,--wrap,fgetpos -Wl,--wrap,fgets -Wl,--wrap,fopen -Wl,--wrap,popen -Wl,--wrap,fread \
                             -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,getpid -Wl,--wrap,remove \
                             -Wl,--wrap,FOREVER -Wl,--wrap,indexed_queue_pop_ex  -Wl,--wrap,indexed_queue_pop_ex \
-                            -Wl,--wrap,save_controlmsg -Wl,--wrap,w_query_agentd")
+                            -Wl,--wrap,save_controlmsg -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
+                            -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_netbuffer")
 list(APPEND remoted_flags "-Wl,--wrap,_merror -Wl,--wrap,_mwarn -Wl,--wrap,_mdebug1 -Wl,--wrap,wnet_order -Wl,--wrap,wnotify_modify \
                             -Wl,--wrap,bqueue_push -Wl,--wrap,bqueue_peek -Wl,--wrap,bqueue_drop -Wl,--wrap,bqueue_clear -Wl,--wrap,sleep \
                             -Wl,--wrap,send -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock -Wl,--wrap,fcntl -Wl,--wrap,getpid \
-                            -Wl,--wrap,bqueue_used -Wl,--wrap,rem_inc_send_discarded -Wl,--wrap,recv -Wl,--wrap,rem_msgpush -Wl,--wrap,w_query_agentd")
+                            -Wl,--wrap,bqueue_used -Wl,--wrap,rem_inc_send_discarded -Wl,--wrap,recv -Wl,--wrap,rem_msgpush \
+                            -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_bulk")
-list(APPEND remoted_flags "-W -Wl,--wrap,w_query_agentd")
+list(APPEND remoted_flags "-W -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_sendmsg")
 list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,OS_IsAllowedID -Wl,--wrap,pthread_mutex_lock -Wl,--wrap,pthread_mutex_unlock \
                             -Wl,--wrap,rwlock_lock_read -Wl,--wrap,rwlock_unlock -Wl,--wrap,CreateSecMSG -Wl,--wrap,nb_queue -Wl,--wrap,time \
-                            -Wl,--wrap,sendto -Wl,--wrap,fcntl -Wl,--wrap,rem_add_send -Wl,--wrap,w_query_agentd")
+                            -Wl,--wrap,sendto -Wl,--wrap,fcntl -Wl,--wrap,rem_add_send -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
+                            -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remote-config")
-list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,get_node_name -Wl,--wrap,get_cluster_name -Wl,--wrap,w_query_agentd")
+list(APPEND remoted_flags "${DEBUG_OP_WRAPPERS} -Wl,--wrap,ReadConfig -Wl,--wrap,getDefine_Int -Wl,--wrap,getDefine_Int_default -Wl,--wrap,get_node_name \
+                            -Wl,--wrap,get_cluster_name -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remote-state")
 list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_input_bytes_used -Wl,--wrap,rem_get_input_max_bytes \
@@ -97,16 +102,18 @@ list(APPEND remoted_flags "-Wl,--wrap,time -Wl,--wrap,rem_get_input_bytes_used -
                             -Wl,--wrap,OSHash_Delete_ex -Wl,--wrap,OSHash_Delete -Wl,--wrap,OSHash_Get -Wl,--wrap,OSHash_Clean \
                             -Wl,--wrap,OSHash_Get_ex -Wl,--wrap,OSHash_Next -Wl,--wrap,OSHash_SetFreeDataPointer \
                             -Wl,--wrap,OSHash_Update_ex -Wl,--wrap,OSHash_Update -Wl,--wrap,OSHash_Get_Elem_ex \
-                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror -Wl,--wrap,w_query_agentd")
+                            -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,_merror -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop \
+                            -Wl,--wrap,w_query_agentd")
 
 list(APPEND remoted_names "test_remcom")
 list(APPEND remoted_flags "-Wl,--wrap,rem_create_state_json -Wl,--wrap,OS_BindUnixDomain -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept \
                            -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,getRemoteConfig -Wl,--wrap,rem_create_agents_state_json  \
                            -Wl,--wrap,assign_group_to_agent \
-                           -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+                           -Wl,--wrap,wdb_get_agents_ids_of_current_node -Wl,--wrap,json_parse_agents -Wl,--wrap,getpid \
+                           -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND remoted_names "test_queue")
-list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn")
+list(APPEND remoted_flags "-Wl,--wrap,rem_inc_recv_discarded -Wl,--wrap,_mdebug2 -Wl,--wrap,_mwarn -Wl,--wrap,remoted_module_start -Wl,--wrap,remoted_module_stop")
 
 list(LENGTH remoted_names count)
 math(EXPR count "${count} - 1")
@@ -114,7 +121,8 @@ foreach(counter RANGE ${count})
     list(GET remoted_names ${counter} remoted_test_name)
     list(GET remoted_flags ${counter} remoted_test_flags)
 
-    add_executable(${remoted_test_name} ${remoted_test_name}.c)
+    add_executable(${remoted_test_name} ${remoted_test_name}.c
+        ${SRC_FOLDER}/unit_tests/wrappers/wazuh/remoted/remoted_module_wrappers.c)
 
     target_link_libraries(
         ${remoted_test_name}
