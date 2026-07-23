@@ -64,23 +64,23 @@ class ScriptedRandom final : public IRandom
         double uniform01() override
         {
             if (m_values.empty())
-        {
-            return 0.5;
+            {
+                return 0.5;
+            }
+
+            const double value = m_values[m_index];
+
+            if (m_index + 1 < m_values.size())
+            {
+                m_index++;
+            }
+
+            return value;
         }
 
-        const double value = m_values[m_index];
-
-        if (m_index + 1 < m_values.size())
-        {
-            m_index++;
-        }
-
-        return value;
-    }
-
-private:
-    std::vector<double> m_values;
-    size_t m_index {0};
+    private:
+        std::vector<double> m_values;
+        size_t m_index {0};
 };
 
 /// Waiter that never sleeps: records every requested delay and answers each
@@ -88,22 +88,22 @@ private:
 /// returns false, so loops under test always terminate.
 class FakeWaiter final : public Waiter
 {
-public:
-    bool waitFor(std::chrono::milliseconds timeout) override
+    public:
+        bool waitFor(std::chrono::milliseconds timeout) override
         {
             m_requestedDelays.push_back(timeout);
 
             if (m_script.empty())
-        {
-            return false;
+            {
+                return false;
+            }
+
+            const bool keepRunning = m_script.front();
+            m_script.pop_front();
+            return keepRunning;
         }
 
-        const bool keepRunning = m_script.front();
-        m_script.pop_front();
-        return keepRunning;
-    }
-
-    void notify() override
+        void notify() override
         {
             m_notifyCount++;
         }
