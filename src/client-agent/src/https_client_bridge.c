@@ -22,8 +22,9 @@
  * module's own fail-closed validation (ModuleConfig::validateTls) now gets a
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
  * on_reenroll_required is wired to the existing authd flow (try_enroll_to_server,
- * start_agent.c) and hc_set_agent_key(). Still pending (later integration
- * workstreams of #37702): the .state metrics.
+ * start_agent.c) and hc_set_agent_key(); on_state_change feeds the .state file
+ * (client-agent/include/state.h). Still pending (later integration workstreams
+ * of #37702): retiring the legacy TCP data path this module runs alongside.
  */
 
 #include "https_client_bridge.h"
@@ -127,10 +128,33 @@ static void bridge_on_reenroll_required(void *user_data)
     w_create_thread(bridge_reenroll_thread, g_https_client);
 }
 
+/* Maps the module's connection FSM onto the .state file's coarser 3-value
+ * status (agent_state_t / w_agentd_state_get, client-agent/include/state.h):
+ * the legacy path only ever sets ACTIVE/NACTIVE (PENDING is just its initial
+ * value), so REGISTERED is the only "connected" state; everything else --
+ * not started yet, rejected, or paused on a bad credential -- reads as
+ * disconnected. STARTING is PENDING (in progress, not yet confirmed) to
+ * match the .state semantics rather than prematurely reading NACTIVE. */
+static agent_status_t bridge_map_agent_status(int hc_state)
+{
+    switch (hc_state) {
+    case HC_STATE_REGISTERED:
+        return GA_STATUS_ACTIVE;
+    case HC_STATE_STARTING:
+        return GA_STATUS_PENDING;
+    case HC_STATE_STOPPED:
+    case HC_STATE_REJECTED:
+    case HC_STATE_AUTH_ERROR:
+    default:
+        return GA_STATUS_NACTIVE;
+    }
+}
+
 static void bridge_on_state_change(int state, void *user_data)
 {
     (void)user_data;
     mdebug1("https_client connection state -> %d", state);
+    w_agentd_state_update(UPDATE_STATUS, (void *)bridge_map_agent_status(state));
 }
 
 /* Maps the agent config parser's verification_mode enum onto the module

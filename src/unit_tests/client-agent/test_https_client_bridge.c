@@ -66,6 +66,12 @@ int __wrap_try_enroll_to_server(const char *server_rip, uint32_t network_interfa
     return mock();
 }
 
+void __wrap_w_agentd_state_update(w_agentd_state_update_t type, void *data)
+{
+    check_expected(type);
+    check_expected(data);
+}
+
 /* bridge_reenroll_thread is not static (see its own comment) precisely so it
  * can be called directly here, synchronously, bypassing w_create_thread.
  * g_https_client_stopping is likewise not static: setup_test() below resets
@@ -501,6 +507,84 @@ static void test_reenroll_thread_logs_error_when_new_key_fails_validation(void *
     bridge_reenroll_thread(FAKE_HANDLE);
 }
 
+/* on_state_change -> .state (M7 partial): exercised through the real
+ * callback, like the reenroll spawn-decision tests above. */
+
+static void test_registered_state_maps_to_active(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 2");
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
+
+    g_captured_callbacks.on_state_change(HC_STATE_REGISTERED, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_starting_state_maps_to_pending(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 1");
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_PENDING);
+
+    g_captured_callbacks.on_state_change(HC_STATE_STARTING, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_stopped_state_maps_to_nactive(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 0");
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
+
+    g_captured_callbacks.on_state_change(HC_STATE_STOPPED, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_rejected_state_maps_to_nactive(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 3");
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
+
+    g_captured_callbacks.on_state_change(HC_STATE_REJECTED, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_auth_error_state_maps_to_nactive(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 4");
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
+
+    g_captured_callbacks.on_state_change(HC_STATE_AUTH_ERROR, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -521,6 +605,11 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_thread_retries_with_backoff_then_succeeds, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_aborts_when_stopping_flag_already_set, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_logs_error_when_new_key_fails_validation, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_registered_state_maps_to_active, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_starting_state_maps_to_pending, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_stopped_state_maps_to_nactive, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_rejected_state_maps_to_nactive, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_auth_error_state_maps_to_nactive, setup_test, teardown_test),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
