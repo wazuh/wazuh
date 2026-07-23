@@ -10,6 +10,7 @@
 
 #include "shared.h"
 #include "agentd.h"
+#include "https_client_bridge.h"
 #include "os_net.h"
 #include "state.h"
 
@@ -129,6 +130,12 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     if (agt->sock > maxfd) {
         maxfd = agt->sock;
     }
+
+    /* HTTPS client: the agent's transport, unconditionally. Still runs
+     * independently of the legacy TCP path below until that is retired
+     * (later workstream). See client-agent/https_client and the bridge. */
+    w_https_client_start();
+    atexit(w_https_client_stop);
 
     start_agent(1);
 

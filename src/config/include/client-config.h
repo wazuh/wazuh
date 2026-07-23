@@ -23,9 +23,27 @@ typedef struct agent_server {
     char * rip;
     int port;
     uint32_t network_interface;
-    int max_retries; ///< Maximum number of connection retries.
-    int retry_interval; ///< Time interval between connection attempts.
+    int max_retries; ///< Maximum number of connection retries (legacy TCP; removed with the cutover).
+    int retry_interval; ///< Time interval between connection attempts (legacy TCP; removed with the cutover).
 } agent_server;
+
+/* TLS verification posture for the HTTPS transport.
+ * Values mirror the module ABI's hc_verify_mode_t so the bridge can copy them
+ * verbatim into hc_config_t. FULL is 0 so a zero-initialized config fails closed. */
+typedef enum agent_verify_mode_t {
+    AGENT_VERIFY_FULL = 0, ///< Verify peer against the CA and check the hostname (default).
+    AGENT_VERIFY_CERT = 1, ///< Verify peer against the CA only.
+    AGENT_VERIFY_NONE = 2  ///< No TLS verification (explicit opt-out).
+} agent_verify_mode_t;
+
+/* Agent-side HTTPS transport TLS settings: the <client><ssl> block (FR10 / #37702 §10). */
+typedef struct agent_ssl {
+    char * certificate;             ///< <certificate>: optional client (mTLS) certificate.
+    char * key;                     ///< <key>: optional client (mTLS) private key.
+    char * certificate_authorities; ///< <certificate_authorities>: CA bundle used to verify the manager.
+    int verification_mode;          ///< <verification_mode>: agent_verify_mode_t; default FULL.
+    char * ciphers;                 ///< <ciphers>: optional cipher list.
+} agent_ssl;
 
 /* Configuration structure */
 typedef struct _agent {
@@ -44,6 +62,7 @@ typedef struct _agent {
     int events_persec;
     int package_uninstallation;
     agent_flags_t flags;
+    agent_ssl ssl; ///< HTTPS transport TLS settings (<client><ssl>).
     w_enrollment_ctx *enrollment_cfg;
 } agent;
 

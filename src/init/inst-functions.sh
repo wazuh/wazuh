@@ -317,14 +317,14 @@ WriteAgent()
 
     echo "<ossec_config>" >> $NEWCONFIG
     echo "  <client>" >> $NEWCONFIG
-    echo "    <manager>" >> $NEWCONFIG
+    echo "    <server>" >> $NEWCONFIG
     if [ "X${HNAME}" = "X" ]; then
       echo "      <address>$SERVER_IP</address>" >> $NEWCONFIG
     else
       echo "      <address>$HNAME</address>" >> $NEWCONFIG
     fi
     echo "      <port>1514</port>" >> $NEWCONFIG
-    echo "    </manager>" >> $NEWCONFIG
+    echo "    </server>" >> $NEWCONFIG
     if [ "X${USER_AGENT_CONFIG_PROFILE}" != "X" ]; then
          PROFILE=${USER_AGENT_CONFIG_PROFILE}
          echo "    <config-profile>$PROFILE</config-profile>" >> $NEWCONFIG
@@ -340,7 +340,6 @@ WriteAgent()
       fi
     fi
     echo "    <notify_time>20</notify_time>" >> $NEWCONFIG
-    echo "    <time-reconnect>60</time-reconnect>" >> $NEWCONFIG
     echo "    <auto_restart>yes</auto_restart>" >> $NEWCONFIG
     echo "  </client>" >> $NEWCONFIG
     echo "" >> $NEWCONFIG
@@ -554,6 +553,11 @@ InstallCommon()
             ${INSTALL} -m 0750 -o root -g 0 build/lib/libagent_metadata.dylib ${INSTALLDIR}/lib
             install_name_tool -id @rpath/../lib/libagent_metadata.dylib ${INSTALLDIR}/lib/libagent_metadata.dylib
         fi
+        if [ -f build/lib/libhttps_client.dylib ]
+        then
+            ${INSTALL} -m 0750 -o root -g 0 build/lib/libhttps_client.dylib ${INSTALLDIR}/lib
+            install_name_tool -id @rpath/../lib/libhttps_client.dylib ${INSTALLDIR}/lib/libhttps_client.dylib
+        fi
     elif [ -f build/lib/libdbsync.so ]
     then
         ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libdbsync.so ${INSTALLDIR}/lib
@@ -576,6 +580,14 @@ InstallCommon()
 
         if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
             chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libagent_metadata.so
+        fi
+    fi
+    if [ -f build/lib/libhttps_client.so ]
+    then
+        ${INSTALL} -m 0750 -o root -g ${WAZUH_GROUP} build/lib/libhttps_client.so ${INSTALLDIR}/lib
+
+        if ([ "X${DIST_NAME}" = "Xrhel" ] || [ "X${DIST_NAME}" = "Xcentos" ] || [ "X${DIST_NAME}" = "XCentOS" ]) && [ ${DIST_VER} -le 5 ]; then
+            chcon -t textrel_shlib_t ${INSTALLDIR}/lib/libhttps_client.so
         fi
     fi
 
