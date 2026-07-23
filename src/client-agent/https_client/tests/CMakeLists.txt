@@ -45,8 +45,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   add_custom_command(
     TARGET https_client_unit_test
     POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_BINARY_DIR}/lib/libhttps_client.dll"
-            "$<TARGET_FILE_DIR:https_client_unit_test>"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${CMAKE_BINARY_DIR}/bin/libhttps_client.dll"
+            "$<TARGET_FILE_DIR:https_client_unit_test>/libhttps_client.dll"
     COMMENT "Copying libhttps_client.dll next to the test executable")
 endif()
 
