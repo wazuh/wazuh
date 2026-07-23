@@ -224,8 +224,12 @@ int parse_agent_update_msg (char *msg,
                 if (str_tmp = strstr(line, " / "), str_tmp) {
                     *str_tmp = '\0';
                     str_tmp += 3;
-                    os_strdup(line, agent_data->version);
-                    os_strdup(str_tmp, agent_data->config_sum);
+                    if (*line) {
+                        os_strdup(line, agent_data->version);
+                    }
+                    if (*str_tmp) {
+                        os_strdup(str_tmp, agent_data->config_sum);
+                    }
                 }
                 else if (str_tmp = strstr(line, __ossec_name), str_tmp) {
                     // If for some reason the separator between Wazuh version and config sum is
