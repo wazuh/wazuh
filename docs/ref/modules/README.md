@@ -26,7 +26,7 @@
 - [SCA](sca/index.html) - Security Configuration Assessment for compliance evaluation
 - [Server API](server-api/index.html) - RESTful management API
 - [Syscollector](syscollector/index.html) - System inventory collection and monitoring
-- [Task Manager](task_manager/index.html) - Task orchestration for distributed operations
+- [Task Manager](task_manager/index.html) - Generic manager-side task broker for asynchronous agent operations
 - [Vulnerability Scanner](vulnerability-scanner/index.html) - CVE detection and vulnerability assessment
 - [Wazuh DB](wazuh_db/index.html) - Persistent SQLite database daemon for agent and task state
 - [Agent Sync Protocol](utils/sync-protocol/index.html) - Agent-side library for synchronizing data with the manager
