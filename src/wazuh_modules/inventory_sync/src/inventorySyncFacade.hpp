@@ -1252,6 +1252,38 @@ public:
                                     document["wazuh"]["cluster"]["name"] =
                                         !res.context->clusterName.empty() ? res.context->clusterName : m_clusterName;
 
+                                    // Fetch-merge-reindex POC: preserve top-level fields added outside the
+                                    // agent/Manager flow before replacing the complete state document.
+                                    // A production implementation must batch these reads and use optimistic
+                                    // concurrency control to close the race between this fetch and the bulk write.
+                                    const auto existingDocumentQuery =
+                                        InventorySyncQueryBuilder::buildDocumentByIdQuery(elementId);
+                                    const auto existingDocumentResult = m_indexerConnector->executeSearchQuery(
+                                        std::string {rawIndex}, existingDocumentQuery);
+
+                                    if (!existingDocumentResult.contains("hits") ||
+                                        !existingDocumentResult["hits"].is_object() ||
+                                        !existingDocumentResult["hits"].contains("hits") ||
+                                        !existingDocumentResult["hits"]["hits"].is_array())
+                                    {
+                                        throw InventorySyncException(
+                                            "Invalid Indexer response while fetching an existing state document");
+                                    }
+
+                                    const auto& existingDocumentHits = existingDocumentResult["hits"]["hits"];
+                                    if (!existingDocumentHits.empty())
+                                    {
+                                        const auto& hit = existingDocumentHits.front();
+                                        if (!hit.contains("_source") || !hit["_source"].is_object())
+                                        {
+                                            throw InventorySyncException(
+                                                "Existing state document does not contain a valid _source");
+                                        }
+
+                                        InventorySyncQueryBuilder::preserveUnknownTopLevelFields(document,
+                                                                                                 hit["_source"]);
+                                    }
+
                                     thread_local std::string dataString;
                                     dataString = document.dump();
 
