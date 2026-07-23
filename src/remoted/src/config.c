@@ -91,6 +91,8 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     cfg->queue_size = 131072;
     cfg->allow_higher_versions = REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT;
     cfg->connection_overtake_time = 60;
+    cfg->shared_config_batch_size = REMOTED_SHARED_CONFIG_BATCH_SIZE_DEFAULT;
+    cfg->shared_config_interval = REMOTED_SHARED_CONFIG_INTERVAL_DEFAULT;
 
     // Initialize all internal options
     receive_chunk = (unsigned)getDefine_Int_default("remoted", "receive_chunk", 1024, 16384, 4096);
@@ -205,6 +207,8 @@ cJSON *getRemoteConfig(void) {
     }
 
     cJSON_AddNumberToObject(conn, "connection_overtake_time", logr.connection_overtake_time);
+    cJSON_AddNumberToObject(conn, "shared_config_batch_size", logr.shared_config_batch_size);
+    cJSON_AddNumberToObject(conn, "shared_config_interval", logr.shared_config_interval);
 
     cJSON_AddItemToArray(rem,conn);
 

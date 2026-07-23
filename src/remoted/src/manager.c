@@ -160,6 +160,33 @@ STATIC cJSON *assign_group_to_agent_worker(const char *agent_id, const char *md5
 static int send_file_toagent(const char *agent_id, const char *group, const char *name, const char *sum, char *sharedcfg_dir);
 
 /**
+ * @brief Update a token-bucket state for shared configuration distribution.
+ *
+ * Pure helper (no clock, no sleep) so the pacing math can be unit-tested
+ * deterministically. Refills the bucket according to the elapsed time and, when
+ * a token is available, grants it (returning the count already decremented by
+ * one). Otherwise it reports how long the caller must wait for the next token.
+ *
+ * @param tokens Current available tokens.
+ * @param elapsed Seconds elapsed since the last refill.
+ * @param batch_size Bucket capacity and refill amount per interval (agents).
+ * @param interval Refill window, in seconds.
+ * @param[out] wait_seconds Seconds to wait before a token is available (0 when granted).
+ * @return Updated token count (decremented by one when a token is granted).
+ */
+static double shared_config_bucket_update(double tokens, double elapsed, int batch_size, int interval, double *wait_seconds);
+
+/**
+ * @brief Block the calling sender thread until a shared configuration distribution slot is free.
+ *
+ * Paces how fast agents are served an updated merged.mg using a token bucket
+ * shared across all sender threads. When throttling is disabled
+ * (shared_config_batch_size <= 0) it returns immediately, preserving the legacy
+ * "send as fast as possible" behavior.
+ */
+static void throttle_shared_config_distribution(void);
+
+/**
  * @brief Validate files to be shared with agents, update invalid file hash table
  * @param src_path Source path of the files to validate
  * @param finalfp Handler of temporal file
@@ -202,6 +229,14 @@ OSHash *pending_data;
 /* pthread mutex variables */
 static pthread_mutex_t lastmsg_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t files_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/* Shared configuration distribution rate limiter (token bucket).
+ * Shared across all sender threads to progressively distribute updated group
+ * configuration and, in turn, stagger the restarts agents perform on receipt. */
+static pthread_mutex_t shared_config_throttle_mutex = PTHREAD_MUTEX_INITIALIZER;
+static double shared_config_tokens = 0;
+static struct timespec shared_config_last_refill;
+static bool shared_config_throttle_initialized = false;
 
 /* Hash table for multigroups */
 OSHash *m_hash;
@@ -1784,6 +1819,72 @@ static int send_file_toagent(const char *agent_id, const char *group, const char
     return OS_SUCCESS;
 }
 
+static double shared_config_bucket_update(double tokens, double elapsed, int batch_size, int interval, double *wait_seconds)
+{
+    double rate = (double)batch_size / (double)interval;
+
+    if (elapsed > 0) {
+        tokens += elapsed * rate;
+        if (tokens > batch_size) {
+            tokens = batch_size;
+        }
+    }
+
+    if (tokens >= 1.0) {
+        *wait_seconds = 0;
+        return tokens - 1.0;
+    }
+
+    *wait_seconds = (1.0 - tokens) / rate;
+    return tokens;
+}
+
+static void throttle_shared_config_distribution(void)
+{
+    int batch_size = logr.shared_config_batch_size;
+    int interval = logr.shared_config_interval;
+
+    /* Throttling disabled: keep the legacy behavior */
+    if (batch_size <= 0 || interval <= 0) {
+        return;
+    }
+
+    w_mutex_lock(&shared_config_throttle_mutex);
+
+    if (!shared_config_throttle_initialized) {
+        clock_gettime(CLOCK_MONOTONIC, &shared_config_last_refill);
+        /* Allow an initial burst of a full batch */
+        shared_config_tokens = batch_size;
+        shared_config_throttle_initialized = true;
+    }
+
+    while (1) {
+        struct timespec now;
+        clock_gettime(CLOCK_MONOTONIC, &now);
+
+        double elapsed = time_diff(&shared_config_last_refill, &now);
+        shared_config_last_refill = now;
+
+        double wait_seconds = 0;
+        shared_config_tokens = shared_config_bucket_update(shared_config_tokens, elapsed, batch_size, interval, &wait_seconds);
+
+        if (wait_seconds <= 0) {
+            break;
+        }
+
+        w_mutex_unlock(&shared_config_throttle_mutex);
+
+        struct timespec ts;
+        ts.tv_sec = (time_t)wait_seconds;
+        ts.tv_nsec = (long)((wait_seconds - (double)ts.tv_sec) * 1e9);
+        nanosleep(&ts, NULL);
+
+        w_mutex_lock(&shared_config_throttle_mutex);
+    }
+
+    w_mutex_unlock(&shared_config_throttle_mutex);
+}
+
 /* Wait for new messages to read */
 void *wait_for_msgs(__attribute__((unused)) void *none)
 {
@@ -1798,6 +1899,10 @@ void *wait_for_msgs(__attribute__((unused)) void *none)
 
         /* Pop data from queue */
         char *agent_id = linked_queue_pop_ex(pending_queue);
+
+        /* Pace the distribution to avoid load spikes on large groups. This also
+        * staggers the restarts agents trigger when they receive the new config. */
+        throttle_shared_config_distribution();
 
         w_mutex_lock(&lastmsg_mutex);
 
@@ -1883,6 +1988,7 @@ void manager_init()
     _stime = time(0);
     m_hash = OSHash_Create();
     invalid_files = OSHash_Create();
+    shared_config_throttle_initialized = false;
 
     mdebug1("Running manager_init");
 

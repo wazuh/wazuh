@@ -51,6 +51,8 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
     const char *xml_connection_overtake_time = "connection_overtake_time";
+    const char *xml_shared_config_batch_size = "shared_config_batch_size";
+    const char *xml_shared_config_interval = "shared_config_interval";
 
     logr = (remoted *)d1;
 
@@ -132,6 +134,28 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->connection_overtake_time);
                 } else {
                     logr->connection_overtake_time = connection_overtake_time;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_shared_config_batch_size) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->shared_config_batch_size);
+            } else {
+                int shared_config_batch_size = atoi(node[i]->content);
+                if (shared_config_batch_size < 0 || shared_config_batch_size > REMOTED_SHARED_CONFIG_BATCH_SIZE_MAX) {
+                    mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->shared_config_batch_size);
+                } else {
+                    logr->shared_config_batch_size = shared_config_batch_size;
+                }
+            }
+        } else if (strcmp(node[i]->element, xml_shared_config_interval) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->shared_config_interval);
+            } else {
+                int shared_config_interval = atoi(node[i]->content);
+                if (shared_config_interval < 1 || shared_config_interval > REMOTED_SHARED_CONFIG_INTERVAL_MAX) {
+                    mwarn("Invalid value for element '%s':'%s'. Setting to default value: '%d'.", node[i]->element, node[i]->content, logr->shared_config_interval);
+                } else {
+                    logr->shared_config_interval = shared_config_interval;
                 }
             }
         } else if (strcasecmp(node[i]->element, xml_remote_agents) == 0) {

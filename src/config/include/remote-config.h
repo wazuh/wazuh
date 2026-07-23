@@ -25,6 +25,11 @@
 
 #define REMOTED_ALLOW_AGENTS_HIGHER_VERSIONS_DEFAULT false  ///< Default allow_higher_versions value (false)
 
+#define REMOTED_SHARED_CONFIG_BATCH_SIZE_DEFAULT 0   ///< Default shared_config_batch_size (0 = throttling disabled)
+#define REMOTED_SHARED_CONFIG_BATCH_SIZE_MAX     100000 ///< Maximum agents served per shared config window
+#define REMOTED_SHARED_CONFIG_INTERVAL_DEFAULT   5   ///< Default shared_config_interval in seconds
+#define REMOTED_SHARED_CONFIG_INTERVAL_MAX       3600 ///< Maximum shared_config_interval in seconds
+
 #include "shared.h"
 #include "global-config.h"
 
@@ -45,6 +50,8 @@ typedef struct _remoted {
     bool worker_node;
     int rids_closing_time;
     int connection_overtake_time;
+    int shared_config_batch_size;   ///< Max agents served an updated shared config per window (0 = throttling disabled)
+    int shared_config_interval;     ///< Length of the shared config distribution window, in seconds
     _Config global;
 } remoted;
 
