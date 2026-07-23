@@ -3146,6 +3146,91 @@ void test_handle_outgoing_data_to_tcp_socket_success(void** state)
     handle_outgoing_data_to_tcp_socket(sock_client);
 }
 
+// Tests remoted_module_https_config
+//
+// getDefine_Int_default() is wrapped as a plain FIFO mock (see
+// validate_op_wrappers.c), so these tests only verify that each internal option's
+// value lands in the right remoted_module_config_t field, in the fixed call order
+// remoted_module_https_config() uses. The "invalid value -> process exits" behavior
+// itself lives entirely in the real (unwrapped) getDefine_Int_default()/
+// parse_define_int_value() and is not reachable through this mock.
+
+void test_remoted_module_https_config_defaults(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 4);
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 30);
+    will_return(__wrap_getDefine_Int_default, 2048);
+    will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 8192);
+    will_return(__wrap_getDefine_Int_default, 64);
+    will_return(__wrap_getDefine_Int_default, 4);
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 8192);
+
+    remoted_module_https_config(&rm_config);
+
+    // port and http_max_body_size are not read here -- they come from
+    // wazuh-manager.conf (<remote>), not internal options; untouched means 0.
+    assert_int_equal(rm_config.port, 0);
+    assert_int_equal(rm_config.io_threads, 2);
+    assert_int_equal(rm_config.http_worker_threads, 4);
+    assert_int_equal(rm_config.http_max_body_size, 0);
+    assert_int_equal(rm_config.http_read_timeout, 10);
+    assert_int_equal(rm_config.http_write_timeout, 10);
+    assert_int_equal(rm_config.http_request_timeout, 30);
+    assert_int_equal(rm_config.http_max_url_size, 2048);
+    assert_int_equal(rm_config.http_max_header_name_size, 256);
+    assert_int_equal(rm_config.http_max_header_value_size, 8192);
+    assert_int_equal(rm_config.http_max_header_count, 64);
+    assert_int_equal(rm_config.http_max_pipelined_requests, 4);
+    assert_int_equal(rm_config.http_concurrent_accepts, 2);
+    assert_int_equal(rm_config.http_buffer_size, 8192);
+}
+
+void test_remoted_module_https_config_custom_values(void** state)
+{
+    (void) state;
+    remoted_module_config_t rm_config = {0};
+
+    will_return(__wrap_getDefine_Int_default, 8);
+    will_return(__wrap_getDefine_Int_default, 16);
+    will_return(__wrap_getDefine_Int_default, 20);
+    will_return(__wrap_getDefine_Int_default, 15);
+    will_return(__wrap_getDefine_Int_default, 60);
+    will_return(__wrap_getDefine_Int_default, 4096);
+    will_return(__wrap_getDefine_Int_default, 512);
+    will_return(__wrap_getDefine_Int_default, 16384);
+    will_return(__wrap_getDefine_Int_default, 128);
+    will_return(__wrap_getDefine_Int_default, 8);
+    will_return(__wrap_getDefine_Int_default, 4);
+    will_return(__wrap_getDefine_Int_default, 16384);
+
+    remoted_module_https_config(&rm_config);
+
+    // port and http_max_body_size are not read here -- they come from
+    // wazuh-manager.conf (<remote>), not internal options; untouched means 0.
+    assert_int_equal(rm_config.port, 0);
+    assert_int_equal(rm_config.io_threads, 8);
+    assert_int_equal(rm_config.http_worker_threads, 16);
+    assert_int_equal(rm_config.http_max_body_size, 0);
+    assert_int_equal(rm_config.http_read_timeout, 20);
+    assert_int_equal(rm_config.http_write_timeout, 15);
+    assert_int_equal(rm_config.http_request_timeout, 60);
+    assert_int_equal(rm_config.http_max_url_size, 4096);
+    assert_int_equal(rm_config.http_max_header_name_size, 512);
+    assert_int_equal(rm_config.http_max_header_value_size, 16384);
+    assert_int_equal(rm_config.http_max_header_count, 128);
+    assert_int_equal(rm_config.http_max_pipelined_requests, 8);
+    assert_int_equal(rm_config.http_concurrent_accepts, 4);
+    assert_int_equal(rm_config.http_buffer_size, 16384);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -3205,6 +3290,9 @@ int main(void)
         // Tests handle_outgoing_data_to_tcp_socket
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EAGAIN),
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_case_1_EPIPE),
-        cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success)};
+        cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success),
+        // Tests remoted_module_https_config
+        cmocka_unit_test(test_remoted_module_https_config_defaults),
+        cmocka_unit_test(test_remoted_module_https_config_custom_values)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

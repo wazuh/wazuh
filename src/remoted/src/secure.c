@@ -74,6 +74,9 @@ STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_udp_socket(struct sockaddr_storage * peer_info);
 STATIC void handle_new_tcp_connection(wnotify_t * notify, struct sockaddr_storage * peer_info);
 
+// Read the remoted.http_* internal options into the C++ module's config struct
+STATIC void remoted_module_https_config(remoted_module_config_t *rm_config);
+
 // Headers for messages
 #define UPGRADE_ACK_HEADER "u:upgrade_module:"
 #define UPGRADE_ACK_HEADER_SIZE 17
@@ -204,6 +207,25 @@ typedef struct {
     w_rr_queue_t      *events_queue;      // round robbin event ring
 } rem_handler_args_t;
 
+/**
+ * @brief Read the HTTPS agent server's advanced settings (`remoted.http_*` internal
+ *        options) into the config struct passed to remoted_module_start().
+ */
+STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
+    rm_config->io_threads = getDefine_Int_default("remoted", "http_io_threads", 1, 64, 2);
+    rm_config->http_worker_threads = getDefine_Int_default("remoted", "http_worker_threads", 1, 256, 4);
+    rm_config->http_read_timeout = getDefine_Int_default("remoted", "http_read_timeout", 1, 300, 10);
+    rm_config->http_write_timeout = getDefine_Int_default("remoted", "http_write_timeout", 1, 300, 10);
+    rm_config->http_request_timeout = getDefine_Int_default("remoted", "http_request_timeout", 1, 600, 30);
+    rm_config->http_max_url_size = getDefine_Int_default("remoted", "http_max_url_size", 1, 65536, 2048);
+    rm_config->http_max_header_name_size = getDefine_Int_default("remoted", "http_max_header_name_size", 1, 8192, 256);
+    rm_config->http_max_header_value_size = getDefine_Int_default("remoted", "http_max_header_value_size", 1, 65536, 8192);
+    rm_config->http_max_header_count = getDefine_Int_default("remoted", "http_max_header_count", 1, 1024, 64);
+    rm_config->http_max_pipelined_requests = getDefine_Int_default("remoted", "http_max_pipelined_requests", 1, 64, 4);
+    rm_config->http_concurrent_accepts = getDefine_Int_default("remoted", "http_concurrent_accepts", 1, 64, 2);
+    rm_config->http_buffer_size = getDefine_Int_default("remoted", "http_buffer_size", 1, 1048576, 8192);
+}
+
 /* Handle secure connections */
 void HandleSecure()
 {
@@ -294,9 +316,9 @@ void HandleSecure()
         remoted_module_config_t rm_config = {0};
         rm_config.worker_threads = worker_pool;
         rm_config.queue_size = (int)logr.queue_size;
-        // rm_config.port is the HTTPS listening port, unrelated to logr.port (remoted's
-        // own classic TCP/UDP port, already bound by the time we get here). Left at 0
-        // so the module falls back to WAZUH_REMOTED_HTTPS_PORT/its own default.
+        // rm_config.port is the HTTPS listening port -- unrelated to logr.port (remoted's
+        // own classic TCP/UDP port, already bound by the time we get here).
+        remoted_module_https_config(&rm_config);
         rm_config.worker_node = logr.worker_node;
 
         char *rm_cluster_name = get_cluster_name();

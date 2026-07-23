@@ -47,16 +47,41 @@ extern "C"
      */
     typedef struct remoted_module_config_t
     {
-        int worker_threads;         ///< Number of worker threads the module should run.
-        int queue_size;             ///< Input queue capacity.
-        int port;                   ///< HTTPS listening port (<=0 -> module default/env).
-        bool worker_node;           ///< true if this manager is a cluster worker node.
-        char cluster_name[256];     ///< Cluster name.
-        char node_name[256];        ///< Cluster node name.
-        char certificate_path[512]; ///< TLS certificate chain (PEM) path (empty -> default/env).
-        char private_key_path[512]; ///< TLS private key (PEM) path (empty -> default/env).
-        int io_threads;             ///< HTTPS I/O threads (<=0 -> module default/env).
-        int http_worker_threads;    ///< HTTPS handler worker-pool size (<=0 -> worker_threads/default/env).
+        int worker_threads;              ///< Number of worker threads the module should run.
+        int queue_size;                  ///< Input queue capacity.
+        int port;                        ///< HTTPS listening port. Regular <remote> setting (wazuh-manager.conf),
+                                         ///< not an internal option. <=0 -> module default.
+        bool worker_node;                ///< true if this manager is a cluster worker node.
+        char cluster_name[256];          ///< Cluster name.
+        char node_name[256];             ///< Cluster node name.
+        char certificate_path[512];      ///< TLS certificate chain (PEM) path (empty -> module default).
+        char private_key_path[512];      ///< TLS private key (PEM) path (empty -> module default).
+        int io_threads;                  ///< HTTPS I/O threads. <=0 -> module default (see remoted.http_io_threads).
+        int http_worker_threads;         ///< HTTPS handler worker-pool size. <=0 -> module default
+                                         ///< (see remoted.http_worker_threads).
+        int http_max_body_size;          ///< Transport body cap, bytes. Regular <remote> setting
+                                         ///< (wazuh-manager.conf), not an internal option. <=0 -> module default.
+        int http_read_timeout;           ///< Seconds to wait for a full request on a connection (also covers
+                                         ///< the TLS handshake window). <=0 -> module default
+                                         ///< (see remoted.http_read_timeout).
+        int http_write_timeout;          ///< Seconds to wait for a response write to complete. <=0 -> module
+                                         ///< default (see remoted.http_write_timeout).
+        int http_request_timeout;        ///< Seconds a request may take to be handled end-to-end. <=0 ->
+                                         ///< module default (see remoted.http_request_timeout).
+        int http_max_url_size;           ///< Max URL size, bytes. <=0 -> module default
+                                         ///< (see remoted.http_max_url_size).
+        int http_max_header_name_size;   ///< Max HTTP header name size, bytes. <=0 -> module default
+                                         ///< (see remoted.http_max_header_name_size).
+        int http_max_header_value_size;  ///< Max HTTP header value size, bytes. <=0 -> module default
+                                         ///< (see remoted.http_max_header_value_size).
+        int http_max_header_count;       ///< Max number of HTTP headers per request. <=0 -> module default
+                                         ///< (see remoted.http_max_header_count).
+        int http_max_pipelined_requests; ///< Max in-flight unanswered requests per connection. <=0 ->
+                                         ///< module default (see remoted.http_max_pipelined_requests).
+        int http_concurrent_accepts;     ///< Max concurrent in-progress TCP accepts. <=0 -> module
+                                         ///< default (see remoted.http_concurrent_accepts).
+        int http_buffer_size;            ///< Socket read buffer size, bytes. <=0 -> module default
+                                         ///< (see remoted.http_buffer_size).
     } remoted_module_config_t;
 
     /**
