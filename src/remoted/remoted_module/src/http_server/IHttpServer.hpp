@@ -117,6 +117,17 @@ namespace remoted::http
         std::size_t ioThreads {2};                     ///< RESTinio/asio I/O threads (accept + read/write).
         std::size_t workerThreads {4};                 ///< Handler worker-pool size (blocking work offload).
         std::size_t maxBodySize {16U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
+        std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection (also covers
+                                                       ///< the TLS handshake window).
+        std::size_t writeTimeoutSec {10};              ///< Time allowed to write a response.
+        std::size_t requestTimeoutSec {30};            ///< Time allowed to handle a request end-to-end.
+        std::size_t maxUrlSize {2048};                 ///< Max URL size, bytes.
+        std::size_t maxHeaderNameSize {256};           ///< Max HTTP header name size, bytes.
+        std::size_t maxHeaderValueSize {8192};         ///< Max HTTP header value size, bytes.
+        std::size_t maxHeaderCount {64};               ///< Max number of HTTP headers per request.
+        std::size_t maxPipelinedRequests {4};          ///< Max in-flight unanswered requests per connection.
+        std::size_t concurrentAccepts {2};             ///< Max concurrent in-progress TCP accepts.
+        std::size_t bufferSize {8192};                 ///< Socket read buffer size, bytes.
     };
 
     /**
