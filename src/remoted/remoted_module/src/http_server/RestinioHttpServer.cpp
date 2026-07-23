@@ -280,18 +280,21 @@ namespace remoted::http
                                      { options.set_option(asio::ip::tcp::acceptor::reuse_address(true)); })
             .request_handler(std::move(requestRouter))
             .tls_context(std::move(tlsContext))
-            .buffer_size(8192)
-            .read_next_http_message_timelimit(std::chrono::seconds {10})
-            .write_http_response_timelimit(std::chrono::seconds {10})
-            .handle_request_timeout(std::chrono::seconds {30})
-            .max_pipelined_requests(4)
-            .concurrent_accepts_count(std::min<std::size_t>(config.ioThreads, 8))
+            .buffer_size(config.bufferSize)
+            // read_next_http_message_timelimit also stands in for a TLS handshake timeout:
+            // it starts counting as soon as the connection is established, before anything
+            // has been read, so it already bounds a stalled/never-completed handshake.
+            .read_next_http_message_timelimit(std::chrono::seconds {config.readTimeoutSec})
+            .write_http_response_timelimit(std::chrono::seconds {config.writeTimeoutSec})
+            .handle_request_timeout(std::chrono::seconds {config.requestTimeoutSec})
+            .max_pipelined_requests(config.maxPipelinedRequests)
+            .concurrent_accepts_count(config.concurrentAccepts)
             .separate_accept_and_create_connect(true)
             .incoming_http_msg_limits(restinio::incoming_http_msg_limits_t {}
-                                          .max_url_size(2048)
-                                          .max_field_name_size(256)
-                                          .max_field_value_size(8192)
-                                          .max_field_count(64)
+                                          .max_url_size(config.maxUrlSize)
+                                          .max_field_name_size(config.maxHeaderNameSize)
+                                          .max_field_value_size(config.maxHeaderValueSize)
+                                          .max_field_count(config.maxHeaderCount)
                                           .max_body_size(config.maxBodySize));
 
         try
