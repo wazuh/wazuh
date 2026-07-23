@@ -30,6 +30,7 @@
 #include "https_client_bridge.h"
 
 #include <ctype.h>
+#include <pthread.h>
 #include <stdatomic.h>
 #include <unistd.h>
 
@@ -47,6 +48,17 @@ static hc_handle *g_https_client = NULL;
  * w_https_client_start(), which is what normally resets this) and need to
  * reset it themselves between cases. */
 _Atomic bool g_https_client_stopping = false;
+
+/* Serializes the re-enroll thread's key reload against shutdown's teardown.
+ * The thread's hc_set_agent_key() touches the handle; w_https_client_stop()
+ * destroys it. Without this the stopping-flag check is a check-then-act race:
+ * the thread could pass the check, then stop() destroys the handle, then the
+ * thread calls into freed memory. Holding this across {set the flag} on the
+ * stop side and {check the flag + touch the handle} on the thread side makes
+ * the two mutually exclusive, so the handle is either still valid or provably
+ * not touched. NOT held across hc_destroy() (which joins module threads and
+ * could run long / re-enter). */
+static pthread_mutex_t g_https_client_lock = PTHREAD_MUTEX_INITIALIZER;
 
 /* Mirrors the incremental back-off already used for the initial-enrollment
  * loop (start_agent.c's w_agentd_keys_init: 5s steps up to a 60s cap). Not
@@ -98,7 +110,15 @@ void *bridge_reenroll_thread(void *arg)
         }
     }
 
+    /* Under the lock: either we see the stopping flag (w_https_client_stop()
+     * set it before it will destroy the handle) and abandon without touching
+     * the handle, or we reload the key on a still-valid handle while stop()
+     * blocks behind us -- it cannot set the flag, and so cannot reach
+     * hc_destroy(), until we release. */
+    w_mutex_lock(&g_https_client_lock);
+
     if (atomic_load(&g_https_client_stopping)) {
+        w_mutex_unlock(&g_https_client_lock);
         mdebug1("https_client: agent shutting down; not reloading the signing key.");
         return NULL;
     }
@@ -108,6 +128,7 @@ void *bridge_reenroll_thread(void *arg)
         merror("https_client: re-enrolled, but the new key failed validation; traffic stays paused.");
     }
 
+    w_mutex_unlock(&g_https_client_lock);
     return NULL;
 }
 
@@ -279,9 +300,14 @@ void w_https_client_start(void)
 
 void w_https_client_stop(void)
 {
-    /* Set before hc_destroy(): a detached bridge_reenroll_thread (if one is
-     * running) checks this and will not touch the handle once it sees it. */
+    /* Set the flag under the lock so it is mutually exclusive with the re-
+     * enroll thread's key reload: we either block behind an in-flight
+     * hc_set_agent_key() (which finishes on the still-valid handle before we
+     * continue) or set the flag before the thread checks it (so it abandons
+     * without touching the handle). Only then is it safe to destroy. */
+    w_mutex_lock(&g_https_client_lock);
     atomic_store(&g_https_client_stopping, true);
+    w_mutex_unlock(&g_https_client_lock);
 
     if (g_https_client) {
         hc_destroy(g_https_client); /* Implies stop + join. */
