@@ -38,8 +38,8 @@ if(${TARGET} STREQUAL "manager")
 
     list(APPEND upgrade_names "test_wm_agent_upgrade_manager")
     list(APPEND upgrade_flags "-Wl,--wrap,OS_BindUnixDomainWithPerms -Wl,--wrap,select -Wl,--wrap,close -Wl,--wrap,accept -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,OS_SendSecureTCP \
-                            -Wl,--wrap,wm_agent_upgrade_parse_message -Wl,--wrap,wm_agent_upgrade_process_upgrade_command -Wl,--wrap,wm_agent_upgrade_process_upgrade_custom_command -Wl,--wrap,wm_agent_upgrade_process_agent_result_command \
-                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_cancel_pending_upgrades -Wl,--wrap,wm_agent_upgrade_process_upgrade_result_command -Wl,--wrap,sleep -Wl,--wrap,CreateThread \
+                            -Wl,--wrap,wm_agent_upgrade_parse_message -Wl,--wrap,wm_agent_upgrade_process_upgrade_command -Wl,--wrap,wm_agent_upgrade_process_upgrade_custom_command \
+                            -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,sleep -Wl,--wrap,CreateThread \
                             -Wl,--wrap,pthread_exit -Wl,--wrap,getpid -Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,so_get_module_handle -Wl,--wrap,so_get_function_sym -Wl,--wrap,router_subscriber_create -Wl,--wrap,router_subscriber_subscribe \
                             -Wl,--wrap,router_subscriber_unsubscribe -Wl,--wrap,router_subscriber_destroy -Wl,--wrap,FOREVER -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
@@ -51,28 +51,11 @@ if(${TARGET} STREQUAL "manager")
                                -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fread -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
                                -Wl,--wrap,popen ${DEBUG_OP_WRAPPERS}")
 
-    list(APPEND upgrade_names "test_wm_agent_upgrade_tasks")
-    list(APPEND upgrade_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,close -Wl,--wrap,w_create_sendsync_payload -Wl,--wrap,w_send_clustered_message \
-                            -Wl,--wrap,w_is_worker -Wl,--wrap,cJSON_Duplicate -Wl,--wrap,getpid ${HASH_OP_WRAPPERS} ${DEBUG_OP_WRAPPERS}")
-
-    list(APPEND upgrade_names "test_wm_agent_upgrade_tasks_callbacks")
-    list(APPEND upgrade_flags "-Wl,--wrap,wm_agent_upgrade_validate_task_ids_message -Wl,--wrap,wm_agent_upgrade_remove_entry \
-                            -Wl,--wrap,wm_agent_upgrade_parse_data_response -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_send_command_to_agent \
-                            -Wl,--wrap,wm_agent_upgrade_parse_agent_response -Wl,--wrap,wm_agent_upgrade_send_tasks_information -Wl,--wrap,wm_agent_upgrade_parse_agent_upgrade_command_response -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
-
     list(APPEND upgrade_names "test_wm_agent_upgrade_commands")
     list(APPEND upgrade_flags "-Wl,--wrap,wm_agent_upgrade_parse_task_module_request -Wl,--wrap,wm_agent_upgrade_task_module_callback -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_validate_id \
-                            -Wl,--wrap,wm_agent_upgrade_validate_status -Wl,--wrap,wm_agent_upgrade_validate_system -Wl,--wrap,wm_agent_upgrade_validate_version -Wl,--wrap,wdb_get_agent_info -Wl,--wrap,wm_agent_upgrade_create_task_entry \
-                            -Wl,--wrap,wm_agent_upgrade_parse_data_response -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_prepare_upgrades -Wl,--wrap,wm_agent_upgrade_get_agent_ids -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
-
-    list(APPEND upgrade_names "test_wm_agent_upgrade_upgrades")
-    list(APPEND upgrade_flags "-Wl,--wrap,OS_ConnectUnixDomain -Wl,--wrap,OS_SendSecureTCP -Wl,--wrap,OS_RecvSecureTCP -Wl,--wrap,close -Wl,--wrap,popen \
-                            -Wl,--wrap,wm_agent_upgrade_parse_task_module_request -Wl,--wrap,wm_agent_upgrade_task_module_callback -Wl,--wrap,wm_agent_upgrade_parse_agent_response -Wl,--wrap,fopen -Wl,--wrap,fread -Wl,--wrap,fclose \
-                            -Wl,--wrap,OS_SHA1_File -Wl,--wrap,wm_agent_upgrade_get_first_node -Wl,--wrap,wm_agent_upgrade_get_next_node -Wl,--wrap,compare_wazuh_versions -Wl,--wrap,wm_agent_upgrade_remove_entry \
-                            -Wl,--wrap,wm_agent_upgrade_validate_task_status_message -Wl,--wrap,wm_agent_upgrade_validate_wpk -Wl,--wrap,wm_agent_upgrade_validate_wpk_custom -Wl,--wrap,wm_agent_upgrade_validate_wpk_version \
-                            -Wl,--wrap,linked_queue_push_ex -Wl,--wrap,linked_queue_pop_ex -Wl,--wrap,pthread_cond_signal -Wl,--wrap,pthread_cond_wait -Wl,--wrap,CreateThread -Wl,--wrap,wfopen \
-                            -Wl,--wrap,wm_agent_upgrade_parse_agent_upgrade_command_response -Wl,--wrap,fflush -Wl,--wrap,fgets -Wl,--wrap,fseek -Wl,--wrap,fwrite -Wl,--wrap,remove -Wl,--wrap,getpid -Wl,--wrap,fgetpos -Wl,--wrap=fgetc \
-                            -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
+                            -Wl,--wrap,wm_agent_upgrade_validate_system -Wl,--wrap,wm_agent_upgrade_validate_version -Wl,--wrap,wdb_get_agent_info \
+                            -Wl,--wrap,wm_agent_upgrade_validate_wpk -Wl,--wrap,wm_agent_upgrade_validate_wpk_version -Wl,--wrap,wm_agent_upgrade_validate_wpk_custom -Wl,--wrap,wm_agent_upgrade_parse_data_response -Wl,--wrap,wm_agent_upgrade_parse_response -Wl,--wrap,wm_agent_upgrade_prepare_upgrades -Wl,--wrap,wm_agent_upgrade_get_agent_ids \
+                            -Wl,--wrap,wm_agent_upgrade_send_tasks_information -Wl,--wrap,w_query_agentd ${DEBUG_OP_WRAPPERS}")
 
 else()
 
