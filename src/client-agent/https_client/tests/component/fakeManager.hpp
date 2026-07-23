@@ -13,6 +13,7 @@
 #define _HC_FAKE_MANAGER_HPP
 
 #include "cmacSigner.hpp"
+#include "digest.hpp"
 #include "keyProvider.hpp"
 
 #include "external/cpp-httplib/httplib.h"
@@ -33,7 +34,7 @@
  *        idiom). It validates the AES-CMAC of every request server-side with
  *        the shared key, so a 200 proves real cross-implementation auth
  *        interop; a mismatch yields 401. It supports a one-shot 503 (back-
- *        pressure).
+ *        pressure) and a 426 mode.
  *
  * The child process runs the server; the parent asserts on the responses it
  * receives (the two sides do not share memory).
@@ -41,10 +42,21 @@
 class FakeManager final
 {
     public:
-        FakeManager(uint16_t port, const std::string& keyHex, bool tls = false)
+        /// settingsFlipAfter > 0: after that many notifies the served startup
+        /// body (and the settings_hash reported by notify) switches to v2, so
+        /// a client detects the change and refreshes its startup data.
+        /// rotateKeyAfterNotifies > 0 with rotatedKeyHex set: after that many
+        /// notifies the server verifies ONLY against rotatedKeyHex, so the old
+        /// key starts getting 401 (#37828 re-enrollment).
+        FakeManager(uint16_t port, const std::string& keyHex, bool tls = false,
+                    int settingsFlipAfter = 0, int rotateKeyAfterNotifies = 0,
+                    std::string rotatedKeyHex = {})
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
+            , m_settingsFlipAfter(settingsFlipAfter)
+            , m_rotateKeyAfterNotifies(rotateKeyAfterNotifies)
+            , m_rotatedKeyHex(std::move(rotatedKeyHex))
         {
             m_pid = fork();
 
@@ -115,13 +127,28 @@ class FakeManager final
         void registerEndpoints(ServerT& server)
         {
             const std::string keyHex = m_keyHex;
+            const int settingsFlipAfter = m_settingsFlipAfter;
             auto backpressureArmed = std::make_shared<std::atomic<bool>>(true);
+            auto notifyCount = std::make_shared<std::atomic<int>>(0);
+
+            // The key every endpoint verifies against: after the configured
+            // notify count the server rotates to the new key, so requests
+            // signed with the old key start getting 401 (#37828).
+            const int rotateAfter = m_rotateKeyAfterNotifies;
+            const std::string rotatedKey = m_rotatedKeyHex;
+            const auto verify = [keyHex, rotatedKey, rotateAfter, notifyCount](
+                                    const std::string & target, const httplib::Request & request)
+            {
+                const bool rotated =
+                    rotateAfter > 0 && !rotatedKey.empty() && notifyCount->load() >= rotateAfter;
+                return verifyCmac(rotated ? rotatedKey : keyHex, target, request);
+            };
 
             server.Post("/stateless",
-                        [keyHex, backpressureArmed](const httplib::Request & request,
+                        [verify, backpressureArmed](const httplib::Request & request,
                                                     httplib::Response & response)
             {
-                if (!verifyCmac(keyHex, "/stateless", request))
+                if (!verify("/stateless", request))
                 {
                     response.status = 401;
                     return;
@@ -136,6 +163,63 @@ class FakeManager final
 
                 response.status = 200;
                 response.set_content(request.body, "text/plain"); // Echo for body assertions.
+            });
+
+            server.Post("/control",
+                        [verify, settingsFlipAfter, notifyCount](
+                            const httplib::Request & request, httplib::Response & response)
+            {
+                if (!verify("/control", request))
+                {
+                    response.status = 401;
+                    return;
+                }
+
+                if (request.has_header("X-Reject-Version"))
+                {
+                    response.status = 426;
+                    return;
+                }
+
+                // #37733 5.1: startup answers the handshake metadata (v1 or
+                // v2 after the settings flip); notify reports agent.groups
+                // and the settings_hash of the CURRENT startup body.
+                static const std::string startupV1 =
+                    R"({"limits":{"eps":0},"cluster":{"name":"fake","node":"node01"},)"
+                    R"("agent":{"groups":["default"]}})";
+                static const std::string startupV2 =
+                    R"({"limits":{"eps":100},"cluster":{"name":"fake","node":"node01"},)"
+                    R"("agent":{"groups":["default"]}})";
+                const bool flipped = settingsFlipAfter > 0 &&
+                                     notifyCount->load() >= settingsFlipAfter;
+                const std::string& startupBody = flipped ? startupV2 : startupV1;
+                response.status = 200;
+
+                if (request.body.find("\"type\":\"startup\"") != std::string::npos)
+                {
+                    response.set_content(startupBody, "application/json");
+                    return;
+                }
+
+                if (request.body.find("\"type\":\"notify\"") != std::string::npos)
+                {
+                    notifyCount->fetch_add(1);
+                    response.set_content(
+                        R"({"agent":{"groups":["default"]},"settings_hash":")" +
+                        sha256Hex(startupBody.data(), startupBody.size()) + R"("})",
+                        "application/json");
+                    return;
+                }
+
+                if (request.body.find("\"type\":\"shutdown\"") != std::string::npos)
+                {
+                    response.set_content("{}", "application/json"); // Disconnect ack.
+                    return;
+                }
+
+                // Unknown /control type: 400.
+                response.status = 400;
+                response.set_content(R"({"error":"unknown control type"})", "application/json");
             });
         }
 
@@ -200,6 +284,9 @@ class FakeManager final
         uint16_t m_port;
         std::string m_keyHex;
         bool m_tls {false};
+        int m_settingsFlipAfter {0};
+        int m_rotateKeyAfterNotifies {0};
+        std::string m_rotatedKeyHex;
 };
 
 #endif // _HC_FAKE_MANAGER_HPP

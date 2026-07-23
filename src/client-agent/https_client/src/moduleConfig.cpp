@@ -41,9 +41,13 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.clientCert = boundedString(config.client_cert, sizeof(config.client_cert));
     typed.clientKey = boundedString(config.client_key, sizeof(config.client_key));
     typed.ciphers = boundedString(config.ciphers, sizeof(config.ciphers));
+    typed.notifyIntervalS = orDefault<uint32_t>(config.notify_interval_s, 20);
+    typed.rejectedRetryIntervalS = orDefault<uint32_t>(config.rejected_retry_interval_s, 60);
+    typed.version = boundedString(config.version, sizeof(config.version));
     typed.requestTimeoutMs = orDefault<uint32_t>(config.request_timeout_ms, 10000);
     typed.backoffBaseMs = orDefault<uint32_t>(config.backoff_base_ms, 1000);
     typed.backoffCapMs = orDefault<uint32_t>(config.backoff_cap_ms, 60000);
+    typed.drainTimeoutMs = orDefault<uint32_t>(config.drain_timeout_ms, 5000);
     typed.spoolDir = boundedString(config.spool_dir, sizeof(config.spool_dir));
     return typed;
 }
