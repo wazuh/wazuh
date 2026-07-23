@@ -1,5 +1,5 @@
 /*
- * Wazuh Module for Agent Upgrading
+ * Wazuh Module for Task Manager
  * Copyright (C) 2015, Wazuh Inc.
  * October 19, 2020.
  *
@@ -18,99 +18,177 @@
 
 #include "wmodules.h"
 #include "wm_task_manager_tasks.h"
+#include "openssl/sha.h"
+#include <stdio.h>
+#include <string.h>
+#include <time.h>
 
-wm_task_manager_upgrade* wm_task_manager_init_upgrade_parameters() {
-    wm_task_manager_upgrade *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade), parameters);
-    return parameters;
-}
+// In-memory cache structure
+typedef struct cache_entry {
+    char *agent_id;
+    cJSON *tasks;
+    time_t timestamp;
+    struct cache_entry *next;
+} cache_entry_t;
 
-wm_task_manager_upgrade_get_status* wm_task_manager_init_upgrade_get_status_parameters() {
-    wm_task_manager_upgrade_get_status *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade_get_status), parameters);
-    return parameters;
-}
+typedef struct {
+    cache_entry_t *head;
+    pthread_rwlock_t lock;
+    int ttl;
+} task_cache_t;
 
-wm_task_manager_upgrade_update_status* wm_task_manager_init_upgrade_update_status_parameters() {
-    wm_task_manager_upgrade_update_status *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade_update_status), parameters);
-    return parameters;
-}
+// Global cache instance
+static task_cache_t *g_task_cache = NULL;
 
-wm_task_manager_upgrade_result* wm_task_manager_init_upgrade_result_parameters() {
-    wm_task_manager_upgrade_result *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade_result), parameters);
-    return parameters;
-}
+// Generate deterministic task ID
+char* wm_task_manager_generate_task_id(
+    const char *source_id,
+    const char *agent_id,
+    const char *task_type,
+    time_t create_time
+) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    char input[OS_MAXSTR];
+    char *task_id = NULL;
 
-wm_task_manager_upgrade_cancel_tasks* wm_task_manager_init_upgrade_cancel_tasks_parameters() {
-    wm_task_manager_upgrade_cancel_tasks *parameters;
-    os_calloc(1, sizeof(wm_task_manager_upgrade_cancel_tasks), parameters);
-    return parameters;
-}
-
-wm_task_manager_task* wm_task_manager_init_task() {
-    wm_task_manager_task *task;
-    os_calloc(1, sizeof(wm_task_manager_task), task);
-    return task;
-}
-
-void wm_task_manager_free_upgrade_parameters(wm_task_manager_upgrade* parameters) {
-    if (parameters) {
-        os_free(parameters->node);
-        os_free(parameters->module);
-        os_free(parameters->agent_ids);
-        os_free(parameters);
+    // Build deterministic input string
+    if (source_id && *source_id) {
+        snprintf(input, OS_MAXSTR, "%s:%s:%s:%ld",
+                 source_id, agent_id, task_type, (long)create_time);
+    } else {
+        snprintf(input, OS_MAXSTR, "%s:%s:%ld",
+                 agent_id, task_type, (long)create_time);
     }
+
+    // SHA256 hash
+    SHA256((unsigned char*)input, strlen(input), hash);
+
+    // Format as UUID-like string (first 16 bytes)
+    os_calloc(37, sizeof(char), task_id);
+    snprintf(task_id, 37,
+             "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+             hash[0], hash[1], hash[2], hash[3],
+             hash[4], hash[5], hash[6], hash[7],
+             hash[8], hash[9], hash[10], hash[11],
+             hash[12], hash[13], hash[14], hash[15]);
+
+    return task_id;
 }
 
-void wm_task_manager_free_upgrade_get_status_parameters(wm_task_manager_upgrade_get_status* parameters) {
-    if (parameters) {
-        os_free(parameters->node);
-        os_free(parameters->agent_ids);
-        os_free(parameters);
+// Initialize cache
+void wm_task_cache_init(int ttl) {
+    g_task_cache = calloc(1, sizeof(task_cache_t));
+    if (!g_task_cache) {
+        mterror(WM_TASK_MANAGER_LOGTAG, "Failed to allocate task cache");
+        return;
     }
+    g_task_cache->ttl = ttl;
+    pthread_rwlock_init(&g_task_cache->lock, NULL);
+    g_task_cache->head = NULL;
 }
 
-void wm_task_manager_free_upgrade_update_status_parameters(wm_task_manager_upgrade_update_status* parameters) {
-    if (parameters) {
-        os_free(parameters->node);
-        os_free(parameters->agent_ids);
-        os_free(parameters->status);
-        os_free(parameters->error_msg);
-        os_free(parameters);
-    }
-}
+// Get from cache
+cJSON* wm_task_cache_get(const char *agent_id) {
+    if (!g_task_cache) return NULL;
 
-void wm_task_manager_free_upgrade_result_parameters(wm_task_manager_upgrade_result* parameters) {
-    if (parameters) {
-        os_free(parameters->agent_ids);
-        os_free(parameters);
-    }
-}
+    pthread_rwlock_rdlock(&g_task_cache->lock);
 
-void wm_task_manager_free_upgrade_cancel_tasks_parameters(wm_task_manager_upgrade_cancel_tasks* parameters) {
-    if (parameters) {
-        os_free(parameters->node);
-        os_free(parameters);
-    }
-}
+    time_t now = time(NULL);
+    cache_entry_t *entry = g_task_cache->head;
 
-void wm_task_manager_free_task(wm_task_manager_task* task) {
-    if (task) {
-        if (task->parameters) {
-            if ((WM_TASK_UPGRADE == task->command) || (WM_TASK_UPGRADE_CUSTOM == task->command)) {
-                wm_task_manager_free_upgrade_parameters((wm_task_manager_upgrade*)task->parameters);
-            } else if (WM_TASK_UPGRADE_GET_STATUS == task->command) {
-                wm_task_manager_free_upgrade_get_status_parameters((wm_task_manager_upgrade_get_status*)task->parameters);
-            } else if (WM_TASK_UPGRADE_UPDATE_STATUS == task->command) {
-                wm_task_manager_free_upgrade_update_status_parameters((wm_task_manager_upgrade_update_status*)task->parameters);
-            } else if (WM_TASK_UPGRADE_RESULT == task->command) {
-                wm_task_manager_free_upgrade_result_parameters((wm_task_manager_upgrade_result*)task->parameters);
-            } else if (WM_TASK_UPGRADE_CANCEL_TASKS == task->command) {
-                wm_task_manager_free_upgrade_cancel_tasks_parameters((wm_task_manager_upgrade_cancel_tasks*)task->parameters);
+    while (entry) {
+        if (strcmp(entry->agent_id, agent_id) == 0) {
+            // Check if expired
+            if (now - entry->timestamp < g_task_cache->ttl) {
+                cJSON *tasks_copy = cJSON_Duplicate(entry->tasks, 1);
+                pthread_rwlock_unlock(&g_task_cache->lock);
+                return tasks_copy;
             }
+            break;
         }
-        os_free(task);
+        entry = entry->next;
     }
+
+    pthread_rwlock_unlock(&g_task_cache->lock);
+    return NULL;
+}
+
+// Set in cache
+void wm_task_cache_set(const char *agent_id, cJSON *tasks) {
+    if (!g_task_cache) return;
+
+    pthread_rwlock_wrlock(&g_task_cache->lock);
+
+    // Remove existing entry
+    cache_entry_t *prev = NULL;
+    cache_entry_t *entry = g_task_cache->head;
+
+    while (entry) {
+        if (strcmp(entry->agent_id, agent_id) == 0) {
+            if (prev) {
+                prev->next = entry->next;
+            } else {
+                g_task_cache->head = entry->next;
+            }
+            free(entry->agent_id);
+            cJSON_Delete(entry->tasks);
+            free(entry);
+            break;
+        }
+        prev = entry;
+        entry = entry->next;
+    }
+
+    // Add new entry
+    cache_entry_t *new_entry = calloc(1, sizeof(cache_entry_t));
+    if (new_entry) {
+        new_entry->agent_id = strdup(agent_id);
+        new_entry->tasks = cJSON_Duplicate(tasks, 1);
+
+        // Check for allocation failures
+        if (!new_entry->agent_id || !new_entry->tasks) {
+            mterror(WM_TASK_MANAGER_LOGTAG, "Failed to allocate cache entry for agent %s", agent_id);
+            if (new_entry->agent_id) {
+                free(new_entry->agent_id);
+            }
+            if (new_entry->tasks) {
+                cJSON_Delete(new_entry->tasks);
+            }
+            free(new_entry);
+        } else {
+            new_entry->timestamp = time(NULL);
+            new_entry->next = g_task_cache->head;
+            g_task_cache->head = new_entry;
+        }
+    }
+
+    pthread_rwlock_unlock(&g_task_cache->lock);
+}
+
+// Invalidate cache entry
+void wm_task_cache_invalidate(const char *agent_id) {
+    if (!g_task_cache) return;
+
+    pthread_rwlock_wrlock(&g_task_cache->lock);
+
+    cache_entry_t *prev = NULL;
+    cache_entry_t *entry = g_task_cache->head;
+
+    while (entry) {
+        if (strcmp(entry->agent_id, agent_id) == 0) {
+            if (prev) {
+                prev->next = entry->next;
+            } else {
+                g_task_cache->head = entry->next;
+            }
+            free(entry->agent_id);
+            cJSON_Delete(entry->tasks);
+            free(entry);
+            break;
+        }
+        prev = entry;
+        entry = entry->next;
+    }
+
+    pthread_rwlock_unlock(&g_task_cache->lock);
 }

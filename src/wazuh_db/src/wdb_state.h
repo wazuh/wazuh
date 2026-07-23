@@ -105,22 +105,16 @@ typedef struct _mitre_breakdown_t {
 } mitre_breakdown_t;
 
 typedef struct _task_tasks_t {
+    uint64_t create_queries;
+    uint64_t get_pending_queries;
+    uint64_t mark_delivered_queries;
+    uint64_t cleanup_expired_queries;
     uint64_t delete_old_queries;
-    uint64_t set_timeout_queries;
-    uint64_t upgrade_queries;
-    uint64_t upgrade_cancel_tasks_queries;
-    uint64_t upgrade_custom_queries;
-    uint64_t upgrade_get_status_queries;
-    uint64_t upgrade_result_queries;
-    uint64_t upgrade_update_status_queries;
+    struct timeval create_time;
+    struct timeval get_pending_time;
+    struct timeval mark_delivered_time;
+    struct timeval cleanup_expired_time;
     struct timeval delete_old_time;
-    struct timeval set_timeout_time;
-    struct timeval upgrade_time;
-    struct timeval upgrade_cancel_tasks_time;
-    struct timeval upgrade_custom_time;
-    struct timeval upgrade_get_status_time;
-    struct timeval upgrade_result_time;
-    struct timeval upgrade_update_status_time;
 } task_tasks_t;
 
 typedef struct _task_breakdown_t {
@@ -614,108 +608,69 @@ void w_inc_task_sql();
 void w_inc_task_sql_time(struct timeval time);
 
 /**
- * @brief Increment set-timeout task queries counter
+ * @brief Increment create task queries counter
  *
  */
-void w_inc_task_set_timeout();
+void w_inc_task_create();
 
 /**
- * @brief Increment set-timeout task time counter
+ * @brief Increment create task time counter
  *
  * @param time Value to increment the counter.
  */
-void w_inc_task_set_timeout_time(struct timeval time);
+void w_inc_task_create_time(struct timeval time);
 
 /**
- * @brief Increment delete-old task queries counter
+ * @brief Increment get_pending task queries counter
+ *
+ */
+void w_inc_task_get_pending();
+
+/**
+ * @brief Increment get_pending task time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_get_pending_time(struct timeval time);
+
+/**
+ * @brief Increment mark_delivered task queries counter
+ *
+ */
+void w_inc_task_mark_delivered();
+
+/**
+ * @brief Increment mark_delivered task time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_mark_delivered_time(struct timeval time);
+
+/**
+ * @brief Increment cleanup_expired task queries counter
+ *
+ */
+void w_inc_task_cleanup_expired();
+
+/**
+ * @brief Increment cleanup_expired task time counter
+ *
+ * @param time Value to increment the counter.
+ */
+void w_inc_task_cleanup_expired_time(struct timeval time);
+
+/**
+ * @brief Increment delete_old task queries counter
  *
  */
 void w_inc_task_delete_old();
 
 /**
- * @brief Increment delete-old task time counter
+ * @brief Increment delete_old task time counter
  *
  * @param time Value to increment the counter.
  */
 void w_inc_task_delete_old_time(struct timeval time);
-
-/**
- * @brief Increment upgrade task queries counter
- *
- */
-void w_inc_task_upgrade();
-
-/**
- * @brief Increment upgrade task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_upgrade_time(struct timeval time);
-
-/**
- * @brief Increment custom upgrade task queries counter
- *
- */
-void w_inc_task_upgrade_custom();
-
-/**
- * @brief Increment custom upgrade task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_upgrade_custom_time(struct timeval time);
-
-/**
- * @brief Increment get-status upgrade task queries counter
- *
- */
-void w_inc_task_upgrade_get_status();
-
-/**
- * @brief Increment get-status upgrade task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_upgrade_get_status_time(struct timeval time);
-
-/**
- * @brief Increment update-status upgrade task queries counter
- *
- */
-void w_inc_task_upgrade_update_status();
-
-/**
- * @brief Increment update-status upgrade task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_upgrade_update_status_time(struct timeval time);
-
-/**
- * @brief Increment result upgrade task queries counter
- *
- */
-void w_inc_task_upgrade_result();
-
-/**
- * @brief Increment result upgrade task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_upgrade_result_time(struct timeval time);
-
-/**
- * @brief Increment cancel-tasks upgrade task queries counter
- *
- */
-void w_inc_task_upgrade_cancel_tasks();
-
-/**
- * @brief Increment cancel-tasks upgrade task time counter
- *
- * @param time Value to increment the counter.
- */
-void w_inc_task_upgrade_cancel_tasks_time(struct timeval time);
 
 /**
  * @brief Increment mitre queries counter
