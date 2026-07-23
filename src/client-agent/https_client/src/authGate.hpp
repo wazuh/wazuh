@@ -15,6 +15,7 @@
 #include "callbackSink.hpp"
 
 #include <atomic>
+#include <cstdint>
 #include <functional>
 
 /**
@@ -24,8 +25,9 @@
  *        (on_reenroll_required). hc_set_agent_key() -> release() swaps the key
  *        and un-pauses, re-arming the latch so a later dead key fires again.
  *
- * Reversible (unlike RegistrationGate). Lock-free: a std::atomic pause flag
- * every sender polls, and an exchange-based once-latch so the first 401 wins.
+ * Reversible (unlike RegistrationGate). Lock-free through a SINGLE atomic
+ * state (not two independent flags): "paused" and "already fired for this
+ * incident" are the same fact, so a report cannot end fired-but-unpaused.
  */
 class AuthGate final
 {
@@ -36,37 +38,40 @@ class AuthGate final
         {
         }
 
-        /// A 401 was seen. Pauses traffic; the first call since the last
-        /// release() also fires the re-enroll callback and wakes the loops.
+        /// A 401 was seen. One atomic transition to Paused: traffic is ALWAYS
+        /// paused afterwards, and only the reporter that flipped Running->Paused
+        /// (the exchange returns the prior state) fires the re-enroll callback
+        /// and wakes the loops -- so it fires exactly once per incident.
         void reportAuthFailure()
         {
-            m_paused.store(true, std::memory_order_release);
-
-            if (!m_fired.exchange(true))
+            if (m_state.exchange(State::Paused, std::memory_order_acq_rel) == State::Running)
             {
                 m_sink.onReenrollRequired();
                 m_wake();
             }
         }
 
-        /// A fresh credential is in place: un-pause and re-arm the once-latch.
+        /// A fresh credential is in place: resume and re-arm. A stale 401 from
+        /// an old in-flight request racing this costs at most one harmless
+        /// extra re-enroll (the key is already fresh); it can never strand the
+        /// gate paused-but-unfired or fired-but-unpaused.
         void release()
         {
-            m_fired.store(false, std::memory_order_relaxed);
-            m_paused.store(false, std::memory_order_release);
+            m_state.store(State::Running, std::memory_order_release);
             m_wake();
         }
 
         bool paused() const
         {
-            return m_paused.load(std::memory_order_acquire);
+            return m_state.load(std::memory_order_acquire) == State::Paused;
         }
 
     private:
+        enum class State : uint8_t { Running, Paused };
+
         ICallbackSink& m_sink;
         std::function<void()> m_wake;
-        std::atomic<bool> m_paused {false};
-        std::atomic<bool> m_fired {false};
+        std::atomic<State> m_state {State::Running};
 };
 
 #endif // _HC_AUTH_GATE_HPP
