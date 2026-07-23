@@ -362,6 +362,10 @@ STATIC wm_upgrade_error_code wm_agent_upgrade_create_task_for_agent(wm_agent_tas
         }
     }
 
+    if (!wpk_file || !wpk_sha1 || !installer) {
+        return WM_UPGRADE_UNKNOWN_ERROR;
+    }
+
     // Build and send task
     cJSON *task_msg = wm_agent_upgrade_build_task_message(agent_id, request_time, wpk_file, wpk_sha1, installer);
     if (!task_msg) {
