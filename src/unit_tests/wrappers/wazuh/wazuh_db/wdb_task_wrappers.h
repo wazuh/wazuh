@@ -12,28 +12,25 @@
 
 #include "wdb.h"
 
-int __wrap_wdb_task_insert_task(
-    __attribute__((unused)) wdb_t* wdb, int agent_id, const char* node, const char* module, const char* command);
-int __wrap_wdb_task_get_upgrade_task_status(__attribute__((unused)) wdb_t* wdb,
-                                            int agent_id,
-                                            const char* node,
-                                            char** status);
-int __wrap_wdb_task_update_upgrade_task_status(
-    __attribute__((unused)) wdb_t* wdb, int agent_id, const char* node, const char* status, const char* error);
-int __wrap_wdb_task_get_upgrade_task_by_agent_id(__attribute__((unused)) wdb_t* wdb,
-                                                 int agent_id,
-                                                 char** node,
-                                                 char** module,
-                                                 char** command,
-                                                 char** status,
-                                                 char** error,
-                                                 int* create_time,
-                                                 int* last_update_time);
-int __wrap_wdb_task_cancel_upgrade_tasks(__attribute__((unused)) wdb_t* wdb, const char* node);
-int __wrap_wdb_task_set_timeout_status(__attribute__((unused)) wdb_t* wdb,
-                                       time_t now,
-                                       int interval,
-                                       time_t* next_timeout);
-int __wrap_wdb_task_delete_old_entries(__attribute__((unused)) wdb_t* wdb, int timestamp);
+int __wrap_wdb_task_create(__attribute__((unused)) wdb_t* wdb,
+                           const char *task_id,
+                           const char *agent_id,
+                           const char *task_type,
+                           const char *payload);
+
+int __wrap_wdb_task_get_pending(__attribute__((unused)) wdb_t* wdb,
+                                const char *agent_id,
+                                int max_tasks,
+                                cJSON **tasks_json);
+
+int __wrap_wdb_task_mark_delivered(__attribute__((unused)) wdb_t* wdb,
+                                   const char *task_id,
+                                   time_t delivery_time);
+
+int __wrap_wdb_task_cleanup_expired(__attribute__((unused)) wdb_t* wdb,
+                                    int ttl);
+
+int __wrap_wdb_task_delete_old(__attribute__((unused)) wdb_t* wdb,
+                               time_t timestamp);
 
 #endif

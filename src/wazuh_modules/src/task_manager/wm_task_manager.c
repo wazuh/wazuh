@@ -168,6 +168,7 @@ STATIC void wm_task_manager_stop(__attribute__((unused)) wm_task_manager* task_c
 
 STATIC void wm_task_manager_destroy(wm_task_manager* task_config) {
     mtinfo(WM_TASK_MANAGER_LOGTAG, MOD_TASK_FINISH);
+    wm_task_cache_destroy();
     os_free(task_config);
 }
 

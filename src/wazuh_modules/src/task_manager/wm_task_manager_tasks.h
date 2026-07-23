@@ -56,4 +56,10 @@ void wm_task_cache_set(const char *agent_id, cJSON *tasks);
  */
 void wm_task_cache_invalidate(const char *agent_id);
 
+/**
+ * Destroy task cache and free all resources
+ * Should be called at shutdown or in test cleanup
+ */
+void wm_task_cache_destroy(void);
+
 #endif
