@@ -13,9 +13,9 @@
 #define _HTTPS_CLIENT_BRIDGE_H
 
 /**
- * @brief Start the HTTPS client module if the internal option
- *        agent.https_client is enabled (off by default). No-op otherwise, so
- *        the legacy transport path is unaffected.
+ * @brief Start the HTTPS client module unconditionally. Relies on
+ *        client-agent/src/main.c having already refused to start the agent
+ *        (a hard exit) unless a validated server address is configured.
  */
 void w_https_client_start(void);
 

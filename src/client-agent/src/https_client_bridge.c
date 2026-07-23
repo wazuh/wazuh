@@ -11,13 +11,11 @@
 
 /*
  * Wires the C++ https_client module (src/client-agent/https_client) into
- * agentd behind an internal-option gate. It is off by default and runs
- * INDEPENDENTLY of the legacy TCP path, so the agent keeps working exactly
- * as before unless a developer opts in with
- *
- *     agent.https_client=1
- *
- * in etc/local_internal_options.conf.
+ * agentd. HTTPS is the agent's transport unconditionally -- there is no
+ * internal-option gate: the agent has exactly one manager address/port by
+ * this point (client-agent/src/main.c already refuses to start otherwise --
+ * see w_https_client_start()'s comment) and no alternative transport is
+ * offered.
  *
  * The config surface (<server>/<ssl>, parsed by Read_Client/Read_Client_SSL
  * in src/config/src/client-config.c) and the real TLS wiring are done: the
@@ -25,8 +23,7 @@
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
  * on_reenroll_required is wired to the existing authd flow (try_enroll_to_server,
  * start_agent.c) and hc_set_agent_key(). Still pending (later integration
- * workstreams of #37702): the .state metrics and removing the internal-option
- * gate once the legacy TCP path is retired.
+ * workstreams of #37702): the .state metrics.
  */
 
 #include "https_client_bridge.h"
@@ -222,14 +219,15 @@ static bool bridge_build_config(hc_config_t *config)
     return true;
 }
 
+/* No internal-option gate: by the time AgentdStart() (and so this) runs,
+ * client-agent/src/main.c has already refused to start the daemon at all
+ * (merror + mlerror_exit, a hard exit) unless agt->server[0] carries a
+ * validated address; the port always has a default (DEFAULT_REMOTE_PORT)
+ * when unspecified. HTTPS is the only transport on offer, so there is
+ * nothing left to gate. */
 void w_https_client_start(void)
 {
-    int enabled = getDefine_Int_default("agent", "https_client", 0, 1, 0);
-    if (!enabled) {
-        return; /* Off by default; the legacy transport is untouched. */
-    }
-
-    minfo("https_client: enabled (agent.https_client=1).");
+    minfo("https_client: starting.");
     atomic_store(&g_https_client_stopping, false);
 
     hc_config_t config;
