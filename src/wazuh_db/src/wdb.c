@@ -90,14 +90,12 @@ static const char *SQL_STMT[] = {
     [WDB_STMT_GLOBAL_RESET_CONNECTION_STATUS] = "UPDATE agent SET connection_status = 'disconnected', status_code = ?, sync_status = ?, disconnection_time = STRFTIME('%s', 'NOW') where connection_status != 'disconnected' AND connection_status != 'never_connected';",
     [WDB_STMT_GLOBAL_GET_AGENTS_TO_DISCONNECT] = "SELECT id FROM agent WHERE id > ? AND (connection_status = 'active' OR connection_status = 'pending') AND last_keepalive < ?;",
     [WDB_STMT_GLOBAL_AGENT_EXISTS] = "SELECT EXISTS(SELECT 1 FROM agent WHERE id=?);",
-    [WDB_STMT_TASK_INSERT_TASK] = "INSERT INTO TASKS VALUES(NULL,?,?,?,?,?,?,?,?);",
-    [WDB_STMT_TASK_GET_LAST_AGENT_TASK] = "SELECT *, MAX(CREATE_TIME) FROM TASKS WHERE AGENT_ID = ?;",
-    [WDB_STMT_TASK_GET_LAST_AGENT_UPGRADE_TASK] = "SELECT *, MAX(CREATE_TIME) FROM TASKS WHERE AGENT_ID = ? AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
-    [WDB_STMT_TASK_UPDATE_TASK_STATUS] = "UPDATE TASKS SET STATUS = ?, LAST_UPDATE_TIME = ?, ERROR_MESSAGE = ? WHERE TASK_ID = ?;",
-    [WDB_STMT_TASK_GET_TASK_BY_STATUS] = "SELECT * FROM TASKS WHERE STATUS = ?;",
-    [WDB_STMT_TASK_DELETE_OLD_TASKS] = "DELETE FROM TASKS WHERE CREATE_TIME <= ?;",
-    [WDB_STMT_TASK_DELETE_TASK] = "DELETE FROM TASKS WHERE TASK_ID = ?;",
-    [WDB_STMT_TASK_CANCEL_PENDING_UPGRADE_TASKS] = "UPDATE TASKS SET STATUS = '" WM_TASK_STATUS_CANCELLED "', LAST_UPDATE_TIME = ? WHERE NODE = ? AND STATUS = '" WM_TASK_STATUS_PENDING "' AND (COMMAND = 'upgrade' OR COMMAND = 'upgrade_custom');",
+    // Generic task commands
+    [WDB_STMT_TASK_CREATE] = "INSERT INTO TASKS (TASK_ID, AGENT_ID, TASK_TYPE, PAYLOAD, CREATE_TIME, STATUS) VALUES (?, ?, ?, ?, ?, ?);",
+    [WDB_STMT_TASK_GET_PENDING] = "SELECT TASK_ID, AGENT_ID, TASK_TYPE, PAYLOAD, CREATE_TIME FROM TASKS WHERE AGENT_ID = ? AND STATUS = 'pending' ORDER BY CREATE_TIME ASC LIMIT ?;",
+    [WDB_STMT_TASK_MARK_DELIVERED] = "UPDATE TASKS SET STATUS = 'delivered', DELIVERY_TIME = ? WHERE TASK_ID = ?;",
+    [WDB_STMT_TASK_CLEANUP_EXPIRED] = "UPDATE TASKS SET STATUS = 'expired' WHERE STATUS = 'pending' AND CREATE_TIME < ?;",
+    [WDB_STMT_TASK_DELETE_OLD] = "DELETE FROM TASKS WHERE (STATUS = 'expired' AND CREATE_TIME < ?) OR (STATUS = 'delivered' AND DELIVERY_TIME < ?);",
     [WDB_STMT_PRAGMA_JOURNAL_WAL] = "PRAGMA journal_mode=WAL;",
     [WDB_STMT_PRAGMA_ENABLE_FOREIGN_KEYS] = "PRAGMA foreign_keys=ON;",
     [WDB_STMT_PRAGMA_SYNCHRONOUS_NORMAL] = "PRAGMA synchronous=1;",
@@ -306,7 +304,6 @@ int wdb_commit2(wdb_t * wdb) {
 int wdb_rollback(wdb_t * wdb) {
     return wdb_any_transaction(wdb, SQL_ROLLBACK);
 }
-
 
 /* Create global database */
 int wdb_create_global(const char *path) {
@@ -523,7 +520,6 @@ STATIC int wdb_select_from_temp_table(wdb_t * wdb) {
 
     return result;
 }
-
 
 wdb_t * wdb_init(const char * id) {
     wdb_t * wdb;
@@ -1085,7 +1081,6 @@ int wdb_sql_exec(wdb_t *wdb, const char *sql_exec) {
 
     return result;
 }
-
 
 int wdb_enable_foreign_keys(sqlite3 *db) {
     char *sql_error = NULL;
