@@ -23,31 +23,111 @@
  * in src/config/src/client-config.c) and the real TLS wiring are done: the
  * module's own fail-closed validation (ModuleConfig::validateTls) now gets a
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
- * Still pending (later integration workstreams of #37702): the
- * on_reenroll_required hookup into authd re-enrollment, the .state metrics,
- * and removing the internal-option gate once the legacy TCP path is retired.
+ * on_reenroll_required is wired to the existing authd flow (try_enroll_to_server,
+ * start_agent.c) and hc_set_agent_key(). Still pending (later integration
+ * workstreams of #37702): the .state metrics and removing the internal-option
+ * gate once the legacy TCP path is retired.
  */
 
 #include "https_client_bridge.h"
 
 #include <ctype.h>
+#include <stdatomic.h>
+#include <unistd.h>
 
 #include "agentd.h" /* pulls defs.h (__wazuh_version), sec.h (keys), client-config.h (agt) */
 #include "https_client.h"
 
 static hc_handle *g_https_client = NULL;
 
-/* Received-work callbacks: debug stubs for the scaffold. The production
- * hookups (execd / module com / restart handlers, the .state metrics and the
- * startup gate) land with the integration workstream. */
+/* Set once w_https_client_stop() starts tearing the client down; the re-
+ * enroll thread (detached, so it can't be joined/cancelled) checks this
+ * before ever touching the handle, since hc_destroy() may run concurrently
+ * with a retry loop that can take minutes against a down manager.
+ *
+ * Not static: unit tests call bridge_reenroll_thread() directly (bypassing
+ * w_https_client_start(), which is what normally resets this) and need to
+ * reset it themselves between cases. */
+_Atomic bool g_https_client_stopping = false;
+
+/* Mirrors the incremental back-off already used for the initial-enrollment
+ * loop (start_agent.c's w_agentd_keys_init: 5s steps up to a 60s cap). Not
+ * reused directly because those constants are file-local to start_agent.c. */
+#define BRIDGE_REENROLL_RETRY_DELTA_S 5
+#define BRIDGE_REENROLL_RETRY_MAX_S 60
+
+/* Runs off the dispatcher thread (spawned by bridge_on_reenroll_required):
+ * the module's callback contract forbids blocking it, and enrollment can
+ * take anywhere from seconds to (against a down manager) indefinitely.
+ *
+ * No bridge-side single-flight guard is needed: AuthGate (the module's 401
+ * latch) only fires on_reenroll_required once per incident and won't re-arm
+ * until hc_set_agent_key() is called, so at most one of these threads is ever
+ * running at a time -- adding another lock here would just duplicate that
+ * guarantee.
+ *
+ * Not static: unit-tested by calling it directly (synchronously, with a fake
+ * handle) instead of through the real w_create_thread/CreateThread, whose
+ * test double intentionally never runs the function it's given.
+ */
+void *bridge_reenroll_thread(void *arg)
+{
+    hc_handle *handle = (hc_handle *)arg;
+    int enroll_result = -1;
+    int delay_sleep = 0;
+
+    while (enroll_result != 0) {
+        if (atomic_load(&g_https_client_stopping)) {
+            mdebug1("https_client: agent shutting down; abandoning re-enrollment.");
+            return NULL;
+        }
+
+        if (agt->enrollment_cfg && agt->enrollment_cfg->target_cfg &&
+            agt->enrollment_cfg->target_cfg->manager_name) {
+            enroll_result = try_enroll_to_server(agt->enrollment_cfg->target_cfg->manager_name,
+                                                  agt->enrollment_cfg->target_cfg->network_interface);
+        }
+        if (enroll_result != 0 && agt->server && agt->server[0].rip) {
+            enroll_result = try_enroll_to_server(agt->server[0].rip, agt->server[0].network_interface);
+        }
+
+        if (enroll_result != 0) {
+            if (delay_sleep < BRIDGE_REENROLL_RETRY_MAX_S) {
+                delay_sleep += BRIDGE_REENROLL_RETRY_DELTA_S;
+            }
+            mdebug1("https_client: re-enrollment attempt failed; retrying in %d seconds.", delay_sleep);
+            sleep((unsigned int)delay_sleep);
+        }
+    }
+
+    if (atomic_load(&g_https_client_stopping)) {
+        mdebug1("https_client: agent shutting down; not reloading the signing key.");
+        return NULL;
+    }
+
+    minfo("https_client: re-enrollment succeeded; reloading the signing key.");
+    if (!hc_set_agent_key(handle, keys.keyentries[0]->raw_key)) {
+        merror("https_client: re-enrolled, but the new key failed validation; traffic stays paused.");
+    }
+
+    return NULL;
+}
+
+/* Received-work callbacks. The production hookups still pending (later
+ * integration workstreams): execd/module-com routing for on_task-equivalent
+ * work and the .state metrics wiring for on_state_change. */
 static void bridge_on_reenroll_required(void *user_data)
 {
-    /* Production hookup (later integration workstream): run the authd re-
-     * enrollment (start_agent.c try_enroll_to_server, 5 retries as before)
-     * and call hc_set_agent_key() with the new client.keys value. The dev
-     * scaffold only logs; the module has paused all traffic until then. */
     (void)user_data;
-    mwarn("https_client: credential rejected (401); re-enrollment required.");
+    mwarn("https_client: credential rejected (401); re-enrolling.");
+
+    if (!agt->enrollment_cfg || !agt->enrollment_cfg->enabled) {
+        merror("https_client: re-enrollment required but auto-enrollment is disabled "
+               "(<enrollment><enabled>); traffic stays paused until the key is fixed manually.");
+        return;
+    }
+
+    w_create_thread(bridge_reenroll_thread, g_https_client);
 }
 
 static void bridge_on_state_change(int state, void *user_data)
@@ -150,6 +230,7 @@ void w_https_client_start(void)
     }
 
     minfo("https_client: enabled (agent.https_client=1).");
+    atomic_store(&g_https_client_stopping, false);
 
     hc_config_t config;
     if (!bridge_build_config(&config)) {
@@ -176,6 +257,10 @@ void w_https_client_start(void)
 
 void w_https_client_stop(void)
 {
+    /* Set before hc_destroy(): a detached bridge_reenroll_thread (if one is
+     * running) checks this and will not touch the handle once it sees it. */
+    atomic_store(&g_https_client_stopping, true);
+
     if (g_https_client) {
         hc_destroy(g_https_client); /* Implies stop + join. */
         g_https_client = NULL;
