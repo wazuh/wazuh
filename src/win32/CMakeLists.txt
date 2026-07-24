@@ -32,6 +32,7 @@ include_directories(
   ${SRC_FOLDER}/shared/os_xml/
   ${SRC_FOLDER}/config/include/
   ${SRC_FOLDER}/client-agent/include/
+  ${SRC_FOLDER}/client-agent/src/
   ${SRC_FOLDER}/client-agent/https_client/include/
   ${SRC_FOLDER}/logcollector/include/
   ${SRC_FOLDER}/os_execd/include/
