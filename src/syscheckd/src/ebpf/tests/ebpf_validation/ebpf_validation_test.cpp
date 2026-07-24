@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <fcntl.h>
+#include <grp.h>
 #include <limits.h>
 #include <sys/stat.h>
 #include <sys/sysmacros.h>
@@ -30,6 +31,10 @@ constexpr int SETTLE_US = 150000;
 constexpr int INIT_SETTLE_US = 300000;
 constexpr int EXTRA_POLLS = 5;
 constexpr size_t MIN_EXPECTED_EVENTS = 3;
+/* Distinct non-root credentials for the trigger process: with uid == gid
+ * (e.g. root) a uid/gid swap on the BPF side would go unnoticed. */
+constexpr uid_t TEST_UID = 1234;
+constexpr gid_t TEST_GID = 4321;
 
 // Must match modern.bpf.c layout
 struct file_event {
@@ -52,6 +57,7 @@ struct test_context {
     std::string target_name;
     bool use_lsm = false;
     bool is_btrfs = false;
+    bool abi_mismatch = false;
     int pass = 0;
     int fail = 0;
     int warn = 0;
@@ -76,7 +82,17 @@ static bool bpf_link_is_err(const struct bpf_link *l) {
 }
 
 static int on_event(void *, void *data, size_t sz) {
-    if (sz < sizeof(file_event)) return 0;
+    /* Fail loudly on layout drift between this struct and modern.bpf.c
+     * (e.g. fields added to file_event) instead of parsing misaligned data. */
+    if (sz != sizeof(file_event)) {
+        if (!g_ctx.abi_mismatch) {
+            g_ctx.abi_mismatch = true;
+            std::cerr << "[FAIL] Event size mismatch: BPF object sends " << sz
+                      << " bytes, test expects " << sizeof(file_event)
+                      << ". Update struct file_event to match modern.bpf.c\n";
+        }
+        return 0;
+    }
     const auto *e = static_cast<const file_event *>(data);
     /* Match by basename: hooks that reconstruct the path relative to the
      * filesystem root (instead of the mount namespace) must still be
@@ -112,15 +128,16 @@ static bool validate_event(const file_event &e, pid_t child, pid_t parent,
     };
     bool ok = true;
 
-    /* Known limitation: the setattr/unlink kprobe path walker cannot
-     * resolve the vfsmount, so on non-root mounts it reports the path
+    /* Known limitation: on non-root mounts, some hooks report the path
      * relative to the filesystem root instead of the mount namespace.
-     * The LSM (bpf_d_path) variants do not have this problem. */
+     * This affects the kprobe path walkers and, on recent kernels, the
+     * lsm/path_unlink bpf_d_path variant. lsm/file_open (bpf_d_path)
+     * resolves the full mount-namespace path correctly. */
     const std::string fs_relative = "/" + g_ctx.target_name;
     if (g_ctx.target_path == e.filename) {
         check("path", true);
-    } else if (!g_ctx.use_lsm && fs_relative == e.filename) {
-        warn("path", std::string{"kprobe path walker loses the mount prefix: got '"} +
+    } else if (fs_relative == e.filename) {
+        warn("path", std::string{"hook reports fs-relative path (no mount prefix): got '"} +
                      e.filename + "' expected '" + g_ctx.target_path + "'");
     } else {
         ok &= check("path", false,
@@ -245,6 +262,9 @@ int main(int argc, char **argv) {
     std::cout << "[*] Test dir:   " << test_dir.string() << '\n';
 
     fs::create_directories(test_dir);
+    /* The trigger child runs as TEST_UID:TEST_GID, so the directory must be
+     * writable by non-root (loop mounts are root-owned by default). */
+    fs::permissions(test_dir, fs::perms::all, fs::perm_options::replace);
     const auto resolved = fs::canonical(test_dir);
     g_ctx.target_name = "ebpf_test_file.txt";
     g_ctx.target_path = (resolved / g_ctx.target_name).string();
@@ -304,6 +324,13 @@ int main(int argc, char **argv) {
         const auto &path = g_ctx.target_path;
         usleep(INIT_SETTLE_US);
 
+        /* Drop to distinct non-root credentials so uid/gid validation is
+         * meaningful (a uid/gid swap is invisible when uid == gid == 0). */
+        if (setgroups(0, nullptr) != 0 || setgid(TEST_GID) != 0 || setuid(TEST_UID) != 0) {
+            perror("drop privileges");
+            _exit(1);
+        }
+
         int fd = open(path.c_str(), O_CREAT | O_WRONLY | O_TRUNC, 0755);
         if (fd < 0) { perror("open"); _exit(1); }
         if (write(fd, "test\n", 5) != 5) { perror("write"); close(fd); _exit(1); }
@@ -345,7 +372,7 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < g_ctx.events.size(); ++i) {
         std::cout << "\n[Event #" << i + 1 << "] " << g_ctx.events[i].filename << '\n';
         if (!validate_event(g_ctx.events[i], child_pid, parent_pid,
-                           getuid(), getgid(), expected_dev,
+                           TEST_UID, TEST_GID, expected_dev,
                            parent_comm, expected_cwd))
             failed = true;
     }
@@ -355,6 +382,7 @@ int main(int argc, char **argv) {
           g_ctx.events.size() >= MIN_EXPECTED_EVENTS,
           "got " + std::to_string(g_ctx.events.size()));
 
+    if (g_ctx.abi_mismatch) failed = true;
     if (g_ctx.events.empty()) failed = true;
 
     std::cout << "\nTotal: " << g_ctx.pass << " passed, " << g_ctx.fail << " failed, "
