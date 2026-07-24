@@ -143,7 +143,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">CommandAndControl</field>
         <mitre>
-            <id>TA0011</id>
+            <id>T1071</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially communicating with a C2 server have been detected. Check the system for signs of infection.</description>
     </rule>
@@ -153,7 +153,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Collection</field>
         <mitre>
-            <id>TA0009</id>
+            <id>T1005</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially performing data collection or data discovery have been detected. Check the system for signs of infection.</description>
     </rule>
@@ -163,7 +163,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">CredentialAccess</field>
         <mitre>
-            <id>TA0006</id>
+            <id>T1003</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially involved in stealing credentials have been detected. Check the system for signs of infection.</description>
     </rule>
@@ -173,7 +173,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">DefenseEvasion</field>
         <mitre>
-            <id>TA0005</id>
+            <id>T1562</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially performing defense evasion have been detected. Check the system for signs of infection.</description>
     </rule>
@@ -183,7 +183,8 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Discovery</field>
         <mitre>
-            <id>TA0007</id>
+            <id>T1087</id>
+            <id>T1018</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially performing network discovery or account enumeration have been detected. Check the system for signs of infection.</description>
     </rule>
@@ -193,7 +194,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Exfiltration</field>
         <mitre>
-            <id>TA0010</id>
+            <id>T1041</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially performing data exfiltration have been detected. Check the system for signs of infection.</description>
     </rule>
@@ -213,7 +214,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Execution</field>
         <mitre>
-            <id>TA0002</id>
+            <id>T1059</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially performing malicious code execution have been detected. Check the system for signs of infection.</description>
     </rule>
@@ -223,7 +224,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">InitialAccess</field>
         <mitre>
-            <id>TA0001</id>
+            <id>T1566</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially experiencing intrusion attempts have been detected. This alert is commonly caused by phishing emails. Check the system for signs of infection.</description>
     </rule>
@@ -233,7 +234,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">LateralMovement</field>
         <mitre>
-            <id>TA0008</id>
+            <id>T1021</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially establishing unauthorized internal connections have been detected. Check the systems for signs of infection.</description>
     </rule>
@@ -257,7 +258,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Persistence</field>
         <mitre>
-            <id>TA0003</id>
+            <id>T1547</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially experiencing persistence establishment attempts have been detected. Check the system for signs of infection.</description>
     </rule>
@@ -267,7 +268,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">PrivilegeEscalation</field>
         <mitre>
-            <id>TA0004</id>
+            <id>T1068</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is potentially performing unauthorized permission elevation have been detected. Check the system for signs of infection.</description>
     </rule>
@@ -303,7 +304,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">CommandAndControl</field>
         <mitre>
-            <id>TA0011</id>
+            <id>T1071</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is communicating with a C2 server have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
@@ -313,7 +314,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Collection</field>
         <mitre>
-            <id>TA0009</id>
+            <id>T1005</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing data collection or data discovery have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
@@ -323,7 +324,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">CredentialAccess</field>
         <mitre>
-            <id>TA0006</id>
+            <id>T1003</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is involved in stealing credentials have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
@@ -333,7 +334,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">DefenseEvasion</field>
         <mitre>
-            <id>TA0005</id>
+            <id>T1562</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing defense evasion have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
@@ -343,7 +344,8 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Discovery</field>
         <mitre>
-            <id>TA0007</id>
+            <id>T1087</id>
+            <id>T1018</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing network discovery or account enumeration have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
@@ -353,7 +355,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Exfiltration</field>
         <mitre>
-            <id>TA0010</id>
+            <id>T1041</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing data exfiltration have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
@@ -373,7 +375,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Execution</field>
         <mitre>
-            <id>TA0002</id>
+            <id>T1059</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing malicious code execution have been detected. However, this alert is unlikely to indciate an APT. Check the system for signs of infection.</description>
     </rule>
@@ -383,7 +385,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">InitialAccess</field>
         <mitre>
-            <id>TA0001</id>
+            <id>T1566</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is affected by intrusion attempts have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
@@ -393,7 +395,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">LateralMovement</field>
         <mitre>
-            <id>TA0008</id>
+            <id>T1021</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is establishing unauthorized internal connections have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the systems for signs of infection.</description>
     </rule>
@@ -403,7 +405,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Persistence</field>
         <mitre>
-            <id>TA0003</id>
+            <id>T1547</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is affected by persistence establishment attempts have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
@@ -413,7 +415,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">PrivilegeEscalation</field>
         <mitre>
-            <id>TA0004</id>
+            <id>T1068</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing unauthorized permission elevation have been detected. This alert usually originates from common malware and threats, rather than APT activity. Check the system for signs of infection.</description>
     </rule>
@@ -439,7 +441,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">CommandAndControl</field>
         <mitre>
-            <id>TA0011</id>
+            <id>T1071</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is communicating with a C2 server have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -449,7 +451,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Collection</field>
         <mitre>
-            <id>TA0009</id>
+            <id>T1005</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing data collection or data discovery have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -459,7 +461,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">CredentialAccess</field>
         <mitre>
-            <id>TA0006</id>
+            <id>T1003</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is involved in stealing credentials have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -469,7 +471,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">DefenseEvasion</field>
         <mitre>
-            <id>TA0005</id>
+            <id>T1562</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing defense evasion have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -479,7 +481,8 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Discovery</field>
         <mitre>
-            <id>TA0007</id>
+            <id>T1087</id>
+            <id>T1018</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing network discovery or account enumeration have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -489,7 +492,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Exfiltration</field>
         <mitre>
-            <id>TA0010</id>
+            <id>T1041</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing data exfiltration have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -509,7 +512,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Execution</field>
         <mitre>
-            <id>TA0002</id>
+            <id>T1059</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing malicious code execution have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -519,7 +522,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">InitialAccess</field>
         <mitre>
-            <id>TA0001</id>
+            <id>T1566</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is affected by intrusion attempts have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -529,7 +532,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">LateralMovement</field>
         <mitre>
-            <id>TA0008</id>
+            <id>T1021</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is establishing unauthorized internal connections have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -539,7 +542,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Persistence</field>
         <mitre>
-            <id>TA0003</id>
+            <id>T1547</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is affected by persistence establishment attempts have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -549,7 +552,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">PrivilegeEscalation</field>
         <mitre>
-            <id>TA0004</id>
+            <id>T1068</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing unauthorized permission elevation have been detected. This alert may be indicative of an APT.</description>
     </rule>
@@ -575,7 +578,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">CommandAndControl</field>
         <mitre>
-            <id>TA0011</id>
+            <id>T1071</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is communicating with a C2 server have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -585,7 +588,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Collection</field>
         <mitre>
-            <id>TA0009</id>
+            <id>T1005</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing data collection or data discovery have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -595,7 +598,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">CredentialAccess</field>
         <mitre>
-            <id>TA0006</id>
+            <id>T1003</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is involved in stealing credentials have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -605,7 +608,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">DefenseEvasion</field>
         <mitre>
-            <id>TA0005</id>
+            <id>T1562</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing defense evasion have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -615,7 +618,8 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Discovery</field>
         <mitre>
-            <id>TA0007</id>
+            <id>T1087</id>
+            <id>T1018</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing network discovery or account enumeration have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -625,7 +629,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Exfiltration</field>
         <mitre>
-            <id>TA0010</id>
+            <id>T1041</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing data exfiltration have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -645,7 +649,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Execution</field>
         <mitre>
-            <id>TA0002</id>
+            <id>T1059</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing malicious code execution have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -655,7 +659,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">InitialAccess</field>
         <mitre>
-            <id>TA0001</id>
+            <id>T1566</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is affected by intrusion attempts have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -665,7 +669,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">LateralMovement</field>
         <mitre>
-            <id>TA0008</id>
+            <id>T1021</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is establishing unauthorized internal connections have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -689,7 +693,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">Persistence</field>
         <mitre>
-            <id>TA0003</id>
+            <id>T1547</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is affected by persistence establishment attempts have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -699,7 +703,7 @@
         <options>no_full_log</options>
         <field name="ms-graph.category">PrivilegeEscalation</field>
         <mitre>
-            <id>TA0004</id>
+            <id>T1068</id>
         </mitre>
         <description>MS Graph message: Indicators that the system is performing unauthorized permission elevation have been detected. This alert is very likely to indicate an APT.</description>
     </rule>
@@ -781,7 +785,7 @@
             <id>T1078</id>
             <id>T1586</id>
             <id>T1589.001</id>
-            <id>TA0006</id>
+            <id>T1003</id>
         </mitre>
         <description>MS Graph message: A user's credentials were compromised or stolen. This is a true positive alert.</description>
     </rule>
