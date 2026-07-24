@@ -252,8 +252,8 @@ TEST(CurlPerformerTest, ResponseFilePathStreamsToTheFileNotMemory)
     allowOtherOptions(*handle);
 
     std::FILE* sink = nullptr;
-    EXPECT_CALL(*handle, captureResponseToFile(NotNull()))
-    .WillOnce(Invoke([&](std::FILE * file)
+    EXPECT_CALL(*handle, captureResponseToFile(NotNull(), _))
+    .WillOnce(Invoke([&](std::FILE * file, uint64_t)
     {
         sink = file;
     }));
@@ -310,8 +310,8 @@ TEST(CurlPerformerTest, RetryTruncatesThePreviousAttemptsPartialBody)
     CurlHandleFactory factory = [&]() -> std::unique_ptr<ICurlHandle>
     {
         auto handle = std::make_unique<NiceMock<MockCurlHandle>>();
-        ON_CALL(*handle, captureResponseToFile(_))
-        .WillByDefault(Invoke([&](std::FILE * file)
+        ON_CALL(*handle, captureResponseToFile(_, _))
+        .WillByDefault(Invoke([&](std::FILE * file, uint64_t)
         {
             sink = file;
         }));
