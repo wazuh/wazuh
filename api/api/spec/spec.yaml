@@ -7069,10 +7069,11 @@ paths:
                       alerts:
                         log_alert_level: "3"
                       remote:
-                        port: 1514
-                        protocol:
-                          - tcp
-                        queue_size: 131072
+                        legacy:
+                          port: 1514
+                          protocol:
+                            - tcp
+                          queue_size: 131072
                       syscollector:
                         disabled: no
                         interval: "1h"
