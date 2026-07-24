@@ -22,7 +22,6 @@
 #include <cstring>
 #include <fstream>
 #include <memory>
-#include <vector>
 
 using ::testing::_;
 using ::testing::Invoke;
@@ -102,7 +101,7 @@ TEST_F(ControlStreamTest, StartupBodyCarriesTypeAndVersionOnly)
     EXPECT_TRUE(m_stream.step(m_waiter));
     EXPECT_NE(std::string::npos, sent.find("\"type\":\"startup\""));
     EXPECT_NE(std::string::npos, sent.find("\"version\":\"5.1.0\""));
-    // 5.1.1: hashes travel in the Notify response, never in the startup request.
+    // C.1: the config hash travels in Notify, never in the startup request.
     EXPECT_EQ(std::string::npos, sent.find("config_hash"));
     EXPECT_EQ(std::string::npos, sent.find("config_checksum"));
 }

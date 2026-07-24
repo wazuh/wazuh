@@ -23,18 +23,17 @@
 
 #include <gtest/gtest.h>
 
-#include <cstdio>
-#include <unistd.h>
-
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 namespace
@@ -635,6 +634,76 @@ TEST_F(FacadeE2eTest, OversizedBatchIsSplitAndResentWithoutLoss)
     }
 }
 
+namespace
+{
+    char* collectStatsStub(void*)
+    {
+        return strdup(R"({"uptime":123,"events":7})");
+    }
+
+    char* collectConfigStub(void*)
+    {
+        return strdup(R"({"client":{"notify_time":10}})");
+    }
+} // namespace
+
+TEST_F(FacadeE2eTest, ReporterPostsStampedStatsAndConfig)
+{
+    // With both reporters on, the module POSTs the collected snapshots to
+    // /stats and /config, stamped with agent_id and the manager-authoritative
+    // cluster (proving the commit-4 plumbing end to end). #37843.
+    const uint16_t port = TLS_PORT + 5;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    config.stats_enabled = true;
+    config.stats_interval_s = 1;
+    config.config_report_enabled = true;
+    config.config_report_interval_s = 1;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.on_state_change = onState;
+    callbacks.collect_stats = collectStatsStub;
+    callbacks.collect_config = collectConfigStub;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    std::string stats;
+    std::string cfg;
+
+    for (int attempt = 0; attempt < 300; attempt++)
+    {
+        auto s = peek.Get("/peek/stats");
+        auto c = peek.Get("/peek/config");
+
+        if (s && s->status == 200 && c && c->status == 200)
+        {
+            stats = s->body;
+            cfg = c->body;
+            break;
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds {20});
+    }
+
+    hc_destroy(handle);
+
+    // The manager sees the module's own snapshot, stamped with identity.
+    EXPECT_NE(std::string::npos, stats.find(R"("uptime":123)"));
+    EXPECT_NE(std::string::npos, stats.find(R"("agent_id":"001")"));
+    EXPECT_NE(std::string::npos, stats.find(R"("cluster":{"name":"fake","node":"node01"})"));
+    EXPECT_NE(std::string::npos, cfg.find(R"("notify_time":10)"));
+    EXPECT_NE(std::string::npos, cfg.find(R"("agent_id":"001")"));
+}
+
 TEST_F(FacadeE2eTest, SettingsChangeRefreshesStartupWithoutLeavingRegistered)
 {
     // A dedicated manager that flips its settings after 2 notifies: the
@@ -667,4 +736,37 @@ TEST_F(FacadeE2eTest, SettingsChangeRefreshesStartupWithoutLeavingRegistered)
     EXPECT_EQ(0, std::count(recorder.states.begin(), recorder.states.end(),
                             HC_STATE_REJECTED));
     EXPECT_EQ(HC_STATE_STOPPED, recorder.states.back());
+}
+
+TEST_F(FacadeE2eTest, RegistersAndRunsTheDataStreams)
+{
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    hc_callbacks_t callbacks {};
+    callbacks.log = nullptr;
+    callbacks.on_startup_result = onStartup;
+    callbacks.on_sync_response = onSync;
+    callbacks.on_state_change = onState;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+
+    // The control loop reaches REGISTERED (Startup accepted over real TLS).
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
+    EXPECT_EQ(HC_STATE_REGISTERED, hc_get_state(handle));
+
+    // The gate is open: the stateless sender flushes submitted events, and the
+    // stateful sender ships a submitted session (answered via on_sync_response).
+    const uint8_t frame[] = "1:/var/log/syslog:e2e";
+    EXPECT_TRUE(hc_submit_event(handle, frame, sizeof(frame) - 1));
+    const uint8_t session[] = "FULLSESSION:syscollector:body";
+    EXPECT_TRUE(hc_submit_sync_session(handle, "sess-e2e", session, sizeof(session) - 1));
+    EXPECT_TRUE(waitFor(recorder.syncCount, 1, 3000));
+
+    hc_destroy(handle); // Drains (final flush + Notify) and joins.
+    EXPECT_EQ(HC_STATE_STOPPED, recorder.states.back());
+    EXPECT_NE(recorder.states.end(),
+              std::find(recorder.states.begin(), recorder.states.end(), HC_STATE_REGISTERED));
 }
