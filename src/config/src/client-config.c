@@ -16,6 +16,7 @@
 
 int Read_Client_Server(XML_NODE node, agent *logr);
 int Read_Client_SSL(XML_NODE node, agent *logr);
+int Read_Client_Batch(XML_NODE node, agent *logr);
 int Read_Client_Enrollment(XML_NODE node, agent *logr);
 
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -120,10 +121,15 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                 OS_ClearNode(chld_node);
             }
         } else if (strcmp(node[i]->element, xml_client_batch) == 0) {
-            /* <batch><size>/<interval>: the send-rate model is owned by the
-             * stateless events module (#37835 / issue 06). Accepted here so an
-             * ossec.conf carrying it does not fail; parsed there, not here. */
-            mdebug1("The <%s> options are handled by the events module; ignored by the client parser.", xml_client_batch);
+            /* <batch><size>/<interval>: the /stateless send-rate model that
+             * replaces the leaky bucket's pacing (#37835). */
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Client_Batch(chld_node, logr) < 0) {
+                    OS_ClearNode(chld_node);
+                    return (OS_INVALID);
+                }
+                OS_ClearNode(chld_node);
+            }
         } else if (strcmp(node[i]->element, xml_client_enrollment) == 0) {
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Client_Enrollment(chld_node, logr) < 0) {
@@ -385,6 +391,51 @@ int Read_Client_SSL(XML_NODE node, agent * logr)
         } else if (strcmp(node[j]->element, xml_ciphers) == 0) {
             os_free(logr->ssl.ciphers);
             os_strdup(node[j]->content, logr->ssl.ciphers);
+        } else {
+            merror(XML_INVELEM, node[j]->element);
+            return (OS_INVALID);
+        }
+    }
+
+    return (0);
+}
+
+int Read_Client_Batch(XML_NODE node, agent * logr)
+{
+    /* XML definitions - the <client><batch> block (#37835). Both accept the
+     * usual suffixes: <size>1MB</size>, <interval>10s</interval>. */
+    const char *xml_size = "size";
+    const char *xml_interval = "interval";
+
+    /* An interval this long already dwarfs any sane batching window, and it
+     * keeps the milliseconds the module wants inside 32 bits. */
+    const long max_interval = 86400;
+
+    for (int j = 0; node[j]; j++) {
+        if (!node[j]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[j]->content) {
+            merror(XML_VALUENULL, node[j]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[j]->element, xml_size) == 0) {
+            const long long size = w_validate_bytes(node[j]->content);
+
+            if (size <= 0) {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+
+            logr->batch.size = size;
+        } else if (strcmp(node[j]->element, xml_interval) == 0) {
+            const long interval = w_parse_time(node[j]->content);
+
+            if (interval <= 0 || interval > max_interval) {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+
+            logr->batch.interval = interval;
         } else {
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
