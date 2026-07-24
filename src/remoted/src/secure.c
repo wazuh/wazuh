@@ -68,7 +68,6 @@ _Atomic (time_t) current_ts;
 OSHash *remoted_agents_state;
 
 extern remoted_state_t remoted_state;
-ROUTER_PROVIDER_HANDLE router_upgrade_ack_handle = NULL;
 ROUTER_PROVIDER_HANDLE router_sync_handle = NULL;
 STATIC void handle_outgoing_data_to_tcp_socket(int sock_client);
 STATIC void handle_incoming_data_from_tcp_socket(int sock_client);
@@ -286,10 +285,6 @@ void HandleSecure()
     router_initialize(taggedLogFunction, ARGV0);
 
     // Router providers initialization
-    if (router_upgrade_ack_handle = router_provider_create("upgrade_notifications", false), !router_upgrade_ack_handle) {
-        mdebug2("Failed to create router handle for 'upgrade_notifications'.");
-    }
-
     if (router_sync_handle = router_provider_create("inventory-states", false), !router_sync_handle) {
         mdebug2("Failed to create router handle for 'inventory synchronization'.");
     }
@@ -1141,13 +1136,10 @@ bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
         message_type = MT_INV_SYNC;
     }
     else if(strncmp(msg, UPGRADE_ACK_HEADER, UPGRADE_ACK_HEADER_SIZE) == 0) {
-        if (!router_upgrade_ack_handle) {
-            mdebug2("Router handle for 'upgrade_notifications' not available.");
-            return false;
-        }
-        router_handle = router_upgrade_ack_handle;
-        message_header_size = UPGRADE_ACK_HEADER_SIZE;
-        message_type = MT_UPGRADE_ACK;
+        // Upgrade acknowledgments from agents are no longer processed in 5.x
+        // Fire-and-forget model: agents execute tasks without reporting results
+        mdebug2("Ignoring upgrade acknowledgment from agent '%s' (not processed in 5.x)", agent_id);
+        return true;
     }
 
     if (!router_handle) {
@@ -1201,44 +1193,6 @@ bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
 
         rem_inc_recv_states(agent_id);
         return true;
-    }
-    else if (message_type == MT_UPGRADE_ACK) {
-
-        cJSON* upgrade_ack_json;
-        const char *json_err;
-        if (upgrade_ack_json = cJSON_ParseWithOpts(msg_start, &json_err, 0), !upgrade_ack_json) {
-            mwarn("Failed to parse router message JSON: '%s'", json_err);
-            return false;
-        }
-
-        cJSON* parameters_obj = cJSON_GetObjectItem(upgrade_ack_json, "parameters");
-
-        if (parameters_obj && cJSON_IsObject(parameters_obj)) {
-            int agent = atoi(agent_id);
-            cJSON* agents = cJSON_CreateIntArray(&agent, 1);
-            cJSON_AddItemToObject(parameters_obj, "agents", agents);
-
-            char *upgrade_message = cJSON_PrintUnformatted(upgrade_ack_json);
-            size_t msg_size = strlen(upgrade_message) + 1; // +1 for null terminator
-
-            if (router_provider_send(router_handle, upgrade_message, msg_size) != 0) {
-                mwarn("Unable to forward upgrade-ack message '%s' for agent %s", msg_start, agent_id);
-                cJSON_free(upgrade_message);
-                cJSON_Delete(upgrade_ack_json);
-                return false;
-            }
-
-            // Free the printed message and JSON object
-            cJSON_free(upgrade_message);
-            cJSON_Delete(upgrade_ack_json);
-            rem_inc_recv_upgrade_ack(agent_id);
-            return true;
-        }
-        else {
-            mwarn("Could not get parameters from upgrade message: '%s'", msg_start);
-            cJSON_Delete(upgrade_ack_json);
-            return false;
-        }
     }
 
     return false;
