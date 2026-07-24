@@ -45,6 +45,18 @@ typedef struct agent_ssl {
     char * ciphers;                 ///< <ciphers>: optional cipher list.
 } agent_ssl;
 
+/**
+ * @brief <client><batch>: the /stateless send-rate model (#37835).
+ *
+ * Replaces the leaky bucket's <client_buffer><events_per_second> pacing for
+ * stateless traffic. Zero means "unset": the transport module applies its own
+ * default (1 MiB, 10 s).
+ */
+typedef struct agent_batch {
+    long long size; ///< <size>: max /stateless request payload, in bytes.
+    long interval;  ///< <interval>: longest an event waits before a flush, seconds.
+} agent_batch;
+
 /* Configuration structure */
 typedef struct _agent {
     agent_server * server;
@@ -62,7 +74,8 @@ typedef struct _agent {
     int events_persec;
     int package_uninstallation;
     agent_flags_t flags;
-    agent_ssl ssl; ///< HTTPS transport TLS settings (<client><ssl>).
+    agent_ssl ssl;     ///< HTTPS transport TLS settings (<client><ssl>).
+    agent_batch batch; ///< /stateless batching limits (<client><batch>).
     w_enrollment_ctx *enrollment_cfg;
 } agent;
 
