@@ -18,6 +18,7 @@
 #include <memory>
 #include <optional>
 #include <atomic>
+#include <set>
 
 #include "sysInfoInterface.h"
 #include "commonDefs.h"
@@ -199,15 +200,22 @@ class EXPORTED Syscollector final
         nlohmann::json addPreviousFields(nlohmann::json& current, const nlohmann::json& previous);
 
         // containerId scopes the transaction's delete detection ("" = host rows).
+        // notifyOverride, when set, replaces m_notify for this call's stateless
+        // alert decision — used to keep a container's first-ever sync quiet
+        // (like today's one-shot baseline) even once later intervals have
+        // already flipped m_notify to true for everything else.
         void updateChanges(const std::string& table,
                            const nlohmann::json& values,
-                           const std::string& containerId = "");
+                           const std::string& containerId = "",
+                           std::optional<bool> notifyOverride = std::nullopt);
         void notifyChange(ReturnTypeCallback result,
                           const nlohmann::json& data,
-                          const std::string& table);
+                          const std::string& table,
+                          bool notify);
         void processEvent(ReturnTypeCallback result,
                           const nlohmann::json& data,
-                          const std::string& table);
+                          const std::string& table,
+                          bool notify);
 
         void scanHardware();
         void scanOs();
@@ -504,6 +512,15 @@ class EXPORTED Syscollector final
         /// do not take it: they are joined before releaseResources() runs. Mirrors
         /// SecurityConfigurationAssessment::m_resourcesMutex, added for the same defect.
         mutable std::shared_mutex                                                m_resourcesMutex;
+
+        // Container ids whose baseline has already been synced at least once
+        // (in this process's lifetime). A container_id not in this set is
+        // treated as a first-ever sync and kept quiet regardless of m_notify,
+        // mirroring the one-shot baseline's original "no alert per row on
+        // first seed" behavior now that scanContainerBaseline() runs every
+        // interval instead of once. Reset only implicitly, by process
+        // restart — same durability as m_notify itself.
+        std::set<std::string>                                                    m_knownContainerIds;
 };
 
 
