@@ -71,6 +71,30 @@ void __wrap_w_agentd_state_update(w_agentd_state_update_t type, void *data)
     check_expected(data);
 }
 
+/* bridge_build_config() reads the client-buffer occupancy options exactly as
+ * buffer_init() does, and the real getDefine_Int() merror_exit()s when a name
+ * is not in internal_options.conf. No case here exercises those values, so
+ * answer with the shipped defaults instead of scripting three returns into
+ * every test that starts the client. */
+int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, int max)
+{
+    (void)high_name;
+    (void)min;
+    (void)max;
+
+    if (strcmp(low_name, "warn_level") == 0) {
+        return 90;
+    }
+    if (strcmp(low_name, "normal_level") == 0) {
+        return 70;
+    }
+    if (strcmp(low_name, "tolerance") == 0) {
+        return 15;
+    }
+
+    return 0;
+}
+
 /* bridge_reenroll_thread is not static (see its own comment) precisely so it
  * can be called directly here, synchronously, bypassing w_create_thread.
  * g_https_client_stopping is likewise not static: setup_test() below resets

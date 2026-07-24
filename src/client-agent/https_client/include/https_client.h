@@ -127,6 +127,16 @@ typedef struct hc_config_t
     uint32_t batch_interval_ms;     ///< <batch><interval>; 0 -> 10000.
     uint32_t buffer_cap_multiplier; ///< Accumulator cap = N x batch size; 0 -> 4.
 
+    /* Occupancy ladder, mirroring the legacy client buffer's internal options
+     * so the manager-side flood rules keep firing on the same thresholds.
+     * Note the struct's zero-means-default convention: agent.normal_level and
+     * agent.tolerance accept a literal 0, which is indistinguishable from
+     * "unset" here and takes the default instead. */
+    uint32_t buffer_warn_level;        ///< agent.warn_level, percent; 0 -> 90.
+    uint32_t buffer_normal_level;      ///< agent.normal_level, percent; 0 -> 70.
+    uint32_t buffer_flood_tolerance_s; ///< agent.tolerance: seconds FULL must
+    ///< hold before FLOOD; 0 -> 15.
+
     uint32_t notify_interval_s;         ///< notify_time; 0 -> 20.
     uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
 

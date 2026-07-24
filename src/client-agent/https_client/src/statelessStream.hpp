@@ -13,6 +13,7 @@
 #define _HC_STATELESS_STREAM_HPP
 
 #include "adaptivePayload.hpp"
+#include "bufferLevel.hpp"
 #include "callbackSink.hpp"
 #include "eventAccumulator.hpp"
 #include "moduleConfig.hpp"
@@ -30,8 +31,9 @@
  *        sender thread flushes on the size/age/forced conditions. Each flush
  *        prepends the H metadata line, signs (via RetrySender), and on success
  *        consumes the sent prefix. Back-pressure defers only this stream's
- *        next flush. The occupancy ladder is surfaced through the sink on
- *        every change.
+ *        next flush. Occupancy is surfaced through the sink whenever
+ *        BufferLevelLadder says the legacy client buffer would have reported
+ *        the step.
  */
 class StatelessStream final
 {
@@ -55,8 +57,8 @@ class StatelessStream final
         std::chrono::milliseconds tick(Waiter& waiter, bool force);
 
         /// Shutdown drain: flush repeatedly until the buffer empties or nothing
-        /// more can be sent (bounded, since one flush now sends <= effective
-        /// bytes rather than the whole buffer).
+        /// more can be sent. Bounded in both directions -- a fixed iteration
+        /// count and, per flush, the drain window with a single attempt.
         void drain(Waiter& waiter);
 
         hc_buffer_level_t level() const;
@@ -64,9 +66,9 @@ class StatelessStream final
 
     private:
         bool flushDue(bool force) const;
-        bool flushOnce(Waiter& waiter);
+        bool flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts);
         void handleOutcome(OutcomeClass outcome, const EventAccumulator::Snapshot& snapshot);
-        void publishLevelLocked();
+        void publishLevelLocked(bool eventDropped);
         uint64_t eventBytesBudgetLocked() const;
         std::string buildHeaderLine() const;
 
@@ -81,8 +83,9 @@ class StatelessStream final
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
         std::chrono::steady_clock::time_point m_lastFlush;
         mutable std::mutex m_stateMutex;
-        hc_buffer_level_t m_lastLevel {HC_BUFFER_NORMAL};
+        BufferLevelLadder m_ladder;
         uint64_t m_droppedEvents {0};
+        bool m_oversizedWarned {false}; ///< Warn-once latch for unsplittable 413s.
 };
 
 #endif // _HC_STATELESS_STREAM_HPP
