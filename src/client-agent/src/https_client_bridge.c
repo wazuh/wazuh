@@ -368,3 +368,25 @@ void w_https_client_stop(void)
         g_https_client = NULL;
     }
 }
+
+int w_https_client_submit_event(const char *frame, size_t length)
+{
+    if (frame == NULL || length == 0) {
+        return -1;
+    }
+
+    int retval = -1;
+
+    /* Hold the lock across the submit so the handle cannot be destroyed under
+     * us: w_https_client_stop() must take this same lock to flag stopping
+     * before it calls hc_destroy(), so while we hold it the handle stays valid.
+     * hc_submit_event() only appends to the accumulator, so the section is short. */
+    w_mutex_lock(&g_https_client_lock);
+
+    if (g_https_client != NULL && !atomic_load(&g_https_client_stopping)) {
+        retval = hc_submit_event(g_https_client, (const uint8_t *)frame, length) ? 0 : -1;
+    }
+
+    w_mutex_unlock(&g_https_client_lock);
+    return retval;
+}
