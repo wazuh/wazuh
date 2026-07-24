@@ -34,25 +34,99 @@ STATIC int w_remoted_get_net_protocol(const char * content);
  */
 STATIC void w_remoted_parse_agents(XML_NODE node, remoted * logr);
 
+/**
+ * @brief parses the <remote><legacy> block (classic TCP/UDP listener options)
+ *
+ * @param node XML node
+ * @param logr remoted configuration structure
+ * @return OS_SUCCESS on success, OS_INVALID on a fatal parsing error
+ */
+STATIC int w_remoted_parse_legacy(XML_NODE node, remoted * logr);
+
+/**
+ * @brief parses the <remote><https> block (RESTinio HTTPS server options)
+ *
+ * @param node XML node
+ * @param logr remoted configuration structure
+ * @return OS_SUCCESS on success, OS_INVALID on a fatal parsing error
+ */
+STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr);
+
 /* Reads remote config */
 int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
     int i = 0;
     remoted * logr = NULL;
-    const int DEFAULT_RIDS_CLOSING_TIME = 300;
 
     /*** XML Definitions ***/
-    /* Remote options */
+    const char *xml_remote_https = "https";
+    const char *xml_remote_legacy = "legacy";
+    const char *xml_remote_agents = "agents";
+
+    logr = (remoted *)d1;
+
+    while (node[i]) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcasecmp(node[i]->element, xml_remote_legacy) == 0) {
+            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
+            if (children != NULL) {
+                int ret = w_remoted_parse_legacy(children, logr);
+                OS_ClearNode(children);
+                if (ret == OS_INVALID) {
+                    return (OS_INVALID);
+                }
+            }
+        } else if (strcasecmp(node[i]->element, xml_remote_https) == 0) {
+            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
+            if (children != NULL) {
+                int ret = w_remoted_parse_https(children, logr);
+                OS_ClearNode(children);
+                if (ret == OS_INVALID) {
+                    return (OS_INVALID);
+                }
+            }
+        } else if (strcasecmp(node[i]->element, xml_remote_agents) == 0) {
+            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
+            if (children != NULL) {
+                w_remoted_parse_agents(children, logr);
+                OS_ClearNode(children);
+            }
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+        i++;
+    }
+
+    /* Set port in here */
+    if (logr->port == 0) {
+        logr->port = DEFAULT_REMOTE_PORT;
+    }
+
+    /* Set protocol in here */
+    if (logr->proto == 0) {
+        logr->proto = REMOTED_NET_PROTOCOL_DEFAULT;
+    }
+    return (0);
+}
+
+STATIC int w_remoted_parse_legacy(XML_NODE node, remoted * logr) {
+    const int DEFAULT_RIDS_CLOSING_TIME = 300;
+
     const char *xml_remote_port = "port";
     const char *xml_remote_proto = "protocol";
     const char *xml_remote_ipv6 = "ipv6";
     const char *xml_remote_lip = "local_ip";
-    const char *xml_remote_agents = "agents";
     const char *xml_queue_size = "queue_size";
     const char *xml_rids_closing_time = "rids_closing_time";
     const char *xml_connection_overtake_time = "connection_overtake_time";
 
-    logr = (remoted *)d1;
+    int i = 0;
 
     logr->lip = NULL;
     logr->rids_closing_time = DEFAULT_RIDS_CLOSING_TIME;
@@ -134,16 +208,6 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
                     logr->connection_overtake_time = connection_overtake_time;
                 }
             }
-        } else if (strcasecmp(node[i]->element, xml_remote_agents) == 0) {
-            xml_node **children = OS_GetElementsbyNode(xml, node[i]);
-            if (children == NULL) {
-                continue;
-            }
-
-            w_remoted_parse_agents(children, logr);
-
-            OS_ClearNode(children);
-
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -151,16 +215,91 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
         i++;
     }
 
-    /* Set port in here */
-    if (logr->port == 0) {
-        logr->port = DEFAULT_REMOTE_PORT;
+    return OS_SUCCESS;
+}
+
+STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
+    const char *xml_https_port = "port";
+    const char *xml_https_bind_addr = "bind_addr";
+    const char *xml_https_certificate = "certificate";
+    const char *xml_https_key = "key";
+    const char *xml_https_ca = "ca";
+    const char *xml_https_verification_mode = "verification_mode";
+    const char *xml_https_ciphers = "ciphers";
+    const char *xml_https_max_body_size = "max_body_size";
+
+    int i = 0;
+
+    while (node[i]) {
+        if (!node[i]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[i]->content) {
+            merror(XML_VALUENULL, node[i]->element);
+            return (OS_INVALID);
+        } else if (strcasecmp(node[i]->element, xml_https_port) == 0) {
+            if (!OS_StrIsNum(node[i]->content)) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+            logr->https.port = atoi(node[i]->content);
+
+            if (logr->https.port <= 0 || logr->https.port > 65535) {
+                merror(PORT_ERROR, logr->https.port);
+                return (OS_INVALID);
+            }
+        } else if (strcasecmp(node[i]->element, xml_https_bind_addr) == 0) {
+            os_free(logr->https.bind_addr);
+            os_strdup(node[i]->content, logr->https.bind_addr);
+
+            if (OS_IsValidIP(logr->https.bind_addr, NULL) != 1) {
+                merror(INVALID_IP, node[i]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcasecmp(node[i]->element, xml_https_certificate) == 0) {
+            os_free(logr->https.certificate);
+            os_strdup(node[i]->content, logr->https.certificate);
+        } else if (strcasecmp(node[i]->element, xml_https_key) == 0) {
+            os_free(logr->https.key);
+            os_strdup(node[i]->content, logr->https.key);
+        } else if (strcasecmp(node[i]->element, xml_https_ca) == 0) {
+            os_free(logr->https.ca);
+            os_strdup(node[i]->content, logr->https.ca);
+        } else if (strcasecmp(node[i]->element, xml_https_verification_mode) == 0) {
+            if (strcasecmp(node[i]->content, "none") == 0) {
+                logr->https.verification_mode = REMOTED_HTTPS_VERIFY_NONE;
+            } else if (strcasecmp(node[i]->content, "certificate") == 0) {
+                logr->https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
+            } else if (strcasecmp(node[i]->content, "full") == 0) {
+                logr->https.verification_mode = REMOTED_HTTPS_VERIFY_FULL;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_https_verification_mode);
+            }
+        } else if (strcasecmp(node[i]->element, xml_https_ciphers) == 0) {
+            os_free(logr->https.ciphers);
+            os_strdup(node[i]->content, logr->https.ciphers);
+        } else if (strcasecmp(node[i]->element, xml_https_max_body_size) == 0) {
+            ssize_t max_body_size = w_parse_size(node[i]->content);
+
+            if (max_body_size <= 0) {
+                merror(XML_VALUEERR, node[i]->element, node[i]->content);
+                return (OS_INVALID);
+            }
+
+            logr->https.max_body_size = (long) max_body_size;
+        } else {
+            merror(XML_INVELEM, node[i]->element);
+            return (OS_INVALID);
+        }
+        i++;
     }
 
-    /* Set protocol in here */
-    if (logr->proto == 0) {
-        logr->proto = REMOTED_NET_PROTOCOL_DEFAULT;
+    if (logr->https.verification_mode != REMOTED_HTTPS_VERIFY_NONE && logr->https.ca == NULL) {
+        merror("The '<remote><https><verification_mode>' option requires '<ca>' to be configured.");
+        return (OS_INVALID);
     }
-    return (0);
+
+    return OS_SUCCESS;
 }
 
 STATIC int w_remoted_get_net_protocol(const char * content) {
