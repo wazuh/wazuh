@@ -31,11 +31,21 @@ StatelessStream::StatelessStream(const ModuleConfig& config, IHttpPerformer& per
 {
 }
 
-bool StatelessStream::submit(const uint8_t* frame, size_t length)
+StatelessStream::SubmissionResult StatelessStream::submit(const uint8_t* frame, size_t length)
 {
+    std::lock_guard<std::mutex> lock(m_stateMutex);
+    const auto eventBudget = eventBytesBudgetLocked();
+    const bool wasFlushDue = m_accumulator.flushDue(0, eventBudget);
     const bool accepted = m_accumulator.append(frame, length);
-    publishLevel();
-    return accepted;
+
+    if (!accepted)
+    {
+        m_droppedEvents++;
+    }
+
+    const bool isFlushDue = m_accumulator.flushDue(0, eventBudget);
+    publishLevelLocked();
+    return SubmissionResult {accepted, accepted && !wasFlushDue && isFlushDue};
 }
 
 std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
@@ -65,6 +75,12 @@ hc_buffer_level_t StatelessStream::level() const
     return m_accumulator.level();
 }
 
+uint64_t StatelessStream::droppedEvents() const
+{
+    std::lock_guard<std::mutex> lock(m_stateMutex);
+    return m_droppedEvents;
+}
+
 bool StatelessStream::flushDue(bool force) const
 {
     if (m_accumulator.empty())
@@ -80,12 +96,18 @@ bool StatelessStream::flushDue(bool force) const
     const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                              m_clock.steadyNow() - m_lastFlush)
                          .count();
-    return m_accumulator.flushDue(static_cast<uint64_t>(elapsed), m_payload.effectiveBytes());
+    std::lock_guard<std::mutex> lock(m_stateMutex);
+    return m_accumulator.flushDue(static_cast<uint64_t>(elapsed), eventBytesBudgetLocked());
 }
 
 bool StatelessStream::flushOnce(Waiter& waiter)
 {
-    const auto snapshot = m_accumulator.snapshot(m_payload.effectiveBytes());
+    uint64_t eventBudget;
+    {
+        std::lock_guard<std::mutex> lock(m_stateMutex);
+        eventBudget = eventBytesBudgetLocked();
+    }
+    const auto snapshot = m_accumulator.snapshot(eventBudget);
 
     HttpRequestSpec spec;
     spec.target = "/stateless";
@@ -103,11 +125,13 @@ bool StatelessStream::flushOnce(Waiter& waiter)
 void StatelessStream::handleOutcome(OutcomeClass outcome,
                                     const EventAccumulator::Snapshot& snapshot)
 {
+    std::lock_guard<std::mutex> lock(m_stateMutex);
+
     if (outcome == OutcomeClass::Ok)
     {
         m_accumulator.consume(snapshot);
         m_payload.onSuccess(); // Ramp the effective payload back toward the max.
-        publishLevel();
+        publishLevelLocked();
         return;
     }
 
@@ -118,11 +142,11 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
         if (snapshot.eventCount == 1)
         {
             m_accumulator.consume(snapshot);
-            m_oversizedDropped++;
+            m_droppedEvents++;
             LOGFN_WARN(m_logFn, "Dropped a single oversized /stateless event the "
                                 "manager rejected with 413 (total dropped: %llu).",
-                       static_cast<unsigned long long>(m_oversizedDropped));
-            publishLevel();
+                       static_cast<unsigned long long>(m_droppedEvents));
+            publishLevelLocked();
         }
 
         m_payload.onPayloadTooLarge(); // A multi-event batch stays for a smaller retry.
@@ -132,7 +156,8 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
     if (outcome == OutcomeClass::Permanent)
     {
         m_accumulator.consume(snapshot); // Non-413 4xx: retrying identical bytes cannot help.
-        publishLevel();
+        m_droppedEvents += snapshot.eventCount;
+        publishLevelLocked();
         return;
     }
 
@@ -154,7 +179,7 @@ void StatelessStream::drain(Waiter& waiter)
     }
 }
 
-void StatelessStream::publishLevel()
+void StatelessStream::publishLevelLocked()
 {
     const auto level = m_accumulator.level();
 
@@ -163,6 +188,13 @@ void StatelessStream::publishLevel()
         m_lastLevel = level;
         m_sink.onBufferLevel(level);
     }
+}
+
+uint64_t StatelessStream::eventBytesBudgetLocked() const
+{
+    const uint64_t requestBudget = m_payload.effectiveBytes();
+    const size_t headerBytes = buildHeaderLine().size();
+    return requestBudget > headerBytes ? requestBudget - headerBytes : 0;
 }
 
 std::string StatelessStream::buildHeaderLine() const

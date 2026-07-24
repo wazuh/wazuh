@@ -30,6 +30,7 @@ Mt19937Random::Mt19937Random()
 
 double Mt19937Random::uniform01()
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     return std::uniform_real_distribution<double> {0.0, 1.0}(m_engine);
 }
 

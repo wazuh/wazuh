@@ -22,8 +22,8 @@
  *        hard floor, a server cap below floor + header would wedge the stream
  *        retrying the same too-big batch forever. At one byte the snapshot
  *        still carries one whole event, so a persistent 413 converges onto
- *        the single-event drop path instead of livelocking. Pure and single-
- *        threaded (owned by the stateless sender thread).
+ *        the single-event drop path instead of livelocking. StatelessStream
+ *        serializes access because intake also reads the current budget.
  */
 class AdaptivePayload final
 {

@@ -132,9 +132,9 @@ void HttpsClientFacade::statelessLoop()
 
     while (true)
     {
-        m_stateless.tick(m_statelessWaiter, false);
+        const auto delay = m_stateless.tick(m_statelessWaiter, false);
 
-        if (!m_statelessWaiter.waitFor(std::chrono::milliseconds {m_config.batchIntervalMs}))
+        if (!m_statelessWaiter.waitFor(delay))
         {
             break;
         }
@@ -161,16 +161,27 @@ std::chrono::milliseconds HttpsClientFacade::controlInterval() const
 
 bool HttpsClientFacade::submitEvent(const uint8_t* frame, size_t length)
 {
+    std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+
     if (!m_started || frame == nullptr || length == 0)
     {
         return false;
     }
 
-    return m_stateless.submit(frame, length);
+    const auto result = m_stateless.submit(frame, length);
+
+    if (result.shouldWakeSender)
+    {
+        m_statelessWaiter.notify();
+    }
+
+    return result.accepted;
 }
 
 void HttpsClientFacade::notifyNow()
 {
+    std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+
     if (m_started)
     {
         m_controlWaiter.notify(); // Break the Notify cadence for one out-of-cycle send.

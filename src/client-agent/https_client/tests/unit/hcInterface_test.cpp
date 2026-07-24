@@ -243,9 +243,9 @@ TEST_F(HcInterfaceTest, LifecycleChurn)
             }
         });
         std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        hc_stop(handle);
         submitting = false;
         producer.join();
-        hc_stop(handle);
         hc_destroy(handle);
     }
 }
