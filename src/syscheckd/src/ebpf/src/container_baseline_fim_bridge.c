@@ -154,7 +154,7 @@ static void normalize_container_fim_row(cJSON* msg)
     cJSON_DeleteItemFromObject(msg, "attributes");
 }
 
-int fim_collect_k8s_monitored_paths(cb_monitored_path_t** out_paths, size_t* out_count)
+int fim_collect_container_monitored_paths(cb_monitored_path_t** out_paths, size_t* out_count)
 {
     if (out_paths == NULL || out_count == NULL) {
         return -1;
@@ -171,7 +171,7 @@ int fim_collect_k8s_monitored_paths(cb_monitored_path_t** out_paths, size_t* out
     for (OSListNode* it = OSList_GetFirstNode(syscheck.directories); it != NULL;
          it = OSList_GetNext(syscheck.directories, it)) {
         const directory_t* path = (const directory_t*)it->data;
-        if (path != NULL && path->path != NULL && path->tag != NULL && strcmp(path->tag, "kubernetes") == 0) {
+        if (path != NULL && path->path != NULL && path->tag != NULL && strcmp(path->tag, "container") == 0) {
             ++count;
         }
     }
@@ -189,7 +189,7 @@ int fim_collect_k8s_monitored_paths(cb_monitored_path_t** out_paths, size_t* out
     for (OSListNode* it = OSList_GetFirstNode(syscheck.directories); it != NULL;
          it = OSList_GetNext(syscheck.directories, it)) {
         const directory_t* path = (const directory_t*)it->data;
-        if (path == NULL || path->path == NULL || path->tag == NULL || strcmp(path->tag, "kubernetes") != 0) {
+        if (path == NULL || path->path == NULL || path->tag == NULL || strcmp(path->tag, "container") != 0) {
             continue;
         }
 
@@ -206,7 +206,7 @@ int fim_collect_k8s_monitored_paths(cb_monitored_path_t** out_paths, size_t* out
     return 0;
 }
 
-void fim_free_k8s_monitored_paths(cb_monitored_path_t* paths)
+void fim_free_container_monitored_paths(cb_monitored_path_t* paths)
 {
     free(paths);
 }
@@ -216,31 +216,31 @@ void fim_free_k8s_monitored_paths(cb_monitored_path_t* paths)
  * a second, but with no ordering guarantee between the two daemons. Poll
  * briefly instead of failing on the first check, so a one-shot baseline at
  * FIM startup doesn't lose the race by chance. */
-#define K8S_BASELINE_SOCKET_WAIT_TOTAL_MS 5000
-#define K8S_BASELINE_SOCKET_POLL_INTERVAL_MS 200
+#define CONTAINER_BASELINE_SOCKET_WAIT_TOTAL_MS 5000
+#define CONTAINER_BASELINE_SOCKET_POLL_INTERVAL_MS 200
 
-int fim_k8s_container_baseline_available(const char* socket_path)
+int fim_container_baseline_available(const char* socket_path)
 {
     if (socket_path == NULL) {
-        mdebug1("container_instances module not running (no socket path configured), skipping k8s FIM baseline.");
+        mdebug1("container_instances module not running (no socket path configured), skipping container FIM baseline.");
         return 0;
     }
 
     int waited_ms = 0;
     while (access(socket_path, F_OK) != 0) {
-        if (waited_ms >= K8S_BASELINE_SOCKET_WAIT_TOTAL_MS) {
-            mdebug1("container_instances module not running (socket '%s' not found after %dms), skipping k8s FIM baseline.",
+        if (waited_ms >= CONTAINER_BASELINE_SOCKET_WAIT_TOTAL_MS) {
+            mdebug1("container_instances module not running (socket '%s' not found after %dms), skipping container FIM baseline.",
                     socket_path, waited_ms);
             return 0;
         }
-        usleep(K8S_BASELINE_SOCKET_POLL_INTERVAL_MS * 1000);
-        waited_ms += K8S_BASELINE_SOCKET_POLL_INTERVAL_MS;
+        usleep(CONTAINER_BASELINE_SOCKET_POLL_INTERVAL_MS * 1000);
+        waited_ms += CONTAINER_BASELINE_SOCKET_POLL_INTERVAL_MS;
     }
 
     return 1;
 }
 
-void fim_report_k8s_container_baseline_result(int baselined)
+void fim_report_container_baseline_result(int baselined)
 {
     minfo("Container FIM baseline finished (%d container(s) baselined).", baselined);
 }
