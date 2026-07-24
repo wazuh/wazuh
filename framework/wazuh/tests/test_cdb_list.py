@@ -297,6 +297,7 @@ def test_get_path_lists_sort(iterate_mock):
     ('test_file', True, 'test-ossec-w:write\ntest-ossec-r:read\ntest-ossec-x:execute\n', 0),
     ('test_file', False, {'test-ossec-w': 'write', 'test-ossec-r': 'read', 'test-ossec-x': 'execute'}, 0),
 ])
+@patch('wazuh.cdb_list.common.USER_LISTS_PATH', new=DATA_PATH)
 def test_get_list_file(filename, raw, expected_result, total_failed_items):
     """Test that get_list_file calls functions with expected params and it searches filename recursively.
 
@@ -319,6 +320,16 @@ def test_get_list_file(filename, raw, expected_result, total_failed_items):
             isinstance(result, AffectedItemsWazuhResult)
             assert result.render()['data']['total_failed_items'] == total_failed_items
             assert result.render()['data']['affected_items'][0] == expected_result
+
+
+@patch('wazuh.cdb_list.common.USER_LISTS_PATH', new=DATA_PATH)
+def test_get_list_file_outside_lists_path():
+    """Check that a filename resolving outside the lists directory is rejected and not read."""
+    with patch('wazuh.cdb_list.get_list_from_file') as mock_get_list_from_file:
+        result = get_list_file(['../../outside/file'], raw=True)
+        assert isinstance(result, AffectedItemsWazuhResult)
+        assert result.render()['data']['failed_items'][0]['error']['code'] == 1804
+        mock_get_list_from_file.assert_not_called()
 
 
 @patch('wazuh.cdb_list.safe_move')
