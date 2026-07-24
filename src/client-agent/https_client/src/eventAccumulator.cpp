@@ -11,7 +11,7 @@
 
 #include "eventAccumulator.hpp"
 
-std::string encodeEventLine(const uint8_t* frame, size_t length)
+std::string encodeStatelessEventLine(const uint8_t* frame, size_t length)
 {
     std::string line = "E ";
     line.reserve(length + 3);
@@ -33,15 +33,14 @@ std::string encodeEventLine(const uint8_t* frame, size_t length)
 
 EventAccumulator::EventAccumulator(uint64_t batchSizeBytes, uint32_t capMultiplier,
                                    uint32_t batchIntervalMs)
-    : m_batchSizeBytes(batchSizeBytes)
-    , m_capBytes(batchSizeBytes * capMultiplier)
+    : m_capBytes(batchSizeBytes * capMultiplier)
     , m_batchIntervalMs(batchIntervalMs)
 {
 }
 
 bool EventAccumulator::append(const uint8_t* frame, size_t length)
 {
-    const std::string line = encodeEventLine(frame, length);
+    const std::string line = encodeStatelessEventLine(frame, length);
     std::lock_guard<std::mutex> lock(m_mutex);
 
     if (m_buffer.size() + line.size() > m_capBytes)
