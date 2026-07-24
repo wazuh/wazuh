@@ -2686,7 +2686,7 @@ checks:
           - "Hide Artifacts"
     condition: all
     rules:
-      - "f:rpm -q gdm -> r:is not installed"
+      - "c:rpm -q gdm -> r:package gdm is not installed"
 
   # 1.8.2 Ensure GDM login banner is configured. (Automated)
   - id: 6557

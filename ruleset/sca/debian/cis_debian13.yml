@@ -1500,7 +1500,7 @@ checks:
           - "Credentials In Files"
     condition: all
     rules:
-      - 'c:stat -L "%n %a %u %U %g %G" /boot/grub/grub.cfg -> r:0 root 0 root && r:600'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /boot/grub/grub.cfg -> r:0 root 0 root && r:600'
 
   # 1.5.1 Ensure address space layout randomization is enabled. (Automated) - Not Implemented
   # 1.5.2 Ensure ptrace_scope is restricted. (Automated) - Not Implemented
@@ -1663,7 +1663,7 @@ checks:
     condition: any
     rules:
       - "not f:/etc/motd"
-      - 'c:stat -L "%n %a %u %U %g %G" /etc/motd -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/motd -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.5 Ensure access to /etc/issue is configured. (Automated)
   - id: 33052
@@ -1712,7 +1712,7 @@ checks:
           - "Credentials In Files"
     condition: all
     rules:
-      - 'c:stat -L "%n %a %u %U %g %G" /etc/issue -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.6.6 Ensure access to /etc/issue.net is configured. (Automated)
   - id: 33053
@@ -1761,7 +1761,7 @@ checks:
           - "Credentials In Files"
     condition: all
     rules:
-      - 'c:stat -L "%n %a %u %U %g %G" /etc/issue.net -> r:0 root 0 root && r:644|640|600|400'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/issue.net -> r:0 root 0 root && r:644|640|600|400'
 
   # 1.7.1 Ensure GDM is removed. (Automated)
   - id: 33054
@@ -6863,7 +6863,8 @@ checks:
           - "Credentials In Files"
     condition: all
     rules:
-      - 'f:/etc/login.defs -> r:ENCRYPT_METHOD\s*\t*SHA512 | r:ENCRYPT_METHOD\s*\t*YESCRYPT'
+      - 'f:/etc/login.defs -> r:ENCRYPT_METHOD\s*\t*SHA512'
+      - 'f:/etc/login.defs -> r:ENCRYPT_METHOD\s*\t*YESCRYPT'
 
   # 5.4.1.5 Ensure inactive password lock is configured. (Automated)
   - id: 33212
@@ -7053,7 +7054,7 @@ checks:
           - "Credentials In Files"
     condition: all
     rules:
-      - "f:/etc/group -> r:^root:x:0:0"
+      - "f:/etc/group -> r:^root:x:0:"
 
   # 5.4.2.4 Ensure root account access is controlled. (Automated)
   - id: 33217
@@ -7103,7 +7104,8 @@ checks:
           - "Credentials In Files"
     condition: all
     rules:
-      - "c:passwd -S root -> r:Password is status: P | r:Password is status: L"
+      - 'c:passwd -S root -> r:root\s*\t*L'
+      - 'c:passwd -S root -> r:root\s*\t*P'
 
   # 5.4.2.5 Ensure root path integrity. (Automated) - Not Implemented
   # 5.4.2.6 Ensure root user umask is configured. (Automated) - Not Implemented

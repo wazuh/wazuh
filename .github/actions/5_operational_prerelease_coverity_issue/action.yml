@@ -35,11 +35,17 @@ runs:
       shell: bash
       env:
         GITHUB_TOKEN: ${{ inputs.github_token }}
+        INPUT_RELEASE: ${{ inputs.release }}
+        INPUT_STAGE: ${{ inputs.stage }}
+        INPUT_MAIN_ISSUE: ${{ inputs.main_issue }}
+        INPUT_PREV_ISSUE: ${{ inputs.prev_issue }}
+        INPUT_ASSIGNEE: ${{ inputs.assignee }}
+        INPUT_PROJECT_TOKEN: ${{ inputs.project_token }}
       run: |
-        RELEASE="${{ inputs.release }}"
-        STAGE="${{ inputs.stage }}"
-        MAIN_ISSUE="${{ inputs.main_issue }}"
-        PREV_ISSUE="${{ inputs.prev_issue }}"
+        RELEASE="$INPUT_RELEASE"
+        STAGE="$INPUT_STAGE"
+        MAIN_ISSUE="$INPUT_MAIN_ISSUE"
+        PREV_ISSUE="$INPUT_PREV_ISSUE"
 
         REPO="wazuh/wazuh"
         PROJECT="XDR+SIEM/Agent team"
@@ -66,7 +72,7 @@ runs:
           --title "$TITLE" \
           --label "$LABEL" \
           --body "$BODY" \
-          --assignee "${{ inputs.assignee }}" 2>&1); then
+          --assignee "$INPUT_ASSIGNEE" 2>&1); then
 
           ISSUE_URL="$OUTPUT"
           echo "issue_url=$ISSUE_URL" >> $GITHUB_OUTPUT
@@ -75,9 +81,9 @@ runs:
           ISSUE_NUMBER=$(echo "$ISSUE_URL" | grep -oP '\d+$')
 
           # Configure project fields if project_token is provided
-          if [[ -n "${{ inputs.project_token }}" ]]; then
+          if [[ -n "$INPUT_PROJECT_TOKEN" ]]; then
             echo "Configuring project fields..."
-            export GITHUB_TOKEN="${{ inputs.project_token }}"
+            export GITHUB_TOKEN="$INPUT_PROJECT_TOKEN"
 
             # Add issue to project first
             gh project item-add 86 --owner wazuh --url "$ISSUE_URL"

@@ -43,8 +43,10 @@ cluster_items = {'node': 'master-node',
                                           'timeout_extra_valid': 0, 'process_pool_size': 10,
                                           'recalculate_integrity': 0, 'sync_agent_groups': 1,
                                           'agent_group_start_delay': 1}},
-                 "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value"},
-                           "queue/testing/": {"remove_subdirs_if_empty": True, "permissions": "value"}}}
+                 "files": {"cluster_item_key": {"remove_subdirs_if_empty": True, "permissions": "value",
+                                                "extra_valid": True},
+                           "queue/testing/": {"remove_subdirs_if_empty": True, "permissions": "value",
+                                              "extra_valid": True}}}
 
 fernet_key = "0" * 32
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
@@ -1270,7 +1272,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                       cluster_items=cluster_items, worker_name=worker_name,
                                                       timeout=timeout)
 
-    basename_mock.assert_called_with('data')
+    basename_mock.assert_called_with('/some/path')
     path_join_mock.assert_called_once_with(common.WAZUH_PATH, "data")
     assert result == {'total_updated': 0, 'errors_per_folder': defaultdict(list), 'generic_errors':
                       ["Error updating worker files (extra valid): 'Error 3007 - Client.keys file received in master node'."]}
@@ -1289,7 +1291,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                                   cluster_items=cluster_items, worker_name=worker_name,
                                                                   timeout=timeout)
 
-                basename_mock.assert_has_calls([call('data'), call('/file/path')])
+                basename_mock.assert_has_calls([call('/some/path'), call('/file/path')])
                 path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                                  call(common.WAZUH_PATH, '/file/path'),
                                                  call(common.WAZUH_PATH, 'queue/testing/'),
@@ -1311,7 +1313,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
                                                                   cluster_items=cluster_items, worker_name=worker_name,
                                                                   timeout=timeout)
 
-                basename_mock.assert_has_calls([call('data'), call('/file/path')])
+                basename_mock.assert_has_calls([call('/some/path'), call('/file/path')])
                 path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                                  call(common.WAZUH_PATH, '/file/path'),
                                                  call(common.WAZUH_PATH, 'queue/testing/'),
@@ -1338,7 +1340,7 @@ def test_master_handler_process_files_from_worker_ok(gid_mock, uid_mock, basenam
 
                 assert result == {'errors_per_folder': defaultdict(list),
                                   'generic_errors': [], 'total_updated': 1}
-                basename_mock.assert_has_calls([call('data'), call('/file/path')])
+                basename_mock.assert_has_calls([call('/some/path'), call('/file/path')])
                 path_join_mock.assert_has_calls([call(common.WAZUH_PATH, 'data'),
                                                  call(common.WAZUH_PATH, '/file/path'),
                                                  call(common.WAZUH_PATH, 'queue/testing/'),
@@ -1965,3 +1967,65 @@ def test_master_handler_process_files_from_worker_validates_non_merged_path(safe
     assert len(result['errors_per_folder']['queue/testing/']) > 0
     assert any('excluded list' in str(e) or '3022' in str(e)
               for e in result['errors_per_folder']['queue/testing/'])
+
+
+@patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
+@patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
+@patch("wazuh.core.cluster.master.utils.safe_move")
+def test_master_handler_process_files_from_worker_rejects_non_extra_valid_item(safe_move_mock, gid_mock, uid_mock):
+    """Test that process_files_from_worker rejects files whose cluster item is not marked as extra valid.
+
+    Regression test for GHSA-88p6-7cm8-xwj8: every entry in cluster.json is 'source: master,
+    extra_valid: False', so a worker must never be able to push those files to the master.
+    """
+    master_handler = get_master_handler()
+    cluster_items_not_extra_valid = dict(cluster_items)
+    cluster_items_not_extra_valid['files'] = {
+        **cluster_items['files'],
+        'queue/testing/': {'remove_subdirs_if_empty': True, 'permissions': 'value', 'extra_valid': False}
+    }
+    files_metadata = {"queue/testing/file.txt": {"merged": False, "cluster_item_key": "queue/testing/"}}
+
+    result = master_handler.process_files_from_worker(
+        files_metadata=files_metadata,
+        decompressed_files_path='/decompressed',
+        cluster_items=cluster_items_not_extra_valid,
+        worker_name='worker1',
+        timeout=0
+    )
+
+    safe_move_mock.assert_not_called()
+    assert any('not allowed to be synced' in str(e) or '3022' in str(e) for e in result['generic_errors'])
+
+
+@patch("wazuh.core.common.wazuh_uid", return_value="wazuh_uid")
+@patch("wazuh.core.common.wazuh_gid", return_value="wazuh_gid")
+@patch("wazuh.core.cluster.master.utils.safe_move")
+def test_master_handler_process_files_from_worker_normalizes_path_before_excluded_check(safe_move_mock, gid_mock,
+                                                                                        uid_mock):
+    """Test that the excluded_files/client.keys checks use the normalized path, not the raw worker-supplied key.
+
+    Regression test for GHSA-88p6-7cm8-xwj8: a raw key of "etc/ossec.conf/" has an empty
+    os.path.basename() ('' != 'ossec.conf'), bypassing the excluded_files guard, even though it
+    resolves (via safe_join/normpath, which strips the trailing slash) to the real ossec.conf.
+    """
+    master_handler = get_master_handler()
+    cluster_items_etc = dict(cluster_items)
+    cluster_items_etc['files'] = {
+        **cluster_items['files'],
+        'etc/': {'remove_subdirs_if_empty': True, 'permissions': 'value', 'extra_valid': True},
+        'excluded_files': ['ossec.conf']
+    }
+    files_metadata = {"etc/ossec.conf/": {"merged": False, "cluster_item_key": "etc/"}}
+
+    result = master_handler.process_files_from_worker(
+        files_metadata=files_metadata,
+        decompressed_files_path='/decompressed',
+        cluster_items=cluster_items_etc,
+        worker_name='worker1',
+        timeout=0
+    )
+
+    safe_move_mock.assert_not_called()
+    assert len(result['errors_per_folder']['etc/']) > 0
+    assert any('excluded list' in str(e) or '3022' in str(e) for e in result['errors_per_folder']['etc/'])
