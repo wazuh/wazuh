@@ -22,11 +22,14 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     , m_dispatcher(callbacks)
     , m_configHash(m_config.configChecksum)
     , m_taskStore(callbacks.check_and_record_task, callbacks.user_data)
+    , m_collectors(callbacks)
     , m_stateless(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_authGate)
     , m_stateful(m_config, m_performer, m_signer, m_clock, m_random, m_spoolFactory, m_dispatcher,
                  m_authGate)
     , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_spoolFactory,
                 m_configHash, m_cluster, m_authGate, m_taskStore)
+    , m_reporter(m_config, m_performer, m_signer, m_clock, m_random, m_authGate, m_cluster,
+                 m_collectors)
 {
 }
 
@@ -70,6 +73,12 @@ bool HttpsClientFacade::start()
     m_controlThread = std::thread(&HttpsClientFacade::controlLoop, this);
     m_statelessThread = std::thread(&HttpsClientFacade::statelessLoop, this);
     m_statefulThread = std::thread(&HttpsClientFacade::statefulLoop, this);
+
+    if (m_reporter.anyEnabled())
+    {
+        m_reporterThread = std::thread(&HttpsClientFacade::reporterLoop, this);
+    }
+
     startSyncIntake();
     return true;
 }
@@ -144,6 +153,7 @@ void HttpsClientFacade::stop()
     m_controlWaiter.requestStop();
     m_statelessWaiter.requestStop();
     m_statefulWaiter.requestStop();
+    m_reporterWaiter.requestStop();
     m_gate.abort();
 
     if (m_controlThread.joinable())
@@ -165,6 +175,11 @@ void HttpsClientFacade::stop()
     if (m_statefulThread.joinable())
     {
         m_statefulThread.join();
+    }
+
+    if (m_reporterThread.joinable())
+    {
+        m_reporterThread.join(); // Joined before drain: the drain skips the reporter.
     }
 
     drain(); // Best-effort final flush + final shutdown message, from this thread.
@@ -227,6 +242,24 @@ void HttpsClientFacade::statefulLoop()
         }
 
         if (!m_statefulWaiter.waitFor(std::chrono::milliseconds {m_config.batchIntervalMs}))
+        {
+            break;
+        }
+    }
+}
+
+void HttpsClientFacade::reporterLoop()
+{
+    if (!m_gate.wait())
+    {
+        return; // Aborted before registration.
+    }
+
+    while (true)
+    {
+        const auto delay = m_reporter.tick(m_reporterWaiter, m_control.isRegistered());
+
+        if (!m_reporterWaiter.waitFor(delay))
         {
             break;
         }
