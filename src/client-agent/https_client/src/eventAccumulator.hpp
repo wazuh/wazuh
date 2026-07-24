@@ -12,8 +12,6 @@
 #ifndef _HC_EVENT_ACCUMULATOR_HPP
 #define _HC_EVENT_ACCUMULATOR_HPP
 
-#include "https_client.h"
-
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -26,8 +24,9 @@
  * Events are stored as "E <frame>\n" lines with embedded newlines escaped by
  * one leading space (the H/E continuation rule). The buffer is bounded at
  * capMultiplier x batchSize; on overflow the newest event is dropped
- * (drop-newest), and byte occupancy maps onto the four-level ladder so the
- * manager-side flood alerts keep working. snapshot(maxBytes) cuts at
+ * (drop-newest). It reports raw byte occupancy only -- BufferLevelLadder owns
+ * the four-level state machine, because that needs a clock (the FLOOD dwell)
+ * and belongs with the stream. snapshot(maxBytes) cuts at
  * an event boundary within a byte budget (always >= 1 event); consume() is
  * tail-preserving: only the sent prefix is removed, so events appended during
  * the send — and any left behind by a bounded snapshot — survive.
@@ -63,11 +62,10 @@ class EventAccumulator final
         /// prefix that was sent), preserving anything appended meanwhile.
         void consume(const Snapshot& sent);
 
-        hc_buffer_level_t level() const;
+        /// Whole-buffer occupancy as a percentage (0-100), for the ladder.
+        unsigned occupancyPercent() const;
 
     private:
-        hc_buffer_level_t levelForLocked() const;
-
         mutable std::mutex m_mutex;
         std::string m_buffer;
         std::deque<size_t> m_lineLengths; ///< Byte length of each buffered event line.
