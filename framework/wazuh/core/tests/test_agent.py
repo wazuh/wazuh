@@ -1249,25 +1249,25 @@ def test_get_rbac_filters(system_resources, permitted_resources, filters, expect
     ([1, 2, 3, 4],
      [
          call(command='test', agents_chunk=[1, 2, 3, 4], wpk_repo=None, version=None, force=None, use_http=None,
-              package_type=None, file_path=None, installer=None, get_result=None)
+              package_type=None, file_path=None, installer=None, request_time=123456789)
      ],
      False),
     ([i for i in range(16)],
      [
          call(command='test', agents_chunk=[i for i in range(10)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, request_time=123456789),
          call(command='test', agents_chunk=[i for i in range(10, 16)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None)
+              use_http=None, package_type=None, file_path=None, installer=None, request_time=123456789)
      ],
      False),
     ([i for i in range(13)],
      [
          call(command='test', agents_chunk=[i for i in range(5)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, request_time=123456789),
          call(command='test', agents_chunk=[i for i in range(5, 10)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None),
+              use_http=None, package_type=None, file_path=None, installer=None, request_time=123456789),
          call(command='test', agents_chunk=[i for i in range(10, 13)], wpk_repo=None, version=None, force=None,
-              use_http=None, package_type=None, file_path=None, installer=None, get_result=None)
+              use_http=None, package_type=None, file_path=None, installer=None, request_time=123456789)
      ],
      True)
 ])
@@ -1286,5 +1286,5 @@ def test_create_upgrade_tasks(mock_upgrade, eligible_agents, expected_calls, tas
     """
     mock_upgrade.side_effect = [{'data': [{'error': 0 if not task_manager_error else 4}]},
                                 {'data': [{'error': 0}]}, {'data': [{'error': 0}]}, {'data': [{'error': 0}]}]
-    create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=10, command='test')
+    create_upgrade_tasks(eligible_agents=eligible_agents, chunk_size=10, command='test', request_time=123456789)
     mock_upgrade.assert_has_calls(expected_calls, any_order=False)

@@ -108,78 +108,19 @@ def test_create_command():
     """Check that expected result is returned in create_command function"""
     agent_upgrade.args = MagicMock()
     result = agent_upgrade.create_command()
-    assert result == {'agent_list': ANY, 'installer': ANY, 'file_path': ANY}
+    assert result == {'agent_list': ANY, 'installer': ANY, 'file_path': ANY, 'request_time': ANY}
 
     agent_upgrade.args.file = ''
     agent_upgrade.args.execute = ''
     result = agent_upgrade.create_command()
-    assert result == {'agent_list': ANY, 'wpk_repo': ANY, 'version': ANY, 'use_http': ANY, 'force': ANY, 'package_type': ANY}
+    assert result == {'agent_list': ANY, 'wpk_repo': ANY, 'version': ANY, 'use_http': ANY, 'force': ANY, 'package_type': ANY, 'request_time': ANY}
 
-
-@pytest.mark.parametrize('agents_versions, failed_agents, expected_output', [
-    ({'001': {'prev_version': '4.2.0', 'new_version': '4.4.0'}}, {'001': 'test_error'},
-     '\nUpgraded agents:\n\tAgent 001 upgraded: 4.2.0 -> 4.4.0\n\nFailed upgrades:\n\tAgent 001 status: test_error\n'),
-    ({}, {}, ''),
-    ({'001': {'prev_version': '4.2.0', 'new_version': '4.4.0'}}, {},
-     '\nUpgraded agents:\n\tAgent 001 upgraded: 4.2.0 -> 4.4.0\n'),
-    ({}, {'001': 'test_error'}, '\nFailed upgrades:\n\tAgent 001 status: test_error\n')
-])
-def test_print_result(capfd, agents_versions, failed_agents, expected_output):
-    """Check that expected output is printed for each combination of parameters.
-
-    Parameters
-    ----------
-    agents_versions : dict
-        Dictionary with the previous version and the new one.
-    failed_agents : dict
-        Contain the error's information.
-    expected_output : str
-        Message that should be printed in the function.
-    """
-    agent_upgrade.print_result(agents_versions=agents_versions, failed_agents=failed_agents)
-    out, err = capfd.readouterr()
-    assert out == expected_output
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize('silent', [
-    True, False
-])
-@patch('scripts.agent_upgrade.print_result')
-@patch('scripts.agent_upgrade.sleep')
-async def test_check_status(mock_sleep, mock_print_result, silent):
-    """Check if methods inside check_status function are run with expected parameters.
-
-    Parameters
-    ----------
-    silent : bool
-        Do not show output if it is True.
-    """
-
-    task_results = MagicMock()
-    task_results.affected_items = [{'agent': '001', 'status': 'Updated'},
-                                   {'agent': '002', 'status': 'Error', 'error_msg': 'test_error'}]
-    agent_upgrade.args = MagicMock()
-    agent_upgrade.args.version = '4.2.0'
-    with patch('scripts.agent_upgrade.cluster_utils.forward_function', return_value=task_results) as mock_forward_func:
-        await agent_upgrade.check_status(affected_agents=['001', '002'],
-                                         result_dict={'001': {'new_version': '4.4.0'}, '002': {'new_version': '4.3.0'}},
-                                         failed_agents={}, silent=silent)
-
-        mock_forward_func.assert_called_once_with(agent_upgrade.get_upgrade_result, f_kwargs={'agent_list': ANY})
-        if not silent:
-            mock_print_result.assert_called_once_with(agents_versions={'001': {'new_version': '4.2.0'}},
-                                                      failed_agents={'002': 'test_error'})
-        else:
-            mock_print_result.assert_not_called()
 
 @pytest.mark.asyncio
 @patch('scripts.agent_upgrade.signal')
 @patch('scripts.agent_upgrade.exit')
 @patch('scripts.agent_upgrade.list_outdated')
-@patch('scripts.agent_upgrade.get_agents_versions')
-@patch('scripts.agent_upgrade.check_status')
-async def test_main(mock_check_status, mock_get_agents_versions, mock_list_outdated, mock_exit, mock_signal, capfd):
+async def test_main(mock_list_outdated, mock_exit, mock_signal, capfd):
     """Check if methods inside main function are run with expected parameters"""
     agent_upgrade.arg_parser = MagicMock()
     agent_upgrade.args = MagicMock()
@@ -188,7 +129,7 @@ async def test_main(mock_check_status, mock_get_agents_versions, mock_list_outda
     agent_upgrade.args.silent = False
     task_results = MagicMock()
     task_results.failed_items = {'1000': ['001', '002']}
-    task_results.affected_items = [{'agent': '003'}]
+    task_results.total_affected_items = 1
 
     with patch('scripts.agent_upgrade.cluster_utils.forward_function', return_value=task_results):
         await agent_upgrade.main()
@@ -196,10 +137,9 @@ async def test_main(mock_check_status, mock_get_agents_versions, mock_list_outda
         mock_list_outdated.assert_called_once()
         mock_exit.assert_has_calls([call(0), call(0)])
         agent_upgrade.arg_parser.print_help.assert_called_once()
-        mock_get_agents_versions.assert_called_with(agents=['003'])
-        mock_check_status.assert_called_with(affected_agents=['003'], result_dict=ANY, failed_agents={}, silent=False)
         out, err = capfd.readouterr()
-        assert out == 'Agents that cannot be upgraded:\n\tAgent 001, 002 upgrade failed. Status: 1000\n'
+        assert 'Agents that cannot be upgraded:\n\tAgent 001, 002 upgrade failed. Status: 1000\n' in out
+        assert 'Upgrade tasks created for 1 agent(s).' in out
 
 @pytest.mark.asyncio
 async def test_main_ko(capfd):
