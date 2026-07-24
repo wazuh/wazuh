@@ -134,6 +134,57 @@ TEST_F(FacadeE2eTest, RegistersOverTlsAndStopsCleanly)
     EXPECT_EQ(HC_STATE_STOPPED, recorder.states.back());
 }
 
+TEST_F(FacadeE2eTest, SizeThresholdFlushesBeforeTheBatchInterval)
+{
+    // A long interval makes the size-threshold wake observable. The 80-byte
+    // request budget leaves 45 bytes after the H line, so two events cross it.
+    const uint16_t port = TLS_PORT + 5;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    config.batch_size_bytes = 80;
+    config.batch_interval_ms = 5000;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
+
+    const std::string first = "1:/loc:size-wakeup-first";
+    const std::string second = "1:/loc:size-wakeup-second";
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(first.data()),
+                                first.size()));
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(second.data()),
+                                second.size()));
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    std::string received;
+
+    for (int attempt = 0; attempt < 150; attempt++)
+    {
+        if (auto result = peek.Get("/peek/stateless"))
+        {
+            received = result->body;
+
+            if (received.find("size-wakeup-first") != std::string::npos)
+            {
+                break;
+            }
+        }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds {10});
+    }
+
+    hc_destroy(handle);
+    EXPECT_NE(std::string::npos, received.find("size-wakeup-first"));
+}
+
 namespace
 {
     struct ConfigRecorder
