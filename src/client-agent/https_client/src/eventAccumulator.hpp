@@ -25,9 +25,9 @@
  *
  * Events are stored as "E <frame>\n" lines with embedded newlines escaped by
  * one leading space (the H/E continuation rule). The buffer is bounded at
- * capMultiplier x batchSize; on overflow the newest event is dropped and
- * counted (drop-newest), and byte occupancy maps onto the four-level ladder
- * so the manager-side flood alerts keep working. snapshot(maxBytes) cuts at
+ * capMultiplier x batchSize; on overflow the newest event is dropped
+ * (drop-newest), and byte occupancy maps onto the four-level ladder so the
+ * manager-side flood alerts keep working. snapshot(maxBytes) cuts at
  * an event boundary within a byte budget (always >= 1 event); consume() is
  * tail-preserving: only the sent prefix is removed, so events appended during
  * the send — and any left behind by a bounded snapshot — survive.
@@ -71,13 +71,12 @@ class EventAccumulator final
         mutable std::mutex m_mutex;
         std::string m_buffer;
         std::deque<size_t> m_lineLengths; ///< Byte length of each buffered event line.
-        uint64_t m_batchSizeBytes;
         uint64_t m_capBytes;
         uint32_t m_batchIntervalMs;
 };
 
 /// Escapes one frame into an "E <frame>\n" line (embedded '\n' -> "\n ").
 /// Exposed for direct unit testing of the escaping rule.
-std::string encodeEventLine(const uint8_t* frame, size_t length);
+std::string encodeStatelessEventLine(const uint8_t* frame, size_t length);
 
 #endif // _HC_EVENT_ACCUMULATOR_HPP

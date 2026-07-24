@@ -14,6 +14,7 @@
 
 #include <chrono>
 #include <ctime>
+#include <mutex>
 #include <random>
 #include <string>
 
@@ -57,6 +58,7 @@ class Mt19937Random final : public IRandom
         double uniform01() override;
 
     private:
+        std::mutex m_mutex;
         std::mt19937_64 m_engine;
 };
 
