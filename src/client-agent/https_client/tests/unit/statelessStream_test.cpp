@@ -116,6 +116,34 @@ TEST_F(StatelessStreamTest, FlushOnSizeThresholdSendsHeaderAndEvents)
     EXPECT_LE(sentBody.size(), m_config.batchSizeBytes);
 }
 
+TEST_F(StatelessStreamTest, TheHeaderLineEscapesTheAgentId)
+{
+    // The H line is JSON: an id carrying a quote must not be able to close the
+    // string it sits in and rewrite the rest of the object.
+    hc_config_t raw {};
+    std::strncpy(raw.server_host, "127.0.0.1", sizeof(raw.server_host) - 1);
+    std::strncpy(raw.agent_id, R"(0"01)", sizeof(raw.agent_id) - 1);
+    raw.verify_mode = HC_VERIFY_NONE;
+    const ModuleConfig config = ModuleConfig::fromC(raw);
+    StatelessStream stream {config,   m_performer, m_signer, m_clock,
+                            m_random, m_sink,      m_authGate};
+
+    std::string sentBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    const std::string frame = "1:/loc:escaped";
+    stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+    stream.tick(m_waiter, true);
+
+    EXPECT_EQ(0u, sentBody.find(R"(H {"wazuh":{"agent":{"id":"0\"01"}}})"));
+}
+
 TEST_F(StatelessStreamTest, SuccessConsumesTheSentPrefix)
 {
     EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200)));

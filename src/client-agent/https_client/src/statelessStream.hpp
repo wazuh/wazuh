@@ -70,7 +70,6 @@ class StatelessStream final
         void handleOutcome(OutcomeClass outcome, const EventAccumulator::Snapshot& snapshot);
         void publishLevelLocked(bool eventDropped);
         uint64_t eventBytesBudgetLocked() const;
-        std::string buildHeaderLine() const;
 
         const ModuleConfig& m_config;
         IClock& m_clock;
@@ -80,6 +79,7 @@ class StatelessStream final
         Backoff m_backoff;
         RetrySender m_sender;
         ICallbackSink& m_sink;
+        const std::string m_headerLine; ///< Fixed H line prefixed to every batch.
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
         std::chrono::steady_clock::time_point m_lastFlush;
         mutable std::mutex m_stateMutex;
