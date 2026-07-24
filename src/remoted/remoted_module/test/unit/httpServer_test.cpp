@@ -75,10 +75,11 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.bufferSize, 8192U);
     EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);
     EXPECT_EQ(config.maxParallelConnections, 512U);
-    // No built-in default: remoted always reads the PEM content itself (before dropping
-    // privileges) and hands it over. Empty here just means "nothing was provided".
-    EXPECT_EQ(config.certificatePem, "");
-    EXPECT_EQ(config.privateKeyPem, "");
+    EXPECT_EQ(config.certificatePath, "/etc/remoted-https/server.crt");
+    EXPECT_EQ(config.privateKeyPath, "/etc/remoted-https/server.key");
+    EXPECT_TRUE(config.caPath.empty());
+    EXPECT_TRUE(config.ciphers.empty());
+    EXPECT_EQ(config.verificationMode, ClientVerificationMode::None);
 }
 
 TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)
@@ -121,8 +122,12 @@ TEST(HttpServerConfigTest, StructValuesWin)
     raw.http_max_pipelined_requests = 8;
     raw.http_concurrent_accepts = 4;
     raw.http_buffer_size = 16384;
-    std::snprintf(raw.certificate_pem, sizeof(raw.certificate_pem), "-----BEGIN CERTIFICATE-----\ncustom\n-----END CERTIFICATE-----\n");
-    std::snprintf(raw.private_key_pem, sizeof(raw.private_key_pem), "-----BEGIN PRIVATE KEY-----\ncustom\n-----END PRIVATE KEY-----\n");
+    raw.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE;
+    std::snprintf(raw.certificate_path, sizeof(raw.certificate_path), "/custom/cert.pem");
+    std::snprintf(raw.private_key_path, sizeof(raw.private_key_path), "/custom/key.pem");
+    std::snprintf(raw.bind_address, sizeof(raw.bind_address), "0.0.0.0");
+    std::snprintf(raw.ca_path, sizeof(raw.ca_path), "/custom/ca.pem");
+    std::snprintf(raw.ciphers, sizeof(raw.ciphers), "HIGH:!ADH");
 
     const auto config = buildHttpServerConfig(raw);
 
@@ -140,8 +145,12 @@ TEST(HttpServerConfigTest, StructValuesWin)
     EXPECT_EQ(config.maxPipelinedRequests, 8U);
     EXPECT_EQ(config.concurrentAccepts, 4U);
     EXPECT_EQ(config.bufferSize, 16384U);
-    EXPECT_EQ(config.certificatePem, "-----BEGIN CERTIFICATE-----\ncustom\n-----END CERTIFICATE-----\n");
-    EXPECT_EQ(config.privateKeyPem, "-----BEGIN PRIVATE KEY-----\ncustom\n-----END PRIVATE KEY-----\n");
+    EXPECT_EQ(config.certificatePath, "/custom/cert.pem");
+    EXPECT_EQ(config.privateKeyPath, "/custom/key.pem");
+    EXPECT_EQ(config.bindAddress, "0.0.0.0");
+    EXPECT_EQ(config.caPath, "/custom/ca.pem");
+    EXPECT_EQ(config.ciphers, "HIGH:!ADH");
+    EXPECT_EQ(config.verificationMode, ClientVerificationMode::Certificate);
 }
 
 // Negative values can't come from remoted (getDefine_Int_default's own min bound
@@ -160,6 +169,14 @@ TEST(HttpServerConfigTest, NegativeValuesFallBackToDefaults)
     EXPECT_EQ(config.port, 9443);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.maxUrlSize, 2048U);
+}
+
+TEST(HttpServerConfigTest, VerificationModeFullFromStruct)
+{
+    auto raw = zeroedConfig();
+    raw.verification_mode = REMOTED_MODULE_HTTPS_VERIFY_FULL;
+
+    EXPECT_EQ(buildHttpServerConfig(raw).verificationMode, ClientVerificationMode::Full);
 }
 
 // ---------------------------------------------------------------------------
@@ -234,6 +251,26 @@ TEST(HttpServerTest, StopAcceptingIsIdempotentAndStopStillFullyTearsDown)
     EXPECT_NO_THROW(server->stopAccepting());
     EXPECT_NO_THROW(server->stopAccepting());
     EXPECT_NO_THROW(server->stop());
+    EXPECT_NO_THROW(server->stop());
+}
+
+// NOTE: with a nonexistent certificate/key, start() throws while loading the
+// server certificate, before the verification_mode/ca check ever runs -- this
+// only proves start() still fails closed (no partial bind) when both are
+// misconfigured together. Exercising the ca-specific branch in isolation would
+// need a real cert/key pair; left as a documented gap (see final report).
+TEST(HttpServerTest, StartWithVerificationModeButNoCaThrows)
+{
+    auto server = makeHttpServer();
+
+    HttpServerConfig config;
+    config.port = 0;
+    config.certificatePath = "/nonexistent/remoted-tests/server.crt";
+    config.privateKeyPath = "/nonexistent/remoted-tests/server.key";
+    config.verificationMode = ClientVerificationMode::Certificate;
+    // caPath intentionally left empty.
+
+    EXPECT_THROW(server->start(config), std::exception);
     EXPECT_NO_THROW(server->stop());
 }
 
