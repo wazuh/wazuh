@@ -95,6 +95,7 @@ class HttpsClientFacade final
 
         mutable std::mutex m_lifecycleMutex;
         bool m_started {false};
+        bool m_stopped {false}; ///< Latched on stop(); the client is single-shot.
 };
 
 #endif // _HTTPS_CLIENT_FACADE_HPP
