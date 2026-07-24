@@ -79,7 +79,7 @@ static short eval_bool(const char *str)
 }
 
 // Reading function
-int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
+int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module, int agent_cfg)
 {
     unsigned int i;
     wm_sca_t *sca;
@@ -104,10 +104,17 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
     /* By default, load all every ruleset present */
 
     char ruleset_path[PATH_MAX] = {0};
+    char ruleset_realpath[PATH_MAX] = {0};
     #ifdef WIN32
     sprintf(ruleset_path, "%s\\", SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN);
+    if (!GetFullPathName(SECURITY_CONFIGURATION_ASSESSMENT_DIR_WIN, PATH_MAX, ruleset_realpath, NULL)) {
+        ruleset_realpath[0] = '\0';
+    }
     #else
     sprintf(ruleset_path, "%s/", SECURITY_CONFIGURATION_ASSESSMENT_DIR);
+    if (!realpath(SECURITY_CONFIGURATION_ASSESSMENT_DIR, ruleset_realpath)) {
+        ruleset_realpath[0] = '\0';
+    }
     #endif
 
     DIR *ruleset_dir = wopendir(ruleset_path);
@@ -305,11 +312,18 @@ int wm_sca_read(const OS_XML *xml,xml_node **nodes, wmodule *module)
                         os_calloc(1,sizeof(wm_sca_policy_t), policy);
                         policy->enabled = enabled;
                         policy->policy_id = NULL;
-                        #ifdef WIN32
-                        policy->remote = strstr(realpath_buffer, "shared\\") != NULL;
-                        #else
-                        policy->remote = strstr(realpath_buffer, "etc/shared/") != NULL;
-                        #endif
+                        {
+                            size_t ruleset_len = strlen(ruleset_realpath);
+                            #ifdef WIN32
+                            const char ruleset_sep = '\\';
+                            #else
+                            const char ruleset_sep = '/';
+                            #endif
+                            /* Only a path actually anchored at the resolved ruleset directory counts as local. */
+                            int under_ruleset = ruleset_len && !strncmp(realpath_buffer, ruleset_realpath, ruleset_len) &&
+                                                (realpath_buffer[ruleset_len] == ruleset_sep || realpath_buffer[ruleset_len] == '\0');
+                            policy->remote = agent_cfg && !under_ruleset;
+                        }
                         os_strdup(realpath_buffer, policy->policy_path);
                         sca->policies[policies_count] = policy;
                         sca->policies[policies_count + 1] = NULL;
