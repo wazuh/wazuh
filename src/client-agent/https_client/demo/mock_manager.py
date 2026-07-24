@@ -183,6 +183,8 @@ class Handler(BaseHTTPRequestHandler):
             self._handle_stateful(body)
         elif target == "/download":
             self._handle_download(body)
+        elif target in ("/stats", "/config"):
+            self._handle_report(target, body)
         else:
             self._reply(404)
 
@@ -273,6 +275,18 @@ class Handler(BaseHTTPRequestHandler):
         events = body.count(b"\nE ") + (1 if b"\nE " not in body and b"E " in body else 0)
         self._reply(200)  # 200 with an empty body per #37732
         log(f"     /stateless  -> 200  ({len(body)} B, ~{events} events accepted)")
+
+    def _handle_report(self, target, body):
+        # /stats and /config (#37843): the agent pushes a full snapshot the
+        # module stamped with agent_id + cluster; the manager stores it.
+        try:
+            doc = json.loads(body.decode())
+        except (ValueError, UnicodeDecodeError):
+            doc = {}
+        self._reply(200, {})
+        cluster = doc.get("cluster", {})
+        log(f"     {target:<11} -> 200  stored: agent_id={doc.get('agent_id')} "
+            f"cluster={cluster.get('name')}/{cluster.get('node')} keys={sorted(doc.keys())}")
 
     def _handle_stateful(self, body):
         session = self.headers.get("X-Session-Id", "?")
