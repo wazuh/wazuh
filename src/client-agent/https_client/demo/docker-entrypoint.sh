@@ -39,6 +39,8 @@ echo
 LD_LIBRARY_PATH=/demo /demo/demo_driver 127.0.0.1 "$PORT" "$KEY_HEX" &
 DRIVER_PID=$!
 trap 'kill -TERM "$DRIVER_PID" 2>/dev/null || true' INT TERM
-wait "$DRIVER_PID" || true
+rc=0
+wait "$DRIVER_PID" || rc=$?
 echo
 echo "== demo done =="
+exit "$rc" # Surface driver failures instead of always reporting success.
