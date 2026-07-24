@@ -1422,52 +1422,6 @@ def format_fields(field_name: str, value: str) -> str:
         return value
 
 
-def send_restart_command(agent_id: str = '') -> str:
-    """Send restart command to an agent via the remoted control channel.
-
-    Parameters
-    ----------
-    agent_id : str
-        ID specifying the agent where the restart command will be sent to.
-
-    Returns
-    -------
-    str
-        Response message from the agent.
-    """
-    with WazuhSocket(common.REMOTED_SOCKET) as s:
-        s.send(f"{agent_id} control restart".encode())
-        response = s.receive().decode()
-
-    if not response.startswith("ok"):
-        raise WazuhInternalError(1014, extra_message=f"Agent {agent_id}: {response}")
-
-    return response
-
-
-def send_reload_command(agent_id: str = '') -> str:
-    """Send reload command to an agent via the remoted control channel.
-
-    Parameters
-    ----------
-    agent_id : str
-        ID specifying the agent where the reload command will be sent to.
-
-    Returns
-    -------
-    str
-        Response message from the agent.
-    """
-    with WazuhSocket(common.REMOTED_SOCKET) as s:
-        s.send(f"{agent_id} control reload".encode())
-        response = s.receive().decode()
-
-    if not response.startswith("ok"):
-        raise WazuhInternalError(1014, extra_message=f"Agent {agent_id}: {response}")
-
-    return response
-
-
 @common.context_cached("system_agents")
 def get_agents_info() -> set:
     """Get all agent IDs in the system.

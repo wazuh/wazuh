@@ -10,9 +10,9 @@ from wazuh import Wazuh
 from wazuh.core import common, configuration
 from wazuh.core.InputValidator import InputValidator
 from wazuh.core.agent import WazuhDBQueryAgents, WazuhDBQueryGroupByAgents, Agent, \
-    WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, send_restart_command, \
-    send_reload_command, \
+    WazuhDBQueryGroup, create_upgrade_tasks, get_agents_info, get_groups, get_rbac_filters, \
     GROUP_FIELDS, GROUP_REQUIRED_FIELDS, GROUP_FILES_FIELDS, GROUP_FILES_REQUIRED_FIELDS
+from wazuh.core.agent_tasks import create_restart_tasks, create_reload_tasks, TASK_CHUNK_SIZE
 from wazuh.core.wdb_http import get_wdb_http_client
 from wazuh.core.cluster.cluster import get_node
 from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException, WazuhResourceNotFound
@@ -230,6 +230,7 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         # Convert list of dictionaries to dictionary
         active_agents = {agent['id']: agent['version'] for agent in active_agents}
 
+        eligible_agents = []
         for agent_id in agent_list:
             # Add non existent and inactive agents to failed_items
             if agent_id not in system_agents:
@@ -245,11 +246,24 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                 result.add_failed_item(id_=agent_id, error=WazuhError(1761))
                 continue
 
-            try:
-                send_restart_command(agent_id)
-                result.affected_items.append(agent_id)
-            except WazuhException as e:
-                result.add_failed_item(id_=agent_id, error=e)
+            eligible_agents.append(agent_id)
+
+        # Create restart tasks for all eligible agents
+        if eligible_agents:
+            import time
+            request_time = int(time.time())
+            responses = create_restart_tasks(eligible_agents, TASK_CHUNK_SIZE, request_time)
+
+            for response in responses:
+                for agent_info in response['data']:
+                    agent_id = agent_info.get('agent')
+                    if agent_info.get('error') == 0:
+                        result.affected_items.append(agent_id)
+                    else:
+                        # Map task creation errors to Wazuh errors
+                        error_code = agent_info.get('error')
+                        error_msg = agent_info.get('message', f'Task creation failed with error {error_code}')
+                        result.add_failed_item(id_=agent_id, error=WazuhInternalError(1727, extra_message=error_msg))
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
@@ -330,6 +344,7 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         # Convert list of dictionaries to dictionary
         active_agents = {agent['id']: agent['version'] for agent in active_agents}
 
+        eligible_agents = []
         for agent_id in agent_list:
             if agent_id not in system_agents:
                 result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
@@ -344,11 +359,24 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                 result.add_failed_item(id_=agent_id, error=WazuhError(1761))
                 continue
 
-            try:
-                send_reload_command(agent_id)
-                result.affected_items.append(agent_id)
-            except WazuhException as e:
-                result.add_failed_item(id_=agent_id, error=e)
+            eligible_agents.append(agent_id)
+
+        # Create reload tasks for all eligible agents
+        if eligible_agents:
+            import time
+            request_time = int(time.time())
+            responses = create_reload_tasks(eligible_agents, TASK_CHUNK_SIZE, request_time)
+
+            for response in responses:
+                for agent_info in response['data']:
+                    agent_id = agent_info.get('agent')
+                    if agent_info.get('error') == 0:
+                        result.affected_items.append(agent_id)
+                    else:
+                        # Map task creation errors to Wazuh errors
+                        error_code = agent_info.get('error')
+                        error_msg = agent_info.get('message', f'Task creation failed with error {error_code}')
+                        result.add_failed_item(id_=agent_id, error=WazuhInternalError(1727, extra_message=error_msg))
 
         result.total_affected_items = len(result.affected_items)
         result.affected_items.sort(key=int)
