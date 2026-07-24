@@ -5,7 +5,7 @@
  * and/or modify it under the terms of GPLv2.
  */
 
-PRAGMA user_version = 2;
+PRAGMA user_version = 1;
 
 BEGIN;
 
