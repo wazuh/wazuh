@@ -91,6 +91,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows" AND NOT UNIT_TEST)
     wazuh-manager-remoted PROPERTIES LINKER_LANGUAGE C RUNTIME_OUTPUT_DIRECTORY
                                                        ${SRC_FOLDER}/build/bin)
   target_link_libraries(wazuh-manager-remoted PRIVATE remoted_lib)
+  wazuh_link_jemalloc(wazuh-manager-remoted)
 
   wazuh_set_runtime_rpath(wazuh-manager-remoted)
 endif()

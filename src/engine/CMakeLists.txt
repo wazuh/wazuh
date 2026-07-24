@@ -370,18 +370,7 @@ if(NOT ENGINE_SANITIZER_OPTIONS AND NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
 endif()
 
 # Link jemalloc for reduced memory fragmentation (unless explicitly disabled)
-if(NOT DEFINED DISABLE_JEMALLOC OR NOT DISABLE_JEMALLOC)
-  find_library(
-    JEMALLOC_LIB jemalloc
-    PATHS ${CMAKE_SOURCE_DIR}/external/jemalloc/lib
-    NO_DEFAULT_PATH)
-  if(JEMALLOC_LIB)
-    target_link_libraries(wazuh-engine ${JEMALLOC_LIB})
-    message(STATUS "Linking wazuh-engine with jemalloc: ${JEMALLOC_LIB}")
-  else()
-    message(WARNING "jemalloc not found in ${CMAKE_SOURCE_DIR}/external/jemalloc/lib")
-  endif()
-endif()
+wazuh_link_jemalloc(wazuh-engine PLAIN)
 
 # Print LD anc CXX flags
 message(STATUS "engine CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
