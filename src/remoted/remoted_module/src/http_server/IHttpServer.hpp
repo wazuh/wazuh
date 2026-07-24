@@ -111,17 +111,33 @@ namespace remoted::http
     using RouteHandler = std::function<void(std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder>)>;
 
     /**
+     * @brief Client-certificate verification strictness for the HTTPS listener.
+     *
+     * Mirrors REMOTED_MODULE_HTTPS_VERIFY_* in remoted_module.h (the C-ABI) and
+     * REMOTED_HTTPS_VERIFY_* in the config parser (src/config/include/remote-config.h).
+     */
+    enum class ClientVerificationMode
+    {
+        None,        ///< No client certificate is requested/verified.
+        Certificate, ///< Client certificate chain is verified against the configured CA.
+        Full         ///< Certificate chain verified, plus the peer IP must match the certificate.
+    };
+
+    /**
      * @brief Configuration for the HTTP(S) server, decoupled from the C ABI struct.
      */
     struct HttpServerConfig
     {
-        std::string bindAddress {"127.0.0.1"};         ///< Listen address.
-        std::uint16_t port {9443};                     ///< Listen port.
-        std::string certificatePem;                    ///< TLS certificate chain, PEM-encoded content (not a path).
-        std::string privateKeyPem;                     ///< TLS private key, PEM-encoded content (not a path).
+        std::string bindAddress {"127.0.0.1"}; ///< Listen address.
+        std::uint16_t port {9443};             ///< Listen port.
+        std::string certificatePath;           ///< TLS certificate chain (PEM) path.
+        std::string privateKeyPath;            ///< TLS private key (PEM) path.
+        std::string caPath;                    ///< CA bundle (PEM) used to verify client certificates.
+        std::string ciphers;                   ///< OpenSSL cipher list override (empty -> library default).
+        ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
         std::size_t ioThreads {2};                     ///< RESTinio/asio I/O threads (accept + read/write).
         std::size_t workerThreads {4};                 ///< Handler worker-pool size (blocking work offload).
-        std::size_t maxBodySize {16U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
+        std::size_t maxBodySize {50U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
         std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection (also covers
                                                        ///< the TLS handshake window).
         std::size_t writeTimeoutSec {10};              ///< Time allowed to write a response.
