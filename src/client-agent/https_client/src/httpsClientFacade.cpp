@@ -41,6 +41,15 @@ bool HttpsClientFacade::start()
         return true;
     }
 
+    if (m_stopped)
+    {
+        // Single-shot: per-run state (waiter, gate, state machine) is not reset,
+        // so a restart would launch a control thread that exits immediately.
+        // Fail closed instead of returning a misleading success.
+        LOGFN_WARN(m_logFn, "https_client was stopped; create a new instance to start again.");
+        return false;
+    }
+
     if (!m_config.validate(m_fsProbe, m_logFn))
     {
         return false; // Fail closed: nothing starts.
@@ -69,6 +78,7 @@ void HttpsClientFacade::stop()
         }
 
         m_started = false;
+        m_stopped = true; // Single-shot: reject any later start().
     }
     LOGFN_INFO(m_logFn, "Stopping https_client.");
 
