@@ -175,8 +175,8 @@ class TestActiveResponse:
 class TestActiveResponseHelpers:
     """Tests for ActiveResponseHelpers."""
 
-    class TestGetActiveAgents:
-        """Tests for get_active_agents."""
+    class TestGetAllAgents:
+        """Tests for get_all_agents."""
 
         @patch("wazuh.core.indexer.active_response.WazuhDBQueryAgents")
         def test_success(self, mock_db):
@@ -184,7 +184,7 @@ class TestActiveResponseHelpers:
             mock_ctx.run.return_value = {"items": [{"id": "1"}, {"id": "2"}]}
             mock_db.return_value.__enter__.return_value = mock_ctx
 
-            result = ActiveResponseHelpers.get_active_agents()
+            result = ActiveResponseHelpers.get_all_agents()
 
             assert result == ["1", "2"]
 
@@ -195,7 +195,7 @@ class TestActiveResponseHelpers:
 
             mock_db.side_effect = WazuhError(1)
 
-            result = ActiveResponseHelpers.get_active_agents()
+            result = ActiveResponseHelpers.get_all_agents()
 
             assert result == []
             mock_logger.error.assert_called_once()
@@ -315,70 +315,6 @@ class TestActiveResponseHelpers:
             result = await ActiveResponseHelpers.get_events_by_ar([ar])
 
             assert result == {}
-
-    class TestBuildArMessages:
-        """Tests for build_ar_messages."""
-
-        def test_with_event(self):
-            ar = ActiveResponse(
-                doc_source={"wazuh": {"a": 1}, "x": 1},
-                bookmark=ActiveResponseBookmark(),
-                event={"wazuh": {"b": 2}, "y": 2},
-            )
-
-            ar.target_agents = lambda _: ["1"]
-
-            result = ActiveResponseHelpers.build_ar_messages([ar], ["1"])
-
-            agent, msg, _ = result[0]
-
-            assert agent == "1"
-            assert msg["x"] == 1
-            assert msg["y"] == 2
-            assert msg["wazuh"]["a"] == 1
-            assert msg["wazuh"]["b"] == 2
-
-        def test_without_event(self):
-            ar = ActiveResponse(
-                doc_source={"wazuh": {"a": 1}},
-                bookmark=ActiveResponseBookmark(),
-            )
-
-            ar.target_agents = lambda _: ["1"]
-
-            result = ActiveResponseHelpers.build_ar_messages([ar], ["1"])
-
-            assert result[0][1]["wazuh"]["a"] == 1
-
-        def test_no_targets(self):
-            ar = ActiveResponse(
-                doc_source={"wazuh": {}},
-                bookmark=ActiveResponseBookmark(),
-            )
-
-            ar.target_agents = lambda _: []
-
-            result = ActiveResponseHelpers.build_ar_messages([ar], ["1"])
-
-            assert result == []
-
-    class TestIsValidAgent:
-        """Tests for is_valid_agent."""
-
-        @pytest.mark.parametrize(
-            "targets,expected",
-            [
-                (["1"], True),
-                ([], False),
-            ],
-        )
-        def test_is_valid_agent(self, targets, expected):
-            ar = MagicMock()
-            ar.target_agents.return_value = targets
-
-            result = ActiveResponseHelpers.is_valid_agent(ar, ["1"])
-
-            assert result is expected
 
 
 class TestActiveResponseBuilder:
@@ -588,79 +524,253 @@ class TestActiveResponseBuilder:
     class TestDispatch:
         """Tests for dispatch."""
 
-        @patch("wazuh.core.indexer.active_response.WazuhQueue")
-        @patch(
-            "wazuh.core.indexer.active_response.ActiveResponseHelpers.build_ar_messages"
-        )
-        def test_dispatch_success(self, mock_build, mock_queue):
-            bookmark = ActiveResponseBookmark([1])
+        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
+        def test_dispatch_success(self, mock_socket):
+            """Test successful task creation via Task Manager socket."""
+            # Mock socket response
+            mock_sock_instance = MagicMock()
+            mock_sock_instance.receive.return_value = {"status": "ok", "task_id": "task-123"}
+            mock_socket.return_value.__enter__.return_value = mock_sock_instance
 
-            mock_build.return_value = [
-                ("1", {"msg": 1}, bookmark),
-            ]
+            # Create AR with proper structure
+            ar = ActiveResponse(
+                doc_source={
+                    "@timestamp": "2024-01-01T00:00:00Z",
+                    "wazuh": {
+                        "active_response": {
+                            "location": "defined-agent",
+                            "agent_id": "001",
+                            "name": "test-ar",
+                            "executable": "test.sh",
+                            "extra_arguments": None,
+                            "type": "stateless",
+                        }
+                    },
+                },
+                doc_id="ar-doc-123",
+                bookmark=ActiveResponseBookmark([1, "ar-doc-123"])
+            )
 
-            mock_wq = MagicMock()
-            mock_queue.return_value.__enter__.return_value = mock_wq
+            bookmark_file = MagicMock()
 
             builder = ActiveResponseBuilder(
                 logger=MagicMock(),
-                active_agents=["1"],
-                bookmark_file=MagicMock(),
+                all_agents=["001"],
+                bookmark_file=bookmark_file,
             )
-            builder._ars = [MagicMock()]
+            builder._ars = [ar]
 
             result = builder.dispatch()
 
             assert result is builder
-            mock_wq.send_msg_to_agent.assert_called_once()
-            builder._bookmark_file.update.assert_called_once_with([1])
 
-        @patch(
-            "wazuh.core.indexer.active_response.ActiveResponseHelpers.build_ar_messages",
-            return_value=[],
-        )
-        def test_dispatch_no_messages(self, mock_build):
+            # Verify socket was called with proper message format
+            mock_sock_instance.send.assert_called_once()
+            sent_msg = mock_sock_instance.send.call_args[0][0]
+            assert sent_msg["action"] == "create_task"
+            assert sent_msg["task_type"] == "active_response"
+            assert sent_msg["agent_id"] == "001"
+            assert sent_msg["source_id"] == "ar-doc-123"
+            assert sent_msg["create_time"] == 1704067200  # 2024-01-01T00:00:00Z
+            assert "payload" in sent_msg
+
+            # Verify bookmark was updated
+            bookmark_file.update.assert_called_once_with([1, "ar-doc-123"])
+
+        def test_dispatch_no_ars(self):
+            """Test dispatch with no active responses."""
             builder = ActiveResponseBuilder(
                 logger=MagicMock(),
-                active_agents=["1"],
+                all_agents=["1"],
                 bookmark_file=MagicMock(),
             )
+            builder._ars = []
 
             result = builder.dispatch()
 
             assert result is builder
 
-        @patch("wazuh.core.indexer.active_response.WazuhQueue")
-        @patch(
-            "wazuh.core.indexer.active_response.ActiveResponseHelpers.build_ar_messages"
-        )
-        def test_dispatch_handles_error(self, mock_build, mock_queue):
+        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
+        def test_dispatch_handles_socket_error(self, mock_socket):
+            """Test error handling when Task Manager socket fails."""
             from wazuh.core.exception import WazuhError
 
-            bookmark = ActiveResponseBookmark([1])
+            # Mock socket to raise error
+            mock_sock_instance = MagicMock()
+            mock_sock_instance.send.side_effect = WazuhError(1001)
+            mock_socket.return_value.__enter__.return_value = mock_sock_instance
 
-            mock_build.return_value = [
-                ("1", {"msg": 1}, bookmark),
-            ]
+            ar = ActiveResponse(
+                doc_source={
+                    "@timestamp": "2024-01-01T00:00:00Z",
+                    "wazuh": {
+                        "active_response": {
+                            "location": "defined-agent",
+                            "agent_id": "001",
+                            "name": "test-ar",
+                            "executable": "test.sh",
+                            "extra_arguments": None,
+                            "type": "stateless",
+                        }
+                    },
+                },
+                doc_id="ar-doc-123",
+                bookmark=ActiveResponseBookmark([1])
+            )
 
-            mock_wq = MagicMock()
-            mock_wq.send_msg_to_agent.side_effect = WazuhError(1)
+            logger = MagicMock()
+            bookmark_file = MagicMock()
 
-            mock_queue.return_value.__enter__.return_value = mock_wq
+            builder = ActiveResponseBuilder(
+                logger=logger,
+                all_agents=["001"],
+                bookmark_file=bookmark_file,
+            )
+            builder._ars = [ar]
+
+            builder.dispatch()
+
+            # Error should be logged
+            logger.error.assert_called_once()
+            # Bookmark should still be updated (move past failed AR)
+            bookmark_file.update.assert_called_once_with([1])
+
+        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
+        def test_dispatch_handles_task_manager_error_response(self, mock_socket):
+            """Test handling when Task Manager returns error response."""
+            # Mock socket to return error response
+            mock_sock_instance = MagicMock()
+            mock_sock_instance.receive.return_value = {
+                "status": "error",
+                "error": "invalid_agent",
+                "message": "Agent not found"
+            }
+            mock_socket.return_value.__enter__.return_value = mock_sock_instance
+
+            ar = ActiveResponse(
+                doc_source={
+                    "@timestamp": "2024-01-01T00:00:00Z",
+                    "wazuh": {
+                        "active_response": {
+                            "location": "defined-agent",
+                            "agent_id": "001",
+                            "name": "test-ar",
+                            "executable": "test.sh",
+                            "extra_arguments": None,
+                            "type": "stateless",
+                        }
+                    },
+                },
+                doc_id="ar-doc-123",
+                bookmark=ActiveResponseBookmark([1])
+            )
+
+            logger = MagicMock()
+            bookmark_file = MagicMock()
+
+            builder = ActiveResponseBuilder(
+                logger=logger,
+                all_agents=["001"],
+                bookmark_file=bookmark_file,
+            )
+            builder._ars = [ar]
+
+            builder.dispatch()
+
+            # Error should be logged
+            logger.error.assert_called_once()
+            assert "invalid_agent" in str(logger.error.call_args)
+            # Bookmark should still be updated
+            bookmark_file.update.assert_called_once_with([1])
+
+        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
+        def test_dispatch_missing_timestamp(self, mock_socket):
+            """Test dispatch skips ARs without @timestamp."""
+            ar = ActiveResponse(
+                doc_source={
+                    # Missing @timestamp
+                    "wazuh": {
+                        "active_response": {
+                            "location": "defined-agent",
+                            "agent_id": "001",
+                            "name": "test-ar",
+                            "executable": "test.sh",
+                            "extra_arguments": None,
+                            "type": "stateless",
+                        }
+                    },
+                },
+                doc_id="ar-doc-123",
+                bookmark=ActiveResponseBookmark([1])
+            )
 
             logger = MagicMock()
 
             builder = ActiveResponseBuilder(
                 logger=logger,
-                active_agents=["1"],
+                all_agents=["001"],
                 bookmark_file=MagicMock(),
             )
-            builder._ars = [MagicMock()]
+            builder._ars = [ar]
 
             builder.dispatch()
 
-            logger.error.assert_called_once()
-            builder._bookmark_file.update.assert_called_once_with([1])
+            # Should log warning and skip
+            logger.warning.assert_called_once()
+            assert "missing @timestamp" in str(logger.warning.call_args)
+            # Socket should not be called
+            mock_socket.assert_not_called()
+
+        @patch("wazuh.core.indexer.active_response.WazuhSocketJSON")
+        def test_dispatch_with_event_enrichment(self, mock_socket):
+            """Test dispatch includes enriched event data in payload."""
+            mock_sock_instance = MagicMock()
+            mock_sock_instance.receive.return_value = {"status": "ok", "task_id": "task-123"}
+            mock_socket.return_value.__enter__.return_value = mock_sock_instance
+
+            ar = ActiveResponse(
+                doc_source={
+                    "@timestamp": "2024-01-01T00:00:00Z",
+                    "wazuh": {
+                        "active_response": {
+                            "location": "defined-agent",
+                            "agent_id": "001",
+                            "name": "test-ar",
+                            "executable": "test.sh",
+                            "extra_arguments": None,
+                            "type": "stateless",
+                        }
+                    },
+                    "ar_field": "ar_value",
+                },
+                doc_id="ar-doc-123",
+                bookmark=ActiveResponseBookmark([1]),
+                event={
+                    "wazuh": {"rule": {"id": "100002"}},
+                    "event_field": "event_value"
+                }
+            )
+
+            builder = ActiveResponseBuilder(
+                logger=MagicMock(),
+                all_agents=["001"],
+                bookmark_file=MagicMock(),
+            )
+            builder._ars = [ar]
+
+            builder.dispatch()
+
+            # Verify payload includes both AR and event data
+            sent_msg = mock_sock_instance.send.call_args[0][0]
+            payload = sent_msg["payload"]
+
+            # AR data should be present
+            assert payload["ar_field"] == "ar_value"
+            # Event data should be merged
+            assert payload["event_field"] == "event_value"
+            # Wazuh sections should be merged
+            assert payload["wazuh"]["active_response"]["name"] == "test-ar"
+            assert payload["wazuh"]["rule"]["id"] == "100002"
 
 
 class TestActiveResponseFetchTask:
