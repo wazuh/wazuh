@@ -174,15 +174,18 @@ HC_EXPORTED hc_handle* hc_create(const hc_config_t* config, const hc_callbacks_t
 /**
  * @brief Start the client: validates the configuration (TLS settings fail
  *        closed) and launches the worker threads. Returns false and starts
- *        nothing when validation fails. A second start is ignored (true).
+ *        nothing when validation fails. A second start while running is
+ *        ignored (true). Single-shot: once hc_stop() has run, start returns
+ *        false -- create a new instance to run again.
  */
 HC_EXPORTED bool hc_start(hc_handle* handle);
 
 /**
  * @brief Stop the client: drains within the configured window (final
  *        Notify), aborts in-flight requests explicitly and joins every
- *        thread. No callback fires after this returns. Safe without a
- *        prior start.
+ *        thread. No callback fires after this returns. Terminal (single-shot):
+ *        the instance cannot be restarted afterwards. Safe without a prior
+ *        start.
  */
 HC_EXPORTED void hc_stop(hc_handle* handle);
 
