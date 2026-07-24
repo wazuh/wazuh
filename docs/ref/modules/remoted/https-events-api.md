@@ -27,15 +27,16 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 ## Transport and TLS
 
 - **Bind address / port:** `127.0.0.1:9443` by default.
-- **TLS:** minimum version TLS 1.2; the server loads a PEM certificate chain and private key and
+- **TLS:** minimum version TLS 1.3; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
 - **Certificate files:** `/var/wazuh-manager/etc/https-manager.{cert,key}`, owned `root:root`,
   mode `640` — same scheme as `sslmanager.cert`/`.key`. `remoted` reads both files itself,
   while still root, **before** it calls change of user.
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
-  max 64 header fields, and a transport body cap of 16 MiB by default; read/handshake timeout 10 s,
-  write timeout 10 s, request timeout 30 s. All tunable via `remoted.http_*` internal options -- see
-  [Configuration](#configuration) below.
+  max 64 header fields, and a transport body cap of 50 MiB by default (`<remote><https><max_body_size>`);
+  read/handshake timeout 10 s, write timeout 10 s, request timeout 30 s. The header/URL/timeout
+  limits are tunable via `remoted.http_*` internal options -- see [Configuration](#configuration)
+  below.
 
 A self-signed certificate/key pair is generated automatically at install time (source install,
 `.deb` and `.rpm` all wire this in), using the same self-signed `generate_cert()` routine that
@@ -104,7 +105,7 @@ The payload-identity check runs **before** the batch is forwarded: a mismatch ne
 engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
 engine itself rejects, so a client cannot distinguish the two causes.
 
-Requests larger than the 16 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
+Requests larger than the 50 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.
 
 The server bounds capacity in two phases and sheds excess load with a plain **`503 Service
@@ -131,9 +132,9 @@ The machine-readable contract is published as OpenAPI — see the
 
 ## Configuration
 
-Advanced RESTinio settings resolve as **caller value → built-in default**. `remoted` populates the
-caller value by reading the `remoted.http_*` internal options
-(`etc/wazuh-manager-internal-options.conf`) in `secure.c` and passing the result to
+Advanced RESTinio tuning knobs (threading, timeouts, message limits) resolve as **caller value →
+built-in default**. `remoted` populates the caller value by reading the `remoted.http_*` internal
+options (`etc/wazuh-manager-internal-options.conf`) in `secure.c` and passing the result to
 `remoted_module` through its C-ABI struct; an option present in the file but out of range (or
 non-numeric) prevents `remoted` from starting, same as every other internal option. See
 [Internal Options](configuration.md#internal-options) for the full reference (allowed ranges,
@@ -161,21 +162,29 @@ sizes track the host/container's available CPUs. The handler worker pool is over
 because that work can block (AES-CMAC verification, `client.keys` file I/O), unlike the purely
 async I/O threads.
 
-Bind address, port, max body size and the certificate/private key paths are **not** internal
-options -- these belong in the regular `<remote>` configuration (`wazuh-manager.conf`), not
-`wazuh-manager-internal-options.conf` (bind address/port/max body size are regular, user-facing
-settings; the certificate/private key paths have no string-valued internal-option mechanism to use
-even if they were advanced tuning). That `<remote>` wiring doesn't exist yet, so all five resolve as
-**caller value (C-ABI struct) → built-in default**, and `remoted` currently leaves those C-ABI
-fields unset -- in practice the built-in defaults below apply.
+Bind address, port, max body size, the certificate/private key paths, and the mTLS settings (CA,
+ciphers, client verification mode) are **not** internal options -- they are regular, user-facing
+`<remote><https>` settings (`wazuh-manager.conf`). All resolve as **`<https>` tag value → built-in
+default**; an absent `<https>` block, or an absent individual option within it, falls back to the
+built-in default below. See
+[Configuration Reference — HTTPS Configuration](configuration.md#https-configuration) for the full
+`<https>` tag reference and examples (including mutual TLS). Threading (`io_threads`,
+`http_worker_threads`) is not exposed in `<https>` and remains an internal option (see the table
+above).
 
-| Setting | Default |
-|---|---|
-| Bind address | `127.0.0.1` |
-| Port | `9443` |
-| Transport max body size | `16 MiB` |
-| TLS certificate chain | `etc/https-manager.cert` |
-| TLS private key | `etc/https-manager.key` |
+| Setting | `<https>` tag | Default |
+|---|---|---|
+| Bind address | `bind_addr` | `127.0.0.1` |
+| Port | `port` | `9443` |
+| Transport max body size | `max_body_size` | `50 MiB` |
+| TLS certificate chain | `certificate` | `/etc/remoted-https/server.crt` |
+| TLS private key | `key` | `/etc/remoted-https/server.key` |
+| Client CA bundle | `ca` | none (client-cert verification disabled) |
+| Client verification mode | `verification_mode` | `none` |
+| TLS cipher list | `ciphers` | library default |
+
+> There is no `enabled` toggle: the listener always attempts to start and self-gates on the
+> presence of a valid certificate/key, same as before this configuration surface existed.
 
 The **memory-management / capacity** settings are a separate, third group: `remoted` sets them
 directly on the C-ABI struct in `secure.c` (→ built-in default when unset) and they are
@@ -195,10 +204,6 @@ caps how many bodies can be read at once (peak ≈ max connections × max body s
 budget caps the total accepted-but-unprocessed payload in memory, and the deferred-request limiter
 caps how many requests are parked awaiting a downstream service. Exhausting either budget → a plain
 `503` (the agent retries; the liveness `GET /` is exempt from the byte budget).
-
-> There is no `ossec.conf` (`<remote>`) setting for the HTTPS listener yet; configuration is
-> limited to the internal options above, the memory-management settings, and the certificate
-> files on disk (auto-generated at install time, see [Transport and TLS](#transport-and-tls)).
 
 ### Downstream client and auth middleware
 
