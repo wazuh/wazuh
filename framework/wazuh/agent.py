@@ -221,27 +221,26 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         system_agents = get_agents_info()
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(agent_list))
 
-        async with get_wdb_http_client() as wdb_client:
-            active_agents = await wdb_client.get_agents_restart_info(
-                rbac_filters['filters']['rbac_ids'],
-                rbac_filters['rbac_negate']
-            )
+        # Get agent info (version) without filtering by connection status
+        with WazuhDBQueryAgents(limit=None, select=["id", "version"], **rbac_filters) as db_query:
+            data = db_query.run()
 
         # Convert list of dictionaries to dictionary
-        active_agents = {agent['id']: agent['version'] for agent in active_agents}
+        all_agents = {agent['id']: agent.get('version') for agent in data['items']}
 
         eligible_agents = []
         for agent_id in agent_list:
-            # Add non existent and inactive agents to failed_items
+            # Add non existent agents to failed_items
             if agent_id not in system_agents:
                 result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
                 continue
 
-            if agent_id not in active_agents:
-                result.add_failed_item(id_=agent_id, error=WazuhError(1707))
+            # Check if agent exists in query results
+            if agent_id not in all_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
                 continue
 
-            version = active_agents[agent_id]
+            version = all_agents[agent_id]
             if not version or WazuhVersion(version) < WazuhVersion('v5.0.0'):
                 result.add_failed_item(id_=agent_id, error=WazuhError(1761))
                 continue
@@ -335,26 +334,26 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
         system_agents = get_agents_info()
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=list(agent_list))
 
-        async with get_wdb_http_client() as wdb_client:
-            active_agents = await wdb_client.get_agents_restart_info(
-                rbac_filters['filters']['rbac_ids'],
-                rbac_filters['rbac_negate']
-            )
+        # Get agent info (version) without filtering by connection status
+        with WazuhDBQueryAgents(limit=None, select=["id", "version"], **rbac_filters) as db_query:
+            data = db_query.run()
 
         # Convert list of dictionaries to dictionary
-        active_agents = {agent['id']: agent['version'] for agent in active_agents}
+        all_agents = {agent['id']: agent.get('version') for agent in data['items']}
 
         eligible_agents = []
         for agent_id in agent_list:
+            # Add non existent agents to failed_items
             if agent_id not in system_agents:
                 result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
                 continue
 
-            if agent_id not in active_agents:
-                result.add_failed_item(id_=agent_id, error=WazuhError(1707))
+            # Check if agent exists in query results
+            if agent_id not in all_agents:
+                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
                 continue
 
-            version = active_agents[agent_id]
+            version = all_agents[agent_id]
             if not version or WazuhVersion(version) < WazuhVersion('v5.0.0'):
                 result.add_failed_item(id_=agent_id, error=WazuhError(1761))
                 continue
