@@ -13,6 +13,7 @@
 #include "remoted.h"
 #include "state.h"
 #include <pthread.h>
+#include <stdlib.h>
 
 #ifdef WAZUH_UNIT_TESTING
 // Remove STATIC qualifier from tests
@@ -32,6 +33,14 @@ extern OSHash *remoted_agents_state;
  * @return remoted_agent_state_t node
  */
 STATIC remoted_agent_state_t * get_node(const char *agent_id);
+
+/**
+ * @brief Compare agent IDs for qsort/bsearch
+ * @param a First agent ID
+ * @param b Second agent ID
+ * @return Negative, zero or positive depending on comparison result
+ */
+STATIC int cmp_agent_id(const void *a, const void *b);
 
 /**
  * @brief Clean non active agents from agents state
@@ -151,42 +160,51 @@ STATIC remoted_agent_state_t * get_node(const char *agent_id) {
     }
 }
 
+STATIC int cmp_agent_id(const void *a, const void *b) {
+    int agent_a = *(const int *)a;
+    int agent_b = *(const int *)b;
+
+    return (agent_a > agent_b) - (agent_a < agent_b);
+}
+
 STATIC void w_remoted_clean_agents_state(int *sock) {
     int *active_agents = NULL;
     OSHashNode *hash_node;
     unsigned int inode_it = 0;
-
-    hash_node = OSHash_Begin_ex(remoted_agents_state, &inode_it);
-
-    if (hash_node == NULL) {
-        return;
-    }
+    size_t active_agents_count = 0;
 
     if (active_agents = wdb_get_agents_ids_of_current_node(AGENT_CS_ACTIVE, sock, 0, -1), active_agents == NULL) {
         return;
     }
 
+    while (active_agents[active_agents_count] != -1) {
+        active_agents_count++;
+    }
+
+    qsort(active_agents, active_agents_count, sizeof(int), cmp_agent_id);
+
     char *agent_id = NULL;
     remoted_agent_state_t * agent_state = NULL;
+
+    w_mutex_lock(&agents_state_mutex);
+
+    hash_node = OSHash_Begin_ex(remoted_agents_state, &inode_it);
 
     while (hash_node) {
         agent_id = hash_node->key;
 
         hash_node = OSHash_Next(remoted_agents_state, &inode_it, hash_node);
 
-        int exist = 0;
-        for (size_t i = 0; active_agents[i] != -1; i++) {
-            if (atoi(agent_id) == active_agents[i] ) {
-                exist = 1;
-                break;
-            }
-        }
+        int id = atoi(agent_id);
+        int exist = bsearch(&id, active_agents, active_agents_count, sizeof(int), cmp_agent_id) != NULL;
 
         if (exist == 0) {
             agent_state = (remoted_agent_state_t *)OSHash_Delete_ex(remoted_agents_state, agent_id);
             os_free(agent_state);
         }
     }
+
+    w_mutex_unlock(&agents_state_mutex);
 
     os_free(active_agents);
     return;
