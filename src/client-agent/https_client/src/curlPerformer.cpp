@@ -18,6 +18,10 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#else
+#include <windows.h>
+#include <io.h>
+#include <fcntl.h>
 #endif
 
 namespace
@@ -112,7 +116,38 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
     // through the link. Truncate (like "wb") so a retry never mixes bytes from
     // two attempts.
 #ifdef WIN32
-    std::FILE* file = std::fopen(spec.responseFilePath.c_str(), "wb");
+    // No O_NOFOLLOW on Windows: open the reparse point itself (FILE_FLAG_OPEN_
+    // REPARSE_POINT never follows it) and refuse if it is one, so a swapped
+    // symlink cannot redirect the write to a victim. CREATE_ALWAYS truncates
+    // like "wb".
+    std::FILE* file = nullptr;
+    const HANDLE winHandle = CreateFileA(spec.responseFilePath.c_str(), GENERIC_WRITE, FILE_SHARE_READ,
+                                         nullptr, CREATE_ALWAYS, FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+
+    if (winHandle != INVALID_HANDLE_VALUE)
+    {
+        BY_HANDLE_FILE_INFORMATION info;
+
+        if (GetFileInformationByHandle(winHandle, &info) &&
+                (info.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0)
+        {
+            const int fd = _open_osfhandle(reinterpret_cast<intptr_t>(winHandle), _O_WRONLY | _O_BINARY);
+            file = fd >= 0 ? _fdopen(fd, "wb") : nullptr; // fd owns the handle now.
+
+            if (file == nullptr && fd >= 0)
+            {
+                _close(fd);
+            }
+            else if (fd < 0)
+            {
+                CloseHandle(winHandle);
+            }
+        }
+        else
+        {
+            CloseHandle(winHandle); // A reparse point (or the query failed): refuse.
+        }
+    }
 #else
     const int fd = ::open(spec.responseFilePath.c_str(),
                           O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, S_IRUSR | S_IWUSR);
@@ -129,7 +164,7 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
         return false;
     }
 
-    handle.captureResponseToFile(file);
+    handle.captureResponseToFile(file, spec.maxResponseBytes);
     *fileOut = file;
     return true;
 }
