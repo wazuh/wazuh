@@ -44,6 +44,9 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.batchSizeBytes = orDefault<uint64_t>(config.batch_size_bytes, 1024 * 1024);
     typed.batchIntervalMs = orDefault<uint32_t>(config.batch_interval_ms, 10000);
     typed.bufferCapMultiplier = orDefault<uint32_t>(config.buffer_cap_multiplier, 4);
+    typed.bufferWarnLevel = orDefault<uint32_t>(config.buffer_warn_level, 90);
+    typed.bufferNormalLevel = orDefault<uint32_t>(config.buffer_normal_level, 70);
+    typed.bufferFloodToleranceS = orDefault<uint32_t>(config.buffer_flood_tolerance_s, 15);
     typed.notifyIntervalS = orDefault<uint32_t>(config.notify_interval_s, 20);
     typed.rejectedRetryIntervalS = orDefault<uint32_t>(config.rejected_retry_interval_s, 60);
     typed.version = boundedString(config.version, sizeof(config.version));

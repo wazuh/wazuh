@@ -101,37 +101,35 @@ TEST(EventAccumulatorTest, ConsumeIsTailPreserving)
     EXPECT_EQ(1u, remaining.eventCount);
 }
 
-TEST(EventAccumulatorTest, LadderThresholdsBothDirections)
+TEST(EventAccumulatorTest, OccupancyTracksBytesBothDirections)
 {
-    // cap = 100 bytes. Each "E " + 8 chars + "\n" = 11 bytes.
+    // cap = 100 bytes. Each "E " + 8 chars + "\n" = 11 bytes, so occupancy is
+    // 11% per event. BufferLevelLadder turns this into the four-level ladder.
     EventAccumulator accumulator {25, 4, 100000};
-    const std::string frame(8, 'x'); // 11-byte line.
+    const std::string frame(8, 'x');
 
-    EXPECT_EQ(HC_BUFFER_NORMAL, accumulator.level());
+    EXPECT_EQ(0u, accumulator.occupancyPercent());
 
-    for (int index = 0; index < 5; index++) // 55 bytes -> 55% -> WARNING.
+    for (int index = 0; index < 5; index++)
     {
         append(accumulator, frame);
     }
 
-    EXPECT_EQ(HC_BUFFER_WARNING, accumulator.level());
+    EXPECT_EQ(55u, accumulator.occupancyPercent());
 
-    for (int index = 0; index < 2; index++) // 77 bytes -> 77% -> FULL.
+    for (int index = 0; index < 4; index++)
     {
         append(accumulator, frame);
     }
 
-    EXPECT_EQ(HC_BUFFER_FULL, accumulator.level());
-    append(accumulator, frame); // 88 bytes.
-    append(accumulator, frame); // 99 bytes -> 99% -> FLOOD.
-    EXPECT_EQ(HC_BUFFER_FLOOD, accumulator.level());
+    EXPECT_EQ(99u, accumulator.occupancyPercent());
 
-    // Draining most of the buffer walks the ladder back down.
+    // Draining most of the buffer walks occupancy back down.
     EventAccumulator::Snapshot partial;
     partial.byteLength = 88;
     partial.eventCount = 8;
     accumulator.consume(partial);
-    EXPECT_EQ(HC_BUFFER_NORMAL, accumulator.level());
+    EXPECT_EQ(11u, accumulator.occupancyPercent());
 }
 
 TEST(EventAccumulatorTest, ConsumeNeverUnderflowsCounts)
