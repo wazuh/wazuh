@@ -119,8 +119,11 @@ void ControlStream::drainStep(Waiter& waiter)
 void ControlStream::sendShutdown(Waiter& waiter)
 {
     const std::string body = R"({"type":"shutdown"})";
-    const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
-                                      CONTROL_MAX_ATTEMPTS);
+    // Best-effort within the drain window (drain_timeout_ms): a single attempt,
+    // NOT the normal 4x retry/backoff, so an unreachable manager cannot stall
+    // shutdown for minutes. The manager marks the agent disconnected on the next
+    // keepalive timeout regardless.
+    const auto result = m_sender.send(controlSpec(body, m_config.drainTimeoutMs), waiter, 1);
 
     if (result.outcome != OutcomeClass::Ok)
     {
@@ -166,6 +169,15 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
                        : eventFor(result.outcome);
     const auto effects = m_machine.onEvent(event);
     applyEffects(effects, result.response.body);
+
+    if (result.outcome == OutcomeClass::VersionRejected)
+    {
+        // A definitive version rejection: report it so on_startup_result's
+        // accepted=false branch is actually reachable (the accept path is
+        // reported through applyHandshake above).
+        m_sink.onStartupResult(false, result.response.body);
+    }
+
     return result.outcome;
 }
 
