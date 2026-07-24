@@ -349,6 +349,7 @@ TEST_F(FacadeE2eTest, OversizedBatchIsSplitAndResentWithoutLoss)
     // 40 distinctly-numbered events; each "E evt-NN:payload...\n" ~30 bytes,
     // so the full batch (~1200 B) exceeds the 600-byte limit and must split.
     constexpr int total = 40;
+
     for (int index = 0; index < total; index++)
     {
         char frame[64];
@@ -361,25 +362,30 @@ TEST_F(FacadeE2eTest, OversizedBatchIsSplitAndResentWithoutLoss)
     httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
     peek.enable_server_certificate_verification(false);
     std::string received;
+
     for (int attempt = 0; attempt < 300; attempt++)
     {
         if (auto result = peek.Get("/peek/stateless"))
         {
             received = result->body;
             int seen = 0;
+
             for (int index = 0; index < total; index++)
             {
                 char needle[32];
                 std::snprintf(needle, sizeof needle, "evt-%02d-", index);
                 seen += received.find(needle) != std::string::npos ? 1 : 0;
             }
+
             if (seen == total)
             {
                 break;
             }
         }
+
         std::this_thread::sleep_for(std::chrono::milliseconds {20});
     }
+
     hc_destroy(handle);
 
     // Every event delivered exactly once, none dropped despite the 413s.
