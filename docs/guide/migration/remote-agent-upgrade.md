@@ -1,20 +1,21 @@
 # Remote Agent Upgrade Migration Guide (4.x to 5.x)
 
-The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/upgrade` and `PUT /agents/upgrade_custom` API endpoints exist, and the `/var/wazuh-manager/bin/agent_upgrade` binary is also available as a command-line alternative that calls the same underlying framework. The WPK-based transfer flow is unchanged. Two breaking requirements must be met before any remote upgrade to 5.0.0+ can succeed:
+The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/upgrade` and `PUT /agents/upgrade_custom` API endpoints exist, and the `/var/wazuh-manager/bin/agent_upgrade` binary is still available as a command-line alternative that calls the same framework. WPK files themselves are unchanged. What did change is the delivery path: the manager no longer drives the WPK transfer from the API request path. Instead, it stores a `remote_upgrade` task in the Task Manager. From there, 5.x agents pull the task and the WPK over HTTPS on their next poll, while 4.x agents are served by a compatibility push path that forwards the WPK over the existing agent-manager channel. Two breaking requirements must be met before any remote upgrade to 5.0.0+ can succeed:
 
-1. **TCP-only agent connectivity on port 1514.** In Wazuh 5.x, the agent ignores the `<protocol>` configuration option and always connects to the manager over TCP, regardless of what it was set to in 4.x. The manager still accepts UDP, but no 5.x agent will initiate a UDP connection. The WPK transfer uses the agent's current 4.x communication channel while the upgrade is being delivered, which can still be UDP for agents that have not restarted into 5.x yet. The risk arises after an agent that was connecting over UDP is upgraded: it restarts in TCP mode, and if outbound TCP on port 1514 is blocked in the firewall, the agent cannot reconnect and appears as `disconnected`, not `active`. Firewall rules must be updated to allow outbound TCP on port 1514 from the agent to the manager **before** the agent is upgraded to 5.x, or the agent will be unreachable after the upgrade.
+1. **TCP-only agent connectivity on port 1514.** In Wazuh 5.x, the agent ignores the `<protocol>` configuration option and always connects to the manager over TCP, regardless of what it was set to in 4.x. The manager still accepts UDP, but no 5.x agent will initiate a UDP connection. The risk arises after an agent that was connecting over UDP is upgraded: it restarts in TCP mode, and if outbound TCP on port 1514 is blocked in the firewall, the agent cannot reconnect and appears as `disconnected`, not `active`. Firewall rules must be updated to allow outbound TCP on port 1514 from the agent to the manager **before** the agent is upgraded to 5.x, or the agent will be unreachable after the upgrade.
 2. **Intermediate version requirement.** Direct remote upgrade to v5.0.0+ from agents older than v4.14.0 is blocked by the upgrade module and cannot be overridden with `--force`. Agents on v4.13.x or earlier must be upgraded to v4.14.x first.
 
 ---
 
 ## Breaking changes at a glance
 
-| Area | 4.x behavior | 5.x behavior |
-|------|-------------|-------------|
-| Agent-manager transport | TCP or UDP selectable via `<protocol>` | Agent always uses TCP; `<protocol>` is silently ignored by the agent (manager still accepts UDP) |
-| Minimum agent version for 5.x remote upgrade | Not applicable (4.x managers only upgraded to 4.x) | v4.14.0, older agents are rejected with `"Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first"` |
-| `force` flag | Bypasses same-version and version-exceeds-manager checks | Same as before, but **cannot** bypass the intermediate version requirement |
-| Upgrade result notification | Polling only via `GET /agents/upgrade_result` | Manager receives an asynchronous notification via router topic `upgrade_notifications`; result also available via polling |
+| Area                                         | 4.x behavior                                                                                 | 5.x behavior                                                                                                                                                                                                                                                                       |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent-manager transport                      | TCP or UDP selectable via `<protocol>`                                                       | Agent always uses TCP; `<protocol>` is silently ignored by the agent (manager still accepts UDP)                                                                                                                                                                                   |
+| Minimum agent version for 5.x remote upgrade | Not applicable (4.x managers only upgraded to 4.x)                                           | v4.14.0, older agents are rejected with `"Direct upgrade to v5.0.0 is not supported. Please upgrade to v4.14.x first"`                                                                                                                                                             |
+| `force` flag                                 | Bypasses same-version and version-exceeds-manager checks                                     | Same as before, but **cannot** bypass the intermediate version requirement                                                                                                                                                                                                         |
+| WPK delivery to the agent                    | Manager pushes the WPK to the agent through Remoted (open/write/close/sha1/upgrade commands) | Manager stores a `remote_upgrade` task in the Task Manager. 5.x agents pull the task and download the WPK from the manager's HTTPS interface on their next poll; 4.x agents are served by a compatibility push path that forwards the WPK over the existing agent-manager channel. |
+| Upgrade result reporting                     | Agent reported success/failure back to the manager                                           | Fire-and-forget from the manager's perspective; upgrade progress is observable through the tasks table, the reported agent version, and the agent-side log                                                                                                                         |
 
 ---
 
@@ -22,7 +23,7 @@ The remote agent upgrade mechanism is preserved in 5.x. The same `PUT /agents/up
 
 ### 1. Verify TCP connectivity on port 1514
 
-The WPK transfer uses the same channel as regular agent-manager communication. The **manager** listens on port 1514; agents connect outbound to it. To confirm TCP reachability, run this check from each agent host (or from a host in the same network segment as the agent):
+Once an agent restarts as 5.x it will only try to connect to the manager over TCP on port 1514. To confirm TCP reachability, run this check from each agent host (or from a host in the same network segment as the agent):
 
 ```bash
 # Linux / macOS
@@ -105,27 +106,27 @@ The `agent_upgrade` module on the manager downloads the WPK from the Wazuh repos
 ```
 API request or agent_upgrade binary
     └─► Agent Upgrade module (queue/tasks/upgrade)
-            ├─► validates version requirements and downloads WPK
-            └─► sends WPK commands to Remoted (queue/sockets/remote)
-                    └─► Remoted delivers to agent over its current channel
-                            └─► agent installs WPK and writes result
-                                    └─► Remoted receives result
-                                            └─► Router (upgrade_notifications topic)
-                                                    └─► Agent Upgrade module updates task status
+            ├─► validates version requirements and downloads/validates WPK
+            └─► creates a remote_upgrade task in the Task Manager
+                    └─► Task Manager stores the task in tasks.db
+                            └─► Agent picks up the task on its next poll to the manager
+                                    └─► Agent downloads the WPK from the manager (HTTPS)
+                                            └─► Agent validates SHA1 and executes the installer
 ```
 
-The six commands sent to the agent during WPK transfer are, in order:
+The agent-facing task payload contains three fields:
 
-| Command | Purpose |
-|---------|---------|
-| `lock_restart` | Prevent the agent from restarting while the transfer is in progress |
-| `open wb <file>` | Open the WPK file for writing on the agent |
-| `write <chunk>` | Send the WPK data in chunks (default 32 KB per chunk) |
-| `close <file>` | Close and flush the file |
-| `sha1 <file>` | Verify the SHA1 checksum of the received file |
-| `upgrade <installer>` | Execute the installer (`upgrade.bat` on Windows, `upgrade.sh` elsewhere) |
+| Field       | Purpose                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------- |
+| `wpk_file`  | WPK filename the agent must download from the manager                                   |
+| `wpk_sha1`  | SHA-1 the agent must reproduce before running the installer                             |
+| `installer` | Installer script inside the WPK (`upgrade.sh` on Linux/macOS, `upgrade.bat` on Windows) |
 
-All six commands travel over the agent-manager channel that is active before the agent restarts. For 4.x agents still configured over UDP, the transfer can use UDP; after the agent upgrades to 5.x, it reconnects only over TCP. If the active channel fails during the transfer, the upgrade module reports one of the following errors: `Send lock restart error`, `Send open file error`, `Send write file error`, `Send close file error`, `Send verify sha1 error`, or `Send upgrade command error`.
+The manager no longer streams the WPK bytes to the agent through Remoted; the WPK is served over the manager's HTTPS interface when the agent requests it. Because task delivery is pull-based, upgrade progress from the manager's side ends once the task has been stored: the manager does not receive an asynchronous notification of success or failure from the agent. Progress is observable through:
+
+- The `delivery_time` column of the corresponding row in `tasks.db` (populated the first time the agent picked up the task).
+- The agent version reported by `GET /agents/<id>` once the upgrade completes and the agent reconnects.
+- The agent-side upgrade log (`/var/ossec/logs/ossec.log`).
 
 ---
 
@@ -149,13 +150,13 @@ curl -k -X PUT "https://localhost:55000/agents/upgrade?pretty=true&agents_list=0
 
 Optional query parameters:
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `wpk_repo` | string | Default repository | WPK repository base URL |
-| `upgrade_version` | string | Manager version | Target version (e.g. `v5.0.0`) |
-| `use_http` | boolean | `false` | Use HTTP instead of HTTPS to fetch WPK |
-| `force` | boolean | `false` | Bypass same-version and version-exceeds-manager checks; does **not** bypass the v4.14.0 intermediate requirement |
-| `package_type` | string | auto-detected | Package type override (`rpm`, `deb`) |
+| Parameter         | Type    | Default            | Description                                                                                                      |
+| ----------------- | ------- | ------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `wpk_repo`        | string  | Default repository | WPK repository base URL                                                                                          |
+| `upgrade_version` | string  | Manager version    | Target version (e.g. `v5.0.0`)                                                                                   |
+| `use_http`        | boolean | `false`            | Use HTTP instead of HTTPS to fetch WPK                                                                           |
+| `force`           | boolean | `false`            | Bypass same-version and version-exceeds-manager checks; does **not** bypass the v4.14.0 intermediate requirement |
+| `package_type`    | string  | auto-detected      | Package type override (`rpm`, `deb`)                                                                             |
 
 Example response:
 
@@ -165,7 +166,7 @@ Example response:
       "affected_items": [
          {
             "agent": "002",
-            "task_id": 2
+            "task_id": "7e4b1a2c-8f3d-46a1-9b0e-6d2f8c9a1234"
          }
       ],
       "total_affected_items": 1,
@@ -202,21 +203,22 @@ If an agent below v4.14.0 is included, it appears in `failed_items`:
 
 **Step 3: Monitor upgrade status:**
 
-Poll the result for each agent:
+Query pending tasks for the affected agents:
 
 ```bash
-curl -k -X GET "https://localhost:55000/agents/upgrade_result?pretty=true&agents_list=001,002" \
+curl -k -X GET "https://localhost:55000/tasks/status?pretty=true&agents_list=001,002" \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-Or query all pending tasks:
+A `remote_upgrade` task moves through the following `status` values in `tasks.db`:
 
-```bash
-curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
+| Status      | Meaning                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `pending`   | Task has been stored on the manager and is waiting for the agent to pick it up.                                                         |
+| `delivered` | Task has been served to the agent at least once. `delivery_time` is set to the first delivery timestamp.                                |
+| `expired`   | The TTL configured in `<task-manager><task_ttl>` elapsed before the task was picked up, or the entry was marked expired during cleanup. |
 
-Expected `status` values during a successful upgrade: `In queue` → `Updating` → `Updated`.
+Because task delivery is fire-and-forget on the manager side, the completion of the upgrade itself is confirmed out-of-band — by the agent version reported in `GET /agents/<id>` and by the agent-side `ossec.log`, not by a status transition in `tasks.db`.
 
 ### Via binary
 
@@ -234,16 +236,16 @@ To target a specific version:
 
 Available flags:
 
-| Flag | Description |
-|------|-------------|
-| `-a`/`--agents` | One or more agent IDs to upgrade |
-| `-v`/`--version` | Target version; defaults to the manager version |
-| `-r`/`--repository` | WPK repository base URL |
-| `-F`/`--force` | Bypass same-version and version-exceeds-manager checks; does **not** bypass the v4.14.0 intermediate requirement |
-| `--http` | Use HTTP instead of HTTPS to fetch WPK |
-| `--package_type` | Package type override (`deb`, `rpm`) |
-| `-s`/`--silent` | Suppress output |
-| `-d`/`--debug` | Debug mode |
+| Flag                | Description                                                                                                      |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `-a`/`--agents`     | One or more agent IDs to upgrade                                                                                 |
+| `-v`/`--version`    | Target version; defaults to the manager version                                                                  |
+| `-r`/`--repository` | WPK repository base URL                                                                                          |
+| `-F`/`--force`      | Bypass same-version and version-exceeds-manager checks; does **not** bypass the v4.14.0 intermediate requirement |
+| `--http`            | Use HTTP instead of HTTPS to fetch WPK                                                                           |
+| `--package_type`    | Package type override (`deb`, `rpm`)                                                                             |
+| `-s`/`--silent`     | Suppress output                                                                                                  |
+| `-d`/`--debug`      | Debug mode                                                                                                       |
 
 ## Two-step upgrade path (agents below v4.14.0)
 
@@ -309,9 +311,9 @@ curl -k -X PUT "https://localhost:55000/agents/upgrade_custom?pretty=true&agents
 /var/wazuh-manager/bin/agent_upgrade -a 001 -f /var/wazuh-manager/var/upgrade/wazuh_agent_v5.0.0_linux_x86_64.wpk -x upgrade.sh
 ```
 
-| Flag | Description |
-|------|-------------|
-| `-f`/`--file` | Path to the WPK file on the manager filesystem |
+| Flag             | Description                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| `-f`/`--file`    | Path to the WPK file on the manager filesystem                                            |
 | `-x`/`--execute` | Installer script inside the WPK (`upgrade.sh` for Linux/macOS, `upgrade.bat` for Windows) |
 
 The `agent_upgrade` module still validates the intermediate version requirement for custom WPK files whose filename follows the canonical pattern `wazuh_agent_v<VERSION>_<rest>.wpk`. Files with non-standard names skip the manager-side version check and rely on the agent-side pre-install script to block an incompatible version.
@@ -322,7 +324,7 @@ The `agent_upgrade` module still validates the intermediate version requirement 
 
 After triggering the upgrade, confirm all conditions below are met before declaring the migration complete:
 
-- `GET /agents/upgrade_result?agents_list=<id>` returns `"status": "Updated"` for every upgraded agent (or the binary exited with `Agent upgraded successfully`).
+- `GET /tasks/status?agents_list=<id>&filters={"task_type":"remote_upgrade"}` shows the task in `delivered` state (or the binary exited with `Agent upgraded successfully`). A task still in `pending` after the TTL means the agent never picked it up; an `expired` task means it was cleaned up before delivery.
 - Agent version reported in `GET /agents/<id>` matches `5.0.0`.
 - Agent connection status is `active`.
 - `ossec.log` on the agent contains no errors related to the upgrade (`grep -i "upgrade" /var/ossec/logs/ossec.log`).
