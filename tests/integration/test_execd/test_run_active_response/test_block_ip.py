@@ -79,6 +79,9 @@ daemons_handler_configuration = {'all_daemons': True}
 
 
 # Test function.
+@pytest.mark.skip(reason="RemotedSimulator is being rewritten to speak HTTPS (wazuh/wazuh#37702, "
+                          "wazuh/qa-integration-framework#788); skipped until the legacy simulator "
+                          "dependency is migrated.")
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_execd_block_ip(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
                         set_wazuh_configuration, remoted_simulator, authd_simulator,

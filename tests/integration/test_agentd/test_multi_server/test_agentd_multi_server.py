@@ -93,6 +93,9 @@ How does this test work:
     - AUTHD: mode for the authd simulator
     - LOG_MONITOR_STR: (list of lists) Expected string to be monitored for each simulator
 """
+@pytest.mark.skip(reason="RemotedSimulator is being rewritten to speak HTTPS (wazuh/wazuh#37702, "
+                          "wazuh/qa-integration-framework#788); skipped until the legacy simulator "
+                          "dependency is migrated.")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files,
                              remove_keys_file, start_remoted_simulators, daemons_handler):

@@ -91,6 +91,9 @@ def start_remoted_server(test_metadata) -> None:
     return remoted_server
 
 
+@pytest.mark.skip(reason="RemotedSimulator is being rewritten to speak HTTPS (wazuh/wazuh#37702, "
+                          "wazuh/qa-integration-framework#788); skipped until the legacy simulator "
+                          "dependency is migrated.")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration, remove_state_file, configure_local_internal_options,
                       truncate_monitored_files, clean_keys, add_keys, daemons_handler):

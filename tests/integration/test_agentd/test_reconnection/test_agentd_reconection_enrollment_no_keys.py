@@ -80,6 +80,9 @@ local_internal_options.update({AGENTD_TIMEOUT: '5'})
 daemons_handler_configuration = {'all_daemons': True}
 
 # Tests
+@pytest.mark.skip(reason="RemotedSimulator is being rewritten to speak HTTPS (wazuh/wazuh#37702, "
+                          "wazuh/qa-integration-framework#788); skipped until the legacy simulator "
+                          "dependency is migrated.")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files, clean_keys, daemons_handler):
     '''

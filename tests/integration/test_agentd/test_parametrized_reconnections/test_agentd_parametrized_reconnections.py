@@ -91,6 +91,17 @@ local_internal_options.update({AGENTD_TIMEOUT: '5'})
 
 daemons_handler_configuration = {'all_daemons': True}
 
+# Only cases with ENROLL='yes' instantiate RemotedSimulator; skip those until the legacy
+# simulator dependency is migrated (wazuh/wazuh#37702, wazuh/qa-integration-framework#788).
+_remoted_https_skip_reason = ("RemotedSimulator is being rewritten to speak HTTPS (wazuh/wazuh#37702, "
+                               "wazuh/qa-integration-framework#788); skipped until the legacy simulator "
+                               "dependency is migrated.")
+test_cases_params = [
+    pytest.param(config, metadata, marks=pytest.mark.skip(reason=_remoted_https_skip_reason))
+    if metadata['ENROLL'] == 'yes' else pytest.param(config, metadata)
+    for config, metadata in zip(test_configuration, test_metadata)
+]
+
 # Tests
 """
 This test covers different options of delays between server connection attempts:
@@ -100,7 +111,7 @@ This test covers different options of delays between server connection attempts:
 -Enrollment between retries
 """
 
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+@pytest.mark.parametrize('test_configuration, test_metadata', test_cases_params, ids=test_cases_ids)
 def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                            truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''
