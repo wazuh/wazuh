@@ -24,17 +24,19 @@ namespace
     }
 } // namespace
 
-TEST(EncodeEventLineTest, WrapsFrameAsEeLine)
+TEST(EncodeStatelessEventLineTest, WrapsFrameAsEeLine)
 {
     const std::string frame = "1:/var/log/syslog:hello";
-    const auto line = encodeEventLine(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+    const auto line =
+        encodeStatelessEventLine(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
     EXPECT_EQ("E 1:/var/log/syslog:hello\n", line);
 }
 
-TEST(EncodeEventLineTest, EscapesEmbeddedNewlinesWithLeadingSpace)
+TEST(EncodeStatelessEventLineTest, EscapesEmbeddedNewlinesWithLeadingSpace)
 {
     const std::string frame = "line1\nline2\nline3";
-    const auto line = encodeEventLine(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+    const auto line =
+        encodeStatelessEventLine(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
     EXPECT_EQ("E line1\n line2\n line3\n", line);
 }
 
