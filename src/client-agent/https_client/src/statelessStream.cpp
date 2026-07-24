@@ -28,6 +28,7 @@ StatelessStream::StatelessStream(const ModuleConfig& config, IHttpPerformer& per
     , m_sender(performer, signer, clock, m_backoff, &authGate)
     , m_sink(sink)
     , m_lastFlush(clock.steadyNow())
+    , m_ladder(config.bufferWarnLevel, config.bufferNormalLevel, config.bufferFloodToleranceS)
 {
 }
 
@@ -44,7 +45,7 @@ StatelessStream::SubmissionResult StatelessStream::submit(const uint8_t* frame, 
     }
 
     const bool isFlushDue = m_accumulator.flushDue(0, eventBudget);
-    publishLevelLocked();
+    publishLevelLocked(!accepted);
     return SubmissionResult {accepted, accepted&& !wasFlushDue&& isFlushDue};
 }
 
@@ -62,9 +63,17 @@ std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
     // waits and retries on this stream's own thread; the next flush is thus
     // naturally deferred while the accumulator (fed by the intake thread) keeps
     // absorbing (D5/D6).
-    if (flushDue(force))
+    if (flushDue(force) && flushOnce(waiter, m_config.requestTimeoutMs, STATELESS_MAX_ATTEMPTS)
+            && flushDue(false))
     {
-        flushOnce(waiter);
+        // Keep draining back-to-back while a backlog stays above the threshold.
+        // The size condition is edge-triggered in submit() (it fires once, as
+        // the buffer crosses the mark), so without this a buffer that stays
+        // above the threshold would give up a whole batch interval per request
+        // and cap throughput at one payload per interval regardless of load.
+        // Gated on the flush having succeeded: any failure falls through to the
+        // interval, so a rejecting or back-pressuring manager is never hammered.
+        return std::chrono::milliseconds::zero();
     }
 
     return std::chrono::milliseconds {m_config.batchIntervalMs};
@@ -72,7 +81,8 @@ std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
 
 hc_buffer_level_t StatelessStream::level() const
 {
-    return m_accumulator.level();
+    std::lock_guard<std::mutex> lock(m_stateMutex);
+    return m_ladder.level();
 }
 
 uint64_t StatelessStream::droppedEvents() const
@@ -100,7 +110,7 @@ bool StatelessStream::flushDue(bool force) const
     return m_accumulator.flushDue(static_cast<uint64_t>(elapsed), eventBytesBudgetLocked());
 }
 
-bool StatelessStream::flushOnce(Waiter& waiter)
+bool StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t maxAttempts)
 {
     uint64_t eventBudget;
     {
@@ -114,9 +124,9 @@ bool StatelessStream::flushOnce(Waiter& waiter)
     const std::string body = buildHeaderLine() + snapshot.body;
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
     spec.bodyLength = body.size();
-    spec.timeoutMs = m_config.requestTimeoutMs;
+    spec.timeoutMs = timeoutMs;
 
-    const auto result = m_sender.send(spec, waiter, STATELESS_MAX_ATTEMPTS);
+    const auto result = m_sender.send(spec, waiter, maxAttempts);
     m_lastFlush = m_clock.steadyNow();
     handleOutcome(result.outcome, snapshot);
     return result.outcome == OutcomeClass::Ok;
@@ -131,7 +141,8 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
     {
         m_accumulator.consume(snapshot);
         m_payload.onSuccess(); // Ramp the effective payload back toward the max.
-        publishLevelLocked();
+        m_oversizedWarned = false; // The manager accepts again: re-arm the warning.
+        publishLevelLocked(false);
         return;
     }
 
@@ -143,10 +154,30 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
         {
             m_accumulator.consume(snapshot);
             m_droppedEvents++;
-            LOGFN_WARN(m_logFn, "Dropped a single oversized /stateless event the "
-                       "manager rejected with 413 (total dropped: %llu).",
-                       static_cast<unsigned long long>(m_droppedEvents));
-            publishLevelLocked();
+
+            // Warn once per incident, then stay at debug. A manager cap below
+            // one event rejects every request, so an unconditional warning here
+            // would log once per dropped event at full intake rate.
+            if (!m_oversizedWarned)
+            {
+                m_oversizedWarned = true;
+                LOGFN_WARN(m_logFn, "Dropped a single oversized /stateless event the manager "
+                           "rejected with 413 (total dropped: %llu). Further unsplittable "
+                           "drops are logged at debug level until a batch is accepted.",
+                           static_cast<unsigned long long>(m_droppedEvents));
+            }
+            else
+            {
+                LOGFN_DEBUG2(m_logFn, "Dropped a single oversized /stateless event the "
+                             "manager rejected with 413 (total dropped: %llu).",
+                             static_cast<unsigned long long>(m_droppedEvents));
+            }
+
+            // The batch size was not the cause -- this one event is simply too
+            // big for the manager. Halving the budget again would only cost a
+            // round trip before the next event is tried.
+            publishLevelLocked(false);
+            return;
         }
 
         m_payload.onPayloadTooLarge(); // A multi-event batch stays for a smaller retry.
@@ -157,7 +188,7 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
     {
         m_accumulator.consume(snapshot); // Non-413 4xx: retrying identical bytes cannot help.
         m_droppedEvents += snapshot.eventCount;
-        publishLevelLocked();
+        publishLevelLocked(false);
         return;
     }
 
@@ -166,27 +197,37 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
 
 void StatelessStream::drain(Waiter& waiter)
 {
-    // Bounded best-effort: bufferCapMultiplier + 1 iterations covers a full
-    // buffer at the configured (max) payload. If 413s shrank the effective
-    // size, part of the backlog may remain unsent at shutdown - a bounded
-    // drain beats stalling the stop path against a rejecting server.
+    // Bounded in two directions. Iterations: bufferCapMultiplier + 1 covers a
+    // full buffer at the configured (max) payload; if 413s shrank the effective
+    // size, part of the backlog stays unsent rather than stalling the stop
+    // path. Per flush: the drain window and a single attempt, exactly like
+    // ControlStream::drainStep. This runs on the stop path with a waiter that
+    // is deliberately never stopped, so the full retry ladder (5 attempts,
+    // per-request timeout, back-off up to the cap) would hold process exit for
+    // minutes against a slow or back-pressuring manager -- on Windows from an
+    // atexit handler.
     for (uint32_t iteration = 0; iteration <= m_config.bufferCapMultiplier; iteration++)
     {
-        if (m_accumulator.empty() || !flushOnce(waiter))
+        if (m_accumulator.empty() || !flushOnce(waiter, m_config.drainTimeoutMs, 1))
         {
             return;
         }
     }
 }
 
-void StatelessStream::publishLevelLocked()
+void StatelessStream::publishLevelLocked(bool eventDropped)
 {
-    const auto level = m_accumulator.level();
+    // Steady seconds: the FLOOD dwell must not be perturbed by wall-clock jumps
+    // (buffer.c uses time(0) only because it has no steady clock to hand).
+    const auto nowSeconds = std::chrono::duration_cast<std::chrono::seconds>(
+                                m_clock.steadyNow().time_since_epoch())
+                            .count();
+    const auto transition =
+        m_ladder.observe(m_accumulator.occupancyPercent(), eventDropped, nowSeconds);
 
-    if (level != m_lastLevel)
+    if (transition.announce)
     {
-        m_lastLevel = level;
-        m_sink.onBufferLevel(level);
+        m_sink.onBufferLevel(transition.level);
     }
 }
 
