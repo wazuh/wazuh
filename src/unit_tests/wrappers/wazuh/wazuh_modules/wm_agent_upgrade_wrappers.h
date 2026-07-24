@@ -46,7 +46,7 @@ int __wrap_wm_agent_upgrade_validate_wpk_version(const wm_agent_info* agent_info
 
 int __wrap_wm_agent_upgrade_validate_wpk(const wm_upgrade_task* task);
 
-int __wrap_wm_agent_upgrade_validate_wpk_custom(const wm_upgrade_custom_task* task);
+int __wrap_wm_agent_upgrade_validate_wpk_custom(wm_upgrade_custom_task* task);
 
 cJSON* __wrap_wm_agent_upgrade_parse_data_response(int error_id, const char* message, const int* agent_id);
 
