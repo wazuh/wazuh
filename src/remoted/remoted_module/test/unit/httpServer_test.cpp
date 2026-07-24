@@ -62,7 +62,7 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.port, 9443);
     EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.workerThreads, 2U * static_cast<std::size_t>(cpp_get_nproc()));
-    EXPECT_EQ(config.maxBodySize, 16U * 1024U * 1024U);
+    EXPECT_EQ(config.maxBodySize, 50U * 1024U * 1024U);
     EXPECT_EQ(config.readTimeoutSec, 10U);
     EXPECT_EQ(config.writeTimeoutSec, 10U);
     EXPECT_EQ(config.requestTimeoutSec, 30U);
@@ -110,7 +110,7 @@ TEST(HttpServerConfigTest, StructValuesWin)
     raw.port = 12345;
     raw.io_threads = 3;
     raw.http_worker_threads = 7;
-    raw.http_max_body_size = 1048576;
+    raw.max_body_size = 1048576;
     raw.http_read_timeout = 20;
     raw.http_write_timeout = 15;
     raw.http_request_timeout = 45;
