@@ -167,6 +167,25 @@ static void nap(int ms)
     nanosleep(&t, NULL);
 }
 
+/* Reporter collectors (#37843): run on the module's reporter thread, return a
+ * malloc'd JSON object the module owns (frees) after stamping identity. A real
+ * agent aggregates every module's stats/config here. */
+static char *collect_stats(void *user_data)
+{
+    (void)user_data;
+    printf("[+%7ld ms] >> COLLECT stats\n", elapsed_ms());
+    fflush(stdout);
+    return strdup("{\"uptime\":86400,\"events_received\":12543,\"queue_usage\":15.2}");
+}
+
+static char *collect_config(void *user_data)
+{
+    (void)user_data;
+    printf("[+%7ld ms] >> COLLECT config\n", elapsed_ms());
+    fflush(stdout);
+    return strdup("{\"client\":{\"notify_time\":2,\"config-profile\":\"demo\"}}");
+}
+
 /* Deterministic hex filler (xorshift-style) for the fake file hashes. */
 static void fake_hex(char *dst, size_t hex_chars, uint64_t seed)
 {
@@ -247,6 +266,10 @@ int main(int argc, char **argv)
     config.request_timeout_ms = 10000;   /* a multi-MB /stateful takes a moment */
     config.backoff_base_ms = 200;
     config.backoff_cap_ms = 2000;
+    config.stats_enabled = true;          /* push /stats every few seconds     */
+    config.stats_interval_s = 3;
+    config.config_report_enabled = true;  /* push /config on its own cadence    */
+    config.config_report_interval_s = 5;
     strncpy(config.version, "5.1.0", sizeof config.version - 1);
     /* SHA-256 of the empty merged.mg the mock starts with: in sync at boot,
      * so the scripted config flip is a real transition. */
@@ -268,6 +291,8 @@ int main(int argc, char **argv)
     callbacks.on_sync_response = on_sync_response;
     callbacks.on_state_change = on_state_change;
     callbacks.on_buffer_level = on_buffer_level;
+    callbacks.collect_stats = collect_stats;
+    callbacks.collect_config = collect_config;
 
     printf("== creating + starting the https_client (target %s:%s) ==\n", argv[1], argv[2]);
     hc_handle *handle = hc_create(&config, &callbacks);

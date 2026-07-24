@@ -50,6 +50,10 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.notifyIntervalS = orDefault<uint32_t>(config.notify_interval_s, 20);
     typed.rejectedRetryIntervalS = orDefault<uint32_t>(config.rejected_retry_interval_s, 60);
     typed.wpkMaxDownloadBytes = orDefault<uint64_t>(config.wpk_max_download_bytes, 200ULL * 1024 * 1024);
+    typed.statsEnabled = config.stats_enabled;
+    typed.statsIntervalS = orDefault<uint32_t>(config.stats_interval_s, 60);
+    typed.configReportEnabled = config.config_report_enabled;
+    typed.configReportIntervalS = orDefault<uint32_t>(config.config_report_interval_s, 3600);
     typed.version = boundedString(config.version, sizeof(config.version));
     typed.configChecksum = boundedString(config.config_checksum, sizeof(config.config_checksum));
     typed.requestTimeoutMs = orDefault<uint32_t>(config.request_timeout_ms, 10000);

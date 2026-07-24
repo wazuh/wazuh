@@ -16,8 +16,10 @@
 #include "callbackDispatcher.hpp"
 #include "clusterIdentity.hpp"
 #include "cmacSigner.hpp"
+#include "collectorSource.hpp"
 #include "configHashState.hpp"
 #include "controlStream.hpp"
+#include "reporterStream.hpp"
 #include "curlPerformer.hpp"
 #include "https_client.h"
 #include "keyProvider.hpp"
@@ -74,6 +76,7 @@ class HttpsClientFacade final
         void controlLoop();
         void statelessLoop();
         void statefulLoop();
+        void reporterLoop();
         void startSyncIntake();
         void drain();
         std::chrono::milliseconds controlInterval() const;
@@ -98,9 +101,11 @@ class HttpsClientFacade final
         // below) is safe.
         AuthGate m_authGate {m_dispatcher, [this] { m_controlWaiter.notify(); }};
 
+        CallbackCollectorSource m_collectors;
         StatelessStream m_stateless;
         StatefulStream m_stateful;
         ControlStream m_control;
+        ReporterStream m_reporter;
 
         // One waiter per stream thread; the stop flag doubles as the abort flag.
         Waiter m_controlWaiter;
@@ -109,9 +114,12 @@ class HttpsClientFacade final
         Waiter m_drainWaiter; ///< Fresh (never stopped) so the final drain can run.
         RegistrationGate m_gate;
 
+        Waiter m_reporterWaiter;
+
         std::thread m_controlThread;
         std::thread m_statelessThread;
         std::thread m_statefulThread;
+        std::thread m_reporterThread;
 
         // Optional stateful sync intake (large sessions off a local STREAM
         // socket). Constructed only when a socket path is configured; its sink

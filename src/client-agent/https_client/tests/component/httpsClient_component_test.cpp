@@ -229,6 +229,27 @@ TEST_F(ComponentTest, AuthorizationHeaderMatchesTheContractFormat)
     EXPECT_TRUE(std::regex_match(headers->authorization, expected));
 }
 
+TEST_F(ComponentTest, BackPressureIsHonoredAndEachRetryReSigns)
+{
+    SystemClock clock;
+    Mt19937Random random;
+    Backoff backoff {10, 50, random};
+    RetrySender sender {m_performer, m_signer, clock, backoff};
+    Waiter waiter;
+
+    const std::string body = "H {}\nE 1:l:bp\n";
+    HttpRequestSpec spec;
+    spec.target = "/stateless";
+    spec.body = reinterpret_cast<const uint8_t*>(body.data());
+    spec.bodyLength = body.size();
+    spec.timeoutMs = 3000;
+    spec.headers = {"X-Arm-Backpressure: 1"}; // Server 503s once, then 200s.
+
+    const auto result = sender.send(spec, waiter, 4);
+    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
+    EXPECT_EQ(200, result.response.httpCode);
+}
+
 TEST_F(ComponentTest, StatefulSessionStreamsFromSpoolAndDedupsOnReplay)
 {
     TempSpoolFactory factory {::testing::TempDir()};
@@ -278,25 +299,4 @@ TEST_F(ComponentTest, VersionRejectionSurfacesAs426)
                                      R"({"type":"startup"})", {"X-Reject-Version: 1"});
     EXPECT_EQ(426, response.httpCode);
     EXPECT_EQ(OutcomeClass::VersionRejected, classifyOutcome(response));
-}
-
-TEST_F(ComponentTest, BackPressureIsHonoredAndEachRetryReSigns)
-{
-    SystemClock clock;
-    Mt19937Random random;
-    Backoff backoff {10, 50, random};
-    RetrySender sender {m_performer, m_signer, clock, backoff};
-    Waiter waiter;
-
-    const std::string body = "H {}\nE 1:l:bp\n";
-    HttpRequestSpec spec;
-    spec.target = "/stateless";
-    spec.body = reinterpret_cast<const uint8_t*>(body.data());
-    spec.bodyLength = body.size();
-    spec.timeoutMs = 3000;
-    spec.headers = {"X-Arm-Backpressure: 1"}; // Server 503s once, then 200s.
-
-    const auto result = sender.send(spec, waiter, 4);
-    EXPECT_EQ(OutcomeClass::Ok, result.outcome);
-    EXPECT_EQ(200, result.response.httpCode);
 }
