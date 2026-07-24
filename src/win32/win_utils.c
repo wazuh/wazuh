@@ -458,14 +458,22 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
 
     snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
 
-    /* Send events to the manager across the buffer */
-    if (!agt->buffer){
-        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-        if (send_msg(tmpstr, -1) >= 0) {
+    /* Stateless events -> HTTPS /stateless accumulator (#37835). Stateful ('s')
+     * frames keep the legacy buffer/send_msg path until #37836 wires /stateful.
+     * (Windows has no DGRAM queue; SendMSGAction is the in-process EventForward.) */
+    if (loc == 's') {
+        if (!agt->buffer){
+            w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+            if (send_msg(tmpstr, -1) >= 0) {
+                retval = 0;
+            }
+        } else {
+            buffer_append(tmpstr, -1);
             retval = 0;
         }
     } else {
-        buffer_append(tmpstr, -1);
+        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+        w_https_client_submit_event(tmpstr, strlen(tmpstr));
         retval = 0;
     }
 
