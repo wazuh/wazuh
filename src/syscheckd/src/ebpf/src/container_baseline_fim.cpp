@@ -128,16 +128,16 @@ void sync_container(const std::string& container_id,
 
 } // namespace
 
-extern "C" void fim_run_k8s_container_baseline(void)
+extern "C" void fim_run_container_baseline(void)
 {
     cb_monitored_path_t* paths = nullptr;
     size_t path_count = 0;
 
-    if (fim_collect_k8s_monitored_paths(&paths, &path_count) != 0) return;
+    if (fim_collect_container_monitored_paths(&paths, &path_count) != 0) return;
     if (!paths || path_count == 0U) return;
 
-    if (!fim_k8s_container_baseline_available(CB_DEFAULT_CONNECTOR_SOCKET_PATH)) {
-        fim_free_k8s_monitored_paths(paths);
+    if (!fim_container_baseline_available(CB_DEFAULT_CONNECTOR_SOCKET_PATH)) {
+        fim_free_container_monitored_paths(paths);
         return;
     }
 
@@ -151,7 +151,7 @@ extern "C" void fim_run_k8s_container_baseline(void)
                              dbsync_sink,
                              &sink_ctx);
 
-    fim_free_k8s_monitored_paths(paths);
+    fim_free_container_monitored_paths(paths);
 
     // Phase 2: per-container scoped txns — computes deltas, emits events.
     for (const auto& [container_id, rows] : container_rows) {
@@ -181,5 +181,5 @@ extern "C" void fim_run_k8s_container_baseline(void)
         cJSON_Delete(db_rows);
     }
 
-    fim_report_k8s_container_baseline_result(static_cast<int>(container_rows.size()));
+    fim_report_container_baseline_result(static_cast<int>(container_rows.size()));
 }

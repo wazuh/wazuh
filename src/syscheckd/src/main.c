@@ -312,10 +312,10 @@ int main(int argc, char **argv)
     // Baseline container files once at startup, independent of the whodata
     // provider: it enriches FIM state with container_instances metadata, it
     // doesn't depend on eBPF vs audit for change detection. No-op when no
-    // K8s directories are configured, sync is disabled, or container_instances
-    // isn't running.
+    // container directories are configured, sync is disabled, or
+    // container_instances isn't running.
     if (!syscheck.disabled) {
-        fim_run_k8s_container_baseline();
+        fim_run_container_baseline();
     }
 #endif
 
