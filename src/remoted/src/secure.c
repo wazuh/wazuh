@@ -333,9 +333,10 @@ void HandleSecure(char *https_cert_pem, char *https_key_pem)
     {
         remoted_module_config_t rm_config = {0};
         // rm_config.port is the HTTPS listening port -- unrelated to logr.port (remoted's
-        // own classic TCP/UDP port, already bound by the time we get here). Left at 0 so
-        // the module falls back to its own built-in default (it's a regular <remote>
-        // setting, not an internal option -- see remoted_module_https_config() below).
+        // own classic TCP/UDP port, already bound by the time we get here). Populated
+        // from <remote><https> when configured; otherwise left at 0 so the module falls
+        // back to WAZUH_REMOTED_HTTPS_PORT/its own default.
+        rm_config.port = logr.https.port;
         remoted_module_https_config(&rm_config);
         // rm_config.max_inflight_bytes caps the HTTPS server's in-flight (unprocessed)
         // request payload before it sheds load with 503. NOT logr.queue_size (that is an
@@ -351,6 +352,28 @@ void HandleSecure(char *https_cert_pem, char *https_key_pem)
         // client.keys for changes (hot-reload)
         rm_config.keystore_refresh_interval = keyupdate_interval;
         rm_config.worker_node = logr.worker_node;
+        rm_config.verification_mode = logr.https.verification_mode;
+        rm_config.max_body_size = logr.https.max_body_size;
+
+        if (logr.https.bind_addr) {
+            snprintf(rm_config.bind_address, sizeof(rm_config.bind_address), "%s", logr.https.bind_addr);
+        }
+
+        if (logr.https.certificate) {
+            snprintf(rm_config.certificate_path, sizeof(rm_config.certificate_path), "%s", logr.https.certificate);
+        }
+
+        if (logr.https.key) {
+            snprintf(rm_config.private_key_path, sizeof(rm_config.private_key_path), "%s", logr.https.key);
+        }
+
+        if (logr.https.ca) {
+            snprintf(rm_config.ca_path, sizeof(rm_config.ca_path), "%s", logr.https.ca);
+        }
+
+        if (logr.https.ciphers) {
+            snprintf(rm_config.ciphers, sizeof(rm_config.ciphers), "%s", logr.https.ciphers);
+        }
 
         char *rm_cluster_name = get_cluster_name();
         if (rm_cluster_name) {
