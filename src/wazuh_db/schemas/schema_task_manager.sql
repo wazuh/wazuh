@@ -7,26 +7,23 @@
 
 PRAGMA user_version = 1;
 
-BEGIN;
-
 CREATE TABLE IF NOT EXISTS TASKS (
-    TASK_ID TEXT PRIMARY KEY,              -- Deterministic hash-based UUID
-    AGENT_ID TEXT NOT NULL,                -- TEXT to support non-numeric agent IDs
-    TASK_TYPE TEXT NOT NULL,               -- active_response, remote_upgrade, agent_restart, agent_reload
-    PAYLOAD TEXT NOT NULL,                 -- Complete JSON payload for agent
-    CREATE_TIME INTEGER NOT NULL,          -- Unix timestamp (seconds)
-    DELIVERY_TIME INTEGER,                 -- When delivered to agent (NULL if not delivered yet)
-    STATUS TEXT NOT NULL                   -- pending, delivered, expired
+    TASK_ID TEXT PRIMARY KEY,
+    AGENT_ID TEXT NOT NULL,
+    TASK_TYPE TEXT NOT NULL,
+    PAYLOAD TEXT NOT NULL,
+    CREATE_TIME INTEGER NOT NULL,
+    DELIVERY_TIME INTEGER,
+    STATUS TEXT NOT NULL
 );
 
--- Optimized indexes for new query patterns
 CREATE INDEX IF NOT EXISTS idx_agent_status ON TASKS (AGENT_ID, STATUS);
+
 CREATE INDEX IF NOT EXISTS idx_create_time ON TASKS (CREATE_TIME);
+
 CREATE INDEX IF NOT EXISTS idx_status ON TASKS (STATUS);
 
 CREATE TABLE IF NOT EXISTS metadata (
     key   TEXT PRIMARY KEY,
     value TEXT
 );
-
-END;
