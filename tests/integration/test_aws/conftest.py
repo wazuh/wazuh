@@ -7,6 +7,7 @@ This module contains all necessary components (fixtures, classes, methods) to co
 """
 
 import os
+import time
 import pytest
 import boto3
 from botocore.exceptions import ClientError
@@ -14,12 +15,9 @@ from botocore.exceptions import ClientError
 # qa-integration-framework imports
 from wazuh_testing.logger import logger
 from wazuh_testing.modules.aws.utils import (
-    create_bucket,
     upload_log_events,
     create_log_group,
     create_log_stream,
-    create_flow_log,
-    delete_vpc,
     delete_bucket,
     delete_log_group,
     delete_log_stream,
@@ -32,10 +30,59 @@ from wazuh_testing.modules.aws.utils import (
     set_sqs_policy,
     set_bucket_event_notification_configuration,
     delete_sqs_queue,
-    delete_bucket_files
+    delete_bucket_file
 )
 from wazuh_testing.utils.services import control_service
 from wazuh_testing.constants.aws import US_EAST_1_REGION
+
+# Keys permanently seeded by DevOps in the shared bucket that tests must never delete.
+_PERMANENT_SEED_KEYS = frozenset({
+    'AWSLogs/819751203818/CloudTrail/us-east-1/2022/11/20/'
+    '819751203818_CloudTrail_us-east-1_20221120T0000Z_372406355707169122.json',
+    'AWSLogs/819751203818/elasticloadbalancing/us-east-1/2022/11/20/'
+    '819751203818_elasticloadbalancing_us-east-1_net.qatests_20221120T0000Z_1412953514070675864_29.145.39.119.log',
+})
+# VPC permanent seed is identified by this flow-log-ID substring in its S3 key.
+_PERMANENT_SEED_FLOW_LOG_IDS = frozenset({'fl-0754d951c16f517fa'})
+
+
+def _safe_delete_key(key, bucket_name, s3_client):
+    """Delete one key from the shared bucket; log failures; refuse to touch permanent seeds."""
+    if key in _PERMANENT_SEED_KEYS or any(fid in key for fid in _PERMANENT_SEED_FLOW_LOG_IDS):
+        logger.warning("TEARDOWN: skipping permanent seed key: %s", key)
+        return
+    try:
+        delete_bucket_file(filename=key, bucket_name=bucket_name, client=s3_client)
+        logger.debug("TEARDOWN: deleted key: %s", key)
+    except ClientError as exc:
+        logger.warning("TEARDOWN: failed to delete key %s from bucket %s: %s", key, bucket_name, exc)
+    except Exception as exc:
+        logger.warning("TEARDOWN: failed to delete key %s from bucket %s: %s", key, bucket_name, exc)
+
+
+def _assert_prefix_clean(bucket_name, key, s3_client):
+    """Raise RuntimeError at setup time if any unexpected object already occupies the date-level prefix of key.
+
+    A single list_objects_v2 scoped to the exact prefix catches future seed collisions immediately,
+    rather than letting them produce a confusing count mismatch downstream.
+    """
+    prefix = key.rsplit('/', 1)[0] + '/'
+    unexpected = [
+        obj.key for obj in s3_client.Bucket(bucket_name).objects.filter(Prefix=prefix)
+        if obj.key not in _PERMANENT_SEED_KEYS
+        and not any(fid in obj.key for fid in _PERMANENT_SEED_FLOW_LOG_IDS)
+        and not obj.key.endswith('/')  # skip S3 folder-marker objects (empty keys ending with /)
+    ]
+    if unexpected:
+        colliding = "\n".join(f"  {k}" for k in unexpected)
+        raise RuntimeError(
+            f"SETUP COLLISION: unexpected object(s) already exist at prefix '{prefix}' "
+            f"in bucket '{bucket_name}' before uploading '{key}'.\n"
+            f"Colliding key(s):\n{colliding}\n"
+            "Action: add the key to _PERMANENT_SEED_KEYS in conftest.py, or change "
+            "'only_logs_after' in the relevant YAML to a date past these objects."
+        )
+
 
 @pytest.fixture
 def mark_cases_as_skipped(metadata):
@@ -225,43 +272,44 @@ def sqs_manager(sqs_client):
 
 
 @pytest.fixture()
-def create_test_bucket(buckets_manager,
-                       metadata: dict):
-    """Create a bucket.
+def test_configuration() -> dict:
+    """Fallback for tests that do not parametrize test_configuration (e.g. multiple-calls tests).
+    Parametrize overrides this fixture, so tests that do supply test_configuration still work.
+    """
+    return {}
+
+
+@pytest.fixture()
+def create_test_bucket(metadata: dict, test_configuration: dict):
+    """Use a pre-existing S3 bucket for tests.
 
     Args:
-        buckets_manager (fixture): Set of buckets.
         metadata (dict): Bucket information.
+        test_configuration (dict): Wazuh configuration template built at import time.
+            Patched in-place so set_wazuh_configuration writes the shared bucket into ossec.conf.
     """
-    bucket_name = metadata["bucket_name"]
-    bucket_type = metadata["bucket_type"]
+    shared_bucket = os.environ.get('AWS_BUCKET_NAME')
+    if not shared_bucket:
+        raise EnvironmentError(
+            "AWS_BUCKET_NAME is not set. A pre-existing S3 bucket is required. "
+            "Set the IT_AWS_BUCKET_NAME GitHub secret."
+        )
+    # Preserve the original YAML bucket name so generate_file can resolve custom bucket types
+    # (kms, macie, trusted_advisor) via bucket_name.split('-')[1] inside get_data_generator.
+    metadata['original_bucket_name'] = metadata.get('bucket_name', shared_bucket)
+    # Override so all S3 operations and the Wazuh module CLI use the shared bucket.
+    metadata['bucket_name'] = shared_bucket
 
-    buckets, s3_client = buckets_manager
-    try:
-        # Create bucket
-        create_bucket(bucket_name=bucket_name, client=s3_client)
-        logger.debug(f"Created new bucket: type {bucket_name}")
-
-        # Append created bucket to resource set
-        buckets.add(bucket_name)
-
-    except ClientError as error:
-        logger.error({
-            "message": "Client error creating bucket",
-            "bucket_name": bucket_name,
-            "bucket_type": bucket_type,
-            "error": str(error)
-        })
-        raise
-
-    except Exception as error:
-        logger.error({
-            "message": "Broad error creating bucket",
-            "bucket_name": bucket_name,
-            "bucket_type": bucket_type,
-            "error": str(error)
-        })
-        raise
+    # Patch test_configuration so set_wazuh_configuration writes the shared bucket into ossec.conf.
+    # Without this, ossec.conf keeps the YAML name (plus the session suffix added by _modify_metadata),
+    # causing a mismatch with metadata['bucket_name'] and triggering incorrect_parameters failures.
+    for section in test_configuration.get('sections', []):
+        for element in section.get('elements', []):
+            bucket_cfg = element.get('bucket')
+            if isinstance(bucket_cfg, dict):
+                for bucket_elem in bucket_cfg.get('elements', []):
+                    if 'name' in bucket_elem:
+                        bucket_elem['name']['value'] = shared_bucket
 
 
 @pytest.fixture
@@ -292,19 +340,42 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
     log_number = metadata.get("expected_results", 1) > 0
 
     # Generate files
+    # Use the original YAML bucket name for generate_file — the framework derives the
+    # custom type (kms/macie/trusted) from bucket_name.split('-')[1], which breaks with
+    # the shared bucket name. All actual S3 operations still use the shared bucket_name.
+    data_bucket_name = metadata.get('original_bucket_name', bucket_name)
+    uploaded_keys = []
     if log_number:
         files_to_upload = []
         metadata['uploaded_file'] = ''
+        flow_log_id = None
         try:
             if vpc_bucket:
-                # Create VPC resources
-                flow_log_id, vpc_id = create_flow_log(vpc_name=metadata['vpc_name'],
-                                                      bucket_name=bucket_name,
-                                                      client=ec2_client)
+                vpc_id = os.environ.get('AWS_VPC_ID')
+                if not vpc_id:
+                    raise EnvironmentError(
+                        "AWS_VPC_ID is not set. A pre-existing VPC ID is required "
+                        "for VPC flow log tests. Set the IT_AWS_VPC_ID GitHub secret."
+                    )
+                response = ec2_client.create_flow_logs(
+                    ResourceIds=[vpc_id],
+                    ResourceType='VPC',
+                    TrafficType='REJECT',
+                    LogDestinationType='s3',
+                    LogDestination=f'arn:aws:s3:::{bucket_name}'
+                )
+                unsuccessful = response.get('Unsuccessful', [])
+                if unsuccessful:
+                    err = unsuccessful[0]['Error']
+                    raise RuntimeError(
+                        f"Failed to create VPC flow log on {vpc_id}: "
+                        f"[{err['Code']}] {err['Message']}"
+                    )
+                flow_log_id = response['FlowLogIds'][0]
                 metadata['flow_log_id'] = flow_log_id
                 for region in regions:
                     data, key = generate_file(bucket_type=bucket_type,
-                                              bucket_name=bucket_name,
+                                              bucket_name=data_bucket_name,
                                               date=file_creation_date,
                                               region=region,
                                               prefix=prefix,
@@ -314,12 +385,15 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
             else:
                 for region in regions:
                     data, key = generate_file(bucket_type=bucket_type,
-                                              bucket_name=bucket_name,
+                                              bucket_name=data_bucket_name,
                                               region=region,
                                               prefix=prefix,
                                               suffix=suffix,
                                               date=file_creation_date)
                     files_to_upload.append((data, key))
+
+            for _, key in files_to_upload:
+                _assert_prefix_clean(bucket_name, key, s3_client)
 
             for data, key in files_to_upload:
                 # Upload file to bucket
@@ -332,6 +406,7 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
 
                 # Set filename for test execution
                 metadata['uploaded_file'] += key
+                uploaded_keys.append(key)
 
         except ClientError as error:
             logger.error({
@@ -339,6 +414,11 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
                 "bucket_name": bucket_name,
                 "error": str(error)
             })
+            if flow_log_id is not None:
+                try:
+                    ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
+                except Exception:
+                    pass
             raise error
 
         except Exception as error:
@@ -347,34 +427,30 @@ def manage_bucket_files(metadata: dict, s3_client, ec2_client):
                 "bucket_name": bucket_name,
                 "error": str(error)
             })
+            if flow_log_id is not None:
+                try:
+                    ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
+                except Exception:
+                    pass
             raise error
 
     yield
 
-    try:
-        if log_number:
-            # Delete all bucket files
-            delete_bucket_files(bucket_name=bucket_name, client=s3_client)
+    if log_number:
+        # Collect every key this fixture or the test body uploaded.
+        all_keys = list(uploaded_keys)
+        extra_key = metadata.get('filename')
+        if extra_key and extra_key not in uploaded_keys:
+            all_keys.append(extra_key)
 
-            if vpc_bucket:
-                # Delete VPC resources (VPC and Flow Log)
-                delete_vpc(vpc_id=vpc_id, flow_log_id=flow_log_id, client=ec2_client)
+        for key in all_keys:
+            _safe_delete_key(key, bucket_name, s3_client)
 
-    except ClientError as error:
-        logger.error({
-            "message": "Client error deleting resources from bucket",
-            "bucket_name": bucket_name,
-            "error": str(error)
-        })
-        raise error
-
-    except Exception as error:
-        logger.error({
-            "message": "Broad error deleting resources from bucket",
-            "bucket_name": bucket_name,
-            "error": str(error)
-        })
-        raise error
+        if vpc_bucket and flow_log_id is not None:
+            try:
+                ec2_client.delete_flow_logs(FlowLogIds=[flow_log_id])
+            except Exception as exc:
+                logger.warning("TEARDOWN: failed to delete flow log %s: %s", flow_log_id, exc)
 
 
 """CloudWatch fixtures"""
@@ -471,6 +547,37 @@ def create_test_log_stream(metadata: dict, log_groups_manager) -> None:
         raise
 
 
+def _wait_for_log_events(logs_client, log_group, log_stream, expected_events, timeout=60, interval=3):
+    """Wait until the uploaded events are queryable through the CloudWatch Logs API.
+
+    PutLogEvents is eventually consistent: the events are not immediately returned by
+    filter_log_events. The AWS module queries CloudWatch only once at startup, so if the
+    events have not propagated yet it reads 0 of them and the test times out waiting for
+    the expected message. Poll until the expected number of events is visible (or until
+    the timeout elapses) so the module always sees the data.
+
+    Args:
+        logs_client: boto3 CloudWatch Logs client.
+        log_group (str): Log group to query.
+        log_stream (str): Log stream to query.
+        expected_events (int): Minimum number of events that must be visible.
+        timeout (int): Maximum time to wait, in seconds.
+        interval (int): Delay between polls, in seconds.
+    """
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            response = logs_client.filter_log_events(logGroupName=log_group, logStreamNames=[log_stream])
+            if len(response.get('events', [])) >= expected_events:
+                return
+        except ClientError as error:
+            logger.debug(f"filter_log_events not ready yet for '{log_group}': {error}")
+        time.sleep(interval)
+
+    logger.warning(f"Timed out ({timeout}s) waiting for {expected_events} events to become queryable in "
+                   f"'{log_group}/{log_stream}'")
+
+
 @pytest.fixture
 def manage_log_group_events(metadata: dict, logs_clients):
     """Upload events to a log stream inside a log group and delete the log stream after the test ends.
@@ -505,6 +612,9 @@ def manage_log_group_events(metadata: dict, logs_clients):
                         events_number=event_number,
                         client=logs_client
                     )
+                    # Wait for the events to be queryable before the module runs, otherwise
+                    # CloudWatch eventual consistency can make the module read 0 events (flaky).
+                    _wait_for_log_events(logs_client, log_group, log_stream_name, event_number)
 
     except ClientError as error:
         logger.error({

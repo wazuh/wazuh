@@ -20,14 +20,14 @@
   description: VPC discard regex configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
     DISCARD_FIELD: action
     DISCARD_REGEX: "REJECT"
     PATH: ''
   metadata:
     resource_type: bucket
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
     only_logs_after: 2022-NOV-20
     discard_field: action
     discard_regex: "REJECT"
