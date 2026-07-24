@@ -424,7 +424,7 @@ class WazuhException(Exception):
                'remediation': 'You can delete this user with the administrator user (wazuh) or '
                               'any other user with the necessary permissions'},
         5009: {'message': 'Insecure user password provided',
-               'remediation': 'The password must contain a length between 8 and 64 characters.'},
+               'remediation': 'The password must contain a length between 12 and 64 characters.'},
         5010: {'message': 'The value of the parameter allow_run_as is invalid',
                'remediation': 'The value of the allow_run_as parameter must be true (enabled authentication through '
                               'authorization context) or false (disabled authentication through authorization context).'

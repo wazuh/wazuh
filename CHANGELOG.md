@@ -36,6 +36,7 @@
 | [#36311](https://github.com/wazuh/wazuh/issues/36311) | Changed the default Indexer user used by the Manager from `admin` to the restricted `wazuh-server` user, aligning with the Indexer RBAC least-privilege model. |
 | [#36705](https://github.com/wazuh/wazuh/issues/36705) | Enabled shared-password agent enrollment by default, persisting the auto-generated `authd.pass` and synchronizing it to worker nodes, with fail-closed password validation. |
 | [#32698](https://github.com/wazuh/wazuh/issues/32698) | Adapted API integration tests. |
+| [#36453](https://github.com/wazuh/wazuh/issues/36453) | Increased the minimum API user password length from 8 to 12 characters to align with PCI DSS. |
 
 #### Removed
 

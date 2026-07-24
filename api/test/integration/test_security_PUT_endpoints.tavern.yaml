@@ -510,7 +510,7 @@ stages:
       verify: False
       <<: *put_users_request
       json:
-        password: "new_user2A!"
+        password: "new_user2A!extra"
     response:
       status_code: 200
       json:
@@ -530,7 +530,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
       method: PUT
       json:
-        password: "new_user1A"
+        password: "new_user1Aextra"
     response:
       status_code: 200
       json:
