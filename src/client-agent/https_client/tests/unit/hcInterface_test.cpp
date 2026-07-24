@@ -53,6 +53,8 @@ namespace
         recorder->states.push_back(state);
     }
 
+    // Points at a closed localhost port with tiny timeouts and backoff so the
+    // control loop churns quickly and stop is near-instant.
     hc_config_t makeConfig()
     {
         hc_config_t config {};
@@ -164,30 +166,6 @@ TEST_F(HcInterfaceTest, DrainReturnsWithinDeadlineAgainstADeadServer)
     hc_destroy(handle);
 }
 
-TEST_F(HcInterfaceTest, StartRejectsMissingMandatoryFields)
-{
-    hc_config_t badConfig = m_config;
-    badConfig.server_host[0] = '\0';
-    hc_handle* handle = hc_create(&badConfig, &m_callbacks);
-    ASSERT_NE(nullptr, handle);
-    EXPECT_FALSE(hc_start(handle));
-    EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(handle));
-    EXPECT_TRUE(m_recorder.states.empty());
-    hc_destroy(handle);
-}
-
-TEST_F(HcInterfaceTest, StartFailsClosedWithoutCaInFullMode)
-{
-    hc_config_t failClosed = m_config;
-    failClosed.verify_mode = HC_VERIFY_FULL; // No CA -> must refuse to start.
-    hc_handle* handle = hc_create(&failClosed, &m_callbacks);
-    ASSERT_NE(nullptr, handle);
-    EXPECT_FALSE(hc_start(handle));
-    EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(handle));
-    EXPECT_TRUE(m_recorder.states.empty());
-    hc_destroy(handle);
-}
-
 TEST_F(HcInterfaceTest, SubmitBeforeStartIsRejected)
 {
     hc_handle* handle = hc_create(&m_config, &m_callbacks);
@@ -238,6 +216,30 @@ TEST_F(HcInterfaceTest, SubmitNullArgumentsAreRejected)
     EXPECT_FALSE(hc_submit_event(handle, frame, 0));
     EXPECT_FALSE(hc_submit_sync_session(handle, nullptr, frame, 1));
     EXPECT_FALSE(hc_submit_sync_session(handle, "sess", nullptr, 1));
+    hc_destroy(handle);
+}
+
+TEST_F(HcInterfaceTest, StartRejectsMissingMandatoryFields)
+{
+    hc_config_t badConfig = m_config;
+    badConfig.server_host[0] = '\0';
+    hc_handle* handle = hc_create(&badConfig, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    EXPECT_FALSE(hc_start(handle));
+    EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(handle));
+    EXPECT_TRUE(m_recorder.states.empty());
+    hc_destroy(handle);
+}
+
+TEST_F(HcInterfaceTest, StartFailsClosedWithoutCaInFullMode)
+{
+    hc_config_t failClosed = m_config;
+    failClosed.verify_mode = HC_VERIFY_FULL; // No CA -> must refuse to start.
+    hc_handle* handle = hc_create(&failClosed, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    EXPECT_FALSE(hc_start(handle));
+    EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(handle));
+    EXPECT_TRUE(m_recorder.states.empty());
     hc_destroy(handle);
 }
 
@@ -305,7 +307,6 @@ TEST_F(HcInterfaceTest, NullHandleIsSafeEverywhere)
     EXPECT_FALSE(hc_submit_sync_session(nullptr, "s", frame, 1));
     hc_notify_now(nullptr);
     EXPECT_FALSE(hc_set_config_hash(nullptr, "abc"));
-    EXPECT_FALSE(hc_set_agent_key(nullptr, "000102030405060708090a0b0c0d0e0f"));
     EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(nullptr));
 }
 
@@ -325,5 +326,6 @@ TEST_F(HcInterfaceTest, SetAgentKeyValidatesTheMaterial)
     EXPECT_TRUE(hc_set_agent_key(handle, "000102030405060708090a0b0c0d0e0f")); // 16 bytes.
     EXPECT_FALSE(hc_set_agent_key(handle, "abcd")); // 2 bytes: not an AES length.
     EXPECT_FALSE(hc_set_agent_key(handle, nullptr));
+    EXPECT_FALSE(hc_set_agent_key(nullptr, "000102030405060708090a0b0c0d0e0f"));
     hc_destroy(handle);
 }

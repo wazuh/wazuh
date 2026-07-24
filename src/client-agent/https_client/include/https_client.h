@@ -159,6 +159,15 @@ typedef struct hc_config_t
     /// Local STREAM socket for the stateful sync intake (large sessions bypass
     /// the 64 KB DGRAM event queue). Empty -> the intake is not started.
     char sync_socket_path[HC_MAX_PATH];
+
+    /// Periodic reporters (#37843), both OFF by default. When on, the module
+    /// collects the corresponding snapshot on its interval, stamps agent_id +
+    /// the manager-authoritative cluster, signs and POSTs to /stats resp.
+    /// /config.
+    bool stats_enabled;
+    uint32_t stats_interval_s;         ///< 0 -> 60.
+    bool config_report_enabled;
+    uint32_t config_report_interval_s; ///< 0 -> 3600.
 } hc_config_t;
 
 /**
@@ -242,6 +251,17 @@ typedef struct hc_callbacks_t
                              size_t body_len, void* user_data);
     void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t
     void (*on_buffer_level)(int level, void* user_data);  ///< hc_buffer_level_t
+    /// Periodic collectors for the /stats and /config reporters (#37843).
+    /// Unlike every other callback these run on the module's REPORTER thread
+    /// (not the dispatcher): they must return promptly and must NOT call hc_*
+    /// functions. Return either NULL (skip this cycle) or a NUL-terminated
+    /// JSON OBJECT allocated with malloc() from the module's C runtime; the
+    /// module takes ownership and frees it. Before sending, the module stamps
+    /// "agent_id" and the manager-authoritative "cluster" {"name","node"} into
+    /// the object (overwriting same-named members). A non-object return is
+    /// logged and the cycle skipped.
+    char* (*collect_stats)(void* user_data);
+    char* (*collect_config)(void* user_data);
     void* user_data;
 } hc_callbacks_t;
 

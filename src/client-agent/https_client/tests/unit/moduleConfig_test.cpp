@@ -49,6 +49,10 @@ TEST(ModuleConfigTest, DefaultsAppliedOnZeroFields)
     EXPECT_EQ(60000u, typed.backoffCapMs);
     EXPECT_EQ(5000u, typed.drainTimeoutMs);
     EXPECT_EQ(200ULL * 1024 * 1024, typed.wpkMaxDownloadBytes);
+    EXPECT_FALSE(typed.statsEnabled);
+    EXPECT_EQ(60u, typed.statsIntervalS);
+    EXPECT_FALSE(typed.configReportEnabled);
+    EXPECT_EQ(3600u, typed.configReportIntervalS);
 }
 
 TEST(ModuleConfigTest, ZeroedVerifyModeIsFullFailClosed)
