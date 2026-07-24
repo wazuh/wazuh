@@ -53,8 +53,8 @@ namespace
                 , m_spoolFactory(::testing::TempDir())
                 , m_configHash("abc")
                 , m_authGate(m_sink, [] {})
-                , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink,
-                           m_spoolFactory, m_configHash, m_cluster, m_authGate)
+            , m_stream(m_config, m_performer, m_signer, m_clock, m_random, m_sink,
+                       m_spoolFactory, m_configHash, m_cluster, m_authGate)
             {
             }
 

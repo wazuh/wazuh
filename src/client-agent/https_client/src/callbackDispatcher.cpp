@@ -128,7 +128,7 @@ void CallbackDispatcher::onConfigDownloaded(const std::string& configHash,
     enqueue([this, configHash, file = std::move(file)]
     {
         m_callbacks.on_config_downloaded(configHash.c_str(), file->path().c_str(),
-        m_callbacks.user_data);
+                                         m_callbacks.user_data);
     });
 }
 

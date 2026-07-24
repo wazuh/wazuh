@@ -148,6 +148,7 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
             CloseHandle(winHandle); // A reparse point (or the query failed): refuse.
         }
     }
+
 #else
     const int fd = ::open(spec.responseFilePath.c_str(),
                           O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, S_IRUSR | S_IWUSR);
@@ -157,6 +158,7 @@ bool CurlPerformer::configureResponseSink(ICurlHandle& handle, const HttpRequest
     {
         ::close(fd); // LCOV_EXCL_LINE: fdopen failing on a good fd is not reproducible.
     }
+
 #endif
 
     if (file == nullptr)
