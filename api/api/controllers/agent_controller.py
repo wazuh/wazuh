@@ -4,6 +4,7 @@
 
 import logging
 import mimetypes
+import time
 from typing import Union
 
 from connexion import request
@@ -597,6 +598,9 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
     if 'all' in agents_list:
         agents_list = '*'
 
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    request_time = int(time.time())
+
     f_kwargs = {'agent_list': agents_list,
                 'wpk_repo': wpk_repo,
                 'version': upgrade_version,
@@ -611,7 +615,8 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
                     'ip': ip,
                     'registerIP': request.query_params.get('registerIP', None)
                 },
-                'q': q
+                'q': q,
+                'request_time': request_time
                 }
 
     # Add nested fields to kwargs filters
@@ -626,7 +631,7 @@ async def put_upgrade_agents(agents_list: str = None, pretty: bool = False, wait
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*'
+                          broadcasting=True  # Always broadcast for HTTPS stateless architecture
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
@@ -673,6 +678,9 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
     if 'all' in agents_list:
         agents_list = '*'
 
+    # Generate request_time once for deterministic task IDs across all cluster nodes
+    request_time = int(time.time())
+
     f_kwargs = {'agent_list': agents_list,
                 'file_path': file_path,
                 'installer': installer,
@@ -684,7 +692,8 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
                     'ip': ip,
                     'registerIP': request.query_params.get('registerIP', None)
                 },
-                'q': q
+                'q': q,
+                'request_time': request_time
                 }
 
     # Add nested fields to kwargs filters
@@ -699,68 +708,7 @@ async def put_upgrade_custom_agents(agents_list: str = None, pretty: bool = Fals
                           wait_for_complete=wait_for_complete,
                           logger=logger,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*'
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
-async def get_agent_upgrade(agents_list: str = None, pretty: bool = False, wait_for_complete: bool = False,
-                            q: str = None, version: str = None, group: str = None,
-                            node_name: str = None, name: str = None, ip: str = None) -> ConnexionResponse:
-    """Get upgrade results from agents.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format.
-    wait_for_complete : bool
-        Disable timeout response.
-    agents_list : str
-        List of agent IDs.
-    q : str
-        Query to filter agents by.
-    version : str
-        Filter by agents version.
-    group : str
-        Filter by group of agents.
-    node_name : str
-        Filter by node name.
-    name : str
-        Filter by agent name.
-    ip : str
-        Filter by agent IP.
-
-    Returns
-    -------
-    ConnexionResponse
-        Upgrade message after having upgraded the agents.
-    """
-    f_kwargs = {'agent_list': agents_list,
-                'filters': {
-                    'version': version,
-                    'group': group,
-                    'node_name': node_name,
-                    'name': name,
-                    'ip': ip,
-                    'registerIP': request.query_params.get('registerIP', None)
-                },
-                'q': q
-                }
-
-    # Add nested fields to kwargs filters
-    nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
-    for field in nested:
-        f_kwargs['filters'][field] = request.query_params.get(field, None)
-
-    dapi = DistributedAPI(f=agent.get_upgrade_result,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='local_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          logger=logger,
-                          rbac_permissions=request.context['token_info']['rbac_policies']
+                          broadcasting=True  # Always broadcast for HTTPS stateless architecture
                           )
     data = raise_if_exc(await dapi.distribute_function())
 
