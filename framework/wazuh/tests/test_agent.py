@@ -216,9 +216,11 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
 ])
 @patch('wazuh.agent.create_restart_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
-@patch('socket.socket.connect')
-async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_mock, create_restart_mock, agent_list,
+@patch('wazuh.agent.WazuhDBQueryAgents.run')
+@patch('wazuh.agent.WazuhDBQueryAgents.__init__', return_value=None)
+@patch('wazuh.agent.WazuhDBQueryAgents.__enter__')
+@patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
+async def test_agent_restart_agents(exit_mock, enter_mock, init_mock, run_mock, agents_info_mock, create_restart_mock, agent_list,
                               expected_items, error_code):
     """Test `restart_agents` function from agent module.
 
@@ -231,6 +233,17 @@ async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_moc
     error_code : int
         The expected error code.
     """
+    # Mock WazuhDBQueryAgents to return agent info without connection status filtering
+    mock_query = MagicMock()
+    mock_query.run.return_value = {
+        'items': [
+            {'id': '001', 'version': 'v4.2.0'},
+            {'id': '002', 'version': 'v4.0.0'},
+            {'id': '010', 'version': 'v5.0.0'}
+        ]
+    }
+    enter_mock.return_value = mock_query
+
     # Mock task creation response
     create_restart_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
 
@@ -250,9 +263,11 @@ async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_moc
 ])
 @patch('wazuh.agent.create_restart_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
-@patch('socket.socket.connect')
-async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_info_mock, create_restart_mock, agent_list,
+@patch('wazuh.agent.WazuhDBQueryAgents.run')
+@patch('wazuh.agent.WazuhDBQueryAgents.__init__', return_value=None)
+@patch('wazuh.agent.WazuhDBQueryAgents.__enter__')
+@patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
+async def test_agent_restart_agents_by_node(exit_mock, enter_mock, init_mock, run_mock, agents_info_mock, create_restart_mock, agent_list,
                                       expected_items, error_code):
     """Test `restart_agents_by_node` function from agent module.
 
@@ -265,6 +280,17 @@ async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_
     error_code : int
         The expected error code.
     """
+    # Mock WazuhDBQueryAgents to return agent info without connection status filtering
+    mock_query = MagicMock()
+    mock_query.run.return_value = {
+        'items': [
+            {'id': '001', 'version': 'v4.2.0'},
+            {'id': '002', 'version': 'v4.0.0'},
+            {'id': '010', 'version': 'v5.0.0'}
+        ]
+    }
+    enter_mock.return_value = mock_query
+
     # Mock task creation response
     create_restart_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
 
@@ -284,9 +310,11 @@ async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_
 ])
 @patch('wazuh.agent.create_reload_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
-@patch('socket.socket.connect')
-async def test_agent_reload_agents(socket_mock, send_http_mock, agents_info_mock, create_reload_mock, agent_list,
+@patch('wazuh.agent.WazuhDBQueryAgents.run')
+@patch('wazuh.agent.WazuhDBQueryAgents.__init__', return_value=None)
+@patch('wazuh.agent.WazuhDBQueryAgents.__enter__')
+@patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
+async def test_agent_reload_agents(exit_mock, enter_mock, init_mock, run_mock, agents_info_mock, create_reload_mock, agent_list,
                                    expected_items, error_code):
     """Test `reload_agents` function from agent module.
 
@@ -299,6 +327,17 @@ async def test_agent_reload_agents(socket_mock, send_http_mock, agents_info_mock
     error_code : int
         The expected error code.
     """
+    # Mock WazuhDBQueryAgents to return agent info without connection status filtering
+    mock_query = MagicMock()
+    mock_query.run.return_value = {
+        'items': [
+            {'id': '001', 'version': 'v4.2.0'},
+            {'id': '002', 'version': 'v4.0.0'},
+            {'id': '010', 'version': 'v5.0.0'}
+        ]
+    }
+    enter_mock.return_value = mock_query
+
     # Mock task creation response
     create_reload_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
 
@@ -318,9 +357,11 @@ async def test_agent_reload_agents(socket_mock, send_http_mock, agents_info_mock
 ])
 @patch('wazuh.agent.create_reload_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
-@patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
-@patch('socket.socket.connect')
-async def test_agent_reload_agents_by_node(socket_mock, send_http_mock, agents_info_mock, create_reload_mock,
+@patch('wazuh.agent.WazuhDBQueryAgents.run')
+@patch('wazuh.agent.WazuhDBQueryAgents.__init__', return_value=None)
+@patch('wazuh.agent.WazuhDBQueryAgents.__enter__')
+@patch('wazuh.agent.WazuhDBQueryAgents.__exit__')
+async def test_agent_reload_agents_by_node(exit_mock, enter_mock, init_mock, run_mock, agents_info_mock, create_reload_mock,
                                            agent_list, expected_items, error_code):
     """Test `reload_agents_by_node` function from agent module.
 
@@ -333,6 +374,17 @@ async def test_agent_reload_agents_by_node(socket_mock, send_http_mock, agents_i
     error_code : int
         The expected error code.
     """
+    # Mock WazuhDBQueryAgents to return agent info without connection status filtering
+    mock_query = MagicMock()
+    mock_query.run.return_value = {
+        'items': [
+            {'id': '001', 'version': 'v4.2.0'},
+            {'id': '002', 'version': 'v4.0.0'},
+            {'id': '010', 'version': 'v5.0.0'}
+        ]
+    }
+    enter_mock.return_value = mock_query
+
     # Mock task creation response
     create_reload_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
 
