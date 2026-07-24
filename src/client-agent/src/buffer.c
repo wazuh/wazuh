@@ -156,7 +156,10 @@ int buffer_append(const char *msg, ssize_t msg_len) {
     }
 }
 
-STATIC void send_buffer_status_event(const char *action, int severity) {
+/* Not static: the https_client bridge reports the accumulator's occupancy
+ * through this same emitter, so the manager sees one event shape whichever
+ * buffer filled up (#37835). */
+void send_buffer_status_event(const char *action, int severity) {
     char msg[OS_MAXSTR];
     cJSON *event = cJSON_CreateObject();
     cJSON_AddStringToObject(event, "event.module", "wazuh-agent");

@@ -104,31 +104,18 @@ void EventAccumulator::consume(const Snapshot& sent)
     }
 }
 
-hc_buffer_level_t EventAccumulator::level() const
+unsigned EventAccumulator::occupancyPercent() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    return levelForLocked();
-}
 
-hc_buffer_level_t EventAccumulator::levelForLocked() const
-{
-    // Occupancy of the whole bounded buffer, mapped onto the legacy ladder.
-    const double occupancy = static_cast<double>(m_buffer.size()) / static_cast<double>(m_capBytes);
-
-    if (occupancy >= 0.90)
+    if (m_capBytes == 0)
     {
-        return HC_BUFFER_FLOOD;
+        return 100; // LCOV_EXCL_LINE: the config layer floors the cap above zero.
     }
 
-    if (occupancy >= 0.75)
-    {
-        return HC_BUFFER_FULL;
-    }
-
-    if (occupancy >= 0.50)
-    {
-        return HC_BUFFER_WARNING;
-    }
-
-    return HC_BUFFER_NORMAL;
+    // Integer percent of the whole bounded buffer, widened first so a large
+    // configured cap cannot overflow size_t on a 32-bit agent. Truncation
+    // matches the legacy float comparison at every threshold: both treat 89.9%
+    // as below 90.
+    return static_cast<unsigned>(static_cast<uint64_t>(m_buffer.size()) * 100 / m_capBytes);
 }
