@@ -139,7 +139,7 @@ def test_DistributedAPI_debug_log():
        new=AsyncMock(return_value=WazuhResult({'result': 'remote'})))
 @pytest.mark.parametrize('api_request, request_type, node, expected, f_kwargs', [
     (agent.get_agents_summary_status, 'local_master', 'master', 'local', None),
-    (agent.restart_agents, 'distributed_master', 'master', 'forward', None),
+    (agent.get_agents, 'distributed_master', 'master', 'forward', None),
     (cluster.get_node_wrapper, 'local_any', 'worker', 'local', 'token_nbf_time'),
 ])
 def test_DistributedAPI_distribute_function(api_request, request_type, node, expected, f_kwargs):
@@ -168,7 +168,7 @@ def test_DistributedAPI_distribute_function(api_request, request_type, node, exp
 @patch('wazuh.core.cluster.dapi.dapi.DistributedAPI.get_solver_node',
        new=AsyncMock(return_value=WazuhResult({'unknown': ['001', '002']})))
 @pytest.mark.parametrize('api_request, request_type, node, expected', [
-    (agent.restart_agents, 'distributed_master', 'master', 'local')
+    (agent.get_agents, 'distributed_master', 'master', 'local')
 ])
 def test_DistributedAPI_distribute_function_mock_solver(api_request, request_type, node, expected):
     """Test distribute_function functionality with unknown node.
@@ -388,7 +388,7 @@ def test_DistributedAPI_remote_request():
 def test_DistributedAPI_forward_request_errors(mock_client_execute, mock_get_solver_node, mock_get_node):
     """Check the behaviour when the forward_request function raised an error"""
     # Test forward_request when it raises a JSONDecodeError
-    dapi_kwargs = {'f': agent.reconnect_agents, 'logger': logger, 'request_type': 'distributed_master'}
+    dapi_kwargs = {'f': agent.get_agents, 'logger': logger, 'request_type': 'distributed_master'}
     raise_if_exc_routine(dapi_kwargs=dapi_kwargs, expected_error=3036)
 
 

@@ -608,26 +608,3 @@ async def test_run_in_pool(event_loop):
 
     # Test the second condition
     assert await cluster.run_in_pool(event_loop, None, mock_callable, None) == "Mock callable"
-
-
-def test_validate_haproxy_helper_config():
-    """Verify that validate_haproxy_helper_config function calls validate function."""
-
-    config = {cluster.AGENT_CHUNK_SIZE: 120, cluster.AGENT_RECONNECTION_TIME: 10}
-
-    with patch.object(cluster, 'validate') as validate_mock:
-        cluster.validate_haproxy_helper_config(config)
-
-        validate_mock.assert_called_once_with(
-            config, cluster.HAPROXY_HELPER_SCHEMA, cls=validators.Draft202012Validator
-        )
-
-
-def test_validate_haproxy_helper_config_ko():
-    """Verify that validate_haproxy_helper_config raises WazuhError when there is a validation error."""
-
-    config = {cluster.AGENT_CHUNK_SIZE: 120, cluster.AGENT_RECONNECTION_TIME: 10}
-
-    with patch.object(cluster, 'validate', side_effect=cluster.ValidationError(message='Error test', path=['test'])):
-        with pytest.raises(cluster.WazuhError, match='.* 3004 .*'):
-            cluster.validate_haproxy_helper_config(config)

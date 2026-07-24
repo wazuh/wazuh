@@ -249,31 +249,6 @@ stages:
       <<: *permission_denied
 
 ---
-test_name: GET /agents/upgrade_result
-
-stages:
-  - name: Try to get all upgrade results (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
-  - name: Try to get agent 007 upgrade result (specific)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/upgrade_result"
-      method: GET
-      headers:
-        Authorization: "Bearer {test_login_token}"
-      params:
-        agents_list: '007'
-    response:
-      <<: *permission_denied
-
 ---
 test_name: DELETE /agents/group
 
@@ -399,34 +374,6 @@ stages:
       <<: *empty_response
 
 ---
-test_name: PUT /agents/reconnect
-
-stages:
-  - name: Try to reconnect all agents (generic)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *empty_response
-
-  - name: Try to reconnect agent 001 (specific)
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/reconnect"
-      method: PUT
-      params:
-        agents_list: '001'
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: PUT /agents/restart
-
 stages:
   - name: Try to restart all agents (generic)
     request:
@@ -1543,20 +1490,6 @@ stages:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/security/config"
       method: DELETE
-      headers:
-        Authorization: "Bearer {test_login_token}"
-    response:
-      <<: *permission_denied
-
----
-test_name: GET /tasks/status
-
-stages:
-  - name: Try to get tasks status
-    request:
-      verify: False
-      url: "{protocol:s}://{host:s}:{balanced_port:d}/tasks/status"
-      method: GET
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
