@@ -225,6 +225,17 @@ static bool isElementDuplicated(const nlohmann::json& input, const std::pair<std
     return it != input.end();
 }
 
+// Restricts a DBSync transaction's delete detection to one container's rows
+// (or to host rows when containerId is empty), so a scan of one scope cannot
+// delete rows belonging to another.
+static nlohmann::json scopedTxnTables(const nlohmann::json& tables, const std::string& containerId)
+{
+    nlohmann::json txnInput;
+    txnInput["tables"] = tables.is_array() ? tables : nlohmann::json::array({tables});
+    txnInput["scope"] = {{"column", CONTAINER_ID_COLUMN}, {"value", containerId}};
+    return txnInput;
+}
+
 void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
 {
     if (DB_ERROR == result)
@@ -348,7 +359,8 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
 }
 
 void Syscollector::updateChanges(const std::string& table,
-                                 const nlohmann::json& values)
+                                 const nlohmann::json& values,
+                                 const std::string& containerId)
 {
     const auto callback
     {
@@ -363,18 +375,37 @@ void Syscollector::updateChanges(const std::string& table,
     DBSyncTxn txn
     {
         m_spDBSync->handle(),
-        nlohmann::json{table},
+        scopedTxnTables(nlohmann::json{table}, containerId),
         0,
         QUEUE_SIZE,
         callback
     };
 
-    nlohmann::json input;
-    input["table"] = table;
-    input["data"] = values;
-    input["options"]["return_old_data"] = true;
+    // An empty row set is valid (e.g. a container that no longer has rows in
+    // this table): skipping syncTxnRow leaves every scoped row marked for
+    // delete, so getDeletedRows reports them all as DELETED.
+    if (!values.empty())
+    {
+        // container_id is part of every table's PK, so each row must carry it
+        // explicitly (the engine reads PK values from the row data).
+        nlohmann::json stampedValues = values;
 
-    txn.syncTxnRow(input);
+        for (auto& row : stampedValues)
+        {
+            if (!row.contains(CONTAINER_ID_COLUMN))
+            {
+                row[CONTAINER_ID_COLUMN] = containerId;
+            }
+        }
+
+        nlohmann::json input;
+        input["table"] = table;
+        input["data"] = stampedValues;
+        input["options"]["return_old_data"] = true;
+
+        txn.syncTxnRow(input);
+    }
+
     txn.getDeletedRows(callback);
 }
 
@@ -806,6 +837,34 @@ std::pair<nlohmann::json, uint64_t> Syscollector::ecsData(const nlohmann::json& 
     else if (table == BROWSER_EXTENSIONS_TABLE)
     {
         ret = ecsBrowserExtensionsData(data, createFields);
+    }
+
+    // Option A (container baseline): container-sourced rows carry their
+    // serialized runtime context in the container_json column — surface it as
+    // the event's container/kubernetes blocks. Host rows have an empty column
+    // and are untouched. DELETED events keep the blocks because the column is
+    // part of the stored row, even after the container itself is gone.
+    if (data.contains(CONTAINER_JSON_COLUMN) && data[CONTAINER_JSON_COLUMN].is_string())
+    {
+        const auto& contextBlob = data[CONTAINER_JSON_COLUMN].get_ref<const std::string&>();
+
+        if (!contextBlob.empty())
+        {
+            const auto context = nlohmann::json::parse(contextBlob, nullptr, false);
+
+            if (context.is_object())
+            {
+                if (context.contains("container"))
+                {
+                    ret["container"] = context["container"];
+                }
+
+                if (context.contains("kubernetes"))
+                {
+                    ret["kubernetes"] = context["kubernetes"];
+                }
+            }
+        }
     }
 
     if (createFields)
@@ -1506,7 +1565,7 @@ void Syscollector::scanPackages()
         DBSyncTxn txn
         {
             m_spDBSync->handle(),
-            nlohmann::json{PACKAGES_TABLE},
+            scopedTxnTables(nlohmann::json{PACKAGES_TABLE}, HOST_CONTAINER_ID),
             0,
             QUEUE_SIZE,
             callback
@@ -1516,6 +1575,7 @@ void Syscollector::scanPackages()
             nlohmann::json input;
 
             sanitizeJsonValue(rawData);
+            rawData[CONTAINER_ID_COLUMN] = HOST_CONTAINER_ID;
             rawData["checksum"] = getItemChecksum(rawData);
 
             input["table"] = PACKAGES_TABLE;
@@ -1653,7 +1713,7 @@ void Syscollector::scanProcesses()
         DBSyncTxn txn
         {
             m_spDBSync->handle(),
-            nlohmann::json{PROCESSES_TABLE},
+            scopedTxnTables(nlohmann::json{PROCESSES_TABLE}, HOST_CONTAINER_ID),
             0,
             QUEUE_SIZE,
             callback
@@ -1663,6 +1723,7 @@ void Syscollector::scanProcesses()
             nlohmann::json input;
 
             sanitizeJsonValue(rawData);
+            rawData[CONTAINER_ID_COLUMN] = HOST_CONTAINER_ID;
             rawData["checksum"] = getItemChecksum(rawData);
 
             input["table"] = PROCESSES_TABLE;
@@ -1818,54 +1879,17 @@ void Syscollector::scanBrowserExtensions()
 }
 
 #if defined(__linux__)
-void Syscollector::ContainerBaselineSink(const char* id, int operation, const char* index, const char* json,
-                                         uint64_t version, void* userData)
+namespace
 {
-    auto* self = static_cast<Syscollector*>(userData);
-
-    if (!self || !id || !index || !json)
+    // Tables the container baseline covers; each container gets one scoped
+    // txn per table so absent rows (or absent containers) turn into DELETED
+    // events through the same pipeline as host rows.
+    const std::vector<std::string> CONTAINER_BASELINE_TABLES
     {
-        return;
-    }
-
-    nlohmann::json statefulPayload;
-
-    try
-    {
-        statefulPayload = nlohmann::json::parse(json);
-    }
-    catch (const std::exception& ex)
-    {
-        if (self->m_logFunction)
-        {
-            self->m_logFunction(LOG_ERROR,
-                                std::string("Container baseline row discarded: invalid JSON payload: ") + ex.what());
-        }
-
-        return;
-    }
-
-    // Keep parity with host Syscollector stateful rows: payload + checksum + state envelope.
-    statefulPayload["checksum"]["hash"]["sha1"] = getItemChecksum(statefulPayload);
-    statefulPayload["state"]["modified_at"] = Utils::getCurrentISO8601();
-    statefulPayload["state"]["document_version"] = version;
-
-    const auto statefulToSend = statefulPayload.dump();
-    const std::string context = std::string("container baseline index: ") + index;
-
-    if (!self->validateSchemaAndLog(statefulToSend, index, context))
-    {
-        if (self->m_logFunction)
-        {
-            self->m_logFunction(LOG_ERROR,
-                                std::string("Container baseline row discarded after schema validation failure for index ") +
-                                    index);
-        }
-
-        return;
-    }
-
-    self->persistDifference(id, static_cast<Operation>(operation), index, statefulToSend, version);
+        PROCESSES_TABLE, PORTS_TABLE, USERS_TABLE, GROUPS_TABLE, PACKAGES_TABLE,
+        OS_TABLE, NET_IFACE_TABLE, NET_ADDRESS_TABLE, NET_PROTOCOL_TABLE,
+        SERVICES_TABLE, HW_TABLE
+    };
 }
 #endif
 
@@ -1874,15 +1898,98 @@ void Syscollector::scanContainerBaseline()
 #if defined(__linux__)
     m_logFunction(LOG_DEBUG_VERBOSE, "Starting container baseline scan");
 
-    // No DBSync/notifyChange here: these rows are produced externally by the
-    // container_baseline module. ContainerBaselineSink enriches them with the
-    // same stateful envelope fields Syscollector uses (checksum/state) and then
-    // persists them through sync protocol.
-    const int baselined =
-        cbaseline_run_syscollector(CB_DEFAULT_CONNECTOR_SOCKET_PATH, &Syscollector::ContainerBaselineSink, this);
+    // container_id -> table -> array of dbsync-format rows.
+    using BaselineRows = std::map<std::string, std::map<std::string, nlohmann::json>>;
+    BaselineRows baseline;
+
+    const auto sink = [](const char* containerId, const char* table, const char* rowJson, void* userData)
+    {
+        auto* acc = static_cast<BaselineRows*>(userData);
+
+        if (!acc || !containerId || !table || !rowJson)
+        {
+            return;
+        }
+
+        auto row = nlohmann::json::parse(rowJson, nullptr, false);
+
+        if (row.is_discarded() || !row.is_object())
+        {
+            return;
+        }
+
+        auto& rows = (*acc)[containerId][table];
+
+        if (!rows.is_array())
+        {
+            rows = nlohmann::json::array();
+        }
+
+        rows.push_back(std::move(row));
+    };
+
+    const int baselined = cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, &baseline);
+
+    // Per-container scoped transactions: the same updateChanges/notifyChange/
+    // processEvent path host scans use computes the deltas (Option A). Every
+    // baseline table is synced even when a container produced no rows for it,
+    // so rows from a previous run age out as DELETED.
+    for (auto& [containerId, tables] : baseline)
+    {
+        for (const auto& table : CONTAINER_BASELINE_TABLES)
+        {
+            auto it = tables.find(table);
+            nlohmann::json rows = (it != tables.end()) ? std::move(it->second) : nlohmann::json::array();
+
+            for (auto& row : rows)
+            {
+                sanitizeJsonValue(row);
+                row["checksum"] = getItemChecksum(row);
+            }
+
+            updateChanges(table, rows, containerId);
+        }
+    }
+
+    // Containers still in the DB but absent from this scan (removed while the
+    // agent was down): an empty scoped sync per stale id emits their DELETED
+    // events — each row's container_json column keeps those self-contained.
+    std::set<std::string> staleIds;
+
+    for (const auto& table : CONTAINER_BASELINE_TABLES)
+    {
+        const auto selectCallback = [&staleIds, &baseline](ReturnTypeCallback result, const nlohmann::json & data)
+        {
+            if (result == SELECTED && data.contains(CONTAINER_ID_COLUMN) && data.at(CONTAINER_ID_COLUMN).is_string())
+            {
+                const auto& id = data.at(CONTAINER_ID_COLUMN).get_ref<const std::string&>();
+
+                if (!id.empty() && baseline.find(id) == baseline.end())
+                {
+                    staleIds.insert(id);
+                }
+            }
+        };
+
+        auto selectQuery = SelectQuery::builder()
+                           .table(table)
+                           .columnList({CONTAINER_ID_COLUMN})
+                           .rowFilter("WHERE container_id != ''")
+                           .build();
+        m_spDBSync->selectRows(selectQuery.query(), selectCallback);
+    }
+
+    for (const auto& staleId : staleIds)
+    {
+        for (const auto& table : CONTAINER_BASELINE_TABLES)
+        {
+            updateChanges(table, nlohmann::json::array(), staleId);
+        }
+    }
 
     m_logFunction(LOG_DEBUG_VERBOSE,
-                 "Container baseline scan finished (" + std::to_string(baselined) + " container(s)).");
+                  "Container baseline scan finished (" + std::to_string(baselined) + " container(s), " +
+                  std::to_string(staleIds.size()) + " stale container(s) cleaned).");
 #else
     // Container baseline acquisition (#37532) only runs on Linux - the same
     // Linux-only constraint as container_instances and the eBPF module it
@@ -2103,7 +2210,15 @@ std::string Syscollector::getPrimaryKeys([[maybe_unused]] const nlohmann::json& 
 
 std::string Syscollector::calculateHashId(const nlohmann::json& data, const std::string& table)
 {
-    const std::string primaryKey = table + ":" + getPrimaryKeys(data, table);
+    std::string primaryKey = table + ":";
+
+    if (data.contains(CONTAINER_ID_COLUMN) && data[CONTAINER_ID_COLUMN].is_string() &&
+            !data[CONTAINER_ID_COLUMN].get_ref<const std::string&>().empty())
+    {
+        primaryKey += data[CONTAINER_ID_COLUMN].get<std::string>() + ":";
+    }
+
+    primaryKey += getPrimaryKeys(data, table);
 
     Utils::HashData hash(Utils::HashType::Sha1);
     hash.update(primaryKey.c_str(), primaryKey.size());

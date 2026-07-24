@@ -299,7 +299,7 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
     }
 }
 
-void SQLiteDBEngine::initializeStatusField(const nlohmann::json& tableNames)
+void SQLiteDBEngine::initializeStatusField(const nlohmann::json& tableNames, const nlohmann::json& scope)
 {
     for (const auto& tableValue : tableNames)
     {
@@ -333,13 +333,25 @@ void SQLiteDBEngine::initializeStatusField(const nlohmann::json& tableNames)
                 }
 
                 // LCOV_EXCL_STOP
+
+                loadFieldData(table);
             }
 
-            const auto& stmtInit { getStatement("UPDATE " +
-                                                table +
-                                                " SET " +
-                                                STATUS_FIELD_NAME +
-                                                "=0;")};
+            const auto& scopeCol { validatedScopeColumn(table, scope) };
+            std::string sql { "UPDATE " + table + " SET " + STATUS_FIELD_NAME + "=0" };
+
+            if (!scopeCol.empty())
+            {
+                sql += " WHERE " + scopeCol + "=?";
+            }
+
+            sql += ";";
+            const auto& stmtInit { getStatement(sql) };
+
+            if (!scopeCol.empty())
+            {
+                stmtInit->bind(1, scope.at("value").get<std::string>());
+            }
 
             // LCOV_EXCL_START
             if (SQLITE_ERROR == stmtInit->step())
@@ -356,7 +368,7 @@ void SQLiteDBEngine::initializeStatusField(const nlohmann::json& tableNames)
     }
 }
 
-void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
+void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames, const nlohmann::json& scope)
 {
     for (const auto& tableValue : tableNames)
     {
@@ -364,11 +376,21 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
 
         if (0 != loadTableData(table))
         {
-            const auto stmt { getStatement("DELETE FROM " +
-                                           table +
-                                           " WHERE " +
-                                           STATUS_FIELD_NAME +
-                                           "=0;")};
+            const auto& scopeCol { validatedScopeColumn(table, scope) };
+            std::string sql { "DELETE FROM " + table + " WHERE " + STATUS_FIELD_NAME + "=0" };
+
+            if (!scopeCol.empty())
+            {
+                sql += " AND " + scopeCol + "=?";
+            }
+
+            sql += ";";
+            const auto stmt { getStatement(sql) };
+
+            if (!scopeCol.empty())
+            {
+                stmt->bind(1, scope.at("value").get<std::string>());
+            }
 
             // LCOV_EXCL_START
             if (SQLITE_ERROR == stmt->step())
@@ -389,7 +411,8 @@ void SQLiteDBEngine::deleteRowsByStatusField(const nlohmann::json& tableNames)
 
 void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                                const DbSync::ResultCallback callback,
-                                               std::unique_lock<std::shared_timed_mutex>& lock)
+                                               std::unique_lock<std::shared_timed_mutex>& lock,
+                                               const nlohmann::json& scope)
 {
     if (m_transaction)
     {
@@ -405,7 +428,21 @@ void SQLiteDBEngine::returnRowsMarkedForDelete(const nlohmann::json& tableNames,
         if (0 != loadTableData(table))
         {
             auto tableFields { m_tableFields[table] };
-            const auto stmt { getStatement(getSelectAllQuery(table, tableFields)) };
+            const auto& scopeCol { validatedScopeColumn(table, scope) };
+            auto sql { getSelectAllQuery(table, tableFields) };
+
+            if (!scopeCol.empty())
+            {
+                sql.pop_back();
+                sql += " AND " + scopeCol + "=?;";
+            }
+
+            const auto stmt { getStatement(sql) };
+
+            if (!scopeCol.empty())
+            {
+                stmt->bind(1, scope.at("value").get<std::string>());
+            }
 
             while (SQLITE_ROW == stmt->step())
             {
@@ -2150,6 +2187,33 @@ std::string SQLiteDBEngine::getSelectAllQuery(const std::string& table,
     else
     {
         throw dbengine_error { EMPTY_TABLE_METADATA };
+    }
+
+    return retVal;
+}
+
+std::string SQLiteDBEngine::validatedScopeColumn(const std::string& table,
+                                                 const nlohmann::json& scope)
+{
+    std::string retVal;
+
+    if (!scope.empty() && !scope.is_null())
+    {
+        const auto& column { scope.at("column").get_ref<const std::string&>() };
+        const auto& fields { m_tableFields[table] };
+        const auto& it { std::find_if(fields.begin(),
+                                      fields.end(),
+                                      [&column](const ColumnData & field)
+        {
+            return 0 == std::get<TableHeader::Name>(field).compare(column);
+        })};
+
+        if (fields.end() == it)
+        {
+            throw dbengine_error { INVALID_PARAMETERS };
+        }
+
+        retVal = column;
     }
 
     return retVal;

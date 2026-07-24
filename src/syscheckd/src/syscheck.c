@@ -205,6 +205,13 @@ cJSON* extract_primary_keys(const char* table_name, const cJSON* full_doc) {
     if (path) cJSON_AddStringToObject(keys, "path", cJSON_GetStringValue(path));
     if (version) cJSON_AddNumberToObject(keys, "version", cJSON_GetNumberValue(version));
 
+    // file_entry PK also includes container_id ('' = host scope)
+    if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0) {
+        const cJSON* container_id = cJSON_GetObjectItem(full_doc, FIMDB_FILE_CONTAINER_ID_COLUMN);
+        const char* container_id_str = container_id ? cJSON_GetStringValue(container_id) : NULL;
+        cJSON_AddStringToObject(keys, FIMDB_FILE_CONTAINER_ID_COLUMN, container_id_str ? container_id_str : "");
+    }
+
     // Registry tables also have architecture
     if (strcmp(table_name, FIMDB_REGISTRY_KEY_TABLENAME) == 0 ||
         strcmp(table_name, FIMDB_REGISTRY_VALUE_TABLENAME) == 0) {

@@ -183,8 +183,10 @@ class EXPORTED Syscollector final
         std::string calculateHashId(const nlohmann::json& data, const std::string& table);
         nlohmann::json addPreviousFields(nlohmann::json& current, const nlohmann::json& previous);
 
+        // containerId scopes the transaction's delete detection ("" = host rows).
         void updateChanges(const std::string& table,
-                           const nlohmann::json& values);
+                           const nlohmann::json& values,
+                           const std::string& containerId = "");
         void notifyChange(ReturnTypeCallback result,
                           const nlohmann::json& data,
                           const std::string& table);
@@ -203,19 +205,14 @@ class EXPORTED Syscollector final
         void scanUsers();
         void scanServices();
         void scanBrowserExtensions();
-        /// @brief Baseline process + network inventory for every container currently
-        /// known to the container-connector module (spike #37532). Unlike the other
-        /// scan* methods this does not read dbsync_processes/dbsync_ports — rows are
-        /// produced by the container_baseline module and then enriched here with the
-        /// stateful envelope (checksum/state) before persistence. This keeps the
-        /// payload shape source-specific while preserving sync-protocol parity with
-        /// host Syscollector state rows. See container_baseline_scanner.hpp.
+        /// @brief Baseline inventory for every container currently known to the
+        /// container-connector module (spike #37532, Option A: baseline through the
+        /// host event flow). Rows are produced by the container_baseline module in
+        /// dbsync_* column format and pushed through per-container scoped DBSync
+        /// transactions, so the shared notifyChange/processEvent pipeline computes
+        /// deltas and emits stateless + stateful events exactly as for host rows.
+        /// See container_baseline_scanner.hpp.
         void scanContainerBaseline();
-        /// @brief cb_row_sink_t-shaped trampoline: `userData` is always `this`,
-        /// enriching container rows with stateful fields and forwarding to
-        /// persistDifference(). See scanContainerBaseline().
-        static void ContainerBaselineSink(const char* id, int operation, const char* index, const char* json,
-                                          uint64_t version, void* userData);
         void scan();
         void syncLoop(std::unique_lock<std::mutex>& scan_lock);
         bool pause();

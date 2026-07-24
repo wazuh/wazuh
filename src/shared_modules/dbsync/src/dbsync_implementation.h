@@ -94,10 +94,30 @@ namespace DbSync
 
             struct TransactionContext final
             {
-                explicit TransactionContext(const nlohmann::json& tables)
-                    : m_tables(std::move(tables))
-                {}
+                // Accepts either the legacy forms (a plain array of table names, or
+                // an object whose values are table names, e.g. FIM's {"table": "file_entry"})
+                // or the scoped form: {"tables": [...], "scope": {"column": c, "value": v}}.
+                // A scoped transaction restricts status-field initialization and
+                // delete detection to rows where `column` == `value`, so a partial
+                // sync (e.g. one container's rows) cannot delete rows outside its scope.
+                explicit TransactionContext(const nlohmann::json& input)
+                {
+                    if (input.is_object() && input.contains("tables"))
+                    {
+                        m_tables = input.at("tables");
+
+                        if (input.contains("scope"))
+                        {
+                            m_scope = input.at("scope");
+                        }
+                    }
+                    else
+                    {
+                        m_tables = input;
+                    }
+                }
                 nlohmann::json m_tables;
+                nlohmann::json m_scope;
             };
             class DbEngineContext final
             {

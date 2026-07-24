@@ -39,6 +39,11 @@ void fim_persist_baseline_row(const char* id,
                               const char* json,
                               uint64_t version);
 
+/* Compute SHA1 of row_json and store the 40-char hex + NUL into out_sha1[41].
+ * Used by container_baseline_fim.cpp to stamp a stable checksum onto each
+ * baseline row before syncing it through fim_db_transaction_sync_row_json(). */
+void fim_compute_row_checksum(const char* row_json, char out_sha1[41]);
+
 #ifdef __cplusplus
 }
 #endif

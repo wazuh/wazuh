@@ -73,6 +73,9 @@ void FileItem::createJSON()
     nlohmann::json options;
 
     conf["table"] = FIMDB_FILE_TABLE_NAME;
+    // Host-scanned file: container_id is part of the PK, so it must travel in
+    // the row data ('' = host scope; container rows come from the baseline path).
+    data["container_id"] = "";
     data["path"] = m_identifier;
     data["checksum"] = m_checksum;
     data["device"] = m_device;

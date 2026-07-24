@@ -245,10 +245,15 @@ std::vector<nlohmann::json> DB::getDocumentsToPromote(const std::string& tableNa
 
     // Determine ORDER BY based on table primary keys for deterministic results
     std::string orderBy;
+    std::string filter = "WHERE sync = 0";
 
     if (tableName == FIMDB_FILE_TABLE_NAME)
     {
-        orderBy = "path, version";
+        orderBy = "container_id, path, version";
+        // Container-baselined rows are persisted directly by the baseline flow;
+        // the promote machinery builds host-config stateful events, so keep it
+        // host-only.
+        filter += " AND container_id = ''";
     }
     else if (tableName == FIMDB_REGISTRY_KEY_TABLENAME)
     {
@@ -259,7 +264,6 @@ std::vector<nlohmann::json> DB::getDocumentsToPromote(const std::string& tableNa
         orderBy = "path, architecture, value, version";
     }
 
-    const std::string filter = "WHERE sync = 0";
     auto selectQuery {SelectQuery::builder()
                       .table(tableName)
                       .columnList({"*"})
@@ -280,11 +284,13 @@ std::vector<nlohmann::json> DB::getDocumentsToDemote(const std::string& tableNam
     // Note: we include the version in the query since we'll pass it to the sync flag update so that it doesn't get increased with the update. We want the version value to stay the same after a sync flag update.
     std::string primaryKeys;
     std::string orderBy;
+    std::string filter = "WHERE sync = 1";
 
     if (tableName == FIMDB_FILE_TABLE_NAME )
     {
-        primaryKeys = "path, version";
-        orderBy = "path, version";
+        primaryKeys = "container_id, path, version";
+        orderBy = "container_id, path, version";
+        filter += " AND container_id = ''";
     }
     else if (tableName == FIMDB_REGISTRY_KEY_TABLENAME )
     {
@@ -305,7 +311,6 @@ std::vector<nlohmann::json> DB::getDocumentsToDemote(const std::string& tableNam
         }
     }};
 
-    const std::string filter = "WHERE sync = 1";
     auto selectQuery {SelectQuery::builder()
                       .table(tableName)
                       .columnList({primaryKeys})
@@ -420,6 +425,42 @@ FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_ent
         {
             FIMDB::instance().logFunction(LOG_ERROR, err.what());
         }
+    }
+
+    return retval;
+}
+
+FIMDBErrorCode
+fim_db_transaction_sync_row_json(TXN_HANDLE txn_handler, const char* table, const char* row_json)
+{
+    auto retval {FIMDB_ERR};
+
+    if (table == nullptr || row_json == nullptr)
+    {
+        return retval;
+    }
+
+    const auto row = nlohmann::json::parse(row_json, nullptr, false);
+
+    if (row.is_discarded() || !row.is_object())
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, "fim_db_transaction_sync_row_json: invalid row JSON");
+        return retval;
+    }
+
+    try
+    {
+        nlohmann::json input;
+        input["table"] = table;
+        input["data"] = nlohmann::json::array({row});
+
+        DBSyncTxn txn(txn_handler);
+        txn.syncTxnRow(input);
+        retval = FIMDB_OK;
+    }
+    catch (const std::exception& err)
+    {
+        FIMDB::instance().logFunction(LOG_ERROR, err.what());
     }
 
     return retval;

@@ -138,13 +138,16 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
         void setMaxRows(const std::string& table,
                         const int64_t maxRows) override;
 
-        void initializeStatusField(const nlohmann::json& tableNames) override;
+        void initializeStatusField(const nlohmann::json& tableNames,
+                                   const nlohmann::json& scope = {}) override;
 
-        void deleteRowsByStatusField(const nlohmann::json& tableNames) override;
+        void deleteRowsByStatusField(const nlohmann::json& tableNames,
+                                     const nlohmann::json& scope = {}) override;
 
         void returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                        const DbSync::ResultCallback callback,
-                                       std::unique_lock<std::shared_timed_mutex>& lock) override;
+                                       std::unique_lock<std::shared_timed_mutex>& lock,
+                                       const nlohmann::json& scope = {}) override;
 
         void selectData(const std::string& table,
                         const nlohmann::json& query,
@@ -301,6 +304,9 @@ class SQLiteDBEngine final : public DbSync::IDbEngine
 
         std::string getSelectAllQuery(const std::string& table,
                                       const TableColumns& tableFields) const;
+
+        std::string validatedScopeColumn(const std::string& table,
+                                         const nlohmann::json& scope);
 
         std::string buildDeleteRelationTrigger(const nlohmann::json& data,
                                                const std::string&    baseTable);
