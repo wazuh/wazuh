@@ -67,6 +67,17 @@ typedef enum hc_conn_state_t
     ///< until hc_set_agent_key() supplies a new key.
 } hc_conn_state_t;
 
+/* Occupancy level of the stateless accumulator. Replaces the legacy client
+ * buffer levels so the manager-side flood alerts (rules 202-205 analogues)
+ * keep working. */
+typedef enum hc_buffer_level_t
+{
+    HC_BUFFER_NORMAL = 0,
+    HC_BUFFER_WARNING,
+    HC_BUFFER_FULL,
+    HC_BUFFER_FLOOD
+} hc_buffer_level_t;
+
 /* Outcome classes of a request/submission (D9 classification). */
 typedef enum hc_result_t
 {
@@ -84,6 +95,7 @@ typedef enum hc_result_t
 #define HC_MAX_PATH 1024
 #define HC_MAX_CIPHERS 256
 #define HC_MAX_VERSION 64
+#define HC_MAX_CHECKSUM 128 /* fits a SHA-256 hex (64) + NUL with room */
 
 /**
  * @brief Configuration passed from the agent (C) to the C++ module.
@@ -109,12 +121,30 @@ typedef struct hc_config_t
     char client_key[HC_MAX_PATH];  ///< Optional mTLS private key.
     char ciphers[HC_MAX_CIPHERS];  ///< Optional cipher list.
 
+    uint64_t batch_size_bytes;      ///< Max /stateless payload per request
+    ///< (adaptive: halves on 413, ramps back on
+    ///< success); 0 -> 1 MiB.
+    uint32_t batch_interval_ms;     ///< <batch><interval>; 0 -> 10000.
+    uint32_t buffer_cap_multiplier; ///< Accumulator cap = N x batch size; 0 -> 4.
+
     uint32_t notify_interval_s;         ///< notify_time; 0 -> 20.
     uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
 
+    /// Interim task-dedup bounds (TODO #37833: replaced by the durable
+    /// agent-info task_id registry). Max ids kept; 0 -> 4096.
+    uint32_t task_dedup_max;
+    /// Interim task-dedup TTL in seconds; a duplicate re-delivered after this
+    /// is accepted again; 0 -> 3600 (TODO #37833).
+    uint32_t task_dedup_ttl_s;
+
     char version[HC_MAX_VERSION];       ///< Product version for Startup.
+    char config_checksum[HC_MAX_CHECKSUM]; ///< Local merged.mg MD5 seed. Compared
+    ///< against the manager-reported
+    ///< agent.config_hash on every Notify;
+    ///< a mismatch triggers /download.
 
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
+    uint32_t stateful_timeout_ms; ///< Large transfers (/download); 0 -> 120000.
     uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.
     uint32_t backoff_cap_ms;      ///< Full-jitter cap; 0 -> 60000.
     uint32_t drain_timeout_ms;    ///< Shutdown drain window; 0 -> 5000.
@@ -141,7 +171,19 @@ typedef struct hc_callbacks_t
     /// band (the authd flow, caller-owned retries) and call hc_set_agent_key()
     /// with the new key to resume.
     void (*on_reenroll_required)(void* user_data);
+    void (*on_task)(const char* task_id, const char* task_type, const char* payload_json,
+                    void* user_data);
+    /// A Notify reported a merged-config hash differing from the local one;
+    /// the module fetched the new configuration via POST /download and
+    /// verified its MD5. file_path is a module-owned temp file valid ONLY
+    /// until this callback returns (the module deletes it afterwards):
+    /// read/copy it inside the callback. Writing merged.mg, unmerging and
+    /// reloading is the consumer's job. If applying fails, call
+    /// hc_set_config_hash() with the hash actually on disk.
+    void (*on_config_downloaded)(const char* config_hash, const char* file_path,
+                                 void* user_data);
     void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t
+    void (*on_buffer_level)(int level, void* user_data);  ///< hc_buffer_level_t
     void* user_data;
 } hc_callbacks_t;
 
@@ -165,14 +207,24 @@ HC_EXPORTED bool hc_start(hc_handle* handle);
 
 /**
  * @brief Stop the client: drains within the configured window (final
- *        Notify), aborts in-flight requests explicitly and joins every
- *        thread. No callback fires after this returns. Safe without a
- *        prior start.
+ *        flush + final Notify), aborts in-flight requests explicitly and
+ *        joins every thread. No callback fires after this returns. Safe
+ *        without a prior start.
  */
 HC_EXPORTED void hc_stop(hc_handle* handle);
 
 /** @brief Destroy the instance. Implies hc_stop(). NULL-safe. */
 HC_EXPORTED void hc_destroy(hc_handle* handle);
+
+/* ---- data plane (called from agentd's EventForward seam) ---- */
+
+/**
+ * @brief Submit one event frame ("queue:location:message" bytes) for the
+ *        /stateless batch. Returns false when the client is not running
+ *        or the accumulator is full (drop-newest; the occupancy ladder is
+ *        surfaced via on_buffer_level).
+ */
+HC_EXPORTED bool hc_submit_event(hc_handle* handle, const uint8_t* frame, size_t length);
 
 /* ---- control plane ---- */
 
@@ -180,11 +232,20 @@ HC_EXPORTED void hc_destroy(hc_handle* handle);
 HC_EXPORTED void hc_notify_now(hc_handle* handle);
 
 /**
+ * @brief Correct the module's view of the local merged-config hash (after a
+ *        failed or divergent apply of a downloaded configuration). Unlike the
+ *        other hc_* functions this one IS safe to call from inside callbacks:
+ *        it only touches an internal guarded string. Returns false on a NULL
+ *        handle or hash.
+ */
+HC_EXPORTED bool hc_set_config_hash(hc_handle* handle, const char* config_hash);
+
+/**
  * @brief Swap the AES-CMAC credential at runtime (hex; 16/24/32 bytes decoded)
- *        after a re-enrollment. This is callback-safe (it only touches an
- *        internal guarded key). It clears the auth pause. Returns false on a
- *        NULL handle or invalid key material, leaving the previous key in
- *        place.
+ *        after a re-enrollment. Like hc_set_config_hash this is callback-safe
+ *        (it only touches an internal guarded key). It clears the auth pause
+ *        and forces a fresh Startup (re-registration). Returns false on a NULL
+ *        handle or invalid key material, leaving the previous key in place.
  */
 HC_EXPORTED bool hc_set_agent_key(hc_handle* handle, const char* key_hex);
 

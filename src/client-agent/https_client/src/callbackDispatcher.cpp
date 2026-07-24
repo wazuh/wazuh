@@ -105,6 +105,21 @@ void CallbackDispatcher::onStartupResult(bool accepted, const std::string& hands
     { m_callbacks.on_startup_result(accepted, handshakeJson.c_str(), m_callbacks.user_data); });
 }
 
+void CallbackDispatcher::onTask(const std::string& taskId, const std::string& taskType,
+                                const std::string& payloadJson)
+{
+    if (m_callbacks.on_task == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, taskId, taskType, payloadJson]
+    {
+        m_callbacks.on_task(taskId.c_str(), taskType.c_str(), payloadJson.c_str(),
+        m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onReenrollRequired()
 {
     if (m_callbacks.on_reenroll_required == nullptr)
@@ -115,6 +130,23 @@ void CallbackDispatcher::onReenrollRequired()
     enqueue([this] { m_callbacks.on_reenroll_required(m_callbacks.user_data); });
 }
 
+void CallbackDispatcher::onConfigDownloaded(const std::string& configHash,
+                                            std::shared_ptr<SpoolFile> file)
+{
+    if (m_callbacks.on_config_downloaded == nullptr)
+    {
+        return; // Last reference dropped here: the temp file is deleted now.
+    }
+
+    // The lambda owns the file; run() destroys the task right after invoking
+    // it, so the file is deleted as soon as the C callback returns.
+    enqueue([this, configHash, file = std::move(file)]
+    {
+        m_callbacks.on_config_downloaded(configHash.c_str(), file->path().c_str(),
+        m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onStateChange(hc_conn_state_t state)
 {
     if (m_callbacks.on_state_change == nullptr)
@@ -123,4 +155,14 @@ void CallbackDispatcher::onStateChange(hc_conn_state_t state)
     }
 
     enqueue([this, state] { m_callbacks.on_state_change(state, m_callbacks.user_data); });
+}
+
+void CallbackDispatcher::onBufferLevel(hc_buffer_level_t level)
+{
+    if (m_callbacks.on_buffer_level == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, level] { m_callbacks.on_buffer_level(level, m_callbacks.user_data); });
 }

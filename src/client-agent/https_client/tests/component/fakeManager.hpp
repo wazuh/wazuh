@@ -25,6 +25,7 @@
 #include <csignal>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -45,16 +46,24 @@ class FakeManager final
         /// settingsFlipAfter > 0: after that many notifies the served startup
         /// body (and the settings_hash reported by notify) switches to v2, so
         /// a client detects the change and refreshes its startup data.
+        /// configBlob non-empty: /download serves it (chunked octet-stream)
+        /// and every notify reports agent.config_hash = MD5(configBlob), so a
+        /// client whose local hash differs downloads it.
+        /// statelessMaxBody > 0: a /stateless POST whose body exceeds it gets
+        /// 413, so the client must split and resend smaller (#37835).
         /// rotateKeyAfterNotifies > 0 with rotatedKeyHex set: after that many
         /// notifies the server verifies ONLY against rotatedKeyHex, so the old
         /// key starts getting 401 (#37828 re-enrollment).
         FakeManager(uint16_t port, const std::string& keyHex, bool tls = false,
-                    int settingsFlipAfter = 0, int rotateKeyAfterNotifies = 0,
+                    int settingsFlipAfter = 0, std::string configBlob = {},
+                    size_t statelessMaxBody = 0, int rotateKeyAfterNotifies = 0,
                     std::string rotatedKeyHex = {})
             : m_port(port)
             , m_keyHex(keyHex)
             , m_tls(tls)
             , m_settingsFlipAfter(settingsFlipAfter)
+            , m_configBlob(std::move(configBlob))
+            , m_statelessMaxBody(statelessMaxBody)
             , m_rotateKeyAfterNotifies(rotateKeyAfterNotifies)
             , m_rotatedKeyHex(std::move(rotatedKeyHex))
         {
@@ -128,6 +137,12 @@ class FakeManager final
         {
             const std::string keyHex = m_keyHex;
             const int settingsFlipAfter = m_settingsFlipAfter;
+            const std::string configBlob = m_configBlob;
+            const size_t statelessMaxBody = m_statelessMaxBody;
+            const std::string configHash =
+                configBlob.empty() ? std::string {}
+                :
+                sha256Hex(configBlob.data(), configBlob.size());
             auto backpressureArmed = std::make_shared<std::atomic<bool>>(true);
             auto notifyCount = std::make_shared<std::atomic<int>>(0);
 
@@ -144,9 +159,15 @@ class FakeManager final
                 return verifyCmac(rotated ? rotatedKey : keyHex, target, request);
             };
 
+            // Accumulates accepted /stateless bodies so the fork parent can
+            // read them back via GET /peek/stateless (fork servers share no
+            // memory; a peek endpoint is the observability channel).
+            auto acceptedEvents = std::make_shared<std::string>();
+            auto acceptedMutex = std::make_shared<std::mutex>();
+
             server.Post("/stateless",
-                        [verify, backpressureArmed](const httplib::Request & request,
-                                                    httplib::Response & response)
+                        [verify, backpressureArmed, statelessMaxBody, acceptedEvents, acceptedMutex](
+                            const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/stateless", request))
                 {
@@ -161,12 +182,74 @@ class FakeManager final
                     return;
                 }
 
+                if (statelessMaxBody > 0 && request.body.size() > statelessMaxBody)
+                {
+                    response.status = 413; // Payload too large: the client must split + resend.
+                    return;
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(*acceptedMutex);
+                    *acceptedEvents += request.body; // Record the accepted batch.
+                }
+
                 response.status = 200;
                 response.set_content(request.body, "text/plain"); // Echo for body assertions.
             });
 
+            server.Get("/peek/stateless",
+                       [acceptedEvents, acceptedMutex](const httplib::Request&,
+                                                       httplib::Response & response)
+            {
+                std::lock_guard<std::mutex> lock(*acceptedMutex);
+                response.status = 200;
+                response.set_content(*acceptedEvents, "text/plain");
+            });
+
+            server.Post("/download",
+                        [verify, configBlob](const httplib::Request & request,
+                                             httplib::Response & response)
+            {
+                if (!verify("/download", request))
+                {
+                    response.status = 401;
+                    return;
+                }
+
+                if (configBlob.empty() ||
+                        request.body.find("\"resource_type\":\"config\"") == std::string::npos)
+                {
+                    response.status = 404;
+                    return;
+                }
+
+                // Chunked transfer on purpose (#37733 5.2.3): the client's
+                // decode + stream-to-file path is exercised for real.
+                response.status = 200;
+                response.set_chunked_content_provider(
+                    "application/octet-stream",
+                    [configBlob](size_t offset, httplib::DataSink & sink)
+                {
+                    constexpr size_t CHUNK = 16 * 1024;
+                    const size_t remaining = configBlob.size() - offset;
+                    const size_t count = remaining < CHUNK ? remaining : CHUNK;
+
+                    if (count > 0)
+                    {
+                        sink.write(configBlob.data() + offset, count);
+                    }
+
+                    if (offset + count >= configBlob.size())
+                    {
+                        sink.done();
+                    }
+
+                    return true;
+                });
+            });
+
             server.Post("/control",
-                        [verify, settingsFlipAfter, notifyCount](
+                        [verify, settingsFlipAfter, notifyCount, configHash](
                             const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/control", request))
@@ -204,8 +287,13 @@ class FakeManager final
                 if (request.body.find("\"type\":\"notify\"") != std::string::npos)
                 {
                     notifyCount->fetch_add(1);
+                    const std::string agent =
+                        configHash.empty()
+                        ? std::string {R"({"groups":["default"]})"}
+                        :
+                        R"({"groups":["default"],"config_hash":")" + configHash + R"("})";
                     response.set_content(
-                        R"({"agent":{"groups":["default"]},"settings_hash":")" +
+                        R"({"agent":)" + agent + R"(,"settings_hash":")" +
                         sha256Hex(startupBody.data(), startupBody.size()) + R"("})",
                         "application/json");
                     return;
@@ -285,6 +373,8 @@ class FakeManager final
         std::string m_keyHex;
         bool m_tls {false};
         int m_settingsFlipAfter {0};
+        std::string m_configBlob;
+        size_t m_statelessMaxBody {0};
         int m_rotateKeyAfterNotifies {0};
         std::string m_rotatedKeyHex;
 };

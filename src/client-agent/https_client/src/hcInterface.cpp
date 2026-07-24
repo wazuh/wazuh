@@ -125,6 +125,23 @@ extern "C"
         }
     }
 
+    bool hc_submit_event(hc_handle* handle, const uint8_t* frame, size_t length)
+    {
+        if (handle == nullptr)
+        {
+            return false;
+        }
+
+        try
+        {
+            return handle->impl.submitEvent(frame, length);
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
     void hc_notify_now(hc_handle* handle)
     {
         if (handle == nullptr)
@@ -139,6 +156,24 @@ extern "C"
         catch (...)
         {
             // LCOV_EXCL_LINE: nothing throws into C.
+        }
+    }
+
+    bool hc_set_config_hash(hc_handle* handle, const char* config_hash)
+    {
+        if (handle == nullptr || config_hash == nullptr)
+        {
+            return false;
+        }
+
+        try
+        {
+            handle->impl.setConfigHash(config_hash);
+            return true;
+        }
+        catch (...)
+        {
+            return false; // LCOV_EXCL_LINE: nothing throws into C.
         }
     }
 

@@ -27,6 +27,7 @@
 #include <chrono>
 #include <cstring>
 #include <mutex>
+#include <thread>
 #include <vector>
 
 namespace
@@ -187,15 +188,63 @@ TEST_F(HcInterfaceTest, StartFailsClosedWithoutCaInFullMode)
     hc_destroy(handle);
 }
 
+TEST_F(HcInterfaceTest, SubmitBeforeStartIsRejected)
+{
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    const uint8_t frame[] = "1:/var/log/syslog:hello";
+    EXPECT_FALSE(hc_submit_event(handle, frame, sizeof(frame) - 1));
+    hc_notify_now(handle);
+    EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(handle));
+    hc_destroy(handle);
+}
+
+TEST_F(HcInterfaceTest, SubmitAfterStartAcceptsIntoQueues)
+{
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    const uint8_t frame[] = "1:/var/log/syslog:hello";
+    EXPECT_TRUE(hc_submit_event(handle, frame, sizeof(frame) - 1));
+    hc_notify_now(handle);
+    hc_destroy(handle);
+}
+
+TEST_F(HcInterfaceTest, SubmitNullArgumentsAreRejected)
+{
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    const uint8_t frame[] = "x";
+    EXPECT_FALSE(hc_submit_event(handle, nullptr, 1));
+    EXPECT_FALSE(hc_submit_event(handle, frame, 0));
+    hc_destroy(handle);
+}
+
 TEST_F(HcInterfaceTest, LifecycleChurn)
 {
-    // The designated ThreadSanitizer workload: repeated start/stop cycles.
+    // The designated ThreadSanitizer workload: repeated start/stop with
+    // concurrent submits from another thread.
     hc_handle* handle = hc_create(&m_config, &m_callbacks);
     ASSERT_NE(nullptr, handle);
 
     for (int cycle = 0; cycle < 20; cycle++)
     {
         ASSERT_TRUE(hc_start(handle));
+        std::atomic<bool> submitting {true};
+        std::thread producer(
+            [&]
+        {
+            const uint8_t frame[] = "1:/var/log/syslog:churn";
+
+            while (submitting.load())
+            {
+                hc_submit_event(handle, frame, sizeof(frame) - 1);
+            }
+        });
+        std::this_thread::sleep_for(std::chrono::milliseconds {2});
+        submitting = false;
+        producer.join();
         hc_stop(handle);
     }
 
@@ -207,9 +256,21 @@ TEST_F(HcInterfaceTest, NullHandleIsSafeEverywhere)
     EXPECT_FALSE(hc_start(nullptr));
     hc_stop(nullptr);
     hc_destroy(nullptr);
+    const uint8_t frame[] = "x";
+    EXPECT_FALSE(hc_submit_event(nullptr, frame, 1));
     hc_notify_now(nullptr);
+    EXPECT_FALSE(hc_set_config_hash(nullptr, "abc"));
     EXPECT_FALSE(hc_set_agent_key(nullptr, "000102030405060708090a0b0c0d0e0f"));
     EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(nullptr));
+}
+
+TEST_F(HcInterfaceTest, SetConfigHashAcceptsAValidHashAndRejectsNull)
+{
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    EXPECT_TRUE(hc_set_config_hash(handle, "d41d8cd98f00b204e9800998ecf8427e"));
+    EXPECT_FALSE(hc_set_config_hash(handle, nullptr));
+    hc_destroy(handle);
 }
 
 TEST_F(HcInterfaceTest, SetAgentKeyValidatesTheMaterial)

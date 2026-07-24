@@ -15,9 +15,13 @@
 
 #include <algorithm>
 #include <atomic>
+#include <fstream>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
+
+#include <unistd.h>
 
 namespace
 {
@@ -29,6 +33,15 @@ namespace
         std::vector<std::thread::id> threads;
         std::atomic<int> count {0};
     };
+
+    void recordTask(const char* taskId, const char*, const char*, void* userData)
+    {
+        auto* record = static_cast<Record*>(userData);
+        std::lock_guard<std::mutex> lock(record->mutex);
+        record->order.emplace_back(taskId);
+        record->threads.push_back(std::this_thread::get_id());
+        record->count++;
+    }
 
     void recordState(int state, void* userData)
     {
@@ -48,6 +61,14 @@ namespace
         record->count++;
     }
 
+    void recordBuffer(int level, void* userData)
+    {
+        auto* record = static_cast<Record*>(userData);
+        std::lock_guard<std::mutex> lock(record->mutex);
+        record->order.push_back("buffer:" + std::to_string(level));
+        record->count++;
+    }
+
     void recordStartup(bool accepted, const char*, void* userData)
     {
         auto* record = static_cast<Record*>(userData);
@@ -61,8 +82,10 @@ namespace
     {
         hc_callbacks_t callbacks {};
         callbacks.on_startup_result = recordStartup;
+        callbacks.on_task = recordTask;
         callbacks.on_reenroll_required = recordReenroll;
         callbacks.on_state_change = recordState;
+        callbacks.on_buffer_level = recordBuffer;
         callbacks.user_data = record;
         return callbacks;
     }
@@ -82,10 +105,9 @@ TEST(CallbackDispatcherTest, DeliversInSubmissionOrderOnOneThread)
     CallbackDispatcher dispatcher {makeCallbacks(&record)};
     dispatcher.start();
 
-    // A cycling state sequence: any reorder breaks the expected labels below.
     for (int index = 0; index < 20; index++)
     {
-        dispatcher.onStateChange(static_cast<hc_conn_state_t>(index % 5));
+        dispatcher.onTask("task-" + std::to_string(index), "ar", "{}");
     }
 
     waitForCount(record, 20);
@@ -95,7 +117,7 @@ TEST(CallbackDispatcherTest, DeliversInSubmissionOrderOnOneThread)
 
     for (int index = 0; index < 20; index++)
     {
-        EXPECT_EQ("state:" + std::to_string(index % 5), record.order[index]); // FIFO.
+        EXPECT_EQ("task-" + std::to_string(index), record.order[index]); // FIFO.
     }
 
     // Every callback ran on the same (single) dispatcher thread.
@@ -116,7 +138,7 @@ TEST(CallbackDispatcherTest, StopDrainsQueuedCallbacks)
     for (int index = 0; index < 50; index++)
     {
         dispatcher.onStateChange(HC_STATE_REGISTERED);
-        dispatcher.onReenrollRequired();
+        dispatcher.onTask("t" + std::to_string(index), "ar", "{}");
     }
 
     dispatcher.stop(); // Must run everything already queued before joining.
@@ -129,7 +151,7 @@ TEST(CallbackDispatcherTest, PostAfterStopIsRejected)
     CallbackDispatcher dispatcher {makeCallbacks(&record)};
     dispatcher.start();
     dispatcher.stop();
-    dispatcher.onStateChange(HC_STATE_STARTING);
+    dispatcher.onTask("late", "ar", "{}");
     EXPECT_EQ(0, record.count.load());
 }
 
@@ -138,9 +160,11 @@ TEST(CallbackDispatcherTest, NullCallbacksAreSafe)
     hc_callbacks_t callbacks {}; // All function pointers null.
     CallbackDispatcher dispatcher {callbacks};
     dispatcher.start();
+    dispatcher.onTask("x", "ar", "{}");
     dispatcher.onStateChange(HC_STATE_STARTING);
     dispatcher.onReenrollRequired();
     dispatcher.onStartupResult(true, "{}");
+    dispatcher.onBufferLevel(HC_BUFFER_NORMAL);
     dispatcher.stop(); // No crash despite null handlers.
 }
 
@@ -150,18 +174,94 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     CallbackDispatcher dispatcher {makeCallbacks(&record)};
     dispatcher.start();
     dispatcher.onStartupResult(true, R"({"limits":{}})");
+    dispatcher.onTask("t1", "active_response", "{}");
     dispatcher.onReenrollRequired();
     dispatcher.onStateChange(HC_STATE_REGISTERED);
-    waitForCount(record, 3);
+    dispatcher.onBufferLevel(HC_BUFFER_WARNING);
+    waitForCount(record, 5);
     dispatcher.stop();
 
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "startup:ok"));
+    EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "t1"));
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "reenroll"));
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(),
                         "state:" + std::to_string(HC_STATE_REGISTERED)));
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(),
+                        "buffer:" + std::to_string(HC_BUFFER_WARNING)));
+}
+
+namespace
+{
+    struct ConfigRecord
+    {
+        std::atomic<int> count {0};
+        std::string hash;
+        std::string path;
+        bool existedDuringCallback {false};
+    };
+
+    void recordConfigDownload(const char* configHash, const char* filePath, void* userData)
+    {
+        auto* record = static_cast<ConfigRecord*>(userData);
+        record->hash = configHash;
+        record->path = filePath;
+        std::ifstream probe {filePath};
+        record->existedDuringCallback = probe.good();
+        record->count++;
+    }
+
+    std::string makeTempConfigFile(const std::string& content)
+    {
+        const std::string path =
+            ::testing::TempDir() + "hc_dispatcher_config_" + std::to_string(::getpid()) + ".tmp";
+        std::ofstream file {path, std::ios::binary};
+        file << content;
+        return path;
+    }
+} // namespace
+
+TEST(CallbackDispatcherTest, ConfigFileLivesForTheCallbackAndDiesAfterStop)
+{
+    ConfigRecord record;
+    hc_callbacks_t callbacks {};
+    callbacks.on_config_downloaded = recordConfigDownload;
+    callbacks.user_data = &record;
+
+    const std::string path = makeTempConfigFile("merged-bytes");
+    CallbackDispatcher dispatcher {callbacks};
+    dispatcher.start();
+    dispatcher.onConfigDownloaded("hash-1", std::make_shared<SpoolFile>(path));
+
+    while (record.count.load() < 1)
+    {
+        std::this_thread::yield();
+    }
+
+    dispatcher.stop(); // Drains: the task (and its file reference) is gone.
+
+    EXPECT_EQ("hash-1", record.hash);
+    EXPECT_EQ(path, record.path);
+    EXPECT_TRUE(record.existedDuringCallback);
+    std::ifstream after {path};
+    EXPECT_FALSE(after.good()); // Deleted right after the callback returned.
+}
+
+TEST(CallbackDispatcherTest, NullConfigCallbackDeletesTheFileImmediately)
+{
+    hc_callbacks_t callbacks {}; // No on_config_downloaded.
+    const std::string path = makeTempConfigFile("merged-bytes");
+    CallbackDispatcher dispatcher {callbacks};
+    dispatcher.start();
+    dispatcher.onConfigDownloaded("hash-1", std::make_shared<SpoolFile>(path));
+
+    // The early return dropped the last reference synchronously.
+    std::ifstream probe {path};
+    EXPECT_FALSE(probe.good());
+    dispatcher.stop();
 }
 
 TEST(CallbackDispatcherTest, DoubleStartAndDoubleStopAreSafe)
@@ -170,7 +270,7 @@ TEST(CallbackDispatcherTest, DoubleStartAndDoubleStopAreSafe)
     CallbackDispatcher dispatcher {makeCallbacks(&record)};
     dispatcher.start();
     dispatcher.start(); // Ignored.
-    dispatcher.onReenrollRequired();
+    dispatcher.onTask("one", "ar", "{}");
     waitForCount(record, 1);
     dispatcher.stop();
     dispatcher.stop(); // Ignored.

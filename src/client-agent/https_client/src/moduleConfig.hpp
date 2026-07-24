@@ -39,12 +39,23 @@ struct ModuleConfig
         std::string clientKey;
         std::string ciphers;
 
+        uint64_t batchSizeBytes {1024 * 1024};
+        uint32_t batchIntervalMs {10000};
+        uint32_t bufferCapMultiplier {4};
+
         uint32_t notifyIntervalS {20};
         uint32_t rejectedRetryIntervalS {60};
 
+        // TODO(#37833): interim in-memory dedup bounds; retired by the durable
+        // agent-info task_id registry.
+        uint32_t taskDedupMax {4096};
+        uint32_t taskDedupTtlS {3600};
+
         std::string version;
+        std::string configChecksum;
 
         uint32_t requestTimeoutMs {10000};
+        uint32_t statefulTimeoutMs {120000};
         uint32_t backoffBaseMs {1000};
         uint32_t backoffCapMs {60000};
         uint32_t drainTimeoutMs {5000};

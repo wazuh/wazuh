@@ -350,7 +350,7 @@ bool connect_server(int server_id, bool verbose)
             if (verbose) {
                 mdebug1("Closing connection to server ([%s]:%d/%s).",
                     agt->server[agt->rip_id].rip,
-                    agt->server[agt->rip_id].port,
+                    DEFAULT_REMOTE_PORT,
                     "tcp");
             }
         }
@@ -382,20 +382,24 @@ bool connect_server(int server_id, bool verbose)
     if (verbose) {
         minfo("Trying to connect to server ([%s]:%d/%s).",
             agt->server[server_id].rip,
-            agt->server[server_id].port,
+            DEFAULT_REMOTE_PORT,
             "tcp");
     }
 
-    agt->sock = OS_ConnectTCP(agt->server[server_id].port, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
+    /* agt->server[server_id].port is <server><port> from the config, which now belongs to the
+     * HTTPS client (#37828); this legacy TCP path is deprecated (pending removal in issue 02) and
+     * runs alongside it only for the handshake/gate/receive_msg it still provides, so it keeps its
+     * own fixed port instead of racing the HTTPS client for the same config value. */
+    agt->sock = OS_ConnectTCP(DEFAULT_REMOTE_PORT, ip_address, strchr(ip_address, ':') != NULL ? 1 : 0, agt->server[server_id].network_interface);
 
     if (agt->sock < 0) {
         agt->sock = -1;
 
         if (verbose) {
             #ifdef WIN32
-                merror(CONNS_ERROR, ip_address, agt->server[server_id].port, "tcp", win_strerror(WSAGetLastError()));
+                merror(CONNS_ERROR, ip_address, DEFAULT_REMOTE_PORT, "tcp", win_strerror(WSAGetLastError()));
             #else
-                merror(CONNS_ERROR, ip_address, agt->server[server_id].port, "tcp", strerror(errno));
+                merror(CONNS_ERROR, ip_address, DEFAULT_REMOTE_PORT, "tcp", strerror(errno));
             #endif
         }
     } else {
@@ -825,7 +829,7 @@ STATIC bool agent_handshake_to_server(int server_id, bool is_startup) {
                         }
 
                         minfo(AG_CONNECTED, agt->server[server_id].rip,
-                                agt->server[server_id].port, "tcp");
+                                DEFAULT_REMOTE_PORT, "tcp");
 
                         if (is_startup) {
                             send_msg_on_startup();

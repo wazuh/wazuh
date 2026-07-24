@@ -12,6 +12,7 @@
 #include "controlStream.hpp"
 
 #include "digest.hpp"
+#include "taskBatch.hpp"
 
 #include "external/nlohmann/json.hpp"
 
@@ -40,17 +41,70 @@ namespace
 
         return it->is_string() ? it->get<std::string>() : it->dump();
     }
+
+    /// The group whose merged config /download serves. The spec's example uses
+    /// a single group name while agents can belong to several (open question
+    /// on #37733); until that settles, the first reported group is used.
+    std::string firstGroup(const nlohmann::json& agent)
+    {
+        const auto groups = agent.find("groups");
+
+        if (groups != agent.end() && groups->is_array() && !groups->empty() &&
+                groups->front().is_string())
+        {
+            return groups->front().get<std::string>();
+        }
+
+        return "default";
+    }
+
+    /// The Notify batch after dedup: fresh, identifiable tasks only.
+    /// Deliberately deduped BEFORE planning, so a task dropped as redundant is
+    /// still marked seen and an at-least-once redelivery stays dropped (a
+    /// restart landing after its subsuming upgrade would be harmful).
+    std::vector<NotifyTask> collectFreshTasks(const nlohmann::json& parsed, TaskDeduper& deduper,
+                                              std::chrono::steady_clock::time_point now)
+    {
+        std::vector<NotifyTask> batch;
+        const auto tasks = parsed.find("tasks");
+
+        if (tasks == parsed.end() || !tasks->is_array())
+        {
+            return batch;
+        }
+
+        for (const auto& task : *tasks)
+        {
+            std::string taskId = jsonField(task, "task_id");
+
+            if (taskId.empty() || !deduper.markIfNew(taskId, now))
+            {
+                continue; // Duplicate (at-least-once) or unidentifiable.
+            }
+
+            batch.push_back({std::move(taskId), jsonField(task, "task_type"),
+                             jsonField(task, "payload")});
+        }
+
+        return batch;
+    }
 } // namespace
 
 ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& performer,
                              const ISigner& signer, IClock& clock, IRandom& random,
-                             ICallbackSink& sink, ClusterIdentity& cluster, AuthGate& authGate)
+                             ICallbackSink& sink, ISpoolFileFactory& spoolFactory,
+                             ConfigHashState& configHash, ClusterIdentity& cluster,
+                             AuthGate& authGate)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, &authGate)
+    , m_clock(clock)
     , m_sink(sink)
+    , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate)
+    , m_configHash(configHash)
     , m_cluster(cluster)
     , m_authGate(authGate)
+    , m_deduper(config.taskDedupMax, std::chrono::seconds {config.taskDedupTtlS})
 {
 }
 
@@ -162,7 +216,7 @@ OutcomeClass ControlStream::sendNotify(Waiter& waiter)
 
     if (result.outcome == OutcomeClass::Ok)
     {
-        handleNotifyBody(result.response.body);
+        handleNotifyBody(result.response.body, waiter);
     }
 
     return result.outcome;
@@ -206,7 +260,7 @@ void ControlStream::applyClusterIdentity(const std::string& startupBody)
     m_cluster.set(std::move(name), std::move(node));
 }
 
-void ControlStream::handleNotifyBody(const std::string& body)
+void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
 {
     const auto parsed = nlohmann::json::parse(body, nullptr, false);
 
@@ -215,7 +269,41 @@ void ControlStream::handleNotifyBody(const std::string& body)
         return; // Tolerant: a malformed Notify body is ignored, never fatal.
     }
 
+    // Tasks first, then the hash checks: a slow config download must never
+    // delay task delivery.
+    dispatchPlannedTasks(collectFreshTasks(parsed, m_deduper, m_clock.steadyNow()));
     maybeArmSettingsRefresh(jsonField(parsed, "settings_hash"));
+
+    const auto agent = parsed.find("agent");
+
+    if (agent != parsed.end() && agent->is_object())
+    {
+        maybeDownloadConfig(jsonField(*agent, "config_hash"), firstGroup(*agent), waiter);
+    }
+}
+
+void ControlStream::maybeDownloadConfig(const std::string& managerHash, const std::string& group,
+                                        Waiter& waiter)
+{
+    if (managerHash.empty() || managerHash == m_configHash.get())
+    {
+        return; // Nothing reported, or already in sync.
+    }
+
+    LOGFN_INFO(m_logFn, "Manager config hash %s differs from the local one; downloading "
+                        "the new configuration (group '%s').", managerHash.c_str(), group.c_str());
+    auto file = m_fetcher.fetch(managerHash, group, waiter);
+
+    if (!file)
+    {
+        return; // Logged by the fetcher; the next notify re-triggers it.
+    }
+
+    // Optimistic: the module verified the bytes, so it adopts the hash before
+    // delivery. A consumer whose apply fails corrects it via
+    // hc_set_config_hash and the next mismatch re-downloads.
+    m_configHash.set(managerHash);
+    m_sink.onConfigDownloaded(managerHash, std::move(file));
 }
 
 void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
@@ -250,6 +338,22 @@ void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
     m_refreshedForSettingsHash = incoming;
     m_settingsLoopWarned = false;
     m_machine.onEvent(ControlStateMachine::Event::SettingsChanged);
+}
+
+void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch)
+{
+    auto plan = planTaskBatch(std::move(batch));
+
+    for (const auto& [task, subsumer] : plan.dropped)
+    {
+        LOGFN_INFO(m_logFn, "Task %s (%s) dropped: covered by a %s in the same batch.",
+                   task.id.c_str(), task.type.c_str(), subsumer.c_str());
+    }
+
+    for (const auto& task : plan.ordered)
+    {
+        m_sink.onTask(task.id, task.type, task.payloadJson);
+    }
 }
 
 ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const

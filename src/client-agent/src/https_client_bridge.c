@@ -193,11 +193,40 @@ static agent_status_t bridge_map_agent_status(int hc_state)
     }
 }
 
+static void bridge_on_task(const char *task_id, const char *task_type, const char *payload_json,
+                           void *user_data)
+{
+    (void)payload_json;
+    (void)user_data;
+    mdebug1("https_client task received: id=%s type=%s", task_id ? task_id : "?",
+            task_type ? task_type : "?");
+}
+
+static void bridge_on_config_downloaded(const char *config_hash, const char *file_path,
+                                        void *user_data)
+{
+    /* Production hookup (later integration workstream): copy the file inside
+     * this callback (the module deletes it right after), then run the legacy
+     * apply chain -- write SHAREDCFG_DIR/merged.mg, UnmergeFiles(), verify
+     * with getsharedfiles(), reloadAgent() under auto_restart (receiver.c /
+     * reload_agent.c) -- and call hc_set_config_hash() if the applied hash
+     * diverges. The dev scaffold only logs the delivery. */
+    (void)user_data;
+    mdebug1("https_client config downloaded (hash=%s, file=%s)",
+            config_hash ? config_hash : "?", file_path ? file_path : "?");
+}
+
 static void bridge_on_state_change(int state, void *user_data)
 {
     (void)user_data;
     mdebug1("https_client connection state -> %d", state);
     w_agentd_state_update(UPDATE_STATUS, (void *)bridge_map_agent_status(state));
+}
+
+static void bridge_on_buffer_level(int level, void *user_data)
+{
+    (void)user_data;
+    mdebug2("https_client buffer level -> %d", level);
 }
 
 /* Maps the agent config parser's verification_mode enum onto the module
@@ -283,6 +312,15 @@ static bool bridge_build_config(hc_config_t *config)
         strncpy(config->ciphers, agt->ssl.ciphers, sizeof(config->ciphers) - 1);
     }
 
+    config->notify_interval_s = (uint32_t)agt->notify_time;
+    strncpy(config->version, __wazuh_version, sizeof(config->version) - 1);
+
+    char *checksum = getsharedfiles();
+    if (checksum) {
+        strncpy(config->config_checksum, checksum, sizeof(config->config_checksum) - 1);
+        os_free(checksum);
+    }
+
     return true;
 }
 
@@ -307,7 +345,10 @@ void w_https_client_start(void)
     callbacks.log = mtLoggingFunctionsWrapper;
     callbacks.on_startup_result = bridge_on_startup_result;
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
+    callbacks.on_task = bridge_on_task;
+    callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_state_change = bridge_on_state_change;
+    callbacks.on_buffer_level = bridge_on_buffer_level;
 
     g_https_client = hc_create(&config, &callbacks);
     if (!g_https_client) {
@@ -319,6 +360,17 @@ void w_https_client_start(void)
         hc_destroy(g_https_client);
         g_https_client = NULL;
     }
+}
+
+/* Keeps g_https_client encapsulated in the bridge -- callers never see or
+ * extern it. Hands the exact frame bytes straight to hc_submit_event(); the
+ * accumulator wraps the raw queue:location:message frame itself. */
+bool w_https_client_submit_event(const uint8_t *frame, size_t length)
+{
+    if (!g_https_client) {
+        return false;
+    }
+    return hc_submit_event(g_https_client, frame, length);
 }
 
 void w_https_client_stop(void)

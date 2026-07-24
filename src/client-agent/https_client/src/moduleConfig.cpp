@@ -41,10 +41,17 @@ ModuleConfig ModuleConfig::fromC(const hc_config_t& config)
     typed.clientCert = boundedString(config.client_cert, sizeof(config.client_cert));
     typed.clientKey = boundedString(config.client_key, sizeof(config.client_key));
     typed.ciphers = boundedString(config.ciphers, sizeof(config.ciphers));
+    typed.batchSizeBytes = orDefault<uint64_t>(config.batch_size_bytes, 1024 * 1024);
+    typed.batchIntervalMs = orDefault<uint32_t>(config.batch_interval_ms, 10000);
+    typed.bufferCapMultiplier = orDefault<uint32_t>(config.buffer_cap_multiplier, 4);
     typed.notifyIntervalS = orDefault<uint32_t>(config.notify_interval_s, 20);
     typed.rejectedRetryIntervalS = orDefault<uint32_t>(config.rejected_retry_interval_s, 60);
+    typed.taskDedupMax = orDefault<uint32_t>(config.task_dedup_max, 4096);
+    typed.taskDedupTtlS = orDefault<uint32_t>(config.task_dedup_ttl_s, 3600);
     typed.version = boundedString(config.version, sizeof(config.version));
+    typed.configChecksum = boundedString(config.config_checksum, sizeof(config.config_checksum));
     typed.requestTimeoutMs = orDefault<uint32_t>(config.request_timeout_ms, 10000);
+    typed.statefulTimeoutMs = orDefault<uint32_t>(config.stateful_timeout_ms, 120000);
     typed.backoffBaseMs = orDefault<uint32_t>(config.backoff_base_ms, 1000);
     typed.backoffCapMs = orDefault<uint32_t>(config.backoff_cap_ms, 60000);
     typed.drainTimeoutMs = orDefault<uint32_t>(config.drain_timeout_ms, 5000);
