@@ -111,6 +111,24 @@ EXPORTED int cbaseline_run_syscollector_dbsync(const char*          connector_so
                                                cb_dbsync_row_sink_t sink,
                                                void*                user_data);
 
+/* Invoked once per container currently known to the container-connector
+ * module, independent of whether it has a resolvable live PID right now. */
+typedef void (*cb_container_id_sink_t)(const char* container_id, void* user_data);
+
+/* Lists every container currently known to the container-connector module
+ * (queried via its IPC socket at `connector_socket_path`) — including a
+ * container that is momentarily stopped (known, but no live PID), which the
+ * cbaseline_run_* functions above silently skip. Callers that need to tell
+ * "stopped" apart from "gone" (e.g. to decide what to keep vs. clean up in
+ * their own database) should compare this list against the run_* functions'
+ * output instead of treating "absent from a scan" as "removed".
+ *
+ * Returns the number of containers reported through `sink`.
+ */
+EXPORTED int cbaseline_list_containers(const char*            connector_socket_path,
+                                       cb_container_id_sink_t sink,
+                                       void*                  user_data);
+
 /* Baseline every container's FIM files using raw file_entry dbsync rows
  * (Option A: baseline through the host FIM transaction flow). Each row is a
  * flat file_entry column set (container_id, path, hash_md5, …, container_json)

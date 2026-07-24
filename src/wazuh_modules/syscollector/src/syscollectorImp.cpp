@@ -236,7 +236,7 @@ static nlohmann::json scopedTxnTables(const nlohmann::json& tables, const std::s
     return txnInput;
 }
 
-void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
+void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table, bool notify)
 {
     if (DB_ERROR == result)
     {
@@ -248,17 +248,17 @@ void Syscollector::notifyChange(ReturnTypeCallback result, const nlohmann::json&
         {
             for (const auto& item : data)
             {
-                processEvent(result, item, table);
+                processEvent(result, item, table, notify);
             }
         }
         else
         {
-            processEvent(result, data, table);
+            processEvent(result, data, table, notify);
         }
     }
 }
 
-void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table)
+void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json& data, const std::string& table, bool notify)
 {
     nlohmann::json aux = (result == MODIFIED && data.contains("new")) ? data["new"] : data;
 
@@ -336,7 +336,7 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
         newData.erase("state");
     }
 
-    if (m_notify)
+    if (notify)
     {
         nlohmann::json stateless;
 
@@ -360,15 +360,17 @@ void Syscollector::processEvent(ReturnTypeCallback result, const nlohmann::json&
 
 void Syscollector::updateChanges(const std::string& table,
                                  const nlohmann::json& values,
-                                 const std::string& containerId)
+                                 const std::string& containerId,
+                                 std::optional<bool> notifyOverride)
 {
+    const bool notify = notifyOverride.has_value() ? *notifyOverride : m_notify;
     const auto callback
     {
-        [this, table](ReturnTypeCallback result, const nlohmann::json & data)
+        [this, table, notify](ReturnTypeCallback result, const nlohmann::json & data)
         {
             if (result == INSERTED || result == MODIFIED || result == DELETED)
             {
-                notifyChange(result, data, table);
+                notifyChange(result, data, table, notify);
             }
         }
     };
@@ -1559,7 +1561,7 @@ void Syscollector::scanPackages()
         {
             [this](ReturnTypeCallback result, const nlohmann::json & data)
             {
-                notifyChange(result, data, PACKAGES_TABLE);
+                notifyChange(result, data, PACKAGES_TABLE, m_notify);
             }
         };
         DBSyncTxn txn
@@ -1707,7 +1709,7 @@ void Syscollector::scanProcesses()
         {
             [this](ReturnTypeCallback result, const nlohmann::json & data)
             {
-                notifyChange(result, data, PROCESSES_TABLE);
+                notifyChange(result, data, PROCESSES_TABLE, m_notify);
             }
         };
         DBSyncTxn txn
@@ -1930,12 +1932,36 @@ void Syscollector::scanContainerBaseline()
 
     const int baselined = cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, &baseline);
 
+    // Every container currently known to container_instances, independent of
+    // whether it has a resolvable live PID right now. A container that's
+    // merely stopped is still reported here even though it produced no rows
+    // above (absent from `baseline`) — this is what lets the stale sweep
+    // below tell "stopped" apart from "gone" instead of conflating them.
+    std::set<std::string> discoveredIds;
+    const auto idSink = [](const char* containerId, void* userData)
+    {
+        auto* ids = static_cast<std::set<std::string>*>(userData);
+
+        if (ids && containerId)
+        {
+            ids->insert(containerId);
+        }
+    };
+    cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discoveredIds);
+
     // Per-container scoped transactions: the same updateChanges/notifyChange/
     // processEvent path host scans use computes the deltas (Option A). Every
     // baseline table is synced even when a container produced no rows for it,
-    // so rows from a previous run age out as DELETED.
+    // so rows from a previous run age out as DELETED. A container's very
+    // first sync is forced quiet (no stateless alert) regardless of m_notify,
+    // matching the one-shot baseline's original seed behavior; every sync
+    // after that follows m_notify normally, same as host rows.
     for (auto& [containerId, tables] : baseline)
     {
+        const bool isFirstSyncForContainer = m_knownContainerIds.insert(containerId).second;
+        const std::optional<bool> notifyOverride =
+            isFirstSyncForContainer ? std::optional<bool> {false} : std::nullopt;
+
         for (const auto& table : CONTAINER_BASELINE_TABLES)
         {
             auto it = tables.find(table);
@@ -1947,24 +1973,28 @@ void Syscollector::scanContainerBaseline()
                 row["checksum"] = getItemChecksum(row);
             }
 
-            updateChanges(table, rows, containerId);
+            updateChanges(table, rows, containerId, notifyOverride);
         }
     }
 
-    // Containers still in the DB but absent from this scan (removed while the
-    // agent was down): an empty scoped sync per stale id emits their DELETED
-    // events — each row's container_json column keeps those self-contained.
+    // Containers still in the DB but no longer known to container_instances
+    // at all (genuinely removed, not merely stopped): an empty scoped sync
+    // per stale id emits their DELETED events — each row's container_json
+    // column keeps those self-contained. A container that's still known but
+    // just has no live PID right now (stopped) is in `discoveredIds` and is
+    // therefore left untouched here, so a later restart resumes diffing
+    // against its retained rows instead of re-seeding from empty.
     std::set<std::string> staleIds;
 
     for (const auto& table : CONTAINER_BASELINE_TABLES)
     {
-        const auto selectCallback = [&staleIds, &baseline](ReturnTypeCallback result, const nlohmann::json & data)
+        const auto selectCallback = [&staleIds, &discoveredIds](ReturnTypeCallback result, const nlohmann::json & data)
         {
             if (result == SELECTED && data.contains(CONTAINER_ID_COLUMN) && data.at(CONTAINER_ID_COLUMN).is_string())
             {
                 const auto& id = data.at(CONTAINER_ID_COLUMN).get_ref<const std::string&>();
 
-                if (!id.empty() && baseline.find(id) == baseline.end())
+                if (!id.empty() && discoveredIds.find(id) == discoveredIds.end())
                 {
                     staleIds.insert(id);
                 }
@@ -1985,6 +2015,8 @@ void Syscollector::scanContainerBaseline()
         {
             updateChanges(table, nlohmann::json::array(), staleId);
         }
+
+        m_knownContainerIds.erase(staleId);
     }
 
     m_logFunction(LOG_DEBUG_VERBOSE,
@@ -2047,15 +2079,13 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
 
-    // Container baseline (#37532) is a one-time seed, not a recurring scan: it
-    // exists to backfill state for containers that were already running when
-    // the agent started, which is only meaningful once. Re-baselining specific
-    // containers as they appear/restart (spike Angle 6) is a scheduling
-    // problem deferred to a follow-up — this call only covers agent-startup.
-    if (isFirstScan)
-    {
-        TRY_CATCH_TASK(scanContainerBaseline);
-    }
+    // Container baseline (#37532) now runs every scan interval, same as the
+    // host scans above: it seeds a container's state the first time it's
+    // seen (kept quiet — see scanContainerBaseline()'s per-container
+    // notifyOverride) and computes real deltas against that seed on every
+    // scan after, via the same per-container scoped DBSync transactions host
+    // rows already use. No separate interval/config — it rides scan()'s own.
+    TRY_CATCH_TASK(scanContainerBaseline);
 
     // Update sync=1 flag for all items that passed document limit check (unlimited items)
     // This must be done BEFORE processVDDataContext so that DataContext queries

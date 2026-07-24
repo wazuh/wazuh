@@ -5,6 +5,7 @@
 #include <vector>
 
 using wazuh::container_baseline::EmittedRow;
+using wazuh::container_baseline::ListContainers;
 using wazuh::container_baseline::MonitoredPath;
 using wazuh::container_baseline::RunFimBaseline;
 using wazuh::container_baseline::RunFimDbsyncBaseline;
@@ -61,6 +62,17 @@ extern "C" int cbaseline_run_syscollector_dbsync(const char*          connector_
         [sink, user_data](const wazuh::container_baseline::DbsyncRow& row) {
             if (sink == nullptr) return;
             sink(row.container_id.c_str(), row.table.c_str(), row.json.c_str(), user_data);
+        });
+}
+
+extern "C" int cbaseline_list_containers(const char* connector_socket_path, cb_container_id_sink_t sink, void* user_data)
+{
+    if (connector_socket_path == nullptr) return 0;
+    return ListContainers(
+        connector_socket_path,
+        [sink, user_data](const std::string& containerId) {
+            if (sink == nullptr) return;
+            sink(containerId.c_str(), user_data);
         });
 }
 

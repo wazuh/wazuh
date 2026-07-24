@@ -16,6 +16,7 @@
 
 #include <json.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -27,11 +28,16 @@ constexpr int kOperationCreate = 0;
 
 // The container_instances IPC socket binds before its connectors finish their
 // first snapshot (list is a pure store read with no cold-cache refresh), so a
-// one-shot baseline at agent startup can see an "ok" but empty list while the
-// store is still warming. Retry an empty list briefly; an actually-empty host
-// only pays this once, at startup.
+// baseline can see an "ok" but empty list while the store is still warming.
+// Retry an empty list briefly — but only until the first time a non-empty
+// list is actually seen: past that point, an empty result almost certainly
+// means "no containers running" rather than "still warming up", and paying
+// the full retry cost (up to kListRetryAttempts * kListRetryDelay) on every
+// call once this baseline runs on a recurring schedule would otherwise add
+// unbounded blocking latency to every such call.
 constexpr int kListRetryAttempts = 10;
 constexpr auto kListRetryDelay = std::chrono::milliseconds{500};
+std::atomic<bool> g_everSawContainers{false};
 
 /// Parses container_instances' "resolve" reply "data" object (see
 /// wire_protocol.hpp's recordToJson()) into the shared runtime context. Pod/
@@ -140,14 +146,20 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     std::vector<ContainerIdentity> out;
 
     std::vector<wazuh::container_instances_client::ContainerRef> refs;
-    for (int attempt = 1; attempt <= kListRetryAttempts; ++attempt)
+    const int attempts = g_everSawContainers.load() ? 1 : kListRetryAttempts;
+    for (int attempt = 1; attempt <= attempts; ++attempt)
     {
         refs = client.listContainers();
-        if (!refs.empty() || attempt == kListRetryAttempts)
+        if (!refs.empty() || attempt == attempts)
         {
             break;
         }
         std::this_thread::sleep_for(kListRetryDelay);
+    }
+
+    if (!refs.empty())
+    {
+        g_everSawContainers.store(true);
     }
 
     for (const auto& ref : refs)
@@ -389,6 +401,18 @@ int RunSyscollectorDbsyncBaseline(const std::string& connector_socket_path, cons
     }
 
     return baselined;
+}
+
+int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink)
+{
+    int count = 0;
+
+    for (const auto& identity : DiscoverContainers(connector_socket_path)) {
+        sink(identity.container_id);
+        ++count;
+    }
+
+    return count;
 }
 
 } // namespace wazuh::container_baseline
