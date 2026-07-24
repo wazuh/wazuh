@@ -89,6 +89,8 @@ struct HttpRequestSpec
     std::string responseFilePath;      ///< When non-empty: stream the response body to this
     ///< file (truncated per attempt) instead of
     ///< HttpResponse::body.
+    uint64_t maxResponseBytes {0};     ///< Cap on a file-streamed response (0 = unlimited);
+    ///< exceeding it aborts the transfer.
     uint32_t timeoutMs {0};
     const std::atomic<bool>* abortFlag {nullptr}; ///< Optional cooperative abort.
 };

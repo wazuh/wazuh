@@ -146,6 +146,30 @@ TEST_F(ComponentTest, ResponseStreamsToAFileThroughTheRealCurlPath)
     std::remove(path.c_str());
 }
 
+TEST_F(ComponentTest, ResponseSizeCapAbortsAnOversizedTransfer)
+{
+    // The echo returns the request body; capping the response below it makes the
+    // file-write trampoline abort the transfer instead of writing unbounded.
+    const std::string body(4096, 'x');
+    const std::string path = ::testing::TempDir() + "hc_component_capped.tmp";
+
+    const auto headers = m_signer.sign("POST", "/stateless",
+                                       reinterpret_cast<const uint8_t*>(body.data()), body.size(),
+                                       SystemClock {}.wallSeconds());
+    HttpRequestSpec spec;
+    spec.target = "/stateless";
+    spec.body = reinterpret_cast<const uint8_t*>(body.data());
+    spec.bodyLength = body.size();
+    spec.responseFilePath = path;
+    spec.maxResponseBytes = 1024; // Below the echoed body.
+    spec.timeoutMs = 3000;
+    spec.headers = {headers->protocolVersion, headers->authorization};
+
+    const auto response = m_performer.perform(spec);
+    EXPECT_NE(TransportStatus::Ok, response.status); // The cap aborted the write.
+    std::remove(path.c_str());
+}
+
 TEST_F(ComponentTest, ResponseFileOpenRefusesToFollowASymlink)
 {
     // The /download target is pre-created owner-only by the spool factory; if
