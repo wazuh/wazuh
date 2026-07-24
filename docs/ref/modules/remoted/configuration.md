@@ -20,7 +20,14 @@ For module overview and architecture, see [Remoted Module](index.html).
 
 The remoted module configuration controls how the manager listens for and processes agent communications.
 
-### port
+> **Breaking change (5.0):** `<remote>`'s options are now grouped under three nested
+> blocks: `<legacy>` (classic TCP/UDP listener, all options below unchanged in meaning),
+> `<https>` (new RESTinio-based HTTPS listener), and `<agents>` (unchanged). Options
+> placed directly under `<remote>` (the pre-5.0 flat layout) are rejected and the
+> manager will not start. There is no automatic migration; existing configurations
+> must be updated to nest their options under `<legacy>`.
+
+### legacy.port
 
 Listening port for agent connections.
 
@@ -28,7 +35,7 @@ Listening port for agent connections.
 - **Allowed values:** Integer from `1` to `65535`
 - **Note:** Standard port for Wazuh agent-manager communication
 
-### protocol
+### legacy.protocol
 
 Communication protocol(s) to accept from agents.
 
@@ -36,7 +43,7 @@ Communication protocol(s) to accept from agents.
 - **Allowed values:** `tcp`, `udp`, or `tcp,udp`
 - **Note:** TCP is recommended for reliable delivery; UDP may be used for low-latency environments
 
-### queue_size
+### legacy.queue_size
 
 Message queue size for incoming agent messages.
 
@@ -51,8 +58,9 @@ Accept connections from agents running a Wazuh version higher than the manager.
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
 - **Note:** Enable when upgrading agents before the manager
+- **XML path:** `<remote><agents><allow_higher_versions>`
 
-### ipv6
+### legacy.ipv6
 
 Enable IPv6 support for agent connections.
 
@@ -60,7 +68,7 @@ Enable IPv6 support for agent connections.
 - **Allowed values:** `yes`, `no`
 - **Note:** Allows agents to connect using IPv6 addresses
 
-### local_ip
+### legacy.local_ip
 
 Bind remoted to a specific local IP address.
 
@@ -68,7 +76,7 @@ Bind remoted to a specific local IP address.
 - **Allowed values:** Valid IPv4 or IPv6 address
 - **Note:** Restricts remoted to listen only on specified interface
 
-### rids_closing_time
+### legacy.rids_closing_time
 
 Time to keep agent session IDs (RIDs) cached after agent disconnects.
 
@@ -77,13 +85,78 @@ Time to keep agent session IDs (RIDs) cached after agent disconnects.
 - **Example:** `300`, `5m`, `300s` are all equivalent
 - **Note:** Prevents rapid reconnection issues; agent must wait this period before reusing same ID
 
-### connection_overtake_time
+### legacy.connection_overtake_time
 
 Time in seconds before allowing a new connection to overtake an existing agent connection with the same ID.
 
 - **Default value:** `60`
 - **Allowed values:** Integer from `0` to `3600` (seconds)
 - **Note:** Set to `0` to disable overtake protection (allows immediate reconnection); higher values provide more protection against connection hijacking while requiring longer wait for legitimate agent restarts
+
+---
+
+## HTTPS Configuration
+
+**XML Section:** `<remote><https>`
+
+Configuration for the RESTinio-based HTTPS listener. All options are optional; an absent `<https>` block (or an absent individual option) falls back to the module's built-in defaults, so the listener is usable without configuring anything here. There is no `enabled` toggle: the listener always attempts to start, and self-gates on the presence of a valid certificate/key.
+
+### https.port
+
+HTTPS listening port.
+
+- **Default value:** `9443`
+- **Allowed values:** Integer from `1` to `65535`
+
+### https.bind_addr
+
+Address the HTTPS listener binds to.
+
+- **Default value:** `127.0.0.1`
+- **Allowed values:** Valid IPv4 or IPv6 address
+
+### https.certificate
+
+Path to the TLS certificate chain (PEM) presented by the server.
+
+- **Default value:** `etc/remoted-https/server.crt` (relative to the manager's chroot)
+
+### https.key
+
+Path to the TLS private key (PEM) matching `certificate`.
+
+- **Default value:** `etc/remoted-https/server.key` (relative to the manager's chroot)
+
+### https.ca
+
+Path to a CA bundle (PEM) used to verify client (agent) certificates.
+
+- **Default value:** none (client-certificate verification disabled)
+- **Note:** Required when `verification_mode` is `certificate` or `full`; the manager fails to start if `verification_mode` is set without a `ca`.
+
+### https.verification_mode
+
+Client-certificate verification strictness.
+
+- **Default value:** `none`
+- **Allowed values:**
+  - `none` — the client certificate is not verified.
+  - `certificate` — the client certificate chain is validated against `ca`, but the connecting IP is not checked against the certificate.
+  - `full` — same as `certificate`, plus the connecting agent's IP address must match an IP entry in the certificate's Subject Alternative Name.
+
+### https.ciphers
+
+OpenSSL cipher list override for the HTTPS listener.
+
+- **Default value:** none (library default cipher list)
+- **Allowed values:** OpenSSL cipher list string, e.g. `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`
+
+### https.max_body_size
+
+Maximum accepted HTTP request body size.
+
+- **Default value:** `50MB`
+- **Allowed values:** Size with optional unit suffix (`B`, `KB`, `MB`, `GB`); bare number defaults to bytes.
 
 ---
 
@@ -577,9 +650,11 @@ Standard settings for most deployments:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
     <agents>
       <allow_higher_versions>no</allow_higher_versions>
     </agents>
@@ -594,9 +669,11 @@ Accept agent connections via both TCP and UDP protocols:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp,udp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp,udp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -608,9 +685,11 @@ Optimized for high agent counts:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>262144</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>262144</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -630,9 +709,11 @@ Optimized for high event rates:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>262144</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>262144</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -653,9 +734,11 @@ Reduced memory footprint for resource-constrained systems:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>65536</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>65536</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -676,9 +759,11 @@ Optimized for ephemeral or containerized agents with frequent restarts:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -701,9 +786,11 @@ Optimized for stable, long-running agents with infrequent restarts:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -726,12 +813,40 @@ Allow agents with newer Wazuh versions to connect during rolling upgrades:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
     <agents>
       <allow_higher_versions>yes</allow_higher_versions>
     </agents>
+  </remote>
+</wazuh_config>
+```
+
+### HTTPS with Mutual TLS
+
+Require and validate agent client certificates, including a full IP-to-certificate match:
+
+```xml
+<wazuh_config>
+  <remote>
+    <https>
+      <port>9443</port>
+      <bind_addr>0.0.0.0</bind_addr>
+      <certificate>etc/remoted-https/server.crt</certificate>
+      <key>etc/remoted-https/server.key</key>
+      <ca>etc/remoted-https/ca.crt</ca>
+      <verification_mode>full</verification_mode>
+      <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>
+      <max_body_size>50MB</max_body_size>
+    </https>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
@@ -743,9 +858,11 @@ Limit memory consumption with byte caps regardless of event count:
 ```xml
 <wazuh_config>
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <queue_size>131072</queue_size>
+    </legacy>
   </remote>
 </wazuh_config>
 ```
