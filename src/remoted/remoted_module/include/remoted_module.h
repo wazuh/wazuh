@@ -41,6 +41,20 @@ extern "C"
 #define REMOTED_MODULE_PEM_MAX_SIZE 8192
 
     /**
+     * @brief <remote><https><verification_mode> values.
+     *
+     * Kept in sync by hand with the config-parser mirror in
+     * src/config/include/remote-config.h (REMOTED_HTTPS_VERIFY_*), since the value
+     * crosses the C-ABI boundary as a plain int.
+     */
+    enum
+    {
+        REMOTED_MODULE_HTTPS_VERIFY_NONE = 0,
+        REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE = 1,
+        REMOTED_MODULE_HTTPS_VERIFY_FULL = 2
+    };
+
+    /**
      * @brief Configuration passed from remoted (C) to the C++ module.
      *
      * POD struct with fixed-size buffers so the ABI is stable and it compiles
@@ -109,6 +123,11 @@ extern "C"
 
         int keystore_refresh_interval; ///< Seconds between client.keys change checks (hot-reload).
                                        ///< <=0 -> module default (10 s)
+        char bind_address[256];     ///< HTTPS listen address (empty -> module default/env).
+        char ca_path[512];          ///< CA bundle (PEM) for client-certificate verification (empty -> disabled).
+        char ciphers[256];          ///< OpenSSL cipher list override (empty -> library default).
+        int verification_mode;      ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
+        long max_body_size;         ///< Request body cap in bytes (<=0 -> module default/env).
     } remoted_module_config_t;
 
     /**
