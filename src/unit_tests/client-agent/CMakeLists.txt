@@ -13,7 +13,7 @@ endif()
 if(NOT ${TARGET} STREQUAL "winagent")
 list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/client-agent/main.o)
 
-add_library(CLIENT-AGENT STATIC ${client-agent_files})
+add_library(CLIENT-AGENT STATIC ${client-agent_files} ${CMAKE_CURRENT_SOURCE_DIR}/https_client_stubs.c)
 
 set_source_files_properties(
     ${client-agent_files}
