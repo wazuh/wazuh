@@ -208,6 +208,24 @@ def test_get_manager_status():
             for value in status.values():
                 assert value == 'running'
 
+
+@pytest.mark.parametrize(
+    'side_effect, expected',
+    [
+        (None, True),
+        (PermissionError, True),
+        (ProcessLookupError, False),
+    ]
+)
+@patch('wazuh.core.cluster.utils.os.kill')
+def test_process_exists(mock_kill, side_effect, expected):
+    """Check process detection when a PID is accessible, hidden or missing."""
+    mock_kill.side_effect = side_effect
+
+    assert utils.process_exists(1234) is expected
+    mock_kill.assert_called_once_with(1234, 0)
+
+
 @pytest.mark.parametrize('exc', [
     PermissionError,
     FileNotFoundError
