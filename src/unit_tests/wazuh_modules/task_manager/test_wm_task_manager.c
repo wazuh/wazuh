@@ -16,7 +16,6 @@
 #include "../../wrappers/posix/pthread_wrappers.h"
 #include "../../wrappers/posix/select_wrappers.h"
 #include "../../wrappers/posix/unistd_wrappers.h"
-#include "../../wrappers/wazuh/shared/cluster_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../../wrappers/wazuh/shared/pthreads_op_wrappers.h"
 #include "../../wrappers/wazuh/os_net/os_net_wrappers.h"
@@ -199,8 +198,6 @@ void test_wm_task_manager_main_recv_max_err(void **state)
                     "   }"
                     "}";
 
-    will_return(__wrap_w_is_worker, 0);
-
     // wm_task_manager_init
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
@@ -252,8 +249,6 @@ void test_wm_task_manager_main_recv_empty_err(void **state)
                     "      \"agents\": [1, 2]"
                     "   }"
                     "}";
-
-    will_return(__wrap_w_is_worker, 0);
 
     // wm_task_manager_init
 
@@ -307,8 +302,6 @@ void test_wm_task_manager_main_recv_err(void **state)
                     "   }"
                     "}";
 
-    will_return(__wrap_w_is_worker, 0);
-
     // wm_task_manager_init
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
@@ -361,8 +354,6 @@ void test_wm_task_manager_main_sockterr_err(void **state)
                     "   }"
                     "}";
 
-    will_return(__wrap_w_is_worker, 0);
-
     // wm_task_manager_init
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
@@ -414,8 +405,6 @@ void test_wm_task_manager_main_accept_err(void **state)
                     "      \"agents\": [1, 2]"
                     "   }"
                     "}";
-
-    will_return(__wrap_w_is_worker, 0);
 
     // wm_task_manager_init
 
@@ -476,8 +465,6 @@ void test_wm_task_manager_main_select_empty_err(void **state)
                     "   }"
                     "}";
 
-    will_return(__wrap_w_is_worker, 0);
-
     // wm_task_manager_init
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
@@ -532,8 +519,6 @@ void test_wm_task_manager_main_select_err(void **state)
                     "   }"
                     "}";
 
-    will_return(__wrap_w_is_worker, 0);
-
     // wm_task_manager_init
 
     expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
@@ -559,32 +544,6 @@ void test_wm_task_manager_main_select_err(void **state)
     expect_assert_failure(wm_task_manager_main(config));
 }
 
-void test_wm_task_manager_main_worker_err(void **state)
-{
-    wm_task_manager *config = *state;
-
-    config->enabled = 1;
-    config->cache_ttl = 60;
-
-    char *message = "{"
-                    "  \"origin\": {"
-                    "      \"name\": \"node05\","
-                    "      \"module\": \"upgrade_module\""
-                    "   },"
-                    "  \"command\": \"upgrade\","
-                    "  \"parameters\": {"
-                    "      \"agents\": [1, 2]"
-                    "   }"
-                    "}";
-
-    will_return(__wrap_w_is_worker, 1);
-
-    expect_string(__wrap__mtinfo, tag, "wazuh-manager-modulesd:task-manager");
-    expect_string(__wrap__mtinfo, formatted_msg, "(8207): Module Task Manager only runs on Master nodes in cluster configuration.");
-
-    wm_task_manager_main(config);
-}
-
 int main(void) {
     const struct CMUnitTest tests[] = {
         // wm_task_manager_dump
@@ -604,8 +563,7 @@ int main(void) {
         cmocka_unit_test(test_wm_task_manager_main_sockterr_err),
         cmocka_unit_test(test_wm_task_manager_main_accept_err),
         cmocka_unit_test(test_wm_task_manager_main_select_empty_err),
-        cmocka_unit_test(test_wm_task_manager_main_select_err),
-        cmocka_unit_test(test_wm_task_manager_main_worker_err)
+        cmocka_unit_test(test_wm_task_manager_main_select_err)
     };
     return cmocka_run_group_tests(tests, setup_group, teardown_group);
 }
