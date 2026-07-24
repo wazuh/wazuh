@@ -30,7 +30,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agents_summary, get_agents_summary_os, get_agents_summary_status, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
             remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
-            restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents, \
+            restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, \
             reload_agents, reload_agents_by_node, \
             check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
         from wazuh.core.agent import Agent
@@ -206,35 +206,6 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
     summary = get_agents_summary_os(short_agent_list)
     assert isinstance(summary, AffectedItemsWazuhResult), 'The returned object is not an "WazuhResult" instance.'
     assert summary.affected_items == ['ubuntu'], f"Expected ['ubuntu'] OS but received '{summary['items']} instead."
-
-
-@pytest.mark.parametrize('agent_list, expected_items, error_code', [
-    (['001', '002'], ['001', '002'], None),
-    (['001', '500'], ['001'], 1701)
-])
-@patch('wazuh.core.agent.Agent.reconnect')
-@patch('wazuh.agent.get_agents_info', return_value=short_agent_list)
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_reconnect_agents(socket_mock, send_mock, agents_info_mock, reconnect_mock, agent_list, expected_items,
-                                error_code):
-    """Test `reconnect_agents` function from agent module.
-
-    Parameters
-    ----------
-    agent_list : List of str
-        List of agent ID's.
-    expected_items : List of str
-        List of expected agent ID's returned by 'reconnect_agents'.
-    error_code : int
-        The expected error code.
-    """
-    result = reconnect_agents(agent_list)
-    assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
-    assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
-    if result.failed_items:
-        code = next(iter(result.failed_items.keys())).code
-        assert code == error_code, f'"{error_code}" code was expected but "{code}" was received.'
 
 
 @pytest.mark.parametrize('agent_list, expected_items, error_code', [
