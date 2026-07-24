@@ -36,8 +36,11 @@ constexpr size_t MIN_EXPECTED_EVENTS = 3;
 constexpr uid_t TEST_UID = 1234;
 constexpr gid_t TEST_GID = 4321;
 
-// Must match modern.bpf.c layout
-struct file_event {
+/* Layouts must match modern.bpf.c. v2 adds euid/login_uid (shipped by deps
+ * bundles built from 4.14.8+ sources). Both are accepted so the suite works
+ * with either object generation; any other size fails loudly instead of
+ * parsing misaligned data. */
+struct file_event_v1 {
     uint32_t pid;
     uint32_t ppid;
     uint32_t uid;
@@ -51,10 +54,48 @@ struct file_event {
     char parent_name[TASK_COMM_LEN];
 };
 
+struct file_event_v2 {
+    uint32_t pid;
+    uint32_t ppid;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t euid;
+    uint32_t login_uid;
+    uint64_t inode;
+    uint64_t dev;
+    char comm[TASK_COMM_LEN];
+    char filename[MAX_PATH_LEN];
+    char cwd[MAX_PATH_LEN];
+    char parent_cwd[MAX_PATH_LEN];
+    char parent_name[TASK_COMM_LEN];
+};
+
+static_assert(sizeof(file_event_v1) == 12384);
+static_assert(sizeof(file_event_v2) == 12392);
+
+/* Normalized view of an event from any supported layout. */
+struct parsed_event {
+    uint32_t pid;
+    uint32_t ppid;
+    uint32_t uid;
+    uint32_t gid;
+    uint32_t euid = 0;
+    uint32_t login_uid = 0;
+    uint64_t inode;
+    uint64_t dev;
+    bool v2 = false;
+    std::string comm;
+    std::string filename;
+    std::string cwd;
+    std::string parent_name;
+};
+
 struct test_context {
-    std::vector<file_event> events;
+    std::vector<parsed_event> events;
     std::string target_path;
     std::string target_name;
+    uint32_t login_uid = 0;
+    bool login_uid_known = false;
     bool use_lsm = false;
     bool is_btrfs = false;
     bool abi_mismatch = false;
@@ -81,24 +122,45 @@ static bool bpf_link_is_err(const struct bpf_link *l) {
     return !l || reinterpret_cast<uintptr_t>(l) >= static_cast<uintptr_t>(-4095UL);
 }
 
+static parsed_event parse_event(const file_event_v1 *e) {
+    return parsed_event{.pid = e->pid, .ppid = e->ppid, .uid = e->uid, .gid = e->gid,
+                        .inode = e->inode, .dev = e->dev, .v2 = false,
+                        .comm = e->comm, .filename = e->filename, .cwd = e->cwd,
+                        .parent_name = e->parent_name};
+}
+
+static parsed_event parse_event(const file_event_v2 *e) {
+    return parsed_event{.pid = e->pid, .ppid = e->ppid, .uid = e->uid, .gid = e->gid,
+                        .euid = e->euid, .login_uid = e->login_uid,
+                        .inode = e->inode, .dev = e->dev, .v2 = true,
+                        .comm = e->comm, .filename = e->filename, .cwd = e->cwd,
+                        .parent_name = e->parent_name};
+}
+
 static int on_event(void *, void *data, size_t sz) {
-    /* Fail loudly on layout drift between this struct and modern.bpf.c
-     * (e.g. fields added to file_event) instead of parsing misaligned data. */
-    if (sz != sizeof(file_event)) {
+    /* Accept only the known layouts: any other size means the object and
+     * this test have drifted apart (e.g. fields added to file_event), and
+     * parsing would silently read misaligned fields. */
+    parsed_event p;
+    if (sz == sizeof(file_event_v1)) {
+        p = parse_event(static_cast<const file_event_v1 *>(data));
+    } else if (sz == sizeof(file_event_v2)) {
+        p = parse_event(static_cast<const file_event_v2 *>(data));
+    } else {
         if (!g_ctx.abi_mismatch) {
             g_ctx.abi_mismatch = true;
             std::cerr << "[FAIL] Event size mismatch: BPF object sends " << sz
-                      << " bytes, test expects " << sizeof(file_event)
-                      << ". Update struct file_event to match modern.bpf.c\n";
+                      << " bytes, test knows layouts of " << sizeof(file_event_v1)
+                      << " and " << sizeof(file_event_v2)
+                      << " bytes. Update the file_event layouts to match modern.bpf.c\n";
         }
         return 0;
     }
-    const auto *e = static_cast<const file_event *>(data);
     /* Match by basename: hooks that reconstruct the path relative to the
      * filesystem root (instead of the mount namespace) must still be
      * captured so the path mismatch is reported instead of hidden. */
-    if (std::string_view{e->filename}.find(g_ctx.target_name) != std::string_view::npos)
-        g_ctx.events.push_back(*e);
+    if (p.filename.find(g_ctx.target_name) != std::string::npos)
+        g_ctx.events.push_back(std::move(p));
     return 0;
 }
 
@@ -120,7 +182,7 @@ static void warn(std::string_view name, std::string_view detail) {
     g_ctx.warn++;
 }
 
-static bool validate_event(const file_event &e, pid_t child, pid_t parent,
+static bool validate_event(const parsed_event &e, pid_t child, pid_t parent,
                            uid_t uid, gid_t gid, uint64_t dev,
                            std::string_view comm, std::string_view cwd) {
     auto m = [](std::string_view f, auto exp, auto got) {
@@ -148,6 +210,12 @@ static bool validate_event(const file_event &e, pid_t child, pid_t parent,
     ok &= check("PPID", e.ppid == static_cast<uint32_t>(parent), m("ppid", parent, e.ppid));
     ok &= check("UID",  e.uid  == uid, m("uid", uid, e.uid));
     ok &= check("GID",  e.gid  == gid, m("gid", gid, e.gid));
+    if (e.v2) {
+        ok &= check("EUID", e.euid == uid, m("euid", uid, e.euid));
+        if (g_ctx.login_uid_known)
+            ok &= check("login_UID", e.login_uid == g_ctx.login_uid,
+                        m("login_uid", g_ctx.login_uid, e.login_uid));
+    }
     ok &= check("comm", comm == e.comm,
                 std::string{"expected '"} + std::string{comm} + "' got '" + e.comm + "'");
     ok &= check("parent_name", comm == e.parent_name,
@@ -310,6 +378,11 @@ int main(int argc, char **argv) {
     const pid_t parent_pid = getpid();
     char parent_comm[TASK_COMM_LEN]{};
     if (std::ifstream f{"/proc/self/comm"}; f) f.getline(parent_comm, sizeof(parent_comm));
+
+    /* loginuid is inherited across fork/setuid, so the trigger child keeps
+     * this value. Used to validate the login_uid field of v2 objects. */
+    if (std::ifstream f{"/proc/self/loginuid"}; f)
+        g_ctx.login_uid_known = static_cast<bool>(f >> g_ctx.login_uid);
 
     const pid_t child_pid = fork();
     if (child_pid < 0) {
