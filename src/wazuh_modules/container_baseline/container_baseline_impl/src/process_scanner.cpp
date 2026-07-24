@@ -1,6 +1,7 @@
 #include "process_scanner.hpp"
 
 #include "pid_resolver.hpp"
+#include "timeHelper.h"
 
 #include <unistd.h>
 
@@ -150,7 +151,10 @@ std::vector<ProcessBaselineRow> ScanContainerProcesses(const std::string& contai
         }
 
         if (clk_tck > 0 && boot_epoch > 0) {
-            row.start = std::to_string(boot_epoch + stat.starttime_ticks / clk_tck);
+            // Schema expects process.start as ISO8601 (or an epoch number, but this
+            // TEXT column already holds ISO8601 strings for host rows — match that).
+            row.start = Utils::rawTimestampToISO8601(
+                static_cast<uint32_t>(boot_epoch + stat.starttime_ticks / clk_tck));
         }
 
         row.container_id = container_id;

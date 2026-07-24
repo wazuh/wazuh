@@ -47,13 +47,18 @@ namespace DbSync
             virtual void setMaxRows(const std::string& table,
                                     const int64_t maxRows) = 0;
 
-            virtual void initializeStatusField(const nlohmann::json& tableNames) = 0;
+            // `scope` optionally restricts the transaction's status-field handling to rows
+            // matching {"column": c, "value": v}; an empty json means the whole table.
+            virtual void initializeStatusField(const nlohmann::json& tableNames,
+                                               const nlohmann::json& scope = {}) = 0;
 
-            virtual void deleteRowsByStatusField(const nlohmann::json& tableNames) = 0;
+            virtual void deleteRowsByStatusField(const nlohmann::json& tableNames,
+                                                 const nlohmann::json& scope = {}) = 0;
 
             virtual void returnRowsMarkedForDelete(const nlohmann::json& tableNames,
                                                    const DbSync::ResultCallback callback,
-                                                   std::unique_lock<std::shared_timed_mutex>& lock) = 0;
+                                                   std::unique_lock<std::shared_timed_mutex>& lock,
+                                                   const nlohmann::json& scope = {}) = 0;
 
             virtual void selectData(const std::string& table,
                                     const nlohmann::json& query,
