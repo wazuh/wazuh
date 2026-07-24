@@ -169,7 +169,7 @@ class WazuhQueue(BaseQueue):
         try:
             # Send message
             self._send(socket_msg.encode())
-        except:
-            raise WazuhError(1014, extra_message=f": WazuhQueue socket with path {self.path}")
+        except OSError as e:
+            raise WazuhError(1014, extra_message=f": WazuhQueue socket with path {self.path}") from e
 
         return ret_msg

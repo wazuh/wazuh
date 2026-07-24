@@ -51,7 +51,7 @@ def test_BaseQueue_protected_connect(mock_set, mock_conn):
     mock_set.assert_called_once_with(1, 7, 6400)
 
 
-@patch('wazuh.core.wazuh_queue.socket.socket.connect', side_effect=Exception)
+@patch('wazuh.core.wazuh_queue.socket.socket.connect', side_effect=OSError)
 def test_BaseQueue_protected_connect_ko(mock_conn):
     """Test BaseQueue._connect function exceptions."""
 
@@ -154,7 +154,7 @@ def test_WazuhQueue_send_msg_to_agent(mock_send, mock_conn, msg, agent_id, msg_t
     ('force_reconnect', None, None, 1014),
 ])
 @patch('wazuh.core.wazuh_queue.socket.socket.connect')
-@patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=Exception)
+@patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=OSError)
 def test_WazuhQueue_send_msg_to_agent_ko(mock_send, mock_conn, msg, agent_id, msg_type, expected_exception):
     """Test WazuhQueue.send_msg_to_agent function exceptions.
 
@@ -176,3 +176,30 @@ def test_WazuhQueue_send_msg_to_agent_ko(mock_send, mock_conn, msg, agent_id, ms
         queue.send_msg_to_agent(msg, agent_id, msg_type)
 
     mock_conn.assert_called_once_with('test_path')
+
+
+@patch('wazuh.core.wazuh_queue.socket.socket.connect')
+@patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=OSError("socket write failed"))
+def test_WazuhQueue_send_msg_oserror(mock_send, mock_conn):
+    """OSError from _send() should be wrapped as WazuhError(1014)."""
+    queue = WazuhQueue('test_path')
+    with pytest.raises(WazuhException, match='.* 1014 .*'):
+        queue.send_msg_to_agent('force_reconnect', None, None)
+
+
+@patch('wazuh.core.wazuh_queue.socket.socket.connect')
+@patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=BrokenPipeError())
+def test_WazuhQueue_send_msg_broken_pipe(mock_send, mock_conn):
+    """BrokenPipeError (OSError subclass) should be wrapped as WazuhError(1014)."""
+    queue = WazuhQueue('test_path')
+    with pytest.raises(WazuhException, match='.* 1014 .*'):
+        queue.send_msg_to_agent('force_reconnect', None, None)
+
+
+@patch('wazuh.core.wazuh_queue.socket.socket.connect')
+@patch('wazuh.core.wazuh_queue.WazuhQueue._send', side_effect=KeyboardInterrupt())
+def test_WazuhQueue_send_msg_keyboard_interrupt(mock_send, mock_conn):
+    """KeyboardInterrupt must NOT be caught — should propagate freely."""
+    queue = WazuhQueue('test_path')
+    with pytest.raises(KeyboardInterrupt):
+        queue.send_msg_to_agent('force_reconnect', None, None)
