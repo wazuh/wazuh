@@ -233,11 +233,11 @@ statfunc void submit_event(const char *filename,
     /* Read current task to fill metadata */
     struct task_struct *current_task = (struct task_struct *)bpf_get_current_task();
 
-    /* PID and UID/GID */
+    /* PID and UID/GID (bpf_get_current_uid_gid packs gid << 32 | uid) */
     evt->pid = BPF_CORE_READ(current_task, tgid);
     __u64 uid_gid = bpf_get_current_uid_gid();
-    evt->uid = uid_gid >> 32;
-    evt->gid = uid_gid;
+    evt->uid = uid_gid;
+    evt->gid = uid_gid >> 32;
 
     /* Command name of the current task */
     bpf_probe_read_kernel_str(evt->comm, TASK_COMM_LEN, (const char *)BPF_CORE_READ(current_task, comm));
