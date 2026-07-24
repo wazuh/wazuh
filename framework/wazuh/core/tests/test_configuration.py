@@ -103,6 +103,18 @@ def test_read_option():
                                                                     EXPECTED_VALUES[section.tag])
 
 
+def test_read_option_remote_legacy():
+    """<remote><legacy> must expose 'protocol' as a list, matching the former flat <remote><protocol>."""
+    xml_conf = fromstring(
+        '<remote><legacy><port>1514</port><protocol>tcp,udp</protocol></legacy></remote>'
+    )
+
+    for section in xml_conf:
+        name, value = configuration._read_option('remote', section)
+        assert name == 'legacy'
+        assert value == {'port': '1514', 'protocol': ['tcp', 'udp']}
+
+
 @pytest.mark.parametrize("configuration_file, expected_values", [
     ('journald.conf', MappingProxyType({
             "location": "journald",
