@@ -88,4 +88,16 @@ int RunFimDbsyncBaseline(const std::string&                connector_socket_path
 /// @return Number of containers baselined (same semantics as RunFimBaseline).
 int RunSyscollectorDbsyncBaseline(const std::string& connector_socket_path, const DbsyncRowSink& sink);
 
+using ContainerIdSink = std::function<void(const std::string&)>;
+
+/// @brief Lists every container currently known to container_instances,
+/// independent of whether it has a resolvable live PID right now — unlike the
+/// Run*Baseline() functions above, a momentarily-stopped container (known,
+/// but no live PID) is still reported here. Callers that need to tell
+/// "stopped" apart from "gone" should compare this list against a
+/// Run*Baseline() call's output rather than treating "produced no rows" as
+/// "removed".
+/// @return Number of containers reported through `sink`.
+int ListContainers(const std::string& connector_socket_path, const ContainerIdSink& sink);
+
 } // namespace wazuh::container_baseline
