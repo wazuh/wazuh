@@ -131,17 +131,9 @@ async def test_master_main():
         def start(self):
             return 'LOCALSERVER_START'
 
-    class HAPHElperMock:
-        @classmethod
-        def start(cls):
-            return 'HAPHELPER_START'
-
-
-    async def gather(first, second, third=None):
+    async def gather(first, second):
         assert first == 'MASTER_START'
         assert second == 'LOCALSERVER_START'
-        if third is not None:
-            assert third == 'HAPHELPER_START'
 
 
     wazuh_manager_clusterd.cluster_utils = cluster_utils
@@ -149,13 +141,12 @@ async def test_master_main():
     with patch('scripts.wazuh_manager_clusterd.asyncio.gather', gather):
         with patch('wazuh.core.cluster.master.Master', MasterMock):
             with patch('wazuh.core.cluster.local_server.LocalServerMaster', LocalServerMasterMock):
-                with patch('wazuh.core.cluster.hap_helper.hap_helper.HAPHelper', HAPHElperMock):
-                    await wazuh_manager_clusterd.master_main(
-                        args=args,
-                        cluster_config=cluster_config,
-                        cluster_items={'node': 'item'},
-                        logger='test_logger'
-                    )
+                await wazuh_manager_clusterd.master_main(
+                    args=args,
+                    cluster_config=cluster_config,
+                    cluster_items={'node': 'item'},
+                    logger='test_logger'
+                )
 
 
 @pytest.mark.asyncio

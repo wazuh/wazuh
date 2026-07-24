@@ -404,7 +404,8 @@ async def test_put_upgrade_agents(mock_exc, mock_dapi, mock_remove, mock_dfunc, 
                     'ip': None,
                     'registerIP': mock_request.query_params.get('registerIP', None)
                 },
-                'q': None
+                'q': None,
+                'request_time': ANY
                 }
 
     nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
@@ -455,7 +456,8 @@ async def test_put_upgrade_custom_agents(mock_exc, mock_dapi, mock_remove, mock_
                     'ip': None,
                     'registerIP': mock_request.query_params.get('registerIP', None)
                 },
-                'q': None
+                'q': None,
+                'request_time': ANY
                 }
 
     nested = ['os.version', 'os.name', 'os.platform', 'os.type', 'os.major', 'os.minor', 'os.arch']
