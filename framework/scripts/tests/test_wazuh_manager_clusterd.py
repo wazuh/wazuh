@@ -8,7 +8,6 @@ from unittest.mock import call, patch
 
 import pytest
 import scripts.wazuh_manager_clusterd as wazuh_manager_clusterd
-from wazuh.core.cluster.utils import HAPROXY_DISABLED, HAPROXY_HELPER
 
 
 def test_set_logging():
@@ -90,12 +89,11 @@ def test_exit_handler(os_getpid_mock, os_kill_mock):
                         delete_pid_mock.assert_called_once_with('wazuh-manager-clusterd', 1001)
                         original_sig_handler_mock.assert_not_called()
 
-@pytest.mark.parametrize('helper_disabled', (True, False))
 @pytest.mark.asyncio
-async def test_master_main(helper_disabled: bool):
+async def test_master_main():
     """Check and set the behavior of master_main function."""
     import wazuh.core.cluster.utils as cluster_utils
-    cluster_config = {'test': 'config', HAPROXY_HELPER: {HAPROXY_DISABLED: helper_disabled}}
+    cluster_config = {'test': 'config'}
 
     class Arguments:
         def __init__(self, performance_test, concurrency_test):

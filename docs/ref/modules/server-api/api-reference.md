@@ -316,17 +316,6 @@ Other MITRE endpoints: `/mitre/tactics`, `/mitre/groups`, `/mitre/software`, `/m
 
 ---
 
-### Tasks
-
-**`GET /tasks/status`** — Check the status of async tasks (upgrades, etc.).
-
-```bash
-curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
----
-
 ## Full Endpoint Index
 
 <details>
@@ -356,7 +345,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/agents/{agent_id}/stats/{component}` | Component stats |
 | PUT | `/agents/restart` | Restart all (v5.0.0+) |
 | PUT | `/agents/reload` | Reload all agents config (v5.0.0+) |
-| PUT | `/agents/reconnect` | Force reconnect |
 | PUT | `/agents/group` | Bulk assign to group |
 | DELETE | `/agents/group` | Bulk remove from group |
 | PUT | `/agents/group/{group_id}/restart` | Restart group (v5.0.0+) |
@@ -367,7 +355,6 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/agents/outdated` | Outdated agents |
 | PUT | `/agents/upgrade` | Upgrade agents |
 | PUT | `/agents/upgrade_custom` | Custom upgrade |
-| GET | `/agents/upgrade_result` | Upgrade result |
 | GET | `/agents/uninstall` | Uninstall agents |
 | GET | `/agents/stats/distinct` | Distinct fields |
 | GET | `/agents/summary` | Summary |
@@ -454,11 +441,10 @@ curl -k -X GET "https://localhost:55000/tasks/status?pretty=true" \
 | GET | `/mitre/references` | References |
 | GET | `/mitre/metadata` | Metadata |
 
-### Events, Overview & Tasks
+### Events & Overview
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/overview/agents` | Agent overview |
-| GET | `/tasks/status` | Task status |
 
 </details>
 
