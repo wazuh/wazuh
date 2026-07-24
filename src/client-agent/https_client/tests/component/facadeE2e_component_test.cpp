@@ -255,13 +255,13 @@ namespace
 
     // A key-rotating manager stored in a global so the C callback can reach it.
     hc_handle* g_keyRotationHandle = nullptr;
-    const char* g_rotatedKey = nullptr;
+    std::string g_rotatedKey;
 
     void onReenroll(void* userData)
     {
         static_cast<ReenrollRecorder*>(userData)->reenrollCount++;
         // The consumer's re-enrollment: swap in the new key (callback-safe).
-        hc_set_agent_key(g_keyRotationHandle, g_rotatedKey);
+        hc_set_agent_key(g_keyRotationHandle, g_rotatedKey.c_str());
     }
 
     void onReenrollStartup(bool accepted, const char*, void* userData)
@@ -303,7 +303,7 @@ TEST_F(FacadeE2eTest, KeyRotationFiresReenrollAndHcSetAgentKeyRecovers)
     hc_handle* handle = hc_create(&config, &callbacks);
     ASSERT_NE(nullptr, handle);
     g_keyRotationHandle = handle;
-    g_rotatedKey = newKey.c_str();
+    g_rotatedKey = newKey;
 
     ASSERT_TRUE(hc_start(handle));
     ASSERT_TRUE(waitFor(recorder.startups, 1, 3000)); // First registration (old key).
