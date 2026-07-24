@@ -64,7 +64,9 @@ echo "# The real https_client module talking to the mock over HTTPS.         #"
 echo "#   [client:N] = module log    >> = callbacks    [mock] = manager       #"
 echo "########################################################################"
 echo
-DYLD_LIBRARY_PATH="${BUILD_LIB}" "$WORK/demo_driver" 127.0.0.1 "$PORT" "$KEY_HEX" || true
+rc=0
+DYLD_LIBRARY_PATH="${BUILD_LIB}" "$WORK/demo_driver" 127.0.0.1 "$PORT" "$KEY_HEX" || rc=$?
 
 echo
 echo "== demo done (artifacts in $WORK/, nothing installed) =="
+exit "$rc" # Surface driver failures instead of always reporting success.
