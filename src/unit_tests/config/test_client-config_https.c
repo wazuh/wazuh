@@ -232,7 +232,7 @@ static void test_second_server_block_prevails_with_warning(void **state) {
 
 /* <batch>: accepted, ignored here (owned by the events module, issue 06) */
 
-static void test_batch_block_is_accepted_and_ignored(void **state) {
+static void test_batch_size_and_interval_are_parsed(void **state) {
     OS_XML xml = {0};
     xml_node **nodes;
     agent cfg;
@@ -242,10 +242,99 @@ static void test_batch_block_is_accepted_and_ignored(void **state) {
         "<batch><size>1MB</size><interval>10s</interval></batch>";
 
     expect_valid_ip("10.0.0.1");
-    expect_string(__wrap__mdebug1, formatted_msg,
-                  "The <batch> options are handled by the events module; ignored by the client parser.");
 
     assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.batch.size, 1024 * 1024);
+    assert_int_equal(cfg.batch.interval, 10);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_batch_is_unset_when_absent(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* Zero is what the transport module reads as "apply your own default". */
+    const char *xml_str = "<server><address>10.0.0.1</address></server>";
+
+    expect_valid_ip("10.0.0.1");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.batch.size, 0);
+    assert_int_equal(cfg.batch.interval, 0);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_batch_size_without_a_suffix_is_bytes(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<batch><size>2048</size></batch>";
+
+    expect_valid_ip("10.0.0.1");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), 0);
+    assert_int_equal(cfg.batch.size, 2048);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_batch_zero_size_is_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    /* A zero payload can never carry an event; refuse it rather than let it
+     * read as "unset" and silently fall back to the default. */
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<batch><size>0</size></batch>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'size': 0.");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_batch_interval_beyond_a_day_is_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<batch><interval>2d</interval></batch>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'interval': 2d.");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
+
+    cleanup(&xml, nodes, &cfg);
+}
+
+static void test_batch_invalid_tag_is_rejected(void **state) {
+    OS_XML xml = {0};
+    xml_node **nodes;
+    agent cfg;
+
+    const char *xml_str =
+        "<server><address>10.0.0.1</address></server>"
+        "<batch><nonsense>1</nonsense></batch>";
+
+    expect_valid_ip("10.0.0.1");
+    expect_string(__wrap__merror, formatted_msg, "(1230): Invalid element in the configuration: 'nonsense'.");
+
+    assert_int_equal(parse_client(xml_str, &xml, &nodes, &cfg), OS_INVALID);
 
     cleanup(&xml, nodes, &cfg);
 }
@@ -313,7 +402,12 @@ int main(void) {
         cmocka_unit_test(test_server_tag_is_canonical_no_warning),
         cmocka_unit_test(test_manager_tag_is_deprecated_but_works),
         cmocka_unit_test(test_second_server_block_prevails_with_warning),
-        cmocka_unit_test(test_batch_block_is_accepted_and_ignored),
+        cmocka_unit_test(test_batch_size_and_interval_are_parsed),
+        cmocka_unit_test(test_batch_is_unset_when_absent),
+        cmocka_unit_test(test_batch_size_without_a_suffix_is_bytes),
+        cmocka_unit_test(test_batch_zero_size_is_rejected),
+        cmocka_unit_test(test_batch_interval_beyond_a_day_is_rejected),
+        cmocka_unit_test(test_batch_invalid_tag_is_rejected),
         cmocka_unit_test(test_time_reconnect_is_deprecated),
         cmocka_unit_test(test_max_retries_is_deprecated),
         cmocka_unit_test(test_retry_interval_is_deprecated),
