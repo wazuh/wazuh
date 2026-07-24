@@ -31,7 +31,7 @@
 
 #include <ctype.h>
 #include <pthread.h>
-#include <stdatomic.h>
+#include <stdbool.h>
 #include <unistd.h>
 
 #include "agentd.h" /* pulls defs.h (__wazuh_version), sec.h (keys), client-config.h (agt) */
@@ -44,10 +44,18 @@ static hc_handle *g_https_client = NULL;
  * before ever touching the handle, since hc_destroy() may run concurrently
  * with a retry loop that can take minutes against a down manager.
  *
+ * Guarded by g_https_client_lock, NOT a C11 _Atomic: mingw's <stdatomic.h>
+ * does not declare the generic atomic_load()/atomic_store() macros, so on
+ * winagent they compiled as implicit declarations and left undefined
+ * references that broke the wazuh-agent.exe link as soon as anything
+ * referenced this object. Every access already needed the lock for the handle
+ * it guards, so the mutex is the cheaper of the two fixes.
+ *
  * Not static: unit tests call bridge_reenroll_thread() directly (bypassing
  * w_https_client_start(), which is what normally resets this) and need to
- * reset it themselves between cases. */
-_Atomic bool g_https_client_stopping = false;
+ * reset it themselves between cases; they run single-threaded, so they assign
+ * it without the lock. */
+bool g_https_client_stopping = false;
 
 /* Serializes the re-enroll thread's key reload against shutdown's teardown.
  * The thread's hc_set_agent_key() touches the handle; w_https_client_stop()
@@ -59,6 +67,18 @@ _Atomic bool g_https_client_stopping = false;
  * not touched. NOT held across hc_destroy() (which joins module threads and
  * could run long / re-enter). */
 static pthread_mutex_t g_https_client_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/* Reads the stopping flag for callers that are not already holding the lock
+ * (the re-enroll retry loop polls it between attempts). Callers that go on to
+ * touch the handle must instead read it inside their own critical section --
+ * checking here and acting later would reopen the check-then-act race. */
+static bool bridge_stopping(void)
+{
+    w_mutex_lock(&g_https_client_lock);
+    const bool stopping = g_https_client_stopping;
+    w_mutex_unlock(&g_https_client_lock);
+    return stopping;
+}
 
 /* Mirrors the incremental back-off already used for the initial-enrollment
  * loop (start_agent.c's w_agentd_keys_init: 5s steps up to a 60s cap). Not
@@ -87,7 +107,7 @@ void *bridge_reenroll_thread(void *arg)
     int delay_sleep = 0;
 
     while (enroll_result != 0) {
-        if (atomic_load(&g_https_client_stopping)) {
+        if (bridge_stopping()) {
             mdebug1("https_client: agent shutting down; abandoning re-enrollment.");
             return NULL;
         }
@@ -117,7 +137,7 @@ void *bridge_reenroll_thread(void *arg)
      * hc_destroy(), until we release. */
     w_mutex_lock(&g_https_client_lock);
 
-    if (atomic_load(&g_https_client_stopping)) {
+    if (g_https_client_stopping) {
         w_mutex_unlock(&g_https_client_lock);
         mdebug1("https_client: agent shutting down; not reloading the signing key.");
         return NULL;
@@ -324,7 +344,10 @@ static bool bridge_build_config(hc_config_t *config)
 void w_https_client_start(void)
 {
     minfo("https_client: starting.");
-    atomic_store(&g_https_client_stopping, false);
+
+    w_mutex_lock(&g_https_client_lock);
+    g_https_client_stopping = false;
+    w_mutex_unlock(&g_https_client_lock);
 
     hc_config_t config;
     if (!bridge_build_config(&config)) {
@@ -360,7 +383,7 @@ void w_https_client_stop(void)
      * continue) or set the flag before the thread checks it (so it abandons
      * without touching the handle). Only then is it safe to destroy. */
     w_mutex_lock(&g_https_client_lock);
-    atomic_store(&g_https_client_stopping, true);
+    g_https_client_stopping = true;
     w_mutex_unlock(&g_https_client_lock);
 
     if (g_https_client) {
@@ -383,7 +406,7 @@ int w_https_client_submit_event(const char *frame, size_t length)
      * hc_submit_event() only appends to the accumulator, so the section is short. */
     w_mutex_lock(&g_https_client_lock);
 
-    if (g_https_client != NULL && !atomic_load(&g_https_client_stopping)) {
+    if (g_https_client != NULL && !g_https_client_stopping) {
         retval = hc_submit_event(g_https_client, (const uint8_t *)frame, length) ? 0 : -1;
     }
 

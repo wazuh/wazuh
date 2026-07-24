@@ -12,7 +12,6 @@
 #include <setjmp.h>
 #include <cmocka.h>
 #include <stdio.h>
-#include <stdatomic.h>
 
 #include "shared.h"
 #include "agentd.h"
@@ -78,7 +77,7 @@ void __wrap_w_agentd_state_update(w_agentd_state_update_t type, void *data)
  * it every test, since w_https_client_start() (the normal reset point) isn't
  * called by the tests that invoke bridge_reenroll_thread directly. */
 extern void *bridge_reenroll_thread(void *arg);
-extern _Atomic bool g_https_client_stopping;
+extern bool g_https_client_stopping;
 
 /* A fake, never-dereferenced handle: the bridge only compares it against
  * NULL and passes it back to hc_start/hc_destroy, both mocked here. */
@@ -123,7 +122,7 @@ static int setup_test(void **state)
     agt = (agent *)calloc(1, sizeof(agent));
     memset(&keys, 0, sizeof(keys));
     g_captured_config_valid = false;
-    atomic_store(&g_https_client_stopping, false);
+    g_https_client_stopping = false;
 
     add_server_config("10.0.0.1", 8443);
     /* A syntactically valid 64-hex-char (32-byte, AES-256) key by default;
