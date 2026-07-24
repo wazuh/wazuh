@@ -72,7 +72,7 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     if (result.outcome != OutcomeClass::Ok)
     {
         LOGFN_WARN(m_logFn, "Config download for group '%s' failed (outcome %d); "
-                            "the next notify re-triggers it.", group.c_str(),
+                   "the next notify re-triggers it.", group.c_str(),
                    static_cast<int>(result.outcome));
         return nullptr;
     }
@@ -82,7 +82,7 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     if (!actualHash || lowered(*actualHash) != lowered(expectedHash))
     {
         LOGFN_WARN(m_logFn, "Downloaded config hash %s does not match the advertised %s; "
-                            "discarding it.", actualHash ? actualHash->c_str() : "(unreadable)",
+                   "discarding it.", actualHash ? actualHash->c_str() : "(unreadable)",
                    expectedHash.c_str());
         return nullptr; // RAII deletes the file.
     }

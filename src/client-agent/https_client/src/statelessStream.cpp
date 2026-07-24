@@ -45,7 +45,7 @@ StatelessStream::SubmissionResult StatelessStream::submit(const uint8_t* frame, 
 
     const bool isFlushDue = m_accumulator.flushDue(0, eventBudget);
     publishLevelLocked();
-    return SubmissionResult {accepted, accepted && !wasFlushDue && isFlushDue};
+    return SubmissionResult {accepted, accepted&& !wasFlushDue&& isFlushDue};
 }
 
 std::chrono::milliseconds StatelessStream::tick(Waiter& waiter, bool force)
@@ -144,7 +144,7 @@ void StatelessStream::handleOutcome(OutcomeClass outcome,
             m_accumulator.consume(snapshot);
             m_droppedEvents++;
             LOGFN_WARN(m_logFn, "Dropped a single oversized /stateless event the "
-                                "manager rejected with 413 (total dropped: %llu).",
+                       "manager rejected with 413 (total dropped: %llu).",
                        static_cast<unsigned long long>(m_droppedEvents));
             publishLevelLocked();
         }
