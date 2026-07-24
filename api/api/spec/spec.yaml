@@ -133,15 +133,6 @@ x-rbac-catalog:
         actions: ['agent:upgrade']
         resources: ['agent:id:001', 'agent:group:mediterranean']
         effect: "allow"
-    'agent:reconnect':
-      description: "Force reconnect agents"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/agent:id'
-        - $ref: '#/x-rbac-catalog/resources/agent:group'
-      example:
-        actions: [ 'agent:reconnect' ]
-        resources: [ 'agent:id:050', 'agent:id:049' ]
-        effect: "deny"
     'agent:restart':
       description: "Restart agents"
       resources:
@@ -329,15 +320,6 @@ x-rbac-catalog:
         actions: ['mitre:read']
         resources: ['*:*:*']
         effect: "allow"
-    'task:status':
-      description: "Access task's status information"
-      resources:
-        - $ref: '#/x-rbac-catalog/resources/*:*'
-      example:
-        actions: ['task:status']
-        resources: ['*:*:*']
-        effect: "deny"
-
 components:
   responses:
     ResponseError:
@@ -5687,53 +5669,6 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
 
-  /agents/reconnect:
-    put:
-      tags:
-        - Agents
-      summary: "Force reconnect agents"
-      description: "Force reconnect all agents or a list of them"
-      operationId: api.controllers.agent_controller.reconnect_agents
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/agent:reconnect'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/agents_list'
-      responses:
-        '200':
-          description: "Agents reconnected"
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/ApiResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/AllItemsResponseAgentIDs'
-                example:
-                  data:
-                    affected_items:
-                      - '001'
-                      - '002'
-                      - '003'
-                    total_affected_items: 3
-                    total_failed_items: 0
-                    failed_items: []
-                  message: "Force reconnect command was sent to all agents"
-                  error: 0
-        '400':
-          $ref: '#/components/responses/ResponseError'
-        '401':
-          $ref: '#/components/responses/UnauthorizedResponse'
-        '403':
-          $ref: '#/components/responses/PermissionDeniedResponse'
-        '405':
-          $ref: '#/components/responses/InvalidHTTPMethodResponse'
-        '429':
-          $ref: '#/components/responses/TooManyRequestsResponse'
-
   /agents/restart:
     put:
       tags:
@@ -8390,7 +8325,6 @@ paths:
                                     - agent:read
                                     - agent:delete
                                     - agent:modify_group
-                                    - agent:reconnect
                                     - agent:restart
                                     - agent:upgrade
                                   resources:
@@ -9453,7 +9387,6 @@ paths:
                           - "agent:read"
                           - "agent:delete"
                           - "agent:modify_group"
-                          - "agent:reconnect"
                           - "agent:restart"
                           - "agent:upgrade"
                         resources:
@@ -10153,55 +10086,6 @@ paths:
           $ref: '#/components/responses/InvalidHTTPMethodResponse'
         '429':
           $ref: '#/components/responses/TooManyRequestsResponse'
-
-  /tasks/status:
-    get:
-      tags:
-        - Tasks
-      summary: "List tasks"
-      description: "Returns all available information about the specified tasks"
-      operationId: api.controllers.task_controller.get_tasks_status
-      x-rbac-actions:
-        - $ref: '#/x-rbac-catalog/actions/task:status'
-      parameters:
-        - $ref: '#/components/parameters/pretty'
-        - $ref: '#/components/parameters/wait_for_complete'
-        - $ref: '#/components/parameters/offset'
-        - $ref: '#/components/parameters/limit'
-        - $ref: '#/components/parameters/query'
-        - $ref: '#/components/parameters/search'
-        - $ref: '#/components/parameters/select'
-        - $ref: '#/components/parameters/sort'
-        - $ref: '#/components/parameters/agents_list'
-        - $ref: '#/components/parameters/tasks_list'
-        - $ref: '#/components/parameters/command'
-        - $ref: '#/components/parameters/node'
-        - $ref: '#/components/parameters/module'
-        - $ref: '#/components/parameters/status'
-      responses:
-        '200':
-          description: "Tasks's status"
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiResponse'
-              example:
-                data:
-                  affected_items:
-                    - message: Success
-                      agent: 2
-                      task_id: 1
-                      node: worker2
-                      module: upgrade_module
-                      command: upgrade
-                      status: In progress
-                      create_time: 2020-11-10T11:55:33Z
-                      update_time: 2020-11-10T11:55:36Z
-                  total_affected_items: 1
-                  total_failed_items: 0
-                  failed_items: []
-                message: "All specified task's status were returned"
-                error: 0
 
 externalDocs:
   description: "Learn more about the Wazuh API"

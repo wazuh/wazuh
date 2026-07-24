@@ -76,7 +76,7 @@ This layer contains **all real logic**. It is **API-agnostic** and can be reused
 | `wlogging.py` | Custom log rotation with gzip compression |
 | `pyDaemonModule.py` | UNIX daemonization (double-fork pattern) |
 | `stats.py` | Statistics processing logic |
-| `cluster/` | Cluster architecture (master, worker, DAPI, HAProxy helper) |
+| `cluster/` | Cluster architecture (master, worker, DAPI) |
 | `indexer/` | Wazuh Indexer integration (credentials, disconnected agents) |
 
 ---
@@ -149,7 +149,6 @@ Each controller wraps framework calls in the **DAPI (Distributed API)** layer to
 | `common.py` | Cluster-specific shared utilities |
 | `config.py` | Cluster configuration schema |
 | `utils.py` | Cluster utilities (`get_cluster_items`, etc.) |
-| `hap_helper/` | HAProxy integration for load balancing |
 
 ---
 

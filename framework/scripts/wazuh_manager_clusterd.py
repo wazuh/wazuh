@@ -82,7 +82,6 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
         Cluster logger.
     """
     from wazuh.core.cluster import local_server, master
-    from wazuh.core.cluster.hap_helper.hap_helper import HAPHelper
 
     cluster_utils.context_tag.set('Master')
     my_server = master.Master(performance_test=args.performance_test, concurrency_test=args.concurrency_test,
@@ -97,8 +96,6 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
                                                      configuration=cluster_config,
                                                      cluster_items=cluster_items)
     tasks = [my_server, my_local_server]
-    if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
-        tasks.append(HAPHelper)
     await asyncio.gather(*[task.start() for task in tasks])
 
 
