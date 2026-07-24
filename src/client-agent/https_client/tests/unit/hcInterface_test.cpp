@@ -189,16 +189,29 @@ TEST_F(HcInterfaceTest, StartFailsClosedWithoutCaInFullMode)
 
 TEST_F(HcInterfaceTest, LifecycleChurn)
 {
-    // The designated ThreadSanitizer workload: repeated start/stop cycles.
-    hc_handle* handle = hc_create(&m_config, &m_callbacks);
-    ASSERT_NE(nullptr, handle);
-
+    // The designated ThreadSanitizer workload: a fresh handle each cycle
+    // exercises the full create/start/stop/destroy race surface. The client is
+    // single-shot (start-after-stop is rejected), so restarting one handle is
+    // not a valid workload.
     for (int cycle = 0; cycle < 20; cycle++)
     {
+        hc_handle* handle = hc_create(&m_config, &m_callbacks);
+        ASSERT_NE(nullptr, handle);
         ASSERT_TRUE(hc_start(handle));
         hc_stop(handle);
+        hc_destroy(handle);
     }
+}
 
+TEST_F(HcInterfaceTest, StartAfterStopIsRejected)
+{
+    // Single-shot: once stopped, start() fails closed rather than returning a
+    // misleading success on a client that would sit dead.
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    hc_stop(handle);
+    EXPECT_FALSE(hc_start(handle));
     hc_destroy(handle);
 }
 
