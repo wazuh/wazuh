@@ -250,7 +250,7 @@ async def restart_agents(pretty: bool = False, wait_for_complete: bool = False,
                           is_async=True,
                           wait_for_complete=wait_for_complete,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*',
+                          broadcasting=True,  # Always broadcast for HTTPS stateless architecture
                           logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())
@@ -1276,7 +1276,7 @@ async def reload_agents(pretty: bool = False, wait_for_complete: bool = False,
                           is_async=True,
                           wait_for_complete=wait_for_complete,
                           rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*',
+                          broadcasting=True,  # Always broadcast for HTTPS stateless architecture
                           logger=logger
                           )
     data = raise_if_exc(await dapi.distribute_function())
