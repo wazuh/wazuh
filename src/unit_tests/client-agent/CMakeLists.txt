@@ -132,7 +132,8 @@ list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
                                 -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
-                                -Wl,--wrap,hc_set_agent_key -Wl,--wrap,try_enroll_to_server \
+                                -Wl,--wrap,hc_set_agent_key -Wl,--wrap,hc_submit_event \
+                                -Wl,--wrap,try_enroll_to_server \
                                 -Wl,--wrap,CreateThread -Wl,--wrap,sleep -Wl,--wrap,getpid \
                                 -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
                                 ${DEBUG_OP_WRAPPERS}")
