@@ -22,6 +22,11 @@
 #include <restinio/tls.hpp>
 
 #include <openssl/ssl.h>
+#include <openssl/x509v3.h>
+
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
 
 #include <atomic>
 #include <chrono>
@@ -231,40 +236,121 @@ namespace
         return request;
     }
 
+    // Pre-check cert/key readability so the failure names the offending FILE. Asio's own exception
+    // for a missing PEM is an opaque OpenSSL error string ("no start line", "system library"), which
+    // gave the operator no way to tell "cert missing" from "key missing" from "port in use" -- they
+    // all surfaced as the same generic retry warning.
+    void checkTlsFileReadable(const std::string& path, const char* what)
+    {
+        std::ifstream file {path};
+        if (!file.is_open())
+        {
+            throw std::runtime_error("The configured TLS " + std::string {what} + " '" + path +
+                                     "' is missing or unreadable");
+        }
+    }
+
+    // Client-certificate verify callback for ClientVerificationMode::Full: on top of the
+    // standard chain-of-trust check (preverified), the peer's connection IP must also
+    // match an IP entry in the leaf certificate's subjectAltName.
+    bool verifyClientCertificateIp(bool preverified, asio::ssl::verify_context& verifyCtx)
+    {
+        if (!preverified)
+        {
+            return false;
+        }
+
+        X509_STORE_CTX* storeCtx = verifyCtx.native_handle();
+
+        // Only the leaf (peer) certificate carries the IP the client connected from;
+        // intermediate/CA certificates in the chain are only chain-validated.
+        if (X509_STORE_CTX_get_error_depth(storeCtx) != 0)
+        {
+            return true;
+        }
+
+        auto* ssl = static_cast<SSL*>(X509_STORE_CTX_get_ex_data(storeCtx, SSL_get_ex_data_X509_STORE_CTX_idx()));
+
+        if (ssl == nullptr)
+        {
+            return false;
+        }
+
+        const int fd = SSL_get_fd(ssl);
+        sockaddr_storage peerAddress {};
+        socklen_t peerAddressLen = sizeof(peerAddress);
+
+        if (fd < 0 || getpeername(fd, reinterpret_cast<sockaddr*>(&peerAddress), &peerAddressLen) != 0)
+        {
+            return false;
+        }
+
+        char peerIp[INET6_ADDRSTRLEN] {};
+
+        if (peerAddress.ss_family == AF_INET)
+        {
+            inet_ntop(AF_INET, &reinterpret_cast<sockaddr_in*>(&peerAddress)->sin_addr, peerIp, sizeof(peerIp));
+        }
+        else if (peerAddress.ss_family == AF_INET6)
+        {
+            inet_ntop(AF_INET6, &reinterpret_cast<sockaddr_in6*>(&peerAddress)->sin6_addr, peerIp, sizeof(peerIp));
+        }
+        else
+        {
+            return false;
+        }
+
+        X509* peerCertificate = X509_STORE_CTX_get_current_cert(storeCtx);
+
+        return peerCertificate != nullptr && X509_check_ip_asc(peerCertificate, peerIp, 0) == 1;
+    }
+
     asio::ssl::context createTlsContext(const remoted::http::HttpServerConfig& config)
     {
-        // Named separately (not one combined check) so the failure names the offending ONE: an
-        // opaque OpenSSL error from Asio's own PEM parsing ("no start line", "system library") gave
-        // the operator no way to tell "cert missing" from "key missing" from "port in use" -- they
-        // all surfaced as the same generic retry warning. remoted.c reads both files while still
-        // root and hands us the PEM content directly (not a path); empty here means that read
-        // failed or nothing was ever generated/configured.
-        if (config.certificatePem.empty())
-        {
-            throw std::runtime_error("The configured TLS certificate is missing or unreadable");
-        }
-        if (config.privateKeyPem.empty())
-        {
-            throw std::runtime_error("The configured TLS private key is missing or unreadable");
-        }
+        checkTlsFileReadable(config.certificatePath, "certificate");
+        checkTlsFileReadable(config.privateKeyPath, "private key");
 
         asio::ssl::context context {asio::ssl::context::tls_server};
 
         context.set_options(asio::ssl::context::default_workarounds | asio::ssl::context::no_sslv2 |
                             asio::ssl::context::no_sslv3);
 
-        // Accept TLS 1.2 and, when available, TLS 1.3.
-        if (SSL_CTX_set_min_proto_version(context.native_handle(), TLS1_2_VERSION) != 1)
+        // Require TLS 1.3 as the minimum protocol version.
+        if (SSL_CTX_set_min_proto_version(context.native_handle(), TLS1_3_VERSION) != 1)
         {
-            throw std::runtime_error("Unable to configure TLS 1.2 as the minimum protocol version");
+            throw std::runtime_error("Unable to configure TLS 1.3 as the minimum protocol version");
         }
 
-        context.use_certificate_chain(asio::buffer(config.certificatePem));
-        context.use_private_key(asio::buffer(config.privateKeyPem), asio::ssl::context::pem);
+        if (!config.ciphers.empty() && SSL_CTX_set_cipher_list(context.native_handle(), config.ciphers.c_str()) != 1)
+        {
+            throw std::runtime_error("Unable to configure the requested TLS cipher list");
+        }
+
+        context.use_certificate_chain_file(config.certificatePath);
+        context.use_private_key_file(config.privateKeyPath, asio::ssl::context::pem);
 
         if (SSL_CTX_check_private_key(context.native_handle()) != 1)
         {
             throw std::runtime_error("The configured TLS private key does not match the certificate");
+        }
+
+        // Client-certificate verification (mTLS). Both Certificate and Full modes
+        // require a CA to validate the presented client certificate against; Full
+        // additionally checks the peer IP against the certificate.
+        if (config.verificationMode != remoted::http::ClientVerificationMode::None)
+        {
+            if (config.caPath.empty())
+            {
+                throw std::runtime_error("verification_mode requires a CA certificate (ca) to be configured");
+            }
+
+            context.load_verify_file(config.caPath);
+            context.set_verify_mode(asio::ssl::verify_peer | asio::ssl::verify_fail_if_no_peer_cert);
+
+            if (config.verificationMode == remoted::http::ClientVerificationMode::Full)
+            {
+                context.set_verify_callback(&verifyClientCertificateIp);
+            }
         }
 
         return context;
