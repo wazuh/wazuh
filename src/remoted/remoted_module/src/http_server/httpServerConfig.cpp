@@ -25,7 +25,7 @@ namespace
     // Transport hard cap. Kept above the auth middleware's body limit (AuthConfig::maxBodySize,
     // 10 MiB) so an oversized batch reaches the middleware and gets a clean 413 there, while this
     // still bounds memory as a backstop.
-    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {16U * 1024U * 1024U};
+    constexpr std::size_t DEFAULT_MAX_BODY_SIZE {50U * 1024U * 1024U};
     constexpr std::size_t DEFAULT_READ_TIMEOUT_SEC {10};
     constexpr std::size_t DEFAULT_WRITE_TIMEOUT_SEC {10};
     constexpr std::size_t DEFAULT_REQUEST_TIMEOUT_SEC {30};
@@ -53,6 +53,13 @@ namespace
         return configValue > 0 ? static_cast<std::size_t>(configValue) : defaultValue;
     }
 
+    // Same as above for the C-ABI's `long` fields (e.g. max_body_size, a regular <remote>
+    // setting rather than an internal option, but resolved the same way: positive wins).
+    std::size_t resolveUnsigned(const long configValue, const std::size_t defaultValue)
+    {
+        return configValue > 0 ? static_cast<std::size_t>(configValue) : defaultValue;
+    }
+
     // Thread-count fields: a positive caller value wins; otherwise cpp_get_nproc() (optionally
     // scaled), so the pool size tracks the host/cgroup's available CPUs instead of a fixed constant.
     std::size_t resolveThreadCount(const int configValue, const unsigned int nprocMultiplier = 1)
@@ -72,12 +79,13 @@ namespace remoted::http
     {
         HttpServerConfig result;
 
-        result.bindAddress = DEFAULT_BIND_ADDRESS;
+        result.bindAddress =
+            config.bind_address[0] != '\0' ? std::string {config.bind_address} : DEFAULT_BIND_ADDRESS;
 
         result.port = static_cast<std::uint16_t>(resolveUnsigned(config.port, DEFAULT_HTTPS_PORT));
         result.ioThreads = resolveThreadCount(config.io_threads);
         result.workerThreads = resolveThreadCount(config.http_worker_threads, WORKER_THREADS_NPROC_MULTIPLIER);
-        result.maxBodySize = resolveUnsigned(config.http_max_body_size, DEFAULT_MAX_BODY_SIZE);
+        result.maxBodySize = resolveUnsigned(config.max_body_size, DEFAULT_MAX_BODY_SIZE);
         result.readTimeoutSec = resolveUnsigned(config.http_read_timeout, DEFAULT_READ_TIMEOUT_SEC);
         result.writeTimeoutSec = resolveUnsigned(config.http_write_timeout, DEFAULT_WRITE_TIMEOUT_SEC);
         result.requestTimeoutSec = resolveUnsigned(config.http_request_timeout, DEFAULT_REQUEST_TIMEOUT_SEC);
@@ -107,6 +115,13 @@ namespace remoted::http
         // createTlsContext().
         result.certificatePem = std::string {config.certificate_pem};
         result.privateKeyPem = std::string {config.private_key_pem};
+
+        // CA/ciphers/verification_mode are mTLS settings: empty/0 means "not configured", which
+        // is a valid, meaningful state (verification disabled, library-default cipher list) --
+        // not a placeholder to replace with a built-in default.
+        result.caPath = config.ca_path;
+        result.ciphers = config.ciphers;
+        result.verificationMode = static_cast<ClientVerificationMode>(config.verification_mode);
 
         return result;
     }
