@@ -195,43 +195,6 @@ def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhRes
     return result
 
 
-@expose_resources(actions=["agent:reconnect"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
-def reconnect_agents(agent_list: Union[list, str] = None) -> AffectedItemsWazuhResult:
-    """Force reconnect a list of agents.
-
-    Parameters
-    ----------
-    list or str
-        List of agent IDs. Default `*`
-
-    Returns
-    -------
-    AffectedItemsWazuhResult
-        Affected items.
-    """
-    result = AffectedItemsWazuhResult(all_msg='Force reconnect command was sent to all agents',
-                                      some_msg='Force reconnect command was not sent to some agents',
-                                      none_msg='Force reconnect command was not sent to any agent'
-                                      )
-
-    system_agents = get_agents_info()
-    with WazuhQueue(common.AR_SOCKET) as wq:
-        for agent_id in agent_list:
-            try:
-                if agent_id not in system_agents:
-                    raise WazuhResourceNotFound(1701)
-                Agent(agent_id).reconnect(wq)
-                result.affected_items.append(agent_id)
-            except WazuhException as e:
-                result.add_failed_item(id_=agent_id, error=e)
-
-    result.total_affected_items = len(result.affected_items)
-    result.affected_items.sort(key=int)
-
-    return result
-
-
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
                   post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]},
                   post_proc_func=async_list_handler)

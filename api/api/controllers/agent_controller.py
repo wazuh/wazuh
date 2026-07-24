@@ -224,40 +224,6 @@ async def add_agent(pretty: bool = False, wait_for_complete: bool = False) -> Co
     return json_response(data, pretty=pretty)
 
 
-async def reconnect_agents(pretty: bool = False, wait_for_complete: bool = False,
-                           agents_list: Union[list, str] = '*') -> ConnexionResponse:
-    """Force reconnect all agents or a list of them.
-
-    Parameters
-    ----------
-    pretty : bool
-        Show results in human-readable format. Default `False`
-    wait_for_complete : bool
-        Disable timeout response. Default `False`
-    agents_list : list or str
-        List of agent IDs. Default `*`
-
-    Returns
-    -------
-    ConnexionResponse
-        API response.
-    """
-    f_kwargs = {'agent_list': agents_list}
-
-    dapi = DistributedAPI(f=agent.reconnect_agents,
-                          f_kwargs=remove_nones_to_dict(f_kwargs),
-                          request_type='distributed_master',
-                          is_async=False,
-                          wait_for_complete=wait_for_complete,
-                          rbac_permissions=request.context['token_info']['rbac_policies'],
-                          broadcasting=agents_list == '*',
-                          logger=logger
-                          )
-    data = raise_if_exc(await dapi.distribute_function())
-
-    return json_response(data, pretty=pretty)
-
-
 async def restart_agents(pretty: bool = False, wait_for_complete: bool = False,
                          agents_list: str = '*') -> ConnexionResponse:
     """Restart all agents or a list of them.

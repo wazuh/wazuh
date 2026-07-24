@@ -344,16 +344,6 @@ class WazuhException(Exception):
         3038: "Error while processing extra-valid files",
         3039: "Timeout while waiting to receive a file",
         3040: "Error while waiting to receive a file",
-
-        # HAProxy Helper exceptions
-        3041: "Server status check timed out after adding new servers",
-        3042: "User configuration is not valid",
-        3043: "Could not initialize Proxy API",
-        3044: "Could not connect to the HAProxy dataplane API",
-        3045: "Could not connect to HAProxy",
-        3046: "Invalid credentials for the Proxy API",
-        3047: "Invalid HAProxy Dataplane API specification configured",
-        3048: "Could not detect a valid HAProxy process linked to the Dataplane API",
         3050: "Payload size exceeds maximum allowed limit",
         3051: "Too many concurrent divided messages",
         3052: "Invalid cluster file parameter",
@@ -638,12 +628,6 @@ class WazuhClusterError(WazuhInternalError):
     _default_title = "Wazuh Cluster Error"
 
 
-class WazuhHAPHelperError(WazuhClusterError):
-    """
-    This type of exception is raised inside the HAProxy Helper.
-    """
-    _default_type = "about:blank"
-    _default_title = "HAProxy Helper Error"
 
 
 class WazuhIndexerError(WazuhInternalError):

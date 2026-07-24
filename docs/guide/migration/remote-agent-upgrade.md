@@ -201,25 +201,6 @@ If an agent below v4.14.0 is included, it appears in `failed_items`:
 }
 ```
 
-**Step 3: Monitor upgrade status:**
-
-Query pending tasks for the affected agents:
-
-```bash
-curl -k -X GET "https://localhost:55000/tasks/status?pretty=true&agents_list=001,002" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-A `remote_upgrade` task moves through the following `status` values in `tasks.db`:
-
-| Status      | Meaning                                                                                                                                 |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `pending`   | Task has been stored on the manager and is waiting for the agent to pick it up.                                                         |
-| `delivered` | Task has been served to the agent at least once. `delivery_time` is set to the first delivery timestamp.                                |
-| `expired`   | The TTL configured in `<task-manager><task_ttl>` elapsed before the task was picked up, or the entry was marked expired during cleanup. |
-
-Because task delivery is fire-and-forget on the manager side, the completion of the upgrade itself is confirmed out-of-band — by the agent version reported in `GET /agents/<id>` and by the agent-side `ossec.log`, not by a status transition in `tasks.db`.
-
 ### Via binary
 
 The binary blocks until the upgrade completes and prints the result directly:
@@ -324,7 +305,6 @@ The `agent_upgrade` module still validates the intermediate version requirement 
 
 After triggering the upgrade, confirm all conditions below are met before declaring the migration complete:
 
-- `GET /tasks/status?agents_list=<id>&filters={"task_type":"remote_upgrade"}` shows the task in `delivered` state (or the binary exited with `Agent upgraded successfully`). A task still in `pending` after the TTL means the agent never picked it up; an `expired` task means it was cleaned up before delivery.
 - Agent version reported in `GET /agents/<id>` matches `5.0.0`.
 - Agent connection status is `active`.
 - `ossec.log` on the agent contains no errors related to the upgrade (`grep -i "upgrade" /var/ossec/logs/ossec.log`).

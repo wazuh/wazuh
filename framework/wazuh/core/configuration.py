@@ -183,14 +183,12 @@ def _read_option(section_name: str, opt: str) -> tuple:
                 json_path = json_attribs.copy()
                 json_path['path'] = path.strip()
                 opt_value.append(json_path)
-    elif (section_name == 'syscheck' and opt_name in ('synchronization', 'whodata')) or \
-        (section_name == 'cluster' and opt_name == 'haproxy_helper'):
+    elif (section_name == 'syscheck' and opt_name in ('synchronization', 'whodata')):
         opt_value = {}
         for child in opt:
             child_section, child_config = _read_option(child.tag.lower(), child)
             opt_value[child_section] = child_config.split(',') if child_config.find(',') > 0 else child_config
     elif (section_name == 'cluster' and opt_name == 'nodes') or \
-            (section_name == 'haproxy_helper' and opt_name == 'excluded_nodes') or \
             (section_name == 'sca' and opt_name == 'policies') or \
             (section_name == 'indexer' and opt_name == 'hosts')    :
         opt_value = [child.text for child in opt]
