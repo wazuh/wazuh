@@ -21,6 +21,10 @@ namespace
     /// Few attempts on purpose: the next Notify re-arms a failed fetch.
     constexpr uint32_t DOWNLOAD_MAX_ATTEMPTS = 2;
 
+    /// Safety bound for a config download: merged.mg is normally KB-scale, so
+    /// this only exists to stop a hostile or faulty manager exhausting the disk.
+    constexpr uint64_t CONFIG_MAX_DOWNLOAD_BYTES = 64ULL * 1024 * 1024;
+
     std::string lowered(std::string value)
     {
         std::transform(value.begin(), value.end(), value.begin(),
@@ -60,6 +64,7 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
     spec.bodyLength = body.size();
     spec.responseFilePath = spool->path();
+    spec.maxResponseBytes = CONFIG_MAX_DOWNLOAD_BYTES;
     spec.timeoutMs = m_config.statefulTimeoutMs; // The large-transfer class.
 
     const auto result = m_sender.send(spec, waiter, DOWNLOAD_MAX_ATTEMPTS);

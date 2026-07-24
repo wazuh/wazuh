@@ -61,7 +61,7 @@ class ICurlHandle
         virtual void appendHeader(const std::string& header) = 0;
 
         virtual void captureResponseBody(std::string* output) = 0;
-        virtual void captureResponseToFile(std::FILE* file) = 0;
+        virtual void captureResponseToFile(std::FILE* file, uint64_t maxBytes) = 0;
         virtual void captureRetryAfter(long* output) = 0;
         virtual void streamBodyFromFile(std::FILE* file, uint64_t size) = 0;
         virtual void wireAbort(const std::atomic<bool>* abortFlag) = 0;
