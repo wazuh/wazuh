@@ -66,6 +66,12 @@ struct ModuleConfig
         uint32_t drainTimeoutMs {5000};
 
         std::string spoolDir;
+
+        // #37843 periodic reporters (both off by default).
+        bool statsEnabled {false};
+        uint32_t statsIntervalS {60};
+        bool configReportEnabled {false};
+        uint32_t configReportIntervalS {3600};
         std::string syncSocketPath; ///< Stateful sync-intake STREAM socket; empty = disabled.
 
         // Always "https" in production (fromC never changes it); the component
