@@ -214,11 +214,11 @@ def test_agent_get_agents_summary_os(connect_mock, send_mock):
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
 ])
-@patch('wazuh.agent.send_restart_command')
+@patch('wazuh.agent.create_restart_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
 @patch('socket.socket.connect')
-async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_mock, send_restart_mock, agent_list,
+async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_mock, create_restart_mock, agent_list,
                               expected_items, error_code):
     """Test `restart_agents` function from agent module.
 
@@ -231,6 +231,9 @@ async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_moc
     error_code : int
         The expected error code.
     """
+    # Mock task creation response
+    create_restart_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
+
     result = await restart_agents(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
@@ -245,11 +248,11 @@ async def test_agent_restart_agents(socket_mock, send_http_mock, agents_info_moc
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
 ])
-@patch('wazuh.agent.send_restart_command')
+@patch('wazuh.agent.create_restart_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
 @patch('socket.socket.connect')
-async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_info_mock, send_restart_mock, agent_list,
+async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_info_mock, create_restart_mock, agent_list,
                                       expected_items, error_code):
     """Test `restart_agents_by_node` function from agent module.
 
@@ -262,6 +265,9 @@ async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_
     error_code : int
         The expected error code.
     """
+    # Mock task creation response
+    create_restart_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
+
     result = await restart_agents_by_node(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
@@ -276,11 +282,11 @@ async def test_agent_restart_agents_by_node(socket_mock, send_http_mock, agents_
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
 ])
-@patch('wazuh.agent.send_reload_command')
+@patch('wazuh.agent.create_reload_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
 @patch('socket.socket.connect')
-async def test_agent_reload_agents(socket_mock, send_http_mock, agents_info_mock, send_reload_mock, agent_list,
+async def test_agent_reload_agents(socket_mock, send_http_mock, agents_info_mock, create_reload_mock, agent_list,
                                    expected_items, error_code):
     """Test `reload_agents` function from agent module.
 
@@ -293,6 +299,9 @@ async def test_agent_reload_agents(socket_mock, send_http_mock, agents_info_mock
     error_code : int
         The expected error code.
     """
+    # Mock task creation response
+    create_reload_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
+
     result = await reload_agents(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
@@ -307,11 +316,11 @@ async def test_agent_reload_agents(socket_mock, send_http_mock, agents_info_mock
     (['001', '010'], ['010'], 1761),   # mixed - v4.x fails, v5.0 succeeds
     (['010', '500'], ['010'], 1701),   # v5.0 ok, 500 not found
 ])
-@patch('wazuh.agent.send_reload_command')
+@patch('wazuh.agent.create_reload_tasks')
 @patch('wazuh.agent.get_agents_info', return_value=set(short_agent_list))
 @patch('wazuh.core.wdb_http.WazuhDBHTTPClient._post', side_effect=send_msg_to_wdb_http_post_restartinfo)
 @patch('socket.socket.connect')
-async def test_agent_reload_agents_by_node(socket_mock, send_http_mock, agents_info_mock, send_reload_mock,
+async def test_agent_reload_agents_by_node(socket_mock, send_http_mock, agents_info_mock, create_reload_mock,
                                            agent_list, expected_items, error_code):
     """Test `reload_agents_by_node` function from agent module.
 
@@ -324,6 +333,9 @@ async def test_agent_reload_agents_by_node(socket_mock, send_http_mock, agents_i
     error_code : int
         The expected error code.
     """
+    # Mock task creation response
+    create_reload_mock.return_value = [{"data": [{"agent": agent_id, "error": 0} for agent_id in expected_items]}]
+
     result = await reload_agents_by_node(agent_list)
     assert isinstance(result, AffectedItemsWazuhResult), 'The returned object is not an "AffectedItemsWazuhResult".'
     assert result.affected_items == expected_items, f'"Affected_items" does not match. Should be "{expected_items}".'
