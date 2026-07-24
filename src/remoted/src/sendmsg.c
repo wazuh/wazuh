@@ -116,13 +116,29 @@ int send_msg_with_key_control(const char* agent_id, const char* msg, ssize_t msg
         error = errno;
         retval = bytes_sent == msg_size ? OS_SUCCESS : OS_INVALID;
     } else if (keys.keyentries[key_id]->sock >= 0) {
-        /* TCP mode, enqueue the message in the send buffer */
-        retval = nb_queue(&netbuffer_send, keys.keyentries[key_id]->sock, crypt_msg, msg_size, keys.keyentries[key_id]->id);
+        /* TCP mode, enqueue the message in the send buffer.
+         *
+         * nb_queue() may sleep(send_timeout_to_retry) while the agent's send buffer is full
+         * (netbuffer.c). Doing that while holding key_lock_read() lets a single slow/stuck
+         * agent block the key reloader's key_lock_write(), which -- because the rwlock takes a
+         * front mutex before the write lock (rwlock_op.c) -- then blocks every other worker's
+         * key_lock_read(), stalling all message processing until remoted is restarted (#37750).
+         *
+         * The keystore only needs to be locked to resolve the socket fd. nb_queue() protects the
+         * netbuffer with its own mutex and re-checks the per-socket buffer after sleeping, so it
+         * is safe to call after releasing the key lock: if the socket is closed meanwhile, the
+         * buffer is gone and nb_queue() returns an error instead of touching a stale fd.
+         */
+        const int sock = keys.keyentries[key_id]->sock;
+        char id_snapshot[KEYSIZE + 1] = {0};
+        strncpy(id_snapshot, keys.keyentries[key_id]->id, KEYSIZE);
+
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         if (!skip_key_lock) {
             key_unlock();
         }
-        return retval;
+
+        return nb_queue(&netbuffer_send, sock, crypt_msg, msg_size, id_snapshot);
     } else {
         w_mutex_unlock(&keys.keyentries[key_id]->mutex);
         if (!skip_key_lock) {
