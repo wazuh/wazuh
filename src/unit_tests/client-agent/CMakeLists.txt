@@ -134,7 +134,7 @@ list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_ht
                                 -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
                                 -Wl,--wrap,hc_set_agent_key -Wl,--wrap,try_enroll_to_server \
                                 -Wl,--wrap,CreateThread -Wl,--wrap,sleep -Wl,--wrap,getpid \
-                                -Wl,--wrap,w_agentd_state_update \
+                                -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
                                 ${DEBUG_OP_WRAPPERS}")
 endif()
 

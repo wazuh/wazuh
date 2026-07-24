@@ -234,10 +234,51 @@ static void bridge_on_state_change(int state, void *user_data)
     w_agentd_state_update(UPDATE_STATUS, (void *)bridge_map_agent_status(state));
 }
 
+/* Occupancy thresholds the module reports against, kept so the log lines can
+ * quote them exactly as buffer.c does. Filled by bridge_build_config() from the
+ * same internal options buffer_init() reads. */
+static int g_buffer_warn_level = 90;
+static int g_buffer_normal_level = 70;
+
+/* Reports the accumulator's occupancy exactly as the legacy leaky bucket
+ * reported the ring it replaced (client-agent/src/buffer.c): the same log lines
+ * and the same wazuh-agent.buffer state event, so the manager-side flood rules
+ * keep firing now that stateless events no longer pass through buffer_append().
+ *
+ * The state event bypasses the accumulator -- send_buffer_status_event() writes
+ * straight to send_msg() -- exactly as buffer.c bypassed the ring it reports
+ * on. A flood report must not queue behind the flood it is reporting. That
+ * keeps it on the legacy socket for now; it moves with every other stateless
+ * producer when the TCP path is retired. */
 static void bridge_on_buffer_level(int level, void *user_data)
 {
     (void)user_data;
-    mdebug2("https_client buffer level -> %d", level);
+
+    switch (level) {
+    case HC_BUFFER_WARNING:
+        mwarn(WARN_BUFFER, g_buffer_warn_level);
+        send_buffer_status_event("warning", 1);
+        break;
+
+    case HC_BUFFER_FULL:
+        mwarn(FULL_BUFFER);
+        send_buffer_status_event("full", 2);
+        break;
+
+    case HC_BUFFER_FLOOD:
+        mwarn(FLOODED_BUFFER);
+        send_buffer_status_event("flooded", 3);
+        break;
+
+    case HC_BUFFER_NORMAL:
+        mdebug1(NORMAL_BUFFER, g_buffer_normal_level);
+        send_buffer_status_event("normal", 0);
+        break;
+
+    default:
+        mdebug2("https_client: unknown buffer level %d.", level);
+        break;
+    }
 }
 
 /* Maps the agent config parser's verification_mode enum onto the module
@@ -326,6 +367,17 @@ static bool bridge_build_config(hc_config_t *config)
     config->notify_interval_s = (uint32_t)agt->notify_time;
     strncpy(config->version, __wazuh_version, sizeof(config->version) - 1);
 
+    /* Occupancy ladder: the same internal options buffer_init() reads, so an
+     * operator who tuned the legacy client buffer keeps their thresholds now
+     * that the accumulator is what fills up. Read here rather than through
+     * buffer.c's globals because those are only set when the legacy buffer is
+     * enabled, and the accumulator applies either way. */
+    g_buffer_warn_level = getDefine_Int("agent", "warn_level", 1, 100);
+    g_buffer_normal_level = getDefine_Int("agent", "normal_level", 0, g_buffer_warn_level - 1);
+    config->buffer_warn_level = (uint32_t)g_buffer_warn_level;
+    config->buffer_normal_level = (uint32_t)g_buffer_normal_level;
+    config->buffer_flood_tolerance_s = (uint32_t)getDefine_Int("agent", "tolerance", 0, 600);
+
     char *checksum = getsharedfiles();
     if (checksum) {
         strncpy(config->config_checksum, checksum, sizeof(config->config_checksum) - 1);
@@ -406,10 +458,19 @@ int w_https_client_submit_event(const char *frame, size_t length)
      * hc_submit_event() only appends to the accumulator, so the section is short. */
     w_mutex_lock(&g_https_client_lock);
 
-    if (g_https_client != NULL && !g_https_client_stopping) {
+    const bool running = g_https_client != NULL && !g_https_client_stopping;
+
+    if (running) {
         retval = hc_submit_event(g_https_client, (const uint8_t *)frame, length) ? 0 : -1;
     }
 
     w_mutex_unlock(&g_https_client_lock);
+
+    /* Mirrors buffer.c's own drop trace, outside the lock: the accumulator is
+     * full and applied drop-newest, exactly as the leaky bucket used to. */
+    if (running && retval != 0) {
+        mdebug2("https_client: unable to store new packet: buffer is full.");
+    }
+
     return retval;
 }

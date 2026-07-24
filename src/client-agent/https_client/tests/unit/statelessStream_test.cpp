@@ -17,7 +17,10 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <chrono>
 #include <cstring>
+#include <string>
 #include <vector>
 
 using ::testing::_;
@@ -204,6 +207,52 @@ TEST_F(StatelessStreamTest, SingleOversizedEventIs413DroppedAndCounted)
     m_stream.tick(m_waiter, true); // Nothing left.
 }
 
+TEST_F(StatelessStreamTest, ASingleOversized413DoesNotShrinkTheBudget)
+{
+    // The batch size was not what the manager rejected -- one event was simply
+    // too big. Halving here would only cost a round trip before the next event
+    // is tried, so the budget must survive the drop.
+    hc_config_t raw {};
+    std::strncpy(raw.server_host, "127.0.0.1", sizeof(raw.server_host) - 1);
+    std::strncpy(raw.agent_id, "001", sizeof(raw.agent_id) - 1);
+    raw.verify_mode = HC_VERIFY_NONE;
+    raw.batch_size_bytes = 200; // 35-byte H line + 165 bytes of E lines.
+    raw.batch_interval_ms = 5000;
+    raw.buffer_cap_multiplier = 4;
+    const ModuleConfig config = ModuleConfig::fromC(raw);
+    StatelessStream stream {config,   m_performer, m_signer, m_clock,
+                            m_random, m_sink,      m_authGate};
+
+    const auto push = [&stream](const std::string & frame)
+    {
+        stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+    };
+
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 413)));
+    push("only-one-event");
+    stream.tick(m_waiter, true);
+    EXPECT_EQ(1u, stream.droppedEvents());
+
+    // 12 x 13 bytes = 156, inside the untouched 165-byte event budget. A halved
+    // budget (100 - 35 = 65) would have cut this to five events.
+    std::string sentBody;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Invoke(
+                  [&](const HttpRequestSpec & spec)
+    {
+        sentBody.assign(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    for (int index = 0; index < 12; index++)
+    {
+        push("event-1234");
+    }
+
+    stream.tick(m_waiter, true);
+    EXPECT_EQ(12u, std::count(sentBody.begin(), sentBody.end(), '\n') - 1); // Minus the H line.
+}
+
 TEST_F(StatelessStreamTest, PausedGateHoldsEventsWithoutSending)
 {
     m_authGate.reportAuthFailure(); // 401 elsewhere: pause.
@@ -274,16 +323,140 @@ TEST_F(StatelessStreamTest, BackPressureIsRetriedInsideOneFlushWhenWaiterAllows)
     m_stream.tick(m_waiter, false);
 }
 
-TEST_F(StatelessStreamTest, BufferLevelEmittedOnlyOnChange)
+TEST_F(StatelessStreamTest, BufferLevelWalksTheLegacyLadder)
 {
-    // cap = 51 * 4 = 204 bytes. Cross 50% (102 bytes) to reach WARNING.
+    // cap = 51 * 4 = 204 bytes; "E event-1234\n" is 13 bytes, so each event is
+    // ~6%. The default ladder warns at 90% (184 bytes = the 15th event) and
+    // reports FULL on the first drop-newest rejection (the 16th would need 208).
     ::testing::InSequence sequence;
     EXPECT_CALL(m_sink, onBufferLevel(HC_BUFFER_WARNING)).Times(1);
+    EXPECT_CALL(m_sink, onBufferLevel(HC_BUFFER_FULL)).Times(1);
 
-    for (int index = 0; index < 8; index++) // 8 x 13-byte lines = 104 bytes.
+    for (int index = 0; index < 16; index++)
     {
-        submit("event-1234"); // "E event-1234\n" = 13 bytes.
+        submit("event-1234");
     }
+
+    EXPECT_EQ(HC_BUFFER_FULL, m_stream.level());
+}
+
+TEST_F(StatelessStreamTest, BufferLevelHoldsWarningUntilTheNormalMark)
+{
+    // 15 events = 195 bytes = 95% -> WARNING. Draining to 12 events (156 bytes,
+    // 76%) is under the warn mark but above normal_level (70%), so the legacy
+    // ladder stays in WARNING without announcing anything.
+    EXPECT_CALL(m_sink, onBufferLevel(HC_BUFFER_WARNING)).Times(1);
+    EXPECT_CALL(m_sink, onBufferLevel(HC_BUFFER_NORMAL)).Times(0);
+
+    for (int index = 0; index < 15; index++)
+    {
+        submit("event-1234");
+    }
+
+    EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200)));
+    m_stream.tick(m_waiter, true); // Sends one event: 14 left = 182 bytes = 89%.
+    EXPECT_EQ(HC_BUFFER_WARNING, m_stream.level());
+}
+
+TEST_F(StatelessStreamTest, FloodOnlyAfterFullHoldsForTheTolerance)
+{
+    ::testing::InSequence sequence;
+    EXPECT_CALL(m_sink, onBufferLevel(HC_BUFFER_WARNING)).Times(1);
+    EXPECT_CALL(m_sink, onBufferLevel(HC_BUFFER_FULL)).Times(1);
+    EXPECT_CALL(m_sink, onBufferLevel(HC_BUFFER_FLOOD)).Times(1);
+
+    for (int index = 0; index < 16; index++) // Fills, then the first drop.
+    {
+        submit("event-1234");
+    }
+
+    submit("event-1234"); // Still dropping, but inside the tolerance window.
+    m_clock.advance(std::chrono::seconds {15});
+    submit("event-1234"); // Full for 15 s: flooded.
+    EXPECT_EQ(HC_BUFFER_FLOOD, m_stream.level());
+}
+
+TEST_F(StatelessStreamTest, KeepsDrainingWhileTheBacklogStaysAboveTheThreshold)
+{
+    // The size condition is edge-triggered at submit(), so a tick that leaves
+    // the buffer above the threshold must ask to run again immediately --
+    // otherwise a full buffer gives up a whole interval per request.
+    EXPECT_CALL(m_performer, perform(_)).WillRepeatedly(Return(response(TransportStatus::Ok, 200)));
+
+    for (int index = 0; index < 6; index++)
+    {
+        submit("event-1234");
+    }
+
+    EXPECT_EQ(std::chrono::milliseconds::zero(), m_stream.tick(m_waiter, false));
+
+    // Drain the rest; the last flush empties the buffer, so the stream goes
+    // back to waiting out the batch interval.
+    std::chrono::milliseconds delay {0};
+
+    for (int index = 0; index < 6 && delay == std::chrono::milliseconds::zero(); index++)
+    {
+        delay = m_stream.tick(m_waiter, false);
+    }
+
+    EXPECT_EQ(std::chrono::milliseconds {m_config.batchIntervalMs}, delay);
+}
+
+TEST_F(StatelessStreamTest, AFailedFlushFallsBackToTheBatchInterval)
+{
+    // Never loop back-to-back on failure: that would hammer a manager that is
+    // rejecting or backing off.
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Return(response(TransportStatus::Timeout, 0)));
+
+    for (int index = 0; index < 6; index++)
+    {
+        submit("event-1234");
+    }
+
+    EXPECT_EQ(std::chrono::milliseconds {m_config.batchIntervalMs}, m_stream.tick(m_waiter, false));
+}
+
+TEST_F(StatelessStreamTest, DrainUsesASingleAttemptWithinTheDrainWindow)
+{
+    // The drain runs on the stop path with a waiter that is never stopped, so
+    // it must not walk the retry ladder: one attempt per batch, bounded by the
+    // drain window, exactly like ControlStream::drainStep.
+    uint32_t attempts = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec & spec)
+    {
+        attempts++;
+        EXPECT_EQ(m_config.drainTimeoutMs, spec.timeoutMs);
+        return response(TransportStatus::Timeout, 0);
+    }));
+
+    m_waiter.script({true, true, true, true, true}); // Would allow retries.
+    submit("event-aaaa");
+    m_stream.drain(m_waiter);
+    EXPECT_EQ(1u, attempts);
+}
+
+TEST_F(StatelessStreamTest, DrainStopsAtTheIterationBound)
+{
+    // A manager that keeps accepting must not let the drain run forever either.
+    uint32_t attempts = 0;
+    EXPECT_CALL(m_performer, perform(_))
+    .WillRepeatedly(Invoke(
+                        [&](const HttpRequestSpec&)
+    {
+        attempts++;
+        return response(TransportStatus::Ok, 200);
+    }));
+
+    for (int index = 0; index < 15; index++)
+    {
+        submit("event-1234");
+    }
+
+    m_stream.drain(m_waiter);
+    EXPECT_EQ(m_config.bufferCapMultiplier + 1, attempts);
 }
 
 TEST_F(StatelessStreamTest, DropNewestReturnsFalseAtCap)
