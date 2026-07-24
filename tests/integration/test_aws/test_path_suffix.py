@@ -106,7 +106,7 @@ def test_path_suffix(
     only_logs_after = metadata['only_logs_after']
     path_suffix = metadata['path_suffix']
     expected_results = metadata['expected_results']
-    pattern = fr".*WARNING: Bucket:  -  No files were found in '{bucket_name}/{path_suffix}/'. No logs will be processed.\n+"
+    pattern = fr".*WARNING: Bucket:  -  No logs found in 'AWSLogs/{path_suffix}/'. Check the provided prefix.*\n*"
 
     parameters = [
         'wodles/aws/aws-s3',
