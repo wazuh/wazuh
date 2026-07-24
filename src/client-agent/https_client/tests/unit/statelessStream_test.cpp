@@ -53,15 +53,21 @@ namespace
                 std::strncpy(config.server_host, "127.0.0.1", sizeof(config.server_host) - 1);
                 std::strncpy(config.agent_id, "001", sizeof(config.agent_id) - 1);
                 config.verify_mode = HC_VERIFY_NONE;
-                config.batch_size_bytes = 16; // Small so a couple of events trigger a flush.
+                // 35-byte H line + 16 bytes available for E lines.
+                config.batch_size_bytes = 51;
                 config.batch_interval_ms = 5000;
                 config.buffer_cap_multiplier = 4;
                 return ModuleConfig::fromC(config);
             }
 
-            bool submit(const std::string& frame)
+            StatelessStream::SubmissionResult submitResult(const std::string& frame)
             {
                 return m_stream.submit(reinterpret_cast<const uint8_t*>(frame.data()), frame.size());
+            }
+
+            bool submit(const std::string& frame)
+            {
+                return submitResult(frame).accepted;
             }
 
             ConfigKeyProvider m_keyProvider {"000102030405060708090a0b0c0d0e0f"};
@@ -95,24 +101,26 @@ TEST_F(StatelessStreamTest, FlushOnSizeThresholdSendsHeaderAndEvents)
         return response(TransportStatus::Ok, 200);
     }));
 
-    submit("event-aaaa");
-    submit("event-bbbb"); // Pushes the buffer past the 16-byte max payload.
+    EXPECT_FALSE(submitResult("event-aaaa").shouldWakeSender);
+    EXPECT_TRUE(submitResult("event-bbbb").shouldWakeSender);
     m_stream.tick(m_waiter, false);
 
-    // The 16-byte max payload caps one POST to the first whole event; the
-    // second follows in the next flush.
+    // The configured limit includes the 35-byte H line. The remaining
+    // 16-byte event budget caps this POST to the first whole event.
     EXPECT_EQ(0u, sentBody.find("H {\"wazuh\":{\"agent\":{\"id\":\"001\"}}}\n"));
     EXPECT_NE(std::string::npos, sentBody.find("E event-aaaa\n"));
     EXPECT_EQ(std::string::npos, sentBody.find("E event-bbbb\n"));
+    EXPECT_LE(sentBody.size(), m_config.batchSizeBytes);
 }
 
-TEST_F(StatelessStreamTest, SuccessConsumesTheBatch)
+TEST_F(StatelessStreamTest, SuccessConsumesTheSentPrefix)
 {
     EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200)));
     submit("event-aaaa");
     submit("event-bbbb");
     m_stream.tick(m_waiter, false);
-    // Nothing left: a second tick sends nothing.
+    // The remaining event is below the threshold, so a second immediate tick
+    // does not resend the consumed prefix or flush the retained tail early.
     EXPECT_CALL(m_performer, perform(_)).Times(0);
     m_stream.tick(m_waiter, false);
 }
@@ -120,7 +128,7 @@ TEST_F(StatelessStreamTest, SuccessConsumesTheBatch)
 TEST_F(StatelessStreamTest, ForceFlushesEvenBelowThreshold)
 {
     EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 200)));
-    submit("tiny"); // Well under 16 bytes.
+    submit("tiny"); // Well under the 16-byte event budget.
     m_stream.tick(m_waiter, true);
 }
 
@@ -134,7 +142,7 @@ TEST_F(StatelessStreamTest, PayloadTooLargeKeepsEventsInOrderAndHalves)
                         [&](const HttpRequestSpec & spec)
     {
         bodies.emplace_back(reinterpret_cast<const char*>(spec.body), spec.bodyLength);
-        // First send (full 16-byte budget) 413s; smaller retries succeed.
+        // First send (full 16-byte event budget) 413s; smaller retries succeed.
         return response(TransportStatus::Ok, bodies.size() == 1 ? 413 : 200);
     }));
 
@@ -191,6 +199,7 @@ TEST_F(StatelessStreamTest, SingleOversizedEventIs413DroppedAndCounted)
     submit("only-one-event");
     m_stream.tick(m_waiter, true); // 413 on a single-event batch: dropped.
 
+    EXPECT_EQ(1u, m_stream.droppedEvents());
     EXPECT_CALL(m_performer, perform(_)).Times(0);
     m_stream.tick(m_waiter, true); // Nothing left.
 }
@@ -267,11 +276,11 @@ TEST_F(StatelessStreamTest, BackPressureIsRetriedInsideOneFlushWhenWaiterAllows)
 
 TEST_F(StatelessStreamTest, BufferLevelEmittedOnlyOnChange)
 {
-    // cap = 16 * 4 = 64 bytes. Cross 50% (32 bytes) to reach WARNING.
+    // cap = 51 * 4 = 204 bytes. Cross 50% (102 bytes) to reach WARNING.
     ::testing::InSequence sequence;
     EXPECT_CALL(m_sink, onBufferLevel(HC_BUFFER_WARNING)).Times(1);
 
-    for (int index = 0; index < 3; index++) // 3 x 13-byte lines = 39 bytes.
+    for (int index = 0; index < 8; index++) // 8 x 13-byte lines = 104 bytes.
     {
         submit("event-1234"); // "E event-1234\n" = 13 bytes.
     }
@@ -279,16 +288,17 @@ TEST_F(StatelessStreamTest, BufferLevelEmittedOnlyOnChange)
 
 TEST_F(StatelessStreamTest, DropNewestReturnsFalseAtCap)
 {
-    // cap = 64 bytes; fill it, then the next append is dropped.
-    bool anyDropped = false;
+    // cap = 204 bytes; fill it, then later appends are dropped and counted.
+    uint64_t dropped = 0;
 
     for (int index = 0; index < 20; index++)
     {
         if (!submit("event-1234"))
         {
-            anyDropped = true;
+            dropped++;
         }
     }
 
-    EXPECT_TRUE(anyDropped);
+    EXPECT_GT(dropped, 0u);
+    EXPECT_EQ(dropped, m_stream.droppedEvents());
 }
