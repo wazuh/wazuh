@@ -1964,7 +1964,7 @@ checks:
     condition: all
     rules:
       - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:maxFailedLoginAttempts=(\d+) compare <= 5'
-      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:policyAttributeMinutesUntilFailedAuthenticationReset=(\d+) compare >= 15'
+      - 'c:pwpolicy -n /Local/Default -getglobalpolicy -> n:minutesUntilFailedLoginReset=(\d+) compare >= 15'
 
   # 5.2.2 Ensure Password Minimum Length Is Configured. (Automated)
   - id: 35047
@@ -2678,7 +2678,7 @@ checks:
           - "File Deletion"
     condition: all
     rules:
-      - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan" -> r:^1$'
+      - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan$" -> r:^1$'
       - 'c:sh -c "launchctl list | grep -c com.apple.XProtect.daemon.scan.startup" -> r:^1$'
 
   # 6.1.1 Ensure Show All Filename Extensions Setting is Enabled. (Automated) - Not Implemented
