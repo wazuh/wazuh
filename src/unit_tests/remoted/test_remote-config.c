@@ -26,6 +26,10 @@ int w_remoted_get_net_protocol(const char * content);
 
 void w_remoted_parse_agents(XML_NODE node, remoted * logr);
 
+int w_remoted_parse_legacy(XML_NODE node, remoted * logr);
+
+int w_remoted_parse_https(XML_NODE node, remoted * logr);
+
 int __wrap_ReadConfig(int modules, const char *cfgfile, void *d1, void *d2) {
     check_expected(modules);
     check_expected(cfgfile);
@@ -92,6 +96,11 @@ static int setup(void **state) {
 static int teardown(void **state) {
     test_state *ts = *state;
     if (ts->logr->lip) free(ts->logr->lip);
+    if (ts->logr->https.bind_addr) free(ts->logr->https.bind_addr);
+    if (ts->logr->https.certificate) free(ts->logr->https.certificate);
+    if (ts->logr->https.key) free(ts->logr->https.key);
+    if (ts->logr->https.ca) free(ts->logr->https.ca);
+    if (ts->logr->https.ciphers) free(ts->logr->https.ciphers);
     free(ts->logr);
     free(ts);
     return 0;
@@ -401,16 +410,16 @@ static void test_remoted_internal_options_config(void **state) {
     cJSON_Delete(json);
 }
 
-// Read_remote tests
+// Test w_remoted_parse_legacy
 
-static void test_read_remote_valid_port(void **state) {
+static void test_w_remoted_parse_legacy_valid_port(void **state) {
     test_state *ts = *state;
 
     xml_node **nodes = create_node_array(1,
         create_xml_node("port", "1514")
     );
 
-    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+    int result = w_remoted_parse_legacy(nodes, ts->logr);
 
     assert_int_equal(result, OS_SUCCESS);
     assert_int_equal(ts->logr->port, 1514);
@@ -418,7 +427,7 @@ static void test_read_remote_valid_port(void **state) {
     free_node_array(nodes);
 }
 
-static void test_read_remote_invalid_port(void **state) {
+static void test_w_remoted_parse_legacy_invalid_port(void **state) {
     test_state *ts = *state;
 
     xml_node **nodes = create_node_array(1,
@@ -428,13 +437,208 @@ static void test_read_remote_invalid_port(void **state) {
     expect_string(__wrap__merror, formatted_msg,
                   "(1235): Invalid value for element 'port': -1.");
 
-    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+    int result = w_remoted_parse_legacy(nodes, ts->logr);
 
     assert_int_equal(result, OS_INVALID);
     assert_int_equal(ts->logr->port, 0);
 
     free_node_array(nodes);
 }
+
+static void test_w_remoted_parse_legacy_connection_section(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("connection", "secure")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'connection'.");
+
+    int result = w_remoted_parse_legacy(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_legacy_allowed_ips_section(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("allowed-ips", "x")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'allowed-ips'.");
+
+    int result = w_remoted_parse_legacy(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_legacy_denied_ips_section(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("denied-ips", "x")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'denied-ips'.");
+
+    int result = w_remoted_parse_legacy(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+// Test w_remoted_parse_https
+
+static void test_w_remoted_parse_https_valid_full(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(8,
+        create_xml_node("port", "9443"),
+        create_xml_node("bind_addr", "0.0.0.0"),
+        create_xml_node("certificate", "etc/remoted-https/server.crt"),
+        create_xml_node("key", "etc/remoted-https/server.key"),
+        create_xml_node("ca", "etc/remoted-https/ca.crt"),
+        create_xml_node("verification_mode", "certificate"),
+        create_xml_node("ciphers", "HIGH:!ADH"),
+        create_xml_node("max_body_size", "50MB")
+    );
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, "0.0.0.0");
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 1);
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->https.port, 9443);
+    assert_string_equal(ts->logr->https.bind_addr, "0.0.0.0");
+    assert_string_equal(ts->logr->https.certificate, "etc/remoted-https/server.crt");
+    assert_string_equal(ts->logr->https.key, "etc/remoted-https/server.key");
+    assert_string_equal(ts->logr->https.ca, "etc/remoted-https/ca.crt");
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
+    assert_string_equal(ts->logr->https.ciphers, "HIGH:!ADH");
+    assert_int_equal(ts->logr->https.max_body_size, 50L * 1024 * 1024);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_invalid_port(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("port", "70000")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1205): Invalid port number: '70000'.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_invalid_bind_addr(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("bind_addr", "not-an-ip")
+    );
+
+    expect_string(__wrap_OS_IsValidIP, ip_address, "not-an-ip");
+    expect_value(__wrap_OS_IsValidIP, final_ip, NULL);
+    will_return(__wrap_OS_IsValidIP, 0);
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1237): Invalid ip address: 'not-an-ip'.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_invalid_verification_mode(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("verification_mode", "invalid_value")
+    );
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "(9001): Ignored invalid value 'invalid_value' for 'verification_mode'.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_DEFAULT);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_verification_mode_without_ca(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("verification_mode", "full")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "The '<remote><https><verification_mode>' option requires '<ca>' to be configured.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_invalid_max_body_size(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("max_body_size", "not-a-size")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'max_body_size': not-a-size.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_invalid_element(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("invalid_element", "x")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'invalid_element'.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+// Read_remote tests
 
 static void test_read_remote_connection_section(void **state) {
     test_state *ts = *state;
@@ -504,8 +708,18 @@ int main(void)
         cmocka_unit_test(test_w_remoted_parse_agents_invalid_value),
         cmocka_unit_test(test_w_remoted_parse_agents_invalid_element),
         cmocka_unit_test(test_remoted_internal_options_config),
-        cmocka_unit_test_setup_teardown(test_read_remote_valid_port, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_read_remote_invalid_port, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_valid_port, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_invalid_port, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_connection_section, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_allowed_ips_section, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_legacy_denied_ips_section, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_valid_full, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_port, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_bind_addr, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_verification_mode, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_verification_mode_without_ca, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_max_body_size, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_element, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_connection_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_allowed_ips_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_denied_ips_section, setup, teardown),
