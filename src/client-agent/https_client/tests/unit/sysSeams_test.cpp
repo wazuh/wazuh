@@ -16,8 +16,11 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <cstdio>
 #include <fstream>
+#include <thread>
+#include <vector>
 
 TEST(SystemClockTest, WallAndSteadyAdvanceMonotonically)
 {
@@ -53,6 +56,37 @@ TEST(Mt19937RandomTest, ProducesVariation)
     }
 
     EXPECT_TRUE(differs); // Astronomically unlikely to be constant.
+}
+
+TEST(Mt19937RandomTest, ConcurrentCallsRemainInUnitInterval)
+{
+    Mt19937Random random;
+    std::atomic<bool> valid {true};
+    std::vector<std::thread> workers;
+
+    for (int worker = 0; worker < 8; worker++)
+    {
+        workers.emplace_back(
+            [&]
+        {
+            for (int sample = 0; sample < 10000; sample++)
+            {
+                const double value = random.uniform01();
+
+                if (value < 0.0 || value >= 1.0)
+                {
+                    valid = false;
+                }
+            }
+        });
+    }
+
+    for (auto& worker : workers)
+    {
+        worker.join();
+    }
+
+    EXPECT_TRUE(valid);
 }
 
 TEST(FsProbeTest, ReadableFileIsDetected)

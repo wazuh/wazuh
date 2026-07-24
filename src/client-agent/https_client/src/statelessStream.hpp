@@ -22,6 +22,7 @@
 #include "sysSeams.hpp"
 
 #include <chrono>
+#include <mutex>
 #include <string>
 
 /**
@@ -35,12 +36,19 @@
 class StatelessStream final
 {
     public:
+        struct SubmissionResult
+        {
+            bool accepted;
+            bool shouldWakeSender;
+        };
+
         StatelessStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
                         IClock& clock, IRandom& random, ICallbackSink& sink, AuthGate& authGate);
 
         /// Intake entry point (from agentd's EventForward seam). Emits a buffer
-        /// level change if the append crosses a ladder threshold.
-        bool submit(const uint8_t* frame, size_t length);
+        /// level change if the append crosses a ladder threshold and tells the
+        /// facade when the size threshold has just been reached.
+        SubmissionResult submit(const uint8_t* frame, size_t length);
 
         /// One sender iteration. force = shutdown/notify-now drain. Returns the
         /// delay until the next tick should run.
@@ -52,12 +60,14 @@ class StatelessStream final
         void drain(Waiter& waiter);
 
         hc_buffer_level_t level() const;
+        uint64_t droppedEvents() const;
 
     private:
         bool flushDue(bool force) const;
         bool flushOnce(Waiter& waiter);
         void handleOutcome(OutcomeClass outcome, const EventAccumulator::Snapshot& snapshot);
-        void publishLevel();
+        void publishLevelLocked();
+        uint64_t eventBytesBudgetLocked() const;
         std::string buildHeaderLine() const;
 
         const ModuleConfig& m_config;
@@ -70,8 +80,9 @@ class StatelessStream final
         ICallbackSink& m_sink;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
         std::chrono::steady_clock::time_point m_lastFlush;
+        mutable std::mutex m_stateMutex;
         hc_buffer_level_t m_lastLevel {HC_BUFFER_NORMAL};
-        uint64_t m_oversizedDropped {0}; ///< Single events too large to ever fit.
+        uint64_t m_droppedEvents {0};
 };
 
 #endif // _HC_STATELESS_STREAM_HPP
