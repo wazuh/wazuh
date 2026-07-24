@@ -17,7 +17,7 @@ extern "C" {
 /**
  * @brief Run the container file baseline (spike #37532) for every container
  * currently known to the container-connector module, over every configured
- * `<directories tags="kubernetes">` entry, and persist each resulting row
+ * `<directories tags="container">` entry, and persist each resulting row
  * through the existing FIM sync-protocol handle (syscheck.sync_handle) — the
  * same persistence path a normal host-FIM stateful event already uses.
  *
@@ -27,7 +27,7 @@ extern "C" {
  * file already present and untouched when the agent starts stayed invisible
  * to the state index. This closes that gap for the file/hash data class.
  *
- * No-op if there are no <directories tags="kubernetes"> entries configured,
+ * No-op if there are no <directories tags="container"> entries configured,
  * if FIM synchronization is disabled (syscheck.enable_synchronization), or if
  * the container_instances module isn't running (its IPC socket is absent).
  *
@@ -38,7 +38,7 @@ extern "C" {
  * Re-baselining on container lifecycle events / eBPF overflow signals (spike
  * Angle 6) is out of scope for this slice.
  */
-void fim_run_k8s_container_baseline(void);
+void fim_run_container_baseline(void);
 
 #ifdef __cplusplus
 }
