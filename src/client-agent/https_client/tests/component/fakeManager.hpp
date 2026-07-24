@@ -165,7 +165,6 @@ class FakeManager final
                     rotateAfter > 0 && !rotatedKey.empty() && notifyCount->load() >= rotateAfter;
                 return verifyCmac(rotated ? rotatedKey : keyHex, target, request);
             };
-
             // Accumulates accepted /stateless bodies so the fork parent can
             // read them back via GET /peek/stateless (fork servers share no
             // memory; a peek endpoint is the observability channel).
@@ -220,6 +219,44 @@ class FakeManager final
                 response.status = 200;
                 response.set_content(std::to_string(notifyCount->load()), "text/plain");
             });
+
+            // /stats and /config: verify + store the last body so the fork
+            // parent can assert on it via GET /peek/{stats,config}.
+            auto lastStats = std::make_shared<std::string>();
+            auto lastConfig = std::make_shared<std::string>();
+
+            for (const auto& kind :
+                    {
+                        std::string {"stats"}, std::string {"config"}
+                    })
+            {
+                auto store = kind == "stats" ? lastStats : lastConfig;
+                server.Post("/" + kind,
+                            [verify, kind, store, acceptedMutex](const httplib::Request & request,
+                                                                 httplib::Response & response)
+                {
+                    if (!verify("/" + kind, request))
+                    {
+                        response.status = 401;
+                        return;
+                    }
+
+                    {
+                        std::lock_guard<std::mutex> lock(*acceptedMutex);
+                        *store = request.body;
+                    }
+
+                    response.set_content("{}", "application/json");
+                });
+
+                server.Get("/peek/" + kind,
+                           [store, acceptedMutex](const httplib::Request&, httplib::Response & response)
+                {
+                    std::lock_guard<std::mutex> lock(*acceptedMutex);
+                    response.status = store->empty() ? 204 : 200;
+                    response.set_content(*store, "text/plain");
+                });
+            }
 
             server.Post("/stateful",
                         [verify, lastSession, holdFile](const httplib::Request & request,
@@ -343,7 +380,8 @@ class FakeManager final
 
                 // #37733 5.1: startup answers the handshake metadata (v1 or
                 // v2 after the settings flip); notify reports agent.groups
-                // and the settings_hash of the CURRENT startup body.
+                // and the settings_hash of the CURRENT startup body; response
+                // answers a plain ok.
                 static const std::string startupV1 =
                     R"({"limits":{"eps":0},"cluster":{"name":"fake","node":"node01"},)"
                     R"("agent":{"groups":["default"]}})";
@@ -382,7 +420,7 @@ class FakeManager final
                     return;
                 }
 
-                // Unknown /control type: 400.
+                // Unknown /control type (the response leg is gone): 400.
                 response.status = 400;
                 response.set_content(R"({"error":"unknown control type"})", "application/json");
             });
