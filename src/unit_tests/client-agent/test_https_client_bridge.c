@@ -58,6 +58,14 @@ bool __wrap_hc_set_agent_key(hc_handle *handle, const char *key_hex)
     return mock();
 }
 
+bool __wrap_hc_submit_event(hc_handle *handle, const uint8_t *frame, size_t length)
+{
+    check_expected_ptr(handle);
+    check_expected(frame);
+    check_expected(length);
+    return mock();
+}
+
 int __wrap_try_enroll_to_server(const char *server_rip, uint32_t network_interface)
 {
     check_expected(server_rip);
@@ -593,6 +601,79 @@ static void test_rejected_state_maps_to_nactive(void **state)
     w_https_client_stop();
 }
 
+/* w_https_client_submit_event: the stateless intake seam (#37835) */
+
+static void test_submit_event_forwards_the_frame_to_the_module(void **state)
+{
+    (void)state;
+    const char *frame = "1:/var/log/syslog:hello";
+    start_client_successfully();
+
+    expect_value(__wrap_hc_submit_event, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_submit_event, frame, frame);
+    expect_value(__wrap_hc_submit_event, length, strlen(frame));
+    will_return(__wrap_hc_submit_event, true);
+
+    assert_int_equal(w_https_client_submit_event(frame, strlen(frame)), 0);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_submit_event_reports_a_dropped_frame(void **state)
+{
+    (void)state;
+    const char *frame = "1:/var/log/syslog:dropped";
+    start_client_successfully();
+
+    /* The accumulator is full: drop-newest, traced like the leaky bucket did. */
+    expect_value(__wrap_hc_submit_event, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_submit_event, frame, frame);
+    expect_value(__wrap_hc_submit_event, length, strlen(frame));
+    will_return(__wrap_hc_submit_event, false);
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "https_client: unable to store new packet: buffer is full.");
+
+    assert_int_equal(w_https_client_submit_event(frame, strlen(frame)), -1);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_submit_event_rejects_an_empty_frame(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    /* Guarded before the module is ever reached: no hc_submit_event expectation
+     * is queued, so cmocka fails the test if one is made. */
+    assert_int_equal(w_https_client_submit_event(NULL, 8), -1);
+    assert_int_equal(w_https_client_submit_event("frame", 0), -1);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_submit_event_is_a_noop_before_start(void **state)
+{
+    (void)state;
+    /* No client yet: the handle is NULL, so nothing may be called through it. */
+    assert_int_equal(w_https_client_submit_event("1:/loc:early", 12), -1);
+}
+
+static void test_submit_event_is_a_noop_once_stopping(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+
+    /* After stop() the handle is destroyed; the stopping flag is what keeps a
+     * late intake frame from reaching freed memory. */
+    assert_int_equal(w_https_client_submit_event("1:/loc:late", 11), -1);
+}
+
 static void test_auth_error_state_maps_to_nactive(void **state)
 {
     (void)state;
@@ -633,6 +714,11 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_stopped_state_maps_to_nactive, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_rejected_state_maps_to_nactive, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_auth_error_state_maps_to_nactive, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_submit_event_forwards_the_frame_to_the_module, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_submit_event_reports_a_dropped_frame, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_submit_event_rejects_an_empty_frame, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_submit_event_is_a_noop_before_start, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_submit_event_is_a_noop_once_stopping, setup_test, teardown_test),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }
