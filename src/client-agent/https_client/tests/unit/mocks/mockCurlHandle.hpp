@@ -24,7 +24,7 @@ class MockCurlHandle : public ICurlHandle
         MOCK_METHOD(bool, setOptionPtr, (CurlOption option, const void* value), (override));
         MOCK_METHOD(void, appendHeader, (const std::string& header), (override));
         MOCK_METHOD(void, captureResponseBody, (std::string* output), (override));
-        MOCK_METHOD(void, captureResponseToFile, (std::FILE* file), (override));
+        MOCK_METHOD(void, captureResponseToFile, (std::FILE* file, uint64_t maxBytes), (override));
         MOCK_METHOD(void, captureRetryAfter, (long* output), (override));
         MOCK_METHOD(void, streamBodyFromFile, (std::FILE* file, uint64_t size), (override));
         MOCK_METHOD(void, wireAbort, (const std::atomic<bool>* abortFlag), (override));

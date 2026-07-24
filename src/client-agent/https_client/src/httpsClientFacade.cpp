@@ -17,10 +17,12 @@ HttpsClientFacade::HttpsClientFacade(const hc_config_t& config, const hc_callbac
     : m_config(ModuleConfig::fromC(config))
     , m_keyProvider(m_config.agentKeyHex)
     , m_signer(m_config.agentId, m_keyProvider)
+    , m_spoolFactory(m_config.spoolDir)
     , m_performer(m_config, defaultCurlHandleFactory())
     , m_dispatcher(callbacks)
-    , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_cluster,
-                m_authGate)
+    , m_configHash(m_config.configChecksum)
+    , m_control(m_config, m_performer, m_signer, m_clock, m_random, m_dispatcher, m_spoolFactory,
+                m_configHash, m_cluster, m_authGate)
 {
 }
 
@@ -37,6 +39,15 @@ bool HttpsClientFacade::start()
     {
         LOGFN_WARN(m_logFn, "https_client already started, ignoring start request.");
         return true;
+    }
+
+    if (m_stopped)
+    {
+        // Single-shot: per-run state (waiter, gate, state machine) is not reset,
+        // so a restart would launch a control thread that exits immediately.
+        // Fail closed instead of returning a misleading success.
+        LOGFN_WARN(m_logFn, "https_client was stopped; create a new instance to start again.");
+        return false;
     }
 
     if (!m_config.validate(m_fsProbe, m_logFn))
@@ -67,6 +78,7 @@ void HttpsClientFacade::stop()
         }
 
         m_started = false;
+        m_stopped = true; // Single-shot: reject any later start().
     }
     LOGFN_INFO(m_logFn, "Stopping https_client.");
 
@@ -140,6 +152,13 @@ bool HttpsClientFacade::setAgentKey(const char* keyHex)
 
     m_authGate.release();
     return true;
+}
+
+void HttpsClientFacade::setConfigHash(const char* configHash)
+{
+    // Deliberately no lifecycle lock: callable from inside callbacks (the
+    // dispatcher thread) without deadlocking; only its own mutex is taken.
+    m_configHash.set(configHash);
 }
 
 hc_conn_state_t HttpsClientFacade::state() const

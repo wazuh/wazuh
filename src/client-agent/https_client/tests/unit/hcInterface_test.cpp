@@ -189,16 +189,29 @@ TEST_F(HcInterfaceTest, StartFailsClosedWithoutCaInFullMode)
 
 TEST_F(HcInterfaceTest, LifecycleChurn)
 {
-    // The designated ThreadSanitizer workload: repeated start/stop cycles.
-    hc_handle* handle = hc_create(&m_config, &m_callbacks);
-    ASSERT_NE(nullptr, handle);
-
+    // The designated ThreadSanitizer workload: a fresh handle each cycle
+    // exercises the full create/start/stop/destroy race surface. The client is
+    // single-shot (start-after-stop is rejected), so restarting one handle is
+    // not a valid workload.
     for (int cycle = 0; cycle < 20; cycle++)
     {
+        hc_handle* handle = hc_create(&m_config, &m_callbacks);
+        ASSERT_NE(nullptr, handle);
         ASSERT_TRUE(hc_start(handle));
         hc_stop(handle);
+        hc_destroy(handle);
     }
+}
 
+TEST_F(HcInterfaceTest, StartAfterStopIsRejected)
+{
+    // Single-shot: once stopped, start() fails closed rather than returning a
+    // misleading success on a client that would sit dead.
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    hc_stop(handle);
+    EXPECT_FALSE(hc_start(handle));
     hc_destroy(handle);
 }
 
@@ -208,8 +221,18 @@ TEST_F(HcInterfaceTest, NullHandleIsSafeEverywhere)
     hc_stop(nullptr);
     hc_destroy(nullptr);
     hc_notify_now(nullptr);
+    EXPECT_FALSE(hc_set_config_hash(nullptr, "abc"));
     EXPECT_FALSE(hc_set_agent_key(nullptr, "000102030405060708090a0b0c0d0e0f"));
     EXPECT_EQ(HC_STATE_STOPPED, hc_get_state(nullptr));
+}
+
+TEST_F(HcInterfaceTest, SetConfigHashAcceptsAValidHashAndRejectsNull)
+{
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    EXPECT_TRUE(hc_set_config_hash(handle, "d41d8cd98f00b204e9800998ecf8427e"));
+    EXPECT_FALSE(hc_set_config_hash(handle, nullptr));
+    hc_destroy(handle);
 }
 
 TEST_F(HcInterfaceTest, SetAgentKeyValidatesTheMaterial)

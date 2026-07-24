@@ -84,6 +84,7 @@ typedef enum hc_result_t
 #define HC_MAX_PATH 1024
 #define HC_MAX_CIPHERS 256
 #define HC_MAX_VERSION 64
+#define HC_MAX_CHECKSUM 128 /* fits a SHA-256 hex (64) + NUL with room */
 
 /**
  * @brief Configuration passed from the agent (C) to the C++ module.
@@ -113,8 +114,13 @@ typedef struct hc_config_t
     uint32_t rejected_retry_interval_s; ///< Slow re-Startup cadence; 0 -> 60.
 
     char version[HC_MAX_VERSION];       ///< Product version for Startup.
+    char config_checksum[HC_MAX_CHECKSUM]; ///< Local merged.mg MD5 seed. Compared
+    ///< against the manager-reported
+    ///< agent.config_hash on every Notify;
+    ///< a mismatch triggers /download.
 
     uint32_t request_timeout_ms;  ///< Per request; 0 -> 10000.
+    uint32_t stateful_timeout_ms; ///< Large transfers (/download); 0 -> 120000.
     uint32_t backoff_base_ms;     ///< Full-jitter base; 0 -> 1000.
     uint32_t backoff_cap_ms;      ///< Full-jitter cap; 0 -> 60000.
     uint32_t drain_timeout_ms;    ///< Shutdown drain window; 0 -> 5000.
@@ -141,6 +147,15 @@ typedef struct hc_callbacks_t
     /// band (the authd flow, caller-owned retries) and call hc_set_agent_key()
     /// with the new key to resume.
     void (*on_reenroll_required)(void* user_data);
+    /// A Notify reported a merged-config hash differing from the local one;
+    /// the module fetched the new configuration via POST /download and
+    /// verified its MD5. file_path is a module-owned temp file valid ONLY
+    /// until this callback returns (the module deletes it afterwards):
+    /// read/copy it inside the callback. Writing merged.mg, unmerging and
+    /// reloading is the consumer's job. If applying fails, call
+    /// hc_set_config_hash() with the hash actually on disk.
+    void (*on_config_downloaded)(const char* config_hash, const char* file_path,
+                                 void* user_data);
     void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t
     void* user_data;
 } hc_callbacks_t;
@@ -159,15 +174,18 @@ HC_EXPORTED hc_handle* hc_create(const hc_config_t* config, const hc_callbacks_t
 /**
  * @brief Start the client: validates the configuration (TLS settings fail
  *        closed) and launches the worker threads. Returns false and starts
- *        nothing when validation fails. A second start is ignored (true).
+ *        nothing when validation fails. A second start while running is
+ *        ignored (true). Single-shot: once hc_stop() has run, start returns
+ *        false -- create a new instance to run again.
  */
 HC_EXPORTED bool hc_start(hc_handle* handle);
 
 /**
  * @brief Stop the client: drains within the configured window (final
  *        Notify), aborts in-flight requests explicitly and joins every
- *        thread. No callback fires after this returns. Safe without a
- *        prior start.
+ *        thread. No callback fires after this returns. Terminal (single-shot):
+ *        the instance cannot be restarted afterwards. Safe without a prior
+ *        start.
  */
 HC_EXPORTED void hc_stop(hc_handle* handle);
 
@@ -180,11 +198,20 @@ HC_EXPORTED void hc_destroy(hc_handle* handle);
 HC_EXPORTED void hc_notify_now(hc_handle* handle);
 
 /**
+ * @brief Correct the module's view of the local merged-config hash (after a
+ *        failed or divergent apply of a downloaded configuration). Unlike the
+ *        other hc_* functions this one IS safe to call from inside callbacks:
+ *        it only touches an internal guarded string. Returns false on a NULL
+ *        handle or hash.
+ */
+HC_EXPORTED bool hc_set_config_hash(hc_handle* handle, const char* config_hash);
+
+/**
  * @brief Swap the AES-CMAC credential at runtime (hex; 16/24/32 bytes decoded)
- *        after a re-enrollment. This is callback-safe (it only touches an
- *        internal guarded key). It clears the auth pause. Returns false on a
- *        NULL handle or invalid key material, leaving the previous key in
- *        place.
+ *        after a re-enrollment. Like hc_set_config_hash this is callback-safe
+ *        (it only touches an internal guarded key). It clears the auth pause
+ *        and forces a fresh Startup (re-registration). Returns false on a NULL
+ *        handle or invalid key material, leaving the previous key in place.
  */
 HC_EXPORTED bool hc_set_agent_key(hc_handle* handle, const char* key_hex);
 

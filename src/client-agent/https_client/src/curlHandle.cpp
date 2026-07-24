@@ -72,10 +72,32 @@ namespace
         return total;
     }
 
+    // File response sink with an optional byte cap; lives on the CurlHandle for
+    // the duration of the transfer.
+    struct FileSink
+    {
+        std::FILE* file {nullptr};
+        uint64_t written {0};
+        uint64_t max {0}; // 0 = unlimited.
+    };
+
     size_t fileWriteTrampoline(char* data, size_t size, size_t nmemb, void* userData)
     {
-        // A short count aborts the transfer (write error / disk full).
-        return std::fwrite(data, 1, size * nmemb, static_cast<std::FILE*>(userData));
+        auto* sink = static_cast<FileSink*>(userData);
+        const size_t total = size * nmemb;
+
+        // Enforce the cap: a short count aborts the transfer, so a hostile or
+        // faulty manager cannot fill the agent's disk. (written <= max always,
+        // so max - written never underflows.)
+        if (sink->max != 0 && total > sink->max - sink->written)
+        {
+            return 0;
+        }
+
+        // A short fwrite (write error / disk full) also aborts.
+        const size_t wrote = std::fwrite(data, 1, total, sink->file);
+        sink->written += wrote;
+        return wrote;
     }
 
     size_t headerTrampoline(char* data, size_t size, size_t nmemb, void* userData)
@@ -190,12 +212,13 @@ namespace
                 curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, output);
             }
 
-            void captureResponseToFile(std::FILE* file) override
+            void captureResponseToFile(std::FILE* file, uint64_t maxBytes) override
             {
                 // Chunked transfer decoding is native curl; the trampoline
-                // receives decoded bytes.
+                // receives decoded bytes and enforces maxBytes.
+                m_fileSink = FileSink {file, 0, maxBytes};
                 curl_easy_setopt(m_handle, CURLOPT_WRITEFUNCTION, fileWriteTrampoline);
-                curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, file);
+                curl_easy_setopt(m_handle, CURLOPT_WRITEDATA, &m_fileSink);
             }
 
             void captureRetryAfter(long* output) override
@@ -243,6 +266,7 @@ namespace
         private:
             CURL* m_handle {nullptr};
             curl_slist* m_headers {nullptr};
+            FileSink m_fileSink {};
     };
 } // namespace
 

@@ -15,6 +15,8 @@
 #include "authGate.hpp"
 #include "callbackSink.hpp"
 #include "clusterIdentity.hpp"
+#include "configFetcher.hpp"
+#include "configHashState.hpp"
 #include "controlStateMachine.hpp"
 #include "moduleConfig.hpp"
 #include "moduleLog.hpp"
@@ -31,15 +33,16 @@
  * Drives the pure ControlStateMachine: nextAction() decides the request,
  * step() performs it and feeds the result back as an event. Startup applies
  * the handshake JSON and releases the producer gate; Notify compares the
- * manager-reported settings_hash (a mismatch refreshes the startup data in
- * place). Task dispatch (#37833) and the config_hash-driven /download
- * (#37832) mount on the Notify response in their own workstreams.
+ * manager-reported hashes (config_hash -> /download, settings_hash ->
+ * startup refresh). Task dispatch (#37833) mounts on the Notify response in
+ * its own workstream.
  */
 class ControlStream final
 {
     public:
         ControlStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
                       IClock& clock, IRandom& random, ICallbackSink& sink,
+                      ISpoolFileFactory& spoolFactory, ConfigHashState& configHash,
                       ClusterIdentity& cluster, AuthGate& authGate);
 
         /// One control iteration. Returns whether Startup has been accepted (the
@@ -65,14 +68,18 @@ class ControlStream final
         void sendShutdown(Waiter& waiter);
         void applyEffects(const ControlStateMachine::Effects& effects, const std::string& handshake);
         void applyClusterIdentity(const std::string& startupBody);
-        void handleNotifyBody(const std::string& body);
+        void handleNotifyBody(const std::string& body, Waiter& waiter);
         void maybeArmSettingsRefresh(const std::string& incoming);
+        void maybeDownloadConfig(const std::string& managerHash, const std::string& group,
+                                 Waiter& waiter);
         ControlStateMachine::Event eventFor(OutcomeClass outcome) const;
 
         const ModuleConfig& m_config;
         Backoff m_backoff;
         RetrySender m_sender;
         ICallbackSink& m_sink;
+        ConfigFetcher m_fetcher;
+        ConfigHashState& m_configHash;
         ClusterIdentity& m_cluster;
         AuthGate& m_authGate;
         ControlStateMachine m_machine;
