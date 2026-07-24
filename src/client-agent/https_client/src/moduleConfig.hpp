@@ -43,6 +43,11 @@ struct ModuleConfig
         uint32_t batchIntervalMs {10000};
         uint32_t bufferCapMultiplier {4};
 
+        // Legacy client-buffer ladder defaults (etc/internal_options.conf).
+        uint32_t bufferWarnLevel {90};
+        uint32_t bufferNormalLevel {70};
+        uint32_t bufferFloodToleranceS {15};
+
         uint32_t notifyIntervalS {20};
         uint32_t rejectedRetryIntervalS {60};
 

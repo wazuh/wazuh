@@ -81,6 +81,19 @@ void buffer_init();
 int buffer_append(const char *msg, ssize_t msg_len);
 
 /**
+ * @brief Sends the wazuh-agent.buffer occupancy state event (manager flood
+ *        rules 202-205).
+ *
+ * Writes straight to send_msg(), bypassing every buffer, so a flood report
+ * never queues behind the flood it reports. Called by the legacy leaky bucket
+ * and by the https_client bridge for the /stateless accumulator (#37835).
+ *
+ * @param action One of "normal", "warning", "full", "flooded".
+ * @param severity Matching severity, 0 to 3.
+ */
+void send_buffer_status_event(const char *action, int severity);
+
+/**
  * @brief Resizes the internal circular buffer to a desired capacity.
  *
  * @param current_capacity The current allocated capacity of the buffer before resizing.
