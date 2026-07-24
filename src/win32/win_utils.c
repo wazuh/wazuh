@@ -11,6 +11,7 @@
 #ifdef WIN32
 #include "shared.h"
 #include "agentd.h"
+#include "https_client_bridge.h"
 #include "logcollector.h"
 #include "execd.h"
 #include "wmodules.h"
@@ -354,6 +355,15 @@ int local_start()
                      NULL,
                      0,
                      (LPDWORD)&threadID);
+
+    /* HTTPS client: the agent's transport, unconditionally. Still runs
+     * independently of the legacy TCP path below until that is retired
+     * (later workstream). See client-agent/https_client and the bridge.
+     * TEST-ONLY (integration test branch): wires the Windows entry point
+     * to the module, which agentd.c already does on POSIX (AgentdStart());
+     * win_utils.c::local_start() never called it before this. */
+    w_https_client_start();
+    atexit(w_https_client_stop);
 
     start_agent(1);
 
