@@ -172,6 +172,7 @@ TEST_F(ControlStreamTest, StartupAcceptedRegistersAndDeliversHandshake)
 TEST_F(ControlStreamTest, VersionRejectionGoesRejected)
 {
     EXPECT_CALL(m_sink, onStateChange(HC_STATE_REJECTED));
+    EXPECT_CALL(m_sink, onStartupResult(false, _)); // A rejected startup is reported to the consumer.
     EXPECT_CALL(m_performer, perform(_)).WillOnce(Return(response(TransportStatus::Ok, 426)));
 
     EXPECT_FALSE(m_stream.step(m_waiter));
@@ -454,6 +455,7 @@ TEST_F(ControlStreamTest, DrainStepSendsBareShutdown)
                   [&](const HttpRequestSpec & spec)
     {
         EXPECT_EQ(R"({"type":"shutdown"})", bodyOf(spec));
+        EXPECT_EQ(m_config.drainTimeoutMs, spec.timeoutMs); // Shutdown uses the drain window, not the request timeout.
         return response(TransportStatus::Ok, 200, shutdownResponse);
     }));
 
