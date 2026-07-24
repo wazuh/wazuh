@@ -1398,33 +1398,30 @@ public:
                      index.data());
         }
 
-        const auto totalSize =
-            m_bulkData.length() + FORMATTED_SIZE + VERSION_SIZE + index.size() + id.size() + data.size();
-
-        // Only flush if there is data already buffered.
-        if (!m_bulkData.empty() && totalSize > m_maxBulkSize)
-        {
-            processBulk();
-        }
-        m_bulkData.append(R"({"index":{"_index":")");
-        m_bulkData.append(index);
         if (!version.empty())
         {
             // In case the version is provided, the id must be provided too
-            if (!id.empty())
-            {
-                m_bulkData.append(R"(","_id":")");
-                appendEscapedId(m_bulkData, id);
-            }
-            else
+            if (id.empty())
             {
                 LOG_ERROR(m_logFn, "Id must be provided if version value is provided");
                 throw IndexerConnectorException("Id must be provided if version value is provided");
             }
 
-            m_bulkData.append(R"(","version":")");
-            m_bulkData.append(version);
-            m_bulkData.append(R"(","version_type":"external_gte)");
+            // The scripted upsert carries the document twice (params.doc + upsert body).
+            const auto totalSize = m_bulkData.length() + FORMATTED_SIZE + VERSION_SIZE +
+                                   PRESERVE_MERGE_SCRIPT.size() + index.size() + id.size() + (2 * data.size());
+
+            // Only flush if there is data already buffered.
+            if (!m_bulkData.empty() && totalSize > m_maxBulkSize)
+            {
+                processBulk();
+            }
+
+            // A bulk "index" action replaces the whole document, wiping user
+            // enrichment fields, and does not support external versioning on
+            // "update" actions; the Painless script implements external_gte on
+            // state.document_version while preserving unknown top-level fields.
+            appendScriptedUpdate(m_bulkData, index, id, version, data);
             LOG_DEBUG2(m_logFn,
                        "Using external version %.*s for document %.*s",
                        static_cast<int>(version.size()),
@@ -1434,6 +1431,17 @@ public:
         }
         else
         {
+            const auto totalSize =
+                m_bulkData.length() + FORMATTED_SIZE + VERSION_SIZE + index.size() + id.size() + data.size();
+
+            // Only flush if there is data already buffered.
+            if (!m_bulkData.empty() && totalSize > m_maxBulkSize)
+            {
+                processBulk();
+            }
+
+            m_bulkData.append(R"({"index":{"_index":")");
+            m_bulkData.append(index);
             if (!id.empty())
             {
                 m_bulkData.append(R"(","_id":")");
@@ -1443,11 +1451,11 @@ public:
                        "No version specified for document %.*s, using default versioning",
                        static_cast<int>(id.size()),
                        id.data());
+            m_bulkData.append(R"("}})");
+            m_bulkData.append("\n");
+            m_bulkData.append(data);
+            m_bulkData.append("\n");
         }
-        m_bulkData.append(R"("}})");
-        m_bulkData.append("\n");
-        m_bulkData.append(data);
-        m_bulkData.append("\n");
         m_boundaries.push_back(m_bulkData.size());
     }
 
@@ -1458,7 +1466,7 @@ public:
         // Validate input parameters
         if (!isSafeIndexName(index))
         {
-            LOGFN_ERROR(m_logFn,
+            LOG_ERROR(m_logFn,
                         "Refusing bulkUpsertPreserving for unsafe index name '%.*s' (empty or contains characters "
                         "outside [a-zA-Z0-9._*-]) on document '%.*s'",
                         static_cast<int>(index.size()),
@@ -1470,13 +1478,13 @@ public:
 
         if (id.empty())
         {
-            LOGFN_ERROR(m_logFn, "Id must be provided for bulkUpsertPreserving");
+            LOG_ERROR(m_logFn, "Id must be provided for bulkUpsertPreserving");
             throw IndexerConnectorException("Id must be provided for bulkUpsertPreserving");
         }
 
         if (data.empty())
         {
-            LOGFN_WARN(m_logFn,
+            LOG_WARN(m_logFn,
                        "Empty data provided for document %.*s in index %.*s",
                        static_cast<int>(id.size()),
                        id.data(),
@@ -1496,7 +1504,7 @@ public:
 
         appendPreservingUpsert(m_bulkData, index, id, data);
 
-        LOGFN_DEBUG2(m_logFn,
+        LOG_DEBUG2(m_logFn,
                      "Preserving upsert for document %.*s (user enrichment fields are kept)",
                      static_cast<int>(id.size()),
                      id.data());

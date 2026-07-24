@@ -1799,15 +1799,15 @@ TEST_F(IndexerConnectorSyncTest, BulkIndexWithVersionHandling)
     auto status = processingCompletedFuture.wait_for(std::chrono::seconds(5));
     EXPECT_EQ(status, std::future_status::ready) << "Timeout waiting for version test processing";
 
-    // Verify version is included in the bulk data for doc1
-    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version":"12345")"));
-    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("version_type":"external_gte")"));
-
-    // Verify the versioned script preserves fields the incoming document does
-    // not carry (user enrichment added via the Indexer/Dashboard)
-    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr("new HashMap(params.doc)"));
-    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr("merged.containsKey"));
-    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("retry_on_conflict":3)"));
+    // Verify doc1 goes out as a scripted update carrying the version guard
+    // (external_gte emulated on state.document_version) instead of a plain
+    // "index" action, which would replace the whole document
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("update":{"_index":"index1","_id":"doc1")"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("doc_version":12345)"));
+    EXPECT_THAT(capturedBulkData,
+                ::testing::HasSubstr("ctx._source.state.document_version <= params.doc_version"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("upsert":{"field":"value1"})"));
+    EXPECT_THAT(capturedBulkData, ::testing::HasSubstr(R"("scripted_upsert":true)"));
 
     // Verify the versioned script preserves fields the incoming document does
     // not carry (user enrichment added via the Indexer/Dashboard)
