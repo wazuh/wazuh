@@ -17,7 +17,6 @@ relationships:
         - security_all
         - cluster_all
         - mitre_read
-        - task_status
       rule_ids:
         - wui_elastic_admin
         - wui_opensearch_admin
@@ -37,7 +36,6 @@ relationships:
         - security_read
         - cluster_all
         - mitre_read
-        - task_status
       rule_ids:
         - wazuh_indexer_admin
 
