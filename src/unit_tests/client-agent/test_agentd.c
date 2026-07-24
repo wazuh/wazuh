@@ -18,6 +18,12 @@
 
 #ifdef TEST_AGENT
 
+/* agentd.c calls w_https_client_start()/w_https_client_stop(), which would drag
+ * https_client_bridge.o (and its hc_* module references) into this test binary.
+ * test_agentd does not exercise the client, so stub the two entry points. */
+void __wrap_w_https_client_start(void) {}
+void __wrap_w_https_client_stop(void) {}
+
 static int setup_group(void **state) {
     curl_response *response;
     os_calloc(1, sizeof(curl_response), response);
