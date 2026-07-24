@@ -34,6 +34,8 @@ constexpr auto QUEUE_SIZE
 constexpr auto CREATE_FILE_DB_STATEMENT
 {
     R"(CREATE TABLE IF NOT EXISTS file_entry (
+    container_id TEXT NOT NULL DEFAULT '',
+    container_json TEXT NOT NULL DEFAULT '',
     path TEXT NOT NULL,
     checksum TEXT NOT NULL,
     device INTEGER,
@@ -51,7 +53,7 @@ constexpr auto CREATE_FILE_DB_STATEMENT
     mtime INTEGER,
     version INTEGER NOT NULL DEFAULT 1,
     sync INTEGER DEFAULT 0,
-    PRIMARY KEY(path)) WITHOUT ROWID;
+    PRIMARY KEY(container_id, path)) WITHOUT ROWID;
     CREATE INDEX IF NOT EXISTS path_index ON file_entry (path);
     CREATE INDEX IF NOT EXISTS inode_index ON file_entry (device, inode);)"
 };

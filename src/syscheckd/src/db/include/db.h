@@ -176,6 +176,18 @@ EXPORTED TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_
 EXPORTED FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry);
 
 /**
+ * @brief Function to perform a sync row operation (ADD OR REPLACE) from a raw JSON row.
+ *
+ * @param txn_handler Handler to an active transaction.
+ * @param table Destination table name.
+ * @param row_json JSON object string with the row columns (must include all PK columns).
+ *
+ * @retval FIMDB_OK on success.
+ * @retval FIMDB_ERR on failure.
+ */
+EXPORTED FIMDBErrorCode fim_db_transaction_sync_row_json(TXN_HANDLE txn_handler, const char* table, const char* row_json);
+
+/**
  * @brief Function to perform the deleted rows operation.
  *
  * @param txn_handler Handler to an active transaction.

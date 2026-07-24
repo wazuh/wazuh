@@ -285,4 +285,110 @@ int RunSyscollectorBaseline(const std::string& connector_socket_path, const RowS
     return baselined;
 }
 
+int RunFimDbsyncBaseline(const std::string&                connector_socket_path,
+                          const std::vector<MonitoredPath>& paths,
+                          const DbsyncRowSink&              sink)
+{
+    int baselined = 0;
+
+    for (const auto& identity : DiscoverContainers(connector_socket_path)) {
+        const auto pids = ResolvePidsForContainer(identity.container_id);
+        if (pids.empty()) continue;
+
+        ++baselined;
+        const auto pid = pids.front();
+        const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
+
+        for (const auto& mp : paths) {
+            const auto walk = WalkContainerPath(pid, mp.internal_path, mp.recursion_level,
+                                                 mp.max_files, mp.max_hash_bytes);
+            for (auto row : walk.rows) {
+                ApplyIdentity(row, identity);
+                sink(DbsyncRow{identity.container_id, "file_entry",
+                               BuildFimFileDbsyncRow(row, containerJson)});
+            }
+        }
+    }
+
+    return baselined;
+}
+
+int RunSyscollectorDbsyncBaseline(const std::string& connector_socket_path, const DbsyncRowSink& sink)
+{
+    int baselined = 0;
+
+    for (const auto& identity : DiscoverContainers(connector_socket_path)) {
+        const auto pids = ResolvePidsForContainer(identity.container_id);
+        if (pids.empty()) continue;
+
+        ++baselined;
+
+        // Context blob serialized once per container; every row carries it in
+        // its container_json column so DELETED events stay self-contained.
+        const auto containerJson = BuildContainerContextJson(identity.container_id, identity.context);
+        const auto emit = [&](const std::string& table, std::string json) {
+            sink(DbsyncRow{identity.container_id, table, std::move(json)});
+        };
+
+        for (auto row : ScanContainerProcesses(identity.container_id)) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_processes", BuildProcessDbsyncRow(row, containerJson));
+        }
+
+        for (auto row : ScanContainerNetwork(identity.container_id)) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_ports", BuildPortDbsyncRow(row, containerJson));
+        }
+
+        const auto pid = pids.front();
+
+        for (auto row : ScanContainerUsers(pid)) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_users", BuildUserDbsyncRow(row, containerJson));
+        }
+
+        for (auto row : ScanContainerGroups(pid)) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_groups", BuildGroupDbsyncRow(row, containerJson));
+        }
+
+        for (auto row : ScanContainerPackages(pid)) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_packages", BuildPackageDbsyncRow(row, containerJson));
+        }
+
+        for (auto row : ScanContainerOs(pid)) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_osinfo", BuildOsDbsyncRow(row, containerJson));
+        }
+
+        auto ifscan = ScanContainerInterfaces(pid);
+        for (auto row : ifscan.interfaces) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_network_iface", BuildInterfaceDbsyncRow(row, containerJson));
+        }
+        for (auto row : ifscan.addresses) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_network_address", BuildNetworkAddressDbsyncRow(row, containerJson));
+        }
+
+        for (auto row : ScanContainerProtocols(pid)) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_network_protocol", BuildProtocolDbsyncRow(row, containerJson));
+        }
+
+        for (auto row : ScanContainerServices(pid)) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_services", BuildServiceDbsyncRow(row, containerJson));
+        }
+
+        for (auto row : ScanContainerHardware(pid)) {
+            ApplyIdentity(row, identity);
+            emit("dbsync_hwinfo", BuildHardwareDbsyncRow(row, containerJson));
+        }
+    }
+
+    return baselined;
+}
+
 } // namespace wazuh::container_baseline

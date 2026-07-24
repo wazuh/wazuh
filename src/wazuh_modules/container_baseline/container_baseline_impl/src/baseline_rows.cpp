@@ -444,4 +444,209 @@ std::pair<std::string, std::string> BuildHardwareJson(const HardwareBaselineRow&
     return {id, data.dump()};
 }
 
+namespace {
+
+/// Starts every dbsync row with the two container columns shared by all
+/// syscollector tables (syscollectorTablesDef.hpp).
+nlohmann::json DbsyncRowBase(const std::string& container_id, const std::string& container_json)
+{
+    nlohmann::json row;
+    row["container_id"]   = container_id;
+    row["container_json"] = container_json;
+    return row;
+}
+
+} // namespace
+
+std::string BuildContainerContextJson(const std::string& container_id, const ContainerContextPtr& ctx)
+{
+    nlohmann::json data;
+    data["container"] = ContainerBlock(container_id, ctx);
+    if (auto kubernetes = KubernetesBlock(ctx)) {
+        data["kubernetes"] = std::move(*kubernetes);
+    }
+    return data.dump();
+}
+
+std::string BuildFimFileDbsyncRow(const FileBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["path"]        = row.path;
+    data["device"]      = static_cast<int64_t>(row.device);
+    data["inode"]       = static_cast<int64_t>(row.inode);
+    data["size"]        = static_cast<int64_t>(row.size);
+    data["permissions"] = row.permissions;
+    data["attributes"]  = "";
+    data["uid"]         = row.uid;
+    data["gid"]         = row.gid;
+    data["owner"]       = row.owner;
+    data["group_"]      = row.group;
+    data["mtime"]       = row.mtime;
+    data["hash_md5"]    = row.hash_md5;
+    data["hash_sha1"]   = row.hash_sha1;
+    data["hash_sha256"] = row.hash_sha256;
+    // checksum column intentionally omitted — caller computes and inserts it.
+    return data.dump();
+}
+
+std::string BuildProcessDbsyncRow(const ProcessBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["pid"]          = row.pid;
+    data["name"]         = row.name;
+    data["state"]        = row.state;
+    data["parent_pid"]   = row.parent_pid;
+    data["utime"]        = row.utime;
+    data["stime"]        = row.stime;
+    data["command_line"] = row.command_line;
+    data["args"]         = row.args;
+    data["args_count"]   = row.args_count;
+    data["start"]        = row.start;
+    return data.dump();
+}
+
+std::string BuildPortDbsyncRow(const PortBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["network_transport"] = row.network_transport;
+    data["source_ip"]         = row.source_ip;
+    data["source_port"]       = row.source_port;
+    data["destination_ip"]    = row.destination_ip;
+    data["destination_port"]  = row.destination_port;
+    data["file_inode"]        = static_cast<int64_t>(row.file_inode);
+    data["interface_state"]   = row.interface_state;
+    data["process_pid"]       = row.process_pid;
+    data["process_name"]      = row.process_name;
+    return data.dump();
+}
+
+std::string BuildUserDbsyncRow(const UserBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["user_name"]      = row.name;
+    data["user_id"]        = row.uid;
+    data["user_group_id"]  = row.gid;
+    data["user_full_name"] = row.description;
+    data["user_home"]      = row.home;
+    data["user_shell"]     = row.shell;
+    return data.dump();
+}
+
+std::string BuildGroupDbsyncRow(const GroupBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["group_name"] = row.name;
+    data["group_id"]   = row.gid;
+    std::string users;
+    for (const auto& member : row.members) {
+        if (!users.empty()) users += ',';
+        users += member;
+    }
+    data["group_users"] = users;
+    return data.dump();
+}
+
+std::string BuildPackageDbsyncRow(const PackageBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["name"]         = row.name;
+    data["version_"]     = row.version;
+    data["architecture"] = row.architecture;
+    data["description"]  = row.description;
+    data["size"]         = row.size;
+    data["vendor"]       = row.vendor;
+    data["installed"]    = row.install_time;
+    data["category"]     = row.category;
+    data["source"]       = row.source;
+    data["type"]         = row.format;
+    data["path"]         = ""; // PK member — must be present, container packages carry no path.
+    return data.dump();
+}
+
+std::string BuildOsDbsyncRow(const OsBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["os_name"]           = row.name;
+    data["os_full"]           = row.full;
+    data["os_version"]        = row.version;
+    data["os_codename"]       = row.codename;
+    data["os_platform"]       = row.platform;
+    data["os_type"]           = "linux";
+    data["os_kernel_release"] = row.kernel;
+    return data.dump();
+}
+
+std::string BuildInterfaceDbsyncRow(const InterfaceBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["interface_name"]  = row.name;
+    data["interface_alias"] = ""; // PK member — containers have no alias.
+    data["interface_type"]  = row.type;
+    data["interface_state"] = row.state;
+    data["interface_mtu"]   = row.mtu;
+    data["host_mac"]        = row.mac;
+    data["host_network_ingress_bytes"]    = static_cast<int64_t>(row.rx_bytes);
+    data["host_network_ingress_packages"] = static_cast<int64_t>(row.rx_packets);
+    data["host_network_ingress_errors"]   = static_cast<int64_t>(row.rx_errors);
+    data["host_network_ingress_drops"]    = static_cast<int64_t>(row.rx_dropped);
+    data["host_network_egress_bytes"]     = static_cast<int64_t>(row.tx_bytes);
+    data["host_network_egress_packages"]  = static_cast<int64_t>(row.tx_packets);
+    data["host_network_egress_errors"]    = static_cast<int64_t>(row.tx_errors);
+    data["host_network_egress_drops"]     = static_cast<int64_t>(row.tx_dropped);
+    return data.dump();
+}
+
+std::string BuildNetworkAddressDbsyncRow(const NetworkAddressBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["interface_name"]    = row.interface_name;
+    // dbsync_network_address.network_type is INTEGER: 0 = IPv4, 1 = IPv6 (same
+    // convention sysinfo uses for host rows).
+    data["network_type"]      = (row.protocol == "ipv6") ? 1 : 0;
+    data["network_ip"]        = row.address;
+    data["network_netmask"]   = row.netmask;
+    data["network_broadcast"] = row.broadcast;
+    return data.dump();
+}
+
+std::string BuildProtocolDbsyncRow(const ProtocolBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["interface_name"]  = row.interface_name;
+    data["network_type"]    = row.type;
+    data["network_gateway"] = row.gateway;
+    // network_dhcp omitted: scanner only ever knows "unknown" for a container rootfs.
+    data["network_metric"]  = std::to_string(row.metric);
+    return data.dump();
+}
+
+std::string BuildServiceDbsyncRow(const ServiceBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    data["service_id"]          = row.name;
+    data["service_name"]        = row.name;
+    data["service_description"] = row.description;
+    data["service_state"]       = row.state;
+    data["service_enabled"]     = row.enabled;
+    data["service_type"]        = row.type;
+    data["process_executable"]  = row.executable;
+    data["file_path"]           = row.file_path; // PK member.
+    return data.dump();
+}
+
+std::string BuildHardwareDbsyncRow(const HardwareBaselineRow& row, const std::string& container_json)
+{
+    auto data = DbsyncRowBase(row.container_id, container_json);
+    // serial_number is the table's PK slot; a container's virtual hardware has
+    // no board serial, so the container_id fills it (unique per container).
+    data["serial_number"] = row.container_id;
+    data["cpu_name"]      = row.cpu_name;
+    data["cpu_cores"]     = row.cpu_cores;
+    data["cpu_speed"]     = row.cpu_speed;
+    data["memory_total"]  = row.memory_total;
+    data["memory_free"]   = row.memory_free;
+    data["memory_used"]   = row.memory_used;
+    return data.dump();
+}
+
 } // namespace wazuh::container_baseline

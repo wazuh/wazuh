@@ -76,6 +76,26 @@ static void normalize_container_fim_row(cJSON* msg)
         return;
     }
 
+    // Lift container_json column → container/kubernetes top-level blocks.
+    const cJSON* container_json_item = cJSON_GetObjectItem(msg, "container_json");
+    if (container_json_item != NULL && cJSON_IsString(container_json_item) &&
+        container_json_item->valuestring != NULL && container_json_item->valuestring[0] != '\0') {
+        cJSON* ctx = cJSON_Parse(container_json_item->valuestring);
+        if (ctx != NULL) {
+            cJSON* container_block = cJSON_DetachItemFromObject(ctx, "container");
+            if (container_block != NULL) {
+                cJSON_DeleteItemFromObject(msg, "container");
+                cJSON_AddItemToObject(msg, "container", container_block);
+            }
+            cJSON* kubernetes_block = cJSON_DetachItemFromObject(ctx, "kubernetes");
+            if (kubernetes_block != NULL) {
+                cJSON_DeleteItemFromObject(msg, "kubernetes");
+                cJSON_AddItemToObject(msg, "kubernetes", kubernetes_block);
+            }
+            cJSON_Delete(ctx);
+        }
+    }
+
     cJSON* file_obj = cJSON_GetObjectItem(msg, "file");
     if (file_obj == NULL || !cJSON_IsObject(file_obj)) {
         file_obj = cJSON_CreateObject();
@@ -125,6 +145,13 @@ static void normalize_container_fim_row(cJSON* msg)
     cJSON_DeleteItemFromObject(msg, "hash_sha1");
     cJSON_DeleteItemFromObject(msg, "hash_sha256");
     cJSON_DeleteItemFromObject(msg, "is_symlink");
+    // dbsync-only columns: not part of the stateful event schema.
+    cJSON_DeleteItemFromObject(msg, "container_id");
+    cJSON_DeleteItemFromObject(msg, "container_json");
+    cJSON_DeleteItemFromObject(msg, "checksum");
+    cJSON_DeleteItemFromObject(msg, "sync");
+    cJSON_DeleteItemFromObject(msg, "version");
+    cJSON_DeleteItemFromObject(msg, "attributes");
 }
 
 int fim_collect_k8s_monitored_paths(cb_monitored_path_t** out_paths, size_t* out_count)
@@ -216,6 +243,14 @@ int fim_k8s_container_baseline_available(const char* socket_path)
 void fim_report_k8s_container_baseline_result(int baselined)
 {
     minfo("Container FIM baseline finished (%d container(s) baselined).", baselined);
+}
+
+void fim_compute_row_checksum(const char* row_json, char out_sha1[41])
+{
+    if (row_json == NULL || out_sha1 == NULL) {
+        return;
+    }
+    OS_SHA1_Str(row_json, (ssize_t)strlen(row_json), out_sha1);
 }
 
 void fim_persist_baseline_row(const char* id, int operation, const char* index, const char* json, uint64_t version)

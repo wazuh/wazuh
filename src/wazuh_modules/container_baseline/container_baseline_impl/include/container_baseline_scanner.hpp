@@ -56,4 +56,36 @@ int RunFimBaseline(const std::string&          connector_socket_path,
 /// `sink`. See baseline_rows.hpp for the draft-schema caveat on the JSON shape.
 int RunSyscollectorBaseline(const std::string& connector_socket_path, const RowSink& sink);
 
+/// @brief One baseline row rendered in syscollector's dbsync_* column format
+/// (Option A: baseline through the host event flow). `json` is a flat object of
+/// dbsync columns (including container_id/container_json); `table` is the
+/// dbsync table name ("dbsync_processes", ...). The consumer (syscollector)
+/// groups rows per container per table and pushes them through per-container
+/// scoped DBSync transactions so the existing notifyChange/processEvent
+/// pipeline emits the deltas.
+struct DbsyncRow
+{
+    std::string container_id;
+    std::string table;
+    std::string json;
+};
+
+using DbsyncRowSink = std::function<void(const DbsyncRow&)>;
+
+/// @brief Same scan coverage as RunFimBaseline() but emitting raw file_entry
+/// dbsync rows (BuildFimFileDbsyncRow + checksum) instead of pre-shaped
+/// sync-protocol payloads. The consumer (syscheckd container_baseline_fim.cpp)
+/// groups rows per container and pushes them through per-container scoped
+/// fim_db_transaction_start transactions so the existing transaction_callback
+/// pipeline emits the deltas.
+/// @return Number of containers baselined (same semantics as RunFimBaseline).
+int RunFimDbsyncBaseline(const std::string&                connector_socket_path,
+                          const std::vector<MonitoredPath>& paths,
+                          const DbsyncRowSink&              sink);
+
+/// @brief Same scan coverage as RunSyscollectorBaseline() but emitting raw
+/// dbsync rows (Build*DbsyncRow) instead of pre-shaped sync-protocol payloads.
+/// @return Number of containers baselined (same semantics as RunFimBaseline).
+int RunSyscollectorDbsyncBaseline(const std::string& connector_socket_path, const DbsyncRowSink& sink);
+
 } // namespace wazuh::container_baseline

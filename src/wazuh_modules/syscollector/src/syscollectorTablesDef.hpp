@@ -9,9 +9,20 @@
 
 #pragma once
 
+// Every dbsync table carries container_id ('' for host rows) as the leading
+// primary-key member so host and container inventories can share tables while
+// scoped DBSync transactions diff them independently. container_json stores
+// the serialized container/kubernetes context so DELETED events remain
+// self-contained after the container is gone.
+constexpr auto CONTAINER_ID_COLUMN   { "container_id" };
+constexpr auto CONTAINER_JSON_COLUMN { "container_json" };
+constexpr auto HOST_CONTAINER_ID     { "" };
+
 constexpr auto OS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_osinfo (
+    container_id TEXT DEFAULT '',
+    container_json TEXT DEFAULT '',
     hostname TEXT,
     architecture TEXT,
     os_name TEXT,
@@ -31,12 +42,14 @@ constexpr auto OS_SQL_STATEMENT
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (os_name, os_version)) WITHOUT ROWID;)"
+    PRIMARY KEY (container_id, os_name, os_version)) WITHOUT ROWID;)"
 };
 
 constexpr auto HW_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_hwinfo (
+    container_id TEXT DEFAULT '',
+    container_json TEXT DEFAULT '',
     serial_number TEXT,
     cpu_name TEXT,
     cpu_cores INTEGER,
@@ -47,22 +60,26 @@ constexpr auto HW_SQL_STATEMENT
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (serial_number)) WITHOUT ROWID;)"
+    PRIMARY KEY (container_id, serial_number)) WITHOUT ROWID;)"
 };
 
 constexpr auto HOTFIXES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_hotfixes(
+    container_id TEXT DEFAULT '',
+    container_json TEXT DEFAULT '',
     hotfix_name TEXT,
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (hotfix_name)) WITHOUT ROWID;)"
+    PRIMARY KEY (container_id, hotfix_name)) WITHOUT ROWID;)"
 };
 
 constexpr auto PACKAGES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_packages(
+    container_id TEXT DEFAULT '',
+    container_json TEXT DEFAULT '',
     name TEXT,
     version_ TEXT,
     vendor TEXT,
@@ -79,12 +96,14 @@ constexpr auto PACKAGES_SQL_STATEMENT
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (name,version_,architecture,type,path)) WITHOUT ROWID;)"
+    PRIMARY KEY (container_id, name,version_,architecture,type,path)) WITHOUT ROWID;)"
 };
 
 constexpr auto PROCESSES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_processes (
+    container_id TEXT DEFAULT '',
+    container_json TEXT DEFAULT '',
     pid TEXT,
     name TEXT,
     state TEXT,
@@ -98,12 +117,14 @@ constexpr auto PROCESSES_SQL_STATEMENT
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (pid)) WITHOUT ROWID;)"
+    PRIMARY KEY (container_id, pid)) WITHOUT ROWID;)"
 };
 
 constexpr auto PORTS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_ports (
+       container_id TEXT DEFAULT '',
+       container_json TEXT DEFAULT '',
        network_transport TEXT,
        source_ip TEXT,
        source_port BIGINT,
@@ -118,12 +139,14 @@ constexpr auto PORTS_SQL_STATEMENT
        sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
-       PRIMARY KEY (file_inode, network_transport, source_ip, source_port)) WITHOUT ROWID;)"
+       PRIMARY KEY (container_id, file_inode, network_transport, source_ip, source_port)) WITHOUT ROWID;)"
 };
 
 constexpr auto NETIFACE_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_iface (
+       container_id TEXT DEFAULT '',
+       container_json TEXT DEFAULT '',
        interface_name TEXT,
        interface_alias TEXT,
        interface_type TEXT,
@@ -141,12 +164,14 @@ constexpr auto NETIFACE_SQL_STATEMENT
        sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
-       PRIMARY KEY (interface_name,interface_alias,interface_type)) WITHOUT ROWID;)"
+       PRIMARY KEY (container_id, interface_name,interface_alias,interface_type)) WITHOUT ROWID;)"
 };
 
 constexpr auto NETPROTO_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_protocol (
+       container_id TEXT DEFAULT '',
+       container_json TEXT DEFAULT '',
        interface_name TEXT,
        network_type TEXT,
        network_gateway TEXT,
@@ -155,12 +180,14 @@ constexpr auto NETPROTO_SQL_STATEMENT
        sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
-       PRIMARY KEY (interface_name,network_type)) WITHOUT ROWID;)"
+       PRIMARY KEY (container_id, interface_name,network_type)) WITHOUT ROWID;)"
 };
 
 constexpr auto NETADDR_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_network_address (
+       container_id TEXT DEFAULT '',
+       container_json TEXT DEFAULT '',
        interface_name TEXT,
        network_type INTEGER,
        network_ip TEXT,
@@ -169,12 +196,14 @@ constexpr auto NETADDR_SQL_STATEMENT
        sync INTEGER DEFAULT 0,
        checksum TEXT,
        version INTEGER NOT NULL DEFAULT 1,
-       PRIMARY KEY (interface_name,network_type,network_ip)) WITHOUT ROWID;)"
+       PRIMARY KEY (container_id, interface_name,network_type,network_ip)) WITHOUT ROWID;)"
 };
 
 constexpr auto USERS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_users (
+        container_id TEXT DEFAULT '',
+        container_json TEXT DEFAULT '',
         user_name TEXT,
         user_full_name TEXT,
         user_home TEXT,
@@ -209,12 +238,14 @@ constexpr auto USERS_SQL_STATEMENT
         sync INTEGER DEFAULT 0,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
-        PRIMARY KEY (user_name)) WITHOUT ROWID;)"
+        PRIMARY KEY (container_id, user_name)) WITHOUT ROWID;)"
 };
 
 constexpr auto GROUPS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_groups (
+    container_id TEXT DEFAULT '',
+    container_json TEXT DEFAULT '',
     group_id BIGINT,
     group_name TEXT,
     group_description TEXT,
@@ -225,12 +256,14 @@ constexpr auto GROUPS_SQL_STATEMENT
     sync INTEGER DEFAULT 0,
     checksum TEXT,
     version INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (group_name)) WITHOUT ROWID;)"
+    PRIMARY KEY (container_id, group_name)) WITHOUT ROWID;)"
 };
 
 constexpr auto SERVICES_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_services (
+        container_id TEXT DEFAULT '',
+        container_json TEXT DEFAULT '',
         service_id TEXT,
         service_name TEXT,
         service_description TEXT,
@@ -266,12 +299,14 @@ constexpr auto SERVICES_SQL_STATEMENT
         sync INTEGER DEFAULT 0,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
-        PRIMARY KEY (service_id, file_path)) WITHOUT ROWID;)"
+        PRIMARY KEY (container_id, service_id, file_path)) WITHOUT ROWID;)"
 };
 
 constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
 {
     R"(CREATE TABLE dbsync_browser_extensions (
+        container_id TEXT DEFAULT '',
+        container_json TEXT DEFAULT '',
         browser_name TEXT,
         user_id TEXT,
         package_name TEXT,
@@ -297,7 +332,7 @@ constexpr auto BROWSER_EXTENSIONS_SQL_STATEMENT
         sync INTEGER DEFAULT 0,
         checksum TEXT,
         version INTEGER NOT NULL DEFAULT 1,
-        PRIMARY KEY (browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;)"
+        PRIMARY KEY (container_id, browser_name,user_id,browser_profile_path,package_name,package_version_)) WITHOUT ROWID;)"
 };
 
 constexpr auto TABLE_METADATA_SQL_STATEMENT
@@ -326,19 +361,19 @@ constexpr auto METADATA_TABLE               { "table_metadata"              };
 
 // Primary key fields for each table (used for ORDER BY clauses)
 // These must match the PRIMARY KEY definitions in the CREATE TABLE statements above
-constexpr auto OS_PK_FIELDS                 { "os_name, os_version" };
-constexpr auto HW_PK_FIELDS                 { "serial_number" };
-constexpr auto HOTFIXES_PK_FIELDS           { "hotfix_name" };
-constexpr auto PACKAGES_PK_FIELDS           { "name, version_, architecture, type, path" };
-constexpr auto PROCESSES_PK_FIELDS          { "pid" };
-constexpr auto PORTS_PK_FIELDS              { "file_inode, network_transport, source_ip, source_port" };
-constexpr auto NET_IFACE_PK_FIELDS          { "interface_name, interface_alias, interface_type" };
-constexpr auto NET_PROTOCOL_PK_FIELDS       { "interface_name, network_type" };
-constexpr auto NET_ADDRESS_PK_FIELDS        { "interface_name, network_type, network_ip" };
-constexpr auto USERS_PK_FIELDS              { "user_name" };
-constexpr auto GROUPS_PK_FIELDS             { "group_name" };
-constexpr auto SERVICES_PK_FIELDS           { "service_id, file_path" };
-constexpr auto BROWSER_EXTENSIONS_PK_FIELDS { "browser_name, user_id, browser_profile_path, package_name, package_version_" };
+constexpr auto OS_PK_FIELDS                 { "container_id, os_name, os_version" };
+constexpr auto HW_PK_FIELDS                 { "container_id, serial_number" };
+constexpr auto HOTFIXES_PK_FIELDS           { "container_id, hotfix_name" };
+constexpr auto PACKAGES_PK_FIELDS           { "container_id, name, version_, architecture, type, path" };
+constexpr auto PROCESSES_PK_FIELDS          { "container_id, pid" };
+constexpr auto PORTS_PK_FIELDS              { "container_id, file_inode, network_transport, source_ip, source_port" };
+constexpr auto NET_IFACE_PK_FIELDS          { "container_id, interface_name, interface_alias, interface_type" };
+constexpr auto NET_PROTOCOL_PK_FIELDS       { "container_id, interface_name, network_type" };
+constexpr auto NET_ADDRESS_PK_FIELDS        { "container_id, interface_name, network_type, network_ip" };
+constexpr auto USERS_PK_FIELDS              { "container_id, user_name" };
+constexpr auto GROUPS_PK_FIELDS             { "container_id, group_name" };
+constexpr auto SERVICES_PK_FIELDS           { "container_id, service_id, file_path" };
+constexpr auto BROWSER_EXTENSIONS_PK_FIELDS { "container_id, browser_name, user_id, browser_profile_path, package_name, package_version_" };
 
 // Simplified ordering fields for document limit management
 // Most tables use first PK field only, but some use multiple for better stability

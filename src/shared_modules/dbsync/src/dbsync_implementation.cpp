@@ -147,7 +147,7 @@ TXN_HANDLE DBSyncImplementation::createTransaction(const DBSYNC_HANDLE      hand
 
     std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
     ctx->addTransactionContext(spTransactionContext);
-    ctx->m_dbEngine->initializeStatusField(spTransactionContext->m_tables);
+    ctx->m_dbEngine->initializeStatusField(spTransactionContext->m_tables, spTransactionContext->m_scope);
 
     return spTransactionContext.get();
 }
@@ -159,7 +159,7 @@ void DBSyncImplementation::closeTransaction(const DBSYNC_HANDLE handle,
     const auto& tnxCtx { ctx->transactionContext(txn) };
 
     std::lock_guard<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
-    ctx->m_dbEngine->deleteRowsByStatusField(tnxCtx->m_tables);
+    ctx->m_dbEngine->deleteRowsByStatusField(tnxCtx->m_tables, tnxCtx->m_scope);
     ctx->deleteTransactionContext(txn);
 }
 
@@ -171,7 +171,7 @@ void DBSyncImplementation::getDeleted(const DBSYNC_HANDLE   handle,
     const auto& tnxCtx { ctx->transactionContext(txnHandle) };
 
     std::unique_lock<std::shared_timed_mutex> lock{ ctx->m_syncMutex };
-    ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback, lock);
+    ctx->m_dbEngine->returnRowsMarkedForDelete(tnxCtx->m_tables, callback, lock, tnxCtx->m_scope);
 }
 
 void DBSyncImplementation::selectData(const DBSYNC_HANDLE   handle,

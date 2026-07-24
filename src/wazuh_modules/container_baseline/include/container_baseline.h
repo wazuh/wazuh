@@ -93,6 +93,39 @@ EXPORTED int cbaseline_run_syscollector(const char*   connector_socket_path,
                                         cb_row_sink_t  sink,
                                         void*          user_data);
 
+/* Invoked once per raw dbsync-format baseline row (Option A: baseline through
+ * the host event flow). `table` is the syscollector dbsync table name
+ * ("dbsync_processes", ...); `row_json` is a flat object of that table's
+ * columns, already stamped with container_id and container_json. The caller
+ * (Syscollector) groups rows per container per table and syncs them through
+ * per-container scoped DBSync transactions so the shared notifyChange/
+ * processEvent pipeline computes the deltas and emits the events. */
+typedef void (*cb_dbsync_row_sink_t)(const char* container_id,
+                                     const char* table,
+                                     const char* row_json,
+                                     void*       user_data);
+
+/* Same scan coverage as cbaseline_run_syscollector(), emitting raw dbsync rows
+ * instead of pre-shaped sync-protocol payloads. Same return semantics. */
+EXPORTED int cbaseline_run_syscollector_dbsync(const char*          connector_socket_path,
+                                               cb_dbsync_row_sink_t sink,
+                                               void*                user_data);
+
+/* Baseline every container's FIM files using raw file_entry dbsync rows
+ * (Option A: baseline through the host FIM transaction flow). Each row is a
+ * flat file_entry column set (container_id, path, hash_md5, …, container_json)
+ * ready for fim_db_transaction_sync_row_json(). The caller (syscheckd's
+ * container_baseline_fim.cpp) groups rows per container, opens a per-container
+ * scoped fim_db_transaction_start, and lets the existing transaction_callback
+ * compute deltas and emit events — no separate persist path needed.
+ *
+ * Same return semantics as cbaseline_run_fim(). */
+EXPORTED int cbaseline_run_fim_dbsync(const char*                connector_socket_path,
+                                      const cb_monitored_path_t* paths,
+                                      int                        path_count,
+                                      cb_dbsync_row_sink_t       sink,
+                                      void*                      user_data);
+
 #ifdef __cplusplus
 }
 #endif

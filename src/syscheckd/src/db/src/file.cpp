@@ -550,6 +550,14 @@ int fim_db_set_sync_flag(char* table_name, pending_sync_item_t* item, int sync_v
         rowData["sync"] = sync_value;
         rowData["version"] = version;
 
+        if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) == 0)
+        {
+            // container_id is part of the file_entry PK; default to host scope.
+            const cJSON* json_container = cJSON_GetObjectItem(item->json, FIMDB_FILE_CONTAINER_ID_COLUMN);
+            char* container_id = cJSON_GetStringValue(json_container);
+            rowData[FIMDB_FILE_CONTAINER_ID_COLUMN] = container_id ? container_id : "";
+        }
+
         if (strcmp(table_name, FIMDB_FILE_TABLE_NAME) != 0)
         {
             const cJSON* json_architecture = cJSON_GetObjectItem(item->json, "architecture");
