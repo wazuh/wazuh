@@ -89,8 +89,17 @@ int __wrap_wm_agent_upgrade_validate_version(const char *wazuh_version, const ch
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_validate_wpk_version(__attribute__((unused)) const wm_agent_info *agent_info, __attribute__((unused)) wm_upgrade_task *task, const char *wpk_repository_config) {
+int __wrap_wm_agent_upgrade_validate_wpk_version(__attribute__((unused)) const wm_agent_info *agent_info, wm_upgrade_task *task, const char *wpk_repository_config) {
     check_expected(wpk_repository_config);
+
+    if (task) {
+        if (!task->wpk_file) {
+            os_strdup("wazuh_agent.wpk", task->wpk_file);
+        }
+        if (!task->wpk_sha1) {
+            os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", task->wpk_sha1);
+        }
+    }
 
     return mock();
 }
@@ -99,7 +108,10 @@ int __wrap_wm_agent_upgrade_validate_wpk(__attribute__((unused)) const wm_upgrad
     return mock();
 }
 
-int __wrap_wm_agent_upgrade_validate_wpk_custom(__attribute__((unused)) const wm_upgrade_custom_task *task) {
+int __wrap_wm_agent_upgrade_validate_wpk_custom(wm_upgrade_custom_task *task) {
+    if (task && !task->wpk_sha1) {
+        os_strdup("d321af65983fa412e3a12c312ada12ab321a253a", task->wpk_sha1);
+    }
     return mock();
 }
 
