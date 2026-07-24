@@ -11,6 +11,7 @@
 #ifdef WIN32
 #include "shared.h"
 #include "agentd.h"
+#include "https_client_bridge.h"
 #include "logcollector.h"
 #include "execd.h"
 #include "wmodules.h"
@@ -381,6 +382,11 @@ int local_start()
                      NULL,
                      0,
                      (LPDWORD)&threadID);
+
+    /* HTTPS client: the agent's transport, unconditionally (mirrors
+     * AgentdStart on POSIX; the Windows startup path is separate). */
+    w_https_client_start();
+    atexit(w_https_client_stop);
 
     start_agent(1);
 
