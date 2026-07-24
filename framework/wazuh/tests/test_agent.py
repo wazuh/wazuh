@@ -29,7 +29,7 @@ with patch('wazuh.core.common.wazuh_uid'):
             get_agent_conf, get_agent_config, get_agent_groups, get_agents, get_agents_in_group, get_agents_keys, \
             get_agents_summary, get_agents_summary_os, get_agents_summary_status, \
             get_distinct_agents, get_file_conf, get_full_overview, get_group_files, get_outdated_agents, \
-            get_upgrade_result, remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
+            remove_agent_from_group, remove_agent_from_groups, remove_agents_from_group, \
             restart_agents, upgrade_agents, upload_group_file, restart_agents_by_node, reconnect_agents, \
             reload_agents, reload_agents_by_node, \
             check_uninstall_permission, ERROR_CODES_UPGRADE_SOCKET_BAD_REQUEST, ERROR_CODES_UPGRADE_SOCKET
@@ -1196,115 +1196,6 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
         else:
             # Upgrade with no Exception
             result = upgrade_agents(agent_list=list(agent_set), filters=filters)
-
-            assert isinstance(result, AffectedItemsWazuhResult)
-
-            # Check affected items
-            affected_items = set([af_item['agent'] for af_item in result.affected_items])
-            values_failed_items = list(expected_errors_and_items.values())
-            agents_with_errors = set()
-            for value in values_failed_items:
-                str_value = list(value)[0]
-                if ',' in str_value:
-                    agent = str_value.split(', ')
-                    agents_with_errors.update(agent)
-                    values_failed_items.remove(value)
-            [agents_with_errors.update(s) for s in values_failed_items]
-            assert affected_items == agent_set - agents_with_errors
-
-            # Check failed items
-            error_codes_in_failed_items = [error.code for error in result.failed_items.keys()]
-            failed_items = list(result.failed_items.values())
-            errors_and_items = {}
-            for i, error in enumerate(error_codes_in_failed_items):
-                errors_and_items[str(error)] = failed_items[i]
-            assert expected_errors_and_items == errors_and_items
-
-
-@pytest.mark.parametrize('agent_set, expected_errors_and_items, result_from_socket, filters, raise_error', [
-    (
-            {'001', '002', '003', '006', '999'},
-            {'1701': {'999'}, '1707': {'003'}, '1813': {'006'}},
-            {'error': 0,
-             'data': [
-                 {'error': 0, 'message': 'Success', 'agent': 1, 'task_id': 1,
-                  'module': 'upgrade_module', 'command': 'upgrade',
-                  'status': 'upgraded', 'create_time': '2020/09/23 10:39:53',
-                  'update_time': '2020/09/23 10:54:53'},
-                 {'error': 0, 'message': 'Success', 'agent': 2, 'task_id': 2,
-                  'module': 'upgrade_module', 'command': 'upgrade',
-                  'status': 'Legacy upgrade: ...',
-                  'create_time': '2020/09/23 11:24:27',
-                  'update_time': '2020/09/23 11:24:47'},
-                 {'error': 3, 'message': 'No task in DB', 'agent': 6}],
-             'message': 'Success'},
-            None,
-            False
-    ),
-    (
-            {'001', '002'},
-            {'1731': {'001', '002'}},
-            {},
-            {'os.version': 'unknown_version'},
-            False
-    ),
-    (
-            {'001', '006'},
-            {'1731': {'001'}},
-            {'error': 0,
-             'data': [{'error': 0, 'message': 'Success', 'agent': 6, 'task_id': 1,
-                       'module': 'upgrade_module', 'command': 'upgrade',
-                       'status': 'upgraded', 'create_time': '2020/09/23 10:39:53',
-                       'update_time': '2020/09/23 10:54:53'}, ],
-             'message': 'Success'},
-            {'group': 'group-1'},
-            False
-    ),
-    (
-            {'001'},
-            {'1828': '001'},
-            {'error': 1,
-             'data': [{'error': 18,
-                       'message': 'Error from socket indicating WazuhInternalError',
-                       'agent': 1}
-                      ],
-             'message': 'Error'},
-            None,
-            True
-    )
-])
-@patch('wazuh.agent.get_agents_info', return_value=set(full_agent_list))
-@patch('wazuh.core.common.CLIENT_KEYS', new=os.path.join(test_agent_path, 'client.keys'))
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_get_upgrade_result(mock_socket, mock_wdb, mock_client_keys, agent_set, expected_errors_and_items,
-                                  result_from_socket, filters, raise_error):
-    """Test `upgrade_agents` function from agent module.
-
-    Parameters
-    ----------
-    agent_set : set
-        Set of agent ID's to be updated.
-    expected_errors_and_items : dict
-        Dictionary containing expected errors and agent IDs.
-    result_from_socket : dict
-        Dictionary containing the result sent by the socket.
-    filters : dict
-        Defines required field filters. Format: {"field1":"value1", "field2":["value2","value3"]}
-    raise_error : bool
-        Boolean variable used to indicate that the
-    """
-    with patch('wazuh.core.agent.core_upgrade_agents') as core_upgrade_agents_mock:
-        core_upgrade_agents_mock.return_value = result_from_socket
-
-        if raise_error:
-            # Get upgrade result expecting a Wazuh Exception
-            for error in expected_errors_and_items.keys():
-                with pytest.raises(WazuhInternalError, match=f".* {error} .*"):
-                    get_upgrade_result(agent_list=list(agent_set))
-        else:
-            # Get upgrade result with no Exception
-            result = get_upgrade_result(agent_list=list(agent_set), filters=filters)
 
             assert isinstance(result, AffectedItemsWazuhResult)
 

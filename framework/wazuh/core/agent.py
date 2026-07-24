@@ -1577,7 +1577,7 @@ def get_rbac_filters(
 
 
 def create_upgrade_tasks(
-    eligible_agents: list, chunk_size: int, command: str, **kwargs
+    eligible_agents: list, chunk_size: int, command: str, request_time: int, **kwargs
 ) -> list:
     """Recursive function used to create the agents upgrade tasks.
 
@@ -1590,7 +1590,9 @@ def create_upgrade_tasks(
     chunk_size : int
         Number of agents to be sent to the upgrade socket at the same time.
     command : str
-        Upgrade command. Values: 'upgrade', 'upgrade_custom', 'upgrade_result'.
+        Upgrade command. Values: 'upgrade', 'upgrade_custom'.
+    request_time : int
+        Unix timestamp from API request for deterministic task ID generation across cluster nodes.
     **kwargs
         Upgrade procedure extra parameters.
 
@@ -1615,14 +1617,14 @@ def create_upgrade_tasks(
             package_type=kwargs.get("package_type"),
             file_path=kwargs.get("file_path"),
             installer=kwargs.get("installer"),
-            get_result=kwargs.get("get_result"),
+            request_time=request_time,
         )
 
         # In case of task manager communication error, try to create the upgrade tasks again with a smaller chunk size
         # If the used chunk size is 1, return the response with the task manager communication error
         if any(item["error"] == 4 for item in response["data"]) and chunk_size != 1:
             return create_upgrade_tasks(
-                eligible_agents, chunk_size // 2, command, **kwargs
+                eligible_agents, chunk_size // 2, command, request_time, **kwargs
             )
 
         result.append(response)
@@ -1632,7 +1634,7 @@ def create_upgrade_tasks(
 
 def core_upgrade_agents(
     agents_chunk: list,
-    command: str = "upgrade_result",
+    command: str = "upgrade",
     wpk_repo: str = None,
     version: str = None,
     force: bool = False,
@@ -1640,16 +1642,16 @@ def core_upgrade_agents(
     package_type: str = None,
     file_path: str = None,
     installer: str = None,
-    get_result: bool = False,
+    request_time: int = None,
 ) -> dict:
-    """Send command to upgrade module / task module.
+    """Send command to task module to create upgrade tasks.
 
     Parameters
     ----------
     agents_chunk : list
         List of agents ID's.
     command : str
-        Command sent to the socket. Default: 'upgrade_result'
+        Command sent to the socket. Values: 'upgrade', 'upgrade_custom'. Default: 'upgrade'
     wpk_repo : str
         URL for WPK download.
     version : str
@@ -1664,13 +1666,13 @@ def core_upgrade_agents(
         Path to the installation file.
     installer : str
         Selected installer.
-    get_result : bool
-        Get the result of an update (True -> Task module), Create new upgrade task (False -> Upgrade module)
+    request_time : int
+        Unix timestamp from API request for deterministic task ID generation across cluster nodes.
 
     Returns
     -------
     dict
-        Message received from the socket (Task module or Upgrade module)
+        Message received from the socket (Task module)
     """
     msg = create_wazuh_socket_message(
         origin={"module": "api"},
@@ -1684,9 +1686,8 @@ def core_upgrade_agents(
             "wpk_repo": wpk_repo,
             "file_path": file_path,
             "installer": installer,
-        }
-        if not get_result
-        else {"agents": agents_chunk},
+            "request_time": request_time,
+        },
     )
 
     msg["parameters"] = {k: v for k, v in msg["parameters"].items() if v is not None}
