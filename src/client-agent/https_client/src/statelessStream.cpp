@@ -11,9 +11,24 @@
 
 #include "statelessStream.hpp"
 
+#include "external/nlohmann/json.hpp"
+
 namespace
 {
     constexpr uint32_t STATELESS_MAX_ATTEMPTS = 5;
+
+    /// The H metadata line that opens every /stateless body (#37732). Built
+    /// through the JSON library rather than concatenated, so an agent id
+    /// carrying a quote, a backslash or a newline cannot escape the string it
+    /// sits in -- controlStream.cpp builds its payloads the same way. The line
+    /// is fixed for the life of the stream and is built once: its length is
+    /// needed on every submitted event, not just on every flush.
+    std::string headerLineFor(const std::string& agentId)
+    {
+        nlohmann::json header;
+        header["wazuh"]["agent"]["id"] = agentId;
+        return "H " + header.dump() + "\n";
+    }
 }
 
 StatelessStream::StatelessStream(const ModuleConfig& config, IHttpPerformer& performer,
@@ -27,6 +42,7 @@ StatelessStream::StatelessStream(const ModuleConfig& config, IHttpPerformer& per
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, &authGate)
     , m_sink(sink)
+    , m_headerLine(headerLineFor(config.agentId))
     , m_lastFlush(clock.steadyNow())
     , m_ladder(config.bufferWarnLevel, config.bufferNormalLevel, config.bufferFloodToleranceS)
 {
@@ -121,7 +137,7 @@ bool StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t max
 
     HttpRequestSpec spec;
     spec.target = "/stateless";
-    const std::string body = buildHeaderLine() + snapshot.body;
+    const std::string body = m_headerLine + snapshot.body;
     spec.body = reinterpret_cast<const uint8_t*>(body.data());
     spec.bodyLength = body.size();
     spec.timeoutMs = timeoutMs;
@@ -234,11 +250,6 @@ void StatelessStream::publishLevelLocked(bool eventDropped)
 uint64_t StatelessStream::eventBytesBudgetLocked() const
 {
     const uint64_t requestBudget = m_payload.effectiveBytes();
-    const size_t headerBytes = buildHeaderLine().size();
+    const size_t headerBytes = m_headerLine.size();
     return requestBudget > headerBytes ? requestBudget - headerBytes : 0;
-}
-
-std::string StatelessStream::buildHeaderLine() const
-{
-    return R"(H {"wazuh":{"agent":{"id":")" + m_config.agentId + R"("}}})" + "\n";
 }
