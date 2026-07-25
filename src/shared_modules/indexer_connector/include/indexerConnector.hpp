@@ -12,6 +12,7 @@
 #ifndef _INDEXER_CONNECTOR_HPP
 #define _INDEXER_CONNECTOR_HPP
 
+#include <cstdint>
 #include <functional>
 #include <json.hpp>
 #include <memory>
@@ -247,9 +248,36 @@ public:
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data, std::string_view version);
 
     /**
+     * @brief Create a document only if it does not already exist.
+     *
+     * A version conflict is reported as an error so callers can refetch and retry.
+     */
+    void bulkCreate(std::string_view id, std::string_view index, std::string_view data);
+
+    /**
+     * @brief Replace a document if its optimistic concurrency metadata still matches.
+     *
+     * @param sequenceNumber Sequence number returned by a search with seq_no_primary_term.
+     * @param primaryTerm Primary term returned by the same search hit.
+     */
+    void bulkIndexWithConcurrencyControl(std::string_view id,
+                                         std::string_view index,
+                                         std::string_view data,
+                                         std::int64_t sequenceNumber,
+                                         std::int64_t primaryTerm);
+
+    /**
      * @brief Flush the bulk data.
      */
     void flush();
+
+    /**
+     * @brief Flush while the caller owns the lock returned by scopeLock().
+     *
+     * This is used when enqueueing and flushing must be one atomic connector
+     * transaction. Calling it without owning scopeLock() is unsupported.
+     */
+    void flushLocked();
 
     /**
      * @brief Invoke pending callbacks registered via registerNotify().

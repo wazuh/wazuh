@@ -135,6 +135,57 @@ TEST_F(IndexerConnectorSyncTest, BulkDeleteAddsToBuffer)
     SUCCEED();
 }
 
+TEST_F(IndexerConnectorSyncTest, BulkCreateAndConditionalIndexGenerateConcurrencyMetadata)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkCreate("new-id", "test-index", R"({"field":"new"})");
+    connector.bulkIndexWithConcurrencyControl("existing-id", "test-index", R"({"field":"updated"})", 7, 3);
+    connector.flush();
+
+    ASSERT_EQ(receivedData.size(), 1U);
+    EXPECT_THAT(receivedData.front(), HasSubstr(R"({"create":{"_index":"test-index","_id":"new-id"}})"));
+    EXPECT_THAT(
+        receivedData.front(),
+        HasSubstr(R"({"index":{"_index":"test-index","_id":"existing-id","if_seq_no":7,"if_primary_term":3}})"));
+}
+
+TEST_F(IndexerConnectorSyncTest, OptimisticConcurrencyConflictIsNotAccepted)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [](auto, auto postParams, const ConfigurationParameters&)
+            {
+                std::string response = R"({
+                    "errors": true,
+                    "items": [{
+                        "index": {
+                            "_id": "existing-id",
+                            "status": 409,
+                            "error": {"type": "version_conflict_engine_exception"}
+                        }
+                    }]
+                })";
+                if (std::holds_alternative<TPostRequestParameters<const std::string&>>(postParams))
+                {
+                    std::get<TPostRequestParameters<const std::string&>>(postParams).onSuccess(response);
+                }
+                else
+                {
+                    std::get<TPostRequestParameters<std::string&&>>(postParams).onSuccess(std::move(response));
+                }
+            }));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.bulkIndexWithConcurrencyControl("existing-id", "test-index", R"({"field":"updated"})", 7, 3);
+
+    EXPECT_THROW(connector.flush(), IndexerConnectorException);
+}
+
 TEST_F(IndexerConnectorSyncTest, BulkDeleteEscapesIdInPayload)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();

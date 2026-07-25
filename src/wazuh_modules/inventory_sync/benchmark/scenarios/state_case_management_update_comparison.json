@@ -1,0 +1,23 @@
+{
+  "name": "state_case_management_update_comparison",
+  "description": "Repeat the same 20 FIM document updates for 20 agents. The first pass creates documents; the remaining 24 passes exercise the existing-document update path for comparing scripted upsert and fetch-merge-reindex.",
+  "defaults": {
+    "max_eps": 0,
+    "use_databatch": true,
+    "retransmit": true
+  },
+  "lanes": {
+    "fim_repeated_updates": [
+      {
+        "dump": "sample_payloads/fim/ubuntu22_fim_delta_modify.json",
+        "repeat_count": 25,
+        "repeat_delay": 0
+      }
+    ]
+  },
+  "total_agents": 20,
+  "parallel_agents": 20,
+  "repeat_until": 0,
+  "drain_timeout": 60,
+  "post_run_grace": 15
+}

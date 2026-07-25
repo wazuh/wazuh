@@ -23,6 +23,7 @@
 #include "socketServer.hpp"
 #include "stringHelper.h"
 #include "vulnerabilityScannerFacade.hpp"
+#include <algorithm>
 #include <asyncValueDispatcher.hpp>
 #include <atomic>
 #include <chrono>
@@ -30,14 +31,17 @@
 #include <format>
 #include <functional>
 #include <indexerConnector.hpp>
+#include <iterator>
 #include <json.hpp>
 #include <memory>
 #include <random>
 #include <rocksdb/slice.h>
 #include <shared_mutex>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <vector>
 
 constexpr int SINGLE_THREAD_COUNT = 1;
 constexpr int DEFAULT_TIME {60 * 10}; // 10 minutes
@@ -1111,10 +1115,21 @@ public:
 
                         const auto prefix = std::format("{}_", res.context->sessionId);
 
-                        // Track if we have any bulk data to send to indexer
-                        bool hasBulkData = false;
+                        bool hasIndexerOperationsEnqueued = false;
 
-                        // Send bulk query (with handling of 413 error).
+                        struct PendingStateOperation
+                        {
+                            std::string id;
+                            std::string index;
+                            nlohmann::json document;
+                            std::uint64_t version;
+                            bool isUpsert;
+                        };
+
+                        std::vector<PendingStateOperation> pendingOperations;
+                        std::unordered_map<std::string, std::unordered_map<std::string, size_t>> latestOperation;
+
+                        // Validate and prepare the session before issuing batched reads or writes.
                         for (const auto& [key, value] : m_dataStore->seek(prefix))
                         {
                             // Skip DataContext entries - they are stored with "_context" suffix and not sent to indexer
@@ -1174,7 +1189,8 @@ public:
                                 // rejects unescaped control characters (literal '\n' / '\r' that would otherwise
                                 // enable bulk request smuggling against the NDJSON stream), trailing garbage,
                                 // and we additionally require an object at the root. Doing this BEFORE
-                                // hasBulkData = true keeps the bookkeeping consistent if every entry is invalid.
+                                // Deferring enqueueing until validation finishes keeps the bookkeeping
+                                // consistent if every entry is invalid.
                                 nlohmann::json document;
                                 const bool isUpsert = data->operation() == Wazuh::SyncSchema::Operation_Upsert;
                                 if (isUpsert)
@@ -1220,8 +1236,6 @@ public:
                                     throw InventorySyncException("Invalid operation");
                                 }
 
-                                hasBulkData = true;
-
                                 thread_local std::string elementId;
                                 elementId.clear();
 
@@ -1252,62 +1266,120 @@ public:
                                     document["wazuh"]["cluster"]["name"] =
                                         !res.context->clusterName.empty() ? res.context->clusterName : m_clusterName;
 
-                                    // Fetch-merge-reindex POC: preserve top-level fields added outside the
-                                    // agent/Manager flow before replacing the complete state document.
-                                    // A production implementation must batch these reads and use optimistic
-                                    // concurrency control to close the race between this fetch and the bulk write.
-                                    const auto existingDocumentQuery =
-                                        InventorySyncQueryBuilder::buildDocumentByIdQuery(elementId);
-                                    const auto existingDocumentResult = m_indexerConnector->executeSearchQuery(
-                                        std::string {rawIndex}, existingDocumentQuery);
-
-                                    if (!existingDocumentResult.contains("hits") ||
-                                        !existingDocumentResult["hits"].is_object() ||
-                                        !existingDocumentResult["hits"].contains("hits") ||
-                                        !existingDocumentResult["hits"]["hits"].is_array())
-                                    {
-                                        throw InventorySyncException(
-                                            "Invalid Indexer response while fetching an existing state document");
-                                    }
-
-                                    const auto& existingDocumentHits = existingDocumentResult["hits"]["hits"];
-                                    if (!existingDocumentHits.empty())
-                                    {
-                                        const auto& hit = existingDocumentHits.front();
-                                        if (!hit.contains("_source") || !hit["_source"].is_object())
-                                        {
-                                            throw InventorySyncException(
-                                                "Existing state document does not contain a valid _source");
-                                        }
-
-                                        InventorySyncQueryBuilder::preserveUnknownTopLevelFields(document,
-                                                                                                 hit["_source"]);
-                                    }
-
-                                    thread_local std::string dataString;
-                                    dataString = document.dump();
-
-                                    const auto version = data->version();
-                                    if (version && version > 0)
-                                    {
-                                        m_indexerConnector->bulkIndex(
-                                            elementId, rawIndex, dataString, std::to_string(version));
-                                    }
-                                    else
-                                    {
-                                        m_indexerConnector->bulkIndex(elementId, rawIndex, dataString);
-                                    }
+                                    pendingOperations.push_back(PendingStateOperation {.id = elementId,
+                                                                                       .index = std::string {rawIndex},
+                                                                                       .document = std::move(document),
+                                                                                       .version = data->version(),
+                                                                                       .isUpsert = true});
                                 }
                                 else
                                 {
                                     LOG_DEBUG2(m_logFn, "InventorySyncFacade::start: Deleting data...");
-                                    m_indexerConnector->bulkDelete(elementId, rawIndex);
+                                    pendingOperations.push_back(PendingStateOperation {.id = elementId,
+                                                                                       .index = std::string {rawIndex},
+                                                                                       .document = nlohmann::json {},
+                                                                                       .version = 0,
+                                                                                       .isUpsert = false});
                                 }
+                                latestOperation[pendingOperations.back().index][pendingOperations.back().id] =
+                                    pendingOperations.size() - 1;
                             }
                             else
                             {
                                 throw InventorySyncException("Invalid message type");
                             }
+                        }
+
+                        constexpr size_t FETCH_BATCH_SIZE = 1000;
+                        std::unordered_map<std::string, std::vector<size_t>> upsertsByIndex;
+                        for (size_t i = 0; i < pendingOperations.size(); ++i)
+                        {
+                            const auto& operation = pendingOperations[i];
+                            if (latestOperation.at(operation.index).at(operation.id) == i && operation.isUpsert)
+                            {
+                                upsertsByIndex[operation.index].push_back(i);
+                            }
+                        }
+
+                        std::unordered_map<std::string,
+                                           std::unordered_map<std::string, InventorySyncQueryBuilder::StoredDocument>>
+                            storedDocumentsByIndex;
+                        for (const auto& [index, operationIndices] : upsertsByIndex)
+                        {
+                            auto& storedDocuments = storedDocumentsByIndex[index];
+                            for (size_t offset = 0; offset < operationIndices.size(); offset += FETCH_BATCH_SIZE)
+                            {
+                                const auto batchSize = std::min(FETCH_BATCH_SIZE, operationIndices.size() - offset);
+                                std::vector<std::string> documentIds;
+                                documentIds.reserve(batchSize);
+                                for (size_t i = 0; i < batchSize; ++i)
+                                {
+                                    documentIds.push_back(pendingOperations[operationIndices[offset + i]].id);
+                                }
+
+                                try
+                                {
+                                    const auto query = InventorySyncQueryBuilder::buildDocumentsByIdQuery(documentIds);
+                                    auto batchDocuments = InventorySyncQueryBuilder::parseStoredDocuments(
+                                        m_indexerConnector->executeSearchQuery(index, query));
+                                    storedDocuments.insert(std::make_move_iterator(batchDocuments.begin()),
+                                                           std::make_move_iterator(batchDocuments.end()));
+                                }
+                                catch (const std::exception& e)
+                                {
+                                    throw InventorySyncException(
+                                        std::string {"Invalid Indexer response while fetching state documents: "} +
+                                        e.what());
+                                }
+                            }
+                        }
+
+                        for (size_t i = 0; i < pendingOperations.size(); ++i)
+                        {
+                            auto& operation = pendingOperations[i];
+                            if (latestOperation.at(operation.index).at(operation.id) != i)
+                            {
+                                continue;
+                            }
+
+                            if (!operation.isUpsert)
+                            {
+                                m_indexerConnector->bulkDelete(operation.id, operation.index);
+                                hasIndexerOperationsEnqueued = true;
+                                continue;
+                            }
+
+                            const auto& storedDocuments = storedDocumentsByIndex.at(operation.index);
+                            const auto storedDocument = storedDocuments.find(operation.id);
+                            if (storedDocument == storedDocuments.end())
+                            {
+                                m_indexerConnector->bulkCreate(
+                                    operation.id, operation.index, operation.document.dump());
+                                hasIndexerOperationsEnqueued = true;
+                                continue;
+                            }
+
+                            if (operation.version > 0)
+                            {
+                                if (InventorySyncQueryBuilder::hasNewerDocumentVersion(storedDocument->second.source,
+                                                                                       operation.version))
+                                {
+                                    LOG_DEBUG2(m_logFn,
+                                               "Skipping stale document %s (incoming version %llu)",
+                                               operation.id.c_str(),
+                                               static_cast<unsigned long long>(operation.version));
+                                    continue;
+                                }
+                            }
+
+                            InventorySyncQueryBuilder::preserveUnknownTopLevelFields(operation.document,
+                                                                                     storedDocument->second.source);
+                            m_indexerConnector->bulkIndexWithConcurrencyControl(operation.id,
+                                                                                operation.index,
+                                                                                operation.document.dump(),
+                                                                                storedDocument->second.sequenceNumber,
+                                                                                storedDocument->second.primaryTerm);
+                            hasIndexerOperationsEnqueued = true;
                         }
 
                         if (res.context->option == Wazuh::SyncSchema::Option_VDFirst ||
@@ -1431,7 +1503,7 @@ public:
                         // index allowlist, no HTTP request will be made and no future flush will
                         // fire the notify — the callback would be stranded and leak its end_ack
                         // into the next session's response stream.
-                        if (hasBulkData || hasDeleteByQueryEnqueued)
+                        if (hasIndexerOperationsEnqueued || hasDeleteByQueryEnqueued)
                         {
                             // Register notify callback for bulk operations (after accumulating all data)
                             m_indexerConnector->registerNotify(
@@ -1451,6 +1523,11 @@ public:
                                     }
                                     m_sessionCompletedCV.notify_all();
                                 });
+
+                            // Keep fetch, conditional writes, and the resulting ACK in the same
+                            // connector transaction. OCC conflicts are surfaced to the session
+                            // instead of being silently accepted as external-version conflicts.
+                            m_indexerConnector->flushLocked();
                         }
                         else
                         {

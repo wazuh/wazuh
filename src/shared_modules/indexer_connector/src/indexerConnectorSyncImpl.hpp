@@ -20,6 +20,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <filesystem>
 #include <map>
 #include <mutex>
@@ -120,7 +121,9 @@ inline void appendEscapedId(std::string& bulkData, std::string_view id)
  * It treats version conflicts where the same document version already exists as success.
  * Memory-safe: uses nlohmann::json which handles large documents efficiently.
  */
-inline bool validateBulkResponse(const std::string& response, const char* tag)
+inline bool validateBulkResponse(const std::string& response,
+                                 const char* tag,
+                                 const std::span<const std::uint8_t> strictVersionConflicts = {})
 {
     try
     {
@@ -154,8 +157,9 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
         size_t realFailureCount = 0;
 
         // Validate each item individually
-        for (const auto& item : responseJson["items"])
+        for (size_t itemIndex = 0; itemIndex < responseJson["items"].size(); ++itemIndex)
         {
+            const auto& item = responseJson["items"][itemIndex];
             // Each item is an object with one key (operation type: index, delete, update, create)
             if (item.empty())
             {
@@ -189,6 +193,8 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
             if (status == HTTP_VERSION_CONFLICT)
             {
                 bool isAcceptableConflict = false;
+                const bool isStrictConflict =
+                    itemIndex < strictVersionConflicts.size() && strictVersionConflicts[itemIndex] != 0;
 
                 // Check if this is a version_conflict_engine_exception
                 if (result.contains("error"))
@@ -199,7 +205,7 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
                         std::string errorType = error["type"].get<std::string>();
                         // version_conflict_engine_exception means document version already exists
                         // This is acceptable for inventory sync - treat as success
-                        if (errorType == "version_conflict_engine_exception")
+                        if (errorType == "version_conflict_engine_exception" && !isStrictConflict)
                         {
                             isAcceptableConflict = true;
                             versionConflictAcceptedCount++;
@@ -213,9 +219,10 @@ inline bool validateBulkResponse(const std::string& response, const char* tag)
 
                 if (!isAcceptableConflict)
                 {
-                    // Version conflict without the expected error type - treat as failure
                     logWarn(tag,
-                            "Version conflict without version_conflict_engine_exception for %s operation",
+                            isStrictConflict
+                                ? "Optimistic concurrency conflict for %s operation"
+                                : "Version conflict without version_conflict_engine_exception for %s operation",
                             operation.c_str());
                     realFailureCount++;
                 }
@@ -285,6 +292,7 @@ class IndexerConnectorSyncImpl final
     std::thread m_bulkThread;
     std::atomic<bool> m_stopping {false};
     std::vector<size_t> m_boundaries;
+    std::vector<std::uint8_t> m_strictVersionConflicts;
     bool m_shouldNotifyAfterBulk {false};
     size_t m_maxBulkSize {MaxBulkSize};
     size_t m_flushInterval {FlushInterval};
@@ -356,11 +364,12 @@ class IndexerConnectorSyncImpl final
             LOG_DEBUG2(m_logFn, "Response: %s", response.c_str());
 
             // Validate bulk response at document level
-            if (!validateBulkResponse(response, m_logFn.c_str()))
+            if (!validateBulkResponse(response, m_logFn.c_str(), m_strictVersionConflicts))
             {
                 LOG_ERROR(m_logFn, "Bulk operation had indexing failures");
                 m_bulkData.clear();
                 m_boundaries.clear();
+                m_strictVersionConflicts.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException("Bulk operation had indexing failures");
             }
@@ -386,6 +395,7 @@ class IndexerConnectorSyncImpl final
                               m_bulkData.size());
                     m_bulkData.clear();
                     m_boundaries.clear();
+                    m_strictVersionConflicts.clear();
                     throw IndexerConnectorException("Single operation exceeds server payload limits");
                 }
                 splitAndProcessBulk();
@@ -397,6 +407,7 @@ class IndexerConnectorSyncImpl final
                          "handled by validateBulkResponse().");
                 m_bulkData.clear();
                 m_boundaries.clear();
+                m_strictVersionConflicts.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException("Bulk version conflict at request level");
             }
@@ -410,6 +421,7 @@ class IndexerConnectorSyncImpl final
                 LOG_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
                 m_bulkData.clear();
                 m_boundaries.clear();
+                m_strictVersionConflicts.clear();
                 m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException(error);
             }
@@ -451,6 +463,7 @@ class IndexerConnectorSyncImpl final
 
         m_bulkData.clear();
         m_boundaries.clear();
+        m_strictVersionConflicts.clear();
         m_deleteByQuery.clear();
         m_lastBulkTime = std::chrono::steady_clock::now();
     }
@@ -467,10 +480,14 @@ class IndexerConnectorSyncImpl final
         LOG_DEBUG2(m_logFn, "Splitting %zu operations into two halves", totalOperations);
 
         const size_t midPoint = totalOperations / 2;
-        std::span<size_t> firstBoundaries(m_boundaries.begin(), m_boundaries.begin() + midPoint);
+        std::span<const size_t> firstBoundaries(m_boundaries.begin(), m_boundaries.begin() + midPoint);
+        std::span<const std::uint8_t> firstStrictConflicts(m_strictVersionConflicts.begin(),
+                                                           m_strictVersionConflicts.begin() + midPoint);
         const size_t firstEndPos = m_boundaries[midPoint - 1];
         std::string_view firstHalf(m_bulkData.data(), firstEndPos);
-        std::span<size_t> secondBoundaries(m_boundaries.begin() + midPoint, m_boundaries.end());
+        std::span<const size_t> secondBoundaries(m_boundaries.begin() + midPoint, m_boundaries.end());
+        std::span<const std::uint8_t> secondStrictConflicts(m_strictVersionConflicts.begin() + midPoint,
+                                                            m_strictVersionConflicts.end());
         const size_t secondStartPos = m_boundaries[midPoint - 1];
         std::string_view secondHalf(m_bulkData.data() + secondStartPos, m_bulkData.size() - secondStartPos);
         bool allProcessed = true;
@@ -479,7 +496,7 @@ class IndexerConnectorSyncImpl final
         {
             try
             {
-                processBulkChunk(firstHalf, firstBoundaries);
+                processBulkChunk(firstHalf, firstBoundaries, firstStrictConflicts, 0);
             }
             catch (const IndexerConnectorException& e)
             {
@@ -492,7 +509,7 @@ class IndexerConnectorSyncImpl final
         {
             try
             {
-                processBulkChunk(secondHalf, secondBoundaries);
+                processBulkChunk(secondHalf, secondBoundaries, secondStrictConflicts, secondStartPos);
             }
             catch (const IndexerConnectorException& e)
             {
@@ -507,28 +524,32 @@ class IndexerConnectorSyncImpl final
         }
         m_bulkData.clear();
         m_boundaries.clear();
+        m_strictVersionConflicts.clear();
         m_lastBulkTime = std::chrono::steady_clock::now();
     }
 
-    void processBulkChunk(std::string_view data, const std::span<size_t>& boundaries)
+    void processBulkChunk(std::string_view data,
+                          const std::span<const size_t> boundaries,
+                          const std::span<const std::uint8_t> strictVersionConflicts,
+                          const size_t baseOffset)
     {
         std::string url;
         url += m_selector->getNext();
         url += "/_bulk";
         bool needToRetry = false;
 
-        const auto onSuccess = [this](const std::string& response)
+        const auto onSuccess = [this, strictVersionConflicts](const std::string& response)
         {
             LOG_DEBUG2(m_logFn, "Chunk processed successfully: %s", response.c_str());
 
             // Validate bulk response at document level
-            if (!validateBulkResponse(response, m_logFn.c_str()))
+            if (!validateBulkResponse(response, m_logFn.c_str(), strictVersionConflicts))
             {
                 LOG_ERROR(m_logFn, "Bulk chunk operation had indexing failures");
                 throw IndexerConnectorException("Bulk chunk operation had indexing failures");
             }
         };
-        const auto onError = [this, &needToRetry, boundaries](
+        const auto onError = [this, &needToRetry, data, boundaries, strictVersionConflicts, baseOffset](
                                  const std::string& error, const long statusCode, const std::string& responseBody)
         {
             LOG_ERROR(m_logFn, "Chunk processing failed: %s, status code: %ld", error.c_str(), statusCode);
@@ -538,16 +559,15 @@ class IndexerConnectorSyncImpl final
                 {
                     LOG_DEBUG2(m_logFn, "Chunk still too large, splitting recursively");
                     const size_t midPoint = boundaries.size() / 2;
-                    std::span<size_t> firstBoundaries(boundaries.begin(),
-                                                      boundaries.begin() + static_cast<long>(midPoint));
-                    const size_t firstEndPos = boundaries[midPoint - 1];
-                    std::string_view firstHalf(m_bulkData.data(), firstEndPos);
-                    std::span<size_t> secondBoundaries(boundaries.begin() + static_cast<long>(midPoint),
-                                                       boundaries.end());
+                    const auto firstBoundaries = boundaries.first(midPoint);
+                    const auto secondBoundaries = boundaries.subspan(midPoint);
+                    const auto firstStrictConflicts = strictVersionConflicts.first(midPoint);
+                    const auto secondStrictConflicts = strictVersionConflicts.subspan(midPoint);
                     const size_t secondStartPos = boundaries[midPoint - 1];
-                    std::string_view secondHalf(m_bulkData.data() + secondStartPos, m_bulkData.size() - secondStartPos);
-                    processBulkChunk(firstHalf, firstBoundaries);
-                    processBulkChunk(secondHalf, secondBoundaries);
+                    const size_t firstHalfSize = secondStartPos - baseOffset;
+                    processBulkChunk(data.substr(0, firstHalfSize), firstBoundaries, firstStrictConflicts, baseOffset);
+                    processBulkChunk(
+                        data.substr(firstHalfSize), secondBoundaries, secondStrictConflicts, secondStartPos);
                     return;
                 }
                 LOG_ERROR(m_logFn, "Single operation too large for server limits");
@@ -1274,6 +1294,7 @@ public:
         m_bulkData.append(R"("}})");
         m_bulkData.append("\n");
         m_boundaries.push_back(m_bulkData.size());
+        m_strictVersionConflicts.push_back(0);
     }
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
@@ -1360,6 +1381,68 @@ public:
         m_bulkData.append(data);
         m_bulkData.append("\n");
         m_boundaries.push_back(m_bulkData.size());
+        m_strictVersionConflicts.push_back(0);
+    }
+
+    void bulkCreate(std::string_view id, std::string_view index, std::string_view data)
+    {
+        if (!isSafeIndexName(index) || id.empty())
+        {
+            throw IndexerConnectorException("bulkCreate requires a safe index name and a non-empty document ID");
+        }
+
+        const auto totalSize = m_bulkData.size() + FORMATTED_LENGTH + index.size() + id.size() + data.size();
+        if (!m_bulkData.empty() && totalSize > m_maxBulkSize)
+        {
+            processBulk();
+        }
+
+        m_bulkData.append(R"({"create":{"_index":")");
+        m_bulkData.append(index);
+        m_bulkData.append(R"(","_id":")");
+        appendEscapedId(m_bulkData, id);
+        m_bulkData.append(R"("}})");
+        m_bulkData.append("\n");
+        m_bulkData.append(data);
+        m_bulkData.append("\n");
+        m_boundaries.push_back(m_bulkData.size());
+        m_strictVersionConflicts.push_back(1);
+    }
+
+    void bulkIndexWithConcurrencyControl(std::string_view id,
+                                         std::string_view index,
+                                         std::string_view data,
+                                         const std::int64_t sequenceNumber,
+                                         const std::int64_t primaryTerm)
+    {
+        if (!isSafeIndexName(index) || id.empty() || sequenceNumber < 0 || primaryTerm <= 0)
+        {
+            throw IndexerConnectorException(
+                "bulkIndexWithConcurrencyControl requires a safe index, a non-empty ID, and valid OCC metadata");
+        }
+
+        constexpr size_t OCC_METADATA_SIZE = 64;
+        const auto totalSize =
+            m_bulkData.size() + FORMATTED_LENGTH + OCC_METADATA_SIZE + index.size() + id.size() + data.size();
+        if (!m_bulkData.empty() && totalSize > m_maxBulkSize)
+        {
+            processBulk();
+        }
+
+        m_bulkData.append(R"({"index":{"_index":")");
+        m_bulkData.append(index);
+        m_bulkData.append(R"(","_id":")");
+        appendEscapedId(m_bulkData, id);
+        m_bulkData.append(R"(","if_seq_no":)");
+        m_bulkData.append(std::to_string(sequenceNumber));
+        m_bulkData.append(R"(,"if_primary_term":)");
+        m_bulkData.append(std::to_string(primaryTerm));
+        m_bulkData.append(R"(}})");
+        m_bulkData.append("\n");
+        m_bulkData.append(data);
+        m_bulkData.append("\n");
+        m_boundaries.push_back(m_bulkData.size());
+        m_strictVersionConflicts.push_back(1);
     }
 
     void flush()
@@ -1386,6 +1469,24 @@ public:
         for (const auto& callback : callbacksCopy)
         {
             callback();
+        }
+    }
+
+    void flushLocked()
+    {
+        m_shouldNotifyAfterBulk = false;
+        try
+        {
+            if (!m_bulkData.empty() || !m_deleteByQuery.empty())
+            {
+                processBulk();
+            }
+        }
+        catch (...)
+        {
+            m_notify.clear();
+            m_shouldNotifyAfterBulk = false;
+            throw;
         }
     }
 

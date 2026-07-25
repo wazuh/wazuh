@@ -87,9 +87,28 @@ public:
         m_impl.bulkIndex(id, index, data, version);
     }
 
+    void bulkCreate(std::string_view id, std::string_view index, std::string_view data)
+    {
+        m_impl.bulkCreate(id, index, data);
+    }
+
+    void bulkIndexWithConcurrencyControl(std::string_view id,
+                                         std::string_view index,
+                                         std::string_view data,
+                                         std::int64_t sequenceNumber,
+                                         std::int64_t primaryTerm)
+    {
+        m_impl.bulkIndexWithConcurrencyControl(id, index, data, sequenceNumber, primaryTerm);
+    }
+
     void flush()
     {
         m_impl.flush();
+    }
+
+    void flushLocked()
+    {
+        m_impl.flushLocked();
     }
 
     void invokePendingCallbacks()
@@ -191,9 +210,28 @@ void IndexerConnectorSync::bulkIndex(std::string_view id,
     m_impl->bulkIndex(id, index, data, version);
 }
 
+void IndexerConnectorSync::bulkCreate(std::string_view id, std::string_view index, std::string_view data)
+{
+    m_impl->bulkCreate(id, index, data);
+}
+
+void IndexerConnectorSync::bulkIndexWithConcurrencyControl(std::string_view id,
+                                                           std::string_view index,
+                                                           std::string_view data,
+                                                           std::int64_t sequenceNumber,
+                                                           std::int64_t primaryTerm)
+{
+    m_impl->bulkIndexWithConcurrencyControl(id, index, data, sequenceNumber, primaryTerm);
+}
+
 void IndexerConnectorSync::flush()
 {
     m_impl->flush();
+}
+
+void IndexerConnectorSync::flushLocked()
+{
+    m_impl->flushLocked();
 }
 
 void IndexerConnectorSync::invokePendingCallbacks()
