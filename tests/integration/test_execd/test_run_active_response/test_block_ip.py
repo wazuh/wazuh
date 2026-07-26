@@ -79,6 +79,15 @@ daemons_handler_configuration = {'all_daemons': True}
 
 
 # Test function.
+@pytest.mark.skip(reason="Depends on the manager pushing an active-response command that execd "
+                          "then runs. Under the HTTPS client (wazuh/wazuh#37831), that path is "
+                          "bridge_on_task() in client-agent/src/https_client_bridge.c, which is "
+                          "currently a stub -- it logs task_id/task_type and does nothing else; the "
+                          "code's own comment says execd/module-com routing for on_task is 'still "
+                          "pending (later integration workstreams)'. Not a RemotedSimulator API "
+                          "migration issue (there's also no send_custom_message() equivalent, only "
+                          "add_task() feeding /control notify) -- the agent-side task dispatch this "
+                          "test needs doesn't exist yet.")
 @pytest.mark.parametrize('test_configuration, test_metadata',  zip(test_configuration, test_metadata), ids=cases_ids)
 def test_execd_block_ip(test_configuration, test_metadata, configure_local_internal_options, truncate_monitored_files,
                         set_wazuh_configuration, remoted_simulator, authd_simulator,

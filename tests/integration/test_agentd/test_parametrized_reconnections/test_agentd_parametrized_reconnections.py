@@ -63,7 +63,8 @@ import sys
 from wazuh_testing.constants.paths.logs import WAZUH_LOG_PATH
 from wazuh_testing.constants.platforms import WINDOWS
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG, AGENTD_WINDOWS_DEBUG, AGENTD_TIMEOUT
-from wazuh_testing.modules.agentd.patterns import AGENTD_TRYING_CONNECT, AGENTD_CONNECTED_TO_SERVER
+from wazuh_testing.modules.agentd.patterns import AGENTD_TRYING_CONNECT, AGENTD_CONNECTED_TO_SERVER, \
+    AGENTD_HTTPS_STARTUP_ACCEPTED
 from wazuh_testing.tools.monitors.file_monitor import FileMonitor
 from wazuh_testing.tools.simulators.remoted_simulator import RemotedSimulator
 from wazuh_testing.utils import callbacks
@@ -100,6 +101,16 @@ This test covers different options of delays between server connection attempts:
 -Enrollment between retries
 """
 
+@pytest.mark.skip(reason="max_retries/retry_interval no longer have any effect under the HTTPS client "
+                          "migration: src/config/src/client-config.c (Read_Client_Server) now warns "
+                          "'<max_retries>/<retry_interval> option is deprecated and no longer has any effect' "
+                          "and always falls back to DEFAULT_MAX_RETRIES/DEFAULT_RETRY_INTERVAL regardless of "
+                          "the configured value. This test's whole premise -- measuring that the agent retries "
+                          "at the configured interval -- no longer holds; confirmed live, the agent never even "
+                          "logs the first 'Trying to connect to server' at the expected cadence. Needs a redesign "
+                          "against whatever now governs the HTTPS client's own (currently non-configurable, see "
+                          "client-agent/https_client/src/backoff.hpp) reconnection backoff, not a mechanical "
+                          "migration to the new RemotedSimulator API (wazuh/wazuh#37831).")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuration, configure_local_internal_options,
                                            truncate_monitored_files, clean_keys, add_keys, daemons_handler):
@@ -183,7 +194,7 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
     # If auto enrollment is enabled, retry check enrollment
     if test_metadata['ENROLL'] == 'yes':
         # Start RemotedSimulator for successfully enrollment
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         try:
             remoted_server.start()
             wait_connect()
@@ -201,7 +212,11 @@ def test_agentd_parametrized_reconnections(test_metadata, set_wazuh_configuratio
 
     #Check number of connected message is the expected
     if test_metadata['ENROLL'] == 'yes':
-        wazuh_log_monitor.start(callback=callbacks.generate_callback(AGENTD_CONNECTED_TO_SERVER))
+        # Either the legacy TCP "Connected to the server" line or the HTTPS client's
+        # "startup accepted" milestone (wazuh/wazuh#37831; both paths run side by side
+        # during the migration) -- see test_agentd/utils.py's wait_connect().
+        connected_pattern = fr'({AGENTD_CONNECTED_TO_SERVER}|{AGENTD_HTTPS_STARTUP_ACCEPTED})'
+        wazuh_log_monitor.start(callback=callbacks.generate_callback(connected_pattern))
         assert (wazuh_log_monitor.callback_result != None), f'Connected to the server message not found'
 
 

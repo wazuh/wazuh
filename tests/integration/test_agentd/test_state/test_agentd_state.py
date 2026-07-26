@@ -73,6 +73,23 @@ cases_path = Path(TEST_CASES_PATH, 'wazuh_state_config_tests.yaml')
 config_parameters, test_metadata, test_cases_ids = get_test_cases_data(cases_path)
 test_configuration = load_configuration_template(configs_path, config_parameters, test_metadata)
 
+# Cases with a "remote" output block query agentd's state via a #!-req remote command
+# injected through RemotedSimulator.send_custom_message() and read back from its
+# _queue_response_req_message queue -- neither exists on the HTTPS RemotedSimulator
+# (wazuh/wazuh#37831), and there is no send_custom_message()-equivalent to migrate to
+# (see test_block_ip.py's skip reason: agent-side task/command dispatch is still a stub).
+_remote_query_skip_reason = ("Depends on RemotedSimulator.send_custom_message() / "
+                              "_queue_response_req_message to query agentd state via a remote "
+                              "'#!-req ... agent getstate' command; neither exists on the HTTPS "
+                              "RemotedSimulator and there's no equivalent to migrate to yet "
+                              "(wazuh/wazuh#37831).")
+test_cases_params = [
+    pytest.param(config, metadata, marks=pytest.mark.skip(reason=_remote_query_skip_reason))
+    if any(output.get('type') == 'remote' for output in metadata.get('output', []))
+    else pytest.param(config, metadata)
+    for config, metadata in zip(test_configuration, test_metadata)
+]
+
 if sys.platform == WINDOWS:
     local_internal_options = {AGENTD_WINDOWS_DEBUG: '2'}
 else:
@@ -91,7 +108,7 @@ def start_remoted_server(test_metadata) -> None:
     return remoted_server
 
 
-@pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
+@pytest.mark.parametrize('test_configuration, test_metadata', test_cases_params, ids=test_cases_ids)
 def test_agentd_state(test_configuration, test_metadata, set_wazuh_configuration, remove_state_file, configure_local_internal_options,
                       truncate_monitored_files, clean_keys, add_keys, daemons_handler):
     '''

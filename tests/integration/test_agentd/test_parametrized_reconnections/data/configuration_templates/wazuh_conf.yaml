@@ -21,3 +21,7 @@
                     value: MAX_RETRIES
                 - retry_interval:
                     value: RETRY_INTERVAL
+            - ssl:
+                elements:
+                - verification_mode:
+                    value: 'none'

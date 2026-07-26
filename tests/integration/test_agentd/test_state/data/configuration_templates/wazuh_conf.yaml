@@ -7,3 +7,7 @@
                     value: '127.0.0.1'
                 - port:
                     value: '1514'
+            - ssl:
+                elements:
+                - verification_mode:
+                    value: 'none'

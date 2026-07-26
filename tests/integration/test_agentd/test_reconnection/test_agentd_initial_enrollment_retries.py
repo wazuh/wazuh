@@ -144,15 +144,17 @@ def test_agentd_initial_enrollment_retries(test_metadata, set_wazuh_configuratio
     authd_server = None
     remoted_server = None
     try:
-        # Start Authd simulador
-        authd_server = AuthdSimulator()
+        # Start Authd simulador. The default secret ('SuperSecretKey') is not valid
+        # hex, so the HTTPS client's own AES-CMAC key validation (32/48/64 hex chars)
+        # rejects it once issued -- pass a valid 32-hex-char (AES-128) secret instead.
+        authd_server = AuthdSimulator(secret='a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6')
         authd_server.start()
 
         # Wait succesfull enrollment
         wait_enrollment()
 
         # Start Remoted simulador
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected

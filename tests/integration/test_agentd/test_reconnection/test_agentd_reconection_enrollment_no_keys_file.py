@@ -138,12 +138,14 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
     remoted_server = None
     try:
 
-        # Start AuthdSimulator
-        authd_server = AuthdSimulator()
+        # Start AuthdSimulator. The default secret ('SuperSecretKey') is not valid hex,
+        # so the HTTPS client's AES-CMAC key validation (32/48/64 hex chars) rejects the
+        # enrolled key once issued -- pass a valid 32-hex-char (AES-128) secret instead.
+        authd_server = AuthdSimulator(secret='a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6')
         authd_server.start()
 
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
@@ -152,10 +154,32 @@ def test_agentd_reconection_enrollment_no_keys_file(test_metadata, set_wazuh_con
         # Reset simulator
         remoted_server.destroy()
 
+        # AuthdSimulator's underlying MITM handler gates its per-connection read/response
+        # loop on a single event shared by the whole server (mitm.py's
+        # "while not self.server.mitm.event.is_set()"), which __authd_response_simulation
+        # sets after replying once and never clears on its own. A second enrollment
+        # against the same still-running instance would connect and send fine but never
+        # get a reply (its handler thread's loop condition is already true, so it never
+        # even calls recv()) unless the event is cleared first. Not an HTTPS-migration
+        # issue -- AuthdSimulator itself is unchanged -- just never previously exercised
+        # by a test needing two enrollments in one instance.
+        authd_server.clear()
+
+        # Losing the connection alone no longer triggers re-enrollment under HTTPS
+        # (the legacy "N retries then enroll" behavior was deliberately removed,
+        # wazuh/wazuh#37831) -- only an auth failure does, via the AuthGate 401 latch.
+        # Force it with REJECT_AUTH instead of just leaving the agent with nothing to
+        # talk to.
+        remoted_server = RemotedSimulator(mode = 'REJECT_AUTH')
+        remoted_server.start()
+
         # Wait until Agent asks a new key to enrollment
         wait_enrollment_try()
 
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        # Reset simulator
+        remoted_server.destroy()
+
+        remoted_server = RemotedSimulator()
         remoted_server.start()
         # Wait until Agent is connected
         wait_connect()

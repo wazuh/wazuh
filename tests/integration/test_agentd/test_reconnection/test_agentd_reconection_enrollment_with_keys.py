@@ -133,9 +133,11 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         - keys
     '''
 
+    remoted_server = None
+    authd_server = None
     try:
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
@@ -144,12 +146,17 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         # Reset simulator
         remoted_server.destroy()
 
-        # Start rejecting Agent
-        remoted_server = RemotedSimulator(protocol = 'tcp', mode = 'WRONG_KEY')
+        # Start rejecting Agent. WRONG_KEY (legacy: agent fails to decrypt the manager's
+        # response with its symmetric key) has no equivalent under HTTPS -- REJECT_AUTH
+        # (401) is what now drives the HTTPS client's AuthGate re-enrollment latch
+        # (wazuh/wazuh#37831).
+        remoted_server = RemotedSimulator(mode = 'REJECT_AUTH')
         remoted_server.start()
 
-        # Start AuthdSimulator
-        authd_server = AuthdSimulator()
+        # Start AuthdSimulator. The default secret ('SuperSecretKey') is not valid hex,
+        # so the HTTPS client's AES-CMAC key validation (32/48/64 hex chars) rejects the
+        # re-enrolled key once issued -- pass a valid 32-hex-char (AES-128) secret instead.
+        authd_server = AuthdSimulator(secret='a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6')
         authd_server.start()
 
         # Wait until Agent asks a new key to enrollment
@@ -159,12 +166,14 @@ def test_agentd_reconection_enrollment_with_keys(test_metadata, set_wazuh_config
         remoted_server.destroy()
 
         # Start responding Agent
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
         wait_connect()
     finally:
         # Reset simulator
-        remoted_server.destroy()
-        authd_server.destroy()
+        if remoted_server:
+            remoted_server.destroy()
+        if authd_server:
+            authd_server.destroy()

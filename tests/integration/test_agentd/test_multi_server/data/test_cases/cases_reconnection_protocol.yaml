@@ -4,9 +4,9 @@
   metadata:
     DELETE_KEYS_FILE: false
     SIMULATOR_MODES:
-      0: INVALID_MSG
-      1: INVALID_MSG
-      2: INVALID_MSG
+      0: BAD_REQUEST
+      1: BAD_REQUEST
+      2: BAD_REQUEST
       AUTHD_PREV_MODE: ACCEPT
       AUTHD: ACCEPT
     LOG_MONITOR_STR:
@@ -20,8 +20,8 @@
   metadata:
     DELETE_KEYS_FILE: true
     SIMULATOR_MODES:
-      0: INVALID_MSG
-      1: INVALID_MSG
+      0: BAD_REQUEST
+      1: BAD_REQUEST
       2: ACCEPT
       AUTHD_PREV_MODE: ACCEPT
       AUTHD: ACCEPT
@@ -36,8 +36,8 @@
   metadata:
     DELETE_KEYS_FILE: false
     SIMULATOR_MODES:
-      0: INVALID_MSG
-      1: INVALID_MSG
+      0: BAD_REQUEST
+      1: BAD_REQUEST
       2: ACCEPT
       AUTHD_PREV_MODE: ACCEPT
       AUTHD: REJECT

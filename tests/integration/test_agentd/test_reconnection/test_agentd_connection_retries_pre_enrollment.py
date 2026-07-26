@@ -136,7 +136,7 @@ def test_agentd_connection_retries_pre_enrollment(test_metadata, set_wazuh_confi
         - keys
     '''
     # Start RemotedSimulator
-    remoted_server = RemotedSimulator(protocol = 'tcp')
+    remoted_server = RemotedSimulator()
     try:
         remoted_server.start()
 

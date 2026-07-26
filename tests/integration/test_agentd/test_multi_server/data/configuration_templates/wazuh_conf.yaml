@@ -37,3 +37,7 @@
                     value: 3
                 - retry_interval:
                     value: 3
+            - ssl:
+                elements:
+                - verification_mode:
+                    value: 'none'

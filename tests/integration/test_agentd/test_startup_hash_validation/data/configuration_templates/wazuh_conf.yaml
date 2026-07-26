@@ -9,6 +9,10 @@
                     value: '1514'
             - notify_time:
                 value: '1'
+            - ssl:
+                elements:
+                - verification_mode:
+                    value: 'none'
       # syscheck + rootcheck must be explicitly enabled: these scenarios assert
       # that wazuh-syscheckd / wazuh-rootcheck log "Started" after the gate
       # releases, but syscheckd exits early ("Syscheck is disabled. Exiting.")

@@ -132,15 +132,17 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
     authd_server = None
     remoted_server = None
     try:
-        # Prepare test
-        authd_server = AuthdSimulator()
+        # Prepare test. The default secret ('SuperSecretKey') is not valid hex, so the
+        # HTTPS client's AES-CMAC key validation (32/48/64 hex chars) rejects the
+        # enrolled key once issued -- pass a valid 32-hex-char (AES-128) secret instead.
+        authd_server = AuthdSimulator(secret='a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6')
         authd_server.start()
 
         # Wait until Agent asks keys for the first time
         wait_enrollment()
 
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected
@@ -149,8 +151,21 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         # Reset simulator
         remoted_server.destroy()
 
-        # Start rejecting Agent
-        remoted_server = RemotedSimulator(protocol = 'tcp', mode = 'WRONG_KEY')
+        # AuthdSimulator's underlying MITM handler gates its per-connection read/response
+        # loop on a single event shared by the whole server, which only gets set (never
+        # cleared) once a reply is sent -- a second enrollment against the same
+        # still-running instance would connect and send fine but never get a reply unless
+        # the event is cleared first (not an HTTPS-migration issue; AuthdSimulator itself
+        # is unchanged, just never previously exercised by a test needing two enrollments
+        # in one instance).
+        authd_server.clear()
+
+        # Start rejecting Agent. WRONG_KEY (legacy: agent fails to decrypt the manager's
+        # response with its symmetric key) has no equivalent under HTTPS -- REJECT_AUTH
+        # (401) is what now drives the HTTPS client's AuthGate re-enrollment latch
+        # (wazuh/wazuh#37831). Losing the connection alone no longer triggers
+        # re-enrollment (the legacy "N retries then enroll" behavior was removed).
+        remoted_server = RemotedSimulator(mode = 'REJECT_AUTH')
         remoted_server.start()
 
         # Wait until Agent asks a new key to enrollment
@@ -160,7 +175,7 @@ def test_agentd_reconection_enrollment_no_keys(test_metadata, set_wazuh_configur
         remoted_server.destroy()
 
         # Start RemotedSimulator
-        remoted_server = RemotedSimulator(protocol = 'tcp')
+        remoted_server = RemotedSimulator()
         remoted_server.start()
 
         # Wait until Agent is connected

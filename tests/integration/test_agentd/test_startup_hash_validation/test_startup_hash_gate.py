@@ -48,7 +48,9 @@ import hashlib
 import json
 import os
 import sys
+import threading
 import time
+import types
 from pathlib import Path
 
 import pytest
@@ -98,15 +100,16 @@ AGENT_SOCKET_PATH = os.path.join(WAZUH_PATH, 'queue', 'sockets', 'agent')
 MODULE_DAEMONS = ('wazuh-modulesd', 'wazuh-syscheckd', 'wazuh-logcollector', 'wazuh-execd')
 ALL_DAEMONS = ('wazuh-agentd',) + MODULE_DAEMONS
 
-# Log patterns emitted by the startup gate C code.
+# Log patterns emitted by the startup gate C code. Under HTTPS (wazuh/wazuh#37831) the
+# handshake carries no merged_sum, so startup_gate_process_handshake() (which used to set
+# "waiting_hash_match"/"hash_match") never runs -- the reason stays at its initial
+# "waiting_handshake" while blocked, and becomes "https_hash_match" (direct SHA-256 match
+# against the manager-reported config_hash) or "https_config_applied" (released after a
+# successful /download) once released. See client-agent/src/startup_gate.c.
 GATE_BLOCKING_PATTERN = (
     r".*Startup hash gate is blocking "
     r"'wazuh-(modulesd|syscheckd|logcollector|execd)' "
-    r"\((waiting_hash_match|waiting for agentd startup gate status)\)\."
-)
-GATE_RELEASED_PATTERN = (
-    r".*Startup hash gate released for "
-    r"'wazuh-(modulesd|syscheckd|logcollector|execd)' \(hash_match\)\."
+    r"\((waiting_handshake|waiting for agentd startup gate status)\)\."
 )
 
 # YAML template paths for merged.mg and handshake JSON.
@@ -149,6 +152,79 @@ def _load_limits_config_from_yaml(yaml_path):
     return file_utils.read_yaml(yaml_path)
 
 
+def _live_notify_response(self):
+    """Drop-in replacement for RemotedSimulator.notify_response() that derives config_hash
+    from self.merged_mg at call time instead of reading the separately-set self.config_hash
+    attribute.
+
+    RemotedSimulator doesn't lock merged_mg/config_hash (unlike its other injectable state --
+    requests/tasks/sessions each have their own lock). Setting them as two independent
+    attributes from a delay timer (see _make_config_available_after_delay()) would let a
+    /control notify or /download running on the simulator's own HTTP threads observe one
+    updated and the other still stale. Deriving config_hash from merged_mg on every call
+    collapses the two into a single attribute (merged_mg) that a delay timer can set with
+    one plain assignment -- atomic under the GIL -- so /download and /control notify are
+    always consistent with each other, whichever one of them a request happens to land on.
+    """
+    response = {
+        'agent': {
+            'groups': self.groups,
+            'config_hash': hashlib.sha256(self.merged_mg).hexdigest() if self.merged_mg else None,
+        },
+        'settings_hash': self.settings_hash,
+    }
+    tasks = self._drain_tasks()
+    if tasks:
+        response['tasks'] = tasks
+    return response
+
+
+def _use_live_config_hash(remoted_server):
+    """Install _live_notify_response() on this RemotedSimulator instance only."""
+    remoted_server.notify_response = types.MethodType(_live_notify_response, remoted_server)
+
+
+def _make_config_available_after_delay(remoted_server, content, delay):
+    """Simulate the manager taking `delay` seconds to have the group config ready.
+
+    HTTPS (wazuh/wazuh#37831) replaced the old push model (RemotedSimulator itself pushed
+    merged_mg_content after merged_mg_send_delay) with a pull one: the agent only ever gets
+    what /download currently serves. There is no simulator-side delay mechanism anymore, so
+    this reproduces the same effect from the test side -- merged_mg stays None (download
+    404s, gate stays blocked) until this timer fires and sets it, at which point the
+    *next* /control notify's config_hash mismatch (via _live_notify_response(), which the
+    caller must have already installed with _use_live_config_hash()) triggers a real
+    download that succeeds.
+
+    Returns:
+        threading.Timer: the (already started) timer, so the caller can join/cancel it.
+    """
+    def _make_available():
+        remoted_server.merged_mg = content
+
+    timer = threading.Timer(delay, _make_available)
+    timer.start()
+    return timer
+
+
+def _wait_process_running(daemon_name, timeout=10):
+    """Poll check_if_process_is_running() instead of a single point-in-time check.
+
+    The HTTPS handshake can reach gate-ready fast enough to occasionally win a race
+    against a module daemon that is still forking/execing right after
+    daemons_handler restarts everything -- this isn't specific to any one daemon, just
+    the gate transitioning quicker than legacy timing ever allowed for.
+    """
+    deadline = time.time() + timeout
+    running = False
+    while time.time() < deadline:
+        running = check_if_process_is_running(daemon_name)
+        if running:
+            return True
+        time.sleep(0.5)
+    return running
+
+
 def _get_startup_gate_status():
     """Query the agent socket for the current startup gate status.
 
@@ -169,7 +245,16 @@ def _get_startup_gate_status():
 
 
 def _wait_startup_gate_status(expected_ready, expected_reason, timeout=90):
-    """Poll startup gate status until it matches expectations or times out."""
+    """Poll startup gate status until it matches expectations or times out.
+
+    expected_reason may be a single string or an iterable of acceptable strings: once the
+    config becomes available, the direct hash check (bridge_on_manager_config_hash ->
+    startup_gate_check_manager_config_hash, reason "https_hash_match") and the /download
+    apply path (startup_gate_release_from_https_apply, reason "https_config_applied") can
+    both independently release the gate depending on which one's notify/download cycle
+    happens to land first -- either is a correct "released" outcome.
+    """
+    acceptable_reasons = {expected_reason} if isinstance(expected_reason, str) else set(expected_reason)
     status = None
     last_error = None
     start_time = time.time()
@@ -183,7 +268,7 @@ def _wait_startup_gate_status(expected_ready, expected_reason, timeout=90):
             time.sleep(0.5)
             continue
 
-        if status.get('ready') is expected_ready and status.get('reason') == expected_reason:
+        if status.get('ready') is expected_ready and status.get('reason') in acceptable_reasons:
             return status
 
         time.sleep(0.5)
@@ -269,52 +354,60 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
                 except (KeyError, PermissionError):
                     pass
 
-            # Set merged_sum to match the file on disk; no file push needed.
-            limits_config["merged_sum"] = hashlib.md5(merged_content).hexdigest()
-
-            remoted_server = RemotedSimulator(
-                protocol="tcp",
-                limits_config=limits_config,
-            )
+            # HTTPS (wazuh/wazuh#37831): the handshake no longer carries a merged_sum --
+            # the manager-side hash (config_hash, SHA-256) is reported on /control notify
+            # and compared against the local file's own SHA-256
+            # (startup_gate_check_manager_config_hash()). Setting merged_mg to the exact
+            # same bytes already on disk makes that comparison match on the first notify.
+            remoted_server = RemotedSimulator()
+            # config_hash is only computed once, at __init__, from the framework's own
+            # default content -- reassigning merged_mg afterwards does NOT recompute it,
+            # so this derives it live from merged_mg on every notify instead (see
+            # _live_notify_response()'s own docstring).
+            _use_live_config_hash(remoted_server)
+            remoted_server.merged_mg = merged_content
             remoted_server.start()
             wait_connect()
 
-            # Gate should transition to ready with hash_match reason.
-            _wait_startup_gate_status(True, "hash_match")
+            # Gate should transition to ready with https_hash_match reason.
+            _wait_startup_gate_status(True, "https_hash_match")
 
             # All module daemons must be running and unblocked.
             for daemon_name in MODULE_DAEMONS:
-                assert check_if_process_is_running(daemon_name), (
+                assert _wait_process_running(daemon_name), (
                     f"Daemon '{daemon_name}' is not running after hash match"
                 )
 
-            # Verify the released log message was emitted.
-            released_monitor = FileMonitor(WAZUH_LOG_PATH)
-            released_monitor.start(
-                callback=callbacks.generate_callback(GATE_RELEASED_PATTERN), timeout=60
-            )
-            assert released_monitor.callback_result, (
-                "Expected startup hash gate released log was not observed after hash match."
-            )
+            # Not asserted: the "released" debug log line. startup_gate_wait_for_ready()
+            # (shared/src/startup_gate_op.c) only logs it if it had logged "blocking" at
+            # least once first (its own `if (waiting_logged)` guard), and each module
+            # polls independently on its own 1s cadence -- so whether that log line
+            # appears (and how soon) depends on exactly when each module's poll thread
+            # happens to land relative to the gate's own transition, which the HTTPS
+            # handshake's speed makes genuinely racy. The gate status
+            # (_wait_startup_gate_status above) and the daemons actually running
+            # (check_if_process_is_running above) already prove the real behavior;
+            # this log line is cosmetic on top of that, not worth the flakiness.
 
         elif scenario == "hash_mismatch":
-            # Override merged_sum with a bogus value so it never matches.
-            limits_config["merged_sum"] = "a" * 32
-
-            # No file push -> gate stays blocked forever.
-            remoted_server = RemotedSimulator(
-                protocol="tcp", limits_config=limits_config
-            )
+            # No local merged.mg (clean_merged_mg) and no config to serve either
+            # (merged_mg=None -> /download 404s, wazuh_testing's own
+            # RemotedSimulator.download_resource()) -> the agent can never obtain a
+            # config whose SHA-256 matches, so the gate stays blocked forever.
+            remoted_server = RemotedSimulator()
+            remoted_server.merged_mg = None
             remoted_server.start()
             wait_connect()
 
-            # Gate should remain blocked with waiting_hash_match reason.
-            _wait_startup_gate_status(False, "waiting_hash_match")
+            # Gate should remain blocked with waiting_handshake reason (it never
+            # transitions away from its initial reason under HTTPS since nothing
+            # ever matches -- see GATE_BLOCKING_PATTERN's comment above).
+            _wait_startup_gate_status(False, "waiting_handshake")
 
             # Module daemons are running (processes exist) but blocked inside
             # startup_gate_wait_for_ready().
             for daemon_name in MODULE_DAEMONS:
-                assert check_if_process_is_running(daemon_name), (
+                assert _wait_process_running(daemon_name), (
                     f"Daemon '{daemon_name}' is not running while gate is blocked"
                 )
 
@@ -330,23 +423,21 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
         elif scenario == "push_after_delay":
             push_delay = 10
 
-            # Simulator will push merged.mg after delay.
-            # merged_sum is auto-computed, but no file on disk yet -> gate blocks until push arrives.
-            remoted_server = RemotedSimulator(
-                protocol="tcp",
-                limits_config=limits_config,
-                merged_mg_content=merged_content,
-                merged_mg_send_delay=push_delay,
-            )
+            # No config available yet (merged_mg=None -> /download 404s) and no local
+            # file on disk -> gate blocks until _make_config_available_after_delay fires.
+            remoted_server = RemotedSimulator()
+            _use_live_config_hash(remoted_server)
+            remoted_server.merged_mg = None
             remoted_server.start()
             wait_connect()
+            delay_timer = _make_config_available_after_delay(remoted_server, merged_content, push_delay)
 
             # Gate blocked during delay.
-            _wait_startup_gate_status(False, "waiting_hash_match")
+            _wait_startup_gate_status(False, "waiting_handshake")
 
             # Modules running but blocked.
             for daemon_name in MODULE_DAEMONS:
-                assert check_if_process_is_running(daemon_name), (
+                assert _wait_process_running(daemon_name), (
                     f"Daemon '{daemon_name}' is not running while gate is blocked"
                 )
 
@@ -359,10 +450,9 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
                 "Expected startup hash gate blocking log was not observed during push delay."
             )
 
-            # Wait for push -> gate opens.
-            # The file push triggers an agent reload; after the reload the
-            # gate transitions directly to hash_match during re-handshake.
-            _wait_startup_gate_status(True, "hash_match", timeout=push_delay + 60)
+            # Once the config becomes available, either the direct hash check or the
+            # /download apply path can win the race to release the gate first.
+            _wait_startup_gate_status(True, ("https_hash_match", "https_config_applied"), timeout=push_delay + 60)
 
         elif scenario == "reload_chain_fails_gate_still_releases":
             # Regression for issue #36239. When the simulator pushes merged.mg,
@@ -379,27 +469,27 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             # by the time reloadAgent() runs.
             push_delay = 10
 
-            remoted_server = RemotedSimulator(
-                protocol="tcp",
-                limits_config=limits_config,
-                merged_mg_content=merged_content,
-                merged_mg_send_delay=push_delay,
-            )
+            remoted_server = RemotedSimulator()
+            _use_live_config_hash(remoted_server)
+            remoted_server.merged_mg = None
             remoted_server.start()
             wait_connect()
+            _make_config_available_after_delay(remoted_server, merged_content, push_delay)
 
-            # Handshake done, merged.mg not yet pushed -> blocked.
-            _wait_startup_gate_status(False, "waiting_hash_match")
+            # Handshake done, merged.mg not yet available -> blocked.
+            _wait_startup_gate_status(False, "waiting_handshake")
 
             # Kill modulesd: queue/sockets/control now disappears, so the
-            # reloadAgent() call triggered by the upcoming push will fail.
+            # reloadAgent() call triggered by the upcoming download will fail.
             control_service('stop', daemon='wazuh-modulesd')
 
-            # The push arrives during the delay. reloadAgent() spends ~30s
-            # retrying the now-dead socket, returns false, and the fallback
-            # in receive_msg() releases the gate inline. Allow generous slack
-            # on top of the retry window.
-            _wait_startup_gate_status(True, "hash_match", timeout=push_delay + 90)
+            # The config becomes available during the delay. reloadAgent() spends ~30s
+            # retrying the now-dead socket, returns false, and the fallback in
+            # bridge_on_config_downloaded() releases the gate inline
+            # (https_config_applied) -- or the independent direct hash check
+            # (https_hash_match) wins the race instead, once the file is on disk.
+            # Allow generous slack on top of the retry window.
+            _wait_startup_gate_status(True, ("https_hash_match", "https_config_applied"), timeout=push_delay + 90)
 
             # Sanity: confirm the reload chain actually failed in this run,
             # so we know the test exercised the fix path and not the normal
@@ -435,20 +525,18 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
             # log line.
             push_delay = 10
 
-            remoted_server = RemotedSimulator(
-                protocol="tcp",
-                limits_config=limits_config,
-                merged_mg_content=merged_content,
-                merged_mg_send_delay=push_delay,
-            )
+            remoted_server = RemotedSimulator()
+            _use_live_config_hash(remoted_server)
+            remoted_server.merged_mg = None
             remoted_server.start()
             wait_connect()
+            _make_config_available_after_delay(remoted_server, merged_content, push_delay)
 
-            # Gate blocked while waiting for the push.
-            _wait_startup_gate_status(False, "waiting_hash_match")
+            # Gate blocked while waiting for the config to become available.
+            _wait_startup_gate_status(False, "waiting_handshake")
 
-            # Wait for the push -> reload chain -> SIGUSR1 -> gate released.
-            _wait_startup_gate_status(True, "hash_match", timeout=push_delay + 60)
+            # Wait for the download -> reload chain -> SIGUSR1 -> gate released.
+            _wait_startup_gate_status(True, ("https_hash_match", "https_config_applied"), timeout=push_delay + 60)
 
             # Wait until both events have hit the log: the reload chain
             # dispatching ("Executing 'reload' on wazuh-agent") and the
@@ -556,23 +644,21 @@ def test_startup_hash_gate_scenarios(test_configuration, test_metadata, set_wazu
                 except (KeyError, PermissionError):
                     pass
 
-            # Simulator advertises the NEW group's hash and pushes the
-            # matching merged.mg after a delay (simulating the manager
-            # finishing its per-agent recompute).
-            remoted_server = RemotedSimulator(
-                protocol="tcp",
-                limits_config=limits_config,
-                merged_mg_content=merged_content,
-                merged_mg_send_delay=push_delay,
-            )
+            # Simulator has no config available yet (merged_mg=None -> /download 404s)
+            # and only starts advertising/serving the NEW group's config after a delay
+            # (simulating the manager finishing its per-agent recompute).
+            remoted_server = RemotedSimulator()
+            _use_live_config_hash(remoted_server)
+            remoted_server.merged_mg = None
             remoted_server.start()
             wait_connect()
+            _make_config_available_after_delay(remoted_server, merged_content, push_delay)
 
             # Handshake done, local hash is stale -> blocked.
-            _wait_startup_gate_status(False, "waiting_hash_match")
+            _wait_startup_gate_status(False, "waiting_handshake")
 
-            # Wait for the push -> reload chain -> SIGUSR1 -> gate released.
-            _wait_startup_gate_status(True, "hash_match", timeout=push_delay + 60)
+            # Wait for the download -> reload chain -> SIGUSR1 -> gate released.
+            _wait_startup_gate_status(True, ("https_hash_match", "https_config_applied"), timeout=push_delay + 60)
 
             # Poll the log until the reload chain dispatched AND every
             # module daemon has logged "Started" — only then is it

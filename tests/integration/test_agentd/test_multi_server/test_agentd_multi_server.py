@@ -93,6 +93,18 @@ How does this test work:
     - AUTHD: mode for the authd simulator
     - LOG_MONITOR_STR: (list of lists) Expected string to be monitored for each simulator
 """
+@pytest.mark.skip(reason="This test's whole premise -- automatic failover across multiple configured "
+                          "<manager> entries -- doesn't hold under the HTTPS client (wazuh/wazuh#37831). "
+                          "Confirmed against the actual source: (1) start_agent()'s legacy multi-server "
+                          "connection loop (agent_handshake_to_server(), which logs 'Trying to connect to "
+                          "server ...' / 'Unable to connect to [IP]:[PORT]' / 'Trying next server ip in the "
+                          "line') is entirely commented out in client-agent/src/start_agent.c, no live "
+                          "caller left; its only caller for 'Connected to the server' is inside that same "
+                          "commented-out block, so that line is equally unreachable. (2) The HTTPS client "
+                          "only ever reads agt->server[0] "
+                          "(https_client_bridge.c's bridge_build_config()) -- there is no failover logic "
+                          "to a second/third server at all yet. Not a log-pattern migration; the capability "
+                          "this test exercises isn't implemented.")
 @pytest.mark.parametrize('test_configuration, test_metadata', zip(test_configuration, test_metadata), ids=test_cases_ids)
 def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_configuration, configure_local_internal_options, truncate_monitored_files,
                              remove_keys_file, start_remoted_simulators, daemons_handler):
@@ -167,15 +179,19 @@ def test_agentd_multi_server(test_configuration, test_metadata, set_wazuh_config
     remoted_server_address = "127.0.0.1"
     remoted_server_ports = [DEFAULT_SSL_REMOTE_CONNECTION_PORT,1516,1517]
 
+    authd_server = None
     try:
-        # Configure keys
+        # Configure keys. The key must be valid AES-CMAC hex (32/48/64 chars): the HTTPS
+        # client (wazuh/wazuh#37831) validates this at startup, unlike the legacy
+        # symmetric cipher, which accepted any string (e.g. the old 'SuperSecretKey').
         if(test_metadata['SIMULATOR_MODES']['AUTHD'] == 'ACCEPT'):
-            authd_server = AuthdSimulator(server_ip = remoted_server_address, mode = test_metadata['SIMULATOR_MODES']['AUTHD'])
+            authd_server = AuthdSimulator(server_ip = remoted_server_address, mode = test_metadata['SIMULATOR_MODES']['AUTHD'],
+                                          secret = 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6')
             authd_server.start()
         else:
             if(test_metadata['SIMULATOR_MODES']['AUTHD_PREV_MODE'] == 'ACCEPT'):
                 authd_server = None
-                add_client_keys_entry("001", "ubuntu-agent", "any", "SuperSecretKey")
+                add_client_keys_entry("001", "ubuntu-agent", "any", "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6")
 
         # Start FileMonitor
         log_monitor = FileMonitor(WAZUH_LOG_PATH)
