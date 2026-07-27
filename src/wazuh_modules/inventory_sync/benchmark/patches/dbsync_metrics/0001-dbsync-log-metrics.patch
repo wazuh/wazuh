@@ -1,8 +1,8 @@
 diff --git a/src/shared_modules/indexer_connector/include/indexerConnector.hpp b/src/shared_modules/indexer_connector/include/indexerConnector.hpp
-index 34386fb..61abf59 100644
+index 95b5cbe479..9c88a341f6 100644
 --- a/src/shared_modules/indexer_connector/include/indexerConnector.hpp
 +++ b/src/shared_modules/indexer_connector/include/indexerConnector.hpp
-@@ -306,6 +306,23 @@ public:
+@@ -328,6 +328,23 @@ public:
       * @return true if have a server available, false otherwise.
       */
      bool isAvailable() const;
@@ -27,10 +27,10 @@ index 34386fb..61abf59 100644
  
  /**
 diff --git a/src/shared_modules/indexer_connector/src/indexerConnectorSync.cpp b/src/shared_modules/indexer_connector/src/indexerConnectorSync.cpp
-index 974c86f..98826df 100644
+index 4cccdd1930..56782e2809 100644
 --- a/src/shared_modules/indexer_connector/src/indexerConnectorSync.cpp
 +++ b/src/shared_modules/indexer_connector/src/indexerConnectorSync.cpp
-@@ -116,6 +116,23 @@ public:
+@@ -121,6 +121,23 @@ public:
      {
          return m_impl.isAvailable();
      }
@@ -54,7 +54,7 @@ index 974c86f..98826df 100644
  };
  
  IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging)
-@@ -221,4 +238,21 @@ bool IndexerConnectorSync::isAvailable() const
+@@ -231,4 +248,21 @@ bool IndexerConnectorSync::isAvailable() const
      return m_impl->isAvailable();
  }
  
@@ -77,10 +77,10 @@ index 974c86f..98826df 100644
 +
  // LCOV_EXCL_STOP
 diff --git a/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp b/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp
-index 175f48a..819c356 100644
+index 3010ee89d7..170a58d11d 100644
 --- a/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp
 +++ b/src/shared_modules/indexer_connector/src/indexerConnectorSyncImpl.hpp
-@@ -281,7 +281,12 @@ class IndexerConnectorSyncImpl final
+@@ -370,7 +370,12 @@ class IndexerConnectorSyncImpl final
      std::vector<std::function<void()>> m_notify;
      std::chrono::steady_clock::time_point m_lastBulkTime;
      std::condition_variable m_cv;
@@ -93,7 +93,7 @@ index 175f48a..819c356 100644
      std::thread m_bulkThread;
      std::atomic<bool> m_stopping {false};
      std::vector<size_t> m_boundaries;
-@@ -289,6 +294,25 @@ class IndexerConnectorSyncImpl final
+@@ -378,6 +383,25 @@ class IndexerConnectorSyncImpl final
      size_t m_maxBulkSize {MaxBulkSize};
      size_t m_flushInterval {FlushInterval};
  
@@ -119,7 +119,7 @@ index 175f48a..819c356 100644
      void processBulk()
      {
          bool needToRetry = false;
-@@ -328,6 +352,7 @@ class IndexerConnectorSyncImpl final
+@@ -417,6 +441,7 @@ class IndexerConnectorSyncImpl final
              {
                  LOG_ERROR(m_logFn, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
                  m_bulkData.clear();
@@ -127,7 +127,7 @@ index 175f48a..819c356 100644
                  m_lastBulkTime = std::chrono::steady_clock::now();
                  throw IndexerConnectorException(error);
              }
-@@ -361,6 +386,7 @@ class IndexerConnectorSyncImpl final
+@@ -450,6 +475,7 @@ class IndexerConnectorSyncImpl final
                  LOG_ERROR(m_logFn, "Bulk operation had indexing failures");
                  m_bulkData.clear();
                  m_boundaries.clear();
@@ -135,7 +135,7 @@ index 175f48a..819c356 100644
                  m_lastBulkTime = std::chrono::steady_clock::now();
                  throw IndexerConnectorException("Bulk operation had indexing failures");
              }
-@@ -386,6 +412,7 @@ class IndexerConnectorSyncImpl final
+@@ -475,6 +501,7 @@ class IndexerConnectorSyncImpl final
                                m_bulkData.size());
                      m_bulkData.clear();
                      m_boundaries.clear();
@@ -143,7 +143,7 @@ index 175f48a..819c356 100644
                      throw IndexerConnectorException("Single operation exceeds server payload limits");
                  }
                  splitAndProcessBulk();
-@@ -397,6 +424,7 @@ class IndexerConnectorSyncImpl final
+@@ -486,6 +513,7 @@ class IndexerConnectorSyncImpl final
                           "handled by validateBulkResponse().");
                  m_bulkData.clear();
                  m_boundaries.clear();
@@ -151,7 +151,7 @@ index 175f48a..819c356 100644
                  m_lastBulkTime = std::chrono::steady_clock::now();
                  throw IndexerConnectorException("Bulk version conflict at request level");
              }
-@@ -410,6 +438,7 @@ class IndexerConnectorSyncImpl final
+@@ -499,6 +527,7 @@ class IndexerConnectorSyncImpl final
                  LOG_ERROR(m_logFn, "%s, status code: %ld.", error.c_str(), statusCode);
                  m_bulkData.clear();
                  m_boundaries.clear();
@@ -159,7 +159,7 @@ index 175f48a..819c356 100644
                  m_lastBulkTime = std::chrono::steady_clock::now();
                  throw IndexerConnectorException(error);
              }
-@@ -452,6 +481,8 @@ class IndexerConnectorSyncImpl final
+@@ -541,6 +570,8 @@ class IndexerConnectorSyncImpl final
          m_bulkData.clear();
          m_boundaries.clear();
          m_deleteByQuery.clear();
@@ -168,7 +168,7 @@ index 175f48a..819c356 100644
          m_lastBulkTime = std::chrono::steady_clock::now();
      }
  
-@@ -507,6 +538,7 @@ class IndexerConnectorSyncImpl final
+@@ -596,6 +627,7 @@ class IndexerConnectorSyncImpl final
          }
          m_bulkData.clear();
          m_boundaries.clear();
@@ -176,7 +176,7 @@ index 175f48a..819c356 100644
          m_lastBulkTime = std::chrono::steady_clock::now();
      }
  
-@@ -721,6 +753,7 @@ public:
+@@ -810,6 +842,7 @@ public:
                              {
                                  std::vector<std::function<void()>> callbacksCopy = std::move(m_notify);
                                  m_notify.clear();
@@ -184,7 +184,7 @@ index 175f48a..819c356 100644
                                  m_shouldNotifyAfterBulk = false;
  
                                  timeoutLock.unlock();
-@@ -768,6 +801,7 @@ public:
+@@ -857,6 +890,7 @@ public:
          {
              // No cluster name: filter by agent.id only.
              boolQuery["filter"]["terms"]["wazuh.agent.id"].push_back(agentId);
@@ -192,7 +192,7 @@ index 175f48a..819c356 100644
              return;
          }
  
-@@ -781,6 +815,7 @@ public:
+@@ -870,6 +904,7 @@ public:
              boolQuery["filter"] = nlohmann::json::array({agentClause, clusterClause});
          }
          boolQuery["filter"][0]["terms"]["wazuh.agent.id"].push_back(agentId);
@@ -200,7 +200,7 @@ index 175f48a..819c356 100644
      }
  
      void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
-@@ -886,6 +921,7 @@ public:
+@@ -975,6 +1010,7 @@ public:
                           "Update by query returned 409 version conflict. This indicates documents were modified by "
                           "another process.");
                  m_notify.clear();
@@ -208,7 +208,7 @@ index 175f48a..819c356 100644
                  throw IndexerConnectorException("Update by query version conflict");
              }
              else if (statusCode == HTTP_TOO_MANY_REQUESTS)
-@@ -897,6 +933,7 @@ public:
+@@ -986,6 +1022,7 @@ public:
              {
                  LOG_ERROR(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
                  m_notify.clear();
@@ -216,7 +216,7 @@ index 175f48a..819c356 100644
                  throw IndexerConnectorException(error);
              }
          };
-@@ -907,6 +944,7 @@ public:
+@@ -996,6 +1033,7 @@ public:
              {
                  LOG_DEBUG2(m_logFn, "Stopping requested, aborting update by query");
                  m_notify.clear();
@@ -224,7 +224,7 @@ index 175f48a..819c356 100644
                  return;
              }
  
-@@ -1274,6 +1312,7 @@ public:
+@@ -1363,6 +1401,7 @@ public:
          m_bulkData.append(R"("}})");
          m_bulkData.append("\n");
          m_boundaries.push_back(m_bulkData.size());
@@ -232,15 +232,15 @@ index 175f48a..819c356 100644
      }
  
      void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
-@@ -1360,6 +1399,7 @@ public:
-         m_bulkData.append(data);
-         m_bulkData.append("\n");
+@@ -1457,6 +1496,7 @@ public:
+             m_bulkData.append("\n");
+         }
          m_boundaries.push_back(m_bulkData.size());
 +        publishBulkDataSizeMetric();
      }
  
-     void flush()
-@@ -1379,6 +1419,7 @@ public:
+     void bulkUpsertPreserving(std::string_view id, std::string_view index, std::string_view data)
+@@ -1529,6 +1569,7 @@ public:
              {
                  callbacksCopy = std::move(m_notify);
                  m_notify.clear();
@@ -248,7 +248,7 @@ index 175f48a..819c356 100644
                  m_shouldNotifyAfterBulk = false;
              }
          }
-@@ -1404,6 +1445,7 @@ public:
+@@ -1554,6 +1595,7 @@ public:
              {
                  callbacksCopy = std::move(m_notify);
                  m_notify.clear();
@@ -256,7 +256,7 @@ index 175f48a..819c356 100644
                  m_shouldNotifyAfterBulk = false;
              }
          }
-@@ -1417,7 +1459,25 @@ public:
+@@ -1567,7 +1609,25 @@ public:
      void registerNotify(std::function<void()> callback)
      {
          m_notify.push_back(std::move(callback));
@@ -283,7 +283,7 @@ index 175f48a..819c356 100644
      void refresh(std::string_view indexPattern)
      {
 diff --git a/src/wazuh_modules/inventory_sync/src/agentSession.hpp b/src/wazuh_modules/inventory_sync/src/agentSession.hpp
-index 0eb41a2..f4ffe44 100644
+index 0eb41a2239..f4ffe44b23 100644
 --- a/src/wazuh_modules/inventory_sync/src/agentSession.hpp
 +++ b/src/wazuh_modules/inventory_sync/src/agentSession.hpp
 @@ -18,11 +18,16 @@
@@ -517,7 +517,7 @@ index 0eb41a2..f4ffe44 100644
                  m_context->agentId, m_context->sessionId, m_context->moduleName, m_gapSet->ranges());
          }
 diff --git a/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp b/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
-index 4e95d30..a603a1e 100644
+index 855b285bff..5cab2d028e 100644
 --- a/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
 +++ b/src/wazuh_modules/inventory_sync/src/inventorySyncFacade.hpp
 @@ -41,6 +41,9 @@
@@ -552,7 +552,7 @@ index 4e95d30..a603a1e 100644
          }
          LOG_DEBUG1(m_logFn,
                     "InventorySync queue size: %zu, DataValue quota: %llu",
-@@ -1019,6 +1026,9 @@ public:
+@@ -1018,6 +1025,9 @@ public:
                                               "full resync required",
                                               res.context->agentId.c_str(),
                                               MAX_RETRIES);
@@ -562,7 +562,7 @@ index 4e95d30..a603a1e 100644
                                      m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_ChecksumMismatch,
                                                                       res.context->agentId,
                                                                       res.context->sessionId,
-@@ -1030,6 +1040,9 @@ public:
+@@ -1029,6 +1039,9 @@ public:
                          {
                              LOG_ERROR(
                                  m_logFn, "ModuleCheck failed for agent %s: %s", res.context->agentId.c_str(), e.what());
@@ -572,7 +572,7 @@ index 4e95d30..a603a1e 100644
                              m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                               res.context->agentId,
                                                               res.context->sessionId,
-@@ -1365,6 +1378,9 @@ public:
+@@ -1368,6 +1381,9 @@ public:
                                                            "agent %s: %s",
                                                            res.context->agentId.c_str(),
                                                            e.what());
@@ -582,7 +582,7 @@ index 4e95d30..a603a1e 100644
                                                  m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                                                   res.context->agentId,
                                                                                   res.context->sessionId,
-@@ -1460,6 +1476,10 @@ public:
+@@ -1463,6 +1479,10 @@ public:
                          unlockAgent(res.context->agentId);
                      }
  
@@ -593,7 +593,7 @@ index 4e95d30..a603a1e 100644
                      // Send ACK to agent.
                      m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                       res.context->agentId,
-@@ -1489,6 +1509,10 @@ public:
+@@ -1492,6 +1512,10 @@ public:
                          unlockAgent(res.context->agentId);
                      }
  
@@ -604,7 +604,7 @@ index 4e95d30..a603a1e 100644
                      // Send ACK to agent.
                      m_responseDispatcher->sendEndAck(Wazuh::SyncSchema::Status_Error,
                                                       res.context->agentId,
-@@ -1550,6 +1574,9 @@ public:
+@@ -1553,6 +1577,9 @@ public:
  
                              // Delete data from database.
                              m_dataStore->deleteByPrefix(std::to_string(it->first));
@@ -614,7 +614,7 @@ index 4e95d30..a603a1e 100644
                              it = eraseSessionLocked(it);
                          }
                          else
-@@ -1564,6 +1591,107 @@ public:
+@@ -1567,6 +1594,107 @@ public:
          // Init the socket server to attend keystore requests
          initializeKeystoreSocket();
  
@@ -722,7 +722,7 @@ index 4e95d30..a603a1e 100644
          LOG_DEBUG1(m_logFn, "InventorySyncFacade started.");
      }
  
-@@ -1879,6 +2007,18 @@ public:
+@@ -1882,6 +2010,18 @@ public:
          return 1;
      }
  
@@ -741,7 +741,7 @@ index 4e95d30..a603a1e 100644
      /**
       * @brief Clean up zombie sessions for an agent
       * @param agentId Agent ID to clean up sessions for
-@@ -1924,6 +2064,10 @@ public:
+@@ -1927,6 +2067,10 @@ public:
                  // Delete data from database
                  m_dataStore->deleteByPrefix(std::to_string(sessionId));
  
@@ -752,7 +752,7 @@ index 4e95d30..a603a1e 100644
                  // Remove session (restores DataValue quota)
                  eraseSessionLocked(it);
                  cleanedCount++;
-@@ -2021,6 +2165,19 @@ public:
+@@ -2024,6 +2168,19 @@ public:
              m_sessionTimeoutThread.join();
          }
  
@@ -772,7 +772,7 @@ index 4e95d30..a603a1e 100644
          // Clear VDFirst scan tracking
          {
              std::unique_lock lock(m_activeVDFirstScansMutex);
-@@ -2038,6 +2195,39 @@ public:
+@@ -2041,6 +2198,39 @@ public:
  private:
      InventorySyncFacadeImpl() = default;
  
@@ -812,7 +812,7 @@ index 4e95d30..a603a1e 100644
      void deleteAgent(const std::string& agentId)
      {
          if (agentId.empty())
-@@ -2135,6 +2325,10 @@ private:
+@@ -2138,6 +2328,10 @@ private:
                  // Delete data from database
                  m_dataStore->deleteByPrefix(std::to_string(staleSessionId));
  
@@ -823,19 +823,18 @@ index 4e95d30..a603a1e 100644
                  // Remove session from map (restores DataValue quota)
                  eraseSessionLocked(it);
                  m_sessionCompletedCV.notify_all();
-@@ -2146,8 +2340,11 @@ private:
+@@ -2149,8 +2343,10 @@ private:
      std::string m_clusterName;
-     int m_maxSessions {1000};         // Maximum concurrent sessions (configured from internal_options)
-     size_t m_workersQueueSize {1000}; // Input queue cap (configured from internal_options)
-+    std::atomic<uint64_t> m_dataValueQuotaTotal {
-+        250000}; // Global DataValue quota capacity (configured from internal_options)
+     int m_maxSessions {1000};          // Maximum concurrent sessions (configured from internal_options)
+     size_t m_workersQueueSize {10000}; // Input queue cap (configured from internal_options)
++    std::atomic<uint64_t> m_dataValueQuotaTotal {500000};     // Global DataValue quota configured from internal_options
      std::atomic<uint64_t> m_dataValueQuotaRemaining {
-         250000};                                   // Global DataValue quota (configured from internal_options)
-+    std::atomic<uint64_t> m_dataValueQuotaRejectedSessions {0}; // Start messages rejected by DataValue quota
+         500000};                                   // Global DataValue quota (configured from internal_options)
++    std::atomic<uint64_t> m_dataValueQuotaRejectedSessions {0};
      std::atomic<int64_t> m_lastQueueDropLogNs {0}; // steady_clock ns of last queue-drop warning
      static constexpr int64_t WARN_THROTTLE_NS = 90LL * 1000LL * 1000LL * 1000LL; // 90 s
      mutable std::shared_mutex m_agentSessionsMutex;
-@@ -2164,6 +2361,12 @@ private:
+@@ -2167,6 +2363,12 @@ private:
      std::map<uint64_t, TAgentSession, std::less<>> m_agentSessions;
      std::thread m_sessionTimeoutThread;
  
