@@ -74,6 +74,22 @@ TEST(TaskBatchTest, SameTypeKeepsArrivalOrder)
     EXPECT_EQ((std::vector<std::string> {"ar-1", "ar-2", "ar-3"}), idsOf(plan.ordered));
 }
 
+TEST(TaskBatchTest, SameTypeIsNeverCollapsed)
+{
+    // Redundancy collapse is across types only, by design. Two active
+    // responses are two different actions (their payloads differ), so folding
+    // them would discard real work; and for two upgrades, picking a winner is
+    // a contract question rather than a planner one. The manager is expected
+    // not to send a batch like this, but if it does, both are dispatched.
+    auto responses = planTaskBatch({task("ar-1", "active_response"), task("ar-2", "active_response")});
+    EXPECT_TRUE(responses.dropped.empty());
+    EXPECT_EQ((std::vector<std::string> {"ar-1", "ar-2"}), idsOf(responses.ordered));
+
+    auto upgrades = planTaskBatch({task("up-1", "remote_upgrade"), task("up-2", "remote_upgrade")});
+    EXPECT_TRUE(upgrades.dropped.empty());
+    EXPECT_EQ((std::vector<std::string> {"up-1", "up-2"}), idsOf(upgrades.ordered));
+}
+
 TEST(TaskBatchTest, UpgradeSubsumesRestart)
 {
     auto plan = planTaskBatch({task("t1", "agent_restart"), task("t2", "remote_upgrade")});
