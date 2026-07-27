@@ -32,8 +32,6 @@ namespace
     remoted_module_config_t makeConfig()
     {
         remoted_module_config_t cfg {};
-        cfg.worker_threads = 2;
-        cfg.queue_size = 1024;
         cfg.port = 1514;
         cfg.worker_node = false;
         std::snprintf(cfg.cluster_name, sizeof(cfg.cluster_name), "%s", "test-cluster");

@@ -134,8 +134,8 @@ notes).
 
 | Setting | Default | Internal option |
 |---|---|---|
-| I/O threads | `2` | `remoted.http_io_threads` |
-| Handler worker threads | `4` | `remoted.http_worker_threads` |
+| I/O threads | `cpp_get_nproc()` | `remoted.http_io_threads` |
+| Handler worker threads | `2 * cpp_get_nproc()` | `remoted.http_worker_threads` |
 | Read / handshake timeout | `10 s` | `remoted.http_read_timeout` |
 | Write timeout | `10 s` | `remoted.http_write_timeout` |
 | Request timeout | `30 s` | `remoted.http_request_timeout` |
@@ -146,6 +146,13 @@ notes).
 | Max pipelined requests per connection | `4` | `remoted.http_max_pipelined_requests` |
 | Concurrent TCP accepts | `2` | `remoted.http_concurrent_accepts` |
 | Socket read buffer size | `8192 B` | `remoted.http_buffer_size` |
+
+I/O threads and handler worker threads are thread-count settings: a `<=0` value (including "not
+set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
+(`shared_modules/utils/proc.hpp`, cgroup-aware on Linux) instead of a fixed constant, so the pool
+sizes track the host/container's available CPUs. The handler worker pool is oversubscribed (`2x`)
+because that work can block (AES-CMAC verification, `client.keys` file I/O), unlike the purely
+async I/O threads.
 
 Bind address, port, max body size and the certificate/private key paths are **not** internal
 options -- these belong in the regular `<remote>` configuration (`wazuh-manager.conf`), not
@@ -185,6 +192,35 @@ caps how many requests are parked awaiting a downstream service. Exhausting eith
 > There is no `ossec.conf` (`<remote>`) setting for the HTTPS listener yet; configuration is
 > limited to the internal options above, the memory-management settings, and the certificate
 > files on disk.
+
+### Downstream client and auth middleware
+
+A fourth group of internal options tunes the deferred-forwarding downstream UDS client
+(`downstream/downstreamConfig.hpp`/`.cpp`) and the auth middleware's timestamp window / body cap
+(`auth/authTypes.hpp`/`.cpp`). Same resolution pattern as the RESTinio settings above: `secure.c`
+reads each `remoted.*` option and passes it through the C-ABI struct;
+`remoted::downstream::buildDownstreamConfig()`/`remoted::auth::buildAuthConfig()` apply the
+built-in default on `<=0`. The three timeouts are configured in **seconds** and converted to
+milliseconds internally.
+
+| Setting | Default | Internal option |
+|---|---|---|
+| Downstream connect timeout | `2 s` | `remoted.downstream_connect_timeout` |
+| Downstream write timeout | `5 s` | `remoted.downstream_write_timeout` |
+| Downstream response timeout | `5 s` | `remoted.downstream_response_timeout` |
+| Downstream client I/O threads | `cpp_get_nproc()` | `remoted.downstream_io_threads` |
+| Downstream post-processing threads | `cpp_get_nproc()` | `remoted.downstream_post_process_threads` |
+| Max downstream response body | `10 MiB` | `remoted.downstream_max_response_body_size` |
+| Auth max request age | `300 s` | `remoted.auth_max_request_age` |
+| Auth max future skew | `30 s` | `remoted.auth_max_future_skew` |
+| Auth max body size | `10 MiB` | `remoted.auth_max_body_size` |
+
+The two thread-count fields above resolve a `<=0` value via `cpp_get_nproc()` the same way
+`http_io_threads`/`http_worker_threads` do (no `2x` oversubscription here -- both pools are either
+a purely async I/O reactor or documented as non-blocking work). The downstream client's events
+socket path (`eventsSocketPath`) and the auth middleware's `supportedProtocolVersion` are not
+internal options -- the former is an installation detail (mirrors the classic C forwarder's
+socket), the latter a protocol constant.
 
 ## Testing
 
