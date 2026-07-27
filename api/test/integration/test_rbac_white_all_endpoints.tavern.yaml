@@ -216,7 +216,7 @@ stages:
       params:
         agents_list: 008
     response:
-      <<: *permission_denied
+      <<: *empty_response
 
 ---
 test_name: PUT /agents/upgrade_custom
@@ -246,7 +246,7 @@ stages:
         agents_list: 008
         file_path: "{custom_wpk_path:s}"
     response:
-      <<: *permission_denied
+      <<: *empty_response
 
 ---
 test_name: DELETE /agents/group
@@ -396,7 +396,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      <<: *permission_denied
+      <<: *empty_response
 
 ---
 test_name: GET /agents/stats/distinct
