@@ -180,6 +180,18 @@ namespace
         EXPECT_EQ(std::get<AuthError>(result), AuthError::UnknownAgent);
     }
 
+    TEST(Middleware, NonNumericAgentIdInAuthorizationIsRejected)
+    {
+        // An agent id is always numeric by design -- a non-digit agent-id segment must fail at
+        // header-parsing time (MalformedAuthorization), before it ever reaches the Keystore lookup.
+        Fixture f;
+        const std::string body = "body";
+        const auto result = f.run(
+            "1", "Wazuh abc:" + std::to_string(kNow) + ":deadbeefdeadbeefdeadbeefdeadbeef", "POST", "/stateless", body);
+        ASSERT_TRUE(std::holds_alternative<AuthError>(result));
+        EXPECT_EQ(std::get<AuthError>(result), AuthError::MalformedAuthorization);
+    }
+
     TEST(Middleware, MalformedAuthorizationIsRejected)
     {
         Fixture f;

@@ -24,7 +24,11 @@ target_link_libraries(
   optimized gtest_main
   optimized gmock_main
   remoted_module
-  pthread)
+  pthread
+  # shutdownRace_test.cpp drives a real TLS client (asio::ssl) against a live RestinioHttpServer;
+  # remoted_module links ssl/crypto PRIVATE (via ext_restinio), so this target needs its own link.
+  ssl
+  crypto)
 
 target_include_directories(
   remoted_module_utest
@@ -32,7 +36,12 @@ target_include_directories(
           ${CMAKE_CURRENT_LIST_DIR}/../src # submodule headers by prefix: auth/, endpoints/, http_server/
           ${SRC_FOLDER}/shared_modules/utils # loggerHelper.h, singleton.hpp
           ${SRC_FOLDER}/shared_modules/common
-          ${SRC_FOLDER}/external/cJSON)
+          ${SRC_FOLDER}/external/cJSON
+          # asioUdsHttpClient_test.cpp includes standalone-Asio headers directly; remoted_module
+          # only gets them via ext_restinio, linked PRIVATE (not propagated to this target).
+          ${SRC_FOLDER}/external/asio/include
+          # statelessEndpoint_test.cpp includes RapidJSON headers directly; same PRIVATE-linkage gap.
+          ${SRC_FOLDER}/external/rapidjson/include)
 
 add_test(NAME remoted_module_utest COMMAND remoted_module_utest)
 set_tests_properties(remoted_module_utest PROPERTIES LABELS remoted_module_utest)

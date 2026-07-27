@@ -36,11 +36,13 @@ namespace
     class FakeHttpServer final : public IHttpServer
     {
     public:
-        void addRoute(Method method, const std::string& path, RouteHandler handler) override
+        void
+        addRoute(Method method, const std::string& path, RouteHandler handler, bool /*countAgainstBudget*/) override
         {
             m_routes[{method, path}] = std::move(handler);
         }
         void start(const HttpServerConfig&) override {}
+        void stopAccepting() noexcept override {}
         void stop() noexcept override {}
 
         void dispatch(Method method,
@@ -48,7 +50,8 @@ namespace
                       const HttpRequest& request,
                       std::shared_ptr<IHttpResponder> responder)
         {
-            m_routes.at({method, path})(request, std::move(responder));
+            // The transport hands the handler a shared_ptr<const>; mirror that here.
+            m_routes.at({method, path})(std::make_shared<const HttpRequest>(request), std::move(responder));
         }
 
         bool hasRoute(Method method, const std::string& path) const
@@ -60,17 +63,29 @@ namespace
         std::map<std::pair<Method, std::string>, RouteHandler> m_routes;
     };
 
-    // Keystore stub: knows one agent; anything else is unknown.
+    // Keystore stub: knows one agent (numeric id 1, i.e. "001" on the wire); anything else is unknown.
     class FakeKeystore final : public remoted::auth::IAgentKeystore
     {
     public:
-        std::optional<std::vector<std::uint8_t>> keyFor(const std::string& agentId) const override
+        std::optional<std::vector<std::uint8_t>> keyFor(remoted::auth::AgentId agentId) const override
         {
-            if (agentId == "001")
+            if (agentId == 1)
             {
                 return std::vector<std::uint8_t>(16, 0x0A); // 16-byte AES-128 key
             }
             return std::nullopt;
+        }
+    };
+
+    // Keystore stub that always throws, simulating an unexpected failure (e.g. a corrupted on-disk
+    // state) reached from INSIDE AuthMiddleware::beginSession() -- i.e. before the gateway's old,
+    // too-narrow try/catch used to start.
+    class ThrowingKeystore final : public remoted::auth::IAgentKeystore
+    {
+    public:
+        std::optional<std::vector<std::uint8_t>> keyFor(remoted::auth::AgentId) const override
+        {
+            throw std::runtime_error("simulated keystore I/O failure");
         }
     };
 
@@ -97,7 +112,7 @@ namespace
     std::string
     buildAuthorization(const std::string& method, const std::string& target, const std::string& body, std::int64_t ts)
     {
-        const std::vector<std::uint8_t> key(16, 0x0A); // matches FakeKeystore::keyFor("001")
+        const std::vector<std::uint8_t> key(16, 0x0A); // matches FakeKeystore::keyFor(1) ("001" on the wire)
         remoted::auth::Cmac cmac(key);
         cmac.update("WAZUH-REQUEST\n");
         cmac.update("1\n"); // protocol-version
@@ -136,7 +151,7 @@ TEST(AuthGatewayTest, RegistersRouteOnTheServer)
         server,
         Method::Post,
         "/stateless",
-        [](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
+        [](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
         { responder->send(HttpResponse {200, "", {}}); });
 
     EXPECT_TRUE(server.hasRoute(Method::Post, "/stateless"));
@@ -148,15 +163,15 @@ TEST(AuthGatewayTest, MissingProtocolVersionYields400AndSkipsHandler)
     auto gateway = makeGateway();
 
     bool handlerCalled = false;
-    gateway.addAuthenticatedRoute(
-        server,
-        Method::Post,
-        "/stateless",
-        [&handlerCalled](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
-        {
-            handlerCalled = true;
-            responder->send(HttpResponse {200, "", {}});
-        });
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                                                   std::shared_ptr<IHttpResponder> responder)
+                                  {
+                                      handlerCalled = true;
+                                      responder->send(HttpResponse {200, "", {}});
+                                  });
 
     HttpRequest request;
     request.method = Method::Post;
@@ -177,15 +192,15 @@ TEST(AuthGatewayTest, MissingAuthorizationYields401AndSkipsHandler)
     auto gateway = makeGateway();
 
     bool handlerCalled = false;
-    gateway.addAuthenticatedRoute(
-        server,
-        Method::Post,
-        "/stateless",
-        [&handlerCalled](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
-        {
-            handlerCalled = true;
-            responder->send(HttpResponse {200, "", {}});
-        });
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                                                   std::shared_ptr<IHttpResponder> responder)
+                                  {
+                                      handlerCalled = true;
+                                      responder->send(HttpResponse {200, "", {}});
+                                  });
 
     HttpRequest request;
     request.method = Method::Post;
@@ -209,7 +224,7 @@ TEST(AuthGatewayTest, HeaderLookupIsCaseInsensitive)
         server,
         Method::Post,
         "/stateless",
-        [](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder> responder)
+        [](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder> responder)
         { responder->send(HttpResponse {200, "", {}}); });
 
     HttpRequest request;
@@ -231,13 +246,16 @@ TEST(AuthGatewayTest, ValidAuthReachesHandlerWithVerifiedRequest)
     auto gateway = makeGateway();
 
     std::string seenAgentId;
+    std::string seenBody;
     gateway.addAuthenticatedRoute(
         server,
         Method::Post,
         "/stateless",
-        [&seenAgentId](const remoted::auth::AuthenticatedRequest& authReq, std::shared_ptr<IHttpResponder> responder)
+        [&seenAgentId, &seenBody](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                                  std::shared_ptr<IHttpResponder> responder)
         {
-            seenAgentId = authReq.agentId;
+            seenAgentId = authReq->agentId;
+            seenBody = std::string {authReq->payload.bytes()}; // zero-copy view of the verified body
             responder->send(HttpResponse::json(200, R"({"ok":true})"));
         });
 
@@ -247,7 +265,41 @@ TEST(AuthGatewayTest, ValidAuthReachesHandlerWithVerifiedRequest)
 
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_EQ(responder->captured->status, 200);
-    EXPECT_EQ(seenAgentId, "001"); // the handler received the authenticated identity
+    EXPECT_EQ(seenAgentId, "001");    // the handler received the authenticated identity
+    EXPECT_EQ(seenBody, "some-body"); // ... and a valid view of the payload
+}
+
+TEST(AuthGatewayTest, PayloadOutlivesDispatchAndReleaseKeepsMetadata)
+{
+    FakeHttpServer server;
+    auto gateway = makeGateway();
+
+    // Handler defers: it retains the authenticated request past the dispatch call.
+    std::shared_ptr<const remoted::auth::AuthenticatedRequest> held;
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [&held](std::shared_ptr<const remoted::auth::AuthenticatedRequest> authReq,
+                                          std::shared_ptr<IHttpResponder> responder)
+                                  {
+                                      held = std::move(authReq);
+                                      responder->send(HttpResponse::json(200, "{}"));
+                                  });
+
+    {
+        // The gateway keeps its OWN shared_ptr to the request alive via the payload
+        // keep-alive, independent of this local HttpRequest value.
+        const auto request = signedRequest("payload-bytes");
+        auto responder = std::make_shared<CapturingResponder>();
+        server.dispatch(Method::Post, "/stateless", request, responder);
+    }
+
+    ASSERT_NE(held, nullptr);
+    EXPECT_EQ(held->payload.bytes(), "payload-bytes"); // still valid after dispatch returned
+
+    held->payload.release();            // explicit early release
+    EXPECT_TRUE(held->payload.empty()); // payload gone
+    EXPECT_EQ(held->agentId, "001");    // ... but the small metadata survives release
 }
 
 TEST(AuthGatewayTest, HandlerExceptionYields500)
@@ -260,7 +312,7 @@ TEST(AuthGatewayTest, HandlerExceptionYields500)
         server,
         Method::Post,
         "/stateless",
-        [&handlerCalled](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder>)
+        [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)
         {
             handlerCalled = true;
             throw std::runtime_error("boom"); // handler fails after auth succeeded
@@ -273,4 +325,28 @@ TEST(AuthGatewayTest, HandlerExceptionYields500)
     ASSERT_TRUE(responder->captured.has_value());
     EXPECT_TRUE(handlerCalled);                  // auth passed, the handler ran
     EXPECT_EQ(responder->captured->status, 500); // ... then the gateway caught the throw
+}
+
+TEST(AuthGatewayTest, KeystoreThrowDuringAuthYields500)
+{
+    FakeHttpServer server;
+    AuthGateway gateway {remoted::auth::AuthConfig {}, std::make_shared<ThrowingKeystore>()};
+
+    bool handlerCalled = false;
+    gateway.addAuthenticatedRoute(server,
+                                  Method::Post,
+                                  "/stateless",
+                                  [&handlerCalled](std::shared_ptr<const remoted::auth::AuthenticatedRequest>,
+                                                   std::shared_ptr<IHttpResponder>) { handlerCalled = true; });
+
+    // keyFor() is called from inside beginSession() -- exactly the code that used to run outside
+    // the gateway's try/catch. This must not escape dispatch() (in production, it would otherwise
+    // std::terminate() the whole process on the worker-pool thread).
+    const auto request = signedRequest("some-body");
+    auto responder = std::make_shared<CapturingResponder>();
+    EXPECT_NO_THROW(server.dispatch(Method::Post, "/stateless", request, responder));
+
+    ASSERT_TRUE(responder->captured.has_value());
+    EXPECT_EQ(responder->captured->status, 500);
+    EXPECT_FALSE(handlerCalled); // the throw happened during auth, before the handler ever ran
 }

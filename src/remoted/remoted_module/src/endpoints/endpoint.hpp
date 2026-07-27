@@ -38,8 +38,21 @@ namespace remoted::endpoints
      * response and may do so inline or later, from any thread (it runs on the
      * server's worker pool, so it never stalls the I/O threads). It must call
      * responder->send(...) exactly once.
+     *
+     * The request is a shared_ptr<const> so a handler may retain it across deferred
+     * pipeline stages without copying the verified payload.
      */
-    using AuthenticatedHandler = std::function<void(const AuthenticatedRequest&, std::shared_ptr<IHttpResponder>)>;
+    using AuthenticatedHandler =
+        std::function<void(std::shared_ptr<const AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)>;
+
+    /**
+     * @brief Builds the client-visible {"error","code"} response for an AuthError.
+     *
+     * Single source of truth for that response shape, shared by AuthGateway (auth-protocol
+     * failures) and any endpoint that raises an AuthError of its own after authentication
+     * succeeds (e.g. stateless::validatePayloadIdentity()'s PayloadAgentMismatch).
+     */
+    remoted::http::HttpResponse errorResponseFor(remoted::auth::AuthError err);
 
 } // namespace remoted::endpoints
 

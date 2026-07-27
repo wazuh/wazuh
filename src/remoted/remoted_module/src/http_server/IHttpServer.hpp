@@ -102,8 +102,13 @@ namespace remoted::http
      *
      * Asynchronous by contract: the handler receives the request plus a responder
      * and is not required to have produced the response by the time it returns.
+     *
+     * The request is a shared_ptr<const> so a handler may retain it and let it
+     * travel across deferred queues/pipelines; keeping it alive also keeps the
+     * transport's in-flight byte reservation alive (released once the last owner --
+     * handler and responder -- drops it).
      */
-    using RouteHandler = std::function<void(const HttpRequest&, std::shared_ptr<IHttpResponder>)>;
+    using RouteHandler = std::function<void(std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder>)>;
 
     /**
      * @brief Configuration for the HTTP(S) server, decoupled from the C ABI struct.
@@ -128,6 +133,10 @@ namespace remoted::http
         std::size_t maxPipelinedRequests {4};          ///< Max in-flight unanswered requests per connection.
         std::size_t concurrentAccepts {2};             ///< Max concurrent in-progress TCP accepts.
         std::size_t bufferSize {8192};                 ///< Socket read buffer size, bytes.
+        /// Max in-flight (unprocessed) request payload bytes before new requests get 503. 0 disables the limit.
+        std::size_t maxInFlightBytes {256U * 1024U * 1024U};
+        /// Max simultaneous TCP connections (bounds the read-phase peak: maxParallelConnections * maxBodySize).
+        std::size_t maxParallelConnections {512};
     };
 
     /**
@@ -145,11 +154,15 @@ namespace remoted::http
         /**
          * @brief Register a route. Must be called before start().
          *
-         * @param method  HTTP verb to match.
-         * @param path    Path to match (implementation routing syntax).
-         * @param handler Handler invoked on a match.
+         * @param method            HTTP verb to match.
+         * @param path              Path to match (implementation routing syntax).
+         * @param handler           Handler invoked on a match.
+         * @param countAgainstBudget When false, the route is exempt from the in-flight byte budget
+         *                           (no reservation, never shed with 503). Use for tiny liveness
+         *                           probes so they stay available under memory pressure.
          */
-        virtual void addRoute(Method method, const std::string& path, RouteHandler handler) = 0;
+        virtual void
+        addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget = true) = 0;
 
         /**
          * @brief Start listening. Throws on bind/TLS/configuration failure.
@@ -159,7 +172,30 @@ namespace remoted::http
         virtual void start(const HttpServerConfig& config) = 0;
 
         /**
-         * @brief Stop the server and release its threads. Safe if never started.
+         * @brief Stop ACCEPTING new connections/requests and drain the handler worker pool.
+         *
+         * Guarantees, once this returns: (1) no RouteHandler will ever be invoked again --
+         * every handler dispatch that was already queued has completed; (2) the underlying
+         * I/O runtime is deliberately left ALIVE, so a response to a request that was already
+         * handed off before this call (e.g. to a downstream forwarder) can still be delivered
+         * safely via IHttpResponder::send() from any thread, at any point afterward.
+         *
+         * Call this BEFORE tearing down anything an in-flight handler might still call into
+         * (a downstream client/forwarder) -- that is what makes finishing that in-flight work
+         * afterward, and only then calling stop(), safe. Idempotent; safe if never started.
+         */
+        virtual void stopAccepting() noexcept = 0;
+
+        /**
+         * @brief Fully stop: stopAccepting() (if not already done) plus release the I/O
+         * runtime itself.
+         *
+         * @warning Once this returns (or once the IHttpServer is destroyed), any previously
+         * handed-out IHttpResponder MUST NOT call send() again -- doing so is undefined
+         * behavior (the connection's I/O runtime is gone). Callers that hand responders to
+         * asynchronous work (e.g. a downstream forwarder) must ensure that work has already
+         * completed -- via stopAccepting() plus draining that work -- before calling this.
+         * Idempotent; safe if never started.
          */
         virtual void stop() noexcept = 0;
     };

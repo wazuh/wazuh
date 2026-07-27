@@ -82,6 +82,9 @@ extern "C"
                                          ///< default (see remoted.http_concurrent_accepts).
         int http_buffer_size;            ///< Socket read buffer size, bytes. <=0 -> module default
                                          ///< (see remoted.http_buffer_size).
+        long long max_inflight_bytes;    ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
+        int max_parallel_connections;    ///< HTTPS max simultaneous connections (<=0 -> module default).
+        int max_deferred_requests; ///< Max requests parked awaiting a downstream service; 503 over it (<=0 -> default).
     } remoted_module_config_t;
 
     /**

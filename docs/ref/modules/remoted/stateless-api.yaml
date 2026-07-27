@@ -6,9 +6,9 @@ info:
   description: |
     HTTPS endpoint exposed by `wazuh-manager-remoted` for agent-authenticated event ingestion.
 
-    **Experimental / work in progress.** Only authentication and request validation are
-    implemented today. On a valid request the endpoint answers `200` with an empty body and does
-    **not** parse the H/E payload or ingest anything. The listener also only runs when a TLS
+    **Experimental / work in progress.** On a valid request the endpoint forwards the H/E batch to
+    the engine's event ingress over a Unix-domain socket and answers from the downstream result
+    (`202` accepted / `400` bad batch / `413` / `503`). The listener also only runs when a TLS
     certificate and key are present on disk.
 
     All requests MUST use HTTP/1.1 over TLS (>= 1.2). Requests are authenticated with AES-CMAC and
@@ -79,10 +79,13 @@ paths:
         reordering, no normalization). The body is authenticated using its exact bytes. The
         timestamp must be within 300 s in the past and 30 s in the future.
 
-        **Not yet implemented (planned):** parsing/validation of the H/E batch (which would produce
-        `400 Invalid event batch`) and the check that the payload's `wazuh.agent.id` matches the
-        authenticated `agent-id` (`PayloadAgentMismatch`). Today the endpoint validates
-        authentication only and does not read the payload.
+        Before forwarding, the module parses the H line's JSON and cross-checks `wazuh.agent.id`
+        (compared numerically, so `"001"` and `"1"` are the same agent) against the authenticated
+        `agent-id`; a missing/malformed H line, a non-numeric `wazuh.agent.id`, or a mismatch is
+        rejected with `400 Invalid event batch` (`PayloadAgentMismatch`) and the batch is never
+        forwarded. Once that check passes, the module forwards the exact request body to the
+        engine's event ingress over a Unix-domain socket; the engine validates the H/E batch and a
+        bad batch surfaces as the same `400 Invalid event batch`.
       requestBody:
         required: true
         content:
@@ -92,7 +95,7 @@ paths:
               minLength: 1
               description: |
                 Request payload. Authentication is independent of Content-Type; the exact bytes are
-                included in the AES-CMAC calculation. (Not parsed yet — see the description above.)
+                included in the AES-CMAC calculation and forwarded verbatim to the engine.
             examples:
               singleLineEvents:
                 summary: H/E batch (two events)
@@ -101,16 +104,17 @@ paths:
                   E 1:/var/log/syslog:May 07 10:00:00 srv1 sshd: Accepted publickey
                   E 2:/var/log/auth.log:session opened for user root
       responses:
-        "200":
+        "202":
           description: |
-            Request authenticated and accepted. The response body is empty. Acceptance means the
-            request was successfully authenticated and validated; it does NOT (yet) mean events were
-            parsed or processed.
+            Request authenticated and forwarded to the engine's event ingress, which accepted and
+            enqueued the batch. The response body is empty. Acceptance means the events were enqueued
+            for processing, NOT that they were fully processed.
         "400":
           description: |
-            The `protocol-version` header is missing or unsupported.
-
-            (Planned: also returned for an invalid H/E batch, once payload parsing is implemented.)
+            Either the `protocol-version` header is missing/unsupported, the payload's
+            `wazuh.agent.id` doesn't match the authenticated `agent-id` (or the H line is
+            missing/malformed/non-numeric), or the downstream engine rejected the forwarded H/E
+            batch as invalid. The last two share the same `Invalid event batch` message by design.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -119,6 +123,9 @@ paths:
                   value: { error: "Missing required header: protocol-version", code: 400 }
                 unsupportedProtocolVersion:
                   value: { error: "Unsupported protocol-version", code: 400 }
+                invalidEventBatch:
+                  summary: Payload agent-id mismatch, OR the engine rejected the H/E batch
+                  value: { error: "Invalid event batch", code: 400 }
         "401":
           description: |
             Client authentication failed. Deliberately generic: a missing/malformed `Authorization`
@@ -138,6 +145,18 @@ paths:
               examples:
                 payloadTooLarge:
                   value: { error: "Request payload is too large", code: 413 }
+        "503":
+          description: |
+            The server is temporarily out of capacity (its in-flight byte budget is exhausted or too
+            many requests are already parked awaiting the downstream service), or the downstream engine
+            was unreachable / errored. Server-side load-shedding, not per-client rate-limiting: no
+            `Retry-After` is sent — the agent applies its own retry/backoff. The connection is closed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                serviceUnavailable:
+                  value: { error: "Service unavailable", code: 503 }
         "500":
           description: Unexpected internal error while handling the request.
           content:
