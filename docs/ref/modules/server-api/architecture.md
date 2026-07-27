@@ -68,7 +68,6 @@ This layer contains **all real logic**. It is **API-agnostic** and can be reused
 | `InputValidator.py` | Regex-based input validation (names, lengths) |
 | `utils.py` | General utilities (caching, process management, helpers) |
 | `wazuh_socket.py` | IPC with Wazuh daemons via Unix sockets |
-| `wazuh_queue.py` | Internal async messaging |
 | `wdb.py` | Async interface to Wazuh DB (length-prefixed Unix socket protocol) |
 | `wdb_http.py` | HTTP-based alternative WDB client (via `aiohttp`) |
 | `configuration.py` | Parse `wazuh-manager.conf` and related files |

@@ -52,7 +52,6 @@ mocked_modules = {
     "wazuh.core.cluster.dapi": MagicMock(),
     "wazuh.core.cluster.dapi.dapi": MagicMock(),
     "wazuh.core.exception": MagicMock(),
-    "wazuh.core.wazuh_queue": MagicMock(),
     "wazuh.core.wazuh_socket": MagicMock(),
     "wazuh.core.wdb": MagicMock(),
     "wazuh.core.wdb_http": MagicMock(),
