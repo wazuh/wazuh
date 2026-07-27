@@ -26,7 +26,8 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 
 ## Transport and TLS
 
-- **Bind address / port:** `127.0.0.1:9443` by default.
+- **Bind address / port:** `127.0.0.1:9443` by default. Both IPv4 and IPv6 literals are accepted
+  (see [Bind address: IPv4, IPv6 and dual-stack](#bind-address-ipv4-ipv6-and-dual-stack) below).
 - **TLS:** minimum version TLS 1.3; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
 - **Certificate files:** `/var/wazuh-manager/etc/https-manager.{cert,key}`, owned `root:root`,
@@ -37,6 +38,29 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
   read/handshake timeout 10 s, write timeout 10 s, request timeout 30 s. The header/URL/timeout
   limits are tunable via `remoted.http_*` internal options -- see [Configuration](#configuration)
   below.
+
+### Bind address: IPv4, IPv6 and dual-stack
+
+`<remote><https><bind_addr>` accepts any literal IPv4 or IPv6 address (validated with the same
+`OS_IsValidIP()` check used for the classic `<remote><local_ip>`, so both families work with no
+extra configuration). A few things to know before choosing one:
+
+- **`0.0.0.0`** binds an IPv4-only socket. Only IPv4 clients can connect; there is no way for an
+  IPv6 client to reach it.
+- **`::`** binds an IPv6 socket that listens on every local address. Whether IPv4 clients can also
+  reach it depends on the **`IPV6_V6ONLY`** socket option. By default the server leaves this at
+  whatever the OS defaults to -- dual-stack (`IPV6_V6ONLY=0`) on Linux, so in practice `::` accepts
+  both IPv4 and IPv6 connections through the same socket without configuring anything.
+  `<remote><https><dual_stack>` (`yes`/`no`) overrides this explicitly instead of relying on the OS
+  default -- see [`https.dual_stack`](configuration.md#httpsdual_stack). It only applies when
+  `bind_addr` is IPv6; it's ignored (with a warning) for an IPv4 `bind_addr`.
+- **A specific literal** (`10.0.0.5`, `2001:db8::1`, ...) binds only that address/family, same as
+  today.
+- Internally, an IPv4 client connecting through a dual-stack (`::`) socket is reported by the OS as
+  an "IPv4-mapped IPv6" address (`::ffff:10.0.0.5`), not the plain `10.0.0.5` form. `remoted_module`
+  unmaps this back to plain IPv4 before it's used anywhere (e.g. `HttpRequest::remoteIp`), so any
+  future code comparing it against a plain IPv4 address (such as the IP column in `client.keys`)
+  doesn't need to handle the mapped form itself.
 
 A self-signed certificate/key pair is generated automatically at install time (source install,
 `.deb` and `.rpm` all wire this in), using the same self-signed `generate_cert()` routine that
@@ -174,7 +198,8 @@ above).
 
 | Setting | `<https>` tag | Default |
 |---|---|---|
-| Bind address | `bind_addr` | `127.0.0.1` |
+| Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr` | `127.0.0.1` |
+| Dual-stack override (IPv6 `bind_addr` only) | `dual_stack` | unset (OS default) |
 | Port | `port` | `9443` |
 | Transport max body size | `max_body_size` | `50 MiB` |
 | TLS certificate chain | `certificate` | `/etc/remoted-https/server.crt` |

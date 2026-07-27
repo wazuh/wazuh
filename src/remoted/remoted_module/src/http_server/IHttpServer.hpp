@@ -48,6 +48,9 @@ namespace remoted::http
         std::string target;                                   ///< Request path (without query).
         std::string body;                                     ///< Raw request body.
         std::unordered_map<std::string, std::string> headers; ///< Lower-cased header name -> value.
+        std::string remoteIp; ///< Client's connection IP (textual form; IPv4-mapped-IPv6 addresses
+                              ///< are unmapped to plain IPv4 first). Not currently used by any
+                              ///< handler; available for a future cross-check against client.keys.
     };
 
     /**
@@ -124,6 +127,20 @@ namespace remoted::http
     };
 
     /**
+     * @brief Whether an IPv6 listener also accepts IPv4 clients on the same socket.
+     *
+     * Only meaningful when the listener binds to an IPv6 address; a no-op otherwise.
+     * Mirrors REMOTED_MODULE_HTTPS_DUAL_STACK_* in remoted_module.h (the C-ABI) and
+     * REMOTED_HTTPS_DUAL_STACK_* in the config parser (src/config/include/remote-config.h).
+     */
+    enum class DualStackMode
+    {
+        Unset,   ///< Not configured -> leave the OS default (dual-stack on Linux).
+        Enabled, ///< Force dual-stack on (IPV6_V6ONLY=0): also accept IPv4.
+        Disabled ///< Force IPv6-only (IPV6_V6ONLY=1): reject IPv4 on this socket.
+    };
+
+    /**
      * @brief Configuration for the HTTP(S) server, decoupled from the C ABI struct.
      */
     struct HttpServerConfig
@@ -135,8 +152,9 @@ namespace remoted::http
         std::string caPath;                    ///< CA bundle (PEM) used to verify client certificates.
         std::string ciphers;                   ///< OpenSSL cipher list override (empty -> library default).
         ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
-        std::size_t ioThreads {2};                     ///< RESTinio/asio I/O threads (accept + read/write).
-        std::size_t workerThreads {4};                 ///< Handler worker-pool size (blocking work offload).
+        DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
+        std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
+        std::size_t workerThreads {4};                      ///< Handler worker-pool size (blocking work offload).
         std::size_t maxBodySize {50U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).
         std::size_t readTimeoutSec {10};               ///< Time to receive a full request on a connection (also covers
                                                        ///< the TLS handshake window).

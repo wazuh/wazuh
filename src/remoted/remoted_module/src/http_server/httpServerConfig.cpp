@@ -70,6 +70,7 @@ namespace
         }
         return static_cast<std::size_t>(cpp_get_nproc()) * nprocMultiplier;
     }
+
 } // namespace
 
 namespace remoted::http
@@ -116,12 +117,14 @@ namespace remoted::http
         result.certificatePem = std::string {config.certificate_pem};
         result.privateKeyPem = std::string {config.private_key_pem};
 
-        // CA/ciphers/verification_mode are mTLS settings: empty/0 means "not configured", which
-        // is a valid, meaningful state (verification disabled, library-default cipher list) --
-        // not a placeholder to replace with a built-in default.
+        // CA/ciphers/verification_mode/dual_stack are mTLS/socket settings: empty/0 means "not
+        // configured", which is a valid, meaningful state (verification disabled, library-default
+        // cipher list, OS-default dual-stack behavior) -- not a placeholder to replace with a
+        // built-in default.
         result.caPath = config.ca_path;
         result.ciphers = config.ciphers;
         result.verificationMode = static_cast<ClientVerificationMode>(config.verification_mode);
+        result.dualStackMode = static_cast<DualStackMode>(config.dual_stack);
 
         return result;
     }
