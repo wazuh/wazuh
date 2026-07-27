@@ -422,7 +422,7 @@ static int wm_agent_info_send_stateless(const char* message)
             return -1;
         }
 
-        merror("Error sending message to queue");
+        mdebug1("Failed to send message to queue, attempting reconnection.");
 
         // A negative result here means shutdown, so exit quietly.
         if ((g_agent_info_queue = wm_agent_info_startmq(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS)) < 0)

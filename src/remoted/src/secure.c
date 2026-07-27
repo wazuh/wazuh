@@ -252,7 +252,7 @@ void HandleSecure()
         mwarn("Unable to reset the agents' connection status. Possible incorrect statuses until the agents get connected to the manager.");
 
     // Router module logging initialization
-    router_initialize(taggedLogFunction);
+    router_initialize(taggedLogFunction, ARGV0);
 
     // Router providers initialization
     if (router_upgrade_ack_handle = router_provider_create("upgrade_notifications", false), !router_upgrade_ack_handle) {
@@ -1115,7 +1115,7 @@ bool router_message_forward(char* msg, size_t msg_length, const char* agent_id) 
         size_t msg_size = msg_length - payload_offset;
 
         // Send the raw flatbuffer to inventory sync with anti-spoofing validation
-        if (router_provider_send_sync(router_sync_handle, msg_to_send, msg_size, agent_id) != 0) {
+        if (router_provider_send_sync(router_sync_handle, msg_to_send, msg_size, agent_id, cluster_name) != 0) {
             mdebug2("Unable to forward message for agent '%s'.", agent_id);
             return false;
         }

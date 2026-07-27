@@ -273,6 +273,12 @@ class WazuhException(Exception):
         2020: {'message': 'Engine API request timeout'},
         2021: {'message': 'Engine API connection error'},
         2022: {'message': 'Could not parse Engine API response as JSON'},
+        # Modulesd:
+        2023: {'message': 'Could not connect to the modulesd unix socket'},
+        2024: {'message': 'Invalid modulesd HTTP response'},
+        2025: {'message': 'Modulesd request timeout'},
+        2026: {'message': 'Modulesd connection error'},
+        2027: {'message': 'Could not parse modulesd response as JSON'},
 
         # Indexer
         2200: {'message': 'Error connecting to the Indexer service'},

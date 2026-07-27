@@ -15,6 +15,14 @@ on:
         required: false
         default: 0
         type: number
+      target:
+        description: "Compilation target (manager or agent)"
+        required: true
+        type: choice
+        default: 'manager'
+        options:
+          - manager
+          - agent
       docker_image_tag:
         description: |
           Tag name of the Docker image to be uploaded.
@@ -26,9 +34,13 @@ on:
 env:
   REGISTRY: ghcr.io
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   prepare:
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       project: ${{ steps.vars.outputs.PROJECT }}
       jobs: ${{ steps.vars.outputs.JOBS }}
@@ -39,6 +51,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.ref_name }}
+
+      - name: Ensure jq (CodeBuild)
+        # TODO(codebuild-temp): Remove once the CodeBuild server image ships jq.
+        # GitHub-hosted ubuntu-24.04 bundled jq; the variables step below parses VERSION.json with it.
+        run: command -v jq >/dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y jq; }
 
       - name: Set up project and build variables
         id: vars
@@ -64,9 +81,10 @@ jobs:
           echo "DESCRIPTION=$DESCRIPTION" >> $GITHUB_OUTPUT
 
   build:
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     needs: prepare
     permissions:
+      id-token: write
       contents: read
       packages: read
     steps:
@@ -76,7 +94,20 @@ jobs:
           ref: ${{ github.ref_name }}
 
       - name: Download dependencies
-        run: make -C src deps -j${{ needs.prepare.outputs.jobs }}
+        run: make -C src deps TARGET=${{ github.event.inputs.target }} -j${{ needs.prepare.outputs.jobs }}
+
+      - name: Start Docker daemon (CodeBuild)
+        # TODO(codebuild-temp): Remove once CodeBuild exposes a running Docker daemon.
+        # The Coverity build runs inside the coverity-scan container (docker run); CodeBuild has
+        # no systemd so dockerd never starts on its own. VFS avoids overlay-on-overlay in-container.
+        run: |
+          if ! docker info >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info >/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
@@ -95,7 +126,7 @@ jobs:
       - name: Build Coverity artifact
         uses: ./.github/actions/coverity/build
         with:
-          command: make -C src TARGET=manager COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
+          command: make -C src TARGET=${{ github.event.inputs.target }} COVERITY=YES -j${{ needs.prepare.outputs.jobs }}
           docker_image_tag: ${{ github.event.inputs.docker_image_tag }}
 
       - name: List files
@@ -105,13 +136,16 @@ jobs:
         run: tar czf wazuh.tgz cov-int
 
       - name: Upload Coverity artifact
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: wazuh.tgz
           path: wazuh.tgz
 
   upload:
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     needs: [prepare, build]
     steps:
       - name: Checkout code
@@ -120,8 +154,11 @@ jobs:
           ref: ${{ github.ref_name }}
 
       - name: Download Coverity artifact
-        uses: actions/download-artifact@v4
+        uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: wazuh.tgz
 
       - name: Upload to Coverity Scan

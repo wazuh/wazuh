@@ -1,0 +1,21 @@
+{
+  "name": "engine_eof_short_file",
+  "description": "Short file (50 lines) + loop=false + duration=10. duration is a safety upper bound; EOF must cut at ~0.1s. Validates that EOF wins over duration when reached first.",
+  "lanes": {
+    "engine": [
+      {
+        "engine": "sample_payloads/engine/short.log",
+        "location": "shortsyslog",
+        "max_eps": 500,
+        "loop": false,
+        "duration": 10.0
+      }
+    ]
+  },
+  "fleets": [
+    { "name": "single", "agents": 1, "lanes": ["engine"] }
+  ],
+  "parallel_agents": 0,
+  "repeat_until": 0,
+  "drain_timeout": 3
+}

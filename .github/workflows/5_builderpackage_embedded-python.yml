@@ -71,6 +71,7 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.architecture == 'arm64' && 'wz-linux-arm64' || 'ubuntu-24.04' }}
     permissions:
+      id-token: write
       contents: read
       packages: write
     steps:
@@ -117,15 +118,19 @@ jobs:
               ${{ inputs.build_deps == true && '--build-deps' || '' }}
 
       - name: Upload Wazuh manager embedded Python sources to GitHub
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ env.ARCH }}-sources
           path: /tmp/cpython_${{ env.PACKAGE_ARCH }}.tar.gz
-          if-no-files-found: error
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
 
       - name: Upload Wazuh manager out-of-the-box embedded Python to GitHub
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
           name: ${{ env.ARCH }}-compiled
           path: /tmp/cpython.tar.gz
-          if-no-files-found: error
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}

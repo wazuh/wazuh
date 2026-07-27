@@ -49,7 +49,6 @@ OSList *OSList_Create(void);
 */
 void OSList_Destroy(OSList *);
 
-int OSList_SetMaxSize(OSList *list, int max_size);
 int OSList_SetFreeDataPointer(OSList *list, void (free_data_function)(void *));
 
 OSListNode *OSList_GetFirstNode(OSList *) __attribute__((nonnull));
@@ -61,7 +60,6 @@ OSListNode *OSList_GetCurrentlyNode(OSList *list) __attribute__((nonnull));
 
 void OSList_DeleteCurrentlyNode(OSList *list) __attribute__((nonnull));
 void OSList_DeleteThisNode(OSList *list, OSListNode *thisnode) __attribute__((nonnull(1)));
-void OSList_DeleteOldestNode(OSList *list) __attribute__((nonnull));
 
 void *OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
 
@@ -71,13 +69,6 @@ void *OSList_AddData(OSList *list, void *data) __attribute__((nonnull(1)));
  * @param list List to delete
  */
 void OSList_CleanNodes(OSList *list);
-
-/**
- * @brief Clears all the nodes from a list without freeing the referenced data
- *
- * @param list List to delete nodes
- */
-void OSList_CleanOnlyNodes(OSList *list);
 
 /**
  * @brief Get the next node to a given node

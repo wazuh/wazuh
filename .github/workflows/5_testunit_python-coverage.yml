@@ -6,7 +6,6 @@ on:
       - '.github/workflows/5_testunit_python-coverage.yml'
       - 'api/**'
       - 'framework/**'
-      - 'wodles/**'
   workflow_dispatch:
     inputs:
       base_branch:
@@ -26,6 +25,7 @@ jobs:
       BRANCH_BASE: ${{ github.base_ref || inputs.base_branch }}
       PYTHONPATH: /home/runner/work/wazuh/wazuh/api:/home/runner/work/wazuh/wazuh/framework
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

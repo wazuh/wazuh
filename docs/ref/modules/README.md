@@ -22,3 +22,10 @@
 - [Schema Validator](utils/schema-validator/) - JSON schema validation for synchronized data
 - [FlatBuffers](utils/flatbuffers/) - High-performance serialization for synchronization protocol
 - [Cluster](cluster/) - Manages the Wazuh server cluster
+- [Indexer Connector](indexer_connector/) - OpenSearch indexing library (Filebeat replacement)
+- [Wazuh DB](wazuh_db/) - Persistent SQLite database daemon for agent and task state
+- [Authd](authd/) - Agent enrollment service (TLS, key generation)
+- [Content Manager](content_manager/) - CTI feed fetcher for Vulnerability Detection
+- [Agent Upgrade](agent_upgrade/) - Remote agent upgrade via WPK distribution
+- [Monitord](monitord/) - Agent disconnection monitoring and log rotation
+- [Keystore](keystore/) - Encrypted credential storage (AES-256, RocksDB)

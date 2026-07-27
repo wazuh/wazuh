@@ -7,22 +7,52 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/5_testcomponent_windows-dll-hijack.yml"
+      - ".github/actions/reinstall_cmake/**"
+      - "!src/engine/**"
+      - "!src/remoted/**"
+      - "!src/util/**"
+      - "!src/shared_modules/indexer_connector/**"
+      - "!src/shared_modules/keystore/**"
+      # Only src/ for these server trees: agent modules compile against their include/
+      - "!src/monitord/src/**"
+      - "!src/os_auth/src/**"
+      - "!src/wazuh_db/src/**"
+      - "!src/wazuh_db/schemas/**"
+      - "!src/shared_modules/content_manager/src/**"
+      - "!src/shared_modules/router/src/**"
+      - "!src/wazuh_modules/vulnerability_scanner/src/**"
+      - "!src/wazuh_modules/inventory_sync/src/**"
+      # Test trees: UNIT_TEST-gated, never built by this workflow
+      - "!src/unit_tests/**"
+      - "!src/**/tests/**"
+      - "!src/**/integrationTests/**"
+      # qa/ suites run in other workflows; win32/qa stays (executed here)
+      - "!src/data_provider/qa/**"
+      - "!src/shared_modules/indexer_connector/qa/**"
+      - "!src/shared_modules/keystore/qa/**"
+      - "!src/wazuh_modules/inventory_sync/qa/**"
+      - "!src/wazuh_modules/vulnerability_scanner/qa/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   build:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
       - name: Install mingw
         run: |
           sudo apt-get update || exit 1
-          sudo apt-get install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 -y || exit 1
+          sudo apt-get install gcc-mingw-w64 g++-mingw-w64-i686 g++-mingw-w64-x86-64 make -y || exit 1
 
       - uses: ./.github/actions/reinstall_cmake
 
@@ -41,8 +71,11 @@ jobs:
           cp src/build/bin/*.dll src/exe_files/ 2>/dev/null || true
           cp src/build/lib/*.dll src/exe_files/ 2>/dev/null || true
 
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: executables
           path: src/exe_files
 
@@ -54,13 +87,20 @@ jobs:
           sed -i 's+windows.debug=0+windows.debug=2+g' etc/internal_options.conf || exit 1
           cp etc/internal_options.conf src/configuration_files/internal_options.conf || exit 1
 
-      - uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: configuration
           path: src/configuration_files
 
   check_dll_on_windows:
+    # NOTE: stays on the GitHub-hosted Windows runner. This test drives Process Monitor, which
+    # captures via a kernel minifilter driver. CodeBuild's Windows fleet runs process-isolated
+    # containers (no FltMgr / kernel-driver loading), so Procmon captures zero events there.
     runs-on: windows-2025
+    timeout-minutes: 30
     needs: build
     steps:
       - uses: actions/checkout@v4
@@ -70,13 +110,19 @@ jobs:
           python-version-file: ".github/workflows/.python-version"
           architecture: x64
 
-      - uses: actions/download-artifact@v4
+      - uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: executables
           path: C:\executables\
 
-      - uses: actions/download-artifact@v4
+      - uses: ./.github/actions/download_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: configuration
           path: C:\configuration_files\
 
@@ -110,7 +156,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: csv_files_${{ matrix.os }}
           path: C:\executables\*.csv

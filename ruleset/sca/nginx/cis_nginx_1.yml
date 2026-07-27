@@ -73,8 +73,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/configure.html
       - https://tools.ietf.org/html/rfc4918
@@ -100,8 +112,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/configure.html
       - http://nginx.org/en/docs/configure.html
@@ -127,8 +151,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/http/ngx_http_autoindex_module.htm
     condition: none
@@ -156,8 +192,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/ngx_core_module.html#user
     condition: all
@@ -184,8 +232,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'c:passwd -S nginx -> r:^nginx L.+'
@@ -208,8 +268,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - "c:grep nginx /etc/passwd -> r:/sbin/nologin"
@@ -234,8 +306,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'c:stat -L /etc/nginx -> r:Access:\s*(" && r:Uid:\s+\(.+root\)\s+Gid:\s+\(.+root\)$'
@@ -258,8 +342,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://dev-sec.io/baselines/nginx/
     condition: none
@@ -285,8 +381,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'c:ls -l /var/run/nginx.pid -> r:^.+\S+\s+root\s+root\s+.+'
@@ -309,8 +417,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://www.nginx.com/resources/wiki/start/topics/tutorials/debugging/#coredump
     condition: none
@@ -337,8 +457,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'c:grep -ir " listen " /etc/nginx -> r:^.+listen\s+80\s+.*|^.+listen\s+443\s+.*|^.+:443\s+.*'
@@ -363,8 +495,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/http/ngx_http_core_module.html#keepalive_timeout
     condition: any
@@ -390,8 +534,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://www.owasp.org/index.php/SCG_WS_nginx
       - http://nginx.org/en/docs/http/ngx_http_core_module.html#send_timeout
@@ -420,8 +576,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: none
     rules:
       - 'c:curl -I 127.0.0.1 -> r:^.*Server:\s+nginx/.+'
@@ -444,8 +612,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: none
     rules:
       - 'c:grep -i nginx /usr/share/nginx/html/index.html -> r:.+'
@@ -469,8 +649,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://programming-review.com/nginx-disable-access-to-htaccess-file/
     condition: all
@@ -495,8 +687,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html
     condition: all
@@ -526,8 +730,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/http/ngx_http_log_module.html#log_format
     condition: all
@@ -563,8 +779,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/http/ngx_http_log_module.html#log_format
     condition: none
@@ -589,8 +817,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'f:/etc/nginx/nginx.conf -> r:^\s*error_log\s+/var/log/nginx/error\.log\s+info;'
@@ -613,8 +853,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - 'f:/etc/logrotate.d/nginx -> r:^\s*rotate\s+13'
@@ -638,8 +890,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/syslog.html
     condition: all
@@ -664,8 +928,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/syslog.html
     condition: all
@@ -690,8 +966,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html
@@ -723,8 +1011,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://serversforhackers.com/c/redirect-http-to-https-nginx
     condition: any
@@ -750,8 +1050,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - http://nginx.org/en/docs/http/configuring_https_servers.html#chains
       - https://www.digicert.com/csr-ssl-installation/nginx-openssl.htm
@@ -779,8 +1091,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     condition: all
     rules:
       - "f:/etc/nginx/nginx.key"
@@ -804,8 +1128,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://webkit.org/blog/8462/deprecation-of-legacy-tls-1-0-and-1-1-versions/
       - https://www.cloudflare.com/learning-resources/tls-1-3/
@@ -831,8 +1167,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - CIS Apache HTTP Server Benchmark
       - https://ssllabs.com
@@ -863,8 +1211,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://weakdh.org/sysadmin.html
     condition: all
@@ -889,8 +1249,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://www.digicert.com/ssl-support/nginx-enable-ocsp-stapling-on-server.htm
     condition: all
@@ -916,8 +1288,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://www.globalsign.com/en/blog/what-is-hsts-and-how-do-i-use-it/
       - https://mozilla.github.io/server-side-tls/ssl-config-generator/
@@ -946,8 +1330,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Public_Key_Pinning
     condition: all
@@ -972,8 +1368,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.nginx.com/nginx/admin-guide/security-controls/securing-httptraffic-upstream/
       - http://www.staticshin.com/programming/proxy-ssl-cert-in-nginx.html
@@ -1001,8 +1409,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://docs.nginx.com/nginx/admin-guide/security-controls/securing-httptraffic-upstream/
       - http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_ssl_trusted_certificate
@@ -1031,8 +1451,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://www.imperialviolet.org/2013/06/27/botchingpfs.html
       - https://scotthelme.co.uk/perfect-forward-secrecy/
@@ -1058,8 +1490,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://mozilla.github.io/server-side-tls/ssl-config-generator/
       - http://http2.github.io/http2-spec/
@@ -1091,8 +1535,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://help.dreamhost.com/hc/en-us/articles/222784068-The-most-importantsteps-to-take-to-make-an-nginx-server-more-secure
       - http://nginx.org/en/docs/http/ngx_http_access_module.html
@@ -1124,8 +1580,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://www.owasp.org/index.php/SCG_WS_nginx
       - https://blog.qualys.com/securitylabs/2011/11/02/how-to-protect-against-slowhttp-attacks
@@ -1152,8 +1620,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://www.cyberciti.biz/tips/linux-unix-bsd-nginx-webserver-security.html
       - http://nginx.org/en/docs/http/ngx_http_core_module.html#client_body_temp_path
@@ -1181,8 +1661,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://www.cyberciti.biz/tips/linux-unix-bsd-nginx-webserver-security.html
       - https://www.owasp.org/index.php/Denial_of_Service_Cheat_Sheet
@@ -1209,8 +1701,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://www.nginx.com/resources/library/complete-nginx-cookbook/
       - http://nginx.org/en/docs/http/ngx_http_limit_conn_module.html
@@ -1238,8 +1742,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://scotthelme.co.uk/mitigating-http-get-dos-attack/
       - https://www.nginx.com/blog/rate-limiting-nginx/
@@ -1268,8 +1784,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
@@ -1297,8 +1825,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
       - https://www.veracode.com/blog/2014/03/guidelines-for-setting-security-headers
@@ -1327,8 +1867,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://www.owasp.org/index.php/OWASP_Secure_Headers_Project
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
@@ -1355,8 +1907,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://scotthelme.co.uk/hardening-your-http-response-headers/
       - https://www.owasp.org/index.php/OWASP_Secure_Headers_Project
@@ -1384,8 +1948,20 @@ checks:
       pci_dss: ["2.4", "9.1", "9.2", "9.3", "11.1", "9.5", "11.2", "12.5"]
       tsc: ["CC6.1", "CC3.2", "CC5.1", "CC5.2", "CC5.3", "CC6.2", "CC6.3", "CC6.4", "CC6.5", "CC6.6", "CC6.7", "CC6.8"]
     mitre:
-      tactic: ["TA0007"]
-      technique: ["T1595", "T1046", "T1087"]
+      tactic:
+        id:
+          - "TA0007"
+        name:
+          - "Discovery"
+      technique:
+        id:
+          - "T1595"
+          - "T1046"
+          - "T1087"
+        name:
+          - "Active Scanning"
+          - "Network Service Discovery"
+          - "Account Discovery"
     references:
       - https://scotthelme.co.uk/a-new-security-header-referrer-policy/
       - https://www.w3.org/TR/referrer-policy/

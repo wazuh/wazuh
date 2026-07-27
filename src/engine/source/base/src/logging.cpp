@@ -149,16 +149,17 @@ void stop()
 
 void testInit(Level lvl)
 {
-    auto logger = spdlog::get("default");
+    // Set standalone mode BEFORE start() so the isStandaloneModeEnable() static cache
+    // is primed to true during logger initialization.
+    setenv(base::process::ENV_ENGINE_STANDALONE, "true", 1);
 
+    auto logger = spdlog::get("default");
     if (!logger)
     {
         LoggingConfig logConfig;
         logConfig.level = lvl;
         start(logConfig);
     }
-
-    setenv(base::process::ENV_ENGINE_STANDALONE, "true", 1);
 }
 
 void initializeFullLogFunction(
@@ -268,7 +269,7 @@ createStandaloneLogFunction()
 
         char buffer[4096]; // Max size of formatted message TODO move a constant
         vsnprintf(buffer, sizeof(buffer), msg, args);
-        backend_log(level, file, line, func, buffer, strlen(buffer));
+        backend_log(level, file, line, func, buffer, strlen(buffer), tag);
     };
 }
 

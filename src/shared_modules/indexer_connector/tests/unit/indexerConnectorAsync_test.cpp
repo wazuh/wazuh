@@ -28,6 +28,8 @@ using IndexerConnectorAsyncImplSmallBulk = IndexerConnectorAsyncImpl<MockServerS
 using IndexerConnectorAsyncImplSmallBulkPair = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 2, 5, 0>;
 using IndexerConnectorAsyncImplSmallBulkNoFlushInterval =
     IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 5, 0, 0>;
+// Large template bulk (25000) with a 5-second flush timer and no retry delay.
+using IndexerConnectorAsyncImplLargeBulk = IndexerConnectorAsyncImpl<MockServerSelector, MockHTTPRequest, 25000, 5, 0>;
 
 // Test fixture using GMock for async implementation
 class IndexerConnectorAsyncTest : public ::testing::Test
@@ -2468,4 +2470,153 @@ TEST_F(IndexerConnectorAsyncTest, GetDroppedEventsInitiallyZero)
     IndexerConnectorAsyncImplTest connector(config, nullptr, "test-dropped", &mockHttpRequest, std::move(mockSelector));
 
     EXPECT_EQ(connector.getDroppedEvents(), 0ULL);
+}
+
+// JSON config override tests for elements_per_bulk and flush_interval_seconds
+TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkFromJsonConfigTriggersBulk)
+{
+    // elements_per_bulk=5 in JSON overrides the template default of 25000.
+    // flush_interval_seconds=60 prevents the periodic timer from firing during the test window.
+    // If the JSON value is honoured, pushing exactly 5 elements immediately triggers a bulk send.
+    config["elements_per_bulk"] = 5;
+    config["flush_interval_seconds"] = 60;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> bulkSentPromise;
+    std::future<void> bulkSentFuture = bulkSentPromise.get_future();
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke(
+            [this, &bulkSentPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                this->simulateSuccessfulPost(requestParams, postParams, configParams);
+                try
+                {
+                    bulkSentPromise.set_value();
+                }
+                catch (...)
+                {
+                }
+            }));
+
+    IndexerConnectorAsyncImplLargeBulk connector(
+        config, nullptr, "test-elements-per-bulk-json", &mockHttpRequest, std::move(mockSelector));
+
+    for (int i = 0; i < 5; ++i)
+    {
+        connector.bulkIndex("id" + std::to_string(i), "test_index", R"({"data":"x"})");
+    }
+
+    auto status = bulkSentFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready) << "Bulk not sent after pushing elements_per_bulk items";
+    EXPECT_GT(callCount, 0);
+}
+
+TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkMinValueOneFlushesImmediately)
+{
+    // Extreme low value: elements_per_bulk=1 means every single element triggers its own bulk send.
+    // flush_interval_seconds=60 ensures the count trigger —not the timer— is responsible.
+    config["elements_per_bulk"] = 1;
+    config["flush_interval_seconds"] = 60;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> bulkSentPromise;
+    std::future<void> bulkSentFuture = bulkSentPromise.get_future();
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke(
+            [this, &bulkSentPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                this->simulateSuccessfulPost(requestParams, postParams, configParams);
+                try
+                {
+                    bulkSentPromise.set_value();
+                }
+                catch (...)
+                {
+                }
+            }));
+
+    IndexerConnectorAsyncImplLargeBulk connector(
+        config, nullptr, "test-min-elements-per-bulk", &mockHttpRequest, std::move(mockSelector));
+
+    connector.bulkIndex("id0", "test_index", R"({"data":"x"})");
+
+    auto status = bulkSentFuture.wait_for(std::chrono::seconds(5));
+    EXPECT_EQ(status, std::future_status::ready)
+        << "Single element should trigger immediate bulk with elements_per_bulk=1";
+    EXPECT_GT(callCount, 0);
+}
+
+TEST_F(IndexerConnectorAsyncTest, ElementsPerBulkBelowThresholdNoFlush)
+{
+    // Negative path: pushing N-1 elements must NOT trigger a bulk send.
+    config["elements_per_bulk"] = 5;
+    config["flush_interval_seconds"] = 60;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorAsyncImplLargeBulk connector(
+        config, nullptr, "test-below-threshold", &mockHttpRequest, std::move(mockSelector));
+
+    for (int i = 0; i < 4; ++i)
+    {
+        connector.bulkIndex("id" + std::to_string(i), "test_index", R"({"data":"x"})");
+    }
+
+    // Allow the async worker enough time to process any spurious flush.
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    EXPECT_EQ(callCount, 0) << "No bulk should be sent when fewer than elements_per_bulk items are queued";
+}
+
+TEST_F(IndexerConnectorAsyncTest, FlushIntervalSecondsFromJsonConfigTimerFires)
+{
+    // Verify that flush_interval_seconds from JSON config actually drives the periodic flush timer.
+    config["flush_interval_seconds"] = 1;
+
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    std::promise<void> timerFiredPromise;
+    std::future<void> timerFiredFuture = timerFiredPromise.get_future();
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .Times(AtLeast(1))
+        .WillRepeatedly(Invoke(
+            [this, &timerFiredPromise](
+                RequestParamsVariant requestParams, auto postParams, const ConfigurationParameters& configParams)
+            {
+                this->simulateSuccessfulPost(requestParams, postParams, configParams);
+                try
+                {
+                    timerFiredPromise.set_value();
+                }
+                catch (...)
+                {
+                }
+            }));
+
+    IndexerConnectorAsyncImplLargeBulk connector(
+        config, nullptr, "test-flush-interval-timer", &mockHttpRequest, std::move(mockSelector));
+
+    // 3 items — below the 25000-element count threshold
+    connector.bulkIndex("id0", "test_index", R"({"data":"x"})");
+    connector.bulkIndex("id1", "test_index", R"({"data":"x"})");
+    connector.bulkIndex("id2", "test_index", R"({"data":"x"})");
+
+    // 3s window
+    auto status = timerFiredFuture.wait_for(std::chrono::seconds(3));
+    EXPECT_EQ(status, std::future_status::ready)
+        << "Expected 1s timer (from JSON flush_interval_seconds) to fire within 3s";
+    EXPECT_GT(callCount, 0);
 }

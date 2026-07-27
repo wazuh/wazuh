@@ -11,6 +11,7 @@ import api_communication.proto.event_dumper_pb2 as event_dumper
 import api_communication.proto.rawevtindexer_pb2 as rawevtindexer
 import api_communication.proto.ioc_pb2 as ioc
 import api_communication.proto.metrics_pb2 as metrics
+import api_communication.proto.status_pb2 as status
 
 
 def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
@@ -118,6 +119,11 @@ def get_endpoint(message: Message) -> Tuple[Optional[str], str, str]:
         endpoint = 'metrics/list'
     if isinstance(message, metrics.Dump_Request):
         endpoint = 'metrics/dump'
+
+    # Status
+    if isinstance(message, status.StatusGet_Request):
+        endpoint = 'status'
+        method = 'get'
 
     # Unknown
     if endpoint == '':

@@ -9,7 +9,8 @@
         "size": 500001,
         "agentid": "001",
         "agentname": "quota-test-agent",
-        "agentversion": "5.0.0"
+        "agentversion": "5.0.0",
+        "cluster_name": "wazuh"
       },
       "description": "Start request declaring size=500001, one above the default DataValue quota - manager must refuse with Status_Offline",
       "delay": 0.5,

@@ -1,0 +1,17 @@
+{
+  "name": "sca_delta_CentOS",
+  "description": "Replay one recorded CentOS SCA delta sync session from a real agent.",
+  "lanes": {
+    "sca_centos_delta": [
+      {
+        "dump": "sample_payloads/dump-sca/session_sca_centos_delta.json",
+        "use_databatch": true
+      }
+    ]
+  },
+  "total_agents": 1,
+  "parallel_agents": 1,
+  "repeat_until": 0,
+  "drain_timeout": 30,
+  "post_run_grace": 30
+}

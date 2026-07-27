@@ -43,6 +43,65 @@ HELPERS_INTEG_UUID   = "e9d1a9c3-8f2b-4a6a-9f4b-2c6d5e7f2b10"
 
 # KVDB resource UUID in CM
 KVDB_RESOURCE_UUID = "3c7d9b5e-2f4a-4b6a-9c1d-8e7a2b4c5d10"
+HELPER_TEST_ASSET_AUTHOR = "Wazuh Inc."
+HELPER_TEST_ASSET_DATE = "2025-10-06T13:32:19Z"
+
+
+def get_helper_test_asset_metadata(title: str, description: str) -> dict:
+    """
+    Return asset metadata following the ruleset asset format.
+    """
+    return {
+        "title": title,
+        "author": HELPER_TEST_ASSET_AUTHOR,
+        "date": HELPER_TEST_ASSET_DATE,
+        "description": description,
+    }
+
+
+def get_helper_test_kvdb_resource() -> dict:
+    """
+    Return the KVDB resource used by helper function tests.
+    """
+    return {
+        "id": KVDB_RESOURCE_UUID,
+        "metadata": get_helper_test_asset_metadata(
+            "windows_kerberos_status_code_to_code_name",
+            "KVDB resource used by helper function tests.",
+        ),
+        "content": {
+            "0x0": "KDC_ERR_NONE",
+            "0x1": "KDC_ERR_NAME_EXP",
+            "0x2": "KDC_ERR_SERVICE_EXP",
+            "0x3": "KDC_ERR_BAD_PVNO",
+            "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
+            "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
+            "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
+            "bitmask_test_values": [0, 1, 2, 3, 4, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31],
+            "access_mask": {
+                "0": "Create Child",
+                "1": "Delete Child",
+                "2": "List Contents",
+                "3": "SELF",
+                "4": "Read Property",
+                "5": "Write Property",
+                "6": "Delete Tree",
+                "7": "List Object",
+                "8": "Control Access",
+                "16": "DELETE",
+                "17": "READ_CONTROL",
+                "18": "WRITE_DAC",
+                "19": "WRITE_OWNER",
+                "20": "SYNCHRONIZE",
+                "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
+                "31": "ADS_RIGHT_GENERIC_READ",
+                "30": "ADS_RIGHT_GENERIC_WRITE",
+                "29": "ADS_RIGHT_GENERIC_EXECUTE",
+                "28": "ADS_RIGHT_GENERIC_ALL",
+            },
+        },
+        "enabled": True,
+    }
 
 
 # ===================================================================
@@ -477,7 +536,10 @@ def create_helpers_integration(api_client: APIClient):
     integration_json = json.dumps(
         {
             "id": HELPERS_INTEG_UUID,
-            "metadata": {"title": "helpers-test"},
+            "metadata": get_helper_test_asset_metadata(
+                "helpers-test",
+                "Integration used by helper function tests.",
+            ),
             "enabled": True,
             "category": "other",
             "default_parent": HELPERS_DECODER_UUID,
@@ -505,7 +567,10 @@ def create_policy(api_client: APIClient):
         {
             "type": "policy",
             "enabled": True,
-            "metadata": {"title": "Helpers Testing Policy"},
+            "metadata": get_helper_test_asset_metadata(
+                "Helpers Testing Policy",
+                "Policy used by helper function tests.",
+            ),
             "hash": "helpers-test-hash",
             "enrichments": [],
             "filters": [],
@@ -558,49 +623,7 @@ def create_kvdb_resource(api_client: APIClient):
     Create or update a KVDB resource in POLICY_NS using valid JSON content.
     """
 
-    kvdb_json = {
-        "id": KVDB_RESOURCE_UUID,
-        "date": "2025-10-06T13:32:19Z",
-        "metadata": {"title": "windows_kerberos_status_code_to_code_name"},
-        "author": "Wazuh Inc.",
-        "content": {
-
-            "0x0": "KDC_ERR_NONE",
-            "0x1": "KDC_ERR_NAME_EXP",
-            "0x2": "KDC_ERR_SERVICE_EXP",
-            "0x3": "KDC_ERR_BAD_PVNO",
-            "0x4": "KDC_ERR_C_OLD_MAST_KVNO",
-            "0x5": "KDC_ERR_S_OLD_MAST_KVNO",
-            "0x6": "KDC_ERR_C_PRINCIPAL_UNKNOWN",
-
-
-            "bitmask_test_values": [0, 1, 2, 3, 4, 16, 17, 18, 19, 20, 24, 28, 29, 30, 31],
-
-
-            "access_mask": {
-                "0": "Create Child",
-                "1": "Delete Child",
-                "2": "List Contents",
-                "3": "SELF",
-                "4": "Read Property",
-                "5": "Write Property",
-                "6": "Delete Tree",
-                "7": "List Object",
-                "8": "Control Access",
-                "16": "DELETE",
-                "17": "READ_CONTROL",
-                "18": "WRITE_DAC",
-                "19": "WRITE_OWNER",
-                "20": "SYNCHRONIZE",
-                "24": "ADS_RIGHT_ACCESS_SYSTEM_SECURITY",
-                "31": "ADS_RIGHT_GENERIC_READ",
-                "30": "ADS_RIGHT_GENERIC_WRITE",
-                "29": "ADS_RIGHT_GENERIC_EXECUTE",
-                "28": "ADS_RIGHT_GENERIC_ALL"
-            },
-        },
-        "enabled": True,
-    }
+    kvdb_json = get_helper_test_kvdb_resource()
 
     req = api_crud.resourcePost_Request()
     req.space = POLICY_NS

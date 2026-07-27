@@ -1,0 +1,845 @@
+{
+  "session_id": 9884590631466973685,
+  "metadata": {
+    "agentid": "001",
+    "agentname": "windows-11",
+    "module": "fim",
+    "mode": "ModuleDelta",
+    "option": "Sync",
+    "indices": [
+      "wazuh-states-fim-files"
+    ],
+    "architecture": "x86_64",
+    "hostname": "WINDOWS-11",
+    "osname": "Microsoft Windows 11 Enterprise Evaluation",
+    "osplatform": "windows",
+    "ostype": "windows",
+    "osversion": "10.0.26200.7623",
+    "agentversion": "v5.0.0",
+    "groups": [
+      "default"
+    ]
+  },
+  "items": [
+    {
+      "seq": 0,
+      "operation": "Upsert",
+      "id": "282a9021896b41220496ace09281ca7ee8ebfae1",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 139,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "111b82750048119186413944e261a8df",
+            "sha1": "278fc36869ebc38e2f539194caac00811574798e",
+            "sha256": "681e4877d01dcc851e09c2f88258020accc9c932ff3d29ee2399005fcc9e688e"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00001.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "2df4600564776f77724af6c5d034c4317296ae1d"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.116Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 1,
+      "operation": "Upsert",
+      "id": "d949b0d3fdc3acce3689b1fd81a89c9aaa85692d",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 139,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "bc4bfedaf00f83917b84319672151098",
+            "sha1": "27bffe83feafa1060aabdf5cb2810f3d847fb1ed",
+            "sha256": "4b545c2ce7dd9ef2f64e334bf260418f9cb8d94ebe8ebdc507dcc808edfded91"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00002.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "fe368853bc490f0160948023e4655e9d2063e0a0"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.134Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 2,
+      "operation": "Upsert",
+      "id": "3c1c48f925d08f84e9611b48cb6315df645cf25c",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 139,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "cb698b388c64961c63c2d4d1fbf5e6d3",
+            "sha1": "d67cc17b3c0a304ce8abf428396306a75cbeadbd",
+            "sha256": "89830f0e313142905ff2729bc3f6d3f149e079901c2d6695543a2eeda4fa584a"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00003.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "23ccee8ea8fde62d06ddbc1abbf3e6e469dccd6e"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.148Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 3,
+      "operation": "Upsert",
+      "id": "8c71df4cdef21431f8080ba186335bbc8b076d87",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 139,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "3106bc7c8992bf412b12c9ce53ab8b3a",
+            "sha1": "404c599977dd2d68ad06220994597439f2770cb9",
+            "sha256": "0ef42aa35947d02b70f592eadcb5b2dec73290e5134449d7b63b9a9ecf3d3830"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00004.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "193c864a5c3053605ed307b40d5653c49d6a5e80"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.164Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "operation": "Upsert",
+      "id": "23a91de27cd66bc1eb8a67bb028a07d8722394c4",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 139,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "746f2de11cb6cb5839be94af7168228c",
+            "sha1": "1c973181094d6aa0af106b4c58454eec3950757b",
+            "sha256": "83ffae25eff2c49158077aaed288170bd2e8b2ae6c6f69f49f2e08a23e5d43ef"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00005.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "f3f16d2a48a049a7327dc630ff1af3f615ff08f4"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.178Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 5,
+      "operation": "Upsert",
+      "id": "bf486471d20a86920a2fbf94788a905ee43e0e39",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 139,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "0e6bd10ca3c839ac23f3839b0bd662e8",
+            "sha1": "314225a9de366bb72af7b0bc3590cfe0dc19f746",
+            "sha256": "b375f1ec1d69068a9c4064460da6bfde7015b53787d9e834a124ce84a4b7415a"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00006.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "ee1216bdb0918a2ee5480534e7efc80f8b7d8b4b"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.193Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 6,
+      "operation": "Upsert",
+      "id": "18a130c1b7e891ed25a60a121a5b0323f6b557b2",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 139,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "3d603fd3401919cc367495edf0e0eec6",
+            "sha1": "4ac543f890162e55d816e8184fba599edda4b626",
+            "sha256": "623ea37f782d0c703a3b66ac8fabdd5d7df40bccbde251f51853cf23990c624b"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00007.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "f3b40c5cf98e1f8e7f8449c081a9ee9496662875"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.209Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 7,
+      "operation": "Upsert",
+      "id": "d19ac82b42df6299dc05a03edca7ee8f3486190f",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 139,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "54e8dd4cee4491fe4489011d7c7f72ee",
+            "sha1": "5c0dd716ec6ed158a88a26490024e668d5d3de89",
+            "sha256": "b4e23aed986ceafd2cbfba43e182be1df4d0ad06e69b1bc17cf7a62527a3d1a6"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00008.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "152128d7f7339d28c2ebcbbc710b0051bcb44411"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.224Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 8,
+      "operation": "Upsert",
+      "id": "b8f99fc22bb8ad9b0c1af266d89857c9174032d7",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 139,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "29c9f2ab537f3d7061c6d1e248d106d7",
+            "sha1": "660951f614c8f6369110e9e88abcbd042ac3aea6",
+            "sha256": "4a05c839b18d26f0bcfff39165d447320d9c49749146e1124b392739af457ae4"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00009.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "9a46d43ad156eb4c33a87c3ab60b247998e77523"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.240Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 9,
+      "operation": "Upsert",
+      "id": "5860da52217ff63d0d624d94f1d3f88bb59c9b30",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "3c1dd7fd137ff303e23aab0a17f0a6ba",
+            "sha1": "76764fc768f60a6e79fd9f24c45706fabd3b36b8",
+            "sha256": "ec0d997fe3e84e72eaa4cd5dfbfea7d071aed1934ab61f2f39e2897c80f2fc5e"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00010.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "54c11cb8114f9898d3685baaf5c5509fb19a9fa6"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.261Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 10,
+      "operation": "Upsert",
+      "id": "d3ab1266b61ad9bbc4d0f893713617c6b4cd9419",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "2cd8aac81bb59ecbe4f081c2cd486daa",
+            "sha1": "d6eca62228883aae0d220061c754023fa2d767df",
+            "sha256": "78fb17199d2bdf40e74910e357bfc823029a2a025b0dbcf3eec86202b890dd38"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00011.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "477482a442d7ae904196d3e4097c7d92f5813894"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.272Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 11,
+      "operation": "Upsert",
+      "id": "bcae7749ccaf87ca0332a646a8061ff906af6323",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "7c6b60571fbf01329e0440508a765856",
+            "sha1": "3a7f781e98a4b8464de6c6c5d416d8f494263241",
+            "sha256": "6542c41ca3bddc7e7ecca8f995ca6b3f3377806f010458b99a504552b05ee653"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00012.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "081026928a40f7b2a9e20277ec9551d0644d2a3c"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.289Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 12,
+      "operation": "Upsert",
+      "id": "1909aa1773a81fc6367313d6149c377b402eef70",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "c453644dfb47ecba3f0300421d412ede",
+            "sha1": "2fc25e12599201e47339b7ea08d6d59db3c51f2f",
+            "sha256": "5d72d52415825c262f179073890b23454789e8c60d70b7b793ab0cb16afe458b"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00013.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "2100893121aab8b55e7425809eed519db93eeb95"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.305Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 13,
+      "operation": "Upsert",
+      "id": "82d26cf2acc314f5d99cb28858f189176549c3ad",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "6fb89450017e3c793804fa657ea23b35",
+            "sha1": "4eb87cbbd27d3cc5e4978468c1317ccdb9e4ea04",
+            "sha256": "93a5d8564262fcd337824c0cd5d5abbd387fb923076c4a12b788462561bb11d9"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00014.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "5897bf476ec5bb7563f5445b258c10babfc47882"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.321Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 14,
+      "operation": "Upsert",
+      "id": "4704b10fb5c1c470e7dd046c43d485439dd72aaf",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "f5dd2196aca819c030b9b33a0ea6f607",
+            "sha1": "a25ffecd3af27692ffe4b96fa6be6d00f0228a48",
+            "sha256": "b0de606567467f03377d43e4593dd7adaeb15338e7249592a18b5d6d510117c1"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00015.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "aa6e1e766664403225016fffcc0c3786530cc1a7"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.337Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 15,
+      "operation": "Upsert",
+      "id": "7c91adbee5d9ab0d4cfc3d4c127bfa962c9fcbd6",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "3c32bea5718226d162009b22c55269b4",
+            "sha1": "39307240ac9915716d5487523b3c01a829f5eddd",
+            "sha256": "b091a45c078ef3b4fcc31b636b8004df23fb15bd2a6c371997903ee5cffb00b6"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00016.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "6e3ff97bf1cdd4e6d58792e713e6a5fc3f28fe57"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.351Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 16,
+      "operation": "Upsert",
+      "id": "3793758fd5952be67ba0a80a3829eedd94e2d6e2",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "c0f0a9b8d981ee3460929fe844bd4be7",
+            "sha1": "8b60c2b35d537a95d8339e36df66559ef6bd9c78",
+            "sha256": "0439b689601c3ad59729e214888a71df961a4b7ed185e5a09167a1f8b793a085"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00017.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "d13f8e77e2fde4eb1885947b1c29e46b36463bb7"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.367Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 17,
+      "operation": "Upsert",
+      "id": "b6a80162435d53f623c08b33789a64d33b43e465",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "57401a3877c1ff77568202088fa9d3ee",
+            "sha1": "6330dc1c38053a0ecaae131249eb8cebaf67112e",
+            "sha256": "f747dacd90064f26dba9f67d3c0ecb9a9edee0d7129056e332be1d530747e075"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00018.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "f30e675a6261d0664398997e6c0749439a21aaf2"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.383Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 18,
+      "operation": "Upsert",
+      "id": "dd0d648999b4d5bbdc993f7905f3c5f214f733e0",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "89cee30626e0b19c29961d4fa5a96cba",
+            "sha1": "1ddba6afa55343218503160ac1f14548175e2b57",
+            "sha256": "77a2de6605adf56fea84537b5effbb854bf3ccce3eb574a0c69761d7edfab10e"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00019.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "9d872e7a922eb0d4b0803e8afcbd14dc2acd9fcd"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.399Z",
+          "document_version": 2
+        }
+      }
+    },
+    {
+      "seq": 19,
+      "operation": "Upsert",
+      "id": "866cb5e7deac2f590750a3b9516795c8eb0fc7d1",
+      "index": "wazuh-states-fim-files",
+      "version": 2,
+      "data": {
+        "file": {
+          "size": 140,
+          "permissions": [
+            "{\"S-1-5-32-544\":{\"name\":\"Administrators\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-18\":{\"name\":\"SYSTEM\",\"allowed\":[\"delete\",\"read_control\",\"write_dac\",\"write_owner\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}",
+            "{\"S-1-5-32-545\":{\"name\":\"Users\",\"allowed\":[\"read_control\",\"synchronize\",\"read_data\",\"read_ea\",\"execute\",\"read_attributes\"]}}",
+            "{\"S-1-5-11\":{\"name\":\"Authenticated Users\",\"allowed\":[\"delete\",\"read_control\",\"synchronize\",\"read_data\",\"write_data\",\"append_data\",\"read_ea\",\"write_ea\",\"execute\",\"read_attributes\",\"write_attributes\"]}}"
+          ],
+          "uid": "S-1-5-32-544",
+          "owner": "Administrators",
+          "inode": "0",
+          "device": "2",
+          "mtime": "2026-05-21T21:18:26.000Z",
+          "hash": {
+            "md5": "307a9f4f090b9d7c303b63d593a2e56a",
+            "sha1": "f8e769dfa848ca738544ca2dc5969b92d0cc9134",
+            "sha256": "d56d271f8f9d5ff82bb3e0dfaabc35a505c250ada528f02b2da5a47a8d717477"
+          },
+          "attributes": [
+            "ARCHIVE"
+          ],
+          "path": "c:\\fim-bench\\dir_000\\delta_c001_00020.txt"
+        },
+        "checksum": {
+          "hash": {
+            "sha1": "2688d6acd1ed9acf2ab729c5331c538d614ebe87"
+          }
+        },
+        "state": {
+          "modified_at": "2026-05-21T21:18:26.416Z",
+          "document_version": 2
+        }
+      }
+    }
+  ]
+}

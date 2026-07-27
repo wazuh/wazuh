@@ -55,7 +55,11 @@ wazuh/tests/integration/test_aws
 
 - [Testing framework](https://github.com/wazuh/qa-integration-framework) installed.
 
-- An Inspector assessment with test data in AWS. The rest of the necessary resources are created in test execution time.
+- An Inspector v2 environment with test data in AWS. The rest of the necessary resources are created in test execution time.
+
+> **NOTE:**
+> Amazon Inspector Classic (v1) reached its AWS end-of-life on May 20, 2026 and is no longer supported by this integration.
+> Only Inspector v2 (`inspector2`) is used. The Classic IAM permissions (`inspector:ListFindings`, `inspector:DescribeFindings`) are no longer required.
 
 For a step-by-step example guide using linux go to the [test setup section](#linux)
 
@@ -63,7 +67,7 @@ For a step-by-step example guide using linux go to the [test setup section](#lin
 ## Configuration settings
 
 - **Credentials**:
-    Set the credentials at `$HOME/.aws/credentials` (being `HOME` the home directory of the user who runs the tests, 
+    Set the credentials at `$HOME/.aws/credentials` (being `HOME` the home directory of the user who runs the tests,
  more information [here](https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html#profiles) with the content:
 
 ```ini
@@ -76,7 +80,7 @@ aws_access_key_id = <access-key-value>
 aws_secret_access_key = <secret-key-value>
 ```
 
-Set the configurations at `$HOME/.aws/config` (being `HOME` the home directory of the user who runs the tests, 
+Set the configurations at `$HOME/.aws/config` (being `HOME` the home directory of the user who runs the tests,
  more information [here](https://documentation.wazuh.com/current/amazon/services/prerequisites/credentials.html#profiles) with the content:
 
  ```ini
@@ -134,8 +138,6 @@ The provided credentials must have the following set of minimum permissions defi
     "sqs:GetQueueAttributes",
     "sqs:GetQueueUrl"
 
-    "inspector:ListFindings",
-    "inspector:DescribeFindings",
     "inspector2:ListFindings"
 ```
 
@@ -173,11 +175,11 @@ _We are using **Ubuntu 22.04** for this example:_
 
     # Clone the `qa-integration-framework` repository withing your testing environment
     git clone https://github.com/wazuh/qa-integration-framework.git
-  
+
     # Install tests dependencies
     python3 -m pip install qa-integration-framework/
     ```
-  
+
 
 ## Integration tests
 

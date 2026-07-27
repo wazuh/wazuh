@@ -32,6 +32,7 @@ class RocksDBQueue final
 public:
     explicit RocksDBQueue(const std::string& connectorName, bool useSharedBuffers = false)
         : m_legacyKeyMode {false}
+        , m_logFn(makeLibLogFn("rocksdb"))
     {
         // RocksDB initialization using shared buffers.
         // Get shared buffers to reduce memory usage across multiple instances
@@ -90,9 +91,7 @@ public:
                         throw std::runtime_error("Failed to open RocksDB database after repairing. Reason: " +
                                                  std::string {status.getState()});
                     }
-                    logWarn(LOGGER_DEFAULT_TAG,
-                            "Database '%s' was repaired because it was corrupt.",
-                            connectorName.c_str());
+                    LOG_WARN(m_logFn, "Database '%s' was repaired because it was corrupt.", connectorName.c_str());
                 }
             }
             else
@@ -301,6 +300,7 @@ private:
     uint64_t m_first = 1;
     uint64_t m_last = 0;
     bool m_legacyKeyMode = false;
+    LogFn m_logFn;
 
     std::string paddedKey(const uint64_t key) const
     {

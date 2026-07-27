@@ -217,7 +217,11 @@ async def get_config(pretty: bool = False, wait_for_complete: bool = False) -> C
 
 
 async def get_status_node(node_id: str, pretty: bool = False, wait_for_complete: bool = False) -> ConnexionResponse:
-    """Get a specified node's Wazuh daemons status.
+    """Get a specified node's status (whether it is ready to process events).
+
+    Reports per-daemon status (`ready` + `running`); analysisd embeds the engine resources
+    (spaces/IOC/geo) and modulesd embeds vulnerability-detector. The node is ready only when every
+    daemon is ready.
 
     Parameters
     ----------

@@ -1,0 +1,48 @@
+{
+  "session_id": 12135343697785661920,
+  "metadata": {
+    "agentid": "001",
+    "agentname": "debian10",
+    "module": "syscollector_vd",
+    "mode": "ModuleDelta",
+    "option": "VDSync",
+    "indices": [
+      "wazuh-states-inventory-packages"
+    ]
+  },
+  "items": [
+    {
+      "seq": 0,
+      "operation": "Upsert",
+      "id": "1ac7263731dde3de39f57267f5488f1b33c29a78",
+      "index": "wazuh-states-inventory-packages",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "45b72b861186903335a572a2103feecd12cca771"
+          }
+        },
+        "package": {
+          "architecture": "amd64",
+          "category": "games",
+          "description": "Correct you if you type `sl' by mistake",
+          "installed": null,
+          "multiarch": null,
+          "name": "sl",
+          "path": null,
+          "priority": "optional",
+          "size": 60416,
+          "source": null,
+          "type": "deb",
+          "vendor": "Markus Frosch <lazyfrosch@debian.org>",
+          "version": "5.02-1"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-20T09:04:19.792Z"
+        }
+      }
+    }
+  ]
+}

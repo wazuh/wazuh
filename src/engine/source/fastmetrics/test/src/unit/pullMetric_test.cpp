@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include <base/logging.hpp>
 #include <fastmetrics/manager.hpp>
 #include <fastmetrics/pullMetric.hpp>
 #include <fastmetrics/registry.hpp>
@@ -218,6 +219,8 @@ class ManagerWriteAllMetricsTest : public ::testing::Test
 {
 protected:
     Manager manager;
+
+    void SetUp() override { logging::testInit(); }
 
     void TearDown() override { manager.clear(); }
 

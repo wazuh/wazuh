@@ -6,15 +6,21 @@ on:
     paths:
       - "src/**"
       - ".github/workflows/5_codeanalysis_scanbuild.yml"
+      - ".github/actions/reinstall_cmake/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   scan-build-linux:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -38,8 +44,11 @@ jobs:
           scan-build-14 --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=${{ matrix.target }} DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: linux-${{ matrix.target }}-scan-build-report
           path: src/scan-build-report/
       - name: Fail job if build failed
@@ -48,7 +57,8 @@ jobs:
 
   scan-build-ubuntu-mingw-windows:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3
         with:
@@ -70,8 +80,11 @@ jobs:
           scan-build-14 --status-bugs --use-cc=/usr/bin/i686-w64-mingw32-gcc --use-c++=/usr/bin/i686-w64-mingw32-g++-posix --analyzer-target=i686-w64-mingw32 --force-analyze-debug-code -o scan-build-report --exclude external/ --exclude syscheckd/src/registry/ make TARGET=winagent DEBUG=1 -j$(nproc)
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: windows-agent-scan-build-report
           path: src/scan-build-report/
       - name: Fail job if build failed
@@ -81,6 +94,7 @@ jobs:
   scan-build-macos-agent:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: macos-15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v3
         with:
@@ -97,8 +111,11 @@ jobs:
           /opt/homebrew/opt/llvm@14/bin/scan-build --status-bugs --force-analyze-debug-code -o scan-build-report --exclude external/ make TARGET=agent DEBUG=1 -j3
       - name: Upload scan-build report
         if: steps.build_step.outcome == 'failure'
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/upload_s3_artifact
         with:
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           name: macos-agent-scan-build-report
           path: src/scan-build-report/
       - name: Fail job if build failed

@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include <base/logging.hpp>
+#include <base/syncStatus.hpp>
 #include <base/utils/hash.hpp>
 #include <geo/errorCodes.hpp>
 #include <store/mockStore.hpp>
@@ -620,4 +621,78 @@ TEST(ResultTest, ReadableStrSuccess)
 {
     Result<int> res(42);
     EXPECT_EQ(res.readableStr(), "success");
+}
+
+// ==================== getGeoStatus Tests ====================
+
+TEST_F(GeoManagerTest, InitialStatusEmptyManager)
+{
+    auto manager = getEmptyManager();
+
+    auto status = manager.getGeoStatus();
+    ASSERT_EQ(status.size(), 2U);
+
+    for (const auto& s : status)
+    {
+        EXPECT_EQ(s.status, base::SyncStatus::READY);
+        EXPECT_FALSE(s.available);
+        EXPECT_TRUE(s.hash.empty());
+        EXPECT_EQ(s.lastSuccessfulUpdate, 0U);
+    }
+
+    // Check names
+    EXPECT_EQ(status[0].name, "city");
+    EXPECT_EQ(status[1].name, "asn");
+}
+
+TEST_F(GeoManagerTest, StatusReflectsLoadedDbs)
+{
+    auto cityFile = getTmpDb();
+
+    auto manager = getManagerWithDb(cityFile, Type::CITY);
+
+    auto status = manager.getGeoStatus();
+    ASSERT_EQ(status.size(), 2U);
+
+    // CITY (reported as "city") should be available
+    const auto& geoStatus = status[0];
+    EXPECT_EQ(geoStatus.name, "city");
+    EXPECT_TRUE(geoStatus.available);
+    EXPECT_FALSE(geoStatus.hash.empty());
+    EXPECT_EQ(geoStatus.status, base::SyncStatus::READY);
+
+    // ASN should not be available
+    const auto& asnStatus = status[1];
+    EXPECT_EQ(asnStatus.name, "asn");
+    EXPECT_FALSE(asnStatus.available);
+}
+
+// last_successful_update persisted in the store must be restored on load (survives restart).
+TEST_F(GeoManagerTest, StatusRestoresLastSuccessfulUpdateFromStore)
+{
+    auto cityFile = getTmpDb();
+
+    json::Json docJson;
+    docJson.setString(cityFile, "/city/path");
+    docJson.setString("hash", "/city/hash");
+    docJson.setInt64(1769111225, "/city/generated_at");
+    docJson.setInt64(1700000000, "/city/last_successful_update");
+
+    EXPECT_CALL(*mockStore, readDoc(base::Name(INTERNAL_NAME)))
+        .WillOnce(testing::Return(storeReadDocResp(docJson)));
+
+    Manager manager(mockStore, mockDownloader);
+
+    auto status = manager.getGeoStatus();
+    ASSERT_EQ(status.size(), 2U);
+
+    // CITY: restored timestamp from the store
+    EXPECT_EQ(status[0].name, "city");
+    EXPECT_TRUE(status[0].available);
+    EXPECT_EQ(status[0].lastSuccessfulUpdate, 1700000000U);
+
+    // ASN: absent in the doc → defaults (no timestamp)
+    EXPECT_EQ(status[1].name, "asn");
+    EXPECT_FALSE(status[1].available);
+    EXPECT_EQ(status[1].lastSuccessfulUpdate, 0U);
 }

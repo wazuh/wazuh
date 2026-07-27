@@ -99,6 +99,21 @@ On every **agent** that should belong to a non-default group, confirm the group 
 
 With the group folders in place and each agent's group configured, start each agent. The group is only sent when the agent **enrolls**, so an agent still holding a stale key from the old manager must enroll fresh.
 
+> [!IMPORTANT]
+> Starting with Wazuh 5.0, the enrollment service requires a password by default. Before starting each agent, copy the enrollment password from the manager:
+>
+> ```bash
+> # On the manager
+> sudo cat /var/wazuh-manager/etc/authd.pass
+>
+> # On each agent
+> echo "<password>" | sudo tee /var/ossec/etc/authd.pass
+> sudo chown root:wazuh /var/ossec/etc/authd.pass
+> sudo chmod 640 /var/ossec/etc/authd.pass
+> ```
+>
+> Without this file the enrollment request will be rejected. See [`use_password`](../../ref/configuration/auth.md#use_password) for details.
+
 Clear its key first, then start it:
 
 ```bash

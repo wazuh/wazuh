@@ -15,9 +15,9 @@ while [ ! -f "${WAZUH_CERTS_DIR}/root-ca.pem" ]; do
 done
 echo "Certificates found."
 
-# Set indexer credentials (default: admin/admin)
-echo 'admin' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username
-echo 'admin' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
+# Set indexer credentials (default: wazuh-server/wazuh-server)
+echo 'wazuh-server' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k username
+echo 'wazuh-server' | /var/wazuh-manager/bin/wazuh-manager-keystore -f indexer -k password
 
 # Configure wazuh configuration file and api.yaml based on the Master role
 if [ "$ROLE" == "master" ]; then

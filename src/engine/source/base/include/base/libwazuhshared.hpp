@@ -45,6 +45,15 @@ void shutdown();
 void* getLibPtr();
 
 /**
+ * @brief Check whether the shared library has been loaded.
+ * @return true if init() has been called successfully.
+ */
+inline bool isInitialized()
+{
+    return getLibPtr() != nullptr;
+}
+
+/**
  * @brief Deleted function to prevent usage without template argument.
  *
  * This overload is explicitly deleted to force users to specify the function
@@ -85,7 +94,6 @@ FuncType getFunction(std::string_view name)
     }
     return func;
 }
-
 
 /**
  * @brief Set the logger tag for the shared library.

@@ -16,6 +16,7 @@
 #include <atomic>
 #include <future>
 #include <functional>
+#include <string>
 
 #include "loggerHelper.h"
 #include "threadSafeQueue.h"
@@ -74,6 +75,7 @@ namespace Utils
                 , m_running{ true }
                 , m_numberOfThreads{ numberOfThreads ? numberOfThreads : 1 }
                 , m_maxQueueSize { maxQueueSize }
+                , m_logFn(makeLibLogFn("async-dispatcher"))
             {
                 m_threads.reserve(m_numberOfThreads);
 
@@ -158,7 +160,7 @@ namespace Utils
                     }
                     catch (const std::exception& ex)
                     {
-                        logDebug1(LOGGER_DEFAULT_TAG, "Dispatch handler error, %s", ex.what());
+                        LOG_DEBUG1(m_logFn, "Dispatch handler error, %s", ex.what());
                     }
                 }
             }
@@ -179,6 +181,7 @@ namespace Utils
             std::atomic_bool m_running;
             const unsigned int m_numberOfThreads;
             const size_t m_maxQueueSize;
+            LogFn m_logFn;
     };
 
     template <typename Input, typename Functor>

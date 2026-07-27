@@ -1,0 +1,27 @@
+{
+  "name": "windows11_fim_sysc_init_then_fim_deltas",
+  "description": "An agent with two lanes in parallel. Lane 'fim': first_sync and then 20 runs of delta_modify every 3s. Lane 'syscollector': init only. The lanes are independent - fim_deltas starts as soon as the first_sync finishes, without waiting for syscollector.",
+  "defaults": {
+    "session_type": "delta",
+    "max_eps": 75,
+    "use_databatch": true,
+    "retransmit": true
+  },
+  "lanes": {
+    "fim_windows": [
+      { "dump": "sample_payloads/fim/windows11_fim_first_sync.json"},
+      { "dump": "sample_payloads/fim/windows11_fim_delta_modify.json",
+        "repeat_count": 20,
+        "repeat_delay": 3,
+        "initial_delay": 0
+      }
+    ],
+    "syscollector": [
+      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_windows.json" }
+    ]
+  },
+  "total_agents": 1,
+  "parallel_agents": 1,
+  "repeat_until": 0,
+  "drain_timeout": 30
+}

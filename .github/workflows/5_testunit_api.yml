@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/5_testunit_api.yml'
       - 'api/**'
+      - 'framework/requirements-dev.txt'
       - 'src/Makefile'
   workflow_dispatch:
     inputs:
@@ -27,6 +28,7 @@ jobs:
   build:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

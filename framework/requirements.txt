@@ -1,5 +1,5 @@
 aiohappyeyeballs==2.6.1
-aiohttp==3.13.5
+aiohttp==3.14.0
 aiosignal==1.4.0
 anyio==4.1.0
 asgiref==3.7.2
@@ -21,7 +21,7 @@ grpcio==1.76.0
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.26.0
-idna==3.7
+idna==3.15
 inflection==0.5.1
 Jinja2==3.1.6
 jsonschema==4.20.0
@@ -48,7 +48,7 @@ setuptools==80.10.2
 six==1.16.0
 sniffio==1.3.0
 SQLAlchemy==2.0.23
-starlette==0.49.1
+starlette==1.0.1
 typing-extensions==4.15.0
 urllib3==2.7.0
 uvicorn==0.31.0

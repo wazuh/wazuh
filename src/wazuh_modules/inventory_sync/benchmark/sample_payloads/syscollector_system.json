@@ -1,0 +1,26 @@
+{
+    "host": {
+        "architecture": "x86_64",
+        "hostname": "bench-host-001",
+        "os": {
+            "build": "5.15.0-91-generic",
+            "codename": "jammy",
+            "distribution": {"release": "22.04"},
+            "full": "Ubuntu 22.04.3 LTS (Jammy Jellyfish)",
+            "kernel": {
+                "name": "Linux",
+                "release": "5.15.0-91-generic",
+                "version": "#101-Ubuntu SMP Tue Nov 14 13:30:08 UTC 2023"
+            },
+            "major": "22",
+            "minor": "04",
+            "name": "Ubuntu",
+            "patch": "3",
+            "platform": "ubuntu",
+            "type": "linux",
+            "version": "22.04.3"
+        }
+    },
+    "checksum": {"hash": {"sha1": "b67a1d6f3a7e8b9c0d1e2f3a4b5c6d7e8f9a0b1c"}},
+    "state": {"document_version": 1, "modified_at": "2024-01-15T10:30:00Z"}
+}

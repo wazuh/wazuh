@@ -528,6 +528,42 @@ void test_wm_agent_upgrade_task_module_callback_no_callbacks_error(void **state)
     assert_null(cJSON_GetArrayItem(output, 2));
 }
 
+void test_wm_agent_upgrade_task_module_callback_cancel_error_debug(void **state)
+{
+    cJSON *output = cJSON_CreateArray();
+
+    cJSON *input = cJSON_CreateObject();
+    cJSON *origin = cJSON_CreateObject();
+    cJSON *parameters = cJSON_CreateObject();
+
+    cJSON_AddStringToObject(origin, "module", "upgrade_module");
+    cJSON_AddItemToObject(input, "origin", origin);
+    cJSON_AddStringToObject(input, "command", "upgrade_cancel_tasks");
+    cJSON_AddItemToObject(input, "parameters", parameters);
+
+    cJSON *task_response = cJSON_CreateObject();
+    cJSON *data = cJSON_CreateArray();
+
+    cJSON_AddNumberToObject(task_response, "error", 1);
+    cJSON_AddItemToObject(task_response, "data", data);
+    cJSON_AddStringToObject(task_response, "message", "Error");
+
+    expect_memory(__wrap_wm_agent_upgrade_send_tasks_information, message_object, input, sizeof(input));
+    will_return(__wrap_wm_agent_upgrade_send_tasks_information, task_response);
+
+    // The startup cancellation is best-effort: a task manager communication failure is logged at debug level
+    expect_string(__wrap__mtdebug1, tag, "wazuh-manager-modulesd:agent-upgrade");
+    expect_string(__wrap__mtdebug1, formatted_msg, "(8123): There has been an error executing the request in the tasks manager.");
+
+    int result = wm_agent_upgrade_task_module_callback(output, input, NULL, NULL);
+
+    state[0] = (void *)input;
+    state[1] = (void *)output;
+
+    assert_int_equal(result, OS_INVALID);
+    assert_int_equal(cJSON_GetArraySize(output), 0);
+}
+
 void test_wm_agent_upgrade_task_module_callback_error_callback_error(void **state)
 {
     cJSON *output = cJSON_CreateArray();
@@ -737,6 +773,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_no_callbacks_ok, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_success_callback_ok, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_no_callbacks_error, teardown_jsons),
+        cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_cancel_error_debug, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_error_callback_error, teardown_jsons),
         cmocka_unit_test_teardown(test_wm_agent_upgrade_task_module_callback_success_error_callback_error, teardown_jsons)
     };

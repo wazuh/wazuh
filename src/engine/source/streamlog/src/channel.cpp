@@ -117,7 +117,10 @@ ChannelHandler::RotationRequirement ChannelHandler::needsRotation(const size_t m
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR("[Stream logger] Error checking rotation for channel '{}': {}", m_channelName, e.what());
+        LOG_ERROR("[Stream logger] Error checking rotation for channel '{}': {}. "
+                  "Closing channel and discarding messages",
+                  m_channelName,
+                  e.what());
         m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
     }
 
@@ -176,14 +179,19 @@ bool ChannelHandler::rotateFile(RotationRequirement rotationType)
             std::filesystem::create_directories(newParentPath, ec);
             if (ec)
             {
-                LOG_WARNING(
-                    "[Stream logger] Failed to create directories for {}: {}", newParentPath.string(), ec.message());
+                LOG_WARNING("[Stream logger] Failed to create directories for "
+                            "{}: {}",
+                            newParentPath.string(),
+                            ec.message());
             }
         }
     }
     catch (const std::exception& e)
     {
-        LOG_ERROR("[Stream logger] Failed to generate new file path for channel '{}': {}", m_channelName, e.what());
+        LOG_ERROR("[Stream logger] Failed to generate new file path for channel '{}': {}."
+                  "Closing channel and discarding messages.",
+                  m_channelName,
+                  e.what());
         // Restore previous state — nothing changed on disk
         m_stateData.counter = previousCounter;
         m_stateData.channelState->store(ChannelState::ErrorClosed, std::memory_order_relaxed);
@@ -211,10 +219,10 @@ bool ChannelHandler::rotateFile(RotationRequirement rotationType)
     }
     catch (const std::runtime_error& e)
     {
-        LOG_ERROR(
-            "[Stream logger] Failed to rotate file for channel '{}': {}. Closing channel and discarding messages.",
-            m_channelName,
-            e.what());
+        LOG_ERROR("[Stream logger] Failed to rotate file for channel '{}': {}. "
+                  "Closing channel and discarding messages.",
+                  m_channelName,
+                  e.what());
         // Restore previous state — the old file is still the active one on disk
         m_stateData.currentFile = previousFile;
         m_stateData.counter = previousCounter;
@@ -255,9 +263,9 @@ bool ChannelHandler::rotateFile(RotationRequirement rotationType)
         }
         else
         {
-            LOG_WARNING(
-                "[Stream logger] Scheduler is no longer available; cannot schedule compression for channel '{}'",
-                m_channelName);
+            LOG_WARNING("[Stream logger] Scheduler is no longer available; "
+                        "cannot schedule compression for channel '{}'",
+                        m_channelName);
         }
     }
     if (previousFile != m_stateData.currentFile)
@@ -818,6 +826,7 @@ void ChannelHandler::compressLogFile(const std::filesystem::path& filePath,
 
     try
     {
+        LOG_INFO("[Stream logger] Compressing log file '{}'", filePath.string());
         Utils::ZlibHelper::gzipCompress(filePath, filePath.string() + ".gz", compressionLevel, *flag);
     }
     catch (const std::exception& e)
@@ -836,7 +845,7 @@ void ChannelHandler::compressLogFile(const std::filesystem::path& filePath,
     }
     else
     {
-        LOG_DEBUG("[Stream logger] Successfully compressed log file '{}'", filePath.string());
+        LOG_INFO("[Stream logger] Successfully compressed log file '{}'", filePath.string());
     }
 }
 
@@ -1332,10 +1341,9 @@ void ChannelHandler::clearCurrentRotationStateFromStore() const
 
         if (base::isError(state))
         {
-            LOG_DEBUG(
-                "[Stream logger] Failed to read rotation state for channel '{}' from store: {}. Nothing to clear.",
-                m_channelName,
-                base::getError(state).message);
+            LOG_DEBUG("[Stream logger] Failed to read rotation state for channel '{}' from store: {}. Nothing to clear",
+                      m_channelName,
+                      base::getError(state).message);
             return;
         }
 

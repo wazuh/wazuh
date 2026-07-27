@@ -2,6 +2,19 @@ name: "Check installed files"
 description: "Validates that the installed files are the ones expected and with the right stats"
 
 inputs:
+  aws_region:
+    description: "AWS region for S3 (pass the CI_AWS_REGION secret)."
+    required: false
+    default: "us-east-1"
+
+  bucket:
+    description: "Target S3 bucket URI (pass the CI_INTERNAL_S3_BUCKET secret)."
+    required: false
+    default: ""
+  aws_role:
+    description: "IAM role (OIDC) to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+    required: false
+    default: ""
   expected_files:
     required: true
     description: "Path to the 'expected files' CSV file"
@@ -72,12 +85,15 @@ runs:
       ignore=""
       if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore ${{ inputs.ignore }}"; fi
 
-      sudo venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_user_name '${{ inputs.wazuh_user_name }}' --wazuh_group_name '${{ inputs.wazuh_group_name }}' --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
+      venv/bin/python3 check_files.py -b '${{ inputs.current_status }}' --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_user_name '${{ inputs.wazuh_user_name }}' --wazuh_group_name '${{ inputs.wazuh_group_name }}' --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
 
   - name: Upload current stats
     if: success()
-    uses: actions/upload-artifact@v4
+    uses: ./.github/actions/upload_s3_artifact
     with:
+      aws_region: ${{ inputs.aws_region }}
+      bucket: ${{ inputs.bucket }}
+      aws_role: ${{ inputs.aws_role }}
       name: current_stats_${{ env.UUID }}
       path: ${{ inputs.current_status }}
 
@@ -92,12 +108,15 @@ runs:
       ignore=""
       if [ -n "${{ inputs.ignore }}" ]; then ignore="--ignore ${{ inputs.ignore }}"; fi
 
-      sudo venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_user_name '${{ inputs.wazuh_user_name }}' --wazuh_group_name '${{ inputs.wazuh_group_name }}' --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
+      venv/bin/python3 check_files.py --report '${{ inputs.report_file }}' --file_csv_path '${{ inputs.expected_files }}' --wazuh_uid ${{ inputs.wazuh_uid }} --wazuh_gid ${{ inputs.wazuh_gid }} --wazuh_user_name '${{ inputs.wazuh_user_name }}' --wazuh_group_name '${{ inputs.wazuh_group_name }}' --directory '${{ inputs.installation_directory }}' ${size_check} ${ignore}
 
   - name: Upload validation results
     if: always()
-    uses: actions/upload-artifact@v4
+    uses: ./.github/actions/upload_s3_artifact
     with:
+      aws_region: ${{ inputs.aws_region }}
+      bucket: ${{ inputs.bucket }}
+      aws_role: ${{ inputs.aws_role }}
       name: validation_results_${{ env.UUID }}
       path: ${{ inputs.report_file }}
 

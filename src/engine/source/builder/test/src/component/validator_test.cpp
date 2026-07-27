@@ -199,69 +199,60 @@ TEST_P(ValidateAsset, Doc)
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(Asset,
-                         ValidateAsset,
-                         ::testing::Values(
-                             // Empty object
-                             ValidateA(json::Json(R"({})"),
-                                       false,
-                                       FAILURE(FailureExpected::Behaviour {[](const auto&, const auto&)
-                                                                           {
-                                                                               return "Document is empty";
-                                                                           }})),
-                             // Missing name
-                             ValidateA(json::Json(R"({"check": []})"),
-                                       false,
-                                       FAILURE(FailureExpected::Behaviour {[](const auto&, const auto&)
-                                                                           {
-                                                                               return "name";
-                                                                           }})),
-                             // Invalid name format
-                             ValidateA(json::Json(R"({"name": "decoder//"})"),
-                                       false,
-                                       FAILURE(FailureExpected::Behaviour {[](const auto&, const auto&)
-                                                                           {
-                                                                               return "Name cannot have empty parts";
-                                                                           }})),
-                             // Valid decoder (shallow)
-                             ValidateA(json::Json(R"({
+INSTANTIATE_TEST_SUITE_P(
+    Asset,
+    ValidateAsset,
+    ::testing::Values(
+        // Empty object
+        ValidateA(json::Json(R"({})"),
+                  false,
+                  FAILURE(FailureExpected::Behaviour {[](const auto&, const auto&) { return "Document is empty"; }})),
+        // Missing name
+        ValidateA(json::Json(R"({"check": []})"),
+                  false,
+                  FAILURE(FailureExpected::Behaviour {[](const auto&, const auto&) { return "name"; }})),
+        // Invalid name format
+        ValidateA(json::Json(R"({"name": "decoder//"})"),
+                  false,
+                  FAILURE(FailureExpected::Behaviour {[](const auto&, const auto&)
+                                                      { return "Invalid resource name"; }})),
+        // Valid decoder (shallow)
+        ValidateA(json::Json(R"({
                       "name": "decoder/test/0",
                       "parents": ["decoder/Input"],
                       "check": [{"event.code": 2}]
                   })"),
-                                       false,
-                                       SUCCESS(SuccessExpected::Behaviour {[](const auto&, const auto&)
-                                                                           {
-                                                                               return None {};
-                                                                           }})),
-                             // Decoder with missing parent (deep validation)
-                             ValidateA(json::Json(R"({
+                  false,
+                  SUCCESS(SuccessExpected::Behaviour {[](const auto&, const auto&) { return None {}; }})),
+        // Decoder with missing parent (deep validation)
+        ValidateA(json::Json(R"({
                       "name": "decoder/test/0",
                       "parents": ["decoder/missing/0"],
                       "check": [{"event.code": 2}]
                   })"),
-                                       true,
-                                       FAILURE(FailureExpected::Behaviour {
-                                           [](const auto& store, const auto& reader)
-                                           {
-                                               EXPECT_CALL(*reader, assetExistsByName(base::Name("decoder/missing/0")))
-                                                   .WillOnce(testing::Return(false));
-                                               return "Parent 'decoder/missing/0' referenced by asset";
-                                           }})),
-                             // Valid decoder with existing parent (deep validation)
-                             ValidateA(json::Json(R"({
+                  true,
+                  FAILURE(FailureExpected::Behaviour {[](const auto& store, const auto& reader)
+                                                      {
+                                                          EXPECT_CALL(
+                                                              *reader,
+                                                              assetExistsByName(base::Name("decoder/missing/0")))
+                                                              .WillOnce(testing::Return(false));
+                                                          return "Parent 'decoder/missing/0' referenced by asset";
+                                                      }})),
+        // Valid decoder with existing parent (deep validation)
+        ValidateA(json::Json(R"({
                       "name": "decoder/test/0",
                       "parents": ["decoder/Input"],
                       "check": [{"event.code": 2}]
                   })"),
-                                       true,
-                                       SUCCESS(SuccessExpected::Behaviour {
-                                           [](const auto& store, const auto& reader)
-                                           {
-                                               EXPECT_CALL(*reader, assetExistsByName(base::Name("decoder/Input")))
-                                                   .WillOnce(testing::Return(true));
-                                               return None {};
-                                           }}))));
+                  true,
+                  SUCCESS(SuccessExpected::Behaviour {[](const auto& store, const auto& reader)
+                                                      {
+                                                          EXPECT_CALL(*reader,
+                                                                      assetExistsByName(base::Name("decoder/Input")))
+                                                              .WillOnce(testing::Return(true));
+                                                          return None {};
+                                                      }}))));
 
 // Integration validation tests
 using ValidateI = std::tuple<dataType::Integration, Expc>;

@@ -904,6 +904,21 @@ validateUpgradeCompatibility()
     UPGRADE_BLOCKED="no"
     ERROR_MESSAGE=""
 
+    printUnsupportedManagerUpgrade()
+    {
+        DETECTED_VERSION=$(echo "${1:-unknown}" | sed 's/^v//')
+        cat <<EOF
+==============================================================
+ERROR: Upgrade from Wazuh manager versions prior to 5.x is not supported.
+
+Detected installed version: ${DETECTED_VERSION}
+
+A clean installation of Wazuh manager 5.x is required.
+Refer to the 5.x migration guide for more information.
+==============================================================
+EOF
+    }
+
     if [ "$USER_INSTALL_TYPE" = "agent" ]; then
         # Agent upgrades are supported only from >= 4.14.0.
         if [ -n "$OLD_MAJOR" ] && [ -n "$OLD_MINOR" ]; then
@@ -916,18 +931,18 @@ Upgrade to Wazuh 5.0.0 is only supported from version 4.14.0 or later."
             fi
         fi
     else
-        # Manager upgrades from 4.x to 5.x are blocked.
+        # Manager upgrades from versions prior to 5.x are blocked.
         if [ -n "$OLD_MAJOR" ] && [ "$OLD_MAJOR" -lt 5 ]; then
             UPGRADE_BLOCKED="yes"
-            ERROR_MESSAGE="Current version: $USER_OLD_VERSION
-Target version:  5.0.0
-
-Upgrade to Wazuh 5.0.0 is not supported from version 4.x.
-A clean installation is required for managers."
         fi
     fi
 
     if [ "$UPGRADE_BLOCKED" = "yes" ]; then
+        if [ "$USER_INSTALL_TYPE" != "agent" ]; then
+            printUnsupportedManagerUpgrade "$USER_OLD_VERSION"
+            exit 1
+        fi
+
         echo ""
         echo "═════════════════════════════════════════════════════════════════"
         echo "  UPGRADE BLOCKED: Incompatible version detected"

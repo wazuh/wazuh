@@ -121,6 +121,23 @@ copy_devContainer() {
     done
 }
 
+# Function to patch the devcontainer.json name with a unique suffix (MM-DD xx)
+patch_devcontainer_name() {
+    local json_file="$DEV_CONTAINER_DESTINATION/.devcontainer/devcontainer.json"
+
+    if [ ! -f "$json_file" ]; then
+        echo "Warning: devcontainer.json not found at '$json_file', skipping name patch" >&2
+        return
+    fi
+
+    local suffix
+    suffix="$(date +%m-%d) $(printf '%02x' $((RANDOM % 256)))"
+
+    sed -i "s/\"name\": \"\([^\"]*\)\"/\"name\": \"\1 - ${suffix}\"/" "$json_file"
+
+    echo "DevContainer name patched with suffix: - ${suffix}"
+}
+
 # Function to open in VSCode
 open_in_vscode() {
     while true; do
@@ -206,6 +223,9 @@ download_repo
 
 # Copy the devContainer folder
 copy_devContainer
+
+# Patch the devcontainer.json name with a unique suffix
+patch_devcontainer_name
 
 # Print success message
 echo ""

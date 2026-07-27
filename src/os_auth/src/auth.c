@@ -10,6 +10,7 @@
 
 #include <shared.h>
 #include <stdio.h>
+#include <sys/stat.h>
 #include "auth.h"
 #include "defs.h"
 #include "os_err.h"
@@ -24,6 +25,12 @@
 #undef __wazuh_version
 #define __wazuh_version "v5.0.0"
 #endif
+
+typedef enum {
+    PASS_LINE_OK = 0,
+    PASS_LINE_INVALID,  /* missing, empty, or <= 2 chars after trimming */
+    PASS_LINE_TOO_LONG
+} pass_line_t;
 
 keystore keys;
 char shost[512];
@@ -529,4 +536,128 @@ char *w_generate_random_pass()
     free(rand4);
     os_free(str1);
     return(fstring);
+}
+
+/* Read and trim (CR/LF) the first line of an open password file. Shared by both readers. */
+static pass_line_t read_password_line(FILE *fp, char **out) {
+    char buf[4096 + 1];
+
+    *out = NULL;
+
+    if (!fgets(buf, sizeof(buf), fp)) {
+        return PASS_LINE_INVALID;
+    }
+
+    size_t len = strlen(buf);
+
+    /* fgets filled the buffer without a newline: line exceeds the maximum length. */
+    if (len == sizeof(buf) - 1 && buf[len - 1] != '\n') {
+        return PASS_LINE_TOO_LONG;
+    }
+
+    while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+        buf[--len] = '\0';
+    }
+
+    if (len <= 2) {
+        return PASS_LINE_INVALID;
+    }
+
+    /* Reject all-whitespace content: it passes the length check but would otherwise
+     * become a valid shared enrollment secret, contradicting the fail-closed contract. */
+    bool all_space = true;
+    for (size_t i = 0; i < len; i++) {
+        if (!isspace((unsigned char)buf[i])) {
+            all_space = false;
+            break;
+        }
+    }
+    if (all_space) {
+        return PASS_LINE_INVALID;
+    }
+
+    *out = strdup(buf);
+    return PASS_LINE_OK;
+}
+
+char *w_authd_load_password(const char *path, bool *generated) {
+    FILE *fp;
+
+    *generated = false;
+
+    if (fp = wfopen(path, "r"), fp) {
+        char *pass = NULL;
+        pass_line_t status = read_password_line(fp, &pass);
+
+        fclose(fp);
+
+        /* Fail closed: an invalid existing file must never disable password enrollment. */
+        switch (status) {
+        case PASS_LINE_TOO_LONG:
+            merror_exit("Authentication password in '%s' is too long.", path);
+        case PASS_LINE_INVALID:
+            merror_exit("Invalid password provided in '%s'.", path);
+        case PASS_LINE_OK:
+            return pass;
+        }
+
+        return pass;
+    }
+
+    /* No file: generate and persist. umask 0137 (file mode 0640) avoids a world-readable create/chmod window. */
+    char *pass = w_generate_random_pass();
+
+    if (!pass) {
+        merror_exit("Unable to generate random password. Exiting.");
+    }
+
+    mode_t old_umask = umask(0137);
+    fp = wfopen(path, "w");
+    int saved_errno = errno;    /* before umask() can clobber it */
+    umask(old_umask);
+
+    if (!fp) {
+        os_free(pass);
+        merror_exit("Unable to write authentication password to '%s': %s", path, strerror(saved_errno));
+    }
+
+    if (fprintf(fp, "%s\n", pass) != (int)(strlen(pass) + 1)) {
+        fclose(fp);
+        os_free(pass);
+        merror_exit("Unable to persist authentication password to '%s'.", path);
+    }
+
+    if (fclose(fp) != 0) {
+        saved_errno = errno;
+        os_free(pass);
+        merror_exit("Unable to close authentication password file '%s': %s", path, strerror(saved_errno));
+    }
+
+    *generated = true;
+    return pass;
+}
+
+/* Read-only loader for cluster workers: never generates, persists, nor exits. */
+char *w_authd_read_password(const char *path) {
+    FILE *fp;
+
+    if (fp = wfopen(path, "r"), !fp) {
+        return NULL;
+    }
+
+    char *pass = NULL;
+    pass_line_t status = read_password_line(fp, &pass);
+
+    fclose(fp);
+
+    /* Distinguish a corrupt/malformed file from a file that is simply absent. Both
+     * return NULL to the caller, but the former warrants a distinct log entry so
+     * operators can tell a sync-lag apart from file corruption. */
+    if (status == PASS_LINE_TOO_LONG) {
+        mwarn("Authentication password in '%s' is too long; ignoring.", path);
+    } else if (status == PASS_LINE_INVALID) {
+        mwarn("Authentication password in '%s' is invalid or empty; ignoring.", path);
+    }
+
+    return pass;
 }

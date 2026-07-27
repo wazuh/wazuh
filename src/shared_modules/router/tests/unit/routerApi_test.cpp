@@ -35,7 +35,7 @@ protected:
     void SetUp() override
     {
         // Initialize router for each test
-        router_initialize(testLogCallback);
+        router_initialize(testLogCallback, "test");
     }
 
     void TearDown() override
@@ -51,10 +51,10 @@ protected:
 TEST_F(RouterAPITest, TestRouterInitialize)
 {
     // Test with valid callback
-    EXPECT_EQ(0, router_initialize(testLogCallback));
+    EXPECT_EQ(0, router_initialize(testLogCallback, "test"));
 
     // Test with null callback
-    EXPECT_EQ(0, router_initialize(nullptr));
+    EXPECT_EQ(0, router_initialize(nullptr, "test"));
 }
 
 /*
@@ -652,11 +652,12 @@ TEST_F(RouterAPITest, TestMultipleStartCalls)
 // }
 
 // Helper to create a Start message for testing
-static std::vector<uint8_t> createStartMessage(const std::string& agentId)
+static std::vector<uint8_t> createStartMessage(const std::string& agentId, const std::string& clusterName = "")
 {
     flatbuffers::FlatBufferBuilder builder;
     auto agentIdOffset = builder.CreateString(agentId);
     auto moduleOffset = builder.CreateString("test-module");
+    auto clusterNameOffset = clusterName.empty() ? 0 : builder.CreateString(clusterName);
 
     auto startMsg = Wazuh::SyncSchema::CreateStart(builder,
                                                    moduleOffset,                       // module
@@ -672,7 +673,10 @@ static std::vector<uint8_t> createStartMessage(const std::string& agentId)
                                                    0,                                  // osversion
                                                    0,                                  // agentversion
                                                    0,                                  // agentname
-                                                   agentIdOffset);                     // agentid
+                                                   agentIdOffset,                      // agentid
+                                                   0,                                  // groups
+                                                   0,                                  // global_version
+                                                   clusterNameOffset);                 // cluster_name
 
     auto msg = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType_Start, startMsg.Union());
 
@@ -683,17 +687,19 @@ static std::vector<uint8_t> createStartMessage(const std::string& agentId)
 
 TEST_F(RouterAPITest, TestProviderSendSyncValidMatch)
 {
-    router_initialize(NULL);
+    router_initialize(NULL, "test");
 
     const char* providerName = "inventory-sync";
     ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
     EXPECT_NE(nullptr, handle);
 
-    // Create Start message with agent ID "001"
-    auto message = createStartMessage("001");
+    // Create Start message with agent ID "001" and cluster name "wazuh"
+    auto message = createStartMessage("001", "wazuh");
 
     // Should succeed: authenticated agent "1" matches claimed "001" (integer comparison)
-    EXPECT_EQ(0, router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "1"));
+    EXPECT_EQ(
+        0,
+        router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "1", "wazuh"));
 
     router_provider_destroy(handle);
     router_stop();
@@ -701,18 +707,19 @@ TEST_F(RouterAPITest, TestProviderSendSyncValidMatch)
 
 TEST_F(RouterAPITest, TestProviderSendSyncSpoofingDetected)
 {
-    router_initialize(NULL);
+    router_initialize(NULL, "test");
 
     const char* providerName = "inventory-sync";
     ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
     EXPECT_NE(nullptr, handle);
 
-    // Create Start message with agent ID "123"
-    auto message = createStartMessage("123");
+    // Create Start message with agent ID "123" and cluster name "wazuh"
+    auto message = createStartMessage("123", "wazuh");
 
     // Should fail: authenticated agent "456" doesn't match claimed "123"
     EXPECT_EQ(-1,
-              router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "456"));
+              router_provider_send_sync(
+                  handle, reinterpret_cast<const char*>(message.data()), message.size(), "456", "wazuh"));
 
     router_provider_destroy(handle);
     router_stop();
@@ -720,18 +727,19 @@ TEST_F(RouterAPITest, TestProviderSendSyncSpoofingDetected)
 
 TEST_F(RouterAPITest, TestProviderSendSyncEmptyAgentId)
 {
-    router_initialize(NULL);
+    router_initialize(NULL, "test");
 
     const char* providerName = "inventory-sync";
     ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
     EXPECT_NE(nullptr, handle);
 
-    // Create Start message with empty agent ID
-    auto message = createStartMessage("");
+    // Create Start message with empty agent ID and cluster name "wazuh"
+    auto message = createStartMessage("", "wazuh");
 
     // Should fail: Start message must have agent ID
     EXPECT_EQ(-1,
-              router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "123"));
+              router_provider_send_sync(
+                  handle, reinterpret_cast<const char*>(message.data()), message.size(), "123", "wazuh"));
 
     router_provider_destroy(handle);
     router_stop();
@@ -739,18 +747,19 @@ TEST_F(RouterAPITest, TestProviderSendSyncEmptyAgentId)
 
 TEST_F(RouterAPITest, TestProviderSendSyncNonNumericAgentId)
 {
-    router_initialize(NULL);
+    router_initialize(NULL, "test");
 
     const char* providerName = "inventory-sync";
     ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
     EXPECT_NE(nullptr, handle);
 
-    // Create Start message with non-numeric agent ID
-    auto message = createStartMessage("abc");
+    // Create Start message with non-numeric agent ID and cluster name "wazuh"
+    auto message = createStartMessage("abc", "wazuh");
 
     // Should fail: agent IDs must be numeric
     EXPECT_EQ(-1,
-              router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "123"));
+              router_provider_send_sync(
+                  handle, reinterpret_cast<const char*>(message.data()), message.size(), "123", "wazuh"));
 
     router_provider_destroy(handle);
     router_stop();
@@ -758,18 +767,19 @@ TEST_F(RouterAPITest, TestProviderSendSyncNonNumericAgentId)
 
 TEST_F(RouterAPITest, TestProviderSendSyncNullAuthAgentId)
 {
-    router_initialize(NULL);
+    router_initialize(NULL, "test");
 
     const char* providerName = "inventory-sync";
     ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
     EXPECT_NE(nullptr, handle);
 
-    // Create Start message with agent ID "123"
-    auto message = createStartMessage("123");
+    // Create Start message with agent ID "123" and cluster name "wazuh"
+    auto message = createStartMessage("123", "wazuh");
 
     // Should fail: authenticated agent ID is NULL
-    EXPECT_EQ(
-        -1, router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), nullptr));
+    EXPECT_EQ(-1,
+              router_provider_send_sync(
+                  handle, reinterpret_cast<const char*>(message.data()), message.size(), nullptr, "wazuh"));
 
     router_provider_destroy(handle);
     router_stop();
@@ -777,18 +787,79 @@ TEST_F(RouterAPITest, TestProviderSendSyncNullAuthAgentId)
 
 TEST_F(RouterAPITest, TestProviderSendSyncLeadingZeros)
 {
-    router_initialize(NULL);
+    router_initialize(NULL, "test");
 
     const char* providerName = "inventory-sync";
     ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
     EXPECT_NE(nullptr, handle);
 
-    // Create Start message with agent ID "0042"
-    auto message = createStartMessage("0042");
+    // Create Start message with agent ID "0042" and cluster name "wazuh"
+    auto message = createStartMessage("0042", "wazuh");
 
     // Should succeed: "42" matches "0042" (integer comparison)
     EXPECT_EQ(0,
-              router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "42"));
+              router_provider_send_sync(
+                  handle, reinterpret_cast<const char*>(message.data()), message.size(), "42", "wazuh"));
+
+    router_provider_destroy(handle);
+    router_stop();
+}
+
+TEST_F(RouterAPITest, TestProviderSendSyncClusterNameMatch)
+{
+    router_initialize(NULL, "test");
+
+    const char* providerName = "inventory-sync";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create Start message with agent ID "001" and cluster name "wazuh"
+    auto message = createStartMessage("001", "wazuh");
+
+    // Should succeed: cluster name matches
+    EXPECT_EQ(
+        0,
+        router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "1", "wazuh"));
+
+    router_provider_destroy(handle);
+    router_stop();
+}
+
+TEST_F(RouterAPITest, TestProviderSendSyncClusterNameSpoofing)
+{
+    router_initialize(NULL, "test");
+
+    const char* providerName = "inventory-sync";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create Start message with agent ID "001" and fake cluster name
+    auto message = createStartMessage("001", "FAKE-CLUSTER");
+
+    // Should fail: cluster name doesn't match
+    EXPECT_EQ(
+        -1,
+        router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "1", "wazuh"));
+
+    router_provider_destroy(handle);
+    router_stop();
+}
+
+TEST_F(RouterAPITest, TestProviderSendSyncEmptyClusterName)
+{
+    router_initialize(NULL, "test");
+
+    const char* providerName = "inventory-sync";
+    ROUTER_PROVIDER_HANDLE handle = router_provider_create(providerName, true);
+    EXPECT_NE(nullptr, handle);
+
+    // Create Start message with agent ID "001" and no cluster name
+    auto message = createStartMessage("001", "");
+
+    // Should fail: Start message must have cluster name
+    EXPECT_EQ(
+        -1,
+        router_provider_send_sync(handle, reinterpret_cast<const char*>(message.data()), message.size(), "1", "wazuh"));
 
     router_provider_destroy(handle);
     router_stop();

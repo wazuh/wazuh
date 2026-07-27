@@ -1,0 +1,25 @@
+{
+  "name": "Syscollector, both sesions with/without VD, single agent, single pass",
+  "description": "asdasd",
+  "defaults": {
+    "max_eps": 75,
+    "use_databatch": true
+  },
+  "lanes": {
+    "syscollector_sync_debian10": [
+      {
+        "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json"
+      }
+    ],
+    "vd_first_debian10": [
+      {
+        "dump": "sample_payloads/dump-syscollector/session_vd_first_debian10.json"
+      }
+    ]
+  },
+  "total_agents": 1,
+  "parallel_agents": 1,
+  "repeat_until": 0,
+  "drain_timeout": 30,
+  "post_run_grace": 30
+}

@@ -1,0 +1,31 @@
+{
+  "name": "engine_duration_safety_net",
+  "description": "Same shape as engine_duration_AND_siblings but inventory is huge (Windows FIM first sync 27726 items @ 75 EPS ~= 370s). Engine duration=20 cuts engine first; the fim lane keeps running solo after engine exits — total run ~370s.",
+  "defaults": {
+    "session_type": "delta",
+    "max_eps": 75,
+    "use_databatch": true,
+    "ack_timeout_retry": 0
+  },
+  "lanes": {
+    "engine": [
+      {
+        "engine": "sample_payloads/engine/syslog.log",
+        "location": "syslog",
+        "max_eps": 500,
+        "loop": true,
+        "duration": 20.0,
+        "run_while_siblings_active": true
+      }
+    ],
+    "fim": [
+      { "dump": "sample_payloads/fim/windows11_fim_first_sync.json" }
+    ]
+  },
+  "fleets": [
+    { "name": "single", "agents": 1, "lanes": ["engine", "fim"] }
+  ],
+  "parallel_agents": 0,
+  "repeat_until": 0,
+  "drain_timeout": 5
+}

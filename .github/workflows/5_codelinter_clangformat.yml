@@ -4,15 +4,29 @@ on:
   workflow_dispatch:
   pull_request:
     types: [synchronize, opened, reopened, ready_for_review]
+    paths:
+      - .clang-format
+      - src/shared_modules/router/**
+      - src/shared_modules/indexer_connector/**
+      - src/shared_modules/content_manager/**
+      - src/shared_modules/utils/**
+      - src/wazuh_modules/inventory_sync/**
+      - src/wazuh_modules/vulnerability_scanner/**
+      - .github/workflows/5_codelinter_clangformat.yml
+      - .github/actions/clang_format/**
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   style:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
 
     steps:
       - name: Cancel previous runs
@@ -33,6 +47,8 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/shared_modules/router
           id: router
 
@@ -42,6 +58,8 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/shared_modules/indexer_connector
           id: indexer_connector
 
@@ -51,6 +69,8 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/shared_modules/content_manager
           id: content_manager
 
@@ -60,6 +80,8 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/wazuh_modules/inventory_sync
           id: inventory_sync
 
@@ -69,6 +91,8 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/wazuh_modules/vulnerability_scanner
           id: vulnerability_scanner
 
@@ -78,6 +102,8 @@ jobs:
         continue-on-error: true
         uses: ./.github/actions/clang_format
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/shared_modules/utils
           id: utils
 

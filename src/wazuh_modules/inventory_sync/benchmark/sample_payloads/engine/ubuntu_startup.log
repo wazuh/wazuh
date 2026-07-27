@@ -1,0 +1,60 @@
+{"event.module":"wazuh-agent","event.action":"agent-start","event.start":"2026-06-04T14:48:54.041Z"}
+Starting rootcheck scan.
+Files hidden inside directory '/usr/bin'. Link count does not match number of files (2,1).
+Files hidden inside directory '/usr/sbin'. Link count does not match number of files (2,1).
+Files hidden inside directory '/etc/systemd/system'. Link count does not match number of files (4,1).
+Files hidden inside directory '/etc/systemd'. Link count does not match number of files (4,1).
+Files hidden inside directory '/etc/init.d'. Link count does not match number of files (2,1).
+Files hidden inside directory '/etc'. Link count does not match number of files (36,1).
+Files hidden inside directory '/var/log/apt'. Link count does not match number of files (2,1).
+Files hidden inside directory '/var/log'. Link count does not match number of files (3,1).
+Files hidden inside directory '/var/lib/dpkg/updates'. Link count does not match number of files (2,1).
+Files hidden inside directory '/var/lib/dpkg/triggers'. Link count does not match number of files (2,1).
+Files hidden inside directory '/var/lib/dpkg/info'. Link count does not match number of files (2,1).
+Files hidden inside directory '/var/lib/dpkg'. Link count does not match number of files (7,1).
+Files hidden inside directory '/var/lib/apt/lists'. Link count does not match number of files (2,1).
+Files hidden inside directory '/var/lib/apt'. Link count does not match number of files (5,1).
+Files hidden inside directory '/var/lib'. Link count does not match number of files (8,1).
+Files hidden inside directory '/usr/lib/x86_64-linux-gnu'. Link count does not match number of files (11,1).
+Files hidden inside directory '/usr/lib/systemd/system'. Link count does not match number of files (2,1).
+Files hidden inside directory '/usr/lib/systemd'. Link count does not match number of files (3,1).
+Files hidden inside directory '/usr/lib'. Link count does not match number of files (22,1).
+Files hidden inside directory '/tmp'. Link count does not match number of files (2,1).
+Files hidden inside directory '/usr/local/lib'. Link count does not match number of files (3,1).
+Files hidden inside directory '/usr/local/share'. Link count does not match number of files (4,1).
+Files hidden inside directory '/usr/local'. Link count does not match number of files (10,1).
+wazuh: output: 'df -P': Filesystem     1024-blocks      Used Available Capacity Mounted on
+wazuh: output: 'df -P': shm                  65536         0     65536       0% /dev/shm
+wazuh: output: 'df -P': /dev/nvme0n1p2   490048472 372564972  92516896      81% /var/ossec
+wazuh: output: 'df -P': overlay          490048472 372564972  92516896      81% /
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /proc/acpi
+wazuh: output: 'df -P': tmpfs                65536         0     65536       0% /dev
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /proc/scsi
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/virtual/powercap
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /proc/asound
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/firmware
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu0/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu1/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu3/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu2/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu5/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu6/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu4/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu8/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu7/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu9/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu11/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu10/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu13/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu12/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu15/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu14/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu16/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu18/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu17/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu20/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu19/thermal_throttle
+wazuh: output: 'df -P': tmpfs             24391520         0  24391520       0% /sys/devices/system/cpu/cpu21/thermal_throttle
+{"data":{"agent":{"id":"001","name":"wazuh-agent-5x-ubuntu","version":"v5.0.0"},"event":{"created":"2026-06-04T14:49:19.346Z","type":"created"},"host":{"architecture":"x86_64","hostname":"wazuh-agent-5x-ubuntu","os":{"name":"Ubuntu","platform":"ubuntu","type":"linux","version":"22.04.5 LTS (Jammy Jellyfish)"}}},"module":"agent_info","type":"agent_metadata"}
+{"data":{"agent":{"groups":["default"],"id":"001"},"event":{"created":"2026-06-04T14:49:19.347Z","type":"created"}},"module":"agent_info","type":"agent_groups"}
+Ending rootcheck scan.

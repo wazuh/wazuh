@@ -1,0 +1,17 @@
+{
+  "name": "windows11_fim_delta_create",
+  "description": "Replay a Windows 11 FIM delta create session captured from Inventory Sync FlatBuffer dumps. 20 file Upserts targeting wazuh-states-fim-files.",
+  "lanes": {
+    "windows11_fim_delta_create": [
+      {
+        "dump": "sample_payloads/fim/windows11_fim_delta_create.json",
+        "max_eps": 75,
+        "use_databatch": true
+      }
+    ]
+  },
+  "total_agents": 1,
+  "parallel_agents": 0,
+  "repeat_until": 0,
+  "drain_timeout": 30
+}

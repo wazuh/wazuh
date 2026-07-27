@@ -36,7 +36,7 @@ env:
 
 jobs:
   setup-matrix:
-    runs-on: ubuntu-24.04
+    runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
@@ -47,7 +47,7 @@ jobs:
           ENTRIES='[]'
 
           DEB=$(jq -cn '{
-            runner: "ubuntu-24.04", platform: "linux-deb",
+            runner: "codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}", platform: "linux-deb",
             "display-name": "Linux DEB (amd64)",
             "artifact-pattern": "wazuh-agent*amd64*.deb",
             "artifact-regexp": "wazuh-agent.*amd64.*\\.deb",
@@ -55,7 +55,7 @@ jobs:
             "packages-path": "/tmp/packages"
           }')
           RPM=$(jq -cn '{
-            runner: "ubuntu-24.04", platform: "linux-rpm",
+            runner: "codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}", platform: "linux-rpm",
             "display-name": "Linux RPM (x86_64)",
             "artifact-pattern": "*x86_64*.rpm",
             "artifact-regexp": "wazuh-agent.*x86_64.*\\.rpm",
@@ -63,7 +63,7 @@ jobs:
             "packages-path": "/tmp/packages"
           }')
           WIN=$(jq -cn '{
-            runner: "windows-2025", platform: "windows",
+            runner: "codebuild-github-actions-codebuild-runner-agent-windows-amd-${{ github.run_id }}-${{ github.run_attempt }}", platform: "windows",
             "display-name": "Windows",
             "artifact-pattern": "wazuh-agent*windows*.msi",
             "artifact-regexp": "wazuh-agent.*windows.*\\.msi",
@@ -91,6 +91,9 @@ jobs:
           echo "matrix=$(jq -cn --argjson entries "$ENTRIES" '{include: $entries}')" >> $GITHUB_OUTPUT
 
   test:
+    permissions:
+      id-token: write
+      contents: read
     name: Test ${{ matrix.display-name }} startup
     needs: setup-matrix
     strategy:
@@ -102,27 +105,57 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download package artifact
-        uses: actions/download-artifact@v4
-        if: inputs.base_branch == ''
-        with:
-          pattern: ${{ matrix.artifact-pattern }}
-          path: ${{ matrix.packages-path }}
-          merge-multiple: true
+      - name: Resolve S3 source (build run id + producer workflow)
+        id: resolve
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          BUILD_WF: ${{ matrix.build-workflow }}
+          BASE_BRANCH: ${{ inputs.base_branch }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          # producer_workflow is the build workflow filename without the .yml extension
+          echo "producer_workflow=${BUILD_WF%.yml}" >> "$GITHUB_OUTPUT"
+          if [ -z "${BASE_BRANCH}" ]; then
+            # Empty base_branch: the packages were built earlier in this same run.
+            echo "build_run_id=${CURRENT_RUN_ID}" >> "$GITHUB_OUTPUT"
+          else
+            # Manual dispatch against a branch: use the latest successful build run there.
+            rid="$(gh run list --repo "${REPO}" --workflow "${BUILD_WF}" --branch "${BASE_BRANCH}" --status success --limit 1 --json databaseId --jq '.[0].databaseId' || true)"
+            if [ -z "${rid}" ] || [ "${rid}" = "null" ]; then
+              echo "::error::No successful ${BUILD_WF} run found on branch ${BASE_BRANCH}"
+              exit 1
+            fi
+            echo "build_run_id=${rid}" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Download package artifact (manual)
-        uses: dawidd6/action-download-artifact@v6
-        if: inputs.base_branch != ''
+      - name: Download package artifact
+        uses: ./.github/actions/download_package
         with:
-          workflow: ${{ matrix.build-workflow }}
-          workflow_conclusion: success
-          name_is_regexp: true
-          name: ${{ matrix.artifact-regexp }}
+          build_run_id: ${{ steps.resolve.outputs.build_run_id }}
+          producer_workflow: ${{ steps.resolve.outputs.producer_workflow }}
+          name_regexp: ${{ matrix.artifact-regexp }}
           path: ${{ matrix.packages-path }}
-          if_no_artifact_found: fail
-          check_artifacts: true
-          search_artifacts: true
-          branch: ${{ inputs.base_branch }}
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
+          aws_region: ${{ secrets.CI_AWS_REGION }}
+
+      - name: CodeBuild workarounds (Linux Docker)
+        # The Linux smoke test runs the package inside a Docker container, but
+        # CodeBuild has no systemd so dockerd never starts on its own. VFS avoids
+        # overlay-on-overlay, which is unsupported inside the CodeBuild container.
+        # TODO: Remove once DevOps exposes host Docker socket or configures DinD in CodeBuild.
+        if: matrix.platform == 'linux-deb' || matrix.platform == 'linux-rpm'
+        run: |
+          if ! docker info &>/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y docker.io
+            sudo nohup dockerd --storage-driver vfs > /var/log/dockerd.log 2>&1 &
+            timeout 60 bash -c 'until docker info &>/dev/null 2>&1; do sleep 1; done'
+            sudo chmod 666 /var/run/docker.sock
+          fi
 
       - name: Run smoke test
         uses: ./.github/actions/5_testintegration_agent-start/run-test

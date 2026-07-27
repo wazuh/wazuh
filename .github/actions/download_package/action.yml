@@ -1,0 +1,151 @@
+name: "Download package from S3"
+description: >
+  Downloads the package(s) produced by a package build run from the internal CI S3
+  bucket (passed via the CI_INTERNAL_S3_BUCKET secret), matching the package name by regexp.
+  A drop-in replacement for the dawidd6/action-download-artifact step used before
+  the package uploads were migrated to S3 (see wazuh-automation#3502). The producer
+  workflow and name regexp are inputs, so it serves both manager and agent packages.
+  AWS credentials are configured by the action itself via OIDC, so the calling job
+  only needs `permissions: id-token: write`. Requires the AWS CLI on the runner.
+
+inputs:
+  build_run_id:
+    description: "Run ID of the manager-multiples build that produced the package."
+    required: true
+  name_regexp:
+    description: "Regexp the package name segment must match."
+    required: false
+    default: 'wazuh-manager.*amd64.*\.deb'
+  path:
+    description: "Destination directory for the extracted package(s)."
+    required: false
+    default: "/tmp/packages"
+  producer_workflow:
+    description: "Workflow segment of the S3 key (the build's entry workflow)."
+    required: false
+    default: "5_builderpackage_manager-multiples"
+  repository:
+    description: "Repository segment of the S3 key."
+    required: false
+    default: "wazuh"
+  bucket:
+    description: "Source S3 bucket URI."
+    required: false
+    default: ""
+  aws_role:
+    description: "IAM role (OIDC) to assume for S3 access (pass the CI_OIDC_ROLE_ARN secret)."
+    required: false
+    default: ""
+  aws_region:
+    description: "Fallback AWS region."
+    required: false
+    default: "us-east-1"
+  extract_into_name_subdir:
+    description: >
+      When 'true', extract each matched artifact into <path>/<artifact-name>/ (mirrors the
+      per-artifact subdirectory layout of an actions/download-artifact pattern download).
+      Default 'false' extracts every artifact flat into <path>.
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v6
+      with:
+        role-to-assume: ${{ inputs.aws_role }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - name: Download package from S3 (Unix)
+      if: runner.os != 'Windows'
+      shell: bash
+      env:
+        BUCKET: ${{ inputs.bucket }}
+        REPO: ${{ inputs.repository }}
+        PRODUCER_WF: ${{ inputs.producer_workflow }}
+        BUILD_RUN_ID: ${{ inputs.build_run_id }}
+        NAME_RE: ${{ inputs.name_regexp }}
+        DEST: ${{ inputs.path }}
+        SUBDIR: ${{ inputs.extract_into_name_subdir }}
+      run: |
+        set -euo pipefail
+        base="${BUCKET}/${REPO}/${PRODUCER_WF}"
+        mkdir -p "$DEST"
+        # The producer uploads each artifact at <repo>/<workflow>/<name>/artifacts_<run_id>.zip,
+        # so list the producer workflow's objects and keep those whose <name> segment matches
+        # the regexp for this build run (the package name carries a commit hash, so it can't be
+        # addressed by exact name).
+        keys="$(aws s3 ls "${base}/" --recursive | awk '{print $4}' \
+          | grep -E "/${PRODUCER_WF}/${NAME_RE}/artifacts_${BUILD_RUN_ID}\.zip$" || true)"
+        if [ -z "$keys" ]; then
+          echo "::error::No artifact matching '${NAME_RE}' found in S3 for build run ${BUILD_RUN_ID} under ${base}/"
+          exit 1
+        fi
+        while IFS= read -r key; do
+          [ -z "$key" ] && continue
+          dest="$DEST"
+          if [ "$SUBDIR" = "true" ]; then
+            name_seg="${key#*/${PRODUCER_WF}/}"; name_seg="${name_seg%%/*}"
+            dest="${DEST}/${name_seg}"
+            mkdir -p "$dest"
+          fi
+          tmp="$(mktemp -d)"
+          aws s3 cp "${BUCKET}/${key}" "${tmp}/pkg.zip" --only-show-errors
+          if command -v 7z >/dev/null 2>&1; then
+            7z x -y "${tmp}/pkg.zip" -o"$dest" >/dev/null
+          elif command -v unzip >/dev/null 2>&1; then
+            unzip -o -q "${tmp}/pkg.zip" -d "$dest"
+          else
+            python3 -c "import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" "${tmp}/pkg.zip" "$dest"
+          fi
+        done <<< "$keys"
+        echo "Downloaded artifact(s) to ${DEST}:"
+        ls -la "$DEST"
+
+    - name: Download package from S3 (Windows)
+      if: runner.os == 'Windows'
+      shell: pwsh
+      env:
+        BUCKET: ${{ inputs.bucket }}
+        REPO: ${{ inputs.repository }}
+        PRODUCER_WF: ${{ inputs.producer_workflow }}
+        BUILD_RUN_ID: ${{ inputs.build_run_id }}
+        NAME_RE: ${{ inputs.name_regexp }}
+        DEST: ${{ inputs.path }}
+        SUBDIR: ${{ inputs.extract_into_name_subdir }}
+      run: |
+        $ErrorActionPreference = "Stop"
+        $base = "$env:BUCKET/$env:REPO/$env:PRODUCER_WF"
+        New-Item -ItemType Directory -Force -Path $env:DEST | Out-Null
+        # The producer uploads each artifact at <repo>/<workflow>/<name>/artifacts_<run_id>.zip,
+        # so list the producer workflow's objects and keep those whose <name> segment matches
+        # the regexp for this build run (the package name carries a commit hash, so it can't be
+        # addressed by exact name).
+        $pattern = "/$env:PRODUCER_WF/$env:NAME_RE/artifacts_$($env:BUILD_RUN_ID)\.zip$"
+        $keys = aws s3 ls "$base/" --recursive |
+          ForEach-Object { ($_.Trim() -split '\s+', 4)[3] } |
+          Where-Object { $_ -match $pattern }
+        if (-not $keys) {
+          Write-Error "No artifact matching '$env:NAME_RE' found in S3 for build run $env:BUILD_RUN_ID under $base/"
+        }
+        foreach ($key in $keys) {
+          if ([string]::IsNullOrWhiteSpace($key)) { continue }
+          $dest = $env:DEST
+          if ($env:SUBDIR -eq 'true') {
+            $nameSeg = ($key -replace ".*/$env:PRODUCER_WF/([^/]+)/artifacts_.*", '$1')
+            $dest = Join-Path $env:DEST $nameSeg
+            New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          }
+          $tmp = Join-Path $env:RUNNER_TEMP ([System.Guid]::NewGuid().ToString())
+          New-Item -ItemType Directory -Force -Path $tmp | Out-Null
+          $zip = Join-Path $tmp "pkg.zip"
+          aws s3 cp "$env:BUCKET/$key" $zip --only-show-errors
+          if (Get-Command 7z -ErrorAction SilentlyContinue) {
+            7z x -y $zip "-o$dest" | Out-Null
+          } else {
+            Expand-Archive -Path $zip -DestinationPath $dest -Force
+          }
+        }
+        Write-Host "Downloaded artifact(s) to $env:DEST"
+        Get-ChildItem -Recurse -Force $env:DEST | Select-Object -ExpandProperty FullName

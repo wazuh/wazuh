@@ -1,0 +1,458 @@
+{
+  "session_id": 13508296989264227820,
+  "metadata": {
+    "agentid": "001",
+    "agentname": "windows-server-2019",
+    "module": "syscollector_vd",
+    "mode": "ModuleDelta",
+    "option": "VDFirst",
+    "size_declared": 17,
+    "indices": [
+      "wazuh-states-inventory-hotfixes",
+      "wazuh-states-inventory-packages",
+      "wazuh-states-inventory-system"
+    ]
+  },
+  "items": [
+    {
+      "seq": 0,
+      "operation": "Upsert",
+      "id": "2d060053399b46a55a435ecba0cedec7c23a8f8b",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "c854a90e9e8067617f306dc8cff3724be9e27ba6"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB2267602"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 1,
+      "operation": "Upsert",
+      "id": "c6283e8489f81b605b5ecc1d1d013a1f37805034",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "a8b61edc8c2bfe295c82257181f12b294f5a0054"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB2468871"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 2,
+      "operation": "Upsert",
+      "id": "7bbe49e90fcfba46750b06f4c4954f8ff59580e5",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "1590490bba1bd3d273b89b99ef1142fe7c9c6d11"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB2478063"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 3,
+      "operation": "Upsert",
+      "id": "819a966119da9de7cd4da85aa3e946b3fdcfdfd7",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "0e657b44148ddf178b2286013d0158311e29bbe4"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB2533523"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "operation": "Upsert",
+      "id": "d0d724fe600427568ee72630cf54f00d75434483",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "b0b0c308355e0a8221344e08364d7dbda1327015"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB2544514"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 5,
+      "operation": "Upsert",
+      "id": "2eeb811bbb6b241709a77ae15af5a1783a7a480c",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "7ce0e8fb34ea0481f988cb1ebe0efcdf0f24b61a"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB2600211"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 6,
+      "operation": "Upsert",
+      "id": "db2818ff58485209a289ecc2a0bb86e4d15f3b2f",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "4503bd392b1eb95561d39f5a2534c8009540c4a2"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB2600217"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 7,
+      "operation": "Upsert",
+      "id": "ea77eef6e95d647a8efff13161c296a4dafef6a3",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "05ebde9ab539ca16a6724b6754a267cb85ec21f9"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB4486153"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 8,
+      "operation": "Upsert",
+      "id": "f1170294fcd0be014c7f374ac4d64401b32e3c61",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "5eb4840e72ad5ca899cc118ab47386d18ab9b13c"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB4512577"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 9,
+      "operation": "Upsert",
+      "id": "bb8ea5aedaf04d9f23bd3f5b697c21a1f3b8b44c",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "f436737447c52c7e4f343561669ef5213207f7c3"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB4589208"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 10,
+      "operation": "Upsert",
+      "id": "2559c1eb705d25f2dd390137c117fe44ffd5658f",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "f5442e706ed224f5c0693d35e761463a6f169322"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB5039886"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 11,
+      "operation": "Upsert",
+      "id": "1e5dea93d5c2dcfda95debe6164dd2ebb090770b",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "fbb865e8c362d1446bfe91828c44acc08cddd7ed"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB5040430"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 12,
+      "operation": "Upsert",
+      "id": "4a247a1408c91ef0db30850256ab87520d667c6e",
+      "index": "wazuh-states-inventory-hotfixes",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "dd4bdafef9e49f46e0ce2fa47fde5f49bf75ef2a"
+          }
+        },
+        "package": {
+          "hotfix": {
+            "name": "KB5040563"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 13,
+      "operation": "Upsert",
+      "id": "554de574d5a15e475753366e14d8c94837b743f8",
+      "index": "wazuh-states-inventory-packages",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "f471ed0c8b6b795ed85813e5803d32e7783cc4e4"
+          }
+        },
+        "package": {
+          "architecture": "x86_64",
+          "category": null,
+          "description": null,
+          "installed": "2026-05-21T14:56:33.000Z",
+          "multiarch": null,
+          "name": "Oracle VM VirtualBox Guest Additions 7.0.20",
+          "path": null,
+          "priority": null,
+          "size": 0,
+          "source": null,
+          "type": "win",
+          "vendor": "Oracle and/or its affiliates",
+          "version": "7.0.20.163906"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 14,
+      "operation": "Upsert",
+      "id": "084d1c387d3f9e84f518f91af40ab010043a72a9",
+      "index": "wazuh-states-inventory-packages",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "533b2da17292d4314e9a7abfa0d4d38f75c0b175"
+          }
+        },
+        "package": {
+          "architecture": "i686",
+          "category": null,
+          "description": null,
+          "installed": "2026-05-21T19:57:07.000Z",
+          "multiarch": null,
+          "name": "Wazuh Agent",
+          "path": null,
+          "priority": null,
+          "size": 0,
+          "source": null,
+          "type": "win",
+          "vendor": "Wazuh, Inc.",
+          "version": "5.0.0"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 15,
+      "operation": "Upsert",
+      "id": "ae7663b9443ce4159f11153ae53b76613765382b",
+      "index": "wazuh-states-inventory-packages",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "b1bb805cdabed4eb83a4b9a363ac38497a315310"
+          }
+        },
+        "package": {
+          "architecture": "x86_64",
+          "category": null,
+          "description": null,
+          "installed": "2026-05-21T19:56:31.000Z",
+          "multiarch": null,
+          "name": "WinRAR 6.22 (64-bit)",
+          "path": "C:\\Program Files\\WinRAR\\",
+          "priority": null,
+          "size": 0,
+          "source": null,
+          "type": "win",
+          "vendor": "win.rar GmbH",
+          "version": "6.22.0"
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.192Z"
+        }
+      }
+    },
+    {
+      "seq": 16,
+      "operation": "Upsert",
+      "id": "7e4cb90e01e3a414ad5ee59976d2d8dcafd3b484",
+      "index": "wazuh-states-inventory-system",
+      "version": 1,
+      "data": {
+        "checksum": {
+          "hash": {
+            "sha1": "37aa270327a81e15834f3893774ac1868f59b1cf"
+          }
+        },
+        "host": {
+          "architecture": "x86_64",
+          "hostname": "WINDOWS-SERVER-",
+          "os": {
+            "build": "17763.6054",
+            "codename": null,
+            "distribution": {
+              "release": "1809"
+            },
+            "full": null,
+            "kernel": {
+              "name": null,
+              "release": "10.0.17763.6054",
+              "version": null
+            },
+            "major": "10",
+            "minor": "0",
+            "name": "Microsoft Windows Server 2019 Standard Evaluation",
+            "patch": null,
+            "platform": "windows",
+            "type": "windows",
+            "version": "10.0.17763.6054"
+          }
+        },
+        "state": {
+          "document_version": 1,
+          "modified_at": "2026-05-21T19:57:52.301Z"
+        }
+      }
+    }
+  ]
+}

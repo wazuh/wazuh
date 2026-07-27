@@ -250,7 +250,6 @@ int receive_msg()
                                     if (cldir_ex_ignore(SHAREDCFG_DIR, (const char **)ignore_list)) {
                                         mwarn("Could not clean up shared directory.");
                                     }
-                                    clear_merged_hash_cache();
                                     if (agt->flags.remote_conf && !verifyRemoteConf()) {
                                         const bool gate_was_blocked = !startup_gate_is_ready();
                                         const bool gate_would_release = gate_was_blocked && startup_gate_check_hash_match();

@@ -24,7 +24,7 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         auto orchestratorRef = weakOrchestrator.lock();
         if (!orchestratorRef)
         {
-            LOG_ERROR_L(lambdaName.c_str(), "Received request but orchestrator is not available");
+            LOG_ERROR_L(lambdaName.c_str(), "[API::Event] Received request but orchestrator is not available");
             res.status = httplib::StatusCode::InternalServerError_500;
             res.set_content("{\"error\": \"Internal server error\", \"code\": 500}", "application/json");
             return;
@@ -58,7 +58,7 @@ adapter::RouteHandler pushEvent(const std::shared_ptr<::router::IRouterAPI>& orc
         }
         catch (const std::exception& e)
         {
-            LOG_WARNING_L(lambdaName.c_str(), "Failed to parse request: '{}'", e.what());
+            LOG_WARNING_L(lambdaName.c_str(), "[API::Event] Failed to parse request: '{}'", e.what());
             res.status = httplib::StatusCode::BadRequest_400;
             res.set_content(fmt::format("{{\"error\": \"{}\", \"code\": 400}}", e.what()), "application/json");
             return;

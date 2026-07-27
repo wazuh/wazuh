@@ -22,6 +22,7 @@ EXTRA_TESTS=(
   "engine-private rawevt -h"
   "engine-public cm -h"
   "engine-public ioc -h"
+  "engine-public status -h"
 )
 
 echo "=========================================="

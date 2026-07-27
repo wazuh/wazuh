@@ -673,27 +673,6 @@ int OS_ExpandIPv6(char *ip_address, size_t size)
     return OS_SUCCESS;
 }
 
-/* Must be a valid string, called after OS_IsValidTime
- * Returns 1 on success or 0 on failure
- */
-int OS_IsonTime(const char *time_str, const char *ossec_time)
-{
-    int _true = 1;
-
-    if (*ossec_time == '!') {
-        _true = 0;
-    }
-    ossec_time++;
-
-    /* Comparing against min/max value */
-    if ((strncmp(time_str, ossec_time, 5) >= 0) &&
-            (strncmp(time_str, ossec_time + 5, 5) <= 0)) {
-        return (_true);
-    }
-
-    return (!_true);
-}
-
 /* Validate if a time is in an acceptable format for OSSEC.
  * Returns 0 if doesn't match or a valid string for OSSEC usage in success.
  * ** On success this function may modify the value of date

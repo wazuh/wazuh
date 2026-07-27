@@ -39,6 +39,12 @@ runs:
       run: |
         if [[ "${{ inputs.target }}" == "winagent" ]]; then
           echo "Installing CMocka by sources with 'winagent' required flags"
+          # CMocka is built from sources with CMake. The CodeBuild image does not
+          # ship cmake (GitHub-hosted runners did), and this step runs before the
+          # reinstall_cmake action, so make sure a cmake is available here.
+          if ! command -v cmake >/dev/null 2>&1; then
+            sudo apt-get install -y cmake
+          fi
           curl -L --retry 3 --retry-delay 2 -o /tmp/stable-1.1.tar.gz https://git.cryptomilk.org/projects/cmocka.git/snapshot/stable-1.1.tar.gz
           # Verify if the download was successful
           if [ $? -ne 0 ]; then

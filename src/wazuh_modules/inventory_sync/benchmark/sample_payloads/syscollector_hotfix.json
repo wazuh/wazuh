@@ -1,0 +1,7 @@
+{
+    "package": {
+        "hotfix": {"name": "KB5034203"}
+    },
+    "checksum": {"hash": {"sha1": "c7891f0e4b1d2a3c4d5e6f7a8b9c0d1e2f3a4b5c"}},
+    "state": {"document_version": 1, "modified_at": "2024-01-15T10:30:00Z"}
+}

@@ -8,6 +8,10 @@ on:
       - ".github/workflows/5_testcomponent_indexer-connector.yml"
       - "src/shared_modules/indexer_connector/**"
       - "src/shared_modules/utils/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/reinstall_cmake/**"
+      - ".github/actions/test_cpp/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
@@ -17,6 +21,7 @@ jobs:
   indexer-connector-tests:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     strategy:
       fail-fast: true
       matrix:

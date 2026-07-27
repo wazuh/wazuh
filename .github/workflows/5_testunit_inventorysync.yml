@@ -7,16 +7,25 @@ on:
       - ".github/workflows/5_testunit_inventorysync.yml"
       - "src/shared_modules/utils/**"
       - "src/wazuh_modules/inventory_sync/**"
+      - ".github/actions/build_external_deps/**"
+      - ".github/actions/build_target_cpp/**"
+      - ".github/actions/coverage_cpp/**"
+      - ".github/actions/test_cpp/**"
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   inventorysync-modules:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - name: Cancel previous runs
         uses: fkirc/skip-duplicate-actions@master
@@ -49,6 +58,8 @@ jobs:
       - name: Inventory sync - Coverage
         uses: ./.github/actions/coverage_cpp
         with:
+          bucket: ${{ secrets.CI_INTERNAL_S3_BUCKET }}
+          aws_role: ${{ secrets.CI_OIDC_ROLE_ARN }}
           path: src/wazuh_modules/inventory_sync
           test_directory: src/wazuh_modules/inventory_sync
           id: inventory_sync
@@ -57,6 +68,7 @@ jobs:
   inventorysync-asan:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 60
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

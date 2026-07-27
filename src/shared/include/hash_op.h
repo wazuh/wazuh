@@ -80,8 +80,6 @@ void *OSHash_Get_ins(const OSHash *self, const char *key) __attribute__((nonnull
 unsigned int OSHash_Get_Elem_ex(OSHash *self) __attribute__((nonnull));
 
 int OSHash_setSize(OSHash *self, unsigned int new_size) __attribute__((nonnull));
-int OSHash_setSize_ex(OSHash *self, unsigned int new_size) __attribute__((nonnull));
-
 OSHash *OSHash_Duplicate(const OSHash *hash) __attribute__((nonnull));
 OSHash *OSHash_Duplicate_ex(const OSHash *hash) __attribute__((nonnull));
 
@@ -96,11 +94,5 @@ void *OSHash_Clean(OSHash *self, void (*cleaner)(void*));
  * Mode: 0 (read it), 1 (write it), 2 (write it with delay)
 */
 void OSHash_It(const OSHash *hash, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
-void OSHash_It_ex(const OSHash *hash, char mode, void *data, void (*iterating_function)(OSHashNode **row, OSHashNode **node, void *data));
-
-/*
- * Returns the index of the key.
-*/
-unsigned int OSHash_GetIndex(OSHash *self, const char *key);
 
 #endif /* OS_HASHOP */

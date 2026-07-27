@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+import "engine.proto";
+
+package com.wazuh.api.engine.status;
+
+/*
+ * Status API - Engine synchronization status
+ *
+ * Reports whether the engine has completed initial synchronization of all
+ * required resources (content manager spaces, IOC databases, geo databases).
+ *
+ * The engine is ready to process events when:
+ *   - All enabled spaces are available (have synced at least once)
+ *   - All IOC databases are available
+ *   - All geo databases are available
+ *
+ * Resources may still be updating to their latest version — that does NOT
+ * block readiness. What matters is having *some* version available.
+ */
+
+/***************************************************
+ * Get status
+ *
+ * endpoint: GET /status
+ *
+ * Returns the overall readiness state and per-resource
+ * synchronization details for spaces, IOC, and geo.
+ **************************************************/
+message StatusGet_Request {}
+
+/* State of a content manager space (has enabled flag) */
+message SpaceState
+{
+    bool available = 1;                // Has been successfully synced at least once
+    bool enabled = 2;                  // Whether the space is enabled in the remote policy
+    string status = 3;                 // Current state: "ready", "updating", or "failed"
+    string hash = 4;                   // Last known content hash (empty if never synced)
+    uint32 last_successful_update = 5; // Unix timestamp of last successful sync (0 if never)
+}
+
+/* State of an IOC or Geo resource (always active, no enabled flag) */
+message ResourceState
+{
+    bool available = 1;                // Has a version available for processing
+    string status = 2;                 // Current state: "ready", "updating", or "failed"
+    string hash = 3;                   // Last known content hash (empty if never synced)
+    uint32 last_successful_update = 4; // Unix timestamp of last successful sync (0 if never)
+}
+
+message StatusGet_Response
+{
+    ReturnStatus status = 1;   // Status of the query
+    optional string error = 2; // Error message if status is ERROR
+    bool ready = 3;            // Overall readiness: engine can process events
+
+    // Per-resource details grouped by category
+    map<string, SpaceState> spaces = 4; // Content manager spaces (e.g., "standard", "custom")
+    map<string, ResourceState> ioc = 5; // IOC databases (e.g., "connection", "url_domain", ...)
+    map<string, ResourceState> geo = 6; // Geo databases (e.g., "asn", "city")
+}

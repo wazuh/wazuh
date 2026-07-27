@@ -58,12 +58,14 @@ Conf::Conf(std::shared_ptr<IFileLoader> fileLoader)
 
     // Indexer connector
     addUnit<std::vector<std::string>>(key::INDEXER_HOST, "WAZUH_INDEXER_HOSTS", {"http://localhost:9200"});
-    addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "admin");
-    addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "admin");
+    addUnit<std::string>(key::INDEXER_USER, "WAZUH_INDEXER_USER", "wazuh-server");
+    addUnit<std::string>(key::INDEXER_PASSWORD, "WAZUH_INDEXER_PASSWORD", "wazuh-server");
     addUnit<std::vector<std::string>>(key::INDEXER_SSL_CA_BUNDLE, "WAZUH_INDEXER_SSL_CA_BUNDLE", {});
     addUnit<std::string>(key::INDEXER_SSL_CERTIFICATE, "WAZUH_INDEXER_SSL_CERTIFICATE", "");
     addUnit<std::string>(key::INDEXER_SSL_KEY, "WAZUH_INDEXER_SSL_KEY", "");
     addUnit<size_t>(key::INDEXER_QUEUE_MAX_EVENTS, "WAZUH_INDEXER_QUEUE_MAX_EVENTS", 0x1 << 17);
+    addUnit<size_t>(key::INDEXER_ELEMENTS_PER_BULK, "WAZUH_INDEXER_ELEMENTS_PER_BULK", 25000);
+    addUnit<size_t>(key::INDEXER_FLUSH_INTERVAL, "WAZUH_INDEXER_FLUSH_INTERVAL", 20);
     addUnit<size_t>(
         key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE, "WAZUH_CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE", 100);
     // IOC Sync

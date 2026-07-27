@@ -657,7 +657,7 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_NormalizesMitreAndKeepsCheckFields)
             {   {"id", "chk2"},
                 {"result", "passed"},
                 {"refs", "RefA, RefB"},
-                {"mitre", R"({"tactic":"TA0005, TA0006","technique":"T1548","subtechnique":"T1548.001"})"}
+                {"mitre", R"({"tactic":{"id":["TA0005","TA0006"],"name":["Stealth","Credential Access"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]},"subtechnique":{"id":["T1548.001"],"name":["Setuid and Setgid"]}})"}
             }
         },
         {
@@ -683,9 +683,12 @@ TEST_F(SCAEventHandlerTest, ProcessStateless_NormalizesMitreAndKeepsCheckFields)
     ASSERT_TRUE(check.contains("references"));
     EXPECT_EQ(check["references"], nlohmann::json::array({"RefA", "RefB"}));
     ASSERT_TRUE(check.contains("mitre"));
-    EXPECT_EQ(check["mitre"]["tactic"], nlohmann::json::array({"TA0005", "TA0006"}));
-    EXPECT_EQ(check["mitre"]["technique"], nlohmann::json::array({"T1548"}));
-    EXPECT_EQ(check["mitre"]["subtechnique"], nlohmann::json::array({"T1548.001"}));
+    EXPECT_EQ(check["mitre"]["tactic"]["id"], nlohmann::json::array({"TA0005", "TA0006"}));
+    EXPECT_EQ(check["mitre"]["tactic"]["name"], nlohmann::json::array({"Stealth", "Credential Access"}));
+    EXPECT_EQ(check["mitre"]["technique"]["id"], nlohmann::json::array({"T1548"}));
+    EXPECT_EQ(check["mitre"]["technique"]["name"], nlohmann::json::array({"Abuse Elevation Control Mechanism"}));
+    EXPECT_EQ(check["mitre"]["subtechnique"]["id"], nlohmann::json::array({"T1548.001"}));
+    EXPECT_EQ(check["mitre"]["subtechnique"]["name"], nlohmann::json::array({"Setuid and Setgid"}));
 }
 
 TEST_F(SCAEventHandlerTest, ProcessStateless_InvalidInput)
@@ -835,18 +838,46 @@ TEST_F(SCAEventHandlerTest, NormalizeCheck_InvalidComplianceJson)
     ASSERT_TRUE(check.contains("rules"));
 }
 
-TEST_F(SCAEventHandlerTest, NormalizeCheck_MitreSubfieldsToArrays)
+TEST_F(SCAEventHandlerTest, NormalizeCheck_MitreObjectSubfieldsPreserved)
 {
     nlohmann::json check = {{"id", "1234"},
-        {"mitre", {{"tactic", "TA0005, TA0006"}, {"technique", "T1548"}, {"subtechnique", "T1548.001"}}}
+        {
+            "mitre",
+            {   {"tactic", {{"id", {"TA0005", "TA0006"}}, {"name", {"Stealth", "Credential Access"}}}},
+                {"technique", {{"id", {"T1548"}}, {"name", {"Abuse Elevation Control Mechanism"}}}},
+                {"subtechnique", {{"id", {"T1548.001"}}, {"name", {"Setuid and Setgid"}}}}
+            }
+        }
     };
 
     handler->NormalizeCheck(check);
 
     ASSERT_TRUE(check.contains("mitre"));
-    EXPECT_EQ(check["mitre"]["tactic"], nlohmann::json::array({"TA0005", "TA0006"}));
-    EXPECT_EQ(check["mitre"]["technique"], nlohmann::json::array({"T1548"}));
-    EXPECT_EQ(check["mitre"]["subtechnique"], nlohmann::json::array({"T1548.001"}));
+    EXPECT_EQ(check["mitre"]["tactic"]["id"], nlohmann::json::array({"TA0005", "TA0006"}));
+    EXPECT_EQ(check["mitre"]["tactic"]["name"], nlohmann::json::array({"Stealth", "Credential Access"}));
+    EXPECT_EQ(check["mitre"]["technique"]["id"], nlohmann::json::array({"T1548"}));
+    EXPECT_EQ(check["mitre"]["technique"]["name"], nlohmann::json::array({"Abuse Elevation Control Mechanism"}));
+    EXPECT_EQ(check["mitre"]["subtechnique"]["id"], nlohmann::json::array({"T1548.001"}));
+    EXPECT_EQ(check["mitre"]["subtechnique"]["name"], nlohmann::json::array({"Setuid and Setgid"}));
+}
+
+TEST_F(SCAEventHandlerTest, NormalizeCheck_MitreDropsInvalidSubfields)
+{
+    nlohmann::json check = {{"id", "1234"},
+        {
+            "mitre",
+            {   {"tactic", "TA0005"},
+                {"technique", {{"id", {"T1548"}}, {"name", {"Abuse Elevation Control Mechanism"}}}}
+            }
+        }
+    };
+
+    handler->NormalizeCheck(check);
+
+    ASSERT_TRUE(check.contains("mitre"));
+    EXPECT_FALSE(check["mitre"].contains("tactic"));
+    ASSERT_TRUE(check["mitre"].contains("technique"));
+    EXPECT_EQ(check["mitre"]["technique"]["id"], nlohmann::json::array({"T1548"}));
 }
 
 TEST_F(SCAEventHandlerTest, NormalizeCheck_TitleToName)
@@ -2440,7 +2471,12 @@ TEST_F(SCAEventHandlerTest, ValidateAndHandleStatefulMessage_ValidComplianceAndM
                 {"result", "passed"},
                 {"condition", "all"},
                 {"compliance", {{"pci_dss", {"7.1", "7.2"}}, {"nist_800_53", {"CM.6"}}}},
-                {"mitre", {{"tactic", {"TA0005"}}, {"technique", {"T1548"}}}},
+                {
+                    "mitre",
+                    {   {"tactic", {{"id", {"TA0005"}}, {"name", {"Stealth"}}}},
+                        {"technique", {{"id", {"T1548"}}, {"name", {"Abuse Elevation Control Mechanism"}}}}
+                    }
+                },
                 {"rules", {"f:/etc/ssh/sshd_config -> r:PermitRootLogin no"}}
             }
         },

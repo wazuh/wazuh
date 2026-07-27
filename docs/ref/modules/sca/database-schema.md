@@ -121,9 +121,11 @@ Unknown keys are rejected with a warning during policy parsing and excluded from
 
 #### MITRE format
 
-The `mitre` column stores a JSON-serialized object that maps MITRE ATT&CK categories to arrays of identifier strings. The following keys are supported:
+The `mitre` column stores a JSON-serialized object that maps MITRE ATT&CK categories to their identifiers and names. The following keys are supported:
 
 `tactic`, `technique`, `subtechnique`
+
+Each key is an object with two parallel arrays, `id` and `name`, of equal length. The name at each position corresponds to the identifier at the same position. Names are taken from the MITRE ATT&CK catalog (https://attack.mitre.org/).
 
 **Example Data:**
 ```sql
@@ -142,7 +144,7 @@ VALUES (
     NULL,
     'all',
     '{"pci_dss":["5.2.1"],"nist_800_53":["14.6"]}',
-    '{"tactic":["TA0005"],"technique":["T1548"]}',
+    '{"tactic":{"id":["TA0005"],"name":["Stealth"]},"technique":{"id":["T1548"],"name":["Abuse Elevation Control Mechanism"]}}',
     '[{"type":"file","path":"/etc/ssh/sshd_config","permissions":"600"}]',
     'pcre2',
     1,

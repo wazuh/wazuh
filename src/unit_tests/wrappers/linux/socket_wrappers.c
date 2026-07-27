@@ -15,10 +15,17 @@
 #include <cmocka.h>
 #include <string.h>
 #include <stdlib.h>
+#include <errno.h>
 #include "../common.h"
 
 #define BUFFERSIZE 1024
 #define SENDSTRING "Hello World!\n"
+
+/* Opt-in errno for __wrap_send: cmocka's mock() may clobber errno, so a test
+ * that needs send() to fail with a specific errno (e.g. ENOBUFS to exercise the
+ * OS_SendUnix backpressure retry) sets this and the wrapper applies it on every
+ * failing call. Default 0 keeps the historical behaviour (errno untouched). */
+int test_wrap_send_errno = 0;
 
 int __wrap_socket(__attribute__((unused))int __domain, __attribute__((unused))int __type, __attribute__((unused))int __protocol) {
     return mock();
@@ -55,7 +62,11 @@ int __wrap_accept(__attribute__((unused))int __fd, struct sockaddr * __addr, __a
 }
 
 ssize_t __wrap_send(__attribute__((unused))int __fd, __attribute__((unused))const void *__buf, __attribute__((unused))size_t __n, __attribute__((unused))int __flags) {
-    return mock();
+    ssize_t ret = mock();
+    if (ret < 0 && test_wrap_send_errno != 0) {
+        errno = test_wrap_send_errno;
+    }
+    return ret;
 }
 
 ssize_t __wrap_sendto(__attribute__((unused)) int __fd, __attribute__((unused)) const void *__buf, __attribute__((unused)) size_t __n, __attribute__((unused)) int __flags,
@@ -119,12 +130,18 @@ int __wrap_fcntl(int __fd, int __cmd, ...) {
 
 int __wrap_getaddrinfo(const char *node, __attribute__((unused))const char *service, __attribute__((unused))const struct addrinfo *hints, struct addrinfo **res) {
     struct addrinfo* addr;
+    int ret;
     check_expected(node);
 
     addr = mock_type(struct addrinfo*);
-    if (addr != NULL) {
+    ret = mock();
+
+    // Only allocate memory if the call will succeed (ret == 0)
+    // Per POSIX, on error, the content of *res is undefined and should not be freed
+    if (ret == 0 && addr != NULL) {
         *res = calloc(1, sizeof(struct addrinfo));
         memcpy(*res, addr, sizeof(struct addrinfo));
     }
-    return mock();
+
+    return ret;
 }

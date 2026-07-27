@@ -294,6 +294,38 @@ TEST_F(IndexerConnectorTest, SyncDeleteByQueryAndFlush)
     ASSERT_EQ(body["query"]["bool"]["filter"]["terms"]["wazuh.agent.id"], nlohmann::json::array({agentId}));
 }
 
+/// With a cluster name, the delete query filters by agent.id and cluster.name.
+TEST_F(IndexerConnectorTest, SyncDeleteByQueryScopedByClusterName)
+{
+    std::atomic<bool> callbackCalled {false};
+    std::string receivedBody;
+
+    m_indexerServers[A_IDX]->setPublishCallback(
+        [&](const std::string& body)
+        {
+            receivedBody = body;
+            callbackCalled = true;
+        });
+
+    nlohmann::json config;
+    config["hosts"] = nlohmann::json::array({A_ADDRESS});
+    IndexerConnectorSync connector(config);
+
+    const std::string agentId {"001"};
+    const std::string clusterName {"prod-cluster"};
+    connector.deleteByQuery(INDEXER_NAME, agentId, clusterName);
+    ASSERT_NO_THROW(connector.flush());
+
+    ASSERT_TRUE(callbackCalled);
+
+    const auto body = nlohmann::json::parse(receivedBody);
+    const auto& filter = body["query"]["bool"]["filter"];
+    ASSERT_TRUE(filter.is_array());
+    ASSERT_EQ(filter.size(), 2u);
+    EXPECT_EQ(filter[0]["terms"]["wazuh.agent.id"], nlohmann::json::array({agentId}));
+    EXPECT_EQ(filter[1]["term"]["wazuh.cluster.name"], clusterName);
+}
+
 /**
  * @brief IDs containing characters that require JSON escaping (control bytes,
  * backslashes, double quotes) are transmitted correctly over real HTTP so that

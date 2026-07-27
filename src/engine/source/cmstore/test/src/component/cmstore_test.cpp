@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 
+#include <base/logging.hpp>
 #include <cmstore/cmstore.hpp>
 
 // ======================================================================
@@ -146,6 +147,7 @@ class CMStoreComponentTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        logging::testInit();
         m_baseDir = std::make_unique<TempDir>("cmstore_base");
         m_outputsDir = std::make_unique<TempDir>("cmstore_outputs");
         std::filesystem::create_directories(m_outputsDir->path() / "default");
@@ -217,8 +219,7 @@ TEST_F(CMStoreComponentTest, FullFilterLifecycle)
     auto store = createStore();
     auto ns = store->createNamespace(cm::store::NamespaceId("filterlife"));
 
-    auto uuid =
-        ns->createResource("filter/allow/0", cm::store::ResourceType::FILTER, makeFilterJson("filter/allow/0"));
+    auto uuid = ns->createResource("filter/allow/0", cm::store::ResourceType::FILTER, makeFilterJson("filter/allow/0"));
     EXPECT_FALSE(uuid.empty());
 
     EXPECT_TRUE(ns->assetExistsByName(base::Name("filter/allow/0")));
@@ -504,8 +505,7 @@ TEST_F(CMStoreComponentTest, UpdateResourceByUUID)
     auto store = createStore();
     auto ns = store->createNamespace(cm::store::NamespaceId("updns"));
 
-    auto uuid =
-        ns->createResource("decoder/upd/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upd/0"));
+    auto uuid = ns->createResource("decoder/upd/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/upd/0"));
 
     EXPECT_NO_THROW(ns->updateResourceByUUID(uuid, makeDecoderJson("decoder/upd/0", uuid, false)));
 
@@ -528,7 +528,8 @@ TEST_F(CMStoreComponentTest, UpdateWithMismatchedUUIDAThrows)
 
     // Update with a different UUID in content
     auto badJson = makeDecoderJson("decoder/m/0", "00000000-0000-4000-a000-000000000000");
-    EXPECT_THROW(ns->updateResourceByName("decoder/m/0", cm::store::ResourceType::DECODER, badJson), std::runtime_error);
+    EXPECT_THROW(ns->updateResourceByName("decoder/m/0", cm::store::ResourceType::DECODER, badJson),
+                 std::runtime_error);
     EXPECT_THROW(ns->updateResourceByUUID(uuid, badJson), std::runtime_error);
 }
 
@@ -539,8 +540,9 @@ TEST_F(CMStoreComponentTest, CreateDuplicateResourceThrows)
 
     ns->createResource("decoder/dup/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/dup/0"));
 
-    EXPECT_THROW(ns->createResource("decoder/dup/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/dup/0")),
-                 std::runtime_error);
+    EXPECT_THROW(
+        ns->createResource("decoder/dup/0", cm::store::ResourceType::DECODER, makeDecoderJson("decoder/dup/0")),
+        std::runtime_error);
 }
 
 TEST_F(CMStoreComponentTest, DeleteNonexistentResourceThrows)

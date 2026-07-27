@@ -15,6 +15,13 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Granted here so the reusable engine-standalone workflow (S3 upload/download
+# over OIDC, plus a ghcr pull with GITHUB_TOKEN) can request these permissions.
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
 jobs:
   call-build-workflow:
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
