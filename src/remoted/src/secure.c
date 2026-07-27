@@ -317,8 +317,20 @@ void HandleSecure()
         rm_config.worker_threads = worker_pool;
         rm_config.queue_size = (int)logr.queue_size;
         // rm_config.port is the HTTPS listening port -- unrelated to logr.port (remoted's
-        // own classic TCP/UDP port, already bound by the time we get here).
+        // own classic TCP/UDP port, already bound by the time we get here). Left at 0 so
+        // the module falls back to its own built-in default (it's a regular <remote>
+        // setting, not an internal option -- see remoted_module_https_config() below).
         remoted_module_https_config(&rm_config);
+        // rm_config.max_inflight_bytes caps the HTTPS server's in-flight (unprocessed)
+        // request payload before it sheds load with 503. NOT logr.queue_size (that is an
+        // event COUNT, not bytes).
+        rm_config.max_inflight_bytes = (256 * 1024 * 1024); // 256 MiB
+        // rm_config.max_parallel_connections caps simultaneous HTTPS connections, bounding the
+        // read-phase memory peak (~ max_parallel_connections * max body size).
+        rm_config.max_parallel_connections = 512;
+        // rm_config.max_deferred_requests caps requests parked awaiting a downstream service (503
+        // over it). No Retry-After is sent: the agent runs its own retry/backoff on a 503.
+        rm_config.max_deferred_requests = 256;
         rm_config.worker_node = logr.worker_node;
 
         char *rm_cluster_name = get_cluster_name();

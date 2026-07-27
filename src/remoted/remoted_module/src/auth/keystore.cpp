@@ -11,6 +11,7 @@
 
 #include "keystore.hpp"
 
+#include <charconv>
 #include <fstream>
 #include <sstream>
 
@@ -46,6 +47,20 @@ namespace remoted::auth
             }
             return bytes;
         }
+
+        // Non-negative integer, fully consuming the field. An agent id is always numeric by
+        // design; a client.keys line whose id column isn't can never match a real lookup, so it
+        // is skipped at load time rather than kept around as dead weight.
+        std::optional<AgentId> parseAgentId(const std::string& id)
+        {
+            AgentId value = 0;
+            const auto [ptr, ec] = std::from_chars(id.data(), id.data() + id.size(), value);
+            if (id.empty() || ec != std::errc {} || ptr != id.data() + id.size())
+            {
+                return std::nullopt;
+            }
+            return value;
+        }
     } // namespace
 
     Keystore::Keystore(std::string path)
@@ -62,7 +77,7 @@ namespace remoted::auth
             return -1;
         }
 
-        std::unordered_map<std::string, std::vector<std::uint8_t>> loaded;
+        std::unordered_map<AgentId, std::vector<std::uint8_t>> loaded;
         std::string line;
         int count = 0;
 
@@ -85,7 +100,14 @@ namespace remoted::auth
                 continue; // removed/disabled entry -- same as OS_ReadKeys()
             }
 
-            loaded[id] = decodeKey(key);
+            const auto agentId = parseAgentId(id);
+            if (!agentId)
+            {
+                // TODO: Log warning: "client.keys line %d: agent id '%s' is not a non-negative integer, skipping"
+                continue; // id column isn't numeric -- can never match a real lookup
+            }
+
+            loaded[*agentId] = decodeKey(key);
             ++count;
         }
 
@@ -96,7 +118,7 @@ namespace remoted::auth
         return count;
     }
 
-    std::optional<std::vector<std::uint8_t>> Keystore::keyFor(const std::string& agentId) const
+    std::optional<std::vector<std::uint8_t>> Keystore::keyFor(AgentId agentId) const
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         const auto it = m_keys.find(agentId);

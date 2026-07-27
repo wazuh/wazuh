@@ -23,7 +23,9 @@ target_include_directories(
           ${SRC_FOLDER}/shared_modules/common # commonDefs.h
           ${SRC_FOLDER}/external/cJSON) # cJSON.h (pulled by commonDefs.h)
 
-target_link_libraries(remoted_module PRIVATE pthread ext_restinio)
+# ext_restinio pulls in ssl/crypto transitively (cmac.cpp's EVP_MAC), so no explicit OpenSSL link
+# is needed here. ext_rapidjson: header-only, used to parse the /stateless payload's H line.
+target_link_libraries(remoted_module PRIVATE pthread ext_restinio ext_rapidjson)
 
 set_target_properties(remoted_module PROPERTIES BUILD_RPATH_USE_ORIGIN TRUE
                                                 BUILD_RPATH "$ORIGIN/../lib")

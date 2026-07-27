@@ -34,6 +34,15 @@ namespace
     constexpr std::size_t DEFAULT_CONCURRENT_ACCEPTS {2};
     constexpr std::size_t DEFAULT_BUFFER_SIZE {8192};
 
+    // Global cap on in-flight (unprocessed) request payload bytes. Bounds the worker-pool
+    // queue + handlers + deferred responses so a burst can't grow memory without limit;
+    // over it, new requests get 503.
+    constexpr std::size_t DEFAULT_MAX_INFLIGHT_BYTES {256U * 1024U * 1024U};
+
+    // Max simultaneous TCP connections. With DEFAULT_MAX_BODY_SIZE it bounds the read-phase
+    // peak (bodies being received before they reach the budget) to conns * max_body_size.
+    constexpr std::size_t DEFAULT_MAX_PARALLEL_CONNECTIONS {512};
+
     // These paths are evaluated after remoted has entered its chroot.
     // Host paths: /var/ossec/etc/remoted-https/server.{crt,key}
     constexpr auto DEFAULT_CERTIFICATE_PATH {"/etc/remoted-https/server.crt"};
@@ -71,6 +80,17 @@ namespace remoted::http
             resolveUnsigned(config.http_max_pipelined_requests, DEFAULT_MAX_PIPELINED_REQUESTS);
         result.concurrentAccepts = resolveUnsigned(config.http_concurrent_accepts, DEFAULT_CONCURRENT_ACCEPTS);
         result.bufferSize = resolveUnsigned(config.http_buffer_size, DEFAULT_BUFFER_SIZE);
+
+        // Memory-management knobs come from remoted's config struct (a positive value wins),
+        // otherwise the built-in default -- deliberately NOT env-driven. The transport clamps the
+        // in-flight budget to at least one max-size body at start() so a too-small value can't
+        // reject everything.
+        result.maxInFlightBytes = config.max_inflight_bytes > 0 ? static_cast<std::size_t>(config.max_inflight_bytes)
+                                                                : DEFAULT_MAX_INFLIGHT_BYTES;
+
+        result.maxParallelConnections = config.max_parallel_connections > 0
+                                            ? static_cast<std::size_t>(config.max_parallel_connections)
+                                            : DEFAULT_MAX_PARALLEL_CONNECTIONS;
 
         result.certificatePath =
             config.certificate_path[0] != '\0' ? std::string {config.certificate_path} : DEFAULT_CERTIFICATE_PATH;

@@ -88,22 +88,36 @@ collapse to a **single generic `401`** so a client cannot tell which specific ch
 | Unsupported `protocol-version` | `400` | `Unsupported protocol-version` |
 | Missing / malformed `Authorization`, unknown agent, unusable key, expired or future timestamp, invalid MAC | `401` | `Invalid client authentication` |
 | Body exceeds the auth body limit (10 MiB) | `413` | `Request payload is too large` |
+| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id` | `400` | `Invalid event batch` |
+| Downstream rejected the batch (bad H/E) | `400` | `Invalid event batch` |
+| Out of capacity, or downstream unreachable/errored | `503` | `Service unavailable` |
 | Endpoint handler raised an unexpected error | `500` | `Internal server error` |
 
-> **Planned / not yet implemented:** H/E batch validation (`400 Invalid event batch`) and the
-> check that the payload's `wazuh.agent.id` matches the authenticated `agent-id`
-> (`PayloadAgentMismatch`) are part of the target contract but are **not** performed today, because
-> the endpoint does not parse the payload yet.
+The payload-identity check runs **before** the batch is forwarded: a mismatch never reaches the
+engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
+engine itself rejects, so a client cannot distinguish the two causes.
 
 Requests larger than the 16 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.
+
+The server bounds capacity in two phases and sheds excess load with a plain **`503 Service
+Unavailable`** (server-side load-shedding, not per-client rate-limiting; the connection is closed; no
+`Retry-After` — the agent runs its own retry/backoff): the **in-flight byte budget** bounds total
+unprocessed payload in memory, and the **deferred-work limiter** bounds how many requests are parked
+awaiting the downstream service. The liveness `GET /` is exempt from the byte budget, so it stays
+`200` under pressure. See the memory settings below.
 
 ## Endpoints
 
 - **`GET /`** — unauthenticated health probe. Returns `200` with
   `{"status":"ok","module":"remoted"}`.
-- **`POST /stateless`** — authenticated event ingestion endpoint (see status note above). On a
-  valid signature it returns `200` with an empty body; otherwise it returns the error above.
+- **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
+  cross-checks the H line's `wazuh.agent.id` against the authenticated `agent-id` (**`400`** on a
+  missing/malformed header or a mismatch); only then does it forward the H/E batch to the engine's
+  event ingress over a Unix-domain socket (`POST /events/enriched`) and reply from the downstream
+  result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
+  **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
+  return the errors above.
 
 The machine-readable contract is published as OpenAPI — see the
 [endpoint reference](stateless-api-reference.html) (source: [`stateless-api.yaml`](stateless-api.yaml)).
@@ -149,8 +163,28 @@ fields unset -- in practice the built-in defaults below apply.
 | TLS certificate chain | `/etc/remoted-https/server.crt` |
 | TLS private key | `/etc/remoted-https/server.key` |
 
+The **memory-management / capacity** settings are a separate, third group: `remoted` sets them
+directly on the C-ABI struct in `secure.c` (→ built-in default when unset) and they are
+deliberately **not** internal options -- they bound in-memory resource usage rather than tune the
+transport, so they don't go through `remoted_module_https_config()`/the internal-options table
+above.
+
+| Setting | Default | Source |
+|---|---|---|
+| Max in-flight payload bytes (→ `503`) | `256 MiB` | remoted config `max_inflight_bytes` |
+| Max simultaneous connections | `512` | remoted config `max_parallel_connections` |
+| Max deferred requests awaiting downstream (→ `503`) | `256` | remoted config `max_deferred_requests` |
+
+The capacity limits are **layered**: the transport max body size caps a single request's peak
+(RESTinio rejects an oversized `Content-Length` early by closing the connection), the max connections
+caps how many bodies can be read at once (peak ≈ max connections × max body size), the in-flight byte
+budget caps the total accepted-but-unprocessed payload in memory, and the deferred-request limiter
+caps how many requests are parked awaiting a downstream service. Exhausting either budget → a plain
+`503` (the agent retries; the liveness `GET /` is exempt from the byte budget).
+
 > There is no `ossec.conf` (`<remote>`) setting for the HTTPS listener yet; configuration is
-> limited to the internal options above and the certificate files on disk.
+> limited to the internal options above, the memory-management settings, and the certificate
+> files on disk.
 
 ## Testing
 

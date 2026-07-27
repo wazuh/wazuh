@@ -38,8 +38,10 @@ namespace remoted::http
         RestinioHttpServer(const RestinioHttpServer&) = delete;
         RestinioHttpServer& operator=(const RestinioHttpServer&) = delete;
 
-        void addRoute(Method method, const std::string& path, RouteHandler handler) override;
+        void
+        addRoute(Method method, const std::string& path, RouteHandler handler, bool countAgainstBudget = true) override;
         void start(const HttpServerConfig& config) override;
+        void stopAccepting() noexcept override;
         void stop() noexcept override;
 
     private:

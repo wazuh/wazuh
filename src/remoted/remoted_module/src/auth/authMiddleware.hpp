@@ -18,7 +18,6 @@
 #include <string>
 #include <string_view>
 #include <variant>
-#include <vector>
 
 #include "authTypes.hpp"
 #include "cmac.hpp"
@@ -63,8 +62,9 @@ namespace remoted::auth
             /**
              * @brief Step 6: feed one body chunk into the running MAC.
              *
-             * Enforces the configured max body size as bytes arrive, before
-             * the whole body is buffered.
+             * Streams each chunk straight into the incremental AES-CMAC; the body
+             * is NOT buffered here. Enforces the configured max body size as bytes
+             * arrive (via a running counter), independent of any buffering.
              *
              * @param data Pointer to the chunk's bytes.
              * @param len  Number of bytes in this chunk.
@@ -103,7 +103,6 @@ namespace remoted::auth
             std::array<std::uint8_t, Cmac::kMacSize> m_expectedMac {};
             std::size_t m_maxBodySize = 0;
             std::size_t m_bodySizeSoFar = 0;
-            std::vector<std::uint8_t> m_body;
             std::unique_ptr<Cmac> m_cmac;
         };
 
