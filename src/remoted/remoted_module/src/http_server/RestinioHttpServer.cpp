@@ -219,6 +219,37 @@ namespace
         }
     }
 
+    // TODO: Do we need to perform this transformation here? Or will the data already be in client.keys?
+    std::string normalizeRemoteAddress(asio::ip::address address)
+    {
+        if (address.is_v6() && address.to_v6().is_v4_mapped())
+        {
+            address = asio::ip::make_address_v4(asio::ip::v4_mapped, address.to_v6());
+        }
+
+        return address.to_string();
+    }
+
+    // Bracket an IPv6 literal for URL-style display (RFC 3986); IPv4 and hostnames
+    // pass through unchanged.
+    std::string formatHostForDisplay(const std::string& address)
+    {
+        if (address.find(':') != std::string::npos)
+        {
+            return "[" + address + "]";
+        }
+
+        return address;
+    }
+
+    // Whether a bind address string is IPv6 -- parsed the same way RESTinio itself
+    bool isIpv6Address(const std::string& address)
+    {
+        asio::error_code ec;
+        const auto parsed = asio::ip::make_address(address, ec);
+        return !ec && parsed.is_v6();
+    }
+
     // Build the neutral request view from a RESTinio request handle.
     remoted::http::HttpRequest makeHttpRequest(remoted::http::Method method, const restinio::request_handle_t& req)
     {
@@ -228,6 +259,7 @@ namespace
         // signs it verbatim, so it must not be path-only or normalized.
         request.target = req->header().request_target();
         request.body = req->body();
+        request.remoteIp = normalizeRemoteAddress(req->remote_endpoint().address());
 
         req->header().for_each_field(
             [&request](const restinio::http_header_field_t& field)
@@ -668,16 +700,39 @@ namespace remoted::http
 
         auto requestRouter = m_impl->buildRouter();
 
+        const bool bindsIpv6 = isIpv6Address(config.bindAddress);
+
+        if (config.dualStackMode != DualStackMode::Unset && !bindsIpv6)
+        {
+            LOGFN_WARN(logFn(),
+                       "dual_stack is only meaningful for an IPv6 bind address; ignoring it for '%s'.",
+                       config.bindAddress.c_str());
+        }
+
         restinio::server_settings_t<ServerTraits> settings;
 
         settings.address(config.bindAddress)
             .port(config.port)
-            .protocol(asio::ip::tcp::v4())
-            // Set SO_REUSEADDR on the listening socket so a restart can rebind the port
-            // immediately instead of failing with EADDRINUSE while a previous socket lingers
-            // in TIME_WAIT. (RESTinio enables this by default; kept explicit for intent.)
-            .acceptor_options_setter([](auto& options)
-                                     { options.set_option(asio::ip::tcp::acceptor::reuse_address(true)); })
+            // No .protocol() call: RESTinio derives the actual socket family from the
+            // address itself (asio::ip::make_address() autodetects IPv4 vs IPv6), so
+            // config.bindAddress works for either -- a literal .protocol(tcp::v4())
+            // here would only matter if no address were ever set, which never happens.
+            .acceptor_options_setter(
+                [dualStackMode = config.dualStackMode, bindsIpv6](auto& options)
+                {
+                    // Set SO_REUSEADDR on the listening socket so a restart can rebind the
+                    // port immediately instead of failing with EADDRINUSE while a previous
+                    // socket lingers in TIME_WAIT. (RESTinio enables this by default; kept
+                    // explicit for intent.)
+                    options.set_option(asio::ip::tcp::acceptor::reuse_address(true));
+
+                    // IPV6_V6ONLY only applies to an IPv6 socket; a no-op (and possibly an
+                    // error) on IPv4, so only touch it when the bind address is IPv6.
+                    if (bindsIpv6 && dualStackMode != DualStackMode::Unset)
+                    {
+                        options.set_option(asio::ip::v6_only(dualStackMode == DualStackMode::Disabled));
+                    }
+                })
             .request_handler(std::move(requestRouter))
             .tls_context(std::move(tlsContext))
             .buffer_size(config.bufferSize)
@@ -716,10 +771,11 @@ namespace remoted::http
             throw;
         }
 
+        const auto displayAddress = formatHostForDisplay(config.bindAddress);
         LOGFN_INFO(logFn(),
                    "HTTP server listening on https://%s:%u (%zu I/O thread(s), %zu worker thread(s), max body %zu "
                    "bytes, in-flight budget %zu bytes%s, max %zu connection(s)).",
-                   config.bindAddress.c_str(),
+                   displayAddress.c_str(),
                    static_cast<unsigned int>(config.port),
                    config.ioThreads,
                    config.workerThreads,

@@ -29,14 +29,15 @@ namespace remoted::http
      * `remoted_module_https_config()` in secure.c) before this function ever runs, so a
      * positive value here just means "an internal option was set"; <=0 means "not set,
      * use the built-in default". Bind address, port, max body size, the
-     * certificate/private key paths, and the mTLS settings (ca, ciphers,
-     * verification_mode) are regular `<remote><https>` settings that remoted copies
-     * straight from the parsed config (see HandleSecure() in secure.c); an unset/empty
-     * value here means the operator did not configure that `<https>` option, and it
-     * resolves to its built-in default (verification_mode defaults to disabled). The
-     * in-flight byte budget and max parallel connections are set directly by remoted in
-     * secure.c (deliberately not an internal option), independent of
-     * `remoted_module_https_config()`.
+     * certificate/private key paths, the mTLS settings (ca, ciphers,
+     * verification_mode), and dual_stack are regular `<remote><https>` settings that
+     * remoted copies straight from the parsed config (see HandleSecure() in secure.c);
+     * an unset/empty value here means the operator did not configure that `<https>`
+     * option, and it resolves to its built-in default (verification_mode defaults to
+     * disabled; dual_stack defaults to the OS's own default, and only applies to an
+     * IPv6 bind address). The in-flight byte budget and max parallel connections are
+     * set directly by remoted in secure.c (deliberately not an internal option),
+     * independent of `remoted_module_https_config()`.
      *
      * @param config Configuration handed by remoted.
      * @return Resolved HttpServerConfig.

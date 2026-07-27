@@ -33,6 +33,14 @@
 #define REMOTED_HTTPS_VERIFY_FULL        2
 #define REMOTED_HTTPS_VERIFY_DEFAULT     REMOTED_HTTPS_VERIFY_NONE
 
+/* <remote><https><dual_stack> values. Only meaningful when bind_addr resolves to
+ * IPv6 (e.g. "::"): controls the IPV6_V6ONLY socket option, i.e. whether the same
+ * socket also accepts IPv4 clients. Kept in sync by hand with the C-ABI mirror in
+ * src/remoted/remoted_module/include/remoted_module.h. */
+#define REMOTED_HTTPS_DUAL_STACK_UNSET 0 ///< Not configured -> OS default (dual-stack on Linux)
+#define REMOTED_HTTPS_DUAL_STACK_YES   1 ///< Force dual-stack on (IPV6_V6ONLY=0): also accept IPv4
+#define REMOTED_HTTPS_DUAL_STACK_NO    2 ///< Force IPv6-only (IPV6_V6ONLY=1): reject IPv4 on this socket
+
 #include "shared.h"
 #include "global-config.h"
 
@@ -48,6 +56,7 @@ typedef struct _remoted_https_config {
     char *ciphers;             ///< NULL -> library default cipher list
     int verification_mode;     ///< REMOTED_HTTPS_VERIFY_*
     long max_body_size;        ///< bytes; 0 -> module default/env
+    int dual_stack;            ///< REMOTED_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind_addr
 } remoted_https_config;
 
 /* socklen_t header */
