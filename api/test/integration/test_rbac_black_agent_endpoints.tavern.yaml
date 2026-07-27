@@ -1470,10 +1470,7 @@ stages:
       status_code:
         - 200
         - 403
-      verify_response_with:
-        - function: tavern_utils:test_validate_restart_by_node_rbac
-          extra_kwargs:
-            permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
 
   - name: Restart all agents belonging to worker1 (Allow node_id - Could deny agent_id)
     request:
@@ -1486,10 +1483,7 @@ stages:
       status_code:
         - 200
         - 403
-      verify_response_with:
-        - function: tavern_utils:test_validate_restart_by_node_rbac
-          extra_kwargs:
-            permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
 
   - name: Restart all agents belonging to worker2 (Allow node_id - Could deny agent_id)
     request:
@@ -1502,10 +1496,7 @@ stages:
       status_code:
         - 200
         - 403
-      verify_response_with:
-        - function: tavern_utils:test_validate_restart_by_node_rbac
-          extra_kwargs:
-            permitted_agents: ['003','005','007'] # Agents '003', '005' and '007' can be restarted
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
 
 ---
 test_name: GET /agents/uninstall

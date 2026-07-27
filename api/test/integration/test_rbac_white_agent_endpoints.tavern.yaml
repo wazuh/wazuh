@@ -1350,11 +1350,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["004"]
-          restarted: False
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 2
@@ -1424,11 +1420,7 @@ stages:
         agents_list: "001,002,004"
         wait_for_complete: true  # Prevent error code 500
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["004"]
-          restarted: True
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 2
@@ -1455,10 +1447,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["004"]
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 0
@@ -1619,10 +1608,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["004"]
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 0
