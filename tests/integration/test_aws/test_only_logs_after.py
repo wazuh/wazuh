@@ -40,7 +40,7 @@ configurator.configure_test(configuration_file='bucket_configuration_without_onl
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_without_only_logs_after(
-        test_configuration, metadata, create_test_bucket, manage_bucket_files,
+        test_configuration, metadata, mark_cases_as_skipped, create_test_bucket, manage_bucket_files,
         load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function,
         file_monitoring
@@ -296,7 +296,7 @@ configurator.configure_test(configuration_file='bucket_configuration_with_only_l
                          zip(configurator.test_configuration_template, configurator.metadata),
                          ids=configurator.cases_ids)
 def test_bucket_with_only_logs_after(
-        test_configuration, metadata, create_test_bucket, manage_bucket_files,
+        test_configuration, metadata, mark_cases_as_skipped, create_test_bucket, manage_bucket_files,
         load_wazuh_basic_configuration, set_wazuh_configuration, clean_s3_cloudtrail_db,
         configure_local_internal_options_function, truncate_monitored_files, restart_wazuh_function, file_monitoring
 ):
@@ -709,7 +709,7 @@ configurator.configure_test(cases_file='cases_bucket_multiple_calls.yaml')
                          configurator.metadata,
                          ids=configurator.cases_ids)
 def test_bucket_multiple_calls(
-        metadata, clean_s3_cloudtrail_db, s3_client, create_test_bucket, manage_bucket_files,
+        metadata, mark_cases_as_skipped, clean_s3_cloudtrail_db, s3_client, create_test_bucket, manage_bucket_files,
         load_wazuh_basic_configuration, restart_wazuh_function
 ):
     """
@@ -766,6 +766,7 @@ def test_bucket_multiple_calls(
 
     bucket_type = metadata['bucket_type']
     bucket_name = metadata['bucket_name']
+    data_bucket_name = metadata.get('original_bucket_name', bucket_name)
     expected_results = metadata['expected_results']
     path = metadata.get('path')
     region = US_EAST_1_REGION

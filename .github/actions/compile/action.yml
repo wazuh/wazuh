@@ -11,6 +11,8 @@ runs:
   using: "composite"
   steps:
       - name: Compile
+        env:
+          INPUT_PATH: ${{ inputs.path }}
         run: |
           SRC_FOLDER=$(pwd)/src
 
@@ -28,7 +30,7 @@ runs:
           echo $VERSION
           echo $REVISION
 
-          cd ${{ inputs.path }}
+          cd "$INPUT_PATH"
           mkdir -p build && cd build
           cmake -DSRC_FOLDER=${SRC_FOLDER} -DVERSION="$VERSION" -DREVISION="$REVISION" .. && make -j2
         shell: bash

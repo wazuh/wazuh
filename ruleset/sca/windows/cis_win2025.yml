@@ -8353,7 +8353,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanServer'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanServer -> MinSmb2Dialect'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanServer -> MinSmb2Dialect -> 311'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanServer -> MinSmb2Dialect -> 785'
 
   # 18.6.7.6 (L1) Ensure 'Set authentication rate limiter delay (milliseconds)' is set to 'Enabled: 2000' or more. (Automated)
   - id: 36673
@@ -8736,7 +8736,7 @@ checks:
     rules:
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation'
       - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation -> MinSmb2Dialect'
-      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation -> MinSmb2Dialect -> 311'
+      - 'r:HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\LanmanWorkstation -> MinSmb2Dialect -> 785'
 
   # 18.6.8.8 (L1) Ensure 'Require Encryption' is set to 'Enabled'. (Automated)
   - id: 36681

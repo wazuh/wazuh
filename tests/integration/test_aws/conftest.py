@@ -45,6 +45,14 @@ _PERMANENT_SEED_KEYS = frozenset({
 # VPC permanent seed is identified by this flow-log-ID substring in its S3 key.
 _PERMANENT_SEED_FLOW_LOG_IDS = frozenset({'fl-0754d951c16f517fa'})
 
+_GUARDDUTY_SHARED_BUCKET_INCOMPATIBLE = {
+    'guardduty_discard_regex',
+    'guardduty_without_only_logs_after',
+    'guardduty_with_only_logs_after',
+    'guardduty_only_logs_after_multiple_calls',
+    'guardduty_remove_from_bucket',
+}
+
 
 def _safe_delete_key(key, bucket_name, s3_client):
     """Delete one key from the shared bucket; log failures; refuse to touch permanent seeds."""
@@ -88,6 +96,14 @@ def _assert_prefix_clean(bucket_name, key, s3_client):
 def mark_cases_as_skipped(metadata):
     if metadata['name'] in ['alb_remove_from_bucket', 'clb_remove_from_bucket', 'nlb_remove_from_bucket']:
         pytest.skip(reason='ALB, CLB and NLB integrations are removing older logs from other region')
+    if metadata['name'] in _GUARDDUTY_SHARED_BUCKET_INCOMPATIBLE:
+        pytest.skip(
+            reason=(
+                'GuardDuty Kinesis test data is incompatible with the shared bucket: '
+                'check_guardduty_type() always returns GuardDutyNative because the shared bucket '
+                'contains permanent AWSLogs/ seeds. These cases do not exist in the 5.x branch.'
+            )
+        )
 
 
 """Boto3 client fixtures"""

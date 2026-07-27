@@ -292,6 +292,15 @@ def test_ac_connection_lost(cancel_tasks_mock):
         logger_mock.assert_called_once_with(f"Connection closed due to an unhandled error: {WazuhException(1001)}\n",
                                             exc_info=False)
 
+    # Test that a connection reset/aborted by the peer is logged as a warning, not an error
+    for reset_exc in (ConnectionResetError('[Errno 104] Connection reset by peer'), ConnectionAbortedError()):
+        with patch.object(logging.getLogger('wazuh'), "warning") as warning_logger_mock:
+            with patch.object(logging.getLogger('wazuh'), "error") as error_logger_mock:
+                abstract_client.connection_lost(exc=reset_exc)
+                warning_logger_mock.assert_called_once_with(f"Connection closed by the peer: {reset_exc}. "
+                                                            f"Reconnecting...")
+                error_logger_mock.assert_not_called()
+
 def test_ac_cancel_all_tasks():
     """Check whether all tasks and connections are being properly closed."""
 

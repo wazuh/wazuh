@@ -186,7 +186,7 @@
     BUCKET_NAME: wazuh-waf-integration-tests
     DISCARD_FIELD: action
     DISCARD_REGEX: BLOCK
-    PATH: ''
+    PATH: wazuh-waf-integration-tests
   metadata:
     resource_type: bucket
     bucket_type: waf
@@ -196,6 +196,7 @@
     discard_regex: BLOCK
     expected_results: 1
     skipped_logs: 1
+    path: wazuh-waf-integration-tests
 
 - name: server_access_discard_regex
   description: Server Access discard regex configurations
@@ -204,7 +205,7 @@
     BUCKET_NAME: wazuh-server-access-integration-tests
     DISCARD_FIELD: http_status
     DISCARD_REGEX: '404'
-    PATH: ''
+    PATH: wazuh-server-access-integration-tests
   metadata:
     resource_type: bucket
     bucket_type: server_access
@@ -214,6 +215,8 @@
     discard_regex: '404'
     expected_results: 1
     skipped_logs: 1
+    path: wazuh-server-access-integration-tests
+    table_name: s3_server_access
 
 - name: cisco_umbrella_discard_regex
   description: CloudTrail discard regex configurations

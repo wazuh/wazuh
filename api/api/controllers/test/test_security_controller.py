@@ -849,7 +849,7 @@ async def test_remove_role_rule(mock_exc, mock_dapi, mock_remove, mock_dfunc, mo
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc):
+async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_rbac_resources' endpoint is working as expected."""
     result = await get_rbac_resources()
     f_kwargs = {'resource': None
@@ -859,7 +859,8 @@ async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc):
                                       request_type='local_any',
                                       is_async=False,
                                       logger=ANY,
-                                      wait_for_complete=True
+                                      wait_for_complete=True,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
@@ -871,7 +872,7 @@ async def test_get_rbac_resources(mock_exc, mock_dapi, mock_remove, mock_dfunc):
 @patch('api.controllers.security_controller.remove_nones_to_dict')
 @patch('api.controllers.security_controller.DistributedAPI.__init__', return_value=None)
 @patch('api.controllers.security_controller.raise_if_exc', return_value=CustomAffectedItems())
-async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
+async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc, mock_request):
     """Verify 'get_rbac_actions' endpoint is working as expected."""
     result = await get_rbac_actions()
     f_kwargs = {'endpoint': None
@@ -881,7 +882,8 @@ async def test_get_rbac_actions(mock_exc, mock_dapi, mock_remove, mock_dfunc):
                                       request_type='local_any',
                                       is_async=False,
                                       logger=ANY,
-                                      wait_for_complete=True
+                                      wait_for_complete=True,
+                                      rbac_permissions=mock_request.context['token_info']['rbac_policies']
                                       )
     mock_exc.assert_called_once_with(mock_dfunc.return_value)
     mock_remove.assert_called_once_with(f_kwargs)
