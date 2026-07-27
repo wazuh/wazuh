@@ -65,6 +65,18 @@ constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
 class RemotedModuleFacade final : public Singleton<RemotedModuleFacade>
 {
 public:
+    /**
+     * @brief Start the module: brings up the HTTPS transport synchronously and,
+     *        only on success, launches the worker thread.
+     *
+     * Throws if the HTTPS transport fails to start (most commonly: the TLS
+     * certificate/key are not in place, or unreadable). There is no retry: the
+     * failure is logged (so the reason is visible in remoted's own log, since an
+     * uncaught exception reaching secure.c/remoted.c's plain-C frames would
+     * otherwise terminate the process with nothing but a bare libstdc++ message
+     * on stderr) and then rethrown as-is. A missing certificate is fatal to the
+     * module, and thus to remoted -- it must not start without it.
+     */
     void
     start(const std::function<void(const int, const char*, const char*, const int, const char*, const char*, va_list)>&
               logFunction,
@@ -82,7 +94,6 @@ public:
         }
 
         m_config = configuration;
-        m_stopping = false;
 
         LOGFN_INFO(moduleLogFn(),
                    "Starting remoted module (port=%d, cluster='%s', node='%s', workerNode=%s).",
@@ -91,15 +102,27 @@ public:
                    m_config.node_name,
                    m_config.worker_node ? "true" : "false");
 
-        // The HTTPS server itself is started from run() (see tryStartHttpServer()),
-        // not here: that keeps start() fast and non-throwing even when the
-        // certificate/key aren't in place yet.
-        //
-        // m_running is set only AFTER the thread exists. Setting it first meant that a throwing
-        // std::thread constructor (EAGAIN / resource exhaustion) left the facade claiming to run
-        // with no worker: every later start() then hit the "already started" guard below and the
-        // module stayed permanently wedged, doing nothing. run() never reads m_running, and both
-        // m_stopping and m_config are already set, so deferring it is safe.
+        // Logged here and rethrown, NOT swallowed into a retry: a failure to start (e.g.
+        // missing/unreadable certificate or key) must still reach the caller as an exception, but
+        // without this log line it would otherwise crash the process with nothing but a bare
+        // libstdc++ "terminate called..." on stderr -- which remoted's daemonized process
+        // typically never surfaces anywhere the operator can see it.
+        try
+        {
+            startHttpServer();
+        }
+        catch (const std::exception& e)
+        {
+            LOGFN_ERROR(moduleLogFn(), "remoted HTTP server failed to start: %s", e.what());
+            throw;
+        }
+        LOGFN_INFO(moduleLogFn(), "remoted HTTP server started.");
+
+        // m_running is set only AFTER the worker thread exists. Setting it first meant that a
+        // throwing std::thread constructor (EAGAIN / resource exhaustion) left the facade claiming
+        // to run with no worker: every later start() then hit the "already started" guard above and
+        // the module stayed permanently wedged, doing nothing.
+        m_stopping = false;
         try
         {
             m_worker = std::thread(&RemotedModuleFacade::run, this);
@@ -107,6 +130,7 @@ public:
         catch (const std::exception& e)
         {
             LOGFN_ERROR(moduleLogFn(), "Could not launch the remoted module worker thread: %s.", e.what());
+            resetHttpServerStack();
             throw;
         }
 
@@ -283,83 +307,7 @@ private:
         }
     }
 
-    void tryStartHttpServer()
-    {
-        std::lock_guard<std::mutex> lock(m_lifecycleMutex);
-
-        if (m_stopping || m_httpServer)
-        {
-            return;
-        }
-
-        try
-        {
-            startHttpServer();
-            if (m_failedStartAttempts > 0)
-            {
-                LOGFN_INFO(
-                    moduleLogFn(), "remoted HTTP server started after %d failed attempt(s).", m_failedStartAttempts);
-            }
-            else
-            {
-                LOGFN_INFO(moduleLogFn(), "remoted HTTP server started.");
-            }
-            m_failedStartAttempts = 0;
-        }
-        catch (const std::exception& e)
-        {
-            reportFailedStart(e.what());
-            resetHttpServerStack();
-        }
-        catch (...)
-        {
-            reportFailedStart("non-standard exception");
-            resetHttpServerStack();
-        }
-    }
-
-    /**
-     * @brief Escalating report for a failed HTTPS server start.
-     *
-     * On a fresh install the certificate/key genuinely aren't in place yet, so the first failures
-     * are expected and the retry loop is doing its job. But a permanent misconfiguration (missing
-     * cert, key/cert mismatch, port already in use) used to produce the same WARN every 60 s
-     * forever, never escalating and never distinguishable from the benign case. Now: the first
-     * attempt is an ERROR (the operator sees the real reason immediately, including which file),
-     * the next hour of retries stays at debug, and after that one WARN per hour keeps it visible
-     * without flooding.
-     */
-    void reportFailedStart(const char* reason)
-    {
-        ++m_failedStartAttempts;
-
-        // 60 attempts at one per heartbeat (60 s) == roughly one hour.
-        constexpr int ATTEMPTS_PER_ESCALATION {60};
-
-        if (m_failedStartAttempts == 1)
-        {
-            LOGFN_ERROR(moduleLogFn(),
-                        "The remoted HTTPS server could not start: %s. Retrying every %d s. Check "
-                        "'certificate_path'/'private_key_path' and that the configured port is free.",
-                        reason,
-                        REMOTED_MODULE_HEARTBEAT_SECS);
-        }
-        else if (m_failedStartAttempts % ATTEMPTS_PER_ESCALATION == 0)
-        {
-            LOGFN_WARN(moduleLogFn(),
-                       "The remoted HTTPS server is still not running after %d attempt(s) (~%d minute(s)): %s",
-                       m_failedStartAttempts,
-                       m_failedStartAttempts * REMOTED_MODULE_HEARTBEAT_SECS / 60,
-                       reason);
-        }
-        else
-        {
-            LOGFN_DEBUG1(
-                moduleLogFn(), "remoted HTTPS server start attempt %d failed: %s", m_failedStartAttempts, reason);
-        }
-    }
-
-    /// Unwinds a partially-built HTTPS stack so the next attempt starts from scratch.
+    /// Unwinds a partially-built HTTPS stack after a failed/incomplete start().
     void resetHttpServerStack()
     {
         m_httpServer.reset();
@@ -377,9 +325,9 @@ private:
     void run()
     {
         // Exception barrier for the worker thread body: a throw escaping a bare std::thread
-        // terminates the whole remoted daemon. tryStartHttpServer() has its own catch, so what
-        // this really covers is a non-std::exception from there plus condition-variable and
-        // logging failures.
+        // terminates the whole remoted daemon. The HTTPS transport is already up by the time this
+        // thread starts (start() brought it up synchronously), so this really only covers
+        // condition-variable and logging failures in the heartbeat loop.
         try
         {
             runLoop();
@@ -404,8 +352,6 @@ private:
 
         while (true)
         {
-            tryStartHttpServer();
-
             std::unique_lock<std::mutex> lock(m_waitMutex);
             if (m_stopping)
             {
@@ -430,7 +376,6 @@ private:
     std::condition_variable m_waitCv;    ///< Wakes the worker on stop.
     std::atomic_bool m_stopping {false}; ///< Cooperative-shutdown flag.
     bool m_running {false};              ///< Whether the worker is active.
-    int m_failedStartAttempts {0};       ///< Consecutive failed HTTPS server starts; drives log escalation.
     std::thread m_worker;                ///< The C++ thread launched for remoted.
     remoted_module_config_t m_config {}; ///< Copy of the caller's configuration.
 

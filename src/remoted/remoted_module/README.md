@@ -499,7 +499,8 @@ protocol/socket event (a truncated read, a malformed parse, a header/URL over it
 overwhelmingly by client behavior — a portscanner, or deliberately-malformed negative-test traffic
 like `tools/send_stateless.py --all` — not "the manager is broken" in the sense this module reserves
 `LOGFN_ERROR` for. The one genuinely rare, operator-facing case (the acceptor failing to bind) is
-already surfaced distinctly by our own cert/key pre-check and `reportFailedStart()` escalation, so
+already surfaced distinctly by our own cert/key pre-check and `RemotedModuleFacade::start()`, which
+logs and rethrows on failure (there is no retry: remoted must not start without HTTPS up), so
 demoting RESTinio's own duplicate report of it costs nothing. The throttle matters even at DEBUG1:
 `Log::isDebugEnabled()` filters nothing today (`Log::GLOBAL_LOG_LEVEL` is `0` fixed), so the message
 builder — an allocation — runs unconditionally per call unless bounded; the real `dbg_flag` filter
