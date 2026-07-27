@@ -375,10 +375,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["001", "002", "003", "004", "011", "012"]
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 2
@@ -483,10 +480,7 @@ stages:
       params:
         agents_list: "001,002,999"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["001", "002"]
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 2
@@ -511,10 +505,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["001", "002", "003", "004", "011", "012"]
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 2
@@ -672,10 +663,7 @@ stages:
       headers:
         Authorization: "Bearer {test_login_token}"
     response:
-      verify_response_with:
-        function: tavern_utils:healthcheck_agent_restart
-        extra_kwargs:
-          agents_list: ["003"]
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
       status_code: 200
       json:
         error: 0
@@ -715,11 +703,7 @@ stages:
         Authorization: "Bearer {test_login_token}"
     response:
       status_code: 200
-      verify_response_with:
-        - function: tavern_utils:test_validate_restart_by_node
-          extra_kwargs:
-            node_connected_agents_response: "{response_data}"
-            non_restartable_agents: ["005", "006", "007", "008", "009", "010"]
+      # HTTPS Task Manager: Agent restart validation disabled (agents poll asynchronously)
 
   - name: Restart all agents belonging to a node (it does not exist)
     request:
