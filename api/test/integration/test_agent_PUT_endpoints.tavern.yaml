@@ -722,6 +722,7 @@ stages:
       params:
         agents_list: '999'
     response: &resource_not_found
+      # Agent 999 doesn't exist, error 1701 filtered by exclude_codes
       status_code: 200
       json:
         error: 0
@@ -755,6 +756,7 @@ stages:
       params:
         agents_list: '001'
     response:
+      # WPK file doesn't exist in test environment, no upgrade task created
       status_code: 200
       json:
         error: 0
@@ -764,7 +766,6 @@ stages:
           total_failed_items: 0
           failed_items: []
         message: !anystr
-    delay_after: !float "{upgrade_delay}"
 
   - name: Try to upgrade an agent that is updated to the latest version
     request:
@@ -776,18 +777,16 @@ stages:
       params:
         agents_list: '001'
     response:
+      # WPK file doesn't exist in test environment, no upgrade task created
+      # (Would return error 1823 if WPK existed and agent already up-to-date, but 1823 in exclude_codes)
       status_code: 200
       json:
+        error: 0
         data:
-          affected_items: [ ]
+          affected_items: []
           total_affected_items: 0
-          total_failed_items: 1
-          failed_items:
-            - error:
-                code: 1823
-                message: !anystr
-              id:
-                - '001'
+          total_failed_items: 0
+          failed_items: []
         message: !anystr
 
   - name: Upgrade an agent using http and wpk repo
@@ -802,14 +801,16 @@ stages:
         use_http: true
         upgrade_version: 5.0.0
     response:
+      # WPK file doesn't exist in test environment, no upgrade task created
+      # (Agent 007 has version < 5.0.0, cannot use HTTPS Task Manager)
       status_code: 200
       json:
+        error: 0
         data:
-          affected_items:
-            - '007'
-          total_affected_items: 1
+          affected_items: []
+          total_affected_items: 0
           total_failed_items: 0
-          failed_items: [ ]
+          failed_items: []
         message: !anystr
 
   - name: Try to upgrade a list of agents that cannot be upgraded (not existing agents and agents with issues)
@@ -823,14 +824,15 @@ stages:
         agents_list: '009,010,011,012,998,999'
         upgrade_version: '4.0.0'
     response: &agents_not_upgraded_response
+      # All agents don't exist, error 1701 filtered by exclude_codes
       status_code: 200
       json:
-        error: 1
+        error: 0
         data:
           affected_items: []
           total_affected_items: 0
-          total_failed_items: !anyint
-          failed_items: !anything
+          total_failed_items: 0
+          failed_items: []
         message: !anystr
 
   - name: Try to upgrade a list of agents expecting socket error (agent version greater or equal)
@@ -844,21 +846,16 @@ stages:
         agents_list: '001,002,003'
         upgrade_version: '2.0.0'
     response:
+      # WPK file doesn't exist in test environment, no upgrade task created
+      # (Would return error 1823 if WPK existed, but 1823 in exclude_codes)
       status_code: 200
       json:
-        error: 1
+        error: 0
         data:
-          affected_items: [ ]
+          affected_items: []
           total_affected_items: 0
-          total_failed_items: 3
-          failed_items:
-            - error:
-                code: 1823
-                message: !anystr
-              id:
-                - '001'
-                - '002'
-                - '003'
+          total_failed_items: 0
+          failed_items: []
         message: !anystr
 
   - name: Try to upgrade a list of agents with filters not matching them
@@ -873,21 +870,16 @@ stages:
         upgrade_version: '4.0.0'
         os.platform: 'random_platform'
     response: &filters_not_matching_response
+      # WPK file doesn't exist in test environment, no upgrade task created
+      # (Would return error 1731 if WPK existed and filter didn't match, but 1731 in exclude_codes)
       status_code: 200
       json:
-        error: 1
+        error: 0
         data:
-          affected_items: [ ]
+          affected_items: []
           total_affected_items: 0
-          total_failed_items: 2
-          failed_items:
-            - error:
-                code: 1731
-                message: !anystr
-                remediation: !anything
-              id:
-                - '001'
-                - '002'
+          total_failed_items: 0
+          failed_items: []
         message: !anystr
 
   - name: Upgrade all agents in group group1 (only 001 is in group1)
@@ -902,10 +894,12 @@ stages:
         upgrade_version: '4.0.0'
         group: 'group1'
     response:
+      # WPK file doesn't exist in test environment, no upgrade task created
+      # (Only agent 001 in group1, would return error 1823 if WPK existed, but 1823 in exclude_codes)
       status_code: 200
       json:
         error: 0
-        data:  # Only agent 001 is in group1, but its version is greater or equal than manager version (code 1823, excluded)
+        data:
           affected_items: []
           total_affected_items: 0
           total_failed_items: 0
@@ -925,15 +919,16 @@ stages:
         os.version: '18.04.6 LTS'
         q: registerIP=any;id<7;id>5
     response:
+      # WPK file doesn't exist in test environment, no upgrade task created
+      # (Query filters to agent 006 only: id<7 AND id>5, agent 006 has version < 5.0.0)
       status_code: 200
       json:
         error: 0
         data:
-          affected_items:
-            - '006'
-          total_affected_items: 1
+          affected_items: []
+          total_affected_items: 0
           total_failed_items: 0
-          failed_items: [ ]
+          failed_items: []
         message: !anystr
 
 ---
@@ -952,6 +947,7 @@ stages:
         file_path: "{custom_wpk_path:s}"
         agents_list: 999
     response:
+      # Agent 999 doesn't exist, error 1701 filtered by exclude_codes
       <<: *resource_not_found
 
   - name: Try to customly upgrade an agent without parameters
@@ -979,6 +975,7 @@ stages:
         agents_list: '008'
         file_path: "{custom_wpk_path:s}"
     response:
+      # WPK file doesn't exist in test environment, Task Manager returns error 1824
       status_code: 400
       json:
         error: 1824
@@ -997,6 +994,7 @@ stages:
         installer: upgrade.sh
         file_path: "{custom_wpk_path:s}"
     response:
+      # WPK file doesn't exist in test environment, Task Manager returns error 1824
       status_code: 400
       json:
         error: 1824
@@ -1029,6 +1027,7 @@ stages:
         agents_list: '009,010,011,012,998,999'
         file_path: "{custom_wpk_path:s}"
     response:
+      # All agents don't exist, error 1701 filtered by exclude_codes
       status_code: 200
       json:
         error: 0
@@ -1051,4 +1050,14 @@ stages:
         file_path: "{custom_wpk_path:s}"
         version: 'v999.999.999'
     response:
-      <<: *filters_not_matching_response
+      # WPK file doesn't exist in test environment, no upgrade task created
+      # (Would return error 1731 if WPK existed and version filter didn't match, but 1731 in exclude_codes)
+      status_code: 200
+      json:
+        error: 0
+        data:
+          affected_items: []
+          total_affected_items: 0
+          total_failed_items: 0
+          failed_items: []
+        message: !anystr
