@@ -266,7 +266,7 @@ void ControlStream::maybeDownloadConfig(const std::string& managerHash, const st
     }
 
     LOGFN_INFO(m_logFn, "Manager config hash %s differs from the local one; downloading "
-                        "the new configuration (group '%s').", managerHash.c_str(), group.c_str());
+               "the new configuration (group '%s').", managerHash.c_str(), group.c_str());
     auto file = m_fetcher.fetch(managerHash, group, waiter);
 
     if (!file)
@@ -302,7 +302,7 @@ void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
         if (!m_settingsLoopWarned)
         {
             LOGFN_WARN(m_logFn, "settings_hash %s still mismatches after a refresh; "
-                                "holding the baseline until it changes.", incoming.c_str());
+                       "holding the baseline until it changes.", incoming.c_str());
             m_settingsLoopWarned = true;
         }
 

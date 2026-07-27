@@ -128,7 +128,7 @@ void CallbackDispatcher::onConfigDownloaded(const std::string& configHash,
     enqueue([this, configHash, file = std::move(file)]
     {
         m_callbacks.on_config_downloaded(configHash.c_str(), file->path().c_str(),
-        m_callbacks.user_data);
+                                         m_callbacks.user_data);
     });
 }
 
@@ -140,4 +140,14 @@ void CallbackDispatcher::onStateChange(hc_conn_state_t state)
     }
 
     enqueue([this, state] { m_callbacks.on_state_change(state, m_callbacks.user_data); });
+}
+
+void CallbackDispatcher::onBufferLevel(hc_buffer_level_t level)
+{
+    if (m_callbacks.on_buffer_level == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, level] { m_callbacks.on_buffer_level(level, m_callbacks.user_data); });
 }

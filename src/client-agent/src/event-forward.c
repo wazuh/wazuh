@@ -14,6 +14,7 @@
 #include "state.h"
 #include "os_net.h"
 #include "sec.h"
+#include "https_client_bridge.h"
 
 
 /* Receive a message locally on the agent and forward it to the manager */
@@ -28,28 +29,26 @@ void *EventForward()
     msg[OS_MAXSTR] = '\0';
 
     while ((recv_b = recv(agt->m_queue, msg, OS_MAXSTR, MSG_DONTWAIT)) > 0) {
-        if (agt->buffer){
-            if (msg[0] == 's') {
+        if (msg[0] == 's') {
+            /* Stateful sync frames keep the legacy path until #37836 wires
+             * /stateful; only the stateless egress moves to HTTPS here (#37835). */
+            if (agt->buffer) {
                 if (buffer_append(msg, recv_b) < 0) {
                     break;
                 }
             } else {
-                msg[recv_b] = '\0';
-                if (buffer_append(msg, -1) < 0) {
+                w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+                if (send_msg(msg, recv_b) < 0) {
                     break;
                 }
             }
-        }else{
+        } else {
+            /* Stateless events -> HTTPS /stateless accumulator (#37835). The
+             * accumulator owns buffering and back-pressure (drop-newest), so a
+             * full accumulator drops this frame without breaking the intake loop. */
             w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-
-            if (msg[0] == 's') {
-                if (send_msg(msg, recv_b) < 0) break;
-            } else {
-                msg[recv_b] = '\0';
-                if (send_msg(msg, -1) < 0) break;
-            }
+            w_https_client_submit_event(msg, recv_b);
         }
-
     }
 
     return (NULL);

@@ -31,7 +31,7 @@
 
 #include <ctype.h>
 #include <pthread.h>
-#include <stdatomic.h>
+#include <stdbool.h>
 #include <unistd.h>
 
 #include "agentd.h" /* pulls defs.h (__wazuh_version), sec.h (keys), client-config.h (agt) */
@@ -44,10 +44,18 @@ static hc_handle *g_https_client = NULL;
  * before ever touching the handle, since hc_destroy() may run concurrently
  * with a retry loop that can take minutes against a down manager.
  *
+ * Guarded by g_https_client_lock, NOT a C11 _Atomic: mingw's <stdatomic.h>
+ * does not declare the generic atomic_load()/atomic_store() macros, so on
+ * winagent they compiled as implicit declarations and left undefined
+ * references that broke the wazuh-agent.exe link as soon as anything
+ * referenced this object. Every access already needed the lock for the handle
+ * it guards, so the mutex is the cheaper of the two fixes.
+ *
  * Not static: unit tests call bridge_reenroll_thread() directly (bypassing
  * w_https_client_start(), which is what normally resets this) and need to
- * reset it themselves between cases. */
-_Atomic bool g_https_client_stopping = false;
+ * reset it themselves between cases; they run single-threaded, so they assign
+ * it without the lock. */
+bool g_https_client_stopping = false;
 
 /* Serializes the re-enroll thread's key reload against shutdown's teardown.
  * The thread's hc_set_agent_key() touches the handle; w_https_client_stop()
@@ -59,6 +67,18 @@ _Atomic bool g_https_client_stopping = false;
  * not touched. NOT held across hc_destroy() (which joins module threads and
  * could run long / re-enter). */
 static pthread_mutex_t g_https_client_lock = PTHREAD_MUTEX_INITIALIZER;
+
+/* Reads the stopping flag for callers that are not already holding the lock
+ * (the re-enroll retry loop polls it between attempts). Callers that go on to
+ * touch the handle must instead read it inside their own critical section --
+ * checking here and acting later would reopen the check-then-act race. */
+static bool bridge_stopping(void)
+{
+    w_mutex_lock(&g_https_client_lock);
+    const bool stopping = g_https_client_stopping;
+    w_mutex_unlock(&g_https_client_lock);
+    return stopping;
+}
 
 /* Mirrors the incremental back-off already used for the initial-enrollment
  * loop (start_agent.c's w_agentd_keys_init: 5s steps up to a 60s cap). Not
@@ -87,7 +107,7 @@ void *bridge_reenroll_thread(void *arg)
     int delay_sleep = 0;
 
     while (enroll_result != 0) {
-        if (atomic_load(&g_https_client_stopping)) {
+        if (bridge_stopping()) {
             mdebug1("https_client: agent shutting down; abandoning re-enrollment.");
             return NULL;
         }
@@ -117,7 +137,7 @@ void *bridge_reenroll_thread(void *arg)
      * hc_destroy(), until we release. */
     w_mutex_lock(&g_https_client_lock);
 
-    if (atomic_load(&g_https_client_stopping)) {
+    if (g_https_client_stopping) {
         w_mutex_unlock(&g_https_client_lock);
         mdebug1("https_client: agent shutting down; not reloading the signing key.");
         return NULL;
@@ -214,6 +234,53 @@ static void bridge_on_state_change(int state, void *user_data)
     w_agentd_state_update(UPDATE_STATUS, (void *)bridge_map_agent_status(state));
 }
 
+/* Occupancy thresholds the module reports against, kept so the log lines can
+ * quote them exactly as buffer.c does. Filled by bridge_build_config() from the
+ * same internal options buffer_init() reads. */
+static int g_buffer_warn_level = 90;
+static int g_buffer_normal_level = 70;
+
+/* Reports the accumulator's occupancy exactly as the legacy leaky bucket
+ * reported the ring it replaced (client-agent/src/buffer.c): the same log lines
+ * and the same wazuh-agent.buffer state event, so the manager-side flood rules
+ * keep firing now that stateless events no longer pass through buffer_append().
+ *
+ * The state event bypasses the accumulator -- send_buffer_status_event() writes
+ * straight to send_msg() -- exactly as buffer.c bypassed the ring it reports
+ * on. A flood report must not queue behind the flood it is reporting. That
+ * keeps it on the legacy socket for now; it moves with every other stateless
+ * producer when the TCP path is retired. */
+static void bridge_on_buffer_level(int level, void *user_data)
+{
+    (void)user_data;
+
+    switch (level) {
+    case HC_BUFFER_WARNING:
+        mwarn(WARN_BUFFER, g_buffer_warn_level);
+        send_buffer_status_event("warning", 1);
+        break;
+
+    case HC_BUFFER_FULL:
+        mwarn(FULL_BUFFER);
+        send_buffer_status_event("full", 2);
+        break;
+
+    case HC_BUFFER_FLOOD:
+        mwarn(FLOODED_BUFFER);
+        send_buffer_status_event("flooded", 3);
+        break;
+
+    case HC_BUFFER_NORMAL:
+        mdebug1(NORMAL_BUFFER, g_buffer_normal_level);
+        send_buffer_status_event("normal", 0);
+        break;
+
+    default:
+        mdebug2("https_client: unknown buffer level %d.", level);
+        break;
+    }
+}
+
 /* Maps the agent config parser's verification_mode enum onto the module
  * ABI's hc_verify_mode_t. The two are defined in independent headers with
  * matching values by convention (both documented "FULL is 0, fails closed");
@@ -300,6 +367,24 @@ static bool bridge_build_config(hc_config_t *config)
     config->notify_interval_s = (uint32_t)agt->notify_time;
     strncpy(config->version, __wazuh_version, sizeof(config->version) - 1);
 
+    /* <client><batch>: the /stateless payload limit and flush window. Left at
+     * zero when unset, which the module reads as "use the default" (1 MiB,
+     * 10 s). buffer_cap_multiplier has no configuration surface yet, so the
+     * accumulator keeps its own 4x default. */
+    config->batch_size_bytes = (uint64_t)agt->batch.size;
+    config->batch_interval_ms = (uint32_t)(agt->batch.interval * 1000);
+
+    /* Occupancy ladder: the same internal options buffer_init() reads, so an
+     * operator who tuned the legacy client buffer keeps their thresholds now
+     * that the accumulator is what fills up. Read here rather than through
+     * buffer.c's globals because those are only set when the legacy buffer is
+     * enabled, and the accumulator applies either way. */
+    g_buffer_warn_level = getDefine_Int("agent", "warn_level", 1, 100);
+    g_buffer_normal_level = getDefine_Int("agent", "normal_level", 0, g_buffer_warn_level - 1);
+    config->buffer_warn_level = (uint32_t)g_buffer_warn_level;
+    config->buffer_normal_level = (uint32_t)g_buffer_normal_level;
+    config->buffer_flood_tolerance_s = (uint32_t)getDefine_Int("agent", "tolerance", 0, 600);
+
     char *checksum = getsharedfiles();
     if (checksum) {
         strncpy(config->config_checksum, checksum, sizeof(config->config_checksum) - 1);
@@ -318,7 +403,10 @@ static bool bridge_build_config(hc_config_t *config)
 void w_https_client_start(void)
 {
     minfo("https_client: starting.");
-    atomic_store(&g_https_client_stopping, false);
+
+    w_mutex_lock(&g_https_client_lock);
+    g_https_client_stopping = false;
+    w_mutex_unlock(&g_https_client_lock);
 
     hc_config_t config;
     if (!bridge_build_config(&config)) {
@@ -332,6 +420,7 @@ void w_https_client_start(void)
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
     callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_state_change = bridge_on_state_change;
+    callbacks.on_buffer_level = bridge_on_buffer_level;
 
     g_https_client = hc_create(&config, &callbacks);
     if (!g_https_client) {
@@ -353,11 +442,42 @@ void w_https_client_stop(void)
      * continue) or set the flag before the thread checks it (so it abandons
      * without touching the handle). Only then is it safe to destroy. */
     w_mutex_lock(&g_https_client_lock);
-    atomic_store(&g_https_client_stopping, true);
+    g_https_client_stopping = true;
     w_mutex_unlock(&g_https_client_lock);
 
     if (g_https_client) {
         hc_destroy(g_https_client); /* Implies stop + join. */
         g_https_client = NULL;
     }
+}
+
+int w_https_client_submit_event(const char *frame, size_t length)
+{
+    if (frame == NULL || length == 0) {
+        return -1;
+    }
+
+    int retval = -1;
+
+    /* Hold the lock across the submit so the handle cannot be destroyed under
+     * us: w_https_client_stop() must take this same lock to flag stopping
+     * before it calls hc_destroy(), so while we hold it the handle stays valid.
+     * hc_submit_event() only appends to the accumulator, so the section is short. */
+    w_mutex_lock(&g_https_client_lock);
+
+    const bool running = g_https_client != NULL && !g_https_client_stopping;
+
+    if (running) {
+        retval = hc_submit_event(g_https_client, (const uint8_t *)frame, length) ? 0 : -1;
+    }
+
+    w_mutex_unlock(&g_https_client_lock);
+
+    /* Mirrors buffer.c's own drop trace, outside the lock: the accumulator is
+     * full and applied drop-newest, exactly as the leaky bucket used to. */
+    if (running && retval != 0) {
+        mdebug2("https_client: unable to store new packet: buffer is full.");
+    }
+
+    return retval;
 }

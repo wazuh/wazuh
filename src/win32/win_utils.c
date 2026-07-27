@@ -11,6 +11,7 @@
 #ifdef WIN32
 #include "shared.h"
 #include "agentd.h"
+#include "https_client_bridge.h"
 #include "logcollector.h"
 #include "execd.h"
 #include "wmodules.h"
@@ -234,6 +235,16 @@ int local_start()
         minfo(DISABLED_BUFFER);
     }
 
+    /* HTTPS client: the agent's transport, unconditionally (mirrors AgentdStart
+     * on POSIX; the Windows startup path is separate). Started here, with the
+     * legacy buffer and before any producer thread, for the same reason that
+     * one is: on Windows the modules call SendMSG in-process, so an event
+     * emitted before the accumulator exists is dropped outright rather than
+     * waiting in a queue as it would on POSIX. The server address and the keys
+     * are both already validated by this point (see above). */
+    w_https_client_start();
+    atexit(w_https_client_stop);
+
     /* Start syscheck thread */
     w_create_thread(NULL,
                      0,
@@ -425,14 +436,22 @@ int SendMSGAction(__attribute__((unused)) int queue, const char *message, const 
 
     snprintf(tmpstr, OS_MAXSTR, "%c:%s:%s", loc, loc_buff, message);
 
-    /* Send events to the manager across the buffer */
-    if (!agt->buffer){
-        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
-        if (send_msg(tmpstr, -1) >= 0) {
+    /* Stateless events -> HTTPS /stateless accumulator (#37835). Stateful ('s')
+     * frames keep the legacy buffer/send_msg path until #37836 wires /stateful.
+     * (Windows has no DGRAM queue; SendMSGAction is the in-process EventForward.) */
+    if (loc == 's') {
+        if (!agt->buffer){
+            w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+            if (send_msg(tmpstr, -1) >= 0) {
+                retval = 0;
+            }
+        } else {
+            buffer_append(tmpstr, -1);
             retval = 0;
         }
     } else {
-        buffer_append(tmpstr, -1);
+        w_agentd_state_update(INCREMENT_MSG_COUNT, NULL);
+        w_https_client_submit_event(tmpstr, strlen(tmpstr));
         retval = 0;
     }
 

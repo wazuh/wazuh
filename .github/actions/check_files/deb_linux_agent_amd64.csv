@@ -10,7 +10,7 @@ full_filename,owner_name,group_name,mode,type,prot_permissions,size_bytes,size_e
 /var/ossec/lib/libwazuhext.so,root,wazuh,750,file,-rwxr-x---,12374168,0.1
 /var/ossec/lib/libdbsync.so,root,wazuh,750,file,-rwxr-x---,505104,0.1
 /var/ossec/lib/libagent_sync_protocol.so,root,wazuh,750,file,-rwxr-x---,218488,0.1
-/var/ossec/lib/libhttps_client.so,root,wazuh,750,file,-rwxr-x---,105592,0.1
+/var/ossec/lib/libhttps_client.so,root,wazuh,750,file,-rwxr-x---,270552,0.1
 /var/ossec/lib/libschema_validator.so,root,wazuh,750,file,-rwxr-x---,390232,0.1
 /var/ossec/lib/libsysinfo.so,root,wazuh,750,file,-rwxr-x---,2603392,0.1
 /var/ossec/lib/libfimdb.so,root,wazuh,750,file,-rwxr-x---,253344,0.1

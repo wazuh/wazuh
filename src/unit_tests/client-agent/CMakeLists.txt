@@ -13,7 +13,7 @@ endif()
 if(NOT ${TARGET} STREQUAL "winagent")
 list(REMOVE_ITEM client-agent_files ${SRC_FOLDER}/client-agent/main.o)
 
-add_library(CLIENT-AGENT STATIC ${client-agent_files})
+add_library(CLIENT-AGENT STATIC ${client-agent_files} ${CMAKE_CURRENT_SOURCE_DIR}/https_client_stubs.c)
 
 set_source_files_properties(
     ${client-agent_files}
@@ -117,7 +117,8 @@ endif()
 
 if(${TARGET} STREQUAL "agent")
 list(APPEND client-agent_names "test_agentd")
-list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request ${DEBUG_OP_WRAPPERS}")
+list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
+                                -Wl,--wrap,w_https_client_start -Wl,--wrap,w_https_client_stop ${DEBUG_OP_WRAPPERS}")
 
 list(APPEND client-agent_names "test_startup_gate")
 list(APPEND client-agent_flags "-Wl,--wrap,getsharedfiles ${DEBUG_OP_WRAPPERS}")
@@ -131,9 +132,10 @@ list(APPEND client-agent_flags "${DEBUG_OP_WRAPPERS} \
 list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
                                 -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
-                                -Wl,--wrap,hc_set_agent_key -Wl,--wrap,try_enroll_to_server \
+                                -Wl,--wrap,hc_set_agent_key -Wl,--wrap,hc_submit_event \
+                                -Wl,--wrap,try_enroll_to_server \
                                 -Wl,--wrap,CreateThread -Wl,--wrap,sleep -Wl,--wrap,getpid \
-                                -Wl,--wrap,w_agentd_state_update \
+                                -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
                                 ${DEBUG_OP_WRAPPERS}")
 endif()
 
