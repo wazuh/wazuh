@@ -536,17 +536,6 @@ def test_agent_reconnect(socket_mock, send_mock, mock_send_msg):
     mock_send_msg.assert_called_with(WazuhQueue.HC_FORCE_RECONNECT, agent_id)
 
 
-@patch('wazuh.core.agent.WazuhQueue')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_reconnect_ko(socket_mock, send_mock, mock_queue):
-    """Test if method reconnect raises exception."""
-    # Assert exception is raised when status of agent is not 'active'
-    with pytest.raises(WazuhError, match='.* 1707 .*'):
-        agent = Agent('003')
-        agent.reconnect(mock_queue)
-
-
 @patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
 def test_agent_remove(mock_remove_authd):
     """Tests if method remove() works as expected."""

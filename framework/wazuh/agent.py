@@ -196,7 +196,7 @@ def get_agents_summary_os(agent_list: list[str] = None) -> AffectedItemsWazuhRes
 
 
 @expose_resources(actions=["agent:restart"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]},
+                  post_proc_kwargs={'exclude_codes': [1701, 1703]},
                   post_proc_func=async_list_handler)
 async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart a list of agents.
@@ -271,7 +271,7 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['cluster:read'], resources=[f'node:id:{node_id}'],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
+                  post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
                   post_proc_func=async_list_handler)
 async def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart all agents belonging to a node.
@@ -290,7 +290,7 @@ async def restart_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhR
 
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
+                  post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
                   post_proc_func=async_list_handler)
 async def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Restart all agents belonging to a group.
@@ -309,7 +309,7 @@ async def restart_agents_by_group(agent_list: list = None) -> AffectedItemsWazuh
 
 
 @expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]},
+                  post_proc_kwargs={'exclude_codes': [1701, 1703]},
                   post_proc_func=async_list_handler)
 async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Reload a list of agents.
@@ -384,7 +384,7 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
 
 
 @expose_resources(actions=['cluster:read', 'agent:reload'], resources=[f'node:id:{node_id}', 'agent:id:{agent_list}'],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
+                  post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
                   post_proc_func=async_list_handler)
 async def reload_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Reload all agents belonging to a node.
@@ -403,7 +403,7 @@ async def reload_agents_by_node(agent_list: list = None) -> AffectedItemsWazuhRe
 
 
 @expose_resources(actions=["agent:reload"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707], 'force': True},
+                  post_proc_kwargs={'exclude_codes': [1701, 1703], 'force': True},
                   post_proc_func=async_list_handler)
 async def reload_agents_by_group(agent_list: list = None) -> AffectedItemsWazuhResult:
     """Reload all agents belonging to a group.
@@ -1203,7 +1203,7 @@ def get_outdated_agents(agent_list: list = None, offset: int = 0, limit: int = c
 
 
 @expose_resources(actions=["agent:upgrade"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707, 1731] + ERROR_CODES_UPGRADE_SOCKET})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1731] + ERROR_CODES_UPGRADE_SOCKET})
 def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str = None, force: bool = False,
                    use_http: bool = False, package_type: str = None, file_path: str = None, installer: str = None,
                    filters: dict = None, q: str = None, request_time: int = None) -> AffectedItemsWazuhResult:
@@ -1255,7 +1255,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list,
                                         filters=filters)
 
-        with WazuhDBQueryAgents(limit=None, select=["id", "status"], query=q, **rbac_filters) as db_query:
+        with WazuhDBQueryAgents(limit=None, select=["id"], query=q, **rbac_filters) as db_query:
             data = db_query.run()
 
         filtered_agents = set([agent['id'] for agent in data['items']])
@@ -1266,13 +1266,8 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         not_found_agents = agent_list - system_agents
         [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
-        # Add non active agents to failed_items
-        non_active_agents = [agent['id'] for agent in data['items'] if agent['status'] != 'active']
-        [result.add_failed_item(id_=agent, error=WazuhError(1707)) for agent in non_active_agents]
-        non_active_agents = set(non_active_agents)
-
-        # Add non eligible agents to failed_items
-        non_eligible_agents = agent_list - not_found_agents - non_active_agents - filtered_agents
+        # Add non eligible agents to failed_items (HTTPS: no status filtering)
+        non_eligible_agents = agent_list - not_found_agents - filtered_agents
         [result.add_failed_item(id_=ag, error=WazuhError(
             1731,
             extra_message="some of the requirements are not met -> {}".format(
@@ -1281,7 +1276,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
             )
         )) for ag in non_eligible_agents]
 
-        eligible_agents = agent_list - not_found_agents - non_active_agents - non_eligible_agents
+        eligible_agents = agent_list - not_found_agents - non_eligible_agents
 
         # Transform the format of the agent ids to the general format
         eligible_agents = [int(agent) for agent in eligible_agents]

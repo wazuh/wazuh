@@ -15,7 +15,7 @@ from wazuh.rbac.decorators import expose_resources
 node_id = get_node().get('node')
 
 @expose_resources(actions=["agent:read"], resources=["agent:id:{agent_list}"],
-                  post_proc_kwargs={'exclude_codes': [1701, 1703, 1707]})
+                  post_proc_kwargs={'exclude_codes': [1701, 1703]})
 def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None):
     """Get agents statistical information from the specified daemons.
     If the daemons list is empty, the stats from all daemons will be retrieved.
@@ -46,7 +46,7 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
             system_agents = get_agents_info()
             rbac_filters = get_rbac_filters(system_resources=system_agents, permitted_resources=agent_list)
 
-            with WazuhDBQueryAgents(limit=None, select=["id", "status"], **rbac_filters) as db_query:
+            with WazuhDBQueryAgents(limit=None, select=["id"], **rbac_filters) as db_query:
                 data = db_query.run()
 
             agent_list = set(agent_list)
@@ -56,12 +56,8 @@ def get_daemons_stats_agents(daemons_list: list = None, agent_list: list = None)
             [result.add_failed_item(id_=agent, error=exception.WazuhResourceNotFound(1701)) for agent in
              not_found_agents]
 
-            # Add non-active agents to failed_items
-            non_active_agents = [agent['id'] for agent in data['items'] if agent['status'] != 'active']
-            [result.add_failed_item(id_=agent, error=exception.WazuhError(1707)) for agent in non_active_agents]
-            non_active_agents = set(non_active_agents)
-
-            eligible_agents = agent_list - not_found_agents - non_active_agents
+            # HTTPS: No status filtering needed, get stats regardless of connection state
+            eligible_agents = agent_list - not_found_agents
 
             # Transform the format of the agent ids to the general format
             eligible_agents = [int(agent) for agent in eligible_agents]
