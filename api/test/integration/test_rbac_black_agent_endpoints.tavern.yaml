@@ -636,6 +636,12 @@ stages:
          failed_items: []
 
 ---
+test_name: DELETE /agents/{agent_id}/group/{group_id}
+
+stages:
+
+  - name: Try to remove agent 004 from group2 (Denied)
+    request:
       verify: False
       url: "{protocol:s}://{host:s}:{balanced_port:d}/agents/004/group/group2"
       method: DELETE

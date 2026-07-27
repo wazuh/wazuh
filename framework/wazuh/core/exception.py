@@ -152,12 +152,6 @@ class WazuhException(Exception):
         1706: {'message': 'There is an agent with the same IP or the IP is invalid',
                'remediation': 'Please choose another IP'
                },
-        1707: {'message': 'Cannot send request, agent is not active',
-               'remediation': 'Please, check non-active agents connection and try again. Visit '
-                              f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/registering/index.html and '
-                              f'https://documentation.wazuh.com/{DOCU_VERSION}/user-manual/agents/agent-connection.'
-                              f'html to obtain more information on registering and connecting agents'
-               },
         1708: {'message': 'There is an agent with the same ID',
                'remediation': 'Please choose another ID'
                },
