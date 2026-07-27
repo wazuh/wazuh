@@ -234,9 +234,8 @@ async def restart_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                 result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
                 continue
 
-            # Check if agent exists in query results
+            # Skip agents not in query results (RBAC filtered or other query filters)
             if agent_id not in all_agents:
-                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
                 continue
 
             version = all_agents[agent_id]
@@ -347,9 +346,8 @@ async def reload_agents(agent_list: list = None) -> AffectedItemsWazuhResult:
                 result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
                 continue
 
-            # Check if agent exists in query results
+            # Skip agents not in query results (RBAC filtered or other query filters)
             if agent_id not in all_agents:
-                result.add_failed_item(id_=agent_id, error=WazuhResourceNotFound(1701))
                 continue
 
             version = all_agents[agent_id]
@@ -1265,15 +1263,16 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         not_found_agents = agent_list - system_agents
         [result.add_failed_item(id_=agent, error=WazuhResourceNotFound(1701)) for agent in not_found_agents]
 
-        # Add non eligible agents to failed_items (HTTPS: no status filtering)
+        # Add non eligible agents to failed_items (only if filters were specified, otherwise RBAC filtered)
         non_eligible_agents = agent_list - not_found_agents - filtered_agents
-        [result.add_failed_item(id_=ag, error=WazuhError(
-            1731,
-            extra_message="some of the requirements are not met -> {}".format(
-                ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
-                (f', q: {q}' if q else '')
-            )
-        )) for ag in non_eligible_agents]
+        if filters or q:
+            [result.add_failed_item(id_=ag, error=WazuhError(
+                1731,
+                extra_message="some of the requirements are not met -> {}".format(
+                    ', '.join(f"{key}: {value}" for key, value in filters.items() if key != 'rbac_ids') +
+                    (f', q: {q}' if q else '')
+                )
+            )) for ag in non_eligible_agents]
 
         eligible_agents = agent_list - not_found_agents - non_eligible_agents
 
