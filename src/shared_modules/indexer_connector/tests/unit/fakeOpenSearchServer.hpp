@@ -51,14 +51,16 @@ public:
                          uint16_t forcedDelay = 0,
                          int code = 200,
                          std::string response = "")
-        : m_thread(&FakeOpenSearchServer::run, this)
-        , m_host(std::move(host))
+        : m_host(std::move(host))
         , m_health(std::move(health))
         , m_port(port)
         , m_statusCode(code)
         , m_response(std::move(response))
         , m_forcedDelay(forcedDelay)
     {
+        // The thread is started once all the members it reads are initialized.
+        m_thread = std::thread(&FakeOpenSearchServer::run, this);
+
         // Wait until server is ready
         while (!m_server.is_running())
         {
