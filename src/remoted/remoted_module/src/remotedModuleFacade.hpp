@@ -77,10 +77,7 @@ public:
         m_running = true;
 
         LOGFN_INFO(m_logFn,
-                   "Starting remoted module (workerThreads=%d, queueSize=%d, port=%d, cluster='%s', node='%s', "
-                   "workerNode=%s).",
-                   m_config.worker_threads,
-                   m_config.queue_size,
+                   "Starting remoted module (port=%d, cluster='%s', node='%s', workerNode=%s).",
                    m_config.port,
                    m_config.cluster_name,
                    m_config.node_name,
@@ -168,7 +165,8 @@ private:
         // verifies the AES-CMAC of every authenticated request. Wired on top of
         // OUR transport, so swapping the HTTP library never touches it.
         m_keystore = std::make_shared<remoted::auth::Keystore>();
-        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(remoted::auth::AuthConfig {}, m_keystore);
+        m_authGateway =
+            std::make_unique<remoted::endpoints::AuthGateway>(remoted::auth::buildAuthConfig(m_config), m_keystore);
 
         // Deferred-work limiter: bounds requests parked awaiting a downstream service. A slot is
         // held from the moment a request enters the deferred stage until its reply is delivered;
@@ -182,7 +180,7 @@ private:
         // Async UDS client + forwarder for the deferred stage. The client owns its own io_context
         // (RESTinio keeps its loop private); the forwarder owns a post-processing pool. Started here
         // so it is ready to forward as soon as the server accepts.
-        const remoted::downstream::DownstreamConfig downstreamConfig {};
+        const auto downstreamConfig = remoted::downstream::buildDownstreamConfig(m_config);
         auto downstreamClient = std::make_shared<remoted::downstream::AsioUdsHttpClient>(downstreamConfig);
         downstreamClient->start();
         m_downstreamClient = downstreamClient;
