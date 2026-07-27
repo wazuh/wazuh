@@ -11,14 +11,17 @@
 
 #include "httpServerConfig.hpp"
 
+#include "proc.hpp"
+
 #include <string>
 
 namespace
 {
     constexpr auto DEFAULT_BIND_ADDRESS {"127.0.0.1"};
     constexpr std::uint16_t DEFAULT_HTTPS_PORT {9443};
-    constexpr std::size_t DEFAULT_IO_THREADS {2};
-    constexpr std::size_t DEFAULT_WORKER_THREADS {4};
+    // Multiplier applied to cpp_get_nproc() for the handler pool: unlike the I/O reactor threads,
+    // work here can block (CMAC verification, client.keys file I/O), so it is oversubscribed.
+    constexpr unsigned int WORKER_THREADS_NPROC_MULTIPLIER {2};
     // Transport hard cap. Kept above the auth middleware's body limit (AuthConfig::maxBodySize,
     // 10 MiB) so an oversized batch reaches the middleware and gets a clean 413 there, while this
     // still bounds memory as a backstop.
@@ -54,6 +57,17 @@ namespace
     {
         return configValue > 0 ? static_cast<std::size_t>(configValue) : defaultValue;
     }
+
+    // Thread-count fields: a positive caller value wins; otherwise cpp_get_nproc() (optionally
+    // scaled), so the pool size tracks the host/cgroup's available CPUs instead of a fixed constant.
+    std::size_t resolveThreadCount(const int configValue, const unsigned int nprocMultiplier = 1)
+    {
+        if (configValue > 0)
+        {
+            return static_cast<std::size_t>(configValue);
+        }
+        return static_cast<std::size_t>(cpp_get_nproc()) * nprocMultiplier;
+    }
 } // namespace
 
 namespace remoted::http
@@ -66,8 +80,8 @@ namespace remoted::http
         result.bindAddress = DEFAULT_BIND_ADDRESS;
 
         result.port = static_cast<std::uint16_t>(resolveUnsigned(config.port, DEFAULT_HTTPS_PORT));
-        result.ioThreads = resolveUnsigned(config.io_threads, DEFAULT_IO_THREADS);
-        result.workerThreads = resolveUnsigned(config.http_worker_threads, DEFAULT_WORKER_THREADS);
+        result.ioThreads = resolveThreadCount(config.io_threads);
+        result.workerThreads = resolveThreadCount(config.http_worker_threads, WORKER_THREADS_NPROC_MULTIPLIER);
         result.maxBodySize = resolveUnsigned(config.http_max_body_size, DEFAULT_MAX_BODY_SIZE);
         result.readTimeoutSec = resolveUnsigned(config.http_read_timeout, DEFAULT_READ_TIMEOUT_SEC);
         result.writeTimeoutSec = resolveUnsigned(config.http_write_timeout, DEFAULT_WRITE_TIMEOUT_SEC);

@@ -12,6 +12,7 @@
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
+#include "proc.hpp"
 
 #include <gtest/gtest.h>
 
@@ -59,8 +60,8 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
 
     EXPECT_EQ(config.bindAddress, "127.0.0.1");
     EXPECT_EQ(config.port, 9443);
-    EXPECT_EQ(config.ioThreads, 2U);
-    EXPECT_EQ(config.workerThreads, 4U);
+    EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
+    EXPECT_EQ(config.workerThreads, 2U * static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.maxBodySize, 16U * 1024U * 1024U);
     EXPECT_EQ(config.readTimeoutSec, 10U);
     EXPECT_EQ(config.writeTimeoutSec, 10U);
@@ -155,7 +156,7 @@ TEST(HttpServerConfigTest, NegativeValuesFallBackToDefaults)
     const auto config = buildHttpServerConfig(raw);
 
     EXPECT_EQ(config.port, 9443);
-    EXPECT_EQ(config.ioThreads, 2U);
+    EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.maxUrlSize, 2048U);
 }
 

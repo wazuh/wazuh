@@ -101,13 +101,16 @@ src/http_server/
   > no longer counts against `max_inflight_bytes` — the **deferred-work limiter** (above) is what
   > bounds that phase.
 - **Configuration** (via the C-ABI struct; no environment-variable fallback anywhere anymore).
-  Three groups of fields, each field falling back to a built-in default when `<=0`/empty:
+  Four groups of fields, each field falling back to a built-in default when `<=0`/empty:
     1. RESTinio tuning: `io_threads`, `http_worker_threads`, `http_read_timeout`,
        `http_write_timeout`, `http_request_timeout`, `http_max_url_size`,
        `http_max_header_name_size`, `http_max_header_value_size`, `http_max_header_count`,
        `http_max_pipelined_requests`, `http_concurrent_accepts`, `http_buffer_size` -- `remoted`
        populates these from the `remoted.http_*` internal options in `secure.c` (already
-       range-validated there).
+       range-validated there). `io_threads`/`http_worker_threads` are thread-count fields: a
+       `<=0` value resolves via `cpp_get_nproc()` (`shared_modules/utils/proc.hpp`, cgroup-aware
+       on Linux) in `httpServerConfig.cpp::resolveThreadCount()` -- see *Request lifecycle
+       example* below for the exact multiplier per pool.
     2. Regular `<remote>` settings not wired yet (built-in defaults apply in practice): `port`,
        `http_max_body_size`, `certificate_path`, `private_key_path`.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
@@ -115,6 +118,18 @@ src/http_server/
        set directly by `remoted` in `secure.c`, deliberately **not** an internal option (they bound
        in-memory resource usage rather than tune the transport). The transport clamps the budget
        up to at least one max-size request so a too-small value can't reject everything.
+    4. Downstream client + auth middleware tuning: `downstream_connect_timeout`,
+       `downstream_write_timeout`, `downstream_response_timeout`, `downstream_io_threads`,
+       `downstream_post_process_threads`, `downstream_max_response_body_size`,
+       `auth_max_request_age`, `auth_max_future_skew`, `auth_max_body_size` -- populated from the
+       `remoted.downstream_*`/`remoted.auth_*` internal options in `secure.c` and translated by
+       `remoted::downstream::buildDownstreamConfig()` (`downstream/downstreamConfig.cpp`) and
+       `remoted::auth::buildAuthConfig()` (`auth/authTypes.cpp`) respectively; the facade calls
+       both in `startHttpServer()` instead of default-constructing `DownstreamConfig{}`/
+       `AuthConfig{}`. The first three are seconds in the C-ABI struct, converted to milliseconds
+       internally. `downstream_io_threads`/`downstream_post_process_threads` are thread-count
+       fields (`cpp_get_nproc()` on `<=0`, same as group 1). See *Deferred forwarding* and
+       *Agent<->manager auth middleware* below.
   See [HTTPS Events API](../../../docs/ref/modules/remoted/https-events-api.md#configuration) for
   the full reference (defaults, allowed ranges).
 - **Restart-friendly bind:** the RESTinio acceptor sets `SO_REUSEADDR`
@@ -186,7 +201,8 @@ expects, so the forwarder is near pass-through with auth in front.
 ```
 src/downstream/
 ├── deferredWorkLimiter.hpp   # count-based RAII limiter (parked-request cap; see Memory management)
-├── downstreamConfig.hpp      # v1 defaults: events socket, connect/response timeouts, io/post threads
+├── downstreamConfig.hpp/.cpp # events socket (fixed) + C-ABI-driven connect/write/response timeouts,
+│                            #   io/post threads, max response body (buildDownstreamConfig())
 ├── IDownstreamClient.hpp     # async forward interface + DTOs (DownstreamRequest/Response/Error)
 ├── asioUdsHttpClient.hpp/.cpp# standalone-Asio impl (UDS connect-per-request) + llhttp response parse
 └── deferredForwarder.hpp/.cpp# limiter + client + per-endpoint post-processing pool orchestration
@@ -226,12 +242,19 @@ How a payload flows, which threads/queues it crosses, and how `IDownstreamClient
 and `DeferredForwarder` interact. A `/stateless` request crosses **four execution contexts**; each hop
 between them is an `asio::post(...)` — i.e. a queue.
 
-| # | Context | Threads (config) | What runs there |
+| # | Context | Threads (config) | `<=0` default |
 |---|---|---|---|
-| **A** | RESTinio I/O threads | `io_threads` (2) | accept + TLS + read/write HTTP |
-| **B** | Transport worker pool (`asio::thread_pool`) | `http_worker_threads` (4) | AES-CMAC auth + the endpoint handler (incl. `forward()`) |
-| **C** | Downstream client `io_context` (`AsioUdsHttpClient`) | `DownstreamConfig::ioThreads` (1) | async UDS socket I/O + llhttp response parse |
-| **D** | Post-processing pool (`DeferredForwarder`) | `DownstreamConfig::postProcessThreads` (4) | the per-endpoint `PostProcessor` + `responder->send()` |
+| **A** | RESTinio I/O threads | `io_threads` | `cpp_get_nproc()` |
+| **B** | Transport worker pool (`asio::thread_pool`) | `http_worker_threads` | `2 * cpp_get_nproc()` (oversubscribed: work here can block) |
+| **C** | Downstream client `io_context` (`AsioUdsHttpClient`) | `downstream_io_threads` | `cpp_get_nproc()` |
+| **D** | Post-processing pool (`DeferredForwarder`) | `downstream_post_process_threads` | `cpp_get_nproc()` |
+
+All four are thread-count fields: a caller value `<=0` resolves via `cpp_get_nproc()`
+(`shared_modules/utils/proc.hpp`, cgroup-aware on Linux) instead of a fixed built-in constant, so
+the pool sizes track the host/cgroup's available CPUs (`httpServerConfig.cpp::resolveThreadCount()`
+for **A**/**B**, `downstreamConfig.cpp`'s local `resolveThreadCount()` for **C**/**D**). **B** uses
+a `2x` multiplier because its own doc comment ("blocking work offload") means threads there can
+block (CMAC verification, `client.keys` file I/O), unlike the purely async I/O reactors **A**/**C**.
 
 ### End-to-end flow
 
@@ -364,6 +387,13 @@ comparison. `authTypes.hpp` holds the shared contract (`AuthenticatedRequest`/`P
 OpenSSL (linked into `remoted_module`). The middleware **streams** the AES-CMAC and never buffers the
 body: the verified body is exposed as a zero-copy `Payload` view that the `AuthGateway` attaches from
 the transport's single request buffer.
+
+`AuthConfig`'s tunables (`maxRequestAgeSeconds`, `maxFutureSkewSeconds`, `maxBodySize`) are
+populated from the matching C-ABI fields (`auth_max_request_age`, `auth_max_future_skew`,
+`auth_max_body_size`, in turn read from the `remoted.auth_*` internal options in `secure.c`) via
+`remoted::auth::buildAuthConfig()` (`auth/authTypes.cpp`), which the facade calls instead of
+default-constructing `AuthConfig{}`. `supportedProtocolVersion` stays fixed (`"1"`) -- it's a
+protocol constant, not an ops tuning knob. See *Configuration* above.
 
 Unit tests under `test/unit/` (`cmac_test.cpp`, `authMiddleware_test.cpp`,
 `keystore_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware` against a
