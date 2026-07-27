@@ -216,6 +216,7 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
             if(strcmp(item->string, "wpk_repo") == 0) {
                 /* wpk_repo */
                 if (item->type == cJSON_String) {
+                    os_free(task->wpk_repository);
                     os_strdup(item->valuestring, task->wpk_repository);
                 } else {
                     sprintf(output, "Parameter \"%s\" should be a string", item->string);
@@ -224,6 +225,7 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
             } else if(strcmp(item->string, "version") == 0) {
                 /* version */
                 if (item->type == cJSON_String) {
+                    os_free(task->custom_version);
                     os_strdup(item->valuestring, task->custom_version);
                 } else {
                     sprintf(output, "Parameter \"%s\" should be a string", item->string);
@@ -253,6 +255,7 @@ STATIC wm_upgrade_task* wm_agent_upgrade_parse_upgrade_command(const cJSON* para
                 /* package_type */
                 if (item->type == cJSON_String) {
                     if (!strcmp(item->valuestring, "rpm") || !strcmp(item->valuestring, "deb")) {
+                        os_free(task->package_type);
                         os_strdup(item->valuestring, task->package_type);
                     } else {
                         sprintf(output, "Invalid parameter \"%s\", value should be \"rpm\" or \"deb\"", item->string);
@@ -298,6 +301,7 @@ STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
             if (strcmp(item->string, "file_path") == 0) {
                 /* file_path */
                 if (item->type == cJSON_String) {
+                    os_free(task->custom_file_path);
                     os_strdup(item->valuestring, task->custom_file_path);
                 } else {
                     sprintf(output, "Parameter \"%s\" should be a string", item->string);
@@ -306,6 +310,7 @@ STATIC wm_upgrade_custom_task* wm_agent_upgrade_parse_upgrade_custom_command(con
             } else if(strcmp(item->string, "installer") == 0) {
                 /* installer */
                 if (item->type == cJSON_String) {
+                    os_free(task->custom_installer);
                     os_strdup(item->valuestring, task->custom_installer);
                 } else {
                     sprintf(output, "Parameter \"%s\" should be a string", item->string);
@@ -353,6 +358,7 @@ STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
                 }
             } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_ERROR_MESSAGE]) == 0) {
                 if (item->type == cJSON_String) {
+                    os_free(task->message);
                     os_strdup(item->valuestring, task->message);
                 } else {
                     sprintf(output, "Parameter \"%s\" should be a string", item->string);
@@ -360,6 +366,7 @@ STATIC wm_upgrade_agent_status_task* wm_agent_upgrade_parse_upgrade_agent_status
                 }
             } else if(strcmp(item->string, task_manager_json_keys[WM_TASK_STATUS]) == 0) {
                 if (item->type == cJSON_String) {
+                    os_free(task->status);
                     os_strdup(item->valuestring, task->status);
                 } else {
                     sprintf(output, "Parameter \"%s\" should be a string", item->string);
