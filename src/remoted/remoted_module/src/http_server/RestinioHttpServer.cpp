@@ -87,8 +87,8 @@ namespace
      * the same "client fault" bucket as an auth rejection, just one layer lower in the stack. The one
      * event here that IS a genuine, rare, operator-facing problem -- the acceptor failing to bind
      * (port in use, TLS context rejected) -- is already surfaced distinctly and more clearly by our
-     * own checkTlsFileReadable() pre-check and RemotedModuleFacade::reportFailedStart(), so demoting
-     * RESTinio's own duplicate report of it costs nothing.
+     * own checkTlsFileReadable() pre-check and RemotedModuleFacade::start()'s catch block (which logs
+     * and rethrows), so demoting RESTinio's own duplicate report of it costs nothing.
      *
      * Four things here are load-bearing:
      *
