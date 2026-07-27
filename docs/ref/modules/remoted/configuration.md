@@ -114,6 +114,20 @@ Address the HTTPS listener binds to.
 
 - **Default value:** `127.0.0.1`
 - **Allowed values:** Valid IPv4 or IPv6 address
+- **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 and, on Linux's default dual-stack
+  setting, also accepts IPv4 connections on the same socket -- see
+  [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
+  for the full explanation.
+
+### https.dual_stack
+
+Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same socket
+(the `IPV6_V6ONLY` socket option).
+
+- **Default value:** unset (the OS default applies -- dual-stack on Linux)
+- **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only)
+- **Note:** Only meaningful when `bind_addr` is IPv6; ignored (with a warning) for an IPv4
+  `bind_addr`. See [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
 
 ### https.certificate
 

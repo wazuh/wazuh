@@ -55,6 +55,21 @@ extern "C"
     };
 
     /**
+     * @brief <remote><https><dual_stack> values.
+     *
+     * Only meaningful when the listener binds to an IPv6 address: controls the
+     * IPV6_V6ONLY socket option, i.e. whether the same socket also accepts IPv4
+     * clients. Kept in sync by hand with the config-parser mirror in
+     * src/config/include/remote-config.h (REMOTED_HTTPS_DUAL_STACK_*).
+     */
+    enum
+    {
+        REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET = 0, ///< Not configured -> OS default.
+        REMOTED_MODULE_HTTPS_DUAL_STACK_YES = 1,   ///< Force dual-stack on (also accept IPv4).
+        REMOTED_MODULE_HTTPS_DUAL_STACK_NO = 2     ///< Force IPv6-only.
+    };
+
+    /**
      * @brief Configuration passed from remoted (C) to the C++ module.
      *
      * POD struct with fixed-size buffers so the ABI is stable and it compiles
@@ -128,6 +143,7 @@ extern "C"
         char ciphers[256];          ///< OpenSSL cipher list override (empty -> library default).
         int verification_mode;      ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
         long max_body_size;         ///< Request body cap in bytes (<=0 -> module default/env).
+        int dual_stack;             ///< REMOTED_MODULE_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind address.
     } remoted_module_config_t;
 
     /**

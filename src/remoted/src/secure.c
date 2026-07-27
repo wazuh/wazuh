@@ -354,6 +354,7 @@ void HandleSecure(char *https_cert_pem, char *https_key_pem)
         rm_config.worker_node = logr.worker_node;
         rm_config.verification_mode = logr.https.verification_mode;
         rm_config.max_body_size = logr.https.max_body_size;
+        rm_config.dual_stack = logr.https.dual_stack;
 
         if (logr.https.bind_addr) {
             snprintf(rm_config.bind_address, sizeof(rm_config.bind_address), "%s", logr.https.bind_addr);
