@@ -1308,7 +1308,34 @@ nlohmann::json Syscollector::ecsBrowserExtensionsData(const nlohmann::json& orig
     setJsonField(ret, originalData, "/package/enabled", "package_enabled", createFields, true);
     setJsonField(ret, originalData, "/package/from_webstore", "package_from_webstore", createFields, true);
     setJsonField(ret, originalData, "/package/id", "package_id", createFields);
-    setJsonField(ret, originalData, "/package/installed", "package_installed", createFields);
+
+    // package_installed is kept as the raw collector string through dbsync (TEXT column,
+    // compared/stored as-is) and only converted to an epoch integer here, for ECS compatibility.
+    if (createFields || originalData.contains("package_installed"))
+    {
+        const nlohmann::json::json_pointer pointer("/package/installed");
+        nlohmann::json installed;
+
+        if (originalData.contains("package_installed") && originalData["package_installed"].is_string())
+        {
+            const auto& timestampStr = originalData["package_installed"].get<std::string>();
+
+            if (!timestampStr.empty() && timestampStr != " " && timestampStr != "0")
+            {
+                try
+                {
+                    installed = std::stoll(timestampStr);
+                }
+                catch (const std::exception&)
+                {
+                    installed = nullptr;
+                }
+            }
+        }
+
+        ret[pointer] = installed;
+    }
+
     setJsonField(ret, originalData, "/package/name", "package_name", createFields);
     setJsonField(ret, originalData, "/package/path", "package_path", createFields);
     setJsonFieldArray(ret, originalData, "/package/permissions", "package_permissions", createFields);
@@ -1756,30 +1783,6 @@ nlohmann::json Syscollector::getBrowserExtensionsData()
         for (auto& extension : extensions)
         {
             sanitizeJsonValue(extension);
-
-            // Convert package_installed from string to integer for ECS compatibility
-            if (extension.contains("package_installed") && extension["package_installed"].is_string())
-            {
-                try
-                {
-                    const auto& timestampStr = extension["package_installed"].get<std::string>();
-
-                    if (!timestampStr.empty() && timestampStr != " " && timestampStr != "0")
-                    {
-                        int64_t timestamp = std::stoll(timestampStr);
-                        extension["package_installed"] = timestamp;
-                    }
-                    else
-                    {
-                        extension["package_installed"] = nullptr;
-                    }
-                }
-                catch (const std::exception&)
-                {
-                    extension["package_installed"] = nullptr;
-                }
-            }
-
             extension["checksum"] = getItemChecksum(extension);
             ret.push_back(std::move(extension));
         }
