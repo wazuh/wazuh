@@ -12,6 +12,8 @@
 #ifndef _REMOTED_DOWNSTREAM_CONFIG_HPP
 #define _REMOTED_DOWNSTREAM_CONFIG_HPP
 
+#include "remoted_module.h"
+
 #include <cstddef>
 #include <string>
 
@@ -21,9 +23,10 @@ namespace remoted::downstream
     /**
      * @brief Tunables for the deferred-forwarding subsystem.
      *
-     * v1: built-in defaults only (not env/C-ABI driven). The events socket path mirrors
-     * remoted's C forwarder (ANLSYS_ENRICH_SOCK, relative to the chroot). Promotion to the
-     * C-ABI config struct is a follow-up.
+     * The events socket path mirrors remoted's C forwarder (ANLSYS_ENRICH_SOCK, relative to the
+     * chroot) and is not C-ABI driven -- it is an installation detail, not an ops tuning knob.
+     * Every other field is populated from the C-ABI struct by buildDownstreamConfig() below; the
+     * in-struct defaults here only apply to a default-constructed DownstreamConfig (e.g. in tests).
      */
     struct DownstreamConfig
     {
@@ -36,6 +39,20 @@ namespace remoted::downstream
         std::size_t postProcessThreads {4};                    ///< Threads running the per-endpoint post-processors.
         std::size_t maxResponseBodySize {10U * 1024U * 1024U}; ///< Cap on a downstream response body.
     };
+
+    /**
+     * @brief Translate the module's C-ABI config into a DownstreamConfig.
+     *
+     * Every field resolves as **caller value (C-ABI struct) -> built-in default**, same pattern as
+     * remoted::http::buildHttpServerConfig(). `downstream_io_threads`/`downstream_post_process_threads`
+     * are thread-count fields: a `<=0` value resolves via cpp_get_nproc() (shared_modules/utils/proc.hpp)
+     * instead of a fixed constant. Timeouts are read from the C-ABI struct in seconds and converted to
+     * milliseconds here.
+     *
+     * @param config Configuration handed by remoted.
+     * @return Resolved DownstreamConfig.
+     */
+    DownstreamConfig buildDownstreamConfig(const remoted_module_config_t& config);
 
 } // namespace remoted::downstream
 

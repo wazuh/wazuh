@@ -11,6 +11,8 @@
 
 #pragma once
 
+#include "remoted_module.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -169,5 +171,17 @@ namespace remoted::auth
         std::int64_t maxFutureSkewSeconds = 30;     ///< How far in the future a request timestamp may be.
         std::size_t maxBodySize = 10 * 1024 * 1024; ///< Hard cap on the authenticated body size (10 MiB).
     };
+
+    /**
+     * @brief Translate the module's C-ABI config into an AuthConfig.
+     *
+     * Every field resolves as **caller value (C-ABI struct) -> built-in default**, same pattern as
+     * remoted::http::buildHttpServerConfig(). `supportedProtocolVersion` is not C-ABI driven --
+     * it's a protocol constant, not an ops tuning knob.
+     *
+     * @param config Configuration handed by remoted.
+     * @return Resolved AuthConfig.
+     */
+    AuthConfig buildAuthConfig(const remoted_module_config_t& config);
 
 } // namespace remoted::auth

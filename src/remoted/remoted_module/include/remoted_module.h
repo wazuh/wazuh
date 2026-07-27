@@ -47,8 +47,6 @@ extern "C"
      */
     typedef struct remoted_module_config_t
     {
-        int worker_threads;              ///< Number of worker threads the module should run.
-        int queue_size;                  ///< Input queue capacity.
         int port;                        ///< HTTPS listening port. Regular <remote> setting (wazuh-manager.conf),
                                          ///< not an internal option. <=0 -> module default.
         bool worker_node;                ///< true if this manager is a cluster worker node.
@@ -85,6 +83,22 @@ extern "C"
         long long max_inflight_bytes;    ///< Max in-flight request payload bytes; 503 over it (<=0 -> module default).
         int max_parallel_connections;    ///< HTTPS max simultaneous connections (<=0 -> module default).
         int max_deferred_requests; ///< Max requests parked awaiting a downstream service; 503 over it (<=0 -> default).
+
+        // Downstream (async UDS client to the engine's event ingress) tunables. <=0 -> module default
+        // (see remoted.downstream_*).
+        int downstream_connect_timeout;              ///< Seconds to wait for the UDS connect to complete.
+        int downstream_write_timeout;                ///< Seconds to wait for the request body write to complete.
+        int downstream_response_timeout;             ///< Seconds to wait for the downstream response after the write.
+        int downstream_io_threads;                   ///< Threads running the downstream client's io_context. <=0 ->
+                                                     ///< cpp_get_nproc() (see shared_modules/utils/proc.hpp).
+        int downstream_post_process_threads;         ///< Threads running the per-endpoint post-processors. <=0 ->
+                                                     ///< cpp_get_nproc().
+        long long downstream_max_response_body_size; ///< Cap on a downstream response body, bytes (<=0 -> default).
+
+        // Auth middleware (AES-CMAC request verification) tunables. <=0 -> module default (see remoted.auth_*).
+        int auth_max_request_age;     ///< Seconds a request timestamp may lag behind now.
+        int auth_max_future_skew;     ///< Seconds a request timestamp may lead ahead of now.
+        long long auth_max_body_size; ///< Hard cap on the authenticated request body, bytes (<=0 -> default).
     } remoted_module_config_t;
 
     /**

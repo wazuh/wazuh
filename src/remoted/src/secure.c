@@ -212,8 +212,10 @@ typedef struct {
  *        options) into the config struct passed to remoted_module_start().
  */
 STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
-    rm_config->io_threads = getDefine_Int_default("remoted", "http_io_threads", 1, 64, 2);
-    rm_config->http_worker_threads = getDefine_Int_default("remoted", "http_worker_threads", 1, 256, 4);
+    // io_threads/http_worker_threads: min+default 0 (not 1) so an unset option flows through as a
+    // real 0 -- the C++ side resolves 0 via cpp_get_nproc() instead of a fixed constant.
+    rm_config->io_threads = getDefine_Int_default("remoted", "http_io_threads", 0, 64, 0);
+    rm_config->http_worker_threads = getDefine_Int_default("remoted", "http_worker_threads", 0, 256, 0);
     rm_config->http_read_timeout = getDefine_Int_default("remoted", "http_read_timeout", 1, 300, 10);
     rm_config->http_write_timeout = getDefine_Int_default("remoted", "http_write_timeout", 1, 300, 10);
     rm_config->http_request_timeout = getDefine_Int_default("remoted", "http_request_timeout", 1, 600, 30);
@@ -224,6 +226,20 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->http_max_pipelined_requests = getDefine_Int_default("remoted", "http_max_pipelined_requests", 1, 64, 4);
     rm_config->http_concurrent_accepts = getDefine_Int_default("remoted", "http_concurrent_accepts", 1, 64, 2);
     rm_config->http_buffer_size = getDefine_Int_default("remoted", "http_buffer_size", 1, 1048576, 8192);
+
+    // Downstream (async UDS client to the engine's event ingress) tunables.
+    rm_config->downstream_connect_timeout = getDefine_Int_default("remoted", "downstream_connect_timeout", 1, 60, 2);
+    rm_config->downstream_write_timeout = getDefine_Int_default("remoted", "downstream_write_timeout", 1, 300, 5);
+    rm_config->downstream_response_timeout = getDefine_Int_default("remoted", "downstream_response_timeout", 1, 300, 5);
+    rm_config->downstream_io_threads = getDefine_Int_default("remoted", "downstream_io_threads", 0, 256, 0);
+    rm_config->downstream_post_process_threads = getDefine_Int_default("remoted", "downstream_post_process_threads", 0, 256, 0);
+    rm_config->downstream_max_response_body_size =
+        getDefine_Int_default("remoted", "downstream_max_response_body_size", 1048576, 67108864, 10485760);
+
+    // Auth middleware (AES-CMAC request verification) tunables.
+    rm_config->auth_max_request_age = getDefine_Int_default("remoted", "auth_max_request_age", 1, 3600, 300);
+    rm_config->auth_max_future_skew = getDefine_Int_default("remoted", "auth_max_future_skew", 1, 300, 30);
+    rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 10485760);
 }
 
 /* Handle secure connections */
@@ -314,8 +330,6 @@ void HandleSecure()
     // Launch the remoted C++ module in its own thread, seeded with a config struct.
     {
         remoted_module_config_t rm_config = {0};
-        rm_config.worker_threads = worker_pool;
-        rm_config.queue_size = (int)logr.queue_size;
         // rm_config.port is the HTTPS listening port -- unrelated to logr.port (remoted's
         // own classic TCP/UDP port, already bound by the time we get here). Left at 0 so
         // the module falls back to its own built-in default (it's a regular <remote>
