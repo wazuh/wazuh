@@ -1579,10 +1579,6 @@ components:
       type: string
       format: numbers_or_all
       description: "Security rule ID|all"
-    Task_id:
-      type: string
-      format: numbers
-      description: "Task ID"
     Policy_id:
       type: string
       format: numbers
@@ -3642,14 +3638,6 @@ components:
       schema:
         type: integer
         minimum: 0
-    tasks_list:
-      in: query
-      name: 'tasks_list'
-      description: "List of task IDs (separated by comma)"
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/Task_id'
     search:
       in: query
       name: search
@@ -4918,10 +4906,8 @@ paths:
               example:
                 data:
                   affected_items:
-                    - agent: "001"
-                      task_id: 1
-                    - agent: "002"
-                      task_id: 2
+                    - "001"
+                    - "002"
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
@@ -4977,10 +4963,8 @@ paths:
               example:
                 data:
                   affected_items:
-                    - agent: "005"
-                      task_id: 3
-                    - agent: "006"
-                      task_id: 4
+                    - "005"
+                    - "006"
                   total_affected_items: 2
                   total_failed_items: 0
                   failed_items: []
