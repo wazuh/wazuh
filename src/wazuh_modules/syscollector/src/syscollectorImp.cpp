@@ -2382,7 +2382,7 @@ SyncModuleResult Syscollector::syncModule(Mode mode)
         m_logFunction(LOG_INFO, "Syscollector synchronization process finished successfully.");
     }
 
-    return {overallSuccess, failureReason};
+    return {overallSuccess, std::move(failureReason)};
 }
 // LCOV_EXCL_STOP
 
