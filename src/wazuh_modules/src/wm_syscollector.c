@@ -844,7 +844,9 @@ void wm_sys_stop(__attribute__((unused))wm_sys_t* data)
         {
             if (pthread_cond_timedwait(&sys_stop_condition, &sys_stop_mutex, &ts) == ETIMEDOUT)
             {
-                mtwarn(WM_SYS_LOGTAG, "Timeout waiting for Syscollector to complete shutdown.");
+                mtinfo(WM_SYS_LOGTAG,
+                       "Syscollector did not confirm shutdown within %ld seconds; releasing resources and continuing.",
+                       (long)SHUTDOWN_WAIT_SECONDS);
                 break;
             }
         }
