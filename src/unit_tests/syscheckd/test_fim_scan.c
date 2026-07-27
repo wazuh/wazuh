@@ -13,6 +13,7 @@
 #include <cmocka.h>
 #include <stdio.h>
 #include <string.h>
+#include <limits.h>
 
 #include "../wrappers/common.h"
 #include "../wrappers/posix/dirent_wrappers.h"
@@ -1864,7 +1865,9 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     // fim_send_scan_info
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
@@ -1926,6 +1929,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
@@ -2007,6 +2011,7 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 
@@ -2067,6 +2072,7 @@ static void test_fim_scan_no_limit(void **state) {
     // In fim_scan
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
@@ -2102,6 +2108,8 @@ static int teardown_fim_file_scan_symlink_test(void **state) {
     ignore_function_calls(__wrap_pthread_rwlock_rdlock);
     ignore_function_calls(__wrap_pthread_mutex_lock);
     ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    mutex_unlock_watched_ptr = NULL;
 
     OSList_Destroy(syscheck.directories);
     syscheck.directories = NULL;
@@ -2146,6 +2154,7 @@ static void test_fim_file_scan_symlink_warns_when_no_follow(void **state) {
 
     expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
 
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_file_scan();
@@ -2179,6 +2188,7 @@ static void test_fim_file_scan_no_warn_second_scan(void **state) {
 
     expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
 
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_file_scan();
@@ -2213,9 +2223,64 @@ static void test_fim_file_scan_no_warn_not_symlink(void **state) {
 
     expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
 
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
 
     fim_file_scan();
+}
+
+/* Regression test for issue #37824: fim_scan_mutex must stay held through
+ * process_pending_sync_updates(), not just through the db transaction. */
+extern void __real_process_pending_sync_updates(char* table_name, OSList *pending_items);
+
+static unsigned int unlock_count_at_pending_sync_updates = 0;
+
+void __wrap_process_pending_sync_updates(char* table_name, OSList *pending_items) {
+    function_called();
+    // Snapshot how many times fim_scan_mutex has been unlocked so far. Nothing else in
+    // fim_file_scan() touches pthread_mutex_unlock between the lock at its start and this
+    // call, so this value is 0 iff the mutex is still held at this point.
+    unlock_count_at_pending_sync_updates = mutex_unlock_call_count;
+    __real_process_pending_sync_updates(table_name, pending_items);
+}
+
+static void test_fim_file_scan_holds_mutex_through_pending_sync_updates(void **state) {
+    struct stat directory_buf = { .st_mode = S_IFDIR };
+    TXN_HANDLE mock_handle = NULL;
+
+    ignore_function_calls(__wrap_pthread_rwlock_wrlock);
+    ignore_function_calls(__wrap_pthread_rwlock_unlock);
+    ignore_function_calls(__wrap_pthread_rwlock_rdlock);
+    ignore_function_calls(__wrap_pthread_mutex_lock);
+    ignore_function_calls(__wrap_pthread_mutex_unlock);
+
+    mutex_unlock_watched_ptr = &syscheck.fim_scan_mutex;
+    mutex_unlock_call_count = 0;
+    unlock_count_at_pending_sync_updates = UINT_MAX; // sentinel, must be overwritten by the wrap
+
+    will_return(__wrap_fim_db_transaction_start, &mock_handle);
+
+    expect_string(__wrap_IsLink, file, "/test/symdir");
+    will_return(__wrap_IsLink, -1);
+
+    expect_string(__wrap_lstat, filename, "/test/symdir");
+    will_return(__wrap_lstat, &directory_buf);
+    will_return(__wrap_lstat, 0);
+
+    expect_string(__wrap_HasFilesystem, path, "/test/symdir");
+    will_return(__wrap_HasFilesystem, 1);
+
+    expect_string(__wrap_realtime_adddir, dir, "/test/symdir");
+    will_return(__wrap_realtime_adddir, 0);
+
+    expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
+
+    expect_function_call_any(__wrap_process_pending_sync_updates);
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
+    fim_file_scan();
+
+    assert_int_equal(unlock_count_at_pending_sync_updates, 0);
 }
 
 #else
@@ -2606,6 +2671,7 @@ static void test_fim_scan_db_full_double_scan(void **state) {
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
@@ -2670,6 +2736,7 @@ static void test_fim_scan_db_full_not_double_scan(void **state) {
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
@@ -2727,6 +2794,7 @@ static void test_fim_scan_no_limit(void **state) {
     expect_function_call(__wrap_fim_db_transaction_deleted_rows);
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
+    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
@@ -4357,6 +4425,9 @@ int main(void) {
                                         setup_fim_file_scan_symlink_test,
                                         teardown_fim_file_scan_symlink_test),
         cmocka_unit_test_setup_teardown(test_fim_file_scan_no_warn_not_symlink,
+                                        setup_fim_file_scan_symlink_test,
+                                        teardown_fim_file_scan_symlink_test),
+        cmocka_unit_test_setup_teardown(test_fim_file_scan_holds_mutex_through_pending_sync_updates,
                                         setup_fim_file_scan_symlink_test,
                                         teardown_fim_file_scan_symlink_test),
     };
