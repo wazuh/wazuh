@@ -84,16 +84,16 @@ def side_effect_test_get_daemons_stats(daemon_path, agents_list):
 def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents_info, mock_socket_connect,
                                   mock_send_wdb, daemons_list, expected_daemons_list):
     """Makes sure get_daemons_stats_agents() fit with the expected."""
-    agents_list = ['001', '004', '999']  # Only stats from 001 are obtained
-    expected_errors_and_items = {'1701': {'999'}, '1707': {'004'}}
+    agents_list = ['001', '004', '999']  # HTTPS: Stats from 001 and 004 obtained regardless of status
+    expected_errors_and_items = {'1701': {'999'}}  # Only non-existent agents fail
     result = stats.get_daemons_stats_agents(daemons_list, agents_list)
 
-    # get_daemons_stats_socket called with the expected parameters
-    calls = [call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list=[1]) for daemon in expected_daemons_list]
+    # get_daemons_stats_socket called with the expected parameters (agents 001 and 004)
+    calls = [call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list=[1, 4]) for daemon in expected_daemons_list]
     mock_get_daemons_stats_socket.assert_has_calls(calls)
 
     # Check affected_items
-    assert result.affected_items == [{'name': daemon, 'agents': [{'id': 1}]} for daemon in expected_daemons_list]
+    assert result.affected_items == [{'name': daemon, 'agents': [{'id': 1}, {'id': 4}]} for daemon in expected_daemons_list]
     assert result.total_affected_items == len(expected_daemons_list)
 
     # Check failed items
