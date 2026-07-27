@@ -11,13 +11,22 @@ func newBuilder() *flatbuffers.Builder { return flatbuffers.NewBuilder(256) }
 
 func TestStartBuildAndParse(t *testing.T) {
 	out := BuildStart("syscollector", fb.ModeModuleFull, 42, fb.OptionSync,
-		"001", "bench-0001", "5.0.0", []string{"wazuh-states-inventory-packages"})
+		"001", "bench-0001", "5.0.0", "wazuh", []string{"wazuh-states-inventory-packages"})
 	if len(out) == 0 {
 		t.Fatal("empty buffer")
 	}
 	msg := fb.GetRootAsMessage(out, 0)
 	if msg.ContentType() != fb.MessageTypeStart {
 		t.Fatalf("type = %v", msg.ContentType())
+	}
+	tbl := new(flatbuffers.Table)
+	if !msg.Content(tbl) {
+		t.Fatal("no content")
+	}
+	s := new(fb.Start)
+	s.Init(tbl.Bytes, tbl.Pos)
+	if string(s.ClusterName()) != "wazuh" {
+		t.Fatalf("cluster_name: got %q, want %q", s.ClusterName(), "wazuh")
 	}
 }
 
