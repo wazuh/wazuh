@@ -117,6 +117,19 @@ void __wrap_decode_win_attributes(char *str, unsigned int attrs) {
 }
 #endif
 
+extern void __real_process_pending_sync_updates(char* table_name, OSList *pending_items);
+
+/* Snapshot of mutex_unlock_call_count taken inside the wrap below, used by the
+ * regression test for issue #37824 (fim_scan_mutex must stay held through
+ * process_pending_sync_updates(), not just through the db transaction). */
+static unsigned int unlock_count_at_pending_sync_updates = 0;
+
+void __wrap_process_pending_sync_updates(char* table_name, OSList *pending_items) {
+    function_called();
+    unlock_count_at_pending_sync_updates = mutex_unlock_call_count;
+    __real_process_pending_sync_updates(table_name, pending_items);
+}
+
 static int setup_fim_data(void **state) {
     fim_data_t *fim_data = calloc(1, sizeof(fim_data_t));
 
@@ -1865,9 +1878,12 @@ static void test_fim_scan_db_full_double_scan(void **state) {
 
     // fim_send_scan_info
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
-    expect_function_call_any(__wrap_process_pending_sync_updates);
+    // process_pending_sync_updates() runs once per fim_file_scan() call, so twice for a
+    // double scan; a single node is required since two separate expect_function_call_any()
+    // nodes for the same mock can never both be satisfied (the first permanently absorbs
+    // every later call to that mock once matched).
+    expect_function_calls(__wrap_process_pending_sync_updates, 2);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
-    expect_function_call_any(__wrap_process_pending_sync_updates);
     expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 }
@@ -1997,6 +2013,11 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     expect_function_call_any(__wrap_fim_db_transaction_deleted_rows);
 
+    // process_pending_sync_updates() runs inside fim_file_scan(), before fim_check_db_state()
+    // and realtime_sanitize_watch_map() run back in fim_scan().
+    expect_function_call_any(__wrap_process_pending_sync_updates);
+    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
+
     // fim_check_db_state
     expect_wrapper_fim_db_get_count_file_entry(50000);
     expect_function_call(__wrap_realtime_sanitize_watch_map);
@@ -2011,8 +2032,6 @@ static void test_fim_scan_realtime_enabled(void **state) {
 
     expect_string(__wrap__minfo, formatted_msg, FIM_FREQUENCY_ENDED);
 
-    expect_function_call_any(__wrap_process_pending_sync_updates);
-    expect_string(__wrap__mdebug1, formatted_msg, "Processed 0 pending sync flag updates");
     fim_scan();
 
     assert_int_equal(syscheck.realtime->queue_overflow, false);
@@ -2231,19 +2250,6 @@ static void test_fim_file_scan_no_warn_not_symlink(void **state) {
 
 /* Regression test for issue #37824: fim_scan_mutex must stay held through
  * process_pending_sync_updates(), not just through the db transaction. */
-extern void __real_process_pending_sync_updates(char* table_name, OSList *pending_items);
-
-static unsigned int unlock_count_at_pending_sync_updates = 0;
-
-void __wrap_process_pending_sync_updates(char* table_name, OSList *pending_items) {
-    function_called();
-    // Snapshot how many times fim_scan_mutex has been unlocked so far. Nothing else in
-    // fim_file_scan() touches pthread_mutex_unlock between the lock at its start and this
-    // call, so this value is 0 iff the mutex is still held at this point.
-    unlock_count_at_pending_sync_updates = mutex_unlock_call_count;
-    __real_process_pending_sync_updates(table_name, pending_items);
-}
-
 static void test_fim_file_scan_holds_mutex_through_pending_sync_updates(void **state) {
     struct stat directory_buf = { .st_mode = S_IFDIR };
     TXN_HANDLE mock_handle = NULL;
