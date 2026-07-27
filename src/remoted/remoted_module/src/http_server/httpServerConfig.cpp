@@ -47,9 +47,10 @@ namespace
     constexpr std::size_t DEFAULT_MAX_PARALLEL_CONNECTIONS {512};
 
     // These paths are evaluated after remoted has entered its chroot.
-    // Host paths: /var/ossec/etc/remoted-https/server.{crt,key}
-    constexpr auto DEFAULT_CERTIFICATE_PATH {"/etc/remoted-https/server.crt"};
-    constexpr auto DEFAULT_PRIVATE_KEY_PATH {"/etc/remoted-https/server.key"};
+    // Host paths: /var/wazuh-manager/etc/https-manager.{certs,key}. Generated automatically
+    // at install time (same self-signed generate_cert() used for authd's sslmanager.cert/key).
+    constexpr auto DEFAULT_CERTIFICATE_PATH {"etc/https-manager.cert"};
+    constexpr auto DEFAULT_PRIVATE_KEY_PATH {"etc/https-manager.key"};
 
     // A positive caller value wins; otherwise the built-in default. remoted is expected to
     // always pass an already-validated value read from the `remoted.http_*` internal options.
