@@ -572,6 +572,23 @@ TEST_F(ControlStreamTest, TaskMissingOptionalFieldsStillDispatches)
     m_stream.step(m_waiter);
 }
 
+TEST_F(ControlStreamTest, TaskWithoutATaskIdIsSkippedAndTheRestOfTheBatchSurvives)
+{
+    // A task with no task_id cannot be deduped or identified, so it is
+    // dropped (traced at debug). It must not take its batch-mates with it.
+    const std::string body =
+        R"({"tasks":[)"
+        R"({"task_type":"active_response","payload":{}},)"
+        R"({"task_id":"good","task_type":"active_response","payload":{}}]})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, body)));
+    EXPECT_CALL(m_sink, onTask("good", "active_response", "{}"));
+
+    m_stream.step(m_waiter);
+    m_stream.step(m_waiter);
+}
+
 TEST_F(ControlStreamTest, MalformedNotifyBodyIsIgnored)
 {
     EXPECT_CALL(m_performer, perform(_))
