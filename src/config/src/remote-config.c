@@ -227,6 +227,7 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
     const char *xml_https_verification_mode = "verification_mode";
     const char *xml_https_ciphers = "ciphers";
     const char *xml_https_max_body_size = "max_body_size";
+    const char *xml_https_dual_stack = "dual_stack";
 
     int i = 0;
 
@@ -287,6 +288,14 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
             }
 
             logr->https.max_body_size = (long) max_body_size;
+        } else if (strcasecmp(node[i]->element, xml_https_dual_stack) == 0) {
+            if (strcasecmp(node[i]->content, "yes") == 0) {
+                logr->https.dual_stack = REMOTED_HTTPS_DUAL_STACK_YES;
+            } else if (strcasecmp(node[i]->content, "no") == 0) {
+                logr->https.dual_stack = REMOTED_HTTPS_DUAL_STACK_NO;
+            } else {
+                mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_https_dual_stack);
+            }
         } else {
             merror(XML_INVELEM, node[i]->element);
             return (OS_INVALID);
@@ -297,6 +306,14 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
     if (logr->https.verification_mode != REMOTED_HTTPS_VERIFY_NONE && logr->https.ca == NULL) {
         merror("The '<remote><https><verification_mode>' option requires '<ca>' to be configured.");
         return (OS_INVALID);
+    }
+
+    // dual_stack only affects the IPV6_V6ONLY socket option, which only applies to an
+    // IPv6 socket; an IPv4 bind_addr (including the "unset -> module default" case,
+    // which defaults to IPv4) makes it a no-op, so just warn instead of failing.
+    if (logr->https.dual_stack != REMOTED_HTTPS_DUAL_STACK_UNSET &&
+        (logr->https.bind_addr == NULL || strchr(logr->https.bind_addr, ':') == NULL)) {
+        mwarn("The '<remote><https><dual_stack>' option only applies to an IPv6 'bind_addr'; ignoring it.");
     }
 
     return OS_SUCCESS;
