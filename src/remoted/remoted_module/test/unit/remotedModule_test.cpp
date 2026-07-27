@@ -14,10 +14,12 @@
 #include <chrono>
 #include <cstdarg>
 #include <cstdio>
+#include <cstdlib>
 #include <gtest/gtest.h>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 namespace
@@ -113,13 +115,58 @@ namespace
         LogRecorder::lines().push_back({level, tag != nullptr ? tag : "", buffer});
     }
 
-    remoted_module_config_t makeConfig()
+    // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI,
+    // already a build/runtime dependency) so start() can be exercised for real
+    // instead of only against the missing-certificate failure path.
+    class TempCert
+    {
+    public:
+        TempCert()
+        {
+            char dirTemplate[] = "/tmp/remotedModuleTestXXXXXX";
+            m_dir = mkdtemp(dirTemplate);
+            m_certPath = m_dir + "/cert.pem";
+            m_keyPath = m_dir + "/key.pem";
+
+            const std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test -keyout " +
+                                     m_keyPath + " -out " + m_certPath + " >/dev/null 2>&1";
+            if (std::system(cmd.c_str()) != 0)
+            {
+                ADD_FAILURE() << "Failed to generate a throwaway TLS certificate for testing";
+            }
+        }
+
+        ~TempCert()
+        {
+            std::remove(m_certPath.c_str());
+            std::remove(m_keyPath.c_str());
+            rmdir(m_dir.c_str());
+        }
+
+        const std::string& certPath() const { return m_certPath; }
+        const std::string& keyPath() const { return m_keyPath; }
+
+    private:
+        std::string m_dir;
+        std::string m_certPath;
+        std::string m_keyPath;
+    };
+
+    remoted_module_config_t makeConfig(const std::string& certPath = "", const std::string& keyPath = "")
     {
         remoted_module_config_t cfg {};
-        cfg.port = 1514;
+        cfg.port = 0; // ephemeral: avoid colliding with a real listener or another test run
         cfg.worker_node = false;
         std::snprintf(cfg.cluster_name, sizeof(cfg.cluster_name), "%s", "test-cluster");
         std::snprintf(cfg.node_name, sizeof(cfg.node_name), "%s", "test-node");
+        if (!certPath.empty())
+        {
+            std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", certPath.c_str());
+        }
+        if (!keyPath.empty())
+        {
+            std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", keyPath.c_str());
+        }
         return cfg;
     }
 } // namespace
@@ -143,8 +190,9 @@ protected:
 // start() must launch the worker and log, and stop() must return promptly (join succeeds).
 TEST_F(RemotedModuleTest, StartAndStop)
 {
-    const auto cfg = makeConfig();
-    remoted_module_start(testLogCallback, &cfg);
+    TempCert cert;
+    const auto cfg = makeConfig(cert.certPath(), cert.keyPath());
+    EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
     remoted_module_stop();
     EXPECT_GT(g_logCalls.load(), 0);
 }
@@ -156,44 +204,32 @@ TEST_F(RemotedModuleTest, StopWithoutStartIsSafe)
     SUCCEED();
 }
 
-// A NULL configuration must fall back to defaults without crashing.
-TEST_F(RemotedModuleTest, StartWithNullConfig)
+// No certificate/key in place (the default, unconfigured paths) is fatal: there is no
+// retry/recovery anymore, so start() must propagate the failure instead of starting anyway.
+TEST_F(RemotedModuleTest, StartWithoutCertificateThrows)
 {
-    remoted_module_start(testLogCallback, nullptr);
-    remoted_module_stop();
+    const auto cfg = makeConfig();
+    EXPECT_THROW(remoted_module_start(testLogCallback, &cfg), std::exception);
+    EXPECT_GT(g_logCalls.load(), 0); // the "Starting remoted module..." log still happened
+}
+
+// A NULL configuration falls back to defaults, which point at the (here, absent) install-time
+// certificate paths -- so this must throw for the same reason as StartWithoutCertificateThrows.
+TEST_F(RemotedModuleTest, StartWithNullConfigThrows)
+{
+    EXPECT_THROW(remoted_module_start(testLogCallback, nullptr), std::exception);
     EXPECT_GT(g_logCalls.load(), 0);
 }
 
 // A second start() while running is ignored; a single stop() tears everything down.
 TEST_F(RemotedModuleTest, DoubleStartIsIgnored)
 {
-    const auto cfg = makeConfig();
-    remoted_module_start(testLogCallback, &cfg);
-    remoted_module_start(testLogCallback, &cfg);
+    TempCert cert;
+    const auto cfg = makeConfig(cert.certPath(), cert.keyPath());
+    EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
+    EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
     remoted_module_stop();
     SUCCEED();
-}
-
-// End-to-end proof that the diagnostics actually reach ossec.log, and that a permanent
-// misconfiguration is now reported as an ERROR naming the offending file. Before this work, a
-// missing certificate produced only a generic "not started yet, will retry" WARN with an opaque
-// OpenSSL string, repeated every 60 s forever and indistinguishable from a bad key, a port clash, or
-// a fresh install that simply hadn't been provisioned yet.
-TEST_F(RemotedModuleTest, MissingCertificateIsReportedAsAnErrorNamingTheFile)
-{
-    auto cfg = makeConfig();
-    std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", "/tmp/rmt-does-not-exist.crt");
-    std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", "/tmp/rmt-does-not-exist.key");
-
-    remoted_module_start(testLogCallback, &cfg);
-
-    // The message must name the actual path, which is what makes it actionable.
-    EXPECT_TRUE(LogRecorder::waitForMessageContaining("/tmp/rmt-does-not-exist.crt"))
-        << "the startup failure did not name the missing certificate";
-    // ...and point at the settings to fix.
-    EXPECT_TRUE(LogRecorder::waitForMessageContaining("certificate_path"));
-
-    remoted_module_stop();
 }
 
 // The wedge regression: start() used to set m_running BEFORE creating the worker thread, so a
@@ -202,13 +238,14 @@ TEST_F(RemotedModuleTest, MissingCertificateIsReportedAsAnErrorNamingTheFile)
 // direction (a clean stop must leave the module startable again).
 TEST_F(RemotedModuleTest, StartStopStartAgainWorks)
 {
-    const auto cfg = makeConfig();
+    TempCert cert;
+    const auto cfg = makeConfig(cert.certPath(), cert.keyPath());
 
-    remoted_module_start(testLogCallback, &cfg);
+    EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
     remoted_module_stop();
 
     LogRecorder::clear();
-    remoted_module_start(testLogCallback, &cfg);
+    EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
 
     // A second, healthy start must actually run -- not be refused as "already started".
     EXPECT_TRUE(LogRecorder::waitForMessageContaining("worker thread running"))
