@@ -177,10 +177,14 @@ Agent metadata cache expiration time in seconds.
 
 ### remoted.keyupdate_interval
 
-Interval in seconds for reloading agent key files.
+Interval in seconds for reloading agent key files. Also governs the HTTPS agent server's
+`remoted_module` C++ `Keystore` (see [HTTPS Events API](https-events-api.md)): it hot-reloads
+`client.keys` on its own (an `inotify` subscription reacts immediately; this interval is only the
+periodic fallback poll, in case a notification is ever missed), reusing this same option instead of
+introducing a second one for the same concept.
 
 - **Default value:** `10`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `3600`
 - **Note:** Lower values detect new agents faster but increase I/O overhead
 
 ### remoted.rlimit_nofile

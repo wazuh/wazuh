@@ -222,6 +222,18 @@ socket path (`eventsSocketPath`) and the auth middleware's `supportedProtocolVer
 internal options -- the former is an installation detail (mirrors the classic C forwarder's
 socket), the latter a protocol constant.
 
+### client.keys hot-reload
+
+`Keystore` (the agent key lookup behind the AES-CMAC auth layer) watches `client.keys` in the
+background and reloads it on change, so an agent enrolled or removed after `remoted` starts is
+picked up without a restart. An `inotify` subscription reacts immediately; the poll cadence used as
+a fallback (in case a notification is ever missed) is `remoted.keyupdate_interval` -- the same
+option the classic pipeline's own key-reload thread (`rem_keyupdate_main`) already uses, see
+[Internal Options](configuration.md#internal-options) -- not a separate internal option.
+Change detection hashes the file's content (not mtime, which is only second-granularity) and
+`reload()` re-checks the hash before and after parsing, discarding and retrying a parse caught
+mid-write rather than adopting a torn read.
+
 ## Testing
 
 `src/remoted/remoted_module/tools/send_stateless.py` signs and sends `POST /stateless` requests the
