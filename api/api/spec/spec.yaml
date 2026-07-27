@@ -5629,12 +5629,9 @@ paths:
                     total_failed_items: 3
                     failed_items:
                       - error:
-                          code: 1707
-                          message: "Cannot send request, agent is not active"
-                          remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
-                           to obtain more information on registering and connecting agents"
+                          code: 1761
+                          message: "Agent version is lower than the minimum required version (v5.0.0)"
+                          remediation: "Please upgrade the agent to v5.0.0 or higher to use this feature"
                         id:
                           - '009'
                           - '010'
@@ -5693,12 +5690,9 @@ paths:
                     total_failed_items: 3
                     failed_items:
                       - error:
-                          code: 1707
-                          message: "Cannot send request, agent is not active"
-                          remediation: "Please, check non-active agents connection and try again.
-                           Visit https://documentation.wazuh.com/5.0/user-manual/registering/index.html
-                           and https://documentation.wazuh.com/5.0/user-manual/agents/agent-connection.html
-                           to obtain more information on registering and connecting agents"
+                          code: 1761
+                          message: "Agent version is lower than the minimum required version (v5.0.0)"
+                          remediation: "Please upgrade the agent to v5.0.0 or higher to use this feature"
                         id:
                           - '009'
                           - '010'
