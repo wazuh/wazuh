@@ -8,6 +8,7 @@ This module provides functions to create tasks for agent control operations (res
 using the Task Manager. It replaces synchronous socket-based commands with asynchronous task creation.
 """
 
+import logging
 from json import dumps, loads
 
 from wazuh.core import common
@@ -15,6 +16,7 @@ from wazuh.core.wazuh_socket import WazuhSocket
 
 
 TASK_CHUNK_SIZE = 500
+logger = logging.getLogger('wazuh')
 
 
 def core_restart_agents(agents_chunk: list, request_time: int = None) -> dict:
@@ -64,6 +66,10 @@ def core_restart_agents(agents_chunk: list, request_time: int = None) -> dict:
             # Include task info if available
             if "task_id" in response:
                 result_item["task_id"] = response["task_id"]
+                # Log successful task creation
+                task_type = msg.get("task_type", "unknown")
+                task_id = response.get("task_id")
+                logger.debug(f"Created {task_type} task {task_id} for agent {agent_id}")
             if "create_time" in response:
                 result_item["create_time"] = response["create_time"]
 
@@ -127,6 +133,10 @@ def core_reload_agents(agents_chunk: list, request_time: int = None) -> dict:
             # Include task info if available
             if "task_id" in response:
                 result_item["task_id"] = response["task_id"]
+                # Log successful task creation
+                task_type = msg.get("task_type", "unknown")
+                task_id = response.get("task_id")
+                logger.debug(f"Created {task_type} task {task_id} for agent {agent_id}")
             if "create_time" in response:
                 result_item["create_time"] = response["create_time"]
 

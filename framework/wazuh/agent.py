@@ -1248,8 +1248,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
     """
     result = AffectedItemsWazuhResult(all_msg='All upgrade tasks were created',
                                       some_msg='Some upgrade tasks were not created',
-                                      none_msg='No upgrade task was created',
-                                      sort_fields=['agent'], sort_ascending='True')
+                                      none_msg='No upgrade task was created')
 
     if agent_list:
         system_agents = get_agents_info()
@@ -1296,13 +1295,10 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
         for agent_result_chunk in tasks_results:
             for agent_result in agent_result_chunk['data']:
                 socket_error = agent_result['error']
-                # Success, return agent and task IDs
+                # Success, return agent ID
                 if socket_error == 0:
-                    task_agent = {
-                        'agent': str(agent_result['agent']).zfill(3),
-                        'task_id': agent_result['task_id']
-                    }
-                    result.affected_items.append(task_agent)
+                    agent_id = str(agent_result['agent']).zfill(3)
+                    result.affected_items.append(agent_id)
                     result.total_affected_items += 1
 
                 # Upgrade error for specific agents
@@ -1318,7 +1314,7 @@ def upgrade_agents(agent_list: list = None, wpk_repo: str = None, version: str =
                 else:
                     raise WazuhInternalError(error_code, cmd_error=True, extra_message=agent_result['message'])
 
-    result.affected_items.sort(key=operator.itemgetter('agent'))
+    result.affected_items.sort(key=int)
 
     return result
 
