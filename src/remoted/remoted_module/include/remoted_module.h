@@ -105,10 +105,9 @@ extern "C"
     } remoted_module_config_t;
 
     /**
-     * @brief Start the C++ module. Launches its worker thread and returns
-     *        immediately; the module owns the thread's lifecycle.
-     *
-     * All exceptions are caught at the boundary, so this never throws into C.
+     * @brief Start the C++ module: brings up the HTTPS transport synchronously
+     *        and, only on success, launches the worker thread that owns its
+     *        lifecycle.
      *
      * @param callbackLog   Logging callback (remoted passes mtLoggingFunctionsWrapper).
      * @param configuration Module configuration (may be NULL -> defaults are used).

@@ -37,44 +37,33 @@ extern "C"
 {
 #endif
 
+    // Not wrapped in try/catch: a start failure (e.g. missing TLS certificate/key)
+    // must propagate out of this C-ABI boundary, not be swallowed into a retry.
+    // remoted must not start without the HTTPS transport up.
     void remoted_module_start(full_log_fnc_t callbackLog, const remoted_module_config_t* configuration)
     {
-        try
+        // Defaults when remoted passes no configuration.
+        remoted_module_config_t config {};
+        if (configuration)
         {
-            // Defaults when remoted passes no configuration.
-            remoted_module_config_t config {};
-            if (configuration)
-            {
-                config = *configuration;
-            }
+            config = *configuration;
+        }
 
-            RemotedModule::instance().start(
-                [callbackLog](const int logLevel,
-                              const char* tag,
-                              const char* file,
-                              const int line,
-                              const char* func,
-                              const char* logMessage,
-                              va_list args)
+        RemotedModule::instance().start(
+            [callbackLog](const int logLevel,
+                          const char* tag,
+                          const char* file,
+                          const int line,
+                          const char* func,
+                          const char* logMessage,
+                          va_list args)
+            {
+                if (callbackLog)
                 {
-                    if (callbackLog)
-                    {
-                        callbackLog(logLevel, tag, file, line, func, logMessage, args);
-                    }
-                },
-                config);
-        }
-        catch (const std::exception& e)
-        {
-            LOGFN_ERROR(LogFn {REMOTED_MODULE_LOGTAG}, "Error starting remoted module: %s", e.what());
-        }
-        catch (...)
-        {
-            // remoted_module.h promises this never throws into C. A non-std::exception escaping
-            // here would cross the extern "C" boundary into remoted's C code, where there is no
-            // handler -- std::terminate, taking the whole daemon down.
-            LOGFN_ERROR(LogFn {REMOTED_MODULE_LOGTAG}, "Error starting remoted module: non-standard exception.");
-        }
+                    callbackLog(logLevel, tag, file, line, func, logMessage, args);
+                }
+            },
+            config);
     }
 
     void remoted_module_stop(void)
