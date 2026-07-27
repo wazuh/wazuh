@@ -68,6 +68,20 @@ namespace taskBatchDetail
     /// The batch-mate type that makes this task redundant, or empty. All
     /// tasks are fire-and-forget, so dropping owes nothing: an upgrade ends
     /// in a restart (which reloads), and a restart reloads by itself.
+    ///
+    /// Collapsing is deliberately ACROSS types only; two tasks of the same
+    /// type both survive. That is not an oversight:
+    ///
+    ///  - active_response tasks carry per-task payloads, so two of them are
+    ///    two different actions (block 10.0.0.1 and block 10.0.0.2). Folding
+    ///    them together would silently discard real work.
+    ///  - for remote_upgrade, which of two differing payloads should win is a
+    ///    contract question (#37733), not something this planner can decide.
+    ///
+    /// The manager is the trusted source of the batch and assigns
+    /// deterministic task ids (#37944), so a batch carrying two upgrades is a
+    /// manager-side defect. Worth knowing that it would dispatch twice, which
+    /// once #37834 wires execution means two installer runs.
     inline std::string subsumerOf(const std::string& type, bool hasUpgrade, bool hasRestart)
     {
         if (type == "agent_restart" && hasUpgrade)
