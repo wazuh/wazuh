@@ -249,7 +249,6 @@ stages:
       <<: *permission_denied
 
 ---
----
 test_name: DELETE /agents/group
 
 stages:
