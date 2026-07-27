@@ -1,0 +1,305 @@
+/*
+ * Wazuh remoted module (C++ worker bridge)
+ * Copyright (C) 2015, Wazuh Inc.
+ * July 25, 2026.
+ *
+ * This program is free software; you can redistribute it
+ * and/or modify it under the terms of the GNU General Public
+ * License (version 2) as published by the FSF - Free Software
+ * Foundation.
+ */
+
+// Exercises the async UDS HTTP client against an in-process Asio Unix-domain stub server:
+// a canned response is parsed (status + body), a missing socket yields Connect, a silent
+// server yields Timeout, and the body keep-alive is released (not leaked).
+#include "downstream/asioUdsHttpClient.hpp"
+
+#include <gtest/gtest.h>
+
+#include <asio/buffer.hpp>
+#include <asio/io_context.hpp>
+#include <asio/local/stream_protocol.hpp>
+#include <asio/post.hpp>
+#include <asio/read.hpp>
+#include <asio/write.hpp>
+
+#include <array>
+#include <atomic>
+#include <chrono>
+#include <cstdio>
+#include <future>
+#include <memory>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <system_error>
+#include <thread>
+#include <unistd.h>
+#include <utility>
+
+using namespace remoted::downstream;
+
+namespace
+{
+    using stream_protocol = asio::local::stream_protocol;
+
+    std::string uniqueSocketPath(const char* tag)
+    {
+        static std::atomic<int> counter {0};
+        return "/tmp/rmt_uds_" + std::string {tag} + "_" + std::to_string(::getpid()) + "_" +
+               std::to_string(counter.fetch_add(1)) + ".sock";
+    }
+
+    // Accepts one connection, drains one read, and (unless silent) writes a canned response then closes.
+    class StubUdsServer final
+    {
+    public:
+        StubUdsServer(std::string path, std::string response, bool silent, bool acceptButNeverRead = false)
+            : m_path {std::move(path)}
+            , m_response {std::move(response)}
+            , m_silent {silent}
+            , m_acceptButNeverRead {acceptButNeverRead}
+            , m_acceptor {m_ioc}
+        {
+            ::unlink(m_path.c_str());
+            stream_protocol::endpoint endpoint {m_path};
+            m_acceptor.open(endpoint.protocol());
+            m_acceptor.bind(endpoint);
+            m_acceptor.listen();
+            doAccept();
+            m_thread = std::thread([this] { m_ioc.run(); });
+        }
+
+        ~StubUdsServer()
+        {
+            m_ioc.stop();
+            if (m_thread.joinable())
+            {
+                m_thread.join();
+            }
+            ::unlink(m_path.c_str());
+        }
+
+        const std::string& path() const
+        {
+            return m_path;
+        }
+
+    private:
+        void doAccept()
+        {
+            m_acceptor.async_accept(
+                [this](const std::error_code& ec, stream_protocol::socket socket)
+                {
+                    if (ec)
+                    {
+                        return;
+                    }
+                    auto conn = std::make_shared<stream_protocol::socket>(std::move(socket));
+                    if (m_acceptButNeverRead)
+                    {
+                        // Never drains the socket's receive buffer -> the client's async_write
+                        // eventually blocks once the kernel send buffer fills up.
+                        m_held = conn;
+                        return;
+                    }
+                    auto buffer = std::make_shared<std::array<char, 4096>>();
+                    conn->async_read_some(asio::buffer(*buffer),
+                                          [this, conn, buffer](const std::error_code& readEc, std::size_t)
+                                          {
+                                              if (readEc)
+                                              {
+                                                  return;
+                                              }
+                                              if (m_silent)
+                                              {
+                                                  m_held = conn; // keep the connection open -> client times out
+                                                  return;
+                                              }
+                                              auto resp = std::make_shared<std::string>(m_response);
+                                              asio::async_write(*conn,
+                                                                asio::buffer(*resp),
+                                                                [conn, resp](const std::error_code&, std::size_t)
+                                                                {
+                                                                    std::error_code ignore;
+                                                                    conn->shutdown(
+                                                                        stream_protocol::socket::shutdown_both, ignore);
+                                                                    conn->close(ignore);
+                                                                });
+                                          });
+                });
+        }
+
+        std::string m_path;
+        std::string m_response;
+        bool m_silent;
+        bool m_acceptButNeverRead;
+        asio::io_context m_ioc;
+        stream_protocol::acceptor m_acceptor;
+        std::shared_ptr<stream_protocol::socket> m_held; // keeps a silent connection open
+        std::thread m_thread;
+    };
+
+    struct Result
+    {
+        DownstreamError error;
+        DownstreamResponse response;
+    };
+
+    // Fire one request and block for its completion.
+    Result sendAndWait(AsioUdsHttpClient& client,
+                       const std::string& socketPath,
+                       std::string_view body,
+                       std::shared_ptr<const void> keepAlive = std::make_shared<int>(0))
+    {
+        std::promise<Result> promise;
+        auto future = promise.get_future();
+
+        DownstreamRequest req;
+        req.socketPath = socketPath;
+        req.method = remoted::http::Method::Post;
+        req.path = "/events/enriched";
+        req.contentType = "application/x-ndjson";
+        req.body = body;
+
+        client.sendAsync(std::move(req),
+                         std::move(keepAlive),
+                         [&promise](DownstreamError error, DownstreamResponse response)
+                         { promise.set_value(Result {error, std::move(response)}); });
+
+        return future.get();
+    }
+} // namespace
+
+TEST(AsioUdsHttpClientTest, ParsesSuccessfulResponse)
+{
+    StubUdsServer server {uniqueSocketPath("ok"), "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", false};
+
+    AsioUdsHttpClient client {DownstreamConfig {}};
+    client.start();
+
+    const auto result = sendAndWait(client, server.path(), "H {}\nE evt");
+    EXPECT_EQ(result.error, DownstreamError::None);
+    EXPECT_EQ(result.response.status, 200);
+    EXPECT_EQ(result.response.body, "hello");
+}
+
+TEST(AsioUdsHttpClientTest, ParsesErrorStatusAndBody)
+{
+    StubUdsServer server {
+        uniqueSocketPath("bad"),
+        "HTTP/1.1 400 Bad Request\r\nContent-Length: 27\r\n\r\n{\"error\":\"x\",\"code\":400}\r\n\r\n",
+        false};
+
+    AsioUdsHttpClient client {DownstreamConfig {}};
+    client.start();
+
+    const auto result = sendAndWait(client, server.path(), "body");
+    EXPECT_EQ(result.error, DownstreamError::None);
+    EXPECT_EQ(result.response.status, 400);
+}
+
+TEST(AsioUdsHttpClientTest, MissingSocketYieldsConnectError)
+{
+    AsioUdsHttpClient client {DownstreamConfig {}};
+    client.start();
+
+    const auto result = sendAndWait(client, uniqueSocketPath("missing"), "body");
+    EXPECT_EQ(result.error, DownstreamError::Connect);
+}
+
+TEST(AsioUdsHttpClientTest, SilentServerYieldsTimeout)
+{
+    StubUdsServer server {uniqueSocketPath("silent"), "", /*silent=*/true};
+
+    DownstreamConfig config;
+    config.responseTimeoutMs = 200; // fast timeout for the test
+    AsioUdsHttpClient client {config};
+    client.start();
+
+    const auto result = sendAndWait(client, server.path(), "body");
+    EXPECT_EQ(result.error, DownstreamError::Timeout);
+}
+
+TEST(AsioUdsHttpClientTest, ReleasesBodyKeepAlive)
+{
+    StubUdsServer server {uniqueSocketPath("keepalive"), "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", false};
+
+    AsioUdsHttpClient client {DownstreamConfig {}};
+    client.start();
+
+    auto keepAlive = std::make_shared<int>(42);
+    std::weak_ptr<int> weak = keepAlive;
+
+    const std::string body = "body";
+    const auto result = sendAndWait(client, server.path(), body, std::move(keepAlive));
+    EXPECT_EQ(result.error, DownstreamError::None);
+
+    // The client must not leak the keep-alive: by completion it has long been dropped (at send time).
+    EXPECT_TRUE(weak.expired());
+}
+
+TEST(AsioUdsHttpClientTest, WriteHangYieldsTimeoutNotIndefiniteHang)
+{
+    // The server accepts but never reads -> once the kernel's UDS send buffer fills, async_write
+    // blocks. Without a write-phase timer this would hang forever, permanently pinning the
+    // request's deferred-work slot and byte reservation.
+    StubUdsServer server {uniqueSocketPath("writehang"), "", /*silent=*/false, /*acceptButNeverRead=*/true};
+
+    DownstreamConfig config;
+    config.writeTimeoutMs = 200;
+    config.responseTimeoutMs = 200;
+    AsioUdsHttpClient client {config};
+    client.start();
+
+    // Comfortably larger than any typical Linux UDS kernel buffer default, so the write genuinely
+    // blocks instead of completing in one shot.
+    const std::string bigBody(8U * 1024U * 1024U, 'A');
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto result = sendAndWait(client, server.path(), bigBody);
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    EXPECT_EQ(result.error, DownstreamError::Timeout);
+    EXPECT_LT(elapsed, std::chrono::seconds {5}); // bounded, not an indefinite hang
+}
+
+TEST(AsioUdsHttpClientTest, OversizedResponseBodyAbortsSession)
+{
+    const std::string hugeBody(4096, 'x');
+    const std::string response =
+        "HTTP/1.1 200 OK\r\nContent-Length: " + std::to_string(hugeBody.size()) + "\r\n\r\n" + hugeBody;
+    StubUdsServer server {uniqueSocketPath("hugebody"), response, false};
+
+    DownstreamConfig config;
+    config.maxResponseBodySize = 1024; // small cap so the test aborts quickly, well before hugeBody ends
+    AsioUdsHttpClient client {config};
+    client.start();
+
+    const auto result = sendAndWait(client, server.path(), "body");
+    EXPECT_EQ(result.error, DownstreamError::ResponseTooLarge);
+}
+
+TEST(AsioUdsHttpClientTest, IoThreadGuardSurvivesUnexpectedException)
+{
+    // Defense-in-depth pattern check for the io_context worker thread wrapper: an uncaught
+    // exception must not std::terminate() the process -- the try/catch around ioc.run() must
+    // let the thread return cleanly instead.
+    asio::io_context ioc;
+    asio::post(ioc, [] { throw std::runtime_error("simulated bug"); });
+
+    std::thread t(
+        [&ioc]
+        {
+            try
+            {
+                ioc.run();
+            }
+            catch (...)
+            {
+                // swallow, mirroring AsioUdsHttpClient::start()'s guard
+            }
+        });
+    t.join(); // must return, not std::terminate()
+    SUCCEED();
+}
