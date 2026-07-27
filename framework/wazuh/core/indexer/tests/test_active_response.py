@@ -145,9 +145,9 @@ class TestActiveResponse:
         [
             ("all", "1", ["1", "2"], ["1", "2"]),
             ("local", "1", ["1", "2"], ["1"]),
-            ("local", "3", ["1", "2"], []),
+            ("local", "3", ["1", "2"], ["3"]),  # HTTPS: Create task regardless of connection status
             ("defined-agent", "2", ["1", "2"], ["2"]),
-            ("defined-agent", "3", ["1", "2"], []),
+            ("defined-agent", "3", ["1", "2"], ["3"]),  # HTTPS: Create task regardless of connection status
             ("unknown", "1", ["1", "2"], []),
         ],
     )
@@ -329,12 +329,12 @@ class TestActiveResponseBuilder:
 
             builder = ActiveResponseBuilder(
                 logger=logger,
-                active_agents=["1"],
+                all_agents=["1"],
                 bookmark_file=bookmark,
             )
 
             assert builder.logger == logger
-            assert builder._active_agents == ["1"]
+            assert builder._all_agents == ["1"]
             assert builder._ars == []
             assert builder._bookmark_file is bookmark
 
@@ -352,7 +352,7 @@ class TestActiveResponseBuilder:
 
             builder = ActiveResponseBuilder(
                 logger=MagicMock(),
-                active_agents=[],
+                all_agents=[],
                 bookmark_file=MagicMock(),
             )
 
@@ -363,26 +363,6 @@ class TestActiveResponseBuilder:
             assert isinstance(builder._ars[0], ActiveResponse)
             assert builder._ars[0].doc_source == {"a": 1}
             assert builder._ars[0].bookmark.sort == [1]
-
-    class TestFilter:
-        """Tests for filter."""
-
-        def test_filter(self):
-            builder = ActiveResponseBuilder(
-                logger=MagicMock(),
-                active_agents=[],
-                bookmark_file=MagicMock(),
-            )
-
-            ar1 = MagicMock()
-            ar2 = MagicMock()
-
-            builder._ars = [ar1, ar2]
-
-            result = builder.filter(lambda ar: ar is ar1)
-
-            assert result is builder
-            assert builder._ars == [ar1]
 
     class TestEnrich:
         """Tests for enrich_ar_with_events_info."""
@@ -401,7 +381,7 @@ class TestActiveResponseBuilder:
 
             builder = ActiveResponseBuilder(
                 logger=MagicMock(),
-                active_agents=[],
+                all_agents=[],
                 bookmark_file=MagicMock(),
             )
             builder._ars = [ar]
@@ -426,7 +406,7 @@ class TestActiveResponseBuilder:
 
             builder = ActiveResponseBuilder(
                 logger=logger,
-                active_agents=[],
+                all_agents=[],
                 bookmark_file=MagicMock(),
             )
             builder._ars = [ar]
@@ -450,7 +430,7 @@ class TestActiveResponseBuilder:
 
             builder = ActiveResponseBuilder(
                 logger=MagicMock(),
-                active_agents=[],
+                all_agents=[],
                 bookmark_file=MagicMock(),
             )
             builder._ars = [ar]
@@ -459,67 +439,6 @@ class TestActiveResponseBuilder:
 
             assert builder._ars == [ar]
             assert builder._ars[0].event is None
-
-    class TestKeepOnlyActiveAgents:
-        """Tests for keep_only_active_agents_ars."""
-
-        @patch(
-            "wazuh.core.indexer.active_response.ActiveResponseHelpers.is_valid_agent"
-        )
-        def test_filters_valid_agents(self, mock_valid):
-            mock_valid.side_effect = [True, False]
-
-            builder = ActiveResponseBuilder(
-                logger=MagicMock(),
-                active_agents=["1"],
-                bookmark_file=MagicMock(),
-            )
-
-            ar1 = MagicMock()
-            ar1.bookmark.sort = [1]
-            ar2 = MagicMock()
-            ar2.bookmark.sort = [2]
-
-            builder._ars = [ar1, ar2]
-
-            builder.keep_only_active_agents_ars()
-
-            assert builder._ars == [ar1]
-
-        @patch(
-            "wazuh.core.indexer.active_response.ActiveResponseHelpers.is_valid_agent",
-            return_value=False,
-        )
-        def test_updates_bookmark_if_empty(self, mock_valid):
-            bookmark = MagicMock()
-
-            builder = ActiveResponseBuilder(
-                logger=MagicMock(),
-                active_agents=["1"],
-                bookmark_file=bookmark,
-            )
-
-            ar = MagicMock()
-            ar.bookmark.sort = [1]
-
-            builder._ars = [ar]
-
-            builder.keep_only_active_agents_ars()
-
-            bookmark.update.assert_called_once_with([1])
-
-        def test_no_ars(self):
-            builder = ActiveResponseBuilder(
-                logger=MagicMock(),
-                active_agents=["1"],
-                bookmark_file=MagicMock(),
-            )
-
-            builder._ars = []
-
-            result = builder.keep_only_active_agents_ars()
-
-            assert result is builder
 
     class TestDispatch:
         """Tests for dispatch."""
@@ -817,7 +736,6 @@ class TestActiveResponseFetchTask:
             await task.active_response_processing()
 
             mock_builder.fetch_ars.assert_awaited_once_with(validate=True)
-            mock_builder.keep_only_active_agents_ars.assert_called_once()
             mock_builder.enrich_ar_with_events_info.assert_awaited_once()
             mock_builder.dispatch.assert_called_once()
 
