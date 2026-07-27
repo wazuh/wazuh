@@ -63,7 +63,8 @@ namespace
     /// still marked seen and an at-least-once redelivery stays dropped (a
     /// restart landing after its subsuming upgrade would be harmful).
     std::vector<NotifyTask> collectFreshTasks(const nlohmann::json& parsed, TaskDeduper& deduper,
-                                              std::chrono::steady_clock::time_point now)
+                                              std::chrono::steady_clock::time_point now,
+                                              const LogFn& logFn)
     {
         std::vector<NotifyTask> batch;
         const auto tasks = parsed.find("tasks");
@@ -76,14 +77,31 @@ namespace
         for (const auto& task : *tasks)
         {
             std::string taskId = jsonField(task, "task_id");
+            std::string taskType = jsonField(task, "task_type");
 
-            if (taskId.empty() || !deduper.markIfNew(taskId, now))
+            // Two very different reasons to skip, so trace them separately.
+            // Both stay at debug: a drop is expected traffic, not an operator
+            // problem, which is the level buffer.c uses for the same thing.
+            if (taskId.empty())
             {
-                continue; // Duplicate (at-least-once) or unidentifiable.
+                // Every task carries a task_id (#37733 5.1.2), so one without
+                // is a manager-side defect: it can be neither deduped nor
+                // acknowledged, and dropping it silently would leave a future
+                // reader with no way to tell it ever arrived.
+                LOGFN_DEBUG1(logFn, "Ignoring a /control task with no task_id (type '%s').",
+                             taskType.empty() ? "(none)" : taskType.c_str());
+                continue;
             }
 
-            batch.push_back({std::move(taskId), jsonField(task, "task_type"),
-                             jsonField(task, "payload")});
+            if (!deduper.markIfNew(taskId, now))
+            {
+                // Routine: delivery is at-least-once, so a redelivery inside
+                // the dedup TTL is the mechanism working.
+                LOGFN_DEBUG2(logFn, "Dropping /control task %s: already seen.", taskId.c_str());
+                continue;
+            }
+
+            batch.push_back({std::move(taskId), std::move(taskType), jsonField(task, "payload")});
         }
 
         return batch;
@@ -283,7 +301,7 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
 
     // Tasks first, then the hash checks: a slow config download must never
     // delay task delivery.
-    dispatchPlannedTasks(collectFreshTasks(parsed, m_deduper, m_clock.steadyNow()));
+    dispatchPlannedTasks(collectFreshTasks(parsed, m_deduper, m_clock.steadyNow(), m_logFn));
     maybeArmSettingsRefresh(jsonField(parsed, "settings_hash"));
 
     const auto agent = parsed.find("agent");
