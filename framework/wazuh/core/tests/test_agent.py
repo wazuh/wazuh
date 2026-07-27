@@ -523,19 +523,6 @@ def test_agent_get_key(socket_mock, send_mock, id, expected_key):
     assert result == expected_key, 'Result does not match with expected key'
 
 
-@patch('wazuh.core.agent.WazuhQueue.send_msg_to_agent')
-@patch('wazuh.core.wdb.WazuhDBConnection._send', side_effect=send_msg_to_wdb)
-@patch('socket.socket.connect')
-def test_agent_reconnect(socket_mock, send_mock, mock_send_msg):
-    """Test if method reconnect calls send_msg method with correct params."""
-    agent_id = '001'
-    agent = Agent(agent_id)
-    agent.reconnect(WazuhQueue(common.AR_SOCKET))
-
-    # Assert send_msg method is called with correct params
-    mock_send_msg.assert_called_with(WazuhQueue.HC_FORCE_RECONNECT, agent_id)
-
-
 @patch('wazuh.core.agent.Agent._remove_authd', return_value='Agent was successfully deleted')
 def test_agent_remove(mock_remove_authd):
     """Tests if method remove() works as expected."""
