@@ -411,6 +411,23 @@ work as an AES-CMAC key. client.keys has no "disabled but present" state -- a re
 absent -- so `AuthError` has no separate inactive-agent case; an unknown and a removed agent are
 indistinguishable and both resolve to `AuthError::UnknownAgent`.
 
+**Hot-reload:** `Keystore` runs a background watcher thread (RAII -- started at the end of the
+constructor, stopped and joined in the destructor) so an agent enrolled or removed after startup is
+picked up without restarting `remoted`. Two triggers feed the same check: an `inotify` subscription
+on the file (`IN_MODIFY`/`IN_CLOSE_WRITE`/`IN_MOVE_SELF`/`IN_DELETE_SELF`, re-armed on the same path
+if an atomic rename-replace invalidates the watch descriptor) reacts immediately, and a periodic
+fallback poll (`poll()`'s own timeout doubles as the interval) catches anything the subscription
+ever missed -- both converge on the same `fileLooksChanged()` gate. Change detection compares the
+file's **content hash** (`Utils::hashFile()`, `shared_modules/utils/hashHelper.h`), not mtime: mtime
+is only second-granularity, so two rewrites landing in the same wall-clock second would otherwise
+look identical. `reload()` itself is guarded against adopting a line caught mid-write: it hashes the
+file before and after parsing and discards+retries (a few times, briefly) if they don't match, so a
+concurrent rewrite can only ever flip the in-memory table between two complete, consistent states,
+never a torn mix of both -- see `test/unit/keystore_test.cpp`'s `ReloadNeverAdoptsATornMixOfTwoValidContents`
+for the regression test. The poll/fallback interval is `remoted_module_config_t::keystore_refresh_interval`,
+which `secure.c` populates from the classic pipeline's own `remoted.keyupdate_interval` (its
+`rem_keyupdate_main` thread, `secure.c`) rather than a second, redundant internal option.
+
 **Agent ids are numeric (`AgentId = std::uint32_t`, `authTypes.hpp`):** an agent id is always numeric
 by design, so `Keystore`'s id→key table is keyed by `AgentId`, not by string. A `client.keys` line
 whose id column doesn't parse as a non-negative integer (fully consuming the field, via
