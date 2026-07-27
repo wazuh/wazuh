@@ -11,7 +11,7 @@
     "start_ack_timeout": 5,
     "end_ack_processing_timeout": 5,
     "end_ack_timeout": 60,
-    "ack_timeout_retry": 0,
+    "ack_timeout_retry": 5,
     "ack_timeout_retry_delay": 3
   },
   "lanes": {
@@ -54,7 +54,7 @@
     { "name": "windows", "agents": 20, "lanes": ["fim_windows", "sca_windows", "syscollector_windows", "vd_windows"] },
     { "name": "linux",   "agents": 20, "lanes": ["fim_linux", "sca_linux", "syscollector_linux", "vd_linux"] }
   ],
-  "parallel_agents": 0,
+  "parallel_agents": 15,
   "repeat_until": 0,
   "drain_timeout": 90,
   "post_run_grace": 30
