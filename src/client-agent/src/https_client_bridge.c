@@ -349,7 +349,12 @@ static bool bridge_build_config(hc_config_t *config)
     }
 
     const char *raw_key = (keys.keyentries && keys.keyentries[0]) ? keys.keyentries[0]->raw_key : NULL;
-    if (!bridge_key_is_valid(raw_key)) {
+    /* The NULL test is redundant with bridge_key_is_valid()'s own, and is here
+     * so it is visible at the point of use: the static analyzer does not inline
+     * the validator (its hex loop exhausts the inlining budget), so without a
+     * local test it explores a path where the key is NULL and reports the
+     * strncpy() below, plus the keys.keyentries[0]->id read above it. */
+    if (raw_key == NULL || !bridge_key_is_valid(raw_key)) {
         merror("https_client: agent key is missing or has an invalid length for AES-CMAC "
                "(expected 32, 48 or 64 hex characters); refusing to start.");
         return false;
