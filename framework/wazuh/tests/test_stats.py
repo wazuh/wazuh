@@ -88,12 +88,23 @@ def test_get_daemons_stats_agents(mock_get_daemons_stats_socket, mock_get_agents
     expected_errors_and_items = {'1701': {'999'}}  # Only non-existent agents fail
     result = stats.get_daemons_stats_agents(daemons_list, agents_list)
 
-    # get_daemons_stats_socket called with the expected parameters (agents 001 and 004)
-    calls = [call(DAEMON_SOCKET_PATHS_MAPPING[daemon], agents_list=[1, 4]) for daemon in expected_daemons_list]
-    mock_get_daemons_stats_socket.assert_has_calls(calls)
+    # get_daemons_stats_socket called with the expected parameters (agents 001 and 004, order may vary)
+    # Check that the calls were made with the correct agents (regardless of order)
+    actual_calls = mock_get_daemons_stats_socket.call_args_list
+    assert len(actual_calls) == len(expected_daemons_list)
+    for daemon in expected_daemons_list:
+        # Find call for this daemon
+        daemon_calls = [c for c in actual_calls if c[0][0] == DAEMON_SOCKET_PATHS_MAPPING[daemon]]
+        assert len(daemon_calls) == 1, f"Expected one call for daemon {daemon}"
+        # Check that agents_list contains both 1 and 4 (order doesn't matter)
+        agents = daemon_calls[0][1]['agents_list']
+        assert set(agents) == {1, 4}, f"Expected agents {{1, 4}}, got {set(agents)}"
 
-    # Check affected_items
-    assert result.affected_items == [{'name': daemon, 'agents': [{'id': 1}, {'id': 4}]} for daemon in expected_daemons_list]
+    # Check affected_items - sort agents for consistent comparison
+    for item in result.affected_items:
+        item['agents'].sort(key=lambda x: x['id'])
+    expected_items = [{'name': daemon, 'agents': [{'id': 1}, {'id': 4}]} for daemon in expected_daemons_list]
+    assert result.affected_items == expected_items
     assert result.total_affected_items == len(expected_daemons_list)
 
     # Check failed items
