@@ -163,8 +163,13 @@ private:
 
         // Framework-agnostic auth layer: reads agent keys from client.keys and
         // verifies the AES-CMAC of every authenticated request. Wired on top of
-        // OUR transport, so swapping the HTTP library never touches it.
-        m_keystore = std::make_shared<remoted::auth::Keystore>();
+        // OUR transport, so swapping the HTTP library never touches it. The keystore
+        // hot-reloads client.keys on its own (background watcher, see keystore.hpp) --
+        const auto keystoreRefreshSeconds = m_config.keystore_refresh_interval > 0
+                                                ? m_config.keystore_refresh_interval
+                                                : remoted::auth::Keystore::kDefaultRefreshIntervalSeconds;
+        m_keystore =
+            std::make_shared<remoted::auth::Keystore>(remoted::auth::Keystore::kDefaultPath, keystoreRefreshSeconds);
         m_authGateway =
             std::make_unique<remoted::endpoints::AuthGateway>(remoted::auth::buildAuthConfig(m_config), m_keystore);
 

@@ -345,6 +345,9 @@ void HandleSecure()
         // rm_config.max_deferred_requests caps requests parked awaiting a downstream service (503
         // over it). No Retry-After is sent: the agent runs its own retry/backoff on a 503.
         rm_config.max_deferred_requests = 256;
+        // rm_config.keystore_refresh_interval governs how often the C++ Keystore checks
+        // client.keys for changes (hot-reload)
+        rm_config.keystore_refresh_interval = keyupdate_interval;
         rm_config.worker_node = logr.worker_node;
 
         char *rm_cluster_name = get_cluster_name();

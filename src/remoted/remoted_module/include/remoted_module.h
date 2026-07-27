@@ -99,6 +99,9 @@ extern "C"
         int auth_max_request_age;     ///< Seconds a request timestamp may lag behind now.
         int auth_max_future_skew;     ///< Seconds a request timestamp may lead ahead of now.
         long long auth_max_body_size; ///< Hard cap on the authenticated request body, bytes (<=0 -> default).
+
+        int keystore_refresh_interval; ///< Seconds between client.keys change checks (hot-reload).
+                                       ///< <=0 -> module default (10 s)
     } remoted_module_config_t;
 
     /**
