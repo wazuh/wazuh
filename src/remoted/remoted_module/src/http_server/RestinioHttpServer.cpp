@@ -22,7 +22,6 @@
 
 #include <openssl/ssl.h>
 
-#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <memory>
