@@ -373,6 +373,8 @@ stages:
       <<: *empty_response
 
 ---
+test_name: PUT /agents/restart
+
 stages:
   - name: Try to restart all agents (generic)
     request:

@@ -19,7 +19,6 @@ from wazuh.core.exception import WazuhError, WazuhInternalError, WazuhException,
 from wazuh.core.results import WazuhResult, AffectedItemsWazuhResult
 from wazuh.core.utils import WazuhVersion, chmod_r, chown_r, get_hash, mkdir_with_mode, process_array, clear_temporary_caches, \
     full_copy
-from wazuh.core.wazuh_queue import WazuhQueue
 from wazuh.rbac.decorators import expose_resources, async_list_handler
 
 node_id = get_node().get('node')
