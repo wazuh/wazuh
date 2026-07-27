@@ -13,6 +13,11 @@
 #include <fstream>
 #include <unistd.h>
 
+#include <atomic>
+#include <chrono>
+#include <functional>
+#include <thread>
+
 #include <gtest/gtest.h>
 
 #include "auth/keystore.hpp"
@@ -41,6 +46,24 @@ namespace
         {
             std::ofstream file(m_path);
             file << contents;
+        }
+
+        // Polls `predicate` until it's true or `timeout` elapses. The hot-reload tests below are
+        // driven by a real background thread (inotify + a short fallback poll), so they can't
+        // assert synchronously the way the manual-reload() tests above do.
+        static bool waitFor(const std::function<bool()>& predicate,
+                            std::chrono::milliseconds timeout = std::chrono::seconds(2))
+        {
+            const auto deadline = std::chrono::steady_clock::now() + timeout;
+            while (std::chrono::steady_clock::now() < deadline)
+            {
+                if (predicate())
+                {
+                    return true;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            }
+            return predicate();
         }
 
         std::string m_path;
@@ -133,6 +156,80 @@ namespace
         writeFile("3824 !debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         EXPECT_EQ(keystore.reload(), 0);
         EXPECT_FALSE(keystore.keyFor(3824).has_value());
+    }
+
+    // ---------------------------------------------------------------------------
+    // Hot-reload: background watcher (inotify + fallback poll)
+    // ---------------------------------------------------------------------------
+
+    TEST_F(KeystoreTest, HotReloadPicksUpRewriteAutomatically)
+    {
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path, /*refreshIntervalSeconds=*/1);
+        ASSERT_TRUE(keystore.keyFor(3824).has_value());
+
+        // Rewrite in place -- no manual reload() call. The watcher must pick this up on its own.
+        writeFile("9999 debian11 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+
+        EXPECT_TRUE(waitFor([&] { return keystore.keyFor(9999).has_value(); }));
+        EXPECT_FALSE(keystore.keyFor(3824).has_value());
+    }
+
+    TEST_F(KeystoreTest, HotReloadSurvivesAtomicReplace)
+    {
+        writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path, /*refreshIntervalSeconds=*/1);
+        ASSERT_TRUE(keystore.keyFor(3824).has_value());
+
+        // Simulate authd/enrollment tooling replacing the file atomically (write to a temp file,
+        // then rename() it over the watched path) -- this invalidates the original inotify watch,
+        // exercising the re-arm path in drainInotifyEvents().
+        const std::string tmpPath = m_path + ".tmp";
+        {
+            std::ofstream file(tmpPath);
+            file << "9999 debian11 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n";
+        }
+        ASSERT_EQ(rename(tmpPath.c_str(), m_path.c_str()), 0);
+
+        EXPECT_TRUE(waitFor([&] { return keystore.keyFor(9999).has_value(); }));
+        EXPECT_FALSE(keystore.keyFor(3824).has_value());
+    }
+
+    // Races a background writer (repeatedly rewriting the file between two fully-valid but
+    // mutually-exclusive contents) against repeated reload() calls, and asserts the in-memory
+    // table is never a mix of both -- i.e. reload() never adopts a torn/mid-write snapshot. Each
+    // content is internally consistent (agent 111 XOR agent 222); seeing both at once could only
+    // happen if a parse read part of one content and part of the other.
+    TEST_F(KeystoreTest, ReloadNeverAdoptsATornMixOfTwoValidContents)
+    {
+        const std::string contentA = "111 hostA any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n";
+        const std::string contentB = "222 hostB any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n";
+        writeFile(contentA);
+        Keystore keystore(m_path);
+
+        std::atomic_bool stop {false};
+        std::thread writer(
+            [&]
+            {
+                bool useA = false;
+                while (!stop.load())
+                {
+                    writeFile(useA ? contentA : contentB);
+                    useA = !useA;
+                }
+            });
+
+        const auto raceDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(300);
+        while (std::chrono::steady_clock::now() < raceDeadline)
+        {
+            keystore.reload();
+            const bool has111 = keystore.keyFor(111).has_value();
+            const bool has222 = keystore.keyFor(222).has_value();
+            EXPECT_FALSE(has111 && has222) << "keystore adopted a torn read mixing both contents";
+        }
+
+        stop.store(true);
+        writer.join();
     }
 
 } // namespace

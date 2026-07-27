@@ -11,9 +11,12 @@
 
 #pragma once
 
+#include <cstdint>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <unordered_map>
+#include <vector>
 
 #include "iAgentKeystore.hpp"
 
@@ -21,7 +24,7 @@ namespace remoted::auth
 {
 
     /**
-     * @brief IAgentKeystore backed by a direct read of client.keys.
+     * @brief IAgentKeystore backed by a direct read of client.keys, hot-reloaded on change.
      *
      * Parses the manager's client.keys file the same way the manager's own
      * OS_ReadKeys() does (shared/os_crypto/shared/keys.c): each line is
@@ -44,6 +47,15 @@ namespace remoted::auth
      * with no further derivation. It must decode to 16, 24 or 32 bytes to be
      * usable as an AES-CMAC key; AuthMiddleware reports AuthError::MissingKey
      * for an agent whose key does not (see keyFor()).
+     *
+     * Hot-reload: a background thread watches the file (inotify, with a
+     * periodic fallback poll -- see the classic pipeline's equivalent,
+     * rem_keyupdate_main in src/remoted/src/secure.c) and calls reload()
+     * whenever the file's content hash looks different from the last
+     * successful load (mtime is only second-granularity, so two rewrites in
+     * the same second can't be told apart by timestamp alone). The watcher is
+     * fully RAII: started at the end of the constructor, stopped and joined in
+     * the destructor
      */
     class Keystore : public IAgentKeystore
     {
@@ -51,20 +63,37 @@ namespace remoted::auth
         /// Path to client.keys, relative to the manager's home directory.
         static constexpr const char* kDefaultPath = "etc/client.keys";
 
+        /// Built-in refresh interval when the caller passes <=0 (matches remoted.keyupdate_interval's
+        /// own built-in default in the legacy pipeline).
+        static constexpr int kDefaultRefreshIntervalSeconds = 10;
+
         /**
          * @param path Path to client.keys. Loaded immediately; a missing or
          *             unreadable file is not an error -- the keystore just
          *             starts empty (see reload()).
+         * @param refreshIntervalSeconds How often the background watcher re-checks the file as a
+         *             fallback to the inotify subscription (seconds). <=0 -> kDefaultRefreshIntervalSeconds.
          */
-        explicit Keystore(std::string path = kDefaultPath);
+        explicit Keystore(std::string path = kDefaultPath, int refreshIntervalSeconds = kDefaultRefreshIntervalSeconds);
+
+        ~Keystore() override;
+
+        Keystore(const Keystore&) = delete;
+        Keystore& operator=(const Keystore&) = delete;
 
         /**
          * @brief Re-read client.keys from disk, replacing the in-memory copy.
          *
-         * Not called automatically on any schedule; the caller decides when
-         * a re-read is warranted (e.g. after enrollment/removal).
+         * Always re-parses the file when called (the background watcher decides
+         * separately whether calling this is warranted -- see the class comment).
+         * Guarded against a concurrent rewrite: the file's content hash is captured
+         * before and after parsing, and the parse is retried (a few times, briefly)
+         * if they don't match, so a line caught mid-write is never adopted into the
+         * in-memory table. Safe to call from multiple threads (serialized internally).
          *
-         * @return Number of agent keys loaded, or -1 if the file could not be opened.
+         * @return Number of agent keys loaded, or -1 if the file could not be
+         *         opened, or if the file kept changing across every retry attempt
+         *         (in which case the previous in-memory table is left untouched).
          */
         int reload();
 
@@ -79,9 +108,39 @@ namespace remoted::auth
         std::optional<std::vector<std::uint8_t>> keyFor(AgentId agentId) const override;
 
     private:
+        /// Watcher thread entry point: inotify + poll() loop, see keystore.cpp for the full design.
+        void watcherLoop();
+
+        /// Drains every pending inotify event on m_inotifyFd (it's non-blocking) and, if any of
+        /// them invalidated the watch (IN_IGNORED/IN_MOVE_SELF/IN_DELETE_SELF -- typical of an
+        /// atomic rename-replace of the file), re-adds it on the same path.
+        void drainInotifyEvents();
+
+        /// Gate run by the watcher before considering a reload: true if the file's content hash
+        /// looks different from the last successful reload (or reload() was never called yet),
+        /// false if nothing has changed (or the file is transiently unreachable). Guarded by
+        /// m_reloadMutex, same as reload() itself -- see that field's comment.
+        bool fileLooksChanged();
+
         std::string m_path;
         mutable std::mutex m_mutex;
         std::unordered_map<AgentId, std::vector<std::uint8_t>> m_keys;
+
+        // Hot-reload: background watcher (inotify + periodic fallback poll via poll()'s timeout).
+        int m_refreshIntervalSeconds;
+        int m_inotifyFd {-1};
+        int m_watchDescriptor {-1};
+        int m_stopEventFd {-1}; ///< Written by the destructor for an immediate cooperative wakeup.
+        std::thread m_watcherThread;
+
+        // Serializes reload() (so at most one parse runs at a time, whether triggered by the
+        // watcher or called directly) and guards the last-known content hash below, which
+        // fileLooksChanged() reads and reload() updates on success. Content hash, not mtime/size:
+        // two rewrites landing in the same wall-clock second (mtime is second-granularity) can
+        // otherwise look identical despite different content.
+        std::mutex m_reloadMutex;
+        bool m_hasBaseline {false};
+        std::vector<std::uint8_t> m_lastHash;
     };
 
 } // namespace remoted::auth
