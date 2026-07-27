@@ -1235,7 +1235,7 @@ def test_agent_upgrade_agents(mock_socket, mock_wdb, mock_client_keys, agent_set
             assert isinstance(result, AffectedItemsWazuhResult)
 
             # Check affected items
-            affected_items = set([af_item['agent'] for af_item in result.affected_items])
+            affected_items = set(result.affected_items)
             values_failed_items = list(expected_errors_and_items.values())
             agents_with_errors = set()
             for value in values_failed_items:
