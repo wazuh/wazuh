@@ -51,7 +51,7 @@ namespace
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path);
 
-        const auto key = keystore.keyFor("3824");
+        const auto key = keystore.keyFor(3824);
         ASSERT_TRUE(key.has_value());
         EXPECT_EQ(key->size(), 32u);
     }
@@ -61,7 +61,25 @@ namespace
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path);
 
-        EXPECT_FALSE(keystore.keyFor("9999").has_value());
+        EXPECT_FALSE(keystore.keyFor(9999).has_value());
+    }
+
+    TEST_F(KeystoreTest, NonNumericIdLineIsSkipped)
+    {
+        writeFile("abc debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.reload(), 0);
+    }
+
+    TEST_F(KeystoreTest, NonNumericIdLineDoesNotBlockOtherEntries)
+    {
+        writeFile("abc debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n"
+                  "3824 debian11 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_TRUE(keystore.keyFor(3824).has_value());
     }
 
     TEST_F(KeystoreTest, CommentAndBlankLinesAreSkipped)
@@ -71,7 +89,7 @@ namespace
                   "3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path);
 
-        EXPECT_TRUE(keystore.keyFor("3824").has_value());
+        EXPECT_TRUE(keystore.keyFor(3824).has_value());
     }
 
     TEST_F(KeystoreTest, RemovedEntryIsSkipped)
@@ -79,7 +97,7 @@ namespace
         writeFile("3824 !debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path);
 
-        EXPECT_FALSE(keystore.keyFor("3824").has_value());
+        EXPECT_FALSE(keystore.keyFor(3824).has_value());
     }
 
     TEST_F(KeystoreTest, MalformedLineIsSkipped)
@@ -87,7 +105,7 @@ namespace
         writeFile("3824 debian10 any\n"); // missing key column
         Keystore keystore(m_path);
 
-        EXPECT_FALSE(keystore.keyFor("3824").has_value());
+        EXPECT_FALSE(keystore.keyFor(3824).has_value());
     }
 
     TEST_F(KeystoreTest, NonHexKeyResolvesToAnEmptyKey)
@@ -95,7 +113,7 @@ namespace
         writeFile("3824 debian10 any not-hex-at-all\n");
         Keystore keystore(m_path);
 
-        const auto key = keystore.keyFor("3824");
+        const auto key = keystore.keyFor(3824);
         ASSERT_TRUE(key.has_value());
         EXPECT_TRUE(key->empty());
     }
@@ -103,18 +121,18 @@ namespace
     TEST_F(KeystoreTest, MissingFileLeavesKeystoreEmpty)
     {
         Keystore keystore(m_path + "-does-not-exist");
-        EXPECT_FALSE(keystore.keyFor("3824").has_value());
+        EXPECT_FALSE(keystore.keyFor(3824).has_value());
     }
 
     TEST_F(KeystoreTest, ReloadPicksUpChanges)
     {
         writeFile("3824 debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         Keystore keystore(m_path);
-        ASSERT_TRUE(keystore.keyFor("3824").has_value());
+        ASSERT_TRUE(keystore.keyFor(3824).has_value());
 
         writeFile("3824 !debian10 any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
         EXPECT_EQ(keystore.reload(), 0);
-        EXPECT_FALSE(keystore.keyFor("3824").has_value());
+        EXPECT_FALSE(keystore.keyFor(3824).has_value());
     }
 
 } // namespace

@@ -27,7 +27,11 @@ namespace remoted::auth
      * OS_ReadKeys() does (shared/os_crypto/shared/keys.c): each line is
      * "id name ip key"; lines starting with '#' or ' ' are comments; an
      * entry whose name field starts with '#' or '!' is a removed/disabled
-     * agent and is skipped, exactly like OS_ReadKeys() discards it.
+     * agent and is skipped, exactly like OS_ReadKeys() discards it. The id
+     * column must parse as AgentId (a non-negative integer, fully consuming
+     * the field); a non-numeric id is likewise skipped (see reload()) -- an
+     * agent id is always numeric by design, so that line can never match a
+     * real lookup anyway.
      *
      * It is independent of remoted's own C keystore: it reads the file
      * itself and keeps its own in-memory copy, so it never touches
@@ -67,17 +71,17 @@ namespace remoted::auth
         /**
          * @brief Look up an agent's key in the in-memory copy of client.keys.
          *
-         * @param agentId Agent id, as it appears in client.keys' first column.
+         * @param agentId Agent id, as it appears (numerically) in client.keys' first column.
          * @return std::nullopt if the id is not present (including removed/disabled
-         *         entries, which are never loaded). Otherwise the agent's key,
-         *         empty if the on-disk key column failed to hex-decode.
+         *         entries, and entries whose id column isn't numeric -- see reload()).
+         *         Otherwise the agent's key, empty if the on-disk key column failed to hex-decode.
          */
-        std::optional<std::vector<std::uint8_t>> keyFor(const std::string& agentId) const override;
+        std::optional<std::vector<std::uint8_t>> keyFor(AgentId agentId) const override;
 
     private:
         std::string m_path;
         mutable std::mutex m_mutex;
-        std::unordered_map<std::string, std::vector<std::uint8_t>> m_keys;
+        std::unordered_map<AgentId, std::vector<std::uint8_t>> m_keys;
     };
 
 } // namespace remoted::auth
