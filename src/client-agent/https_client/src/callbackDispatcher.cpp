@@ -105,6 +105,21 @@ void CallbackDispatcher::onStartupResult(bool accepted, const std::string& hands
     { m_callbacks.on_startup_result(accepted, handshakeJson.c_str(), m_callbacks.user_data); });
 }
 
+void CallbackDispatcher::onTask(const std::string& taskId, const std::string& taskType,
+                                const std::string& payloadJson)
+{
+    if (m_callbacks.on_task == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, taskId, taskType, payloadJson]
+    {
+        m_callbacks.on_task(taskId.c_str(), taskType.c_str(), payloadJson.c_str(),
+                            m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onReenrollRequired()
 {
     if (m_callbacks.on_reenroll_required == nullptr)
@@ -129,6 +144,19 @@ void CallbackDispatcher::onConfigDownloaded(const std::string& configHash,
     {
         m_callbacks.on_config_downloaded(configHash.c_str(), file->path().c_str(),
                                          m_callbacks.user_data);
+    });
+}
+
+void CallbackDispatcher::onManagerConfigHash(const std::string& configHash)
+{
+    if (m_callbacks.on_manager_config_hash == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, configHash]
+    {
+        m_callbacks.on_manager_config_hash(configHash.c_str(), m_callbacks.user_data);
     });
 }
 

@@ -12,6 +12,7 @@
 #include "controlStream.hpp"
 
 #include "digest.hpp"
+#include "taskBatch.hpp"
 
 #include "external/nlohmann/json.hpp"
 
@@ -56,6 +57,55 @@ namespace
 
         return "default";
     }
+
+    /// The Notify batch after dedup: fresh, identifiable tasks only.
+    /// Deliberately deduped BEFORE planning, so a task dropped as redundant is
+    /// still marked seen and an at-least-once redelivery stays dropped (a
+    /// restart landing after its subsuming upgrade would be harmful).
+    std::vector<NotifyTask> collectFreshTasks(const nlohmann::json& parsed, TaskDeduper& deduper,
+                                              std::chrono::steady_clock::time_point now,
+                                              const LogFn& logFn)
+    {
+        std::vector<NotifyTask> batch;
+        const auto tasks = parsed.find("tasks");
+
+        if (tasks == parsed.end() || !tasks->is_array())
+        {
+            return batch;
+        }
+
+        for (const auto& task : *tasks)
+        {
+            std::string taskId = jsonField(task, "task_id");
+            std::string taskType = jsonField(task, "task_type");
+
+            // Two very different reasons to skip, so trace them separately.
+            // Both stay at debug: a drop is expected traffic, not an operator
+            // problem, which is the level buffer.c uses for the same thing.
+            if (taskId.empty())
+            {
+                // Every task carries a task_id (#37733 5.1.2), so one without
+                // is a manager-side defect: it can be neither deduped nor
+                // acknowledged, and dropping it silently would leave a future
+                // reader with no way to tell it ever arrived.
+                LOGFN_DEBUG1(logFn, "Ignoring a /control task with no task_id (type '%s').",
+                             taskType.empty() ? "(none)" : taskType.c_str());
+                continue;
+            }
+
+            if (!deduper.markIfNew(taskId, now))
+            {
+                // Routine: delivery is at-least-once, so a redelivery inside
+                // the dedup TTL is the mechanism working.
+                LOGFN_DEBUG2(logFn, "Dropping /control task %s: already seen.", taskId.c_str());
+                continue;
+            }
+
+            batch.push_back({std::move(taskId), std::move(taskType), jsonField(task, "payload")});
+        }
+
+        return batch;
+    }
 } // namespace
 
 ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& performer,
@@ -66,11 +116,13 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, &authGate)
+    , m_clock(clock)
     , m_sink(sink)
     , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate)
     , m_configHash(configHash)
     , m_cluster(cluster)
     , m_authGate(authGate)
+    , m_deduper(config.taskDedupMax, std::chrono::seconds {config.taskDedupTtlS})
 {
 }
 
@@ -247,13 +299,21 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
         return; // Tolerant: a malformed Notify body is ignored, never fatal.
     }
 
+    // Tasks first, then the hash checks: a slow config download must never
+    // delay task delivery.
+    dispatchPlannedTasks(collectFreshTasks(parsed, m_deduper, m_clock.steadyNow(), m_logFn));
     maybeArmSettingsRefresh(jsonField(parsed, "settings_hash"));
 
     const auto agent = parsed.find("agent");
 
     if (agent != parsed.end() && agent->is_object())
     {
-        maybeDownloadConfig(jsonField(*agent, "config_hash"), firstGroup(*agent), waiter);
+        const std::string managerHash = jsonField(*agent, "config_hash");
+        // Reported on every notify, matching or not: the agent's startup hash
+        // gate waits on the manager-validated configuration and, when the
+        // hashes already agree, no download fires to tell it so (#37854).
+        m_sink.onManagerConfigHash(managerHash);
+        maybeDownloadConfig(managerHash, firstGroup(*agent), waiter);
     }
 }
 
@@ -313,6 +373,22 @@ void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
     m_refreshedForSettingsHash = incoming;
     m_settingsLoopWarned = false;
     m_machine.onEvent(ControlStateMachine::Event::SettingsChanged);
+}
+
+void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch)
+{
+    auto plan = planTaskBatch(std::move(batch));
+
+    for (const auto& [task, subsumer] : plan.dropped)
+    {
+        LOGFN_INFO(m_logFn, "Task %s (%s) dropped: covered by a %s in the same batch.",
+                   task.id.c_str(), task.type.c_str(), subsumer.c_str());
+    }
+
+    for (const auto& task : plan.ordered)
+    {
+        m_sink.onTask(task.id, task.type, task.payloadJson);
+    }
 }
 
 ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const

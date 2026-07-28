@@ -13,6 +13,8 @@
 
 #include <gtest/gtest.h>
 
+#include <ostream>
+
 namespace
 {
     HttpResponse makeResponse(TransportStatus status, long code)
@@ -30,6 +32,17 @@ struct ClassifierCase
     long httpCode;
     OutcomeClass expected;
 };
+
+/// Without a printer gtest falls back to hex-dumping the raw object when it
+/// names a case, and this aggregate carries padding (4 bytes after the enum,
+/// 4 at the end, hence the 24-byte object) that no initializer writes. Reading
+/// it is what valgrind reports under the RTR. A printer removes the fallback,
+/// and a failure now names the case instead of dumping bytes.
+inline void PrintTo(const ClassifierCase& value, std::ostream* stream)
+{
+    *stream << "transport=" << static_cast<int>(value.status) << " http=" << value.httpCode
+            << " expected=" << static_cast<int>(value.expected);
+}
 
 class OutcomeClassifierTable : public ::testing::TestWithParam<ClassifierCase>
 {

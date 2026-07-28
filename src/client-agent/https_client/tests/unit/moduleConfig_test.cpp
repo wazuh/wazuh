@@ -48,6 +48,8 @@ TEST(ModuleConfigTest, DefaultsAppliedOnZeroFields)
     EXPECT_EQ(1000u, typed.backoffBaseMs);
     EXPECT_EQ(60000u, typed.backoffCapMs);
     EXPECT_EQ(5000u, typed.drainTimeoutMs);
+    EXPECT_EQ(4096u, typed.taskDedupMax);
+    EXPECT_EQ(3600u, typed.taskDedupTtlS);
 }
 
 TEST(ModuleConfigTest, ZeroedVerifyModeIsFullFailClosed)
