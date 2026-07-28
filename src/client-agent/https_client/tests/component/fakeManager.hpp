@@ -223,7 +223,7 @@ class FakeManager final
 
             server.Post("/stateful",
                         [verify, lastSession, holdFile](const httplib::Request & request,
-                                httplib::Response & response)
+                                                        httplib::Response & response)
             {
                 if (!verify("/stateful", request))
                 {
