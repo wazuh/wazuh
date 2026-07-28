@@ -27,6 +27,7 @@ class MockCallbackSink : public ICallbackSink
                     (override));
         MOCK_METHOD(void, onConfigDownloaded,
                     (const std::string& configHash, std::shared_ptr<SpoolFile> file), (override));
+        MOCK_METHOD(void, onManagerConfigHash, (const std::string& configHash), (override));
         MOCK_METHOD(void, onStateChange, (hc_conn_state_t state), (override));
         MOCK_METHOD(void, onBufferLevel, (hc_buffer_level_t level), (override));
 };
