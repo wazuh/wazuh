@@ -20,11 +20,17 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstring>
 #include <fstream>
 #include <mutex>
 #include <string>
+#include <thread>
+
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
 namespace
@@ -65,6 +71,36 @@ namespace
     {
         std::unique_lock<std::mutex> lock(received.mutex);
         return received.cv.wait_for(lock, std::chrono::seconds {5}, [&] { return received.count >= n; });
+    }
+
+    /// Connects and writes `bytes` without ever finishing the frame, leaving the
+    /// connection open. Returns the still-connected fd (-1 on failure).
+    int connectAndStall(const std::string& sock, const std::string& bytes)
+    {
+        const int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+
+        if (fd < 0)
+        {
+            return -1;
+        }
+
+        sockaddr_un addr {};
+        addr.sun_family = AF_UNIX;
+        std::strncpy(addr.sun_path, sock.c_str(), sizeof(addr.sun_path) - 1);
+
+        if (connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0)
+        {
+            close(fd);
+            return -1;
+        }
+
+        if (!bytes.empty() && write(fd, bytes.data(), bytes.size()) < 0)
+        {
+            close(fd); // LCOV_EXCL_LINE
+            return -1; // LCOV_EXCL_LINE
+        }
+
+        return fd;
     }
 } // namespace
 
@@ -132,6 +168,50 @@ TEST_F(SyncIntakeComponentTest, SpoolFileExistsWhenTheSinkIsCalled)
     ASSERT_TRUE(sendBody(socketPath(), "exists", "body-bytes"));
     ASSERT_TRUE(waitForCount(m_received, 1));
     EXPECT_TRUE(fileExists(m_received.path));
+    std::remove(m_received.path.c_str());
+}
+
+TEST_F(SyncIntakeComponentTest, StopReturnsWhileAProducerIsStalledMidFrame)
+{
+    // A producer that sends half a frame and then goes quiet must not pin the
+    // acceptor thread: stop() reaches the blocked read through the stop pipe.
+    ASSERT_TRUE(m_intake.start());
+
+    // "WZSY" + idLen=2, but only one of the two id bytes: the reader is now
+    // blocked waiting for the rest, with the connection still open.
+    const std::string partial {"WZSY\x02\x00\x00\x00i", 9};
+    const int producer = connectAndStall(socketPath(), partial);
+    ASSERT_GE(producer, 0);
+    std::this_thread::sleep_for(std::chrono::milliseconds {200}); // Let it block in the read.
+
+    std::atomic<bool> returned {false};
+    std::thread stopper {[this, &returned] { m_intake.stop(); returned = true; }};
+
+    for (int attempt = 0; attempt < 50 && !returned; attempt++)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds {100});
+    }
+
+    EXPECT_TRUE(returned) << "stop() blocked on a stalled producer";
+    stopper.join(); // Would deadlock the run if the expectation above failed.
+    close(producer);
+    EXPECT_EQ(0, m_received.count); // The half-frame was discarded, not promoted.
+}
+
+TEST_F(SyncIntakeComponentTest, AStalledProducerDoesNotBlockTheNextSession)
+{
+    // Head-of-line: the acceptor is single-threaded, so a peer that connects
+    // and never sends must not wedge the sessions queued behind it.
+    ASSERT_TRUE(m_intake.start());
+
+    const int idle = connectAndStall(socketPath(), {}); // Connected, zero bytes.
+    ASSERT_GE(idle, 0);
+    std::this_thread::sleep_for(std::chrono::milliseconds {200});
+
+    close(idle); // The peer dies; the intake sees EOF and moves on.
+    ASSERT_TRUE(sendBody(socketPath(), "after-stall", "body-bytes"));
+    ASSERT_TRUE(waitForCount(m_received, 1));
+    EXPECT_EQ("after-stall", m_received.id);
     std::remove(m_received.path.c_str());
 }
 

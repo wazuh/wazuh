@@ -30,6 +30,7 @@ SyncIntake::~SyncIntake()
 #ifndef _WIN32
 
 #include <array>
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
 
@@ -44,6 +45,12 @@ SyncIntake::~SyncIntake()
 
 namespace
 {
+    /// How long a half-sent session may go quiet before the connection is
+    /// dropped. A producer streaming a session keeps data flowing, so this only
+    /// fires on one that died mid-frame; it exists so a single stalled peer
+    /// cannot pin the acceptor thread against every other producer.
+    constexpr int PEER_IDLE_TIMEOUT_MS = 30 * 1000;
+
     void closeFd(int& fd)
     {
         if (fd >= 0)
@@ -53,10 +60,41 @@ namespace
         }
     }
 
+    /// Waits for data on peerFd while watching stopFd, then reads once. Returns
+    /// a transport error (<0) when the stop is signalled or the peer goes quiet,
+    /// so a producer that stalls mid-frame can never pin the thread that stop()
+    /// joins. stopFd stays readable once written (it is never drained), so every
+    /// subsequent read of the same connection short-circuits here too.
+    long readWatchingStop(int peerFd, int stopFd, void* buffer, size_t n)
+    {
+        while (true)
+        {
+            std::array<pollfd, 2> fds {{{peerFd, POLLIN, 0}, {stopFd, POLLIN, 0}}};
+            const int ready = poll(fds.data(), fds.size(), PEER_IDLE_TIMEOUT_MS);
+
+            if (ready < 0)
+            {
+                if (errno == EINTR)
+                {
+                    continue; // LCOV_EXCL_LINE: signal race, just re-poll.
+                }
+
+                return -1; // LCOV_EXCL_LINE
+            }
+
+            if (ready == 0 || (fds[1].revents & POLLIN) != 0)
+            {
+                return -1; // Idle for too long, or stopping.
+            }
+
+            return static_cast<long>(recv(peerFd, buffer, n, 0));
+        }
+    }
+
     /// Streams the framed session on peerFd into a fresh temp file. Returns the
     /// spool path (and fills id/size) on success, or an empty string.
-    std::string spoolConnection(int peerFd, const std::string& spoolDir, std::string& sessionId,
-                                uint64_t& size)
+    std::string spoolConnection(int peerFd, int stopFd, const std::string& spoolDir,
+                                std::string& sessionId, uint64_t& size)
     {
         std::string tmpl = spoolDir + "/hc_sync_intake_XXXXXX";
         const int fd = mkstemp(tmpl.data());
@@ -75,9 +113,9 @@ namespace
             return {};
         }
 
-        const auto read = [peerFd](void* buffer, size_t n) -> long
+        const auto read = [peerFd, stopFd](void* buffer, size_t n) -> long
         {
-            return static_cast<long>(recv(peerFd, buffer, n, 0));
+            return readWatchingStop(peerFd, stopFd, buffer, n);
         };
         const SyncFrameResult result = readSyncSessionFrame(read, out, sessionId, size);
         fclose(out);
@@ -190,7 +228,7 @@ void SyncIntake::handleConnection(int peerFd)
 {
     std::string sessionId;
     uint64_t size = 0;
-    const std::string path = spoolConnection(peerFd, m_spoolDir, sessionId, size);
+    const std::string path = spoolConnection(peerFd, m_stopPipe[0], m_spoolDir, sessionId, size);
 
     if (!path.empty() && m_sink)
     {
