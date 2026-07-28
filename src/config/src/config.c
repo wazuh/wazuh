@@ -113,7 +113,7 @@ static int read_main_elements(const OS_XML *xml, int modules,
                 goto fail;
             }
         } else if (strcmp(node[i]->element, ossca) == 0) {
-            if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && (Read_SCA(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
         }
@@ -162,12 +162,12 @@ static int read_main_elements(const OS_XML *xml, int modules,
             mwarn("%s configuration is only set in the manager.", node[i]->element);
 #endif
         } else if (strcmp(node[i]->element, osgcp_pub) == 0) {
-            if ((modules & CWMODULE) && (Read_GCP_pubsub(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && (Read_GCP_pubsub(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
 
         } else if (strcmp(node[i]->element, osgcp_bucket) == 0) {
-            if ((modules & CWMODULE) && (Read_GCP_bucket(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && (Read_GCP_bucket(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
 #ifndef WIN32
@@ -205,15 +205,15 @@ static int read_main_elements(const OS_XML *xml, int modules,
         }
 #if defined(WIN32) || defined(__linux__) || defined(__MACH__)
         else if (chld_node && (strcmp(node[i]->element, github) == 0)) {
-            if ((modules & CWMODULE) && (Read_Github(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && (Read_Github(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, office365) == 0)) {
-            if ((modules & CWMODULE) && (Read_Office365(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && (Read_Office365(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
         } else if (chld_node && (strcmp(node[i]->element, ms_graph) == 0)) {
-            if ((modules & CWMODULE) && (Read_MS_Graph(xml, node[i], d1) < 0)) {
+            if ((modules & CWMODULE) && (Read_MS_Graph(xml, node[i], d1, d2) < 0)) {
                 goto fail;
             }
         }
@@ -433,7 +433,7 @@ void PrintErrorAcordingToModules(int modules, const char *cfgfile) {
     switch (BITMASK(modules)) {
         case CSYSCHECK:
         case CROOTCHECK:
-            mwarn(CONFIG_ERROR, cfgfile);
+            mwarn(XML_INVELEM, cfgfile);
             break;
         default:
             merror(CONFIG_ERROR, cfgfile);

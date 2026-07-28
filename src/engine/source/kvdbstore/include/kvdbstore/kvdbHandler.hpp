@@ -14,10 +14,26 @@ namespace kvdbstore
 
 using KVMap = std::unordered_map<std::string, json::Json>;
 
+/**
+ * @brief Holds the source document (allocator owner) and the extracted member entries.
+ *
+ * Member entries are created via extractObjectMembers() (zero-copy swap), so their
+ * string data references the sourceDoc's allocator. sourceDoc MUST be declared before
+ * entries to ensure it is destroyed AFTER entries (reverse declaration order).
+ *
+ * sourceDoc is a compact document (json::Json::compact): a single right-sized memory
+ * pool per DB (2 KB granularity) instead of the default 64 KB rapidjson chunks.
+ */
+struct KVMapStore
+{
+    json::Json sourceDoc; ///< Keeps the compact pool alive for swapped entries' string data.
+    KVMap entries;        ///< Values swapped from sourceDoc (zero-copy).
+};
+
 class KVDBHandler final : public IKVDBHandler
 {
 public:
-    explicit KVDBHandler(std::shared_ptr<const KVMap> map) noexcept;
+    explicit KVDBHandler(std::shared_ptr<const KVMapStore> store) noexcept;
     ~KVDBHandler() override = default;
 
     // Non-copyable / non-movable
@@ -31,7 +47,7 @@ public:
     bool contains(const std::string& key) const noexcept override;
 
 private:
-    std::shared_ptr<const KVMap> m_map;
+    std::shared_ptr<const KVMapStore> m_store;
 };
 
 } // namespace kvdbstore

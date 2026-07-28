@@ -140,8 +140,8 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataValueItems
     std::thread syncThread(
         [this]()
     {
-        bool result = protocol->synchronizeModule(Mode::DELTA);
-        EXPECT_TRUE(result);
+        SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_TRUE(result.success);
     });
 
     // Wait for start
@@ -212,8 +212,8 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithOnlyDataContextIte
     std::thread syncThread(
         [this]()
     {
-        bool result = protocol->synchronizeModule(Mode::DELTA);
-        EXPECT_TRUE(result);
+        SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_TRUE(result.success);
     });
 
     // Wait for start
@@ -310,8 +310,8 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleWithMixedDataValueAndD
     std::thread syncThread(
         [this]()
     {
-        bool result = protocol->synchronizeModule(Mode::DELTA);
-        EXPECT_TRUE(result);
+        SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_TRUE(result.success);
     });
 
     // Wait for start
@@ -398,8 +398,8 @@ TEST_F(AgentSyncProtocolDataContextTest, SynchronizeModuleDataContextFailureDoes
     std::thread syncThread(
         [this]()
     {
-        bool result = protocol->synchronizeModule(Mode::DELTA);
-        EXPECT_FALSE(result); // Should fail due to DataContext send failure
+        SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_FALSE(result.success); // Should fail due to DataContext send failure
     });
 
     // Wait for start
@@ -487,8 +487,8 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_DataValuesAreBatchedTogether)
     std::thread syncThread(
         [this]()
     {
-        bool result = protocol->synchronizeModule(Mode::DELTA);
-        EXPECT_TRUE(result);
+        SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_TRUE(result.success);
     });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));
@@ -580,8 +580,8 @@ TEST_F(AgentSyncProtocolDataContextTest, DataBatch_BatchContainsExpectedDataValu
     std::thread syncThread(
         [this]()
     {
-        bool result = protocol->synchronizeModule(Mode::DELTA);
-        EXPECT_TRUE(result);
+        SyncModuleResult result = protocol->synchronizeModule(Mode::DELTA);
+        EXPECT_TRUE(result.success);
     });
 
     std::this_thread::sleep_for(std::chrono::milliseconds(delay));

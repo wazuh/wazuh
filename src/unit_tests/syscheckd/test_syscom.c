@@ -181,6 +181,27 @@ void test_syscom_dispatch_sync_error(void **state)
     assert_int_equal(ret, 24);
 }
 
+void test_syscom_dispatch_sync_destroyed_handle(void **state)
+{
+    (void) state;
+    size_t ret;
+    char command[] = "fim_sync test-data";
+    char *output;
+
+    syscheck.enable_synchronization = 1;
+    // The shutdown teardown destroyed the handle: the response must be dropped
+    // without touching the sync protocol (asp_parse_response_buffer is not called).
+    syscheck.sync_handle = NULL;
+
+    expect_string(__wrap__mdebug1, formatted_msg, "WMCOM Error syncing module");
+
+    ret = syscom_dispatch(command, strlen(command), &output);
+    *state = output;
+
+    assert_string_equal(output, "err Error syncing module");
+    assert_int_equal(ret, 24);
+}
+
 void test_syscom_getconfig_syscheck(void **state)
 {
     (void) state;
@@ -323,6 +344,7 @@ int main(void) {
         cmocka_unit_test_teardown(test_syscom_dispatch_sync_success, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_sync_disabled, delete_string),
         cmocka_unit_test_teardown(test_syscom_dispatch_sync_error, delete_string),
+        cmocka_unit_test_teardown(test_syscom_dispatch_sync_destroyed_handle, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_syscheck, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_syscheck_failure, delete_string),
         cmocka_unit_test_teardown(test_syscom_getconfig_rootcheck, delete_string),

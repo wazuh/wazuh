@@ -850,7 +850,7 @@ All coordination commands are thread-safe:
 
 ## Schema Validation Integration
 
-FIM integrates with the [Schema Validator](../utils/schema-validator/README.md) module to ensure all events conform to the expected Wazuh indexer schema before transmission.
+FIM integrates with the [Schema Validator](../utils/schema-validator/index.html) module to ensure all events conform to the expected Wazuh indexer schema before transmission.
 
 ### Purpose
 
@@ -1239,6 +1239,6 @@ if (!schema_validator_validate(index, message, &errorMessage))
 
 ### References
 
-- [Schema Validator Overview](../utils/schema-validator/README.md)
+- [Schema Validator Overview](../utils/schema-validator/index.html)
 - [Schema Validator API Reference](../utils/schema-validator/api-reference.md)
 - [Schema Validator Integration Guide](../utils/schema-validator/integration-guide.md)

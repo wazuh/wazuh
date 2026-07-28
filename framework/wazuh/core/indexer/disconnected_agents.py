@@ -25,9 +25,9 @@ class DisconnectedAgentSyncTasks:
     agents.
 
     This task identifies disconnected agents that have been offline for a
-    minimum duration, queries the Wazuh Indexer to obtain the maximum
-    version across all documents, and uses that version as external_gte
-    for group synchronization.
+    minimum duration and updates their group metadata in the indexer without
+    modifying state fields. The agent performs the full synchronization flow
+    when it reconnects.
 
     Attributes
     ----------
@@ -54,7 +54,7 @@ class DisconnectedAgentSyncTasks:
         server: master.Master = None,
         cluster_items: dict = None,
         logger: object = None,
-        indexer_client: object = None,
+        get_indexer_client_func: callable = None,
     ):
         """
         Initialize the disconnected agent group sync task.
@@ -65,6 +65,12 @@ class DisconnectedAgentSyncTasks:
             Reference to the Master server instance.
         cluster_items : dict
             Cluster configuration with intervals and parameters.
+        logger : logging.Logger, optional
+            Logger instance for backward compatibility with tests.
+        get_indexer_client_func : callable, optional
+            Factory function that returns an async context manager for indexer client.
+            Defaults to get_indexer_client from indexer module.
+            For testing, inject a mock factory function.
         """
         # Backwards-compatible constructor: accept either `server` (with
         # `setup_task_logger`) or `manager` + `logger` from older tests.
@@ -77,8 +83,12 @@ class DisconnectedAgentSyncTasks:
             self.logger = logging.getLogger("disconnected_agent_sync_task")
 
         self.cluster_items = cluster_items or {}
-        # Allow injecting an indexer client for tests
-        self._indexer_client_override = indexer_client
+
+        # Dependency injection for indexer client factory
+        if get_indexer_client_func is not None:
+            self._get_indexer_client = get_indexer_client_func
+        else:
+            self._get_indexer_client = get_indexer_client
 
         # Use from_import=True to avoid raising during tests when wazuh configuration file
         # does not contain the indexer section. The config is only used for
@@ -113,31 +123,22 @@ class DisconnectedAgentSyncTasks:
         """
         Verify the indexer's availability by performing a health check.
 
-        This method checks whether the indexer service is reachable. If a client
-        override has been set (e.g., for testing or dependency injection), the
-        check is skipped entirely. Otherwise, it obtains an indexer client via
-        ``get_indexer_client()`` and calls its ``healthcheck()`` method. Any
-        failure to connect results in an ``IndexerUnavailableError`` being raised.
+        This method checks whether the indexer service is reachable by obtaining
+        an indexer client and calling its ``healthcheck()`` method. Any failure
+        to connect results in an ``IndexerUnavailableError`` being raised.
 
         Returns
         -------
         None
-            Returns when the indexer is confirmed reachable or when the client
-            override bypasses the check.
+            Returns when the indexer is confirmed reachable.
 
         Raises
         ------
         IndexerUnavailableError
-            If the indexer is not reachable and no client override is present.
+            If the indexer is not reachable.
         """
-        if self._indexer_client_override is not None:
-            self.logger.debug(
-                "Indexer client override in use; skipping availability check"
-            )
-            return
-
         try:
-            async with get_indexer_client() as client:
+            async with self._get_indexer_client() as client:
                 await client.healthcheck()
             self.logger.debug("Indexer is available")
         except IndexerUnavailableError:
@@ -273,78 +274,6 @@ class DisconnectedAgentSyncTasks:
             )
             return []
 
-    async def _get_max_versions_batch_from_indexer(self, agent_ids: List[str]) -> dict:
-        """
-        Query the Wazuh Indexer for maximum document versions of multiple agents.
-
-        Uses a single aggregated query to fetch max versions for multiple agents,
-        preventing the N+1 query problem.
-
-        Parameters
-        ----------
-        agent_ids : list of str
-            List of agent IDs to query.
-
-        Returns
-        -------
-        dict
-            Dictionary mapping agent_id to max_version (e.g., {"001": 5, "002": 3}).
-        """
-        if not agent_ids:
-            return {}
-
-        query = {
-            "size": 0,
-            "aggs": {
-                "by_agent": {
-                    "terms": {
-                        "field": "wazuh.agent.id",
-                        "include": agent_ids,
-                        "exclude": ["000"],
-                    },
-                    "aggs": {
-                        "max_document_version": {
-                            "max": {"field": "state.document_version"}
-                        }
-                    },
-                }
-            },
-        }
-
-        try:
-            if self._indexer_client_override:
-                client = self._indexer_client_override
-                result = await client.search(query=query)
-            else:
-                async with get_indexer_client() as client:
-                    result = await client.max_version_components.search(query=query)
-
-            max_versions = {}
-
-            if result:
-                for bucket in result["aggregations"]["by_agent"]["buckets"]:
-                    agent_id = bucket.get("key")
-                    max_version = bucket["max_document_version"]["value"]
-                    if agent_id and max_version:
-                        max_versions[agent_id] = int(max_version)
-                    else:
-                        raise Exception("Failed to get the max version for agent ID: " + str(agent_id))
-                self.logger.info(
-                    f"Batch max version query completed for {len(max_versions)} agents "
-                    f"out of {len(agent_ids)} requested"
-                )
-                return max_versions
-            else:
-                raise Exception("Failed query to wazuh-indexer")
-
-        except IndexerUnavailableError:
-            raise
-        except Exception as e:
-            self.logger.exception(
-                f"Failed to query max versions for batch of {len(agent_ids)} agents: {e}"
-            )
-            return {}
-
     def _batch_agents(self, agents: List[dict]) -> Generator[List[dict], None, None]:
         """
         Generate batches of agents for processing.
@@ -366,9 +295,6 @@ class DisconnectedAgentSyncTasks:
         """
         Synchronize a batch of disconnected agents.
 
-        Fetches max versions for all agents in the batch in a single call
-        to prevent performance issues.
-
         Parameters
         ----------
         agents : list of dict
@@ -384,19 +310,6 @@ class DisconnectedAgentSyncTasks:
         processed = 0
         failed = 0
 
-        agent_ids = [
-            agent_info.get("id") for agent_info in agents if agent_info.get("id")
-        ]
-
-        if agent_ids:
-            max_versions = await self._get_max_versions_batch_from_indexer(agent_ids)
-            self.logger.debug(
-                f"Batch retrieved max versions for {len(max_versions)} agents "
-                f"in single indexer query"
-            )
-        else:
-            max_versions = {}
-
         for agent_info in agents:
             try:
                 agent_id = agent_info.get("id")
@@ -409,18 +322,14 @@ class DisconnectedAgentSyncTasks:
                     failed += 1
                     continue
 
-                external_gte = max_versions.get(agent_id, 0)
-
                 self.logger.info(
-                    f"Synchronizing groups for agent {agent_id} "
-                    f"with external_gte={external_gte}, groups={groups}"
+                    f"Synchronizing groups for agent {agent_id} with groups={groups}"
                 )
 
                 try:
                     result = await self.disconnected_agent_group_sync(
                         agent_list=[agent_id],
                         group_list=groups if isinstance(groups, list) else [groups],
-                        external_gte=external_gte,
                     )
                     self.logger.debug(
                         f"Sync result for agent {agent_id}: "
@@ -490,7 +399,6 @@ class DisconnectedAgentSyncTasks:
                 )
                 return
 
-            max_versions = await self._get_max_versions_batch_from_indexer(agent_ids)
             agent_cluster_map = await self._get_cluster_name_from_indexer(agent_ids)
 
             # Filter agents that actually need update
@@ -509,36 +417,22 @@ class DisconnectedAgentSyncTasks:
                 f"Starting Cluster name synchronization for {len(agents_to_update)} disconnected agents "
                 f"with cluster_name={cluster_name}"
             )
-            # Resolve indexer client once
-            if self._indexer_client_override:
-                client = self._indexer_client_override
-                context = None
-            else:
-                context = get_indexer_client()
 
-            async def _update(client):
+            # Update cluster names via indexer client
+            async with self._get_indexer_client() as client:
                 for agent_id in agents_to_update:
-                    global_version = max_versions.get(agent_id, 0)
                     try:
-                        await client.max_version_components.update_agent_cluster_name(
+                        await client.states.update_agent_cluster_name(
                             agent_id=agent_id,
                             cluster_name=cluster_name,
-                            global_version=global_version,
                         )
                         self.logger.debug(
-                            f"Updated cluster-name for agent={agent_id} "
-                            f"version={global_version}"
+                            f"Updated cluster-name for agent={agent_id}"
                         )
                     except Exception as e:
                         self.logger.error(
                             f"Failed updating cluster-name for agent={agent_id}: {e}"
                         )
-
-            if context:
-                async with context as client:
-                    await _update(client)
-            else:
-                await _update(client)
 
             self.logger.info(
                 f"Disconnected agents cluster-name sync completed "
@@ -561,13 +455,12 @@ class DisconnectedAgentSyncTasks:
             self._cluster_name_sync_done = True
 
     async def disconnected_agent_group_sync(
-        self, agent_list: list = None, group_list: list = None, external_gte: int = None
+        self, agent_list: list = None, group_list: list = None
     ) -> AffectedItemsWazuhResult:
         """
-        Synchronize group configuration for disconnected agents using external_gte version.
+        Synchronize group configuration for disconnected agents.
 
-        Updates the Indexer with the provided group list for documents whose
-        version is greater than or equal to the provided `external_gte`.
+        Updates the Indexer with the provided group list for the specified agents.
 
         Parameters
         ----------
@@ -575,9 +468,6 @@ class DisconnectedAgentSyncTasks:
             List of disconnected agent IDs to synchronize.
         group_list : list of str, optional
             Current group list for the agent(s).
-        external_gte : int, optional
-            Minimum version threshold from Indexer. Documents with
-            version >= external_gte will be updated.
 
         Returns
         -------
@@ -587,7 +477,7 @@ class DisconnectedAgentSyncTasks:
         Raises
         ------
         WazuhError
-            If `group_list` or `external_gte` are missing.
+            If `group_list` is missing.
         WazuhResourceNotFound
             If an agent in `agent_list` does not exist in the system.
         """
@@ -603,10 +493,10 @@ class DisconnectedAgentSyncTasks:
             )
             return result
 
-        if not group_list or external_gte is None:
+        if not group_list:
             raise WazuhError(
                 1001,
-                extra_message="Missing required parameters: group_list, external_gte",
+                extra_message="Missing required parameter: group_list",
             )
 
         system_agents = get_agents_info()
@@ -624,17 +514,15 @@ class DisconnectedAgentSyncTasks:
             return result
 
         self.logger.info(
-            f"Starting group synchronization for {len(valid_agents)} disconnected agents "
-            f"with external_gte={external_gte}"
+            f"Starting group synchronization for {len(valid_agents)} disconnected agents"
         )
 
-        async with get_indexer_client() as client:
+        async with self._get_indexer_client() as client:
             for agent_id in valid_agents:
                 try:
-                    await client.max_version_components.update_agent_groups(
+                    await client.states.update_agent_groups(
                         agent_id=agent_id,
                         groups=group_list,
-                        global_version=external_gte,
                     )
                     result.affected_items.append(agent_id)
                     self.logger.info(
@@ -747,12 +635,8 @@ class DisconnectedAgentSyncTasks:
         }
 
         try:
-            if self._indexer_client_override:
-                client = self._indexer_client_override
-                result = await client.search(query=query)
-            else:
-                async with get_indexer_client() as client:
-                    result = await client.max_version_components.search(query=query)
+            async with self._get_indexer_client() as client:
+                result = await client.states.search(query=query)
             agent_cluster_map: Dict[str, str] = {}
 
             buckets = (

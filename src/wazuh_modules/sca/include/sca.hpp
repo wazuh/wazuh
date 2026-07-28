@@ -1,5 +1,6 @@
 #pragma once
 
+#include "agent_sync_protocol_types.hpp"
 #include "sca.h"
 #include <sca_impl.hpp>
 
@@ -87,7 +88,7 @@ class EXPORTED SCA final
         /// parameters.
         ///
         /// @param mode Synchronization mode (FULL or DELTA)
-        /// @return true if synchronization succeeds, false otherwise
+        /// @return true on success, false on failure (a WARNING with the reason is logged internally).
         bool syncModule(Mode mode);
 
         /// @brief Persists a difference entry for synchronization.

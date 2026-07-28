@@ -16,6 +16,7 @@ if(${TARGET} STREQUAL "manager")
 endif()
 
 if(${TARGET} STREQUAL "agent")
+  add_subdirectory(wmodules)
   add_subdirectory(aws)
   add_subdirectory(azure)
   add_subdirectory(command)

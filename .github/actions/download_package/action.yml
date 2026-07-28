@@ -10,7 +10,7 @@ description: >
 
 inputs:
   build_run_id:
-    description: "Run ID of the manager-multiples build that produced the package."
+    description: "Run ID of the build workflow that produced the package."
     required: true
   name_regexp:
     description: "Regexp the package name segment must match."
@@ -70,14 +70,14 @@ runs:
         SUBDIR: ${{ inputs.extract_into_name_subdir }}
       run: |
         set -euo pipefail
-        base="${BUCKET}/${REPO}/${PRODUCER_WF}"
+        base="${BUCKET}/${REPO}/${PRODUCER_WF}/${BUILD_RUN_ID}"
         mkdir -p "$DEST"
-        # The producer uploads each artifact at <repo>/<workflow>/<name>/artifacts_<run_id>.zip,
-        # so list the producer workflow's objects and keep those whose <name> segment matches
+        # The producer uploads each artifact at <repo>/<workflow>/<run_id>/<name>.zip,
+        # so list the producer run's objects and keep those whose <name> segment matches
         # the regexp for this build run (the package name carries a commit hash, so it can't be
         # addressed by exact name).
         keys="$(aws s3 ls "${base}/" --recursive | awk '{print $4}' \
-          | grep -E "/${PRODUCER_WF}/${NAME_RE}/artifacts_${BUILD_RUN_ID}\.zip$" || true)"
+          | grep -E "/${PRODUCER_WF}/${BUILD_RUN_ID}/${NAME_RE}(\.zip)?$" || true)"
         if [ -z "$keys" ]; then
           echo "::error::No artifact matching '${NAME_RE}' found in S3 for build run ${BUILD_RUN_ID} under ${base}/"
           exit 1
@@ -86,7 +86,9 @@ runs:
           [ -z "$key" ] && continue
           dest="$DEST"
           if [ "$SUBDIR" = "true" ]; then
-            name_seg="${key#*/${PRODUCER_WF}/}"; name_seg="${name_seg%%/*}"
+            name_seg="${key#*/${PRODUCER_WF}/${BUILD_RUN_ID}/}"
+            name_seg="${name_seg%%/*}"
+            name_seg="${name_seg%.zip}"
             dest="${DEST}/${name_seg}"
             mkdir -p "$dest"
           fi
@@ -116,13 +118,13 @@ runs:
         SUBDIR: ${{ inputs.extract_into_name_subdir }}
       run: |
         $ErrorActionPreference = "Stop"
-        $base = "$env:BUCKET/$env:REPO/$env:PRODUCER_WF"
+        $base = "$env:BUCKET/$env:REPO/$env:PRODUCER_WF/$env:BUILD_RUN_ID"
         New-Item -ItemType Directory -Force -Path $env:DEST | Out-Null
-        # The producer uploads each artifact at <repo>/<workflow>/<name>/artifacts_<run_id>.zip,
-        # so list the producer workflow's objects and keep those whose <name> segment matches
+        # The producer uploads each artifact at <repo>/<workflow>/<run_id>/<name>.zip,
+        # so list the producer run's objects and keep those whose <name> segment matches
         # the regexp for this build run (the package name carries a commit hash, so it can't be
         # addressed by exact name).
-        $pattern = "/$env:PRODUCER_WF/$env:NAME_RE/artifacts_$($env:BUILD_RUN_ID)\.zip$"
+        $pattern = "/$env:PRODUCER_WF/$env:BUILD_RUN_ID/$env:NAME_RE(\.zip)?$"
         $keys = aws s3 ls "$base/" --recursive |
           ForEach-Object { ($_.Trim() -split '\s+', 4)[3] } |
           Where-Object { $_ -match $pattern }
@@ -133,7 +135,7 @@ runs:
           if ([string]::IsNullOrWhiteSpace($key)) { continue }
           $dest = $env:DEST
           if ($env:SUBDIR -eq 'true') {
-            $nameSeg = ($key -replace ".*/$env:PRODUCER_WF/([^/]+)/artifacts_.*", '$1')
+            $nameSeg = ($key -replace ".*/$env:PRODUCER_WF/$env:BUILD_RUN_ID/([^/]+)$", '$1') -replace '\.zip$', ''
             $dest = Join-Path $env:DEST $nameSeg
             New-Item -ItemType Directory -Force -Path $dest | Out-Null
           }

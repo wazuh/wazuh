@@ -67,10 +67,10 @@ int receive_msg()
                 if (errno == ENOTCONN) {
                     mdebug1("Manager disconnected (ENOTCONN).");
                 } else {
-                    merror("Connection socket: %s (%d)", strerror(errno), errno);
+                    mdebug1("Connection socket: %s (%d)", strerror(errno), errno);
                 }
 #else
-                merror("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
+                mdebug1("Connection socket: %s (%d)", win_strerror(WSAGetLastError()), WSAGetLastError());
 #endif
                 break;
 

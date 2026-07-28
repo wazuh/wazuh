@@ -8,6 +8,7 @@ on:
       - "src/**"
       - "packages/**"
       - "ruleset/**"
+      - "framework/requirements.txt"
       - ".github/actions/check_files/**"
       - ".github/workflows/5_builderpackage_agent-macos.yml"
       - ".github/workflows/5_testintegration_agent-start.yml"

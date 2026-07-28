@@ -49,12 +49,12 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
                 // Get the encrypted RSA value
                 if (keystoreDB.get(key, encryptedRSAValue, columnFamily))
                 {
-                    LOG_INFO(logFn, "Upgrading '%s' key pair.", key.c_str());
+                    LOGFN_INFO(logFn, "Upgrading '%s' key pair.", key.c_str());
                 }
 
                 // Decrypt the RSA value
                 RSAHelper().rsaDecrypt(PRIVATE_KEY_FILE, encryptedRSAValue, rawValue);
-                LOG_DEBUG2(logFn, "Decryption successful for key: '%s'", key.c_str());
+                LOGFN_DEBUG2(logFn, "Decryption successful for key: '%s'", key.c_str());
 
                 // Encrypt the value with AES 256
                 EVPHelper().encryptAES256(rawValue, encryptedValue);
@@ -62,16 +62,16 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
                 // Insert the key-value pair using AES encryption
                 keystoreDB.put(key, rocksdb::Slice(encryptedValue.data(), encryptedValue.size()), columnFamily);
 
-                LOG_INFO(logFn, "Key pair '%s' upgraded.", key.c_str());
+                LOGFN_INFO(logFn, "Key pair '%s' upgraded.", key.c_str());
             }
         }
         catch (const std::exception& exception)
         {
             // If the upgrade fails, delete all keys and log the error.
             keystoreDB.deleteAll(columnFamily);
-            LOG_WARN(logFn,
-                     "Keystore upgrade failed, re-run the tool again for all keys to save them. Error: %s",
-                     exception.what());
+            LOGFN_WARN(logFn,
+                       "Keystore upgrade failed, re-run the tool again for all keys to save them. Error: %s",
+                       exception.what());
         }
     }
 
@@ -87,8 +87,6 @@ static void upgrade(Utils::RocksDBWrapper& keystoreDB, const std::string& column
 
 void Keystore::put(const std::string& columnFamily, const std::string& key, const std::string& value)
 {
-    // Keystore methods are static so there is no instance to cache the LogFn on.
-    // Each call builds a fresh one — acceptable because put/get are low-frequency operations.
     const auto logFn = makeLibLogFn("keystore");
     std::vector<char> encryptedValue;
 

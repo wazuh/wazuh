@@ -29,6 +29,7 @@ struct wm_agent_info_t;
 typedef void (*log_callback_t)(const modules_log_level_t level, const char* log, const char* tag);
 typedef int (*report_callback_t)(const char* message);
 typedef int (*query_module_callback_t)(const char* module_name, const char* query, char** response);
+typedef bool (*is_shutting_down_callback_t)(void);
 
 EXPORTED void agent_info_start(const struct wm_agent_info_t* agent_info_config);
 
@@ -46,6 +47,17 @@ agent_info_init_sync_protocol(const char* module_name, const MQ_Functions* mq_fu
 EXPORTED bool agent_info_parse_response(const uint8_t* data, size_t data_len);
 
 EXPORTED void agent_info_set_query_module_function(query_module_callback_t query_module_callback);
+
+/**
+ * @brief Set the predicate used to detect that a shutdown is in progress
+ *
+ * The implementation uses it to log expected shutdown-time synchronization/coordination
+ * failures at a lower level (DEBUG or INFO, depending on the message) instead of
+ * WARNING/ERROR.
+ *
+ * @param is_shutting_down_callback Predicate returning true while a shutdown is requested
+ */
+EXPORTED void agent_info_set_is_shutting_down_function(is_shutting_down_callback_t is_shutting_down_callback);
 
 /**
  * @brief Set the cluster name received from the manager during handshake
@@ -123,6 +135,7 @@ typedef void (*agent_info_init_sync_protocol_func)(const char* module_name,
                                                    const MQ_Functions* mq_funcs);
 typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
 typedef void (*agent_info_set_query_module_function_func)(query_module_callback_t query_module_callback);
+typedef void (*agent_info_set_is_shutting_down_function_func)(is_shutting_down_callback_t is_shutting_down_callback);
 typedef void (*agent_info_set_cluster_name_func)(const char* cluster_name);
 typedef const char* (*agent_info_get_cluster_name_func)(void);
 typedef void (*agent_info_set_cluster_node_func)(const char* cluster_node);

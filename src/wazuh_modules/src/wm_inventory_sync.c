@@ -86,11 +86,11 @@
              cJSON_AddNumberToObject(config_json, "maxSessions", max_sessions);
 
              // Add input worker queue size from internal_options
-             int queue_size = getDefine_Int_default("wazuh_modules", "inventory_sync_queue_size", 100, 1000000, 10000);
+             int queue_size = getDefine_Int_default("wazuh_modules", "inventory_sync_queue_size", 100, 1000000, 1000);
              cJSON_AddNumberToObject(config_json, "queueSize", queue_size);
 
              // Add global DataValue quota from internal_options
-             int data_value_quota = getDefine_Int_default("wazuh_modules", "inventory_sync_data_value_quota", 1, 1000000000, 500000);
+             int data_value_quota = getDefine_Int_default("wazuh_modules", "inventory_sync_data_value_quota", 1, 1000000000, 250000);
              cJSON_AddNumberToObject(config_json, "dataValueQuota", data_value_quota);
 
              // Add indexer bulk-size threshold (bytes) from internal_options.

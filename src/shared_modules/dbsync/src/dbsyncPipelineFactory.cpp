@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "dbsyncPipelineFactory.h"
+#include "proc.hpp"
 #include "db_exception.h"
 #include "dbsync_implementation.h"
 #include "pipelineNodesImp.h"
@@ -108,7 +109,7 @@ namespace DbSync
             {
                 return std::make_shared<DispatchCallbackNode>(
                            std::bind(&Pipeline::dispatchResult, this, std::placeholders::_1),
-                           threadNumber ? threadNumber : std::thread::hardware_concurrency());
+                           threadNumber ? threadNumber : cpp_get_nproc());
             }
 
             void pushResult(const SyncResult& result)

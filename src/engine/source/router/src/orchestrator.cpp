@@ -8,6 +8,7 @@
 #include <base/json.hpp>
 #include <base/logging.hpp>
 #include <fastmetrics/registry.hpp>
+#include <proc.hpp>
 
 #include <router/orchestrator.hpp>
 
@@ -208,8 +209,13 @@ void Orchestrator::postEvent(IngestEvent&& event)
     const auto queueSize = m_eventQueue->size();
     const auto freeSlots = m_eventQueue->aproxFreeSlots();
     const auto totalSlots = queueSize + freeSlots;
+    const auto bytesUsed = m_eventQueue->bytesUsed();
+    const auto maxBytes = m_eventQueue->maxBytes();
 
-    const bool isContended = totalSlots > 0 && (queueSize * 100) >= (totalSlots * CONTENTION_LOAD_PERCENT_THRESHOLD);
+    const bool isCountContended =
+        totalSlots > 0 && (queueSize * 100) >= (totalSlots * CONTENTION_LOAD_PERCENT_THRESHOLD);
+    const bool isBytesContended = maxBytes > 0 && (bytesUsed * 100) >= (maxBytes * CONTENTION_LOAD_PERCENT_THRESHOLD);
+    const bool isContended = isCountContended || isBytesContended;
 
     if (!isContended)
     {
@@ -256,11 +262,14 @@ void Orchestrator::postEvent(IngestEvent&& event)
 
     LOG_WARNING("[Orchestrator::Router] Event queue has remained contended for at least {} seconds. Dropped events "
                 "during contention: {}. "
-                "Approx queue size: {}, approx free slots: {}.",
+                "Approx queue size: {}, approx free slots: {}. "
+                "Bytes used: {}, max bytes: {}.",
                 CONTENTION_WARNING_INTERVAL_SEC,
                 m_droppedEventsInContention.load(std::memory_order_relaxed),
                 queueSize,
-                freeSlots);
+                freeSlots,
+                bytesUsed,
+                maxBytes);
 }
 
 void Orchestrator::Options::validate() const
@@ -320,6 +329,27 @@ Orchestrator::Orchestrator(const Options& opt)
                          return total > 0 ? (static_cast<double>(size) * 100.0 / total) : 0.0;
                      });
 
+    FASTMETRICS_PULL(size_t,
+                     fastmetrics::names::ROUTER_QUEUE_BYTES_USED,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
+                         return eventQueue ? eventQueue->bytesUsed() : 0;
+                     });
+
+    FASTMETRICS_PULL(double,
+                     fastmetrics::names::ROUTER_QUEUE_BYTES_USAGE_PERCENT,
+                     [wEventQueue]()
+                     {
+                         auto eventQueue = wEventQueue.lock();
+                         if (!eventQueue)
+                             return 0.0;
+                         const auto maxBytes = eventQueue->maxBytes();
+                         if (maxBytes == 0)
+                             return 0.0;
+                         return static_cast<double>(eventQueue->bytesUsed()) * 100.0 / static_cast<double>(maxBytes);
+                     });
+
     // Total events dropped at input (never resets, unlike contention window counter)
     m_droppedInputCounter = fastmetrics::manager().getOrCreateCounter(fastmetrics::names::ROUTER_EVENTS_DROPPED);
 
@@ -351,11 +381,7 @@ Orchestrator::Orchestrator(const Options& opt)
     std::size_t numThreads = opt.m_numThreads;
     if (numThreads == 0)
     {
-        numThreads = std::thread::hardware_concurrency();
-        if (numThreads == 0)
-        {
-            numThreads = 1; // Fallback if hardware_concurrency cannot be determined
-        }
+        numThreads = cpp_get_nproc();
         LOG_DEBUG("[Orchestrator] No thread count provided. Using {} worker threads based on system hardware.",
                   numThreads);
     }

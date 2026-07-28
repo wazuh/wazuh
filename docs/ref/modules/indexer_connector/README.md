@@ -4,7 +4,7 @@ The Indexer Connector is a shared library (`libindexer_connector`) that handles 
 
 Source: `src/shared_modules/indexer_connector/`
 
-For configuration options see [Indexer Configuration](../../configuration/indexer.md).
+For configuration options see [Indexer Configuration](configuration.md).
 
 ## Overview
 
@@ -19,7 +19,7 @@ The library provides two classes depending on the use case:
 | Class | Mode | Queue | Use case |
 |-------|------|-------|----------|
 | `IndexerConnectorSync` | Synchronous | In-memory (up to 10 MB) | Low-latency, bounded writes |
-| `IndexerConnectorAsync` | Asynchronous | RocksDB (`queue/indexer/<id>/`) | Write-ahead queue, survives restarts |
+| `IndexerConnectorAsync` | Asynchronous | In-memory (byte-bounded via `max_queue_bytes`) | Non-blocking writes; buffered events are discarded on shutdown |
 
 ## How it works
 
@@ -27,7 +27,7 @@ The library provides two classes depending on the use case:
 2. Credentials (`username`/`password`) are read from the RocksDB keystore (`queue/keystore/`).
 3. A background health-monitor thread polls `/_cat/health` on all configured hosts every 60 seconds and marks nodes available or unavailable.
 4. A server-selector performs round-robin load balancing across available nodes.
-5. Documents are accumulated (sync: in memory; async: in RocksDB) and flushed as OpenSearch Bulk API requests.
+5. Documents are accumulated in memory (both sync and async) and flushed as OpenSearch Bulk API requests.
 
 ### Sync flush behavior
 
@@ -38,11 +38,35 @@ The library provides two classes depending on the use case:
 
 ### Async flush behavior
 
-- Events are queued to RocksDB immediately and flushed by a background thread.
-- Up to 25,000 documents per flush batch (configurable via `analysisd.indexer_bulk_size`).
+- Events are queued in memory immediately and flushed by a background thread.
+- Up to `analysisd.indexer_bulk_max_bytes` bytes per flush batch (default 8 MB; always takes at least one item, even if it exceeds the threshold on its own).
 - Flush automatically after 20 seconds of inactivity (configurable via `analysisd.indexer_flush_interval`).
-- If `max_queue_size` is set, events that exceed the limit are dropped and counted.
-- The queue survives manager restarts.
+- If the queue exceeds `analysisd.indexer_queue_max_bytes` (default 64 MB, maps to `max_queue_bytes` in the connector config), new events are dropped and counted until it drains.
+- The queue is in-memory only: buffered events are discarded (not retried) if the manager stops or restarts.
+
+### Retry and backoff behavior
+
+Both connectors retry transient failures (HTTP 429 Too Many Requests, connection errors, and - async only - HTTP 409 document version conflicts) using an exponential backoff with jitter (`IndexerExponentialBackoff`, `src/exponentialBackoff.hpp`). Other errors are not retried:
+
+- HTTP 413 (Payload Too Large) is handled separately: the batch is split (sync) or the bulk-size threshold is halved (async) and resent immediately, with no backoff delay.
+- Sync: an HTTP 409 at the request level, or any other status code, drops the current batch and throws immediately (no retry).
+- Async: a per-item `cluster_block_exception` inside an HTTP 200 response (cluster refusing writes) is treated as already failed permanently - those items are discarded (not retried), and the backoff is applied only to the *next* bulk send, not to the batch that already got a response. Any other per-item error, or a status code that isn't retried above, is logged and discarded.
+
+**How the delay scales:**
+
+- **1st failure** - sleeps exactly the base delay (`RetryDelay`, fixed at 1 second) - deterministic, no jitter, so the very first retry is never faster than configured.
+- **Each subsequent consecutive failure** - doubles the delay, capped at `analysisd.indexer_max_retry_delay` (`max_retry_delay_seconds` in the connector config; default 15s, range 1-3600), and sleeps a random value between the *previous* step and the new capped step (jitter avoids many managers retrying in lockstep).
+- **On success** (or, for async, a response confirmed not cluster-blocked) - the failure counter resets, so the next failure starts again from the base delay.
+
+Example with the defaults (base = 1s, max = 15s):
+
+| Consecutive failure | Delay slept |
+|---|---|
+| 1st | exactly 1s |
+| 2nd | random between 1s and 2s |
+| 3rd | random between 2s and 4s |
+| 4th | random between 4s and 8s |
+| 5th and beyond | random between 8s and 15s (capped) |
 
 ## Indices
 
@@ -74,7 +98,8 @@ The library provides two classes depending on the use case:
 |------|---------|
 | `include/indexerConnector.hpp` | Public API: `IndexerConnectorSync`, `IndexerConnectorAsync` |
 | `src/indexerConnectorSyncImpl.hpp` | Sync implementation: in-memory buffer, bulk flush, 413 splitting |
-| `src/indexerConnectorAsyncImpl.hpp` | Async implementation: RocksDB queue, background flusher |
+| `src/indexerConnectorAsyncImpl.hpp` | Async implementation: in-memory bulk queue, background flusher |
+| `src/exponentialBackoff.hpp` | Exponential backoff with jitter, shared by both retry paths |
 | `src/serverSelector.hpp` | Round-robin load balancer with health tracking |
 | `src/monitoring.hpp` | Background health-monitor thread (60s interval) |
 | `testtool/` | CLI test tool: `push-events`, `export-policy`, `generate-full-policy` |

@@ -7,6 +7,11 @@ using namespace builder::builders::optransform;
 /* Using a dummy parser and parser builder to explore all paths of the helper */
 namespace
 {
+OpArg makeStringOnlyValue(std::string value)
+{
+    return std::make_shared<Value>(std::move(value));
+}
+
 auto dummyParserSuccess(const std::string_view& text)
 {
     return hlp::abs::makeSuccess(hlp::parsers::SemToken {text, hlp::parsers::noSemParser()}, text.substr(text.size()));
@@ -93,6 +98,50 @@ auto expectJTypeRef(const std::string& ref, json::Json::Type jType)
 }
 
 } // namespace
+
+class HlpOptionsLifetimeTest : public BaseBuilderTest
+{
+};
+
+TEST_F(HlpOptionsLifetimeTest, ParserOptionsRemainValidAfterOpArgsAreReleased)
+{
+    TransformOp operation;
+    const Reference targetField {"target"};
+
+    EXPECT_CALL(*mocks->ctx, validator());
+    EXPECT_CALL(*mocks->validator, hasField(DotPath("ref"))).WillOnce(testing::Return(false));
+    expectBuildSuccess();
+
+    {
+        std::vector<OpArg> opArgs {
+            makeRef("ref"), makeStringOnlyValue("alpha"), makeStringOnlyValue(R"(quoted "value" with \ slash)")};
+
+        operation = detail::specificHLPBuilder(
+            targetField,
+            opArgs,
+            mocks->ctx,
+            [](const hlp::Params& params) -> hlp::parser::Parser
+            {
+                const auto options = params.options;
+                return [options](const std::string_view& text)
+                {
+                    if (options.size() != 2 || options[0] != "alpha" || options[1] != R"(quoted "value" with \ slash)")
+                    {
+                        return hlp::abs::makeFailure<hlp::parsers::ResultT>(text, "options");
+                    }
+
+                    return hlp::abs::makeSuccess(hlp::parsers::SemToken {text, hlp::parsers::noSemParser()},
+                                                 text.substr(text.size()));
+                };
+            });
+    }
+
+    auto event = makeEvent(R"({"ref": "payload"})");
+    auto result = operation(event);
+
+    ASSERT_TRUE(result);
+    ASSERT_EQ(*result.payload(), *makeEvent(R"({"ref": "payload"})"));
+}
 
 namespace transformbuildtest
 {

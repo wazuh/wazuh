@@ -9,10 +9,12 @@
  * Foundation.
  */
 
+#include "loggerHelper.h"
 #include <gtest/gtest.h>
 
 int main(int argc, char** argv)
 {
+    Log::assignLogFunction([](const int, const char*, const char*, const int, const char*, const char*, va_list) {});
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

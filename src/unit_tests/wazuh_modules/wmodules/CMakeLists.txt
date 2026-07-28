@@ -32,7 +32,7 @@ include(${SRC_FOLDER}/unit_tests/wrappers/wazuh/shared/shared.cmake)
 
 # Generate wmodules tests
 list(APPEND wmodules_names "test_wmodules")
-list(APPEND wmodules_flags "-Wl,--wrap,w_query_agentd")
+list(APPEND wmodules_flags "-Wl,--wrap,w_query_agentd -Wl,--wrap,_merror -Wl,--wrap,_mdebug1")
 
 # Compilig tests
 list(LENGTH wmodules_names count)

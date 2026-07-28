@@ -1,151 +1,116 @@
-import time
 import json
+import time
 import logging
-from collections import defaultdict
 from pathlib import Path
-from threading import Thread, Lock
+from threading import Thread
 
 from flask import Flask, render_template_string
 from flask_socketio import SocketIO
+from google.protobuf.json_format import ParseDict, MessageToDict
 
-from engine_metrics.defaults import DEFAULT_LOG_DIR, DEFAULT_PORT
+from api_communication.client import APIClient
+import api_communication.proto.metrics_pb2 as emetrics
+import api_communication.proto.engine_pb2 as engine
+
+from engine_metrics.defaults import DEFAULT_SOCKET, DEFAULT_PORT
 from engine_metrics.templates import DASHBOARD_HTML
 
+_META_FILE = Path(__file__).parent.parent / 'metrics_meta.json'
 
-class MetricsReader:
-    """Reads metrics from JSON log file and tracks the latest values."""
 
-    def __init__(self, log_dir: Path):
-        self.log_dir = log_dir
-        self.metrics = defaultdict(lambda: {'timestamp': 0, 'value': 0.0})
-        self.lock = Lock()
-        self._last_position = 0
-        self._current_file = None
+def _load_metrics_meta() -> str:
+    """Load metrics_meta.json and return it as a compact JSON string for embedding in JS."""
+    try:
+        raw = json.loads(_META_FILE.read_text())
+        # Strip the comment key — it's not valid metadata
+        raw.pop('_comment', None)
+        return json.dumps(raw, separators=(',', ':'))
+    except Exception as exc:
+        logging.getLogger(__name__).warning('Could not load metrics_meta.json: %s', exc)
+        return '{}'
 
-    def get_latest_file(self) -> Path:
-        """Find the most recent metrics log file."""
-        if not self.log_dir.exists():
-            raise FileNotFoundError(f"Log directory not found: {self.log_dir}")
 
-        for subdir in [self.log_dir, self.log_dir / "metrics"]:
-            metrics_link = subdir / "metrics.json"
-            if metrics_link.exists():
-                return metrics_link
-
-        log_files = sorted(self.log_dir.rglob("*.json"))
-        if log_files:
-            return log_files[-1]
-
-        raise FileNotFoundError(f"No metrics log files found in {self.log_dir}")
-
-    def read_new_lines(self):
-        """Read new lines from the log file and update metrics."""
-        try:
-            current_file = self.get_latest_file()
-
-            if self._current_file != current_file:
-                self._current_file = current_file
-                self._last_position = 0
-                print(f"[Reader] Switching to file: {current_file}")
-
-            with open(current_file, 'r') as f:
-                f.seek(self._last_position)
-                new_lines = f.readlines()
-                self._last_position = f.tell()
-
-            with self.lock:
-                for line in new_lines:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        metric = json.loads(line)
-                        name = metric.get('name')
-                        timestamp = metric.get('timestamp', 0)
-                        value = metric.get('value', 0.0)
-                        if name:
-                            self.metrics[name] = {
-                                'timestamp': timestamp,
-                                'value': value
-                            }
-                    except json.JSONDecodeError as e:
-                        print(f"[Reader] JSON parse error: {e}")
-
-        except FileNotFoundError as e:
-            print(f"[Reader] File not found: {e}")
-        except Exception as e:
-            print(f"[Reader] Error reading metrics: {e}")
-
-    def get_all_metrics(self):
-        """Get all current metric values."""
-        with self.lock:
-            return [
-                {'name': name, 'timestamp': info['timestamp'], 'value': info['value']}
-                for name, info in self.metrics.items()
-            ]
+def poll_metrics(api_socket):
+    """Single dump call to the engine API. Returns (dict, error_str)."""
+    try:
+        client = APIClient(api_socket)
+        error, response = client.send_recv(emetrics.Dump_Request())
+        if error:
+            return None, f'API error: {error}'
+        parsed = ParseDict(response, emetrics.Dump_Response())
+        if parsed.status == engine.ERROR:
+            return None, f'Engine error: {parsed.error}'
+        return response, None
+    except Exception as exc:
+        return None, str(exc)
 
 
 def run(args):
-    log_dir = Path(args['log_dir'])
+    api_socket = args['api_socket']
     port = args['port']
+    interval = args['interval']
 
-    print(f"Wazuh Engine Metrics Dashboard")
-    print(f"  Log directory: {log_dir}")
-    print(f"  Port: {port}")
+    print('Wazuh Engine Metrics Dashboard')
+    print(f'  API socket : {api_socket}')
+    print(f'  Port       : {port}')
+    print(f'  Interval   : {interval}s')
     print()
 
     app = Flask(__name__)
     app.config['SECRET_KEY'] = 'wazuh-metrics-dashboard'
-    socketio = SocketIO(app, cors_allowed_origins="*", logger=False, engineio_logger=False)
-
-    # Suppress Flask/Werkzeug startup banner
+    socketio = SocketIO(app, cors_allowed_origins='*', logger=False, engineio_logger=False)
     logging.getLogger('werkzeug').setLevel(logging.ERROR)
 
-    reader = MetricsReader(log_dir)
+    metrics_meta_json = _load_metrics_meta()
 
     @app.route('/')
     def index():
-        return render_template_string(DASHBOARD_HTML)
+        return render_template_string(DASHBOARD_HTML, metrics_meta=metrics_meta_json)
 
-    def background_reader():
-        print("[Background] Metrics reader started")
+    def background_poller():
+        print('[Poller] Started')
         while True:
             try:
-                reader.read_new_lines()
-                metrics = reader.get_all_metrics()
-                if metrics:
-                    socketio.emit('metrics_update', metrics)
-                time.sleep(1)
-            except Exception as e:
-                print(f"[Background] Error: {e}")
-                time.sleep(5)
+                data, err = poll_metrics(api_socket)
+                if err:
+                    print(f'[Poller] {err}')
+                    socketio.emit('poll_error', {'message': err})
+                else:
+                    socketio.emit('metrics_update', data)
+            except Exception as exc:
+                print(f'[Poller] Unexpected error: {exc}')
+            time.sleep(interval)
 
-    reader_thread = Thread(target=background_reader, daemon=True)
-    reader_thread.start()
+    Thread(target=background_poller, daemon=True).start()
 
-    print(f"Dashboard running at http://localhost:{port}")
-    print("Press Ctrl+C to stop")
+    print(f'Dashboard running at http://localhost:{port}')
+    print('Press Ctrl+C to stop')
     print()
-
     socketio.run(app, host='0.0.0.0', port=port, debug=False)
 
 
 def configure(subparsers):
     parser = subparsers.add_parser(
         'dashboard',
-        help='Start the real-time web metrics dashboard'
+        help='Start the real-time web metrics dashboard (polls the engine API)'
     )
     parser.add_argument(
-        '--log-dir',
+        '-s', '--api-socket',
         type=str,
-        default=DEFAULT_LOG_DIR,
-        dest='log_dir',
-        help=f'Path to metrics log directory (default: {DEFAULT_LOG_DIR})'
+        default=DEFAULT_SOCKET,
+        dest='api_socket',
+        help=f'Engine API socket path (default: {DEFAULT_SOCKET})'
     )
     parser.add_argument(
         '--port',
         type=int,
         default=DEFAULT_PORT,
         help=f'Port to run the dashboard (default: {DEFAULT_PORT})'
+    )
+    parser.add_argument(
+        '--interval',
+        type=float,
+        default=1.0,
+        help='Poll interval in seconds (default: 1.0)'
     )
     parser.set_defaults(func=run)

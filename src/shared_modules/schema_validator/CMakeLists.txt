@@ -25,6 +25,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # Find schema files in external/indexer-plugins
 set(SCHEMA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../external/indexer-plugins")
 file(GLOB SCHEMA_FILES "${SCHEMA_DIR}/*.json")
+# Streams templates (metrics-*.json) are only used by the Python framework at
+# runtime and must not be embedded in the C++ library.
+list(FILTER SCHEMA_FILES EXCLUDE REGEX "/metrics-[^/]+\\.json$")
 
 if(NOT SCHEMA_FILES)
   message(

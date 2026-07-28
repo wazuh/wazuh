@@ -290,3 +290,83 @@ TEST_F(AgentInfoImplTest, ConstructorThrowsWhenQueryModuleFunctionIsNull)
     },
     std::invalid_argument);
 }
+
+// Regression test for the clean-stop ordering fix (issues #37629 / #37714).
+//
+// stop() must not return until the run loop has exited, so that shared resources
+// (the main DBSync connection and the sync-protocol SQLite connection) are only
+// torn down once no other thread is using them.
+//
+// The run loop calls ISysInfo::os() near the top of populateAgentMetadata(). We
+// hold it there for a fixed window so the loop is provably still active when
+// stop() is called: stop() blocks for that window; before it, stop()
+// returned immediately.
+TEST_F(AgentInfoImplTest, StopWaitsForRunLoopToExit)
+{
+    constexpr auto HOLD = std::chrono::milliseconds(300);
+
+    auto mockSysInfo = std::make_shared<MockSysInfo>();
+    std::atomic<bool> loopInBody{false};
+
+    EXPECT_CALL(*mockSysInfo, os())
+    .WillRepeatedly(::testing::Invoke([&]() -> nlohmann::json
+    {
+        loopInBody.store(true, std::memory_order_release);
+        std::this_thread::sleep_for(HOLD);
+        return nlohmann::json::object();
+    }));
+
+    auto agentInfo =
+        std::make_shared<AgentInfoImpl>("test_path", nullptr, m_logFunction, m_queryModuleFunction, m_mockDBSync, mockSysInfo);
+
+    // start() blocks until stopped, so it runs on its own thread. It has a fixed
+    // 5s initial delay before the first iteration.
+    std::thread loopThread([&]()
+    {
+        agentInfo->start(3600, 86400, []()
+        {
+            return true;
+        });
+    });
+
+    while (!loopInBody.load(std::memory_order_acquire))
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    const auto start = std::chrono::steady_clock::now();
+    agentInfo->stop();
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    // AFTER the fix stop() blocks until the in-flight run-loop iteration finishes;
+    // BEFORE the fix it returned immediately (< 1 ms).
+    EXPECT_GE(elapsed, HOLD / 2) << "stop() returned before the run loop had exited";
+
+    loopThread.join();
+}
+
+// After stop() tears down the sync protocol, the asynchronous MQ response path
+// (parseResponseBuffer, called on the dispatch thread) must fail gracefully
+// instead of dereferencing the freed sync protocol.
+TEST_F(AgentInfoImplTest, ParseResponseBufferAfterStopIsSafe)
+{
+    // Initialize a real (in-memory, no DB file) sync protocol so that stop()
+    // genuinely destroys it and the call below exercises the m_syncProtocolMutex
+    // guard, not the trivial "was never initialized" path.
+    const MQ_Functions mqFuncs
+    {
+        [](const char*, short, short) -> int { return 0; },
+        [](int, const void*, size_t, const char*, char) -> int { return 0; }
+    };
+    m_agentInfo->initSyncProtocol("agent_info", mqFuncs);
+
+    const uint8_t data[] = {0x01, 0x02, 0x03};
+
+    // stop() destroys the sync protocol under m_syncProtocolMutex.
+    m_agentInfo->stop();
+
+    // The now-torn-down protocol must be rejected safely (no use-after-free).
+    clearLogOutput();
+    EXPECT_FALSE(m_agentInfo->parseResponseBuffer(data, sizeof(data)));
+    EXPECT_THAT(getLogOutput(), ::testing::HasSubstr("Sync protocol not initialized"));
+}

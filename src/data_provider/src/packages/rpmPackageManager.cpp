@@ -40,6 +40,11 @@ RpmPackageManager::RpmPackageManager(std::shared_ptr<IRpmLibWrapper>&& wrapper)
 
 RpmPackageManager::~RpmPackageManager()
 {
+    // the constructor's rpmReadConfigFiles() call loads macros into rpm's
+    // process-global macro context (rpmInitMacros()), which is never cleared automatically.
+    // rpmFreeRpmrc() alone does not free it (different subsystem) — without this, every
+    // construct/destruct cycle of RpmPackageManager permanently grows that global table.
+    m_rpmlib->rpmFreeMacros();
     m_rpmlib->rpmFreeRpmrc();
     ms_instantiated = false;
 }

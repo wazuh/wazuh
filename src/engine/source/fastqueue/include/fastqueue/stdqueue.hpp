@@ -9,6 +9,7 @@
 #include <queue>
 #include <stdexcept>
 
+#include <fastqueue/bytelimiter.hpp>
 #include <fastqueue/iqueue.hpp>
 #include <fastqueue/ratelimiter.hpp>
 
@@ -41,6 +42,7 @@ private:
     std::condition_variable m_condVar;          ///< Condition variable for blocking operations
     const std::size_t m_capacity;               ///< Maximum capacity of the queue
     std::unique_ptr<RateLimiter> m_rateLimiter; ///< Optional rate limiter (nullptr = no limiting)
+    ByteLimiter<T> m_byteLimiter;               ///< Optional byte-based capacity limiter
 
 public:
     /**
@@ -109,13 +111,12 @@ public:
      */
     bool push(T&& element) override
     {
+        const std::size_t sz = m_byteLimiter.measure(element);
         std::unique_lock<std::mutex> lock(m_mutex);
-
         if (m_queue.size() >= m_capacity)
-        {
-            return false; // Queue is full
-        }
-
+            return false;
+        if (!m_byteLimiter.tryAcquireBytes(sz))
+            return false;
         m_queue.push(std::move(element));
         lock.unlock();
         m_condVar.notify_one();
@@ -127,13 +128,12 @@ public:
      */
     bool tryPush(const T& element) override
     {
+        const std::size_t sz = m_byteLimiter.measure(element);
         std::unique_lock<std::mutex> lock(m_mutex);
-
         if (m_queue.size() >= m_capacity)
-        {
-            return false; // Queue is full
-        }
-
+            return false;
+        if (!m_byteLimiter.tryAcquireBytes(sz))
+            return false;
         m_queue.push(element);
         lock.unlock();
         m_condVar.notify_one();
@@ -181,19 +181,14 @@ public:
     bool tryPop(T& element) override
     {
         if (m_rateLimiter && !m_rateLimiter->tryAcquire(1))
-        {
             return false;
-        }
-
         std::lock_guard<std::mutex> lock(m_mutex);
-
         if (m_queue.empty())
-        {
             return false;
-        }
-
+        const std::size_t sz = m_byteLimiter.measure(m_queue.front());
         element = std::move(m_queue.front());
         m_queue.pop();
+        m_byteLimiter.releaseBytes(sz);
         return true;
     }
 
@@ -226,6 +221,15 @@ public:
         return (currentSize >= m_capacity) ? 0 : (m_capacity - currentSize);
     }
 
+    void setByteLimit(std::size_t maxBytes, std::function<std::size_t(const T&)> sizeOf) override
+    {
+        m_byteLimiter.configure(maxBytes, std::move(sizeOf));
+    }
+
+    std::size_t bytesUsed() const noexcept override { return m_byteLimiter.bytesUsed(); }
+
+    std::size_t maxBytes() const noexcept override { return m_byteLimiter.maxBytes(); }
+
     /**
      * @copydoc IQueue::tryPopBulk
      * @note If rate limiting is enabled, this method will acquire tokens for ALL requested elements
@@ -241,12 +245,15 @@ public:
         std::lock_guard<std::mutex> lock(m_mutex);
 
         std::size_t count = 0;
+        std::size_t totalBytes = 0;
         while (count < max && !m_queue.empty())
         {
+            totalBytes += m_byteLimiter.measure(m_queue.front());
             elements[count] = std::move(m_queue.front());
             m_queue.pop();
             ++count;
         }
+        m_byteLimiter.releaseBytes(totalBytes);
 
         return count;
     }
@@ -281,8 +288,10 @@ private:
             }
         }
 
+        const std::size_t sz = m_byteLimiter.measure(m_queue.front());
         element = std::move(m_queue.front());
         m_queue.pop();
+        m_byteLimiter.releaseBytes(sz);
         return true;
     }
 };

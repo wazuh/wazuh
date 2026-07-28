@@ -45,6 +45,8 @@ int shared_reload_interval;
 int disk_storage;
 size_t batch_events_capacity;
 size_t batch_events_per_agent_capacity;
+size_t queue_max_bytes;
+size_t batch_events_max_bytes;
 int enrich_cache_expire_time;
 
 /* Manager's module limits instance */
@@ -120,6 +122,9 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
     _s_verify_counter = getDefine_Int_default("remoted", "verify_msg_id", 0, 1, 0);
     batch_events_capacity = (size_t)getDefine_Int_default("remoted", "batch_events_capacity", 0, 0x1<<20, 131072);
     batch_events_per_agent_capacity = (size_t)getDefine_Int_default("remoted", "batch_events_per_agent_capacity", 0, 0x1<<20, 131072);
+    // Byte-capacity limits (0 = unlimited).  Values < 1 KiB are rejected at startup.
+    queue_max_bytes = (size_t)getDefine_Int_default("remoted", "queue_max_bytes", 0, INT_MAX, 64 * 1024 * 1024);
+    batch_events_max_bytes = (size_t)getDefine_Int_default("remoted", "batch_events_max_bytes", 0, INT_MAX, 32 * 1024 * 1024);
     enrich_cache_expire_time = getDefine_Int_default("remoted", "enrich_cache_expire_time", 60, 86400, 300);
 
     /* Setting default values for global parameters */
@@ -138,6 +143,16 @@ int RemotedConfig(const char *cfgfile, remoted *cfg)
 
     if (cfg->queue_size > 262144) {
         mwarn("Queue size is very high. The application may run out of memory.");
+    }
+
+    if (queue_max_bytes > 0 && queue_max_bytes < 1024) {
+        merror("remoted.queue_max_bytes (%zu) is below the minimum of 1024 bytes.", queue_max_bytes);
+        return OS_INVALID;
+    }
+
+    if (batch_events_max_bytes > 0 && batch_events_max_bytes < 1024) {
+        merror("remoted.batch_events_max_bytes (%zu) is below the minimum of 1024 bytes.", batch_events_max_bytes);
+        return OS_INVALID;
     }
 
     /* Get node name and cluster name of the manager */
@@ -236,6 +251,8 @@ cJSON *getRemoteInternalConfig(void) {
     cJSON_AddNumberToObject(remoted,"state_interval",state_interval);
     cJSON_AddNumberToObject(remoted,"batch_events_capacity",batch_events_capacity);
     cJSON_AddNumberToObject(remoted,"batch_events_per_agent_capacity",batch_events_per_agent_capacity);
+    cJSON_AddNumberToObject(remoted,"queue_max_bytes",(double)queue_max_bytes);
+    cJSON_AddNumberToObject(remoted,"batch_events_max_bytes",(double)batch_events_max_bytes);
     cJSON_AddNumberToObject(remoted,"enrich_cache_expire_time",enrich_cache_expire_time);
 
     cJSON_AddItemToObject(internals,"remoted",remoted);

@@ -8,7 +8,10 @@ on:
       - "src/**"
       - "packages/**"
       - "ruleset/**"
+      - "framework/requirements.txt"
       - ".github/actions/check_files/**"
+      - ".github/actions/upload_s3_artifact/**"
+      - ".github/actions/download_package/**"
       - ".github/workflows/5_builderpackage_agent-linux.yml"
       - ".github/workflows/5_testintegration_agent-start.yml"
       - ".github/workflows/5_testintegration_linux-integration-tests.yml"
@@ -849,6 +852,10 @@ jobs:
     if: >
       needs.upload-deb-to-s3.result == 'success' &&
       needs.detect-changes.result == 'success'
+    # Required so that the reusable workflow can obtain an OIDC token for AWS authentication.
+    permissions:
+      id-token: write
+      contents: read
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.detect-changes.outputs.matrix) }}
