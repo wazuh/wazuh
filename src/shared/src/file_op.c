@@ -2085,7 +2085,13 @@ int w_copy_file(const char *src, const char *dst, char mode, char * message, int
     char buffer[4096];
     int status = 0;
 
-    fp_src = wfopen(src, "r");
+    /* 'b': exact binary copy -- wfopen() defaults to _O_TEXT on Windows unless
+     * 'b' is in the mode string, which silently rewrites every bare '\n' as
+     * '\r\n' on write (and the reverse on read). A caller copying content
+     * whose exact bytes matter downstream (e.g. a hash computed over it) must
+     * request binary mode explicitly; text mode and binary mode are
+     * equivalent on non-Windows, so this only changes Windows behavior. */
+    fp_src = wfopen(src, mode == 'b' ? "rb" : "r");
 
     if (!fp_src) {
         if(!silent) {
@@ -2097,6 +2103,9 @@ int w_copy_file(const char *src, const char *dst, char mode, char * message, int
     /* Append to file */
     if (mode == 'a') {
         fp_dst = wfopen(dst, "a");
+    }
+    else if (mode == 'b') {
+        fp_dst = wfopen(dst, "wb");
     }
     else {
         fp_dst = wfopen(dst, "w");
