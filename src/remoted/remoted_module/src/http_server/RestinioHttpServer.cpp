@@ -334,7 +334,7 @@ namespace
 
         X509* peerCertificate = X509_STORE_CTX_get_current_cert(storeCtx);
 
-        return peerCertificate != nullptr && X509_check_ip_asc(peerCertificate, peerIp, 0) == 1;
+        return remoted::http::certificateMatchesPeerIp(peerCertificate, peerIp);
     }
 
     asio::ssl::context createTlsContext(const remoted::http::HttpServerConfig& config)
@@ -353,9 +353,9 @@ namespace
             throw std::runtime_error("Unable to configure TLS 1.3 as the minimum protocol version");
         }
 
-        if (!config.ciphers.empty() && SSL_CTX_set_cipher_list(context.native_handle(), config.ciphers.c_str()) != 1)
+        if (!config.ciphers.empty() && SSL_CTX_set_ciphersuites(context.native_handle(), config.ciphers.c_str()) != 1)
         {
-            throw std::runtime_error("Unable to configure the requested TLS cipher list");
+            throw std::runtime_error("Unable to configure the requested TLS 1.3 ciphersuite list");
         }
 
         context.use_certificate_chain_file(config.certificatePath);
@@ -484,6 +484,10 @@ namespace
 
 namespace remoted::http
 {
+    bool certificateMatchesPeerIp(X509* certificate, const std::string& peerIp)
+    {
+        return certificate != nullptr && X509_check_ip_asc(certificate, peerIp.c_str(), 0) == 1;
+    }
 
     struct RestinioHttpServer::Impl
     {
@@ -728,9 +732,15 @@ namespace remoted::http
 
                     // IPV6_V6ONLY only applies to an IPv6 socket; a no-op (and possibly an
                     // error) on IPv4, so only touch it when the bind address is IPv6.
-                    if (bindsIpv6 && dualStackMode != DualStackMode::Unset)
+                    // Unset (never configured) is treated the same as an explicit "no": only
+                    // an explicit "yes" opts into dual-stack. Unset stays a distinct value up
+                    // to this point (rather than defaulting to Disabled in
+                    // resolveDualStackMode) specifically so the "only meaningful for an IPv6
+                    // bind_addr" warning above doesn't fire for the common case of an IPv4
+                    // bind_addr with dual_stack never configured.
+                    if (bindsIpv6)
                     {
-                        options.set_option(asio::ip::v6_only(dualStackMode == DualStackMode::Disabled));
+                        options.set_option(asio::ip::v6_only(dualStackMode != DualStackMode::Enabled));
                     }
                 })
             .request_handler(std::move(requestRouter))

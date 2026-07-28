@@ -30,9 +30,10 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
   (see [Bind address: IPv4, IPv6 and dual-stack](#bind-address-ipv4-ipv6-and-dual-stack) below).
 - **TLS:** minimum version TLS 1.3; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
-- **Certificate files:** `/var/wazuh-manager/etc/https-manager.{cert,key}`, owned `root:root`,
-  mode `640` — same scheme as `sslmanager.cert`/`.key`. `remoted` reads both files itself,
-  while still root, **before** it calls change of user.
+- **Certificate paths (evaluated after `remoted` enters its chroot):**
+  `etc/remoted-https/server.crt` and `etc/remoted-https/server.key` — i.e. host paths
+  `/var/wazuh-manager/etc/remoted-https/server.{crt,key}`. The private key must be readable by the
+  `wazuh` user that `remoted` runs as.
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
   max 64 header fields, and a transport body cap of 50 MiB by default (`<remote><https><max_body_size>`);
   read/handshake timeout 10 s, write timeout 10 s, request timeout 30 s. The header/URL/timeout
@@ -42,18 +43,19 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 ### Bind address: IPv4, IPv6 and dual-stack
 
 `<remote><https><bind_addr>` accepts any literal IPv4 or IPv6 address (validated with the same
-`OS_IsValidIP()` check used for the classic `<remote><local_ip>`, so both families work with no
-extra configuration). A few things to know before choosing one:
+`OS_IsValidIP()` check used for the classic `<remote><legacy><local_ip>`, so both families work
+with no extra configuration). A few things to know before choosing one:
 
 - **`0.0.0.0`** binds an IPv4-only socket. Only IPv4 clients can connect; there is no way for an
   IPv6 client to reach it.
 - **`::`** binds an IPv6 socket that listens on every local address. Whether IPv4 clients can also
-  reach it depends on the **`IPV6_V6ONLY`** socket option. By default the server leaves this at
-  whatever the OS defaults to -- dual-stack (`IPV6_V6ONLY=0`) on Linux, so in practice `::` accepts
-  both IPv4 and IPv6 connections through the same socket without configuring anything.
-  `<remote><https><dual_stack>` (`yes`/`no`) overrides this explicitly instead of relying on the OS
-  default -- see [`https.dual_stack`](configuration.md#httpsdual_stack). It only applies when
-  `bind_addr` is IPv6; it's ignored (with a warning) for an IPv4 `bind_addr`.
+  reach it depends on the **`IPV6_V6ONLY`** socket option, which the server sets to `1` (IPv6-only)
+  by default -- `::` alone does **not** accept IPv4 connections unless
+  `<remote><https><dual_stack>yes</dual_stack>` is explicitly configured -- see
+  [`https.dual_stack`](configuration.md#httpsdual_stack). It only applies when `bind_addr` is IPv6;
+  an explicit `yes` or `no` is ignored (with a warning) for an IPv4 `bind_addr`. Leaving
+  `<dual_stack>` unset never warns, even on an IPv4 `bind_addr` -- it produces the same effective
+  behavior as an explicit `no`, just without the warning.
 - **A specific literal** (`10.0.0.5`, `2001:db8::1`, ...) binds only that address/family, same as
   today.
 - Internally, an IPv4 client connecting through a dual-stack (`::`) socket is reported by the OS as
@@ -199,14 +201,14 @@ above).
 | Setting | `<https>` tag | Default |
 |---|---|---|
 | Bind address (IPv4 or IPv6, see [above](#bind-address-ipv4-ipv6-and-dual-stack)) | `bind_addr` | `127.0.0.1` |
-| Dual-stack override (IPv6 `bind_addr` only) | `dual_stack` | unset (OS default) |
+| Dual-stack override (IPv6 `bind_addr` only) | `dual_stack` | `no` (force IPv6-only) |
 | Port | `port` | `9443` |
 | Transport max body size | `max_body_size` | `50 MiB` |
-| TLS certificate chain | `certificate` | `/etc/remoted-https/server.crt` |
-| TLS private key | `key` | `/etc/remoted-https/server.key` |
-| Client CA bundle | `ca` | none (client-cert verification disabled) |
-| Client verification mode | `verification_mode` | `none` |
-| TLS cipher list | `ciphers` | library default |
+| TLS certificate chain | `certificate` | `etc/remoted-https/server.crt` |
+| TLS private key | `key` | `etc/remoted-https/server.key` |
+| Client CA bundle | `ca` | `etc/remoted-https/ca.crt` |
+| Client verification mode | `verification_mode` | `none` (auto-upgraded to `certificate` if `<ca>` is set in XML without `<verification_mode>`) |
+| TLS 1.3 ciphersuites | `ciphers` | `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256` |
 
 > There is no `enabled` toggle: the listener always attempts to start and self-gates on the
 > presence of a valid certificate/key, same as before this configuration surface existed.
