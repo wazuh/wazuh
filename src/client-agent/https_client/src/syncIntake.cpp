@@ -60,6 +60,13 @@ namespace
         }
     }
 
+    /// sun_path is a fixed 108-byte field with no way to signal truncation, so
+    /// an over-long path has to be refused rather than silently shortened.
+    bool fitsInSunPath(const std::string& path)
+    {
+        return !path.empty() && path.size() < sizeof(sockaddr_un::sun_path);
+    }
+
     /// Waits for data on peerFd while watching stopFd, then reads once. Returns
     /// a transport error (<0) when the stop is signalled or the peer goes quiet,
     /// so a producer that stalls mid-frame can never pin the thread that stop()
@@ -135,6 +142,13 @@ bool SyncIntake::start()
     if (m_running)
     {
         return true;
+    }
+
+    if (!fitsInSunPath(m_socketPath))
+    {
+        // Binding the truncated path while unlink() targets the full one would
+        // leave a stale socket behind and make the next start fail on EADDRINUSE.
+        return false;
     }
 
     if (pipe(m_stopPipe) != 0)
@@ -239,6 +253,11 @@ void SyncIntake::handleConnection(int peerFd)
 bool sendSyncSession(const std::string& socketPath, const std::string& sessionId,
                      const uint8_t* body, size_t length)
 {
+    if (!fitsInSunPath(socketPath))
+    {
+        return false; // A truncated path would connect somewhere else, or nowhere.
+    }
+
     const int fd = socket(AF_UNIX, SOCK_STREAM, 0);
 
     if (fd < 0)
