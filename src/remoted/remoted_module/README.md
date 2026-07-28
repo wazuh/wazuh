@@ -112,7 +112,11 @@ src/http_server/
        on Linux) in `httpServerConfig.cpp::resolveThreadCount()` -- see *Request lifecycle
        example* below for the exact multiplier per pool.
     2. Regular `<remote>` settings not wired yet (built-in defaults apply in practice): `port`,
-       `http_max_body_size`, `certificate_path`, `private_key_path`.
+       `http_max_body_size`. `certificate_pem`/`private_key_pem` carry the TLS certificate/key as
+       raw PEM **content**, not a path: `remoted` reads the file itself while still root, before
+       it drops privileges, and hands the bytes over -- the module never opens a certificate file
+       as an unprivileged user. Empty means nothing was provided and `start()` fails; there's no
+       built-in fallback.
     3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
        `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
        set directly by `remoted` in `secure.c`, deliberately **not** an internal option (they bound

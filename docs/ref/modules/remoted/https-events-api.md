@@ -29,12 +29,9 @@ per-agent **AES-CMAC** signature derived from the agent's pre-shared key.
 - **Bind address / port:** `127.0.0.1:9443` by default.
 - **TLS:** minimum version TLS 1.2; the server loads a PEM certificate chain and private key and
   verifies that the key matches the certificate.
-- **Certificate paths (evaluated after `remoted` enters its chroot):**
-  `etc/https-manager.cert` and `etc/https-manager.key` — i.e. host paths
-  `/var/wazuh-manager/etc/https-manager.{cert,key}`. Owned `root:wazuh-manager`, mode `640` --
-  unlike `sslmanager.cert`/`.key` (`root:root`, read by `authd`, which never drops root), `remoted`
-  calls `Privsep_SetUser()` before loading this key, so it needs group-read access as the
-  `wazuh-manager` user it runs as.
+- **Certificate files:** `/var/wazuh-manager/etc/https-manager.{cert,key}`, owned `root:root`,
+  mode `640` — same scheme as `sslmanager.cert`/`.key`. `remoted` reads both files itself,
+  while still root, **before** it calls change of user.
 - **Message limits and timeouts:** max URL 2048 B, max header name 256 B, max header value 8192 B,
   max 64 header fields, and a transport body cap of 16 MiB by default; read/handshake timeout 10 s,
   write timeout 10 s, request timeout 30 s. All tunable via `remoted.http_*` internal options -- see
@@ -275,11 +272,13 @@ Three more that are not about tuning:
   otherwise it presents only as every agent being rejected as unknown, with nothing explaining why.
 - **`AES-CMAC is unavailable…`** (ERROR) means the OpenSSL provider is broken and *every* agent will
   fail to authenticate. Previously indistinguishable from one agent having a corrupt key.
-- **The HTTPS server failing to start** is an ERROR naming the offending file (e.g. a missing
-  `certificate_path`). There is no retry: remoted must not start without the HTTPS transport up, so
-  a missing or unreadable certificate/key is fatal to the whole daemon, not just this module — the
-  certificate is expected to already be in place by then (auto-generated at install time, see
-  [Transport and TLS](#transport-and-tls)).
+- **The HTTPS server failing to start** is an ERROR naming which of the two is the problem (the
+  certificate or the private key). There is no retry: remoted must not start without the HTTPS
+  transport up, so a missing or unreadable certificate/key is fatal to the whole daemon, not just
+  this module — the certificate is expected to already be in place by then (auto-generated at
+  install time, see [Transport and TLS](#transport-and-tls)). remoted reads both files itself while
+  still root and hands the PEM content to the module directly (not a path), so the module never
+  opens a certificate file as an unprivileged user.
 
 Client-side rejections (malformed or unauthenticated requests) are logged at debug level only —
 visible with `remoted.debug=2` — because an unauthenticated peer controls how many it can trigger.

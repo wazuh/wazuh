@@ -117,8 +117,8 @@ namespace remoted::http
     {
         std::string bindAddress {"127.0.0.1"};         ///< Listen address.
         std::uint16_t port {9443};                     ///< Listen port.
-        std::string certificatePath;                   ///< TLS certificate chain (PEM) path.
-        std::string privateKeyPath;                    ///< TLS private key (PEM) path.
+        std::string certificatePem;                    ///< TLS certificate chain, PEM-encoded content (not a path).
+        std::string privateKeyPem;                     ///< TLS private key, PEM-encoded content (not a path).
         std::size_t ioThreads {2};                     ///< RESTinio/asio I/O threads (accept + read/write).
         std::size_t workerThreads {4};                 ///< Handler worker-pool size (blocking work offload).
         std::size_t maxBodySize {16U * 1024U * 1024U}; ///< Transport hard cap (backstop above the auth body limit).

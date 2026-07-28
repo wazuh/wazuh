@@ -15,8 +15,10 @@
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <unistd.h>
@@ -115,9 +117,12 @@ namespace
         LogRecorder::lines().push_back({level, tag != nullptr ? tag : "", buffer});
     }
 
-    // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI,
-    // already a build/runtime dependency) so start() can be exercised for real
-    // instead of only against the missing-certificate failure path.
+    // Generates a throwaway self-signed cert/key pair (via the `openssl` CLI, already a
+    // build/runtime dependency) so start() can be exercised for real instead of only against
+    // the missing-certificate failure path. remoted itself would read these files while still
+    // root, before dropping privileges -- here we just read them straight from the test
+    // process, since the point under test is the module's in-memory PEM handling, not the
+    // privilege-drop timing (that lives in remoted.c/secure.c, outside this module).
     class TempCert
     {
     public:
@@ -125,47 +130,55 @@ namespace
         {
             char dirTemplate[] = "/tmp/remotedModuleTestXXXXXX";
             m_dir = mkdtemp(dirTemplate);
-            m_certPath = m_dir + "/cert.pem";
-            m_keyPath = m_dir + "/key.pem";
+            const std::string certPath = m_dir + "/cert.pem";
+            const std::string keyPath = m_dir + "/key.pem";
 
             const std::string cmd = "openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=test -keyout " +
-                                     m_keyPath + " -out " + m_certPath + " >/dev/null 2>&1";
+                                     keyPath + " -out " + certPath + " >/dev/null 2>&1";
             if (std::system(cmd.c_str()) != 0)
             {
                 ADD_FAILURE() << "Failed to generate a throwaway TLS certificate for testing";
             }
-        }
 
-        ~TempCert()
-        {
-            std::remove(m_certPath.c_str());
-            std::remove(m_keyPath.c_str());
+            m_certPem = readFile(certPath);
+            m_keyPem = readFile(keyPath);
+
+            std::remove(certPath.c_str());
+            std::remove(keyPath.c_str());
             rmdir(m_dir.c_str());
         }
 
-        const std::string& certPath() const { return m_certPath; }
-        const std::string& keyPath() const { return m_keyPath; }
+        const std::string& certPem() const { return m_certPem; }
+        const std::string& keyPem() const { return m_keyPem; }
 
     private:
+        static std::string readFile(const std::string& path)
+        {
+            std::ifstream file(path);
+            std::ostringstream contents;
+            contents << file.rdbuf();
+            return contents.str();
+        }
+
         std::string m_dir;
-        std::string m_certPath;
-        std::string m_keyPath;
+        std::string m_certPem;
+        std::string m_keyPem;
     };
 
-    remoted_module_config_t makeConfig(const std::string& certPath = "", const std::string& keyPath = "")
+    remoted_module_config_t makeConfig(const std::string& certPem = "", const std::string& keyPem = "")
     {
         remoted_module_config_t cfg {};
         cfg.port = 0; // ephemeral: avoid colliding with a real listener or another test run
         cfg.worker_node = false;
         std::snprintf(cfg.cluster_name, sizeof(cfg.cluster_name), "%s", "test-cluster");
         std::snprintf(cfg.node_name, sizeof(cfg.node_name), "%s", "test-node");
-        if (!certPath.empty())
+        if (!certPem.empty())
         {
-            std::snprintf(cfg.certificate_path, sizeof(cfg.certificate_path), "%s", certPath.c_str());
+            std::snprintf(cfg.certificate_pem, sizeof(cfg.certificate_pem), "%s", certPem.c_str());
         }
-        if (!keyPath.empty())
+        if (!keyPem.empty())
         {
-            std::snprintf(cfg.private_key_path, sizeof(cfg.private_key_path), "%s", keyPath.c_str());
+            std::snprintf(cfg.private_key_pem, sizeof(cfg.private_key_pem), "%s", keyPem.c_str());
         }
         return cfg;
     }
@@ -191,7 +204,7 @@ protected:
 TEST_F(RemotedModuleTest, StartAndStop)
 {
     TempCert cert;
-    const auto cfg = makeConfig(cert.certPath(), cert.keyPath());
+    const auto cfg = makeConfig(cert.certPem(), cert.keyPem());
     EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
     remoted_module_stop();
     EXPECT_GT(g_logCalls.load(), 0);
@@ -204,8 +217,10 @@ TEST_F(RemotedModuleTest, StopWithoutStartIsSafe)
     SUCCEED();
 }
 
-// No certificate/key in place (the default, unconfigured paths) is fatal: there is no
-// retry/recovery anymore, so start() must propagate the failure instead of starting anyway.
+// No certificate/key PEM content supplied is fatal: there is no retry/recovery anymore, so
+// start() must propagate the failure instead of starting anyway. In production this content
+// comes from remoted.c reading etc/https-manager.{cert,key} before dropping privileges; an
+// empty config here stands in for that read having found nothing.
 TEST_F(RemotedModuleTest, StartWithoutCertificateThrows)
 {
     const auto cfg = makeConfig();
@@ -213,8 +228,8 @@ TEST_F(RemotedModuleTest, StartWithoutCertificateThrows)
     EXPECT_GT(g_logCalls.load(), 0); // the "Starting remoted module..." log still happened
 }
 
-// A NULL configuration falls back to defaults, which point at the (here, absent) install-time
-// certificate paths -- so this must throw for the same reason as StartWithoutCertificateThrows.
+// A NULL configuration falls back to defaults, which carry no PEM content -- so this must
+// throw for the same reason as StartWithoutCertificateThrows.
 TEST_F(RemotedModuleTest, StartWithNullConfigThrows)
 {
     EXPECT_THROW(remoted_module_start(testLogCallback, nullptr), std::exception);
@@ -225,7 +240,7 @@ TEST_F(RemotedModuleTest, StartWithNullConfigThrows)
 TEST_F(RemotedModuleTest, DoubleStartIsIgnored)
 {
     TempCert cert;
-    const auto cfg = makeConfig(cert.certPath(), cert.keyPath());
+    const auto cfg = makeConfig(cert.certPem(), cert.keyPem());
     EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
     EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
     remoted_module_stop();
@@ -239,7 +254,7 @@ TEST_F(RemotedModuleTest, DoubleStartIsIgnored)
 TEST_F(RemotedModuleTest, StartStopStartAgainWorks)
 {
     TempCert cert;
-    const auto cfg = makeConfig(cert.certPath(), cert.keyPath());
+    const auto cfg = makeConfig(cert.certPem(), cert.keyPem());
 
     EXPECT_NO_THROW(remoted_module_start(testLogCallback, &cfg));
     remoted_module_stop();
