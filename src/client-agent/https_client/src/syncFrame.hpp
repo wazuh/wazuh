@@ -25,8 +25,8 @@
  *
  * Wire layout (little-endian, the OS_SendSecureTCP convention):
  *   magic      4 bytes  "WZSY"
- *   id_len     4 bytes  session-id length (bounded)
- *   id         id_len   session-id bytes
+ *   id_len     4 bytes  session-id length (bounded by SESSION_ID_MAX_LENGTH)
+ *   id         id_len   session-id bytes (see sessionId.hpp for the charset)
  *   body_len   8 bytes  session body length
  *   body       body_len session bytes (streamed)
  *
@@ -43,12 +43,11 @@ enum class SyncFrameResult
 {
     Ok,
     Truncated,  ///< EOF before the full frame arrived.
-    Malformed,  ///< Bad magic or an out-of-bounds length.
+    Malformed,  ///< Bad magic, an out-of-bounds length or an illegal session id.
     WriteError, ///< Spooling the body to disk failed.
     Error       ///< Transport read error.
 };
 
-constexpr uint32_t SYNC_FRAME_MAX_ID = 256;                       ///< Session-id length cap.
 constexpr uint64_t SYNC_FRAME_MAX_BODY = 512ULL * 1024 * 1024;    ///< 512 MB body cap.
 
 /// Frames and writes a whole session through the write callback. Returns false
