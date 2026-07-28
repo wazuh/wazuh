@@ -248,8 +248,18 @@ class FakeManager final
                 });
             });
 
+            // Records every /control request TYPE the fork child actually saw
+            // (not the full body -- just "startup"/"notify"/"shutdown"/
+            // "unknown"), so the fork parent can assert on the conversation
+            // shape via GET /peek/control (fork servers share no memory; this
+            // is the same observability idiom as acceptedEvents/peek/stateless
+            // above). Used to directly (not just by source reading) confirm
+            // whether a graceful stop actually sends {"type":"shutdown"}.
+            auto controlTypes = std::make_shared<std::string>();
+            auto controlMutex = std::make_shared<std::mutex>();
+
             server.Post("/control",
-                        [verify, settingsFlipAfter, notifyCount, configHash](
+                        [verify, settingsFlipAfter, notifyCount, configHash, controlTypes, controlMutex](
                             const httplib::Request & request, httplib::Response & response)
             {
                 if (!verify("/control", request))
@@ -262,6 +272,27 @@ class FakeManager final
                 {
                     response.status = 426;
                     return;
+                }
+
+                {
+                    std::lock_guard<std::mutex> lock(*controlMutex);
+                    const char* type = "unknown";
+
+                    if (request.body.find("\"type\":\"startup\"") != std::string::npos)
+                    {
+                        type = "startup";
+                    }
+                    else if (request.body.find("\"type\":\"notify\"") != std::string::npos)
+                    {
+                        type = "notify";
+                    }
+                    else if (request.body.find("\"type\":\"shutdown\"") != std::string::npos)
+                    {
+                        type = "shutdown";
+                    }
+
+                    *controlTypes += type;
+                    *controlTypes += ";";
                 }
 
                 // #37733 5.1: startup answers the handshake metadata (v1 or
@@ -308,6 +339,15 @@ class FakeManager final
                 // Unknown /control type: 400.
                 response.status = 400;
                 response.set_content(R"({"error":"unknown control type"})", "application/json");
+            });
+
+            server.Get("/peek/control",
+                       [controlTypes, controlMutex](const httplib::Request&,
+                                                    httplib::Response & response)
+            {
+                std::lock_guard<std::mutex> lock(*controlMutex);
+                response.status = 200;
+                response.set_content(*controlTypes, "text/plain");
             });
         }
 
