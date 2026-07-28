@@ -350,11 +350,6 @@ fi
 # Generate auto-signed certificate for the HTTPS agent server (remoted_module) if not exists
 if [ ! -f "%{_localstatedir}/etc/https-manager.key" ] && [ ! -f "%{_localstatedir}/etc/https-manager.cert" ]; then
   %{_localstatedir}/bin/wazuh-manager-remoted -C 365 -B 2048 -S "/C=US/ST=California/CN=Wazuh/" -K %{_localstatedir}/etc/https-manager.key -X %{_localstatedir}/etc/https-manager.cert 2>/dev/null
-  # Unlike sslmanager.{cert,key} (read by authd, which never drops root), remoted calls
-  # Privsep_SetUser() BEFORE loading this key -- it must be group-readable by the user
-  # remoted actually runs as, not root:root.
-  chown root:wazuh-manager %{_localstatedir}/etc/https-manager.key
-  chown root:wazuh-manager %{_localstatedir}/etc/https-manager.cert
   chmod 640 %{_localstatedir}/etc/https-manager.key
   chmod 640 %{_localstatedir}/etc/https-manager.cert
 fi
@@ -552,8 +547,8 @@ rm -fr %{buildroot}
 %attr(660, root, wazuh-manager) %ghost %{_localstatedir}/etc/wazuh-manager.conf
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.cert
 %attr(640, root, root) %ghost %{_localstatedir}/etc/sslmanager.key
-%attr(640, root, wazuh-manager) %ghost %{_localstatedir}/etc/https-manager.cert
-%attr(640, root, wazuh-manager) %ghost %{_localstatedir}/etc/https-manager.key
+%attr(640, root, root) %ghost %{_localstatedir}/etc/https-manager.cert
+%attr(640, root, root) %ghost %{_localstatedir}/etc/https-manager.key
 %attr(660, wazuh-manager, wazuh-manager) %{_localstatedir}/etc/client.keys
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/wazuh-manager-internal-options.conf
 %attr(640, root, wazuh-manager) %{_localstatedir}/etc/localtime
