@@ -212,6 +212,22 @@ TEST_F(HcInterfaceTest, SubmitAfterStartAcceptsIntoQueues)
     hc_destroy(handle);
 }
 
+TEST_F(HcInterfaceTest, SyncSubmitAfterStopIsRejected)
+{
+    // Both sync entry points read the lifecycle flag under the same lock stop()
+    // writes it with, so a session can never be queued behind the sender's exit.
+    hc_handle* handle = hc_create(&m_config, &m_callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    hc_stop(handle);
+
+    const uint8_t frame[] = "1:/var/log/syslog:hello";
+    EXPECT_FALSE(hc_submit_sync_session(handle, "sess-0001", frame, sizeof(frame) - 1));
+    EXPECT_FALSE(hc_submit_sync_session_file(handle, "sess-0002", "/tmp/hc_never_read", 1));
+    EXPECT_FALSE(hc_submit_event(handle, frame, sizeof(frame) - 1));
+    hc_destroy(handle);
+}
+
 TEST_F(HcInterfaceTest, SubmitNullArgumentsAreRejected)
 {
     hc_handle* handle = hc_create(&m_config, &m_callbacks);
