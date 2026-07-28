@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 - Restricted the upgrade commands accepted from the agent message channel in Analysisd. ([#37745](https://github.com/wazuh/wazuh/pull/37745))
 - Added destination path validation when deleting rule and decoder files. ([#37838](https://github.com/wazuh/wazuh/pull/37838))
 - Added source path validation when retrieving CDB list files. ([#37901](https://github.com/wazuh/wazuh/pull/37901))
+- Fixed the `aws-s3` wodle failing to parse configuration values that contain spaces, such as `discard_regex`, `discard_field`, `aws_profile`, `aws_account_alias`, `path` and `path_suffix`. ([#37929](https://github.com/wazuh/wazuh/pull/37929))
 
 ### Agent
 
