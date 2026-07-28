@@ -54,6 +54,13 @@ func Load(path string, opts LoaderOptions) (*Scenario, error) {
 		name = strings.TrimSuffix(filepath.Base(abs), filepath.Ext(abs))
 	}
 	desc := asString(doc["description"])
+	clusterName := asString(doc["cluster_name"])
+	if clusterName == "" {
+		if _, ok := doc["cluster_name"]; ok {
+			return nil, fmt.Errorf("scenario %s: cluster_name must be a non-empty string", abs)
+		}
+		clusterName = "wazuh"
+	}
 
 	defaultsRaw, _ := doc["defaults"].(map[string]any)
 
@@ -144,6 +151,7 @@ func Load(path string, opts LoaderOptions) (*Scenario, error) {
 	return &Scenario{
 		Name:        name,
 		Description: desc,
+		ClusterName: clusterName,
 		Lanes:       lanes,
 		Fleets:      fleets,
 		Behavior:    beh,

@@ -14,7 +14,12 @@
 #include <errno.h>
 #include "shared.h"
 
-static cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node, int quoted_float_as_string);
+/* Maximum number of JSON nodes a single YAML document may expand into.
+ * The largest bundled SCA policy expands to about 18000 nodes, so this leaves
+ * ample headroom for legitimate documents. */
+#define YAML2JSON_MAX_NODES 100000
+
+static cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node, int quoted_float_as_string, unsigned int * node_count);
 
 int yaml_parse_stdin(yaml_document_t * document) {
     yaml_parser_t parser;
@@ -61,16 +66,17 @@ int yaml_parse_file(const char * path, yaml_document_t * document) {
 
 cJSON * yaml2json(yaml_document_t * document, int single_quote_float_as_string) {
     yaml_node_t * node;
+    unsigned int node_count = 0;
 
     if (node = yaml_document_get_root_node(document), !node) {
         mwarn("No document defined.");
         return NULL;
     }
 
-    return yaml2json_node(document, node, single_quote_float_as_string);
+    return yaml2json_node(document, node, single_quote_float_as_string, &node_count);
 }
 
-cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node,int quoted_float_as_string) {
+cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node, int quoted_float_as_string, unsigned int * node_count) {
     yaml_node_t * key;
     yaml_node_t * value;
     yaml_node_item_t * item_i;
@@ -79,6 +85,12 @@ cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node,int quoted
     char * scalar;
     char * end;
     cJSON * object;
+    cJSON * item;
+
+    if (++(*node_count) > YAML2JSON_MAX_NODES) {
+        mwarn("YAML document exceeds the maximum number of nodes (%d). Possible alias expansion abuse.", YAML2JSON_MAX_NODES);
+        return NULL;
+    }
 
     switch (node->type) {
     case YAML_NO_NODE:
@@ -101,7 +113,12 @@ cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node,int quoted
         object = cJSON_CreateArray();
 
         for (item_i = node->data.sequence.items.start; item_i < node->data.sequence.items.top; ++item_i) {
-            cJSON_AddItemToArray(object, yaml2json_node(document, yaml_document_get_node(document, *item_i),quoted_float_as_string));
+            if (item = yaml2json_node(document, yaml_document_get_node(document, *item_i), quoted_float_as_string, node_count), !item) {
+                cJSON_Delete(object);
+                return NULL;
+            }
+
+            cJSON_AddItemToArray(object, item);
         }
 
         break;
@@ -118,7 +135,12 @@ cJSON * yaml2json_node(yaml_document_t * document, yaml_node_t * node,int quoted
                 continue;
             }
 
-            cJSON_AddItemToObject(object, (char *)key->data.scalar.value, yaml2json_node(document, value,quoted_float_as_string));
+            if (item = yaml2json_node(document, value, quoted_float_as_string, node_count), !item) {
+                cJSON_Delete(object);
+                return NULL;
+            }
+
+            cJSON_AddItemToObject(object, (char *)key->data.scalar.value, item);
         }
 
         break;

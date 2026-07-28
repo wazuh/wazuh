@@ -106,7 +106,7 @@ The `indexer` sub-object must be present under `configData` when `contentSource`
 | `index` | string | Target index name (e.g. `.wazuh-threatintel-vulnerabilities`) |
 | `consumerStatusIndex` | string | Index containing the consumer status document to poll before downloading (optional) |
 | `consumerStatusId` | string | Consumer status document id to poll before downloading (optional) |
-| `pageSize` | integer | Documents per page. Default: `250` |
+| `pageSize` | integer | Documents per page. Default: `100`. Must be between 1 and 10000 (the Indexer rejects sizes above `index.max_result_window`) |
 | `numSlices` | integer | Number of parallel PIT slices for initial load. Default: `2`. Set to `1` for sequential mode. Higher values can increase memory usage with limited time savings |
 | `hosts` | array | Indexer host URLs (e.g. `["https://localhost:9200"]`) |
 | `username` | string | Indexer username |
@@ -129,8 +129,8 @@ Example:
         "offset": 0,
         "indexer": {
             "hosts": ["https://localhost:9200"],
-            "username": "admin",
-            "password": "admin",
+            "username": "wazuh-manager",
+            "password": "wazuh-manager",
             "ssl": {
                 "certificate_authorities": ["/etc/wazuh-indexer/certs/root-ca.pem"],
                 "certificate": "",
@@ -139,7 +139,7 @@ Example:
             "index": ".wazuh-threatintel-vulnerabilities",
             "consumerStatusIndex": ".wazuh-cti-consumers",
             "consumerStatusId": "cti:catalog:consumer:vulnerabilities",
-            "pageSize": 250,
+            "pageSize": 100,
             "numSlices": 2
         }
     }

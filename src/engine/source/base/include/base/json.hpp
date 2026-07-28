@@ -3,12 +3,15 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include <fmt/format.h>
@@ -185,7 +188,30 @@ public:
     }
 
 private:
+    // Declaration order is CRITICAL: members are destroyed in reverse order, so the
+    // document (which references the allocator) goes first, then the allocator, then
+    // the buffer the allocator lives in. Both pointers are null for standard documents.
+    std::unique_ptr<uint8_t[]> m_compactBuffer; ///< Initial memory block of a compact document (null otherwise).
+    std::unique_ptr<rapidjson::MemoryPoolAllocator<>>
+        m_ownAllocator; ///< Heap-stable small-chunk allocator of a compact document (null otherwise).
     rapidjson::Document m_document;
+
+    /// Tag to select the compact-document constructor.
+    struct CompactTag
+    {
+    };
+
+    /**
+     * @brief Construct an empty compact Json document.
+     *
+     * Allocates an initial block of max(COMPACT_INITIAL_CAPACITY, capacityHint rounded up
+     * to COMPACT_CHUNK_CAPACITY) bytes and binds the document to a small-chunk allocator
+     * living in it, so further growth happens in COMPACT_CHUNK_CAPACITY steps instead of
+     * the rapidjson default (64 KB chunks).
+     *
+     * @param capacityHint Estimated bytes needed by the document (0 = minimum block).
+     */
+    Json(CompactTag, size_t capacityHint);
 
     /**
      * @brief Construct a new Json object form a rapidjason::Value.
@@ -264,9 +290,62 @@ public:
      */
     explicit Json(std::string_view json);
 
+    /************************************************************************************/
+    // Compact documents (small allocator)
+    //
+    // A standard rapidjson::Document allocates memory in 64 KB chunks. For small,
+    // long-lived documents (cached agent headers, helper-function values) that wastes
+    // RSS. A compact Json starts with a small initial block and grows in small steps.
+    /************************************************************************************/
+
+    static constexpr size_t COMPACT_INITIAL_CAPACITY = 2 * 1024; ///< Minimum initial block of a compact document.
+    static constexpr size_t COMPACT_CHUNK_CAPACITY = 1 * 1024;   ///< Growth chunk multiple of a compact document.
+
+    /**
+     * @brief Parse a JSON string into a compact document.
+     *
+     * The initial block is max(COMPACT_INITIAL_CAPACITY, capacityHint rounded up to a
+     * COMPACT_CHUNK_CAPACITY multiple); if the document outgrows it, the pool grows in
+     * COMPACT_CHUNK_CAPACITY steps. A small allocator bookkeeping header (~48 bytes)
+     * lives inside the initial block.
+     *
+     * @param src The JSON string to parse.
+     * @param capacityHint Estimated bytes needed (0 = use src.size() as estimate).
+     * @return Json Compact document. Moveable: `std::make_shared<const Json>(Json::compact(s))`
+     *         keeps the compact allocator (the copy constructor would not — see Json(const Json&)).
+     * @throws std::runtime_error If src is not valid JSON.
+     */
+    static Json compact(std::string_view src, size_t capacityHint = 0);
+
+    /**
+     * @brief Return a compact deep copy of this document (initial block sized from
+     * getUsedMemory()).
+     *
+     * Mutating the returned document is safe: its pool simply grows in
+     * COMPACT_CHUNK_CAPACITY steps.
+     *
+     * @return Json Compact copy. Moveable (see compact(std::string_view, size_t)).
+     */
+    Json compact() const;
+
+    /**
+     * @brief Bytes of the document's memory pool currently in use.
+     */
+    size_t getUsedMemory() const;
+
+    /**
+     * @brief Bytes actually allocated by the document's memory pool (its capacity).
+     * For a standard document this is a multiple of 64 KB once anything is allocated;
+     * for a compact one, the initial block plus COMPACT_CHUNK_CAPACITY-sized chunks.
+     */
+    size_t getAllocatedMemory() const;
+
     /**
      * @brief Copy constructs a new Json object.
      * Value is copied.
+     *
+     * @note The copy always uses a standard (64 KB-chunk) allocator, even when copying a
+     * compact document. Use compact() to obtain a compact copy.
      *
      * @param other The Json to copy.
      */
@@ -373,6 +452,19 @@ public:
      * @throws std::runtime_error If the pointer path is invalid.
      */
     bool equals(std::string_view pointerPath, const Json& value) const;
+
+    /**
+     * @brief Check if a field's string value equals the given string.
+     * Returns false if the field is not found or is not a string type.
+     *
+     * @param pointerPath The pointer path to the field.
+     * @param str The string to compare against.
+     * @return true The field exists and its string value equals str.
+     * @return false Otherwise.
+     *
+     * @throws std::runtime_error If the pointer path is invalid.
+     */
+    bool equalsString(std::string_view pointerPath, std::string_view str) const;
 
     /**
      * @brief Check if basePointerPath field's value is equal to referencePointerPath
@@ -545,6 +637,22 @@ public:
      * @throws std::runtime_error If any pointer path is invalid.
      */
     std::optional<std::vector<std::tuple<std::string, Json>>> getObject(std::string_view path = "") const;
+
+    /**
+     * @brief Extract all top-level members of this JSON object by swapping (zero-copy).
+     *
+     * Each member value is moved out of this document via Value::Swap, avoiding
+     * expensive deep copies (CopyFrom / SetStringRaw). After extraction, this
+     * object's members are left in a null/moved-from state.
+     *
+     * IMPORTANT: The returned Json values reference string data stored in this
+     * object's allocator. This object MUST remain alive for as long as any of
+     * the returned Json values are in use.
+     *
+     * @return unordered_map of member name → Json (zero-copy swapped values).
+     * @throws std::runtime_error If this Json is not an object.
+     */
+    std::unordered_map<std::string, Json> extractObjectMembers();
 
     /**
      * @brief Get a list of fields from a json object.

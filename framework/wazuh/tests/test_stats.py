@@ -37,16 +37,22 @@ def send_msg_to_wdb(msg, raw=False):
 
 
 @patch('wazuh.core.common.REMOTED_SOCKET', '/var/wazuh-manager/queue/sockets/remote')
-@patch('wazuh.core.common.ANALYSISD_SOCKET', '/var/wazuh-manager/queue/sockets/analysis')
 @patch('wazuh.core.common.WDB_SOCKET', '/var/wazuh-manager/queue/db/wdb')
+@patch('wazuh.stats.EngineHTTPClient')
 @patch('wazuh.stats.get_daemons_stats_socket')
-def test_get_daemons_stats(mock_get_daemons_stats_socket):
+def test_get_daemons_stats(mock_get_daemons_stats_socket, mock_engine_client_cls):
     """Makes sure get_daemons_stats() fit with the expected."""
+    mock_engine_client = MagicMock()
+    mock_engine_client.get_metrics_dump.return_value = METRICS_DUMP_DATA
+    mock_engine_client_cls.return_value = mock_engine_client
+
     response = stats.get_daemons_stats(['wazuh-manager-remoted', 'wazuh-manager-analysisd', 'wazuh-manager-db'])
 
-    calls = [call('/var/wazuh-manager/queue/sockets/remote'), call('/var/wazuh-manager/queue/sockets/analysis'),
-             call('/var/wazuh-manager/queue/db/wdb')]
+    # remoted and db still use the socket; analysisd goes through EngineHTTPClient
+    calls = [call('/var/wazuh-manager/queue/sockets/remote'), call('/var/wazuh-manager/queue/db/wdb')]
     mock_get_daemons_stats_socket.assert_has_calls(calls)
+    mock_engine_client.get_metrics_dump.assert_called_once()
+    mock_engine_client.close.assert_called_once()
     assert isinstance(response, AffectedItemsWazuhResult), 'The result is not AffectedItemsWazuhResult type'
     assert response.total_affected_items == len(response.affected_items)
 

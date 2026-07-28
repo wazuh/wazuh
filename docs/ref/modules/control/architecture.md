@@ -463,17 +463,17 @@ No dedicated thread. `control_dispatch()` is called synchronously from the reque
 
 ### Changes
 
-| Feature               | v4.x (execd)   | v5.0 (wm_control) | Notes                               |
-| --------------------- | -------------- | ----------------- | ----------------------------------- |
-| Manager restart       | ✓ wcom socket  | ✓ control socket  | Migrated                            |
-| Manager reload        | ✓ wcom socket  | ✓ control socket  | Migrated                            |
-| Get primary IP        | ✓ wcom socket  | ✗ Removed         | No longer handled by control socket |
-| Configuration serving | ✓ wcom socket  | ✗ File-based      | Changed approach                    |
-| Config validation     | ✓ wcom socket  | ✗ File-based      | Changed approach                    |
-| File unmerge          | ✓ wcom socket  | ✗ Removed         | Deprecated                          |
-| File uncompress       | ✓ wcom socket  | ✗ Removed         | Deprecated                          |
-| Restart locking       | ✓ wcom socket  | ✗ Not migrated    | TBD                                 |
-| Active Response       | ✓ execd daemon | ✗ Agents only     | Intentional removal                 |
+| Feature               | v4.x (execd)   | v5.0 (wm_control) | Notes                                                                              |
+| --------------------- | -------------- | ----------------- | ----------------------------------------------------------------------------------- |
+| Manager restart       | ✓ wcom socket  | ✓ control socket  | Migrated                                                                           |
+| Manager reload        | ✓ wcom socket  | ✓ control socket  | Migrated                                                                           |
+| Get primary IP        | ✓ wcom socket  | ✗ Removed         | No longer handled by control socket                                                |
+| Configuration serving | ✓ wcom socket  | ✗ Not migrated    | Manager: file-based (`get_ossec_conf`); Agent: still via `com` socket (`os_execd`, agent-only) |
+| Config validation     | ✓ wcom socket  | ✗ Not migrated    | Not available on manager — `os_execd` no longer builds/runs there                 |
+| File unmerge          | ✓ wcom socket  | ✗ Not migrated    | Unchanged, agent-only (`os_execd`/`wcom.c`)                                        |
+| File uncompress       | ✓ wcom socket  | ✗ Not migrated    | Unchanged, agent-only (`os_execd`/`wcom.c`)                                        |
+| Restart locking       | ✓ wcom socket  | ✗ Not migrated    | TBD                                                                                |
+| Active Response       | ✓ execd daemon | ✗ Agents only     | Intentional removal                                                                |
 
 ## Performance Characteristics
 
@@ -505,5 +505,5 @@ Potential improvements for future versions:
 ## See Also
 
 - [Control Module README](README.md) - Module overview
-- wazuh-manager-modulesd / wazuh-modulesd - Host daemon (no dedicated page yet; see the [Modules index](../README.md))
+- wazuh-manager-modulesd / wazuh-modulesd - Host daemon (no dedicated page yet; see the [Modules index](../index.html))
 - [Manager Installation](../../getting-started/installation.md) - Manager setup and systemctl

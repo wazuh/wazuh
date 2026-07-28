@@ -48,7 +48,17 @@ typedef struct wm_sca_t {
 
 extern const wm_context WM_SCA_CONTEXT;
 
-// Read configuration and return a module (if enabled) or NULL (if disabled)
-int wm_sca_read(const OS_XML* xml, xml_node** nodes, wmodule* module);
+/**
+ * @brief Read configuration and return a module (if enabled) or NULL (if disabled)
+ * @param xml XML object
+ * @param nodes XML nodes to analyze
+ * @param module SCA configuration structure
+ * @param skip_ruleset_load When set, skips scanning the default SCA ruleset
+ *        folder on disk. Used when only validating the XML content (e.g. on
+ *        the manager, which never runs the SCA module itself) so validation
+ *        does not depend on, or report on, filesystem state that is
+ *        irrelevant to it.
+ */
+int wm_sca_read(const OS_XML* xml, xml_node** nodes, wmodule* module, int skip_ruleset_load);
 
 #endif // WM_SCA_H

@@ -16,6 +16,7 @@
 #include "ipackageWrapper.h"
 #include "registryHelper.h"
 #include "windowsHelper.h"
+#include "packagesWindowsParserHelper.h"
 #include "stringHelper.h"
 #include "sharedDefs.h"
 
@@ -26,14 +27,33 @@ constexpr auto FILE_ASSOCIATIONS_REGISTRY        { "\\Capabilities\\FileAssociat
 constexpr auto URL_ASSOCIATIONS_REGISTRY         { "\\Capabilities\\URLAssociations" };
 constexpr auto CACHE_NAME_REGISTRY               { "SOFTWARE\\Classes\\Local Settings\\MrtCache" };
 constexpr auto STORE_APPLICATION_DATABASE        { "C:\\Program Files\\WindowsApps" };
+constexpr auto PYTHON_STORE_PACKAGE_PREFIX       { "PythonSoftwareFoundation.Python" };
+constexpr auto PYTHON_EXECUTABLE                 { "\\python.exe" };
 constexpr auto PREFIX_LOCALIZATION               { "@{" };
+constexpr auto PREFIX_MSRESOURCE                 { "ms-resource:" };
 
 
-class AppxWindowsWrapper final : public IPackageWrapper
+/*
+ * @brief Reads the product version published on the VERSIONINFO resource of an executable.
+ *
+ * The MSIX package revision does not encode the product version, and the PEP 514 style
+ * registrations of Store applications live in the MSIX virtualized hive, which is not
+ * reachable under HKEY_USERS, so the executable is the only source available to the agent.
+ */
+struct AppxExeVersionReader
+{
+    static std::string read(const std::string& exePath)
+    {
+        return PackageWindowsHelper::getProductVersion(exePath);
+    }
+};
+
+template <typename TRegistry = Utils::Registry, typename TExeVersionReader = AppxExeVersionReader>
+class TAppxWindowsWrapper final : public IPackageWrapper
 {
     public:
 
-        explicit AppxWindowsWrapper(const HKEY key, const std::string& userId, const std::string& appName, const std::set<std::string>& cacheRegistry)
+        explicit TAppxWindowsWrapper(const HKEY key, const std::string& userId, const std::string& appName, const std::set<std::string>& cacheRegistry)
             : m_key{ key },
               m_userId{ userId },
               m_appName{ appName },
@@ -43,7 +63,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
             getInformationPackages();
         }
 
-        ~AppxWindowsWrapper() = default;
+        ~TAppxWindowsWrapper() = default;
 
         std::string name() const override
         {
@@ -130,7 +150,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
 
         bool isRegistryValid()
         {
-            Utils::Registry registry(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName, KEY_READ | KEY_ENUMERATE_SUB_KEYS);
+            TRegistry registry(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName, KEY_READ | KEY_ENUMERATE_SUB_KEYS);
 
             return registry.enumerate().size() != 0;
         }
@@ -152,7 +172,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
 
                 if (fields.size() >= INDEX_COUNT)
                 {
-                    const Utils::Registry packageReg(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName);
+                    const TRegistry packageReg(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName);
 
                     m_version = fields.at(INDEX_VERSION);
                     m_architecture = getArchitecture(fields.at(INDEX_ARCHITECTURE));
@@ -174,6 +194,24 @@ class AppxWindowsWrapper final : public IPackageWrapper
                     m_architecture.clear();
                     m_version.clear();
                     m_location.clear();
+                }
+                else if (Utils::startsWith(fields.at(INDEX_NAME), PYTHON_STORE_PACKAGE_PREFIX))
+                {
+                    /*
+                     * The version taken from the package full name is the MSIX package revision,
+                     * which for the Python Store packages does not match the product version
+                     * (revision 3.13.3824.0 contains Python 3.13.14), so prefer the version that
+                     * the interpreter publishes on its executable. This is scoped to the Python
+                     * family on purpose: for other Store packages the MSIX revision IS the
+                     * product version, and their bundled executables often publish bogus
+                     * VERSIONINFO values (0.0.0.0, commit hashes, helper tool versions).
+                     */
+                    const auto productVersion { TExeVersionReader::read(m_location + PYTHON_EXECUTABLE) };
+
+                    if (!productVersion.empty())
+                    {
+                        m_version = productVersion;
+                    }
                 }
             }
         }
@@ -212,7 +250,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
          *
          * @return Return package location.
          */
-        const std::string getLocation(const Utils::Registry& registry)
+        const std::string getLocation(const TRegistry& registry)
         {
             std::string location;
 
@@ -230,7 +268,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
 
             try
             {
-                const Utils::Registry installTimeRegistry {Utils::Registry(m_key, m_userId + "\\" + APPLICATION_INSTALL_TIME_REGISTRY + "\\" + mainRegistry + "\\" + m_appName)};
+                const TRegistry installTimeRegistry {TRegistry(m_key, m_userId + "\\" + APPLICATION_INSTALL_TIME_REGISTRY + "\\" + mainRegistry + "\\" + m_appName)};
 
                 if (installTimeRegistry.qword("InstallTime", value))
                 {
@@ -245,6 +283,51 @@ class AppxWindowsWrapper final : public IPackageWrapper
         }
 
         /*
+         * @brief Get the package name from the DisplayName value of the package root key.
+         *
+         * @param[in] keyName Abbreviation of the package name, used to resolve localized names.
+         * @param[in] registry Registry object pointing to the package root key.
+         *
+         * @return Return the package name or an empty string if DisplayName is missing or cannot be resolved.
+         */
+        const std::string getDisplayName(const std::string& keyName, const TRegistry& registry)
+        {
+            std::string name;
+
+            try
+            {
+                if (!registry.string("DisplayName", name))
+                {
+                    name.clear();
+                }
+
+                /*
+                 * If the name starts with "@{" string then we need to look for the name on the cache registry.
+                 * The name obtained is the key for the app name.
+                 */
+                if (Utils::startsWith(name, PREFIX_LOCALIZATION))
+                {
+                    name = searchNameFromCacheRegistry(keyName, name);
+                }
+                /*
+                 * A raw "ms-resource:" URI is an unresolved manifest resource, not a
+                 * displayable name, and it cannot be looked up on the cache registry.
+                 */
+                else if (Utils::startsWith(name, PREFIX_MSRESOURCE))
+                {
+                    name.clear();
+                }
+            }
+            catch (...)
+            {
+                // Errors resolving DisplayName must not prevent the ApplicationName fallback.
+                name.clear();
+            }
+
+            return name;
+        }
+
+        /*
          * @brief Get application name.
          *
          * @param[in] fullName Full application name.
@@ -252,7 +335,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
          *
          * @return Return name application.
          */
-        const std::string getName(const std::string& fullName, const Utils::Registry& registry)
+        const std::string getName(const std::string& fullName, const TRegistry& registry)
         {
             std::string name;
 
@@ -266,25 +349,36 @@ class AppxWindowsWrapper final : public IPackageWrapper
 
             try
             {
-                for (const auto& folder : registry.enumerate())
-                {
-                    std::string value;
-                    const Utils::Registry nameReg(m_key, m_userId  + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + "\\Capabilities");
-
-                    if (nameReg.string("ApplicationName", value))
-                    {
-                        name = value;
-                        break;
-                    }
-                }
-
                 /*
-                 * If the name starts with "@{" string then we need to look for the name on the cache registry.
-                 * The name obtained is the key for the app name.
+                 * The DisplayName of the package root key is the package name set by the OS.
+                 * A package can bundle several sub-applications (e.g. the Python Store package
+                 * contains Pip, Python and PythonW), each one with its own ApplicationName, so
+                 * picking the first enumerated sub-application would return an arbitrary name.
                  */
-                if (Utils::startsWith(name, PREFIX_LOCALIZATION))
+                name = getDisplayName(keyName, registry);
+
+                if (name.empty())
                 {
-                    name = searchNameFromCacheRegistry(keyName, name);
+                    for (const auto& folder : registry.enumerate())
+                    {
+                        std::string value;
+                        const TRegistry nameReg(m_key, m_userId  + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + "\\Capabilities");
+
+                        if (nameReg.string("ApplicationName", value))
+                        {
+                            name = value;
+                            break;
+                        }
+                    }
+
+                    /*
+                     * If the name starts with "@{" string then we need to look for the name on the cache registry.
+                     * The name obtained is the key for the app name.
+                     */
+                    if (Utils::startsWith(name, PREFIX_LOCALIZATION))
+                    {
+                        name = searchNameFromCacheRegistry(keyName, name);
+                    }
                 }
             }
             catch (...)
@@ -302,7 +396,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
          *
          * @return Returns the vendor name
          */
-        const std::string getVendor(const Utils::Registry& registry)
+        const std::string getVendor(const TRegistry& registry)
         {
             std::string vendor;
 
@@ -310,12 +404,12 @@ class AppxWindowsWrapper final : public IPackageWrapper
             {
                 for (const auto& folder : registry.enumerate())
                 {
-                    const Utils::Registry fileReg(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + FILE_ASSOCIATIONS_REGISTRY, KEY_READ | KEY_QUERY_VALUE);
+                    const TRegistry fileReg(m_key, m_userId + "\\" + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + FILE_ASSOCIATIONS_REGISTRY, KEY_READ | KEY_QUERY_VALUE);
                     vendor = searchPublisher(fileReg);
 
                     if (vendor.empty())
                     {
-                        const Utils::Registry urlReg(m_key, m_userId + "\\"  + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + URL_ASSOCIATIONS_REGISTRY, KEY_READ | KEY_QUERY_VALUE);
+                        const TRegistry urlReg(m_key, m_userId + "\\"  + APPLICATION_STORE_REGISTRY + "\\" + m_appName + "\\" + folder + URL_ASSOCIATIONS_REGISTRY, KEY_READ | KEY_QUERY_VALUE);
                         vendor = searchPublisher(urlReg);
                     }
 
@@ -380,11 +474,11 @@ class AppxWindowsWrapper final : public IPackageWrapper
         const std::string searchKeyOnSubRegistries(const std::string& path, const std::string& key)
         {
             std::string value;
-            const Utils::Registry registry(m_key, path);
+            const TRegistry registry(m_key, path);
 
             if (!registry.string(key, value))
             {
-                for (const auto& folder : Utils::Registry(m_key, path).enumerate())
+                for (const auto& folder : TRegistry(m_key, path).enumerate())
                 {
                     const std::string tempPath { path + "\\" + folder };
                     value = searchKeyOnSubRegistries(tempPath, key);
@@ -406,7 +500,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
          *
          * @return Returns the publisher name found.
          */
-        const std::string searchPublisher(const Utils::Registry& registry)
+        const std::string searchPublisher(const TRegistry& registry)
         {
             std::string publisher;
 
@@ -416,7 +510,7 @@ class AppxWindowsWrapper final : public IPackageWrapper
                 std::string vendorRegistry;
 
                 registry.string(value, vendorRegistry);
-                const Utils::Registry pubRegistry(m_key, m_userId  + "\\" + APPLICATION_VENDOR_REGISTRY + "\\" + vendorRegistry + "\\Application");
+                const TRegistry pubRegistry(m_key, m_userId  + "\\" + APPLICATION_VENDOR_REGISTRY + "\\" + vendorRegistry + "\\Application");
 
                 if (pubRegistry.string("ApplicationCompany", data))
                 {
@@ -431,4 +525,6 @@ class AppxWindowsWrapper final : public IPackageWrapper
             return publisher;
         }
 };
+
+using AppxWindowsWrapper = TAppxWindowsWrapper<>;
 

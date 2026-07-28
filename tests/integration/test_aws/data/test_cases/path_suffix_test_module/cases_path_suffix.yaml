@@ -4,11 +4,12 @@
     BUCKET_TYPE: cloudtrail
     BUCKET_NAME: wazuh-cloudtrail-integration-tests
     PATH_SUFFIX: test_suffix
+    ONLY_LOGS_AFTER: 2022-NOV-22
   metadata:
     resource_type: bucket
     bucket_type: cloudtrail
     bucket_name: wazuh-cloudtrail-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     path_suffix: test_suffix
     expected_results: 1
 
@@ -18,11 +19,12 @@
     BUCKET_TYPE: cloudtrail
     BUCKET_NAME: wazuh-cloudtrail-integration-tests
     PATH_SUFFIX: empty_suffix
+    ONLY_LOGS_AFTER: 2022-NOV-22
   metadata:
     resource_type: bucket
     bucket_type: cloudtrail
     bucket_name: wazuh-cloudtrail-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     path_suffix: empty_suffix
     expected_results: 0
 
@@ -32,11 +34,12 @@
     BUCKET_TYPE: cloudtrail
     BUCKET_NAME: wazuh-cloudtrail-integration-tests
     PATH_SUFFIX: inexistent_suffix
+    ONLY_LOGS_AFTER: 2022-NOV-22
   metadata:
     resource_type: bucket
     bucket_type: cloudtrail
     bucket_name: wazuh-cloudtrail-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     path_suffix: inexistent_suffix
     expected_results: 0
 
@@ -44,14 +47,15 @@
   description: VPC path_suffix configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
     PATH_SUFFIX: test_suffix
+    ONLY_LOGS_AFTER: 2022-NOV-22
   metadata:
     resource_type: bucket
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
     vpc_name: wazuh-vpc-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     path_suffix: test_suffix
     expected_results: 1
 
@@ -61,11 +65,12 @@
     BUCKET_TYPE: config
     BUCKET_NAME: wazuh-config-integration-tests
     PATH_SUFFIX: test_suffix
+    ONLY_LOGS_AFTER: 2022-NOV-22
   metadata:
     resource_type: bucket
     bucket_type: config
     bucket_name: wazuh-config-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     path_suffix: test_suffix
     expected_results: 1
 
@@ -73,14 +78,15 @@
   description: VPC path_suffix configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
     PATH_SUFFIX: empty_suffix
+    ONLY_LOGS_AFTER: 2022-NOV-22
   metadata:
     resource_type: bucket
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
     vpc_name: wazuh-vpc-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     path_suffix: empty_suffix
     expected_results: 0
 
@@ -90,11 +96,12 @@
     BUCKET_TYPE: config
     BUCKET_NAME: wazuh-config-integration-tests
     PATH_SUFFIX: empty_suffix
+    ONLY_LOGS_AFTER: 2022-NOV-22
   metadata:
     resource_type: bucket
     bucket_type: config
     bucket_name: wazuh-config-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     path_suffix: empty_suffix
     expected_results: 0
 
@@ -102,14 +109,15 @@
   description: VPC path_suffix configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
     PATH_SUFFIX: inexistent_suffix
+    ONLY_LOGS_AFTER: 2022-NOV-22
   metadata:
     resource_type: bucket
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
     vpc_name: wazuh-vpc-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     path_suffix: inexistent_suffix
     expected_results: 0
 
@@ -119,10 +127,11 @@
     BUCKET_TYPE: config
     BUCKET_NAME: wazuh-config-integration-tests
     PATH_SUFFIX: inexistent_suffix
+    ONLY_LOGS_AFTER: 2022-NOV-22
   metadata:
     resource_type: bucket
     bucket_type: config
     bucket_name: wazuh-config-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
     path_suffix: inexistent_suffix
     expected_results: 0

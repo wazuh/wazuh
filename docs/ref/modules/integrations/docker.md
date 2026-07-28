@@ -4,8 +4,6 @@ The Docker listener wodle monitors Docker events on the host where it runs. It c
 
 Source: `src/config/src/wmodules-docker.c`
 
-For the full per-option reference see [Wodle: Docker Listener Configuration](../../configuration/wodle-docker.md).
-
 ## How it works
 
 1. `wazuh-modulesd` (manager) or `wazuh-agentd` (agent) loads the `<wodle name="docker-listener">` block.
@@ -24,4 +22,11 @@ For the full per-option reference see [Wodle: Docker Listener Configuration](../
 </wodle>
 ```
 
-For all options see [Wodle: Docker Listener Configuration](../../configuration/wodle-docker.md).
+## Configuration options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `disabled` | `no` | Enable or disable the Docker listener |
+| `attempts` | `5` | Number of retry attempts to connect to Docker daemon |
+| `run_on_start` | `no` | Run immediately on module start |
+| `interval` | `60s` | Time between collection cycles. Accepts time suffixes: `s`, `m`, `h`, `d` |

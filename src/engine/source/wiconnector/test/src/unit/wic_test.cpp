@@ -44,6 +44,7 @@ TEST_F(ConfigTest, BasicConfigToJson)
     EXPECT_TRUE(jsonStr.find("\"hosts\"") != std::string::npos);
     EXPECT_TRUE(jsonStr.find("\"username\"") != std::string::npos);
     EXPECT_TRUE(jsonStr.find("\"password\"") != std::string::npos);
+    EXPECT_TRUE(jsonStr.find("\"max_retry_delay_seconds\"") != std::string::npos);
     EXPECT_TRUE(jsonStr.find("localhost:9200") != std::string::npos);
 }
 
@@ -76,6 +77,31 @@ TEST_F(ConfigTest, ConfigWithoutCredentialsToJson)
     // Should not contain username/password when empty
     EXPECT_TRUE(jsonStr.find("\"username\"") == std::string::npos);
     EXPECT_TRUE(jsonStr.find("\"password\"") == std::string::npos);
+}
+
+TEST_F(ConfigTest, ConfigDefaultMaxRetryDelayToJson)
+{
+    wiconnector::Config config;
+    config.hosts = {"http://localhost:9200"};
+
+    const auto jsonConfig = nlohmann::json::parse(config.toJson());
+
+    ASSERT_TRUE(jsonConfig.contains("max_retry_delay_seconds"));
+    EXPECT_EQ(jsonConfig["max_retry_delay_seconds"].get<std::size_t>(), 15U);
+}
+
+TEST_F(ConfigTest, ConfigMaxRetryDelayMaximumValueToJson)
+{
+    constexpr std::size_t MAX_RETRY_DELAY_SECONDS {3600};
+
+    wiconnector::Config config;
+    config.hosts = {"http://localhost:9200"};
+    config.maxRetryDelaySeconds = MAX_RETRY_DELAY_SECONDS;
+
+    const auto jsonConfig = nlohmann::json::parse(config.toJson());
+
+    ASSERT_TRUE(jsonConfig.contains("max_retry_delay_seconds"));
+    EXPECT_EQ(jsonConfig["max_retry_delay_seconds"].get<std::size_t>(), MAX_RETRY_DELAY_SECONDS);
 }
 
 // Test WIndexerConnector construction

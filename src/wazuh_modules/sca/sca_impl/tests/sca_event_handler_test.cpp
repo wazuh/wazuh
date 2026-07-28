@@ -1179,6 +1179,75 @@ TEST_F(SCAEventHandlerTest, ReportCheckResult_ValidInput)
     }
 }
 
+TEST_F(SCAEventHandlerTest, ReportCheckResult_DoesNotSendVersionInSyncPayload)
+{
+    const std::string policyId = "test_policy";
+    const std::string checkId = "test_check";
+    const std::string checkResult = "Failed";
+
+    EXPECT_CALL(*mockDBSync, syncRow(testing::_, testing::_))
+    .WillOnce([checkResult](const nlohmann::json & query,
+                            const std::function<void(ReturnTypeCallback, const nlohmann::json&)>& callback)
+    {
+        ASSERT_TRUE(query.contains("data"));
+        ASSERT_FALSE(query["data"].empty());
+        EXPECT_FALSE(query["data"][0].contains("version"));
+
+        nlohmann::json returnData =
+        {
+            {
+                "old", {
+                    {"id", "test_check"},
+                    {"result", "Passed"},
+                    {"version", 7}
+                }
+            },
+            {
+                "new", {
+                    {"id", "test_check"},
+                    {"result", checkResult},
+                    {"version", 8}
+                }
+            }
+        };
+        callback(MODIFIED, returnData);
+    });
+
+    auto newHandler = std::make_unique<sca_event_handler::SCAEventHandlerMock>(
+                          mockDBSync,
+                          nullptr,
+                          nullptr,
+                          false,
+                          false);
+
+    const nlohmann::json mockPolicy =
+    {
+        {"id", policyId},
+        {"name", "Test Policy"},
+        {"description", "Test Description"},
+        {"file", "test.yml"},
+        {"refs", "https://example.com"}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyById(policyId))
+    .WillOnce(testing::Return(mockPolicy));
+
+    const nlohmann::json mockCheck =
+    {
+        {"id", checkId},
+        {"policy_id", policyId},
+        {"name", "Test Check"},
+        {"description", "Test Check Description"},
+        {"result", "Passed"},
+        {"version", 7}
+    };
+
+    EXPECT_CALL(*newHandler, GetPolicyCheckById(checkId))
+    .WillOnce(testing::Return(mockCheck));
+
+    newHandler->ReportCheckResult(policyId, checkId, checkResult);
+}
+
 TEST_F(SCAEventHandlerTest, ReportCheckResult_SuppressesFirstScanNotRunTransitions)
 {
     const std::string policyId = "test_policy";

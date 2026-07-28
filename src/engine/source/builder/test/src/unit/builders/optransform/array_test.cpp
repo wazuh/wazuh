@@ -7,6 +7,11 @@ using namespace builder::builders;
 
 namespace
 {
+OpArg makeStringOnlyValue(std::string value)
+{
+    return std::make_shared<Value>(std::move(value));
+}
+
 auto customRefExpected()
 {
     return [](const BuildersMocks& mocks)
@@ -304,6 +309,41 @@ INSTANTIATE_TEST_SUITE_P(
                            customTargetExpected()(mocks);
                            return makeEvent(R"({"ref": "a", "targetField": ["b", "a"]})");
                        })),
+        TransformT(R"({"ref": "a", "targetField": []})",
+                   optransform::getArrayAppendBuilder(),
+                   "targetField",
+                   {makeRef("ref")},
+                   SUCCESS(
+                       [](const auto& mocks)
+                       {
+                           customTargetExpected()(mocks);
+                           return makeEvent(R"({"ref": "a", "targetField": ["a"]})");
+                       })),
+        TransformT(R"({"targetField": []})",
+                   optransform::getArrayAppendBuilder(),
+                   "targetField",
+                   {makeStringOnlyValue("a")},
+                   SUCCESS(
+                       [](const auto& mocks)
+                       {
+                           customTargetExpected()(mocks);
+                           return makeEvent(R"({"targetField": ["a"]})");
+                       })),
+        TransformT(R"({"targetField": []})",
+                   optransform::getArrayAppendBuilder(),
+                   "targetField",
+                   {makeRef("ref")},
+                   FAILURE(customTargetExpected())),
+        TransformT(R"({"targetField": []})",
+                   optransform::getArrayAppendBuilder(false, true),
+                   "targetField",
+                   {makeRef("ref")},
+                   FAILURE(customTargetExpected())),
+        TransformT(R"({"targetField": [1]})",
+                   optransform::getArrayAppendBuilder(),
+                   "targetField",
+                   {makeStringOnlyValue("a")},
+                   FAILURE(customTargetExpected(false))),
         TransformT(R"({"ref": "a"})",
                    optransform::getArrayAppendBuilder(),
                    "targetField",

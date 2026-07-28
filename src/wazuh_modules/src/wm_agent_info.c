@@ -65,6 +65,7 @@ agent_info_set_log_function_func agent_info_set_log_function_ptr = NULL;
 agent_info_set_report_function_func agent_info_set_report_function_ptr = NULL;
 agent_info_init_sync_protocol_func agent_info_init_sync_protocol_ptr = NULL;
 agent_info_set_query_module_function_func agent_info_set_query_module_function_ptr = NULL;
+agent_info_set_is_shutting_down_function_func agent_info_set_is_shutting_down_function_ptr = NULL;
 agent_info_set_cluster_name_func agent_info_set_cluster_name_ptr = NULL;
 agent_info_set_cluster_node_func agent_info_set_cluster_node_ptr = NULL;
 agent_info_set_agent_groups_func agent_info_set_agent_groups_ptr = NULL;
@@ -198,7 +199,7 @@ agent_info_log_callback(const modules_log_level_t level, const char* log, __attr
 
 // True once a shutdown is requested. Checks both flags: wm_shutdown_requested
 // is set first, g_shutting_down later.
-static bool wm_agent_info_is_shutting_down()
+static bool wm_agent_info_is_shutting_down(void)
 {
     return g_shutting_down || wm_shutdown_requested;
 }
@@ -630,6 +631,8 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_init_sync_protocol_ptr = so_get_function_sym(agent_info_module, "agent_info_init_sync_protocol");
         agent_info_set_query_module_function_ptr =
             so_get_function_sym(agent_info_module, "agent_info_set_query_module_function");
+        agent_info_set_is_shutting_down_function_ptr =
+            so_get_function_sym(agent_info_module, "agent_info_set_is_shutting_down_function");
         agent_info_set_cluster_name_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_name");
         agent_info_set_cluster_node_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_node");
         agent_info_set_agent_groups_ptr = so_get_function_sym(agent_info_module, "agent_info_set_agent_groups");
@@ -653,6 +656,13 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         if (agent_info_set_query_module_function_ptr)
         {
             agent_info_set_query_module_function_ptr(wm_agent_info_query_module_wrapper);
+        }
+
+        // Let the implementation know when a shutdown is in progress so it can demote
+        // expected shutdown-time sync/coordination failures from WARNING to DEBUG.
+        if (agent_info_set_is_shutting_down_function_ptr)
+        {
+            agent_info_set_is_shutting_down_function_ptr(wm_agent_info_is_shutting_down);
         }
     }
     else

@@ -181,6 +181,7 @@ Workaround checklist:
 - Confirm manager has been migrated to a compatible 5.0 deployment.
 - Confirm firewall/network rules allow `1514/tcp` and `1515/tcp`.
 - Confirm the agent points to the correct manager address in `<client><manager>`.
+- Confirm enrollment credentials: if enrollment fails with `Invalid password (from manager)`, verify that the password in `/var/ossec/etc/authd.pass` on the agent matches `/var/wazuh-manager/etc/authd.pass` on the manager.
 
 ## Validation checklist
 

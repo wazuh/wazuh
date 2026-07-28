@@ -259,7 +259,7 @@ func runIteration(ctx context.Context, conn *agent.Conn, lanes []string, scn *sc
 			if isNonEngine {
 				defer siblingsActive.Add(-1)
 			}
-			runLane(ctx, conn, laneName, steps, c, cache, &siblingsActive)
+			runLane(ctx, conn, laneName, steps, scn.ClusterName, c, cache, &siblingsActive)
 		}()
 	}
 	wg.Wait()
@@ -278,9 +278,9 @@ func laneHasNonEngineStep(steps []scenario.Step) bool {
 }
 
 func runLane(ctx context.Context, conn *agent.Conn, laneName string, steps []scenario.Step,
-	c *metrics.Counters, cache payloadCache, siblings *atomic.Int32) {
+	clusterName string, c *metrics.Counters, cache payloadCache, siblings *atomic.Int32) {
 	for _, step := range steps {
-		if err := runStep(ctx, conn, laneName, step, c, cache, siblings); err != nil {
+		if err := runStep(ctx, conn, laneName, step, clusterName, c, cache, siblings); err != nil {
 			if ctx.Err() != nil {
 				return
 			}
@@ -293,9 +293,9 @@ func runLane(ctx context.Context, conn *agent.Conn, laneName string, steps []sce
 }
 
 func runStep(ctx context.Context, conn *agent.Conn, laneName string, step scenario.Step,
-	c *metrics.Counters, cache payloadCache, siblings *atomic.Int32) error {
+	clusterName string, c *metrics.Counters, cache payloadCache, siblings *atomic.Int32) error {
 
-	src := buildSource(step, cache, siblings)
+	src := buildSource(step, clusterName, cache, siblings)
 	if src == nil {
 		return fmt.Errorf("nil source")
 	}
@@ -328,7 +328,7 @@ func runStep(ctx context.Context, conn *agent.Conn, laneName string, step scenar
 	return nil
 }
 
-func buildSource(step scenario.Step, cache payloadCache, siblings *atomic.Int32) source.Source {
+func buildSource(step scenario.Step, clusterName string, cache payloadCache, siblings *atomic.Int32) source.Source {
 	if step.Kind == scenario.SourceKindEngine {
 		return engine.New(step, siblings)
 	}
@@ -336,5 +336,5 @@ func buildSource(step scenario.Step, cache payloadCache, siblings *atomic.Int32)
 	if info == nil {
 		return nil
 	}
-	return inventory.New(step, info)
+	return inventory.New(step, info, clusterName)
 }

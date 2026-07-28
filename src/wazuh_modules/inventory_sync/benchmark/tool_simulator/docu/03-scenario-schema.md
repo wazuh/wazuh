@@ -40,6 +40,11 @@ canonical schema reference. The implementation reads it in
   // Loop the lanes for N seconds. 0 = single pass.
   "repeat_until":    0,
 
+  // Cluster name stamped into inventory Start frames. Must match the manager's
+  // <cluster><name>; use "undefined" when the manager has no cluster block.
+  // Default "wazuh".
+  "cluster_name":    "wazuh",
+
   // Sender-side: how many seconds the stats collector keeps sampling
   // bench.csv after the last agent finishes. Default 60.
   "drain_timeout":   60,
@@ -63,6 +68,7 @@ canonical schema reference. The implementation reads it in
 | `defaults`          | No (treated as `{}`)                            |
 | `parallel_agents`   | No (default `0`)                                |
 | `repeat_until`      | No (default `0`)                                |
+| `cluster_name`      | No (default `wazuh`; use `undefined` if the manager has no cluster block) |
 | `drain_timeout`     | No (default `60`)                               |
 | `post_run_grace`    | No (default `0`)                                |
 
@@ -347,6 +353,7 @@ Run at startup, before any socket is opened:
 | `total_agents`    | 1   | 2000 | `mega_burst` is the upper bound          |
 | `parallel_agents` | 0   | 0    | All current scenarios use the barrier mode |
 | `repeat_until`    | 0   | 180  | `mega_burst`                             |
+| `cluster_name`   | n/a | n/a  | Optional; defaults to `wazuh`            |
 | `drain_timeout`   | 30  | 60   | The sender's own default is 60           |
 | `post_run_grace`  | 0   | 30   | Optional; used by orchestrator only      |
 | `max_eps`         | 0   | 75   | `vd_*` dumps use 75                      |

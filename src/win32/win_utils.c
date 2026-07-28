@@ -104,6 +104,11 @@ void *win_module_thread(void *arg)
 
 void stop_wmodules()
 {
+    // Signal the agent-wide shutdown so dispatchers (e.g. modulesSync) skip work
+    // that targets modules already being torn down. On POSIX the modulesd SIGTERM
+    // handler sets this; on Windows shutdown flows through here instead.
+    wm_shutdown_requested = 1;
+
     wmodule * cur_module;
     for (cur_module = wmodules; cur_module; cur_module = cur_module->next) {
         if (cur_module->context->stop) {
@@ -536,6 +541,12 @@ int SendBinaryMSG(__attribute__((unused)) int queue, const void *message, size_t
 int SendMSGPredicated(__attribute__((unused)) int queue, const char *message, const char *locmsg, char loc, bool (*fn_ptr)()) {
     os_wait_predicate(fn_ptr);
     return SendMSGAction(queue, message, locmsg, loc);
+}
+
+/* SendBinaryMSGPredicated for Windows */
+int SendBinaryMSGPredicated(__attribute__((unused)) int queue, const void *message, size_t message_len, const char *locmsg, char loc, bool (*fn_ptr)()) {
+    os_wait_predicate(fn_ptr);
+    return SendBinaryMSGAction(queue, message, message_len, locmsg, loc);
 }
 
 /* StartMQ for Windows */

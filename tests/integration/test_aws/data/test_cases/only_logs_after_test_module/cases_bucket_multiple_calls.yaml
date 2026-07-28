@@ -7,20 +7,23 @@
     resource_type: bucket
     bucket_type: cloudtrail
     bucket_name: wazuh-cloudtrail-integration-tests
-    only_logs_after: 2022-NOV-20
+    only_logs_after: 2022-NOV-22
+    later_only_logs_after: 2022-NOV-24
     expected_results: 1
+    account_id: '819751203818'
 
 - name: vpc_only_logs_after_multiple_calls
   description: VPC only_logs_after multiple calls configurations
   configuration_parameters:
     BUCKET_TYPE: vpcflow
-    BUCKET_NAME: wazuh-vpcflow-integration-tests
+    BUCKET_NAME: xdrsiem-agent-its-966237403726-us-east-1-an
   metadata:
     resource_type: bucket
     vpc_name: wazuh-vpc-integration-tests
     bucket_type: vpcflow
-    bucket_name: wazuh-vpcflow-integration-tests
-    only_logs_after: 2022-NOV-20
+    bucket_name: xdrsiem-agent-its-966237403726-us-east-1-an
+    only_logs_after: 2022-NOV-22
+    later_only_logs_after: 2022-NOV-24
     expected_results: 1
 
 - name: config_only_logs_after_multiple_calls
@@ -34,6 +37,7 @@
     bucket_name: wazuh-config-integration-tests
     only_logs_after: 2022-NOV-20
     expected_results: 1
+    account_id: '819751203818'
 
 - name: alb_only_logs_after_multiple_calls
   description: ALB only_logs_after multiple calls configurations
@@ -46,6 +50,7 @@
     bucket_name: wazuh-alb-integration-tests
     only_logs_after: 2022-NOV-20
     expected_results: 1
+    account_id: '819751203818'
 
 - name: clb_only_logs_after_multiple_calls
   description: CLB only_logs_after multiple calls configurations
@@ -58,6 +63,7 @@
     bucket_name: wazuh-clb-integration-tests
     only_logs_after: 2022-NOV-20
     expected_results: 1
+    account_id: '819751203818'
 
 - name: nlb_only_logs_after_multiple_calls
   description: NLB only_logs_after multiple calls configurations
@@ -70,6 +76,7 @@
     bucket_name: wazuh-nlb-integration-tests
     only_logs_after: 2022-NOV-20
     expected_results: 1
+    account_id: '819751203818'
 
 - name: kms_only_logs_after_multiple_calls
   description: KMS only_logs_after multiple calls configurations
@@ -82,6 +89,7 @@
     bucket_name: wazuh-kms-integration-tests
     only_logs_after: 2022-NOV-20
     expected_results: 1
+    account_id: '819751203818'
 
 - name: macie_only_logs_after_multiple_calls
   description: Macie only_logs_after multiple calls configurations
@@ -94,6 +102,7 @@
     bucket_name: wazuh-macie-integration-tests
     only_logs_after: 2022-NOV-20
     expected_results: 1
+    account_id: '819751203818'
 
 - name: trusted_advisor_only_logs_after_multiple_calls
   description: Trusted Advisor only_logs_after multiple calls configurations
@@ -106,6 +115,7 @@
     bucket_name: wazuh-trusted-advisor-integration-tests
     only_logs_after: 2022-NOV-20
     expected_results: 1
+    account_id: '819751203818'
 
 - name: native_guardduty_only_logs_after_multiple_calls
   description: Native GuardDuty only_logs_after multiple calls configurations
@@ -118,6 +128,7 @@
     bucket_name: wazuh-native-guardduty-integration-tests
     only_logs_after: 2022-NOV-20
     expected_results: 1
+    account_id: '819751203818'
 
 - name: waf_only_logs_after_multiple_calls
   description: WAF only_logs_after multiple calls configurations
@@ -130,6 +141,7 @@
     bucket_name: wazuh-waf-integration-tests
     only_logs_after: 2022-NOV-20
     expected_results: 1
+    account_id: '819751203818'
 
 - name: server_access_only_logs_after_multiple_calls
   description: Server Access only_logs_after multiple calls configurations
@@ -142,6 +154,7 @@
     bucket_name: wazuh-server-access-integration-tests
     only_logs_after: 2022-NOV-20
     expected_results: 1
+    account_id: '819751203818'
 
 - name: cisco_umbrella_only_logs_after_multiple_calls
   description: Umbrella only_logs_after multiple calls configurations
@@ -156,3 +169,4 @@
     only_logs_after: 2022-NOV-20
     path: dnslogs
     expected_results: 1
+    account_id: '819751203818'
