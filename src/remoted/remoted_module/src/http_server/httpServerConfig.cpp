@@ -46,12 +46,6 @@ namespace
     // peak (bodies being received before they reach the budget) to conns * max_body_size.
     constexpr std::size_t DEFAULT_MAX_PARALLEL_CONNECTIONS {512};
 
-    // These paths are evaluated after remoted has entered its chroot.
-    // Host paths: /var/wazuh-manager/etc/https-manager.{certs,key}. Generated automatically
-    // at install time (same self-signed generate_cert() used for authd's sslmanager.cert/key).
-    constexpr auto DEFAULT_CERTIFICATE_PATH {"etc/https-manager.cert"};
-    constexpr auto DEFAULT_PRIVATE_KEY_PATH {"etc/https-manager.key"};
-
     // A positive caller value wins; otherwise the built-in default. remoted is expected to
     // always pass an already-validated value read from the `remoted.http_*` internal options.
     std::size_t resolveUnsigned(const int configValue, const std::size_t defaultValue)
@@ -107,11 +101,12 @@ namespace remoted::http
                                             ? static_cast<std::size_t>(config.max_parallel_connections)
                                             : DEFAULT_MAX_PARALLEL_CONNECTIONS;
 
-        result.certificatePath =
-            config.certificate_path[0] != '\0' ? std::string {config.certificate_path} : DEFAULT_CERTIFICATE_PATH;
-
-        result.privateKeyPath =
-            config.private_key_path[0] != '\0' ? std::string {config.private_key_path} : DEFAULT_PRIVATE_KEY_PATH;
+        // PEM content (not a path): remoted.c reads the certificate/key files itself while still
+        // root and passes the bytes across the C-ABI boundary, so the module never opens a
+        // certificate file post-privilege-drop. Empty means unreadable/unconfigured -- caught in
+        // createTlsContext().
+        result.certificatePem = std::string {config.certificate_pem};
+        result.privateKeyPem = std::string {config.private_key_pem};
 
         return result;
     }
