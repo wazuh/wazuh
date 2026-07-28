@@ -88,22 +88,36 @@ collapse to a **single generic `401`** so a client cannot tell which specific ch
 | Unsupported `protocol-version` | `400` | `Unsupported protocol-version` |
 | Missing / malformed `Authorization`, unknown agent, unusable key, expired or future timestamp, invalid MAC | `401` | `Invalid client authentication` |
 | Body exceeds the auth body limit (10 MiB) | `413` | `Request payload is too large` |
+| Payload's `wazuh.agent.id` (H line) missing/malformed/non-numeric, or doesn't match the authenticated `agent-id` | `400` | `Invalid event batch` |
+| Downstream rejected the batch (bad H/E) | `400` | `Invalid event batch` |
+| Out of capacity, or downstream unreachable/errored | `503` | `Service unavailable` |
 | Endpoint handler raised an unexpected error | `500` | `Internal server error` |
 
-> **Planned / not yet implemented:** H/E batch validation (`400 Invalid event batch`) and the
-> check that the payload's `wazuh.agent.id` matches the authenticated `agent-id`
-> (`PayloadAgentMismatch`) are part of the target contract but are **not** performed today, because
-> the endpoint does not parse the payload yet.
+The payload-identity check runs **before** the batch is forwarded: a mismatch never reaches the
+engine at all, and (by design) shares the same `400 Invalid event batch` message as a batch the
+engine itself rejects, so a client cannot distinguish the two causes.
 
 Requests larger than the 16 MiB transport cap are dropped at the TLS/HTTP layer (the connection is
 closed) before authentication runs, so they never receive a clean `413`.
+
+The server bounds capacity in two phases and sheds excess load with a plain **`503 Service
+Unavailable`** (server-side load-shedding, not per-client rate-limiting; the connection is closed; no
+`Retry-After` — the agent runs its own retry/backoff): the **in-flight byte budget** bounds total
+unprocessed payload in memory, and the **deferred-work limiter** bounds how many requests are parked
+awaiting the downstream service. The liveness `GET /` is exempt from the byte budget, so it stays
+`200` under pressure. See the memory settings below.
 
 ## Endpoints
 
 - **`GET /`** — unauthenticated health probe. Returns `200` with
   `{"status":"ok","module":"remoted"}`.
-- **`POST /stateless`** — authenticated event ingestion endpoint (see status note above). On a
-  valid signature it returns `200` with an empty body; otherwise it returns the error above.
+- **`POST /stateless`** — authenticated event ingestion. Once the signature is verified, the module
+  cross-checks the H line's `wazuh.agent.id` against the authenticated `agent-id` (**`400`** on a
+  missing/malformed header or a mismatch); only then does it forward the H/E batch to the engine's
+  event ingress over a Unix-domain socket (`POST /events/enriched`) and reply from the downstream
+  result: **`202 Accepted`** (engine enqueued the batch), **`400`** (engine rejected the batch),
+  **`413`**, or **`503`** (out of capacity or the engine is unreachable/errored). Auth failures
+  return the errors above.
 
 The machine-readable contract is published as OpenAPI — see the
 [endpoint reference](stateless-api-reference.html) (source: [`stateless-api.yaml`](stateless-api.yaml)).
@@ -120,8 +134,8 @@ notes).
 
 | Setting | Default | Internal option |
 |---|---|---|
-| I/O threads | `2` | `remoted.http_io_threads` |
-| Handler worker threads | `4` | `remoted.http_worker_threads` |
+| I/O threads | `cpp_get_nproc()` | `remoted.http_io_threads` |
+| Handler worker threads | `2 * cpp_get_nproc()` | `remoted.http_worker_threads` |
 | Read / handshake timeout | `10 s` | `remoted.http_read_timeout` |
 | Write timeout | `10 s` | `remoted.http_write_timeout` |
 | Request timeout | `30 s` | `remoted.http_request_timeout` |
@@ -132,6 +146,13 @@ notes).
 | Max pipelined requests per connection | `4` | `remoted.http_max_pipelined_requests` |
 | Concurrent TCP accepts | `2` | `remoted.http_concurrent_accepts` |
 | Socket read buffer size | `8192 B` | `remoted.http_buffer_size` |
+
+I/O threads and handler worker threads are thread-count settings: a `<=0` value (including "not
+set" in `wazuh-manager-internal-options.conf`) resolves via `cpp_get_nproc()`
+(`shared_modules/utils/proc.hpp`, cgroup-aware on Linux) instead of a fixed constant, so the pool
+sizes track the host/container's available CPUs. The handler worker pool is oversubscribed (`2x`)
+because that work can block (AES-CMAC verification, `client.keys` file I/O), unlike the purely
+async I/O threads.
 
 Bind address, port, max body size and the certificate/private key paths are **not** internal
 options -- these belong in the regular `<remote>` configuration (`wazuh-manager.conf`), not
@@ -149,8 +170,115 @@ fields unset -- in practice the built-in defaults below apply.
 | TLS certificate chain | `/etc/remoted-https/server.crt` |
 | TLS private key | `/etc/remoted-https/server.key` |
 
+The **memory-management / capacity** settings are a separate, third group: `remoted` sets them
+directly on the C-ABI struct in `secure.c` (→ built-in default when unset) and they are
+deliberately **not** internal options -- they bound in-memory resource usage rather than tune the
+transport, so they don't go through `remoted_module_https_config()`/the internal-options table
+above.
+
+| Setting | Default | Source |
+|---|---|---|
+| Max in-flight payload bytes (→ `503`) | `256 MiB` | remoted config `max_inflight_bytes` |
+| Max simultaneous connections | `512` | remoted config `max_parallel_connections` |
+| Max deferred requests awaiting downstream (→ `503`) | `256` | remoted config `max_deferred_requests` |
+
+The capacity limits are **layered**: the transport max body size caps a single request's peak
+(RESTinio rejects an oversized `Content-Length` early by closing the connection), the max connections
+caps how many bodies can be read at once (peak ≈ max connections × max body size), the in-flight byte
+budget caps the total accepted-but-unprocessed payload in memory, and the deferred-request limiter
+caps how many requests are parked awaiting a downstream service. Exhausting either budget → a plain
+`503` (the agent retries; the liveness `GET /` is exempt from the byte budget).
+
 > There is no `ossec.conf` (`<remote>`) setting for the HTTPS listener yet; configuration is
-> limited to the internal options above and the certificate files on disk.
+> limited to the internal options above, the memory-management settings, and the certificate
+> files on disk.
+
+### Downstream client and auth middleware
+
+A fourth group of internal options tunes the deferred-forwarding downstream UDS client
+(`downstream/downstreamConfig.hpp`/`.cpp`) and the auth middleware's timestamp window / body cap
+(`auth/authTypes.hpp`/`.cpp`). Same resolution pattern as the RESTinio settings above: `secure.c`
+reads each `remoted.*` option and passes it through the C-ABI struct;
+`remoted::downstream::buildDownstreamConfig()`/`remoted::auth::buildAuthConfig()` apply the
+built-in default on `<=0`. The three timeouts are configured in **seconds** and converted to
+milliseconds internally.
+
+| Setting | Default | Internal option |
+|---|---|---|
+| Downstream connect timeout | `2 s` | `remoted.downstream_connect_timeout` |
+| Downstream write timeout | `5 s` | `remoted.downstream_write_timeout` |
+| Downstream response timeout | `5 s` | `remoted.downstream_response_timeout` |
+| Downstream client I/O threads | `cpp_get_nproc()` | `remoted.downstream_io_threads` |
+| Downstream post-processing threads | `cpp_get_nproc()` | `remoted.downstream_post_process_threads` |
+| Max downstream response body | `10 MiB` | `remoted.downstream_max_response_body_size` |
+| Auth max request age | `300 s` | `remoted.auth_max_request_age` |
+| Auth max future skew | `30 s` | `remoted.auth_max_future_skew` |
+| Auth max body size | `10 MiB` | `remoted.auth_max_body_size` |
+
+The two thread-count fields above resolve a `<=0` value via `cpp_get_nproc()` the same way
+`http_io_threads`/`http_worker_threads` do (no `2x` oversubscription here -- both pools are either
+a purely async I/O reactor or documented as non-blocking work). The downstream client's events
+socket path (`eventsSocketPath`) and the auth middleware's `supportedProtocolVersion` are not
+internal options -- the former is an installation detail (mirrors the classic C forwarder's
+socket), the latter a protocol constant.
+
+### client.keys hot-reload
+
+`Keystore` (the agent key lookup behind the AES-CMAC auth layer) watches `client.keys` in the
+background and reloads it on change, so an agent enrolled or removed after `remoted` starts is
+picked up without a restart. An `inotify` subscription reacts immediately; the poll cadence used as
+a fallback (in case a notification is ever missed) is `remoted.keyupdate_interval` -- the same
+option the classic pipeline's own key-reload thread (`rem_keyupdate_main`) already uses, see
+[Internal Options](configuration.md#internal-options) -- not a separate internal option.
+Change detection hashes the file's content (not mtime, which is only second-granularity) and
+`reload()` re-checks the hash before and after parsing, discarding and retrying a parse caught
+mid-write rather than adopting a torn read.
+
+## Diagnosing rejections and capacity problems
+
+Every condition where a setting may need changing is logged to `wazuh-manager.log ` and names the setting.
+Because these are per-request conditions, repeated occurrences are collapsed to **one line per 90
+seconds per condition**, with the suppressed count folded into the message, so a burst or an outage
+produces a readable summary instead of thousands of identical lines:
+
+```
+wazuh-manager-remoted:forwarder: WARNING: Deferred-work slots exhausted (capacity 256): shed 4812
+request(s) with 503 in the last 90 s. Consider increasing the value of 'max_deferred_requests', or
+investigate why the downstream service is not keeping up.
+```
+
+| Symptom in `wazuh-manager.log ` | Setting to review |
+|---|---|
+| In-flight request memory budget exhausted | `max_inflight_bytes` |
+| Deferred-work slots exhausted | `max_deferred_requests` |
+| Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` |
+| Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` |
+| Timestamps outside the accepted window (agent clock drift) | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew` |
+| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` |
+| Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` |
+
+Three more that are not about tuning:
+
+- **`Loaded N agent key(s) from '<path>'`** at startup and after every hot-reload. `N` counts keys
+  that can actually authenticate — a key that fails to decode is reported separately and is **not**
+  counted, so this number can be trusted. If `client.keys` is unreadable, that is logged explicitly:
+  otherwise it presents only as every agent being rejected as unknown, with nothing explaining why.
+- **`AES-CMAC is unavailable…`** (ERROR) means the OpenSSL provider is broken and *every* agent will
+  fail to authenticate. Previously indistinguishable from one agent having a corrupt key.
+- **The HTTPS server failing to start** is an ERROR on the first attempt, naming the offending file
+  (e.g. a missing `certificate_path`), then quiet while it retries, escalating to a WARN roughly
+  hourly if it never succeeds. On a fresh install the certificate is genuinely not in place yet, so
+  the retry loop is expected; a permanent misconfiguration is what the escalation catches.
+
+Client-side rejections (malformed or unauthenticated requests) are logged at debug level only —
+visible with `remoted.debug=2` — because an unauthenticated peer controls how many it can trigger.
+Transport-level diagnostics reported by the HTTP library itself (TLS handshake errors, malformed
+HTTP, socket resets, and breaches of the `remoted.http_max_*` limits) are logged at
+`remoted.debug=1`, not surfaced by default: these are per-connection events driven overwhelmingly by
+client behavior — a portscanner, or negative-test traffic like `tools/send_stateless.py --all` — not
+a manager-side problem, so they are not logged unthrottled at warning/error level the way
+`max_inflight_bytes`/`max_deferred_requests` exhaustion or a genuine startup failure are. The one
+exception, the HTTPS server failing to bind, is already covered above.
 
 ## Testing
 

@@ -110,11 +110,11 @@ def _auth_header(agent_id: str, agent_key: bytes, protocol_version: str, method:
 # --- Scenarios -------------------------------------------------------------
 # Each returns (headers, body_to_send, target). Every distinct AuthError that
 # publicErrorFor() (authMiddleware.cpp) maps to a distinct status is covered
-# here, except PayloadAgentMismatch (400): the dummy /stateless handler this
-# repo registers never parses the H/E payload, so that path can't be
-# exercised through this endpoint -- see the module README's "Manual
-# testing" section. Also covers every transport-level limit RESTinio itself
-# enforces (RestinioHttpServer.cpp), which fail differently: see CONN_CLOSED.
+# here, including PayloadAgentMismatch (400): /stateless cross-checks the H
+# line's wazuh.agent.id against the authenticated agent-id before forwarding
+# (statelessEndpoint.cpp). Also covers every transport-level limit RESTinio
+# itself enforces (RestinioHttpServer.cpp), which fail differently: see
+# CONN_CLOSED.
 
 def scenario_valid(agent_id, agent_key):
     target = "/stateless"
@@ -228,6 +228,17 @@ def scenario_too_many_headers(agent_id, agent_key):
     return headers, body, target
 
 
+def scenario_payload_agent_mismatch(agent_id, agent_key):
+    # The Authorization header (and its MAC) are for the real, signing agent; the H line's
+    # wazuh.agent.id claims a different one. statelessEndpoint.cpp rejects the mismatch with a
+    # plain 400 before ever forwarding the batch to the engine.
+    target = "/stateless"
+    claimed_id = str(int(agent_id) + 1)
+    body = f'H {{"wazuh":{{"agent":{{"id":"{claimed_id}"}}}}}}\nE 1:/var/log/syslog:hello from python'.encode()
+    headers = _auth_header(agent_id, agent_key, "1", "POST", target, int(time.time()), body)
+    return headers, body, target
+
+
 def scenario_transport_body_too_large(agent_id, agent_key):
     # The transport's own hard cap (16 MiB) rather than AuthConfig's (10 MiB,
     # see scenario_body_too_large): this one must never reach AuthMiddleware
@@ -249,6 +260,7 @@ SCENARIOS = [
     ("expired_request", 401, scenario_expired_request),
     ("future_request", 401, scenario_future_request),
     ("invalid_mac_tampered_body", 401, scenario_invalid_mac),
+    ("payload_agent_mismatch", 400, scenario_payload_agent_mismatch),
     ("body_too_large", 413, scenario_body_too_large),
     ("url_too_large", CONN_CLOSED, scenario_url_too_large),
     ("header_name_too_large", CONN_CLOSED, scenario_header_name_too_large),
@@ -286,9 +298,6 @@ def run_all(base_url, agent_id, agent_key):
     print(f"Running {len(SCENARIOS)} scenarios against {base_url} (agent {agent_id})\n")
     results = [run_scenario(base_url, agent_id, agent_key, name, expected, build)
                for name, expected, build in SCENARIOS]
-
-    print("\nNot covered by this endpoint: PayloadAgentMismatch (400) -- the dummy "
-          "/stateless handler never parses the H/E payload, so that check never runs.")
 
     passed, total = sum(results), len(results)
     print(f"\n{passed}/{total} scenarios passed.")

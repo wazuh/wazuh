@@ -17,7 +17,9 @@
 #include <cstdint>
 #include <ctime>
 #include <exception>
+#include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 
@@ -25,8 +27,34 @@ namespace
 {
     constexpr auto AUTH_GATEWAY_LOGTAG {"wazuh-manager-remoted:endpoints"};
 
+    // One shared instance instead of a `LogFn {TAG}` temporary per log call. Beyond avoiding a
+    // heap allocation per line, it matters here specifically because these call sites are inside
+    // catch handlers that may be handling bad_alloc -- allocating there could throw again and
+    // escape onto the worker pool. loggerHelper.h stays out of authGateway.hpp (test-visible).
+    const LogFn& logFn()
+    {
+        static const LogFn instance {AUTH_GATEWAY_LOGTAG};
+        return instance;
+    }
+
     // Client-visible 500 body, matching the {error,code} shape of the auth errors.
     constexpr auto INTERNAL_ERROR_BODY {R"({"error":"Internal server error","code":500})"};
+
+    // Answers 500 from inside a catch handler without ever throwing again. The catch handlers below
+    // may be handling bad_alloc, and building/sending a response allocates -- a second throw there
+    // would escape onto the worker-pool thread and terminate the process, which is exactly what the
+    // surrounding try/catch exists to prevent.
+    void sendInternalErrorNoThrow(const std::shared_ptr<remoted::http::IHttpResponder>& responder) noexcept
+    {
+        try
+        {
+            // send-once: a no-op if a response was already delivered before the throw.
+            responder->send(remoted::http::HttpResponse::json(500, INTERNAL_ERROR_BODY));
+        }
+        catch (...) // NOLINT(bugprone-empty-catch) -- dropping one response beats killing the daemon
+        {
+        }
+    }
 
     // Canonical uppercase HTTP verb for the MAC's canonical request.
     const char* methodToCanonical(remoted::http::Method method)
@@ -67,17 +95,6 @@ namespace
         }
         return {};
     }
-
-    remoted::http::HttpResponse errorResponse(remoted::auth::AuthError err)
-    {
-        const auto pe = remoted::auth::publicErrorFor(err);
-        std::string body {R"({"error":")"};
-        body += pe.message; // static, quote/backslash-free messages
-        body += R"(","code":)";
-        body += std::to_string(pe.status);
-        body += "}";
-        return remoted::http::HttpResponse::json(pe.status, std::move(body));
-    }
 } // namespace
 
 namespace remoted::endpoints
@@ -99,68 +116,87 @@ namespace remoted::endpoints
         server.addRoute(
             method,
             path,
-            [middleware, methodStr, handler = std::move(handler)](const HttpRequest& request,
+            [middleware, methodStr, handler = std::move(handler)](std::shared_ptr<const HttpRequest> request,
                                                                   std::shared_ptr<IHttpResponder> responder)
             {
-                const std::string protocolVersion = headerValue(request.headers, "protocol-version");
-                const std::string authorization = headerValue(request.headers, "authorization");
-
-                // Steps 1-5: protocol-version + Authorization + timestamp window + key + CMAC prefix.
-                auto begin = middleware->beginSession(protocolVersion,
-                                                      authorization,
-                                                      methodStr,
-                                                      request.target,
-                                                      static_cast<std::int64_t>(std::time(nullptr)));
-
-                if (std::holds_alternative<remoted::auth::AuthError>(begin))
-                {
-                    responder->send(errorResponse(std::get<remoted::auth::AuthError>(begin)));
-                    return;
-                }
-
-                auto session = std::get<remoted::auth::AuthMiddleware::Session>(std::move(begin));
-
-                // Step 6: feed the exact body bytes (enforces the max-body cap).
-                if (!request.body.empty())
-                {
-                    const auto bodyError =
-                        session.update(reinterpret_cast<const std::uint8_t*>(request.body.data()), request.body.size());
-                    if (bodyError != remoted::auth::AuthError::None)
-                    {
-                        responder->send(errorResponse(bodyError));
-                        return;
-                    }
-                }
-
-                // Step 7: finalize + constant-time MAC comparison.
-                auto finished = session.finish();
-                if (std::holds_alternative<remoted::auth::AuthError>(finished))
-                {
-                    responder->send(errorResponse(std::get<remoted::auth::AuthError>(finished)));
-                    return;
-                }
-
-                // Authenticated: hand the verified request AND the responder to the
-                // endpoint handler, which now owns delivering the response (inline or
-                // asynchronously). The gateway no longer sends on the success path.
-                //
-                // A handler that throws must not escape onto the worker-pool thread
-                // (asio would std::terminate the process). Catch it, log a warning and
-                // answer 500. If the handler already sent a response before throwing,
-                // the responder's send-once guarantee makes this 500 a no-op.
+                // Everything below -- the AES-CMAC auth pipeline (steps 1-7) AND the endpoint
+                // handler -- runs inside one try/catch. beginSession()/Session::update()/finish()
+                // call into OpenSSL's EVP_MAC (via Cmac::update()/finalize()), which can throw on
+                // an underlying failure; a handler can throw too. Either escaping onto this
+                // worker-pool thread would std::terminate the whole process (asio::thread_pool's
+                // handler wrapper does exactly that on any uncaught exception). Catch it, log a
+                // warning and answer 500. If a response was already sent before the throw, the
+                // responder's send-once guarantee makes this 500 a no-op.
                 try
                 {
-                    handler(std::get<remoted::auth::AuthenticatedRequest>(finished), responder);
+                    const std::string protocolVersion = headerValue(request->headers, "protocol-version");
+                    const std::string authorization = headerValue(request->headers, "authorization");
+
+                    // Steps 1-5: protocol-version + Authorization + timestamp window + key + CMAC prefix.
+                    auto begin = middleware->beginSession(protocolVersion,
+                                                          authorization,
+                                                          methodStr,
+                                                          request->target,
+                                                          static_cast<std::int64_t>(std::time(nullptr)));
+
+                    if (std::holds_alternative<remoted::auth::AuthError>(begin))
+                    {
+                        responder->send(errorResponseFor(std::get<remoted::auth::AuthError>(begin)));
+                        return;
+                    }
+
+                    auto session = std::get<remoted::auth::AuthMiddleware::Session>(std::move(begin));
+
+                    // Step 6: feed the exact body bytes (enforces the max-body cap).
+                    if (!request->body.empty())
+                    {
+                        const auto bodyError = session.update(
+                            reinterpret_cast<const std::uint8_t*>(request->body.data()), request->body.size());
+                        if (bodyError != remoted::auth::AuthError::None)
+                        {
+                            responder->send(errorResponseFor(bodyError));
+                            return;
+                        }
+                    }
+
+                    // Step 7: finalize + constant-time MAC comparison.
+                    auto finished = session.finish();
+                    if (std::holds_alternative<remoted::auth::AuthError>(finished))
+                    {
+                        responder->send(errorResponseFor(std::get<remoted::auth::AuthError>(finished)));
+                        return;
+                    }
+
+                    // Authenticated: hand the verified request AND the responder to the
+                    // endpoint handler, which now owns delivering the response (inline or
+                    // asynchronously). The gateway no longer sends on the success path.
+                    //
+                    // Attach the verified body as a zero-copy Payload: a view into the
+                    // transport's single request buffer plus a keep-alive that pins that
+                    // buffer (and its in-flight byte reservation). MOVE our request
+                    // shared_ptr into the keep-alive so the handler becomes the sole owner
+                    // -- dropping it (or calling payload.release()) then frees the buffer
+                    // and restores the budget while the responder lives on to reply.
+                    auto authRequest = std::get<remoted::auth::AuthenticatedRequest>(std::move(finished));
+                    const std::string_view bodyView {request->body}; // capture BEFORE moving request
+                    authRequest.payload = remoted::auth::Payload {bodyView, std::move(request)};
+
+                    // Hand the handler a shared_ptr<const> so it can retain the verified
+                    // request across deferred pipeline stages without copying the payload.
+                    handler(std::make_shared<const remoted::auth::AuthenticatedRequest>(std::move(authRequest)),
+                            responder);
                 }
                 catch (const std::exception& e)
                 {
-                    LOGFN_WARN(LogFn {AUTH_GATEWAY_LOGTAG}, "Endpoint handler threw an exception: %s", e.what());
-                    responder->send(remoted::http::HttpResponse::json(500, INTERNAL_ERROR_BODY));
+                    // ERROR, not WARN: reaching here means the AES-CMAC pipeline itself failed
+                    // (an EVP_MAC error, or bad_alloc), which is not routine.
+                    LOGFN_ERROR(logFn(), "Auth pipeline threw an exception: %s", e.what());
+                    sendInternalErrorNoThrow(responder);
                 }
                 catch (...)
                 {
-                    LOGFN_WARN(LogFn {AUTH_GATEWAY_LOGTAG}, "Endpoint handler threw a non-standard exception.");
-                    responder->send(remoted::http::HttpResponse::json(500, INTERNAL_ERROR_BODY));
+                    LOGFN_ERROR(logFn(), "Auth pipeline threw a non-standard exception.");
+                    sendInternalErrorNoThrow(responder);
                 }
             });
     }

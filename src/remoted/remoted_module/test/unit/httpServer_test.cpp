@@ -12,6 +12,7 @@
 #include "http_server/IHttpServer.hpp"
 #include "http_server/httpServerConfig.hpp"
 #include "http_server/httpServerFactory.hpp"
+#include "proc.hpp"
 
 #include <gtest/gtest.h>
 
@@ -59,8 +60,8 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
 
     EXPECT_EQ(config.bindAddress, "127.0.0.1");
     EXPECT_EQ(config.port, 9443);
-    EXPECT_EQ(config.ioThreads, 2U);
-    EXPECT_EQ(config.workerThreads, 4U);
+    EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
+    EXPECT_EQ(config.workerThreads, 2U * static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.maxBodySize, 16U * 1024U * 1024U);
     EXPECT_EQ(config.readTimeoutSec, 10U);
     EXPECT_EQ(config.writeTimeoutSec, 10U);
@@ -72,8 +73,33 @@ TEST(HttpServerConfigTest, DefaultsWhenEmpty)
     EXPECT_EQ(config.maxPipelinedRequests, 4U);
     EXPECT_EQ(config.concurrentAccepts, 2U);
     EXPECT_EQ(config.bufferSize, 8192U);
+    EXPECT_EQ(config.maxInFlightBytes, 256U * 1024U * 1024U);
+    EXPECT_EQ(config.maxParallelConnections, 512U);
     EXPECT_EQ(config.certificatePath, "/etc/remoted-https/server.crt");
     EXPECT_EQ(config.privateKeyPath, "/etc/remoted-https/server.key");
+}
+
+TEST(HttpServerConfigTest, InFlightBytesStructWinsElseDefault)
+{
+    // remoted config field wins when positive.
+    auto raw = zeroedConfig();
+    raw.max_inflight_bytes = 5U * 1024U * 1024U;
+    EXPECT_EQ(buildHttpServerConfig(raw).maxInFlightBytes, 5U * 1024U * 1024U);
+
+    // Unset (<=0) -> built-in default (this setting is not env-driven).
+    raw.max_inflight_bytes = 0;
+    EXPECT_EQ(buildHttpServerConfig(raw).maxInFlightBytes, 256U * 1024U * 1024U);
+}
+
+TEST(HttpServerConfigTest, MaxConnectionsStructWinsElseDefault)
+{
+    auto raw = zeroedConfig();
+    raw.max_parallel_connections = 128;
+    EXPECT_EQ(buildHttpServerConfig(raw).maxParallelConnections, 128U);
+
+    // Unset (<=0) -> built-in default (this setting is not env-driven).
+    raw.max_parallel_connections = 0;
+    EXPECT_EQ(buildHttpServerConfig(raw).maxParallelConnections, 512U);
 }
 
 TEST(HttpServerConfigTest, StructValuesWin)
@@ -130,7 +156,7 @@ TEST(HttpServerConfigTest, NegativeValuesFallBackToDefaults)
     const auto config = buildHttpServerConfig(raw);
 
     EXPECT_EQ(config.port, 9443);
-    EXPECT_EQ(config.ioThreads, 2U);
+    EXPECT_EQ(config.ioThreads, static_cast<std::size_t>(cpp_get_nproc()));
     EXPECT_EQ(config.maxUrlSize, 2048U);
 }
 
@@ -146,11 +172,11 @@ TEST(HttpServerTest, RegisterRoutesDoesNotThrow)
     EXPECT_NO_THROW({
         server->addRoute(Method::Get,
                          "/",
-                         [](const HttpRequest&, std::shared_ptr<IHttpResponder> r)
+                         [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> r)
                          { r->send(HttpResponse::json(200, "{}")); });
         server->addRoute(Method::Post,
                          "/events",
-                         [](const HttpRequest&, std::shared_ptr<IHttpResponder> r)
+                         [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> r)
                          { r->send(HttpResponse::json(202, "{}")); });
     });
 }
@@ -166,7 +192,8 @@ TEST(HttpServerTest, StartWithMissingCertificateThrowsAndStaysStopped)
 
     EXPECT_THROW(server->start(config), std::exception);
 
-    // stop() must be safe after a failed start, and idempotent.
+    // stopAccepting()/stop() must be safe after a failed start, and idempotent.
+    EXPECT_NO_THROW(server->stopAccepting());
     EXPECT_NO_THROW(server->stop());
     EXPECT_NO_THROW(server->stop());
 }
@@ -177,20 +204,38 @@ TEST(HttpServerTest, StopWithoutStartIsSafe)
     EXPECT_NO_THROW(server->stop());
 }
 
+TEST(HttpServerTest, StopAcceptingWithoutStartIsSafe)
+{
+    auto server = makeHttpServer();
+    EXPECT_NO_THROW(server->stopAccepting());
+}
+
+TEST(HttpServerTest, StopAcceptingIsIdempotentAndStopStillFullyTearsDown)
+{
+    auto server = makeHttpServer();
+
+    // Calling stopAccepting() repeatedly, then stop() repeatedly, must never re-invoke RESTinio's
+    // own stop()/wait() a second time (documented as unsafe) -- the guard flag must hold up.
+    EXPECT_NO_THROW(server->stopAccepting());
+    EXPECT_NO_THROW(server->stopAccepting());
+    EXPECT_NO_THROW(server->stop());
+    EXPECT_NO_THROW(server->stop());
+}
+
 // ---------------------------------------------------------------------------
 // Async responder contract (independent of the transport library)
 // ---------------------------------------------------------------------------
 
 TEST(HttpResponderContractTest, ImmediateResponseMapping)
 {
-    RouteHandler handler = [](const HttpRequest&, std::shared_ptr<IHttpResponder> responder)
+    RouteHandler handler = [](std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder> responder)
     {
         responder->send(HttpResponse::json(201, R"({"created":true})"));
     };
 
-    HttpRequest request;
-    request.method = Method::Post;
-    request.target = "/thing";
+    auto request = std::make_shared<HttpRequest>();
+    request->method = Method::Post;
+    request->target = "/thing";
 
     auto responder = std::make_shared<CapturingResponder>();
     handler(request, responder);
@@ -206,16 +251,25 @@ TEST(HttpResponderContractTest, ImmediateResponseMapping)
 TEST(HttpResponderContractTest, DeferredResponseFromAnotherThread)
 {
     std::shared_ptr<IHttpResponder> held;
+    std::shared_ptr<const HttpRequest> heldRequest;
 
-    // Handler defers: it stashes the responder and returns without answering.
-    RouteHandler handler = [&held](const HttpRequest&, std::shared_ptr<IHttpResponder> responder)
+    // Handler defers: it stashes the request AND the responder and returns without answering.
+    RouteHandler handler =
+        [&held, &heldRequest](std::shared_ptr<const HttpRequest> request, std::shared_ptr<IHttpResponder> responder)
     {
+        heldRequest = std::move(request);
         held = std::move(responder);
     };
 
     auto responder = std::make_shared<CapturingResponder>();
-    handler(HttpRequest {}, responder);
+    {
+        // The request the transport would build; it drops at the end of this scope.
+        auto request = std::make_shared<const HttpRequest>();
+        handler(request, responder);
+    }
 
+    // The shared request survived the handler call: it can travel across deferred stages.
+    ASSERT_NE(heldRequest, nullptr);
     ASSERT_FALSE(responder->captured.has_value()); // not answered yet
 
     // Complete the response later, from a different thread.

@@ -11,14 +11,17 @@
 
 #include "httpServerConfig.hpp"
 
+#include "proc.hpp"
+
 #include <string>
 
 namespace
 {
     constexpr auto DEFAULT_BIND_ADDRESS {"127.0.0.1"};
     constexpr std::uint16_t DEFAULT_HTTPS_PORT {9443};
-    constexpr std::size_t DEFAULT_IO_THREADS {2};
-    constexpr std::size_t DEFAULT_WORKER_THREADS {4};
+    // Multiplier applied to cpp_get_nproc() for the handler pool: unlike the I/O reactor threads,
+    // work here can block (CMAC verification, client.keys file I/O), so it is oversubscribed.
+    constexpr unsigned int WORKER_THREADS_NPROC_MULTIPLIER {2};
     // Transport hard cap. Kept above the auth middleware's body limit (AuthConfig::maxBodySize,
     // 10 MiB) so an oversized batch reaches the middleware and gets a clean 413 there, while this
     // still bounds memory as a backstop.
@@ -34,6 +37,15 @@ namespace
     constexpr std::size_t DEFAULT_CONCURRENT_ACCEPTS {2};
     constexpr std::size_t DEFAULT_BUFFER_SIZE {8192};
 
+    // Global cap on in-flight (unprocessed) request payload bytes. Bounds the worker-pool
+    // queue + handlers + deferred responses so a burst can't grow memory without limit;
+    // over it, new requests get 503.
+    constexpr std::size_t DEFAULT_MAX_INFLIGHT_BYTES {256U * 1024U * 1024U};
+
+    // Max simultaneous TCP connections. With DEFAULT_MAX_BODY_SIZE it bounds the read-phase
+    // peak (bodies being received before they reach the budget) to conns * max_body_size.
+    constexpr std::size_t DEFAULT_MAX_PARALLEL_CONNECTIONS {512};
+
     // These paths are evaluated after remoted has entered its chroot.
     // Host paths: /var/ossec/etc/remoted-https/server.{crt,key}
     constexpr auto DEFAULT_CERTIFICATE_PATH {"/etc/remoted-https/server.crt"};
@@ -44,6 +56,17 @@ namespace
     std::size_t resolveUnsigned(const int configValue, const std::size_t defaultValue)
     {
         return configValue > 0 ? static_cast<std::size_t>(configValue) : defaultValue;
+    }
+
+    // Thread-count fields: a positive caller value wins; otherwise cpp_get_nproc() (optionally
+    // scaled), so the pool size tracks the host/cgroup's available CPUs instead of a fixed constant.
+    std::size_t resolveThreadCount(const int configValue, const unsigned int nprocMultiplier = 1)
+    {
+        if (configValue > 0)
+        {
+            return static_cast<std::size_t>(configValue);
+        }
+        return static_cast<std::size_t>(cpp_get_nproc()) * nprocMultiplier;
     }
 } // namespace
 
@@ -57,8 +80,8 @@ namespace remoted::http
         result.bindAddress = DEFAULT_BIND_ADDRESS;
 
         result.port = static_cast<std::uint16_t>(resolveUnsigned(config.port, DEFAULT_HTTPS_PORT));
-        result.ioThreads = resolveUnsigned(config.io_threads, DEFAULT_IO_THREADS);
-        result.workerThreads = resolveUnsigned(config.http_worker_threads, DEFAULT_WORKER_THREADS);
+        result.ioThreads = resolveThreadCount(config.io_threads);
+        result.workerThreads = resolveThreadCount(config.http_worker_threads, WORKER_THREADS_NPROC_MULTIPLIER);
         result.maxBodySize = resolveUnsigned(config.http_max_body_size, DEFAULT_MAX_BODY_SIZE);
         result.readTimeoutSec = resolveUnsigned(config.http_read_timeout, DEFAULT_READ_TIMEOUT_SEC);
         result.writeTimeoutSec = resolveUnsigned(config.http_write_timeout, DEFAULT_WRITE_TIMEOUT_SEC);
@@ -71,6 +94,17 @@ namespace remoted::http
             resolveUnsigned(config.http_max_pipelined_requests, DEFAULT_MAX_PIPELINED_REQUESTS);
         result.concurrentAccepts = resolveUnsigned(config.http_concurrent_accepts, DEFAULT_CONCURRENT_ACCEPTS);
         result.bufferSize = resolveUnsigned(config.http_buffer_size, DEFAULT_BUFFER_SIZE);
+
+        // Memory-management knobs come from remoted's config struct (a positive value wins),
+        // otherwise the built-in default -- deliberately NOT env-driven. The transport clamps the
+        // in-flight budget to at least one max-size body at start() so a too-small value can't
+        // reject everything.
+        result.maxInFlightBytes = config.max_inflight_bytes > 0 ? static_cast<std::size_t>(config.max_inflight_bytes)
+                                                                : DEFAULT_MAX_INFLIGHT_BYTES;
+
+        result.maxParallelConnections = config.max_parallel_connections > 0
+                                            ? static_cast<std::size_t>(config.max_parallel_connections)
+                                            : DEFAULT_MAX_PARALLEL_CONNECTIONS;
 
         result.certificatePath =
             config.certificate_path[0] != '\0' ? std::string {config.certificate_path} : DEFAULT_CERTIFICATE_PATH;

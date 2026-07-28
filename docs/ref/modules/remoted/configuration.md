@@ -102,6 +102,11 @@ Debug logging level for remoted module.
 - **Default value:** `0`
 - **Allowed values:** `0` (disabled), `1` (basic), `2` (verbose)
 - **Note:** Use `debug2` for troubleshooting; generates significant log volume
+- **Note:** Level `2` is also what reveals the HTTPS agent server's per-request rejection reasons
+  (malformed or unauthenticated requests). Those are kept at debug because an unauthenticated client
+  controls how many it can trigger; conditions an operator can act on are logged as warnings
+  regardless of this setting. See
+  [Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems).
 
 ### remoted.receive_chunk
 
@@ -177,10 +182,14 @@ Agent metadata cache expiration time in seconds.
 
 ### remoted.keyupdate_interval
 
-Interval in seconds for reloading agent key files.
+Interval in seconds for reloading agent key files. Also governs the HTTPS agent server's
+`remoted_module` C++ `Keystore` (see [HTTPS Events API](https-events-api.md)): it hot-reloads
+`client.keys` on its own (an `inotify` subscription reacts immediately; this interval is only the
+periodic fallback poll, in case a notification is ever missed), reusing this same option instead of
+introducing a second one for the same concept.
 
 - **Default value:** `10`
-- **Allowed values:** Positive integer
+- **Allowed values:** Integer from `1` to `3600`
 - **Note:** Lower values detect new agents faster but increase I/O overhead
 
 ### remoted.rlimit_nofile
@@ -378,25 +387,29 @@ Event count threshold for logging compression statistics.
 ### HTTPS Agent Server (`remoted_module`)
 
 Advanced tuning for the experimental HTTPS agent server (see
-[HTTPS Events API](https-events-api.md)). These are RESTinio transport settings, not part
-of the regular `<remote>` configuration -- bind address, port and max body size are
-regular `<remote>` settings instead (see [HTTPS Events API](https-events-api.md#configuration)).
-An option present in `wazuh-manager-internal-options.conf` but out of its allowed range (or
-non-numeric) prevents `remoted` from starting, same as every other internal option.
+[HTTPS Events API](https-events-api.md)): RESTinio transport settings (`remoted.http_*`) plus the
+downstream UDS client and auth middleware tunables (`remoted.downstream_*`, `remoted.auth_*`,
+further down this section). None of these are part of the regular `<remote>` configuration --
+bind address, port and max body size are regular `<remote>` settings instead (see
+[HTTPS Events API](https-events-api.md#configuration)). An option present in
+`wazuh-manager-internal-options.conf` but out of its allowed range (or non-numeric) prevents
+`remoted` from starting, same as every other internal option.
 
 #### remoted.http_io_threads
 
 Number of I/O threads (accept + read/write) for the HTTPS agent server.
 
-- **Default value:** `2`
-- **Allowed values:** Integer from `1` to `64`
+- **Default value:** `0` (auto: resolves to `cpp_get_nproc()`, the number of CPUs available to the
+  process -- cgroup-aware on Linux)
+- **Allowed values:** Integer from `0` to `64`
 
 #### remoted.http_worker_threads
 
 Number of worker threads that run endpoint handlers (auth + business logic), off the I/O threads.
 
-- **Default value:** `4`
-- **Allowed values:** Integer from `1` to `256`
+- **Default value:** `0` (auto: resolves to `2 * cpp_get_nproc()` -- oversubscribed because this
+  work can block on AES-CMAC verification and `client.keys` file I/O)
+- **Allowed values:** Integer from `0` to `256`
 
 #### remoted.http_read_timeout
 
@@ -469,6 +482,89 @@ Socket read buffer size for the HTTPS agent server, in bytes.
 
 - **Default value:** `8192`
 - **Allowed values:** Integer from `1` to `1048576` (1 MiB)
+
+> **The three timeouts below are sequential phases of one request, and the sum matters.**
+> `remoted.http_request_timeout` bounds the *whole* request and its clock starts before the
+> downstream call, so if `connect + write + response` exceeds it, the HTTP server tears the request
+> down before the downstream deadline is ever reached. `remoted` logs a warning at startup when that
+> is the case. Each phase has its own log message naming its own setting, so the log tells you which
+> one elapsed.
+
+#### remoted.downstream_connect_timeout
+
+Seconds to wait for the downstream UDS connect (to the engine's event ingress) to complete.
+
+- **Default value:** `2`
+- **Allowed values:** Integer from `1` to `60`
+- **Note:** Exceeding it logs *"Timed out connecting to the downstream service"*. A connection
+  *refused* immediately (rather than timing out) means nothing is listening on the socket and is
+  reported differently.
+
+#### remoted.downstream_write_timeout
+
+Seconds to wait for the request body write to the downstream service to complete.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** Only reached when the downstream service accepts the connection but does not drain its
+  socket. Without this bound such a peer would pin the request's deferred-work slot indefinitely.
+
+#### remoted.downstream_response_timeout
+
+Seconds to wait for the downstream service's response after the write completes.
+
+- **Default value:** `5`
+- **Allowed values:** Integer from `1` to `300`
+- **Note:** This is the global default. An endpoint whose handler legitimately takes much longer can
+  declare its own deadline instead of forcing this value up for every endpoint (which would delay
+  detection of a genuinely hung downstream on the fast ones).
+
+#### remoted.downstream_io_threads
+
+Number of threads running the downstream UDS client's `io_context`.
+
+- **Default value:** `0` (auto: resolves to `cpp_get_nproc()`)
+- **Allowed values:** Integer from `0` to `256`
+
+#### remoted.downstream_post_process_threads
+
+Number of threads running the per-endpoint post-processors (build/deliver the reply once the
+downstream service answers).
+
+- **Default value:** `0` (auto: resolves to `cpp_get_nproc()`)
+- **Allowed values:** Integer from `0` to `256`
+
+#### remoted.downstream_max_response_body_size
+
+Cap on a downstream response body, in bytes.
+
+- **Default value:** `10485760` (10 MiB)
+- **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)
+
+#### remoted.auth_max_request_age
+
+How far in the past (seconds) a request's timestamp may be before the auth middleware rejects it
+as expired.
+
+- **Default value:** `300`
+- **Allowed values:** Integer from `1` to `3600`
+
+#### remoted.auth_max_future_skew
+
+How far in the future (seconds) a request's timestamp may be before the auth middleware rejects
+it.
+
+- **Default value:** `30`
+- **Allowed values:** Integer from `1` to `300`
+
+#### remoted.auth_max_body_size
+
+Hard cap on the authenticated request body size, in bytes (checked by the auth middleware,
+independent of the transport's own body cap -- `http_max_body_size`, a regular `<remote>` setting,
+not an internal option).
+
+- **Default value:** `10485760` (10 MiB)
+- **Allowed values:** Integer from `1048576` (1 MiB) to `67108864` (64 MiB)
 
 ---
 

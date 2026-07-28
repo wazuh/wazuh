@@ -12,14 +12,6 @@
 #ifndef _REMOTED_MODULE_FACADE_HPP
 #define _REMOTED_MODULE_FACADE_HPP
 
-#include "auth/keystore.hpp"
-#include "endpoints/authGateway.hpp"
-#include "http_server/IHttpServer.hpp"
-#include "http_server/httpServerConfig.hpp"
-#include "http_server/httpServerFactory.hpp"
-#include "loggerHelper.h"
-#include "remoted_module.h"
-#include "singleton.hpp"
 #include <atomic>
 #include <condition_variable>
 #include <cstdarg>
@@ -27,12 +19,41 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <string>
 #include <thread>
+
+#include "auth/keystore.hpp"
+#include "downstream/asioUdsHttpClient.hpp"
+#include "downstream/deferredForwarder.hpp"
+#include "downstream/deferredWorkLimiter.hpp"
+#include "downstream/downstreamConfig.hpp"
+#include "endpoints/authGateway.hpp"
+#include "endpoints/statelessEndpoint.hpp"
+#include "http_server/IHttpServer.hpp"
+#include "http_server/httpServerConfig.hpp"
+#include "http_server/httpServerFactory.hpp"
+#include "loggerHelper.h"
+#include "remoted_module.h"
+#include "singleton.hpp"
 
 constexpr auto REMOTED_MODULE_LOGTAG {"wazuh-manager-remoted:communication"}; ///< Tag used for remoted module logging.
 
+/// Not a member: LogFn has hidden ELF visibility (loggerHelper.h wraps everything in a visibility
+/// pragma), so holding one as a field of this default-visibility class trips -Wattributes. A
+/// function-local static also costs one allocation ever instead of one per log call.
+inline const LogFn& moduleLogFn()
+{
+    static const LogFn instance {REMOTED_MODULE_LOGTAG};
+    return instance;
+}
+
 // Heartbeat period for the skeleton worker loop.
 constexpr auto REMOTED_MODULE_HEARTBEAT_SECS {60};
+
+// Default cap on requests parked awaiting a downstream service (used when the caller leaves
+// remoted_module_config_t::max_deferred_requests <= 0).
+constexpr int REMOTED_MODULE_DEFAULT_MAX_DEFERRED {256};
 
 /**
  * @brief Internal engine of the remoted module.
@@ -56,19 +77,15 @@ public:
 
         if (m_running)
         {
-            LOGFN_WARN(m_logFn, "remoted module already started, ignoring start request.");
+            LOGFN_WARN(moduleLogFn(), "remoted module already started, ignoring start request.");
             return;
         }
 
         m_config = configuration;
         m_stopping = false;
-        m_running = true;
 
-        LOGFN_INFO(m_logFn,
-                   "Starting remoted module (workerThreads=%d, queueSize=%d, port=%d, cluster='%s', node='%s', "
-                   "workerNode=%s).",
-                   m_config.worker_threads,
-                   m_config.queue_size,
+        LOGFN_INFO(moduleLogFn(),
+                   "Starting remoted module (port=%d, cluster='%s', node='%s', workerNode=%s).",
                    m_config.port,
                    m_config.cluster_name,
                    m_config.node_name,
@@ -77,7 +94,23 @@ public:
         // The HTTPS server itself is started from run() (see tryStartHttpServer()),
         // not here: that keeps start() fast and non-throwing even when the
         // certificate/key aren't in place yet.
-        m_worker = std::thread(&RemotedModuleFacade::run, this);
+        //
+        // m_running is set only AFTER the thread exists. Setting it first meant that a throwing
+        // std::thread constructor (EAGAIN / resource exhaustion) left the facade claiming to run
+        // with no worker: every later start() then hit the "already started" guard below and the
+        // module stayed permanently wedged, doing nothing. run() never reads m_running, and both
+        // m_stopping and m_config are already set, so deferring it is safe.
+        try
+        {
+            m_worker = std::thread(&RemotedModuleFacade::run, this);
+        }
+        catch (const std::exception& e)
+        {
+            LOGFN_ERROR(moduleLogFn(), "Could not launch the remoted module worker thread: %s.", e.what());
+            throw;
+        }
+
+        m_running = true;
     }
 
     void stop()
@@ -92,14 +125,37 @@ public:
                 return;
             }
 
-            LOGFN_INFO(m_logFn, "Stopping remoted module.");
+            LOGFN_INFO(moduleLogFn(), "Stopping remoted module.");
 
-            // Stop accepting/serving HTTPS before tearing down the rest.
+            // Phase 1: stop ACCEPTING new connections/requests and drain the handler worker
+            // pool. After this returns, no RouteHandler -- and therefore no forward() call --
+            // will ever run again, but the HTTP server's I/O runtime is deliberately still
+            // alive: a response to a request already forwarded before this point must still be
+            // able to reach it safely (see phases 2-3).
             if (m_httpServer)
             {
-                m_httpServer->stop();
-                m_httpServer.reset();
+                m_httpServer->stopAccepting();
             }
+
+            // Phase 2: abort in-flight downstream UDS sessions (no new completions can arrive).
+            if (m_downstreamClient)
+            {
+                m_downstreamClient->stop();
+            }
+
+            // Phase 3: drain the post-processing pool. Anything that was mid-flight when phase 1
+            // ran completes here; its responder->send() is still safe -- the HTTP server's I/O
+            // runtime hasn't been torn down yet (that's phase 4, below).
+            m_forwarder.reset();
+            m_downstreamClient.reset();
+            m_deferredLimiter.reset();
+
+            // Phase 4: NOW it's safe to fully tear down the transport (releases the I/O
+            // runtime). Nothing can still be touching a responder: worker pool B was drained in
+            // phase 1, the post-processing pool D was drained in phase 3, and phase 2 stopped
+            // the downstream client so nothing new can reach D either.
+            m_httpServer.reset();
+
             m_authGateway.reset();
             m_keystore.reset();
 
@@ -119,7 +175,7 @@ public:
             workerToJoin.join();
         }
 
-        LOGFN_INFO(m_logFn, "remoted module stopped.");
+        LOGFN_INFO(moduleLogFn(), "remoted module stopped.");
     }
 
 private:
@@ -131,32 +187,100 @@ private:
 
         // Framework-agnostic auth layer: reads agent keys from client.keys and
         // verifies the AES-CMAC of every authenticated request. Wired on top of
-        // OUR transport, so swapping the HTTP library never touches it.
-        m_keystore = std::make_shared<remoted::auth::Keystore>();
-        m_authGateway = std::make_unique<remoted::endpoints::AuthGateway>(remoted::auth::AuthConfig {}, m_keystore);
+        // OUR transport, so swapping the HTTP library never touches it. The keystore
+        // hot-reloads client.keys on its own (background watcher, see keystore.hpp) --
+        const auto keystoreRefreshSeconds = m_config.keystore_refresh_interval > 0
+                                                ? m_config.keystore_refresh_interval
+                                                : remoted::auth::Keystore::kDefaultRefreshIntervalSeconds;
+        m_keystore =
+            std::make_shared<remoted::auth::Keystore>(remoted::auth::Keystore::kDefaultPath, keystoreRefreshSeconds);
+        m_authGateway =
+            std::make_unique<remoted::endpoints::AuthGateway>(remoted::auth::buildAuthConfig(m_config), m_keystore);
 
-        // Unauthenticated health probe (no request body, no auth).
+        // Deferred-work limiter: bounds requests parked awaiting a downstream service. A slot is
+        // held from the moment a request enters the deferred stage until its reply is delivered;
+        // when full, the forwarder sheds load with a plain 503 (the agent runs its own retry) -- the
+        // second half of the two-phase backpressure (the byte budget covers receive+send, this the wait).
+        const auto maxDeferred = m_config.max_deferred_requests > 0
+                                     ? static_cast<std::size_t>(m_config.max_deferred_requests)
+                                     : static_cast<std::size_t>(REMOTED_MODULE_DEFAULT_MAX_DEFERRED);
+        m_deferredLimiter = std::make_shared<remoted::downstream::DeferredWorkLimiter>(maxDeferred);
+
+        // Async UDS client + forwarder for the deferred stage. The client owns its own io_context
+        // (RESTinio keeps its loop private); the forwarder owns a post-processing pool. Started here
+        // so it is ready to forward as soon as the server accepts.
+        const auto downstreamConfig = remoted::downstream::buildDownstreamConfig(m_config);
+        auto downstreamClient = std::make_shared<remoted::downstream::AsioUdsHttpClient>(downstreamConfig);
+        downstreamClient->start();
+        m_downstreamClient = downstreamClient;
+        m_forwarder = std::make_unique<remoted::downstream::DeferredForwarder>(
+            downstreamClient, m_deferredLimiter, downstreamConfig.postProcessThreads);
+        const std::string eventsSocketPath = downstreamConfig.eventsSocketPath;
+
+        // Unauthenticated health probe (no request body, no auth). Exempt from the in-flight
+        // byte budget (countAgainstBudget=false) so liveness stays 200 even under memory pressure.
         m_httpServer->addRoute(
             remoted::http::Method::Get,
             "/",
-            [](const remoted::http::HttpRequest&, std::shared_ptr<remoted::http::IHttpResponder> responder)
-            { responder->send(remoted::http::HttpResponse::json(200, R"({"status":"ok","module":"remoted"})")); });
+            [](std::shared_ptr<const remoted::http::HttpRequest>,
+               std::shared_ptr<remoted::http::IHttpResponder> responder)
+            { responder->send(remoted::http::HttpResponse::json(200, R"({"status":"ok","module":"remoted"})")); },
+            /*countAgainstBudget=*/false);
 
-        // Dummy /stateless: the gateway runs the full AES-CMAC validation and
-        // only calls this handler once auth succeeds. It intentionally does NOT
-        // parse the H/E payload or ingest anything -- it just validates and
-        // returns 200. The 400/401/413 rejections are produced by the gateway.
-        // TODO: parse the H/E payload's header (a JSON library is needed) and
-        // check its embedded agent id against AuthenticatedRequest::agentId,
-        // rejecting a mismatch with AuthError::PayloadAgentMismatch.
+        // /stateless: the gateway runs the full AES-CMAC validation and only calls this handler once
+        // auth succeeds; makeHandler() then cross-checks the payload's claimed wazuh.agent.id against
+        // the authenticated agent id (400 PayloadAgentMismatch on mismatch/malformed header), and on
+        // success the forwarder acquires a deferred-work slot (plain 503 when full), forwards the H/E
+        // batch to the engine's event ingress over UDS, and replies from the downstream result (202
+        // accepted / 400 bad batch / 413 / 503). The payload + byte budget are freed once the send
+        // completes. The 400/401/413 auth rejections are produced by the gateway.
         m_authGateway->addAuthenticatedRoute(
             *m_httpServer,
             remoted::http::Method::Post,
             "/stateless",
-            [](const remoted::auth::AuthenticatedRequest&, std::shared_ptr<remoted::http::IHttpResponder> responder)
-            { responder->send(remoted::http::HttpResponse {200, "", {}}); });
+            remoted::endpoints::stateless::makeHandler(*m_forwarder, eventsSocketPath));
+
+        // /stateless takes the client's default response deadline (its target leaves the override
+        // at 0), so that is what gets checked against the transport's request cap.
+        warnIfDownstreamBudgetExceedsRequestTimeout(
+            "/stateless", downstreamConfig, config, remoted::endpoints::stateless::target(eventsSocketPath));
 
         m_httpServer->start(config);
+    }
+
+    /**
+     * @brief Warns when an endpoint's downstream deadlines cannot actually be honored.
+     *
+     * RESTinio's handle_request_timeout (http_request_timeout) bounds the WHOLE request, and its
+     * clock starts before the downstream call, so what matters is the sum of the three sequential
+     * downstream phases -- connect, then write, then response. If that sum exceeds the cap, the HTTP
+     * server tears the request down first and the downstream deadline never gets to fire, which
+     * looks like an unexplained failure rather than a misconfiguration. Silent with the defaults
+     * (2 + 5 + 5 = 12 s against a 30 s cap).
+     */
+    void warnIfDownstreamBudgetExceedsRequestTimeout(const char* path,
+                                                     const remoted::downstream::DownstreamConfig& downstreamConfig,
+                                                     const remoted::http::HttpServerConfig& serverConfig,
+                                                     const remoted::downstream::DownstreamTarget& target)
+    {
+        const int responseTimeoutMs =
+            target.responseTimeoutMs > 0 ? target.responseTimeoutMs : downstreamConfig.responseTimeoutMs;
+        const long long budgetMs = static_cast<long long>(downstreamConfig.connectTimeoutMs) +
+                                   downstreamConfig.writeTimeoutMs + responseTimeoutMs;
+        const long long requestCapMs = static_cast<long long>(serverConfig.requestTimeoutSec) * 1000;
+
+        if (budgetMs > requestCapMs)
+        {
+            LOGFN_WARN(moduleLogFn(),
+                       "Endpoint '%s': the downstream timeouts add up to %lld ms, which exceeds "
+                       "'http_request_timeout' (%lld ms); the HTTP server will cut a slow request off before the "
+                       "downstream deadline is reached. Consider increasing the value of 'http_request_timeout', or "
+                       "reducing 'downstream_connect_timeout'/'downstream_write_timeout'/"
+                       "'downstream_response_timeout'.",
+                       path,
+                       budgetMs,
+                       requestCapMs);
+        }
     }
 
     void tryStartHttpServer()
@@ -171,22 +295,112 @@ private:
         try
         {
             startHttpServer();
-            LOGFN_INFO(m_logFn, "remoted HTTP server started.");
+            if (m_failedStartAttempts > 0)
+            {
+                LOGFN_INFO(
+                    moduleLogFn(), "remoted HTTP server started after %d failed attempt(s).", m_failedStartAttempts);
+            }
+            else
+            {
+                LOGFN_INFO(moduleLogFn(), "remoted HTTP server started.");
+            }
+            m_failedStartAttempts = 0;
         }
         catch (const std::exception& e)
         {
-            // Most likely cause: certificate/key not in place yet (fresh
-            // install). Leave everything reset and try again next heartbeat.
-            LOGFN_WARN(m_logFn, "remoted HTTP server not started yet, will retry: %s", e.what());
-            m_httpServer.reset();
-            m_authGateway.reset();
-            m_keystore.reset();
+            reportFailedStart(e.what());
+            resetHttpServerStack();
         }
+        catch (...)
+        {
+            reportFailedStart("non-standard exception");
+            resetHttpServerStack();
+        }
+    }
+
+    /**
+     * @brief Escalating report for a failed HTTPS server start.
+     *
+     * On a fresh install the certificate/key genuinely aren't in place yet, so the first failures
+     * are expected and the retry loop is doing its job. But a permanent misconfiguration (missing
+     * cert, key/cert mismatch, port already in use) used to produce the same WARN every 60 s
+     * forever, never escalating and never distinguishable from the benign case. Now: the first
+     * attempt is an ERROR (the operator sees the real reason immediately, including which file),
+     * the next hour of retries stays at debug, and after that one WARN per hour keeps it visible
+     * without flooding.
+     */
+    void reportFailedStart(const char* reason)
+    {
+        ++m_failedStartAttempts;
+
+        // 60 attempts at one per heartbeat (60 s) == roughly one hour.
+        constexpr int ATTEMPTS_PER_ESCALATION {60};
+
+        if (m_failedStartAttempts == 1)
+        {
+            LOGFN_ERROR(moduleLogFn(),
+                        "The remoted HTTPS server could not start: %s. Retrying every %d s. Check "
+                        "'certificate_path'/'private_key_path' and that the configured port is free.",
+                        reason,
+                        REMOTED_MODULE_HEARTBEAT_SECS);
+        }
+        else if (m_failedStartAttempts % ATTEMPTS_PER_ESCALATION == 0)
+        {
+            LOGFN_WARN(moduleLogFn(),
+                       "The remoted HTTPS server is still not running after %d attempt(s) (~%d minute(s)): %s",
+                       m_failedStartAttempts,
+                       m_failedStartAttempts * REMOTED_MODULE_HEARTBEAT_SECS / 60,
+                       reason);
+        }
+        else
+        {
+            LOGFN_DEBUG1(
+                moduleLogFn(), "remoted HTTPS server start attempt %d failed: %s", m_failedStartAttempts, reason);
+        }
+    }
+
+    /// Unwinds a partially-built HTTPS stack so the next attempt starts from scratch.
+    void resetHttpServerStack()
+    {
+        m_httpServer.reset();
+        if (m_downstreamClient)
+        {
+            m_downstreamClient->stop();
+        }
+        m_forwarder.reset();
+        m_downstreamClient.reset();
+        m_deferredLimiter.reset();
+        m_authGateway.reset();
+        m_keystore.reset();
     }
 
     void run()
     {
-        LOGFN_INFO(m_logFn, "remoted module worker thread running.");
+        // Exception barrier for the worker thread body: a throw escaping a bare std::thread
+        // terminates the whole remoted daemon. tryStartHttpServer() has its own catch, so what
+        // this really covers is a non-std::exception from there plus condition-variable and
+        // logging failures.
+        try
+        {
+            runLoop();
+        }
+        catch (const std::exception& e)
+        {
+            // Deliberately does NOT re-enter the loop: an exception that repeats every iteration
+            // would spin forever writing to ossec.log, which is worse than a dead worker. The
+            // module keeps serving whatever the HTTP server already started.
+            LOGFN_ERROR(
+                moduleLogFn(), "The remoted module worker thread stopped on an unexpected exception: %s.", e.what());
+        }
+        catch (...)
+        {
+            LOGFN_ERROR(moduleLogFn(), "The remoted module worker thread stopped on a non-standard exception.");
+        }
+    }
+
+    void runLoop()
+    {
+        LOGFN_INFO(moduleLogFn(), "remoted module worker thread running.");
 
         while (true)
         {
@@ -198,7 +412,7 @@ private:
                 break;
             }
 
-            LOGFN_DEBUG1(m_logFn, "remoted module heartbeat.");
+            LOGFN_DEBUG1(moduleLogFn(), "remoted module heartbeat.");
             m_waitCv.wait_for(
                 lock, std::chrono::seconds(REMOTED_MODULE_HEARTBEAT_SECS), [this]() { return m_stopping.load(); });
 
@@ -208,21 +422,24 @@ private:
             }
         }
 
-        LOGFN_INFO(m_logFn, "remoted module worker thread finished.");
+        LOGFN_INFO(moduleLogFn(), "remoted module worker thread finished.");
     }
 
-    const LogFn m_logFn {REMOTED_MODULE_LOGTAG};
     std::mutex m_lifecycleMutex;         ///< Serializes start()/stop().
     std::mutex m_waitMutex;              ///< Guards the heartbeat wait.
     std::condition_variable m_waitCv;    ///< Wakes the worker on stop.
     std::atomic_bool m_stopping {false}; ///< Cooperative-shutdown flag.
     bool m_running {false};              ///< Whether the worker is active.
+    int m_failedStartAttempts {0};       ///< Consecutive failed HTTPS server starts; drives log escalation.
     std::thread m_worker;                ///< The C++ thread launched for remoted.
     remoted_module_config_t m_config {}; ///< Copy of the caller's configuration.
 
     std::unique_ptr<remoted::http::IHttpServer> m_httpServer;       ///< HTTPS transport (behind our interface).
     std::shared_ptr<remoted::auth::IAgentKeystore> m_keystore;      ///< Agent AES-key lookup (client.keys).
     std::unique_ptr<remoted::endpoints::AuthGateway> m_authGateway; ///< Auth layer wired onto m_httpServer.
+    std::shared_ptr<remoted::downstream::DeferredWorkLimiter> m_deferredLimiter; ///< Bounds parked downstream work.
+    std::shared_ptr<remoted::downstream::AsioUdsHttpClient> m_downstreamClient;  ///< Async UDS client (own io_context).
+    std::unique_ptr<remoted::downstream::DeferredForwarder> m_forwarder; ///< Forwards to the downstream service.
 };
 
 #endif // _REMOTED_MODULE_FACADE_HPP

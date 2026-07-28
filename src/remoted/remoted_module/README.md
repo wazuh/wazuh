@@ -22,15 +22,16 @@ remoted_module/
 │   ├── remotedModuleFacade.hpp     # worker thread + lifecycle; owns the HTTP server + auth + endpoints
 │   ├── auth/                       # ns remoted::auth — framework-agnostic AES-CMAC auth (see below)
 │   ├── http_server/                # ns remoted::http — transport-agnostic HTTP(S) sub-layer (see below)
-│   └── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below)
+│   ├── endpoints/                  # ns remoted::endpoints — endpoint contract + auth gateway (see below)
+│   └── downstream/                 # ns remoted::downstream — async UDS forwarding + limiter (see below)
 ├── test/unit/                      # GoogleTest tests (C-ABI black-box + HTTP server + auth + gateway)
 └── tools/
     └── send_stateless.py           # CLI to sign + POST /stateless for manual/E2E testing (see below)
 ```
 
 Each internal concern is a folder under `src/` (namespaced, PRIVATE, reachable by prefix —
-`"auth/...`", `"http_server/...`", `"endpoints/...`" — since `src/` is on the include path). New
-endpoints get their own folder under `src/endpoints/<name>/`.
+`"auth/...`", `"http_server/...`", `"endpoints/...`", `"downstream/...`" — since `src/` is on the
+include path). New endpoints get their own folder under `src/endpoints/<name>/`.
 
 ## HTTP(S) server sub-layer (`src/http_server/`)
 
@@ -42,27 +43,95 @@ without touching any registered endpoint.
 src/http_server/
 ├── IHttpServer.hpp          # neutral interface + types (Method/HttpRequest/HttpResponse/
 │                            #   IHttpResponder/HttpServerConfig). No transport types leak here.
+├── inFlightBudget.hpp       # global in-flight byte budget + RAII Reservation (backpressure/503)
 ├── httpServerConfig.hpp/.cpp# buildHttpServerConfig(): C-ABI struct -> HttpServerConfig (+ fallbacks)
 ├── httpServerFactory.hpp    # makeHttpServer() -> the single transport swap point
 └── RestinioHttpServer.hpp/.cpp # RESTinio + OpenSSL implementation (PImpl hides RESTinio in the .cpp)
 ```
 
 - **Endpoint registration:** `addRoute(Method, path, handler)` before `start()`.
+- **Two-phase shutdown:** `stopAccepting()` closes the acceptor and drains the handler worker pool
+  while deliberately leaving the I/O runtime alive (so an in-flight deferred reply can still be
+  delivered); `stop()` calls `stopAccepting()` first, then releases the I/O runtime. See *Deferred
+  forwarding*'s Lifecycle note below for why the order matters.
 - **Async handlers (non-blocking I/O threads):** a raw handler is
-  `void(const HttpRequest&, std::shared_ptr<IHttpResponder>)`. Each request is dispatched to a
-  bounded worker pool with a **deferred response**, so RESTinio's I/O threads never block on
-  slow handler work (disk, calls to other APIs). A handler may respond inline or capture the
-  responder, offload the blocking work, and call `responder->send(...)` later from any thread.
-- **Configuration** (via the C-ABI struct, each field falling back to a built-in default when
-  <=0/empty): `port`, `certificate_path`, `private_key_path`, `io_threads`, `http_worker_threads`,
-  `http_max_body_size`, `http_read_timeout`, `http_write_timeout`, `http_request_timeout`,
-  `http_max_url_size`, `http_max_header_name_size`, `http_max_header_value_size`,
-  `http_max_header_count`, `http_max_pipelined_requests`, `http_concurrent_accepts`,
-  `http_buffer_size`. `remoted` populates the RESTinio tuning fields (`io_threads`,
-  `http_worker_threads`, the timeouts, and the header/URL/pipelining/accept/buffer limits) from the
-  `remoted.http_*` internal options in `secure.c`. `port`, `http_max_body_size` and the two paths are
-  regular `<remote>` settings instead (not wired yet -- built-in defaults apply) -- see
-  [HTTPS Events API](../../../docs/ref/modules/remoted/https-events-api.md#configuration).
+  `void(std::shared_ptr<const HttpRequest>, std::shared_ptr<IHttpResponder>)`. Each request is
+  dispatched to a bounded worker pool with a **deferred response**, so RESTinio's I/O threads never
+  block on slow handler work (disk, calls to other APIs). A handler may respond inline or capture the
+  request and responder, offload the blocking work, and call `responder->send(...)` later from any
+  thread. The request is a `shared_ptr<const>` so it can travel across deferred pipeline stages;
+  keeping it alive keeps its in-flight byte reservation charged (see below).
+- **Memory management (layered):** the worker-pool queue is unbounded on its own, so four layers
+  bound memory:
+    1. **In-flight byte budget** — the transport reserves each request's payload (`body + a small
+       per-request overhead`) against a global budget *before* handing it to the worker pool. When
+       the budget is exhausted the request is shed with a plain **`503 Service Unavailable`**
+       (server-capacity load-shedding, not per-client rate-limiting; no `Retry-After` — the agent
+       runs its own retry/backoff) instead of queueing, giving the backpressure the raw asio pool lacks. The reservation is an RAII token living in the request's
+       shared context alongside the single payload copy; it is released the instant the context's
+       last owner drops it. The **handler controls that**: dropping the request shared_ptr (or calling
+       `AuthenticatedRequest::payload.release()`) frees the payload buffer AND the reservation together
+       — even while a deferred reply is still outstanding, since the responder no longer co-owns the
+       buffer (see *Single-copy payload*). Configured via remoted (`max_inflight_bytes`). Routes
+       registered with `countAgainstBudget=false` (the liveness `GET /`) are **exempt**, so the probe
+       stays `200` under memory pressure instead of being shed (which would make an LB pull the node).
+    2. **`maxBodySize`** — per-request read-phase cap (RESTinio rejects an oversized `Content-Length`
+       early by closing the connection). *Note:* RESTinio 0.7.9 has no dynamic pre-body hook, so the
+       budget is charged once the body is already buffered; `maxBodySize` is what bounds a single
+       request's peak.
+    3. **`maxParallelConnections`** — bounds simultaneous connections, so the read-phase peak (bodies
+       still arriving, before they reach the budget) is bounded by `maxParallelConnections *
+       maxBodySize`.
+    4. **Deferred-work limiter** (`max_deferred_requests`) — a **count**-based sibling of the byte
+       budget (`downstream/deferredWorkLimiter.hpp`) that bounds how many requests are **parked
+       awaiting a downstream service**. A `Slot` is acquired before forwarding and held (RAII) until
+       the reply is sent; when full, the forwarder sheds with the same plain **`503`**. This is the
+       second phase of a two-phase backpressure: the byte budget covers *receive + send* (and is
+       released once the payload has been sent), the deferred limiter covers *the wait*.
+- **Single-copy payload + early release:** the payload is copied exactly **once** — into the shared
+  `RequestContext`. RESTinio's original buffer is freed on the I/O thread right after (the responder
+  is a pre-created `response_builder` that no longer holds the request handle), the auth middleware
+  streams the AES-CMAC **without buffering** the body, and `AuthenticatedRequest::payload` is a
+  zero-copy `string_view` into that single copy (kept alive by a keep-alive to the context). A
+  handler can therefore **forward the payload, release it + its budget, and still reply later**:
+  `payload.release()` (or dropping the request) drops the buffer + reservation while the responder
+  survives to answer the agent when a downstream service responds. The small identity fields
+  (`agentId`, `method`, `requestTarget`) are owned, so they outlive an early release.
+  > Because the byte budget is released at forward, a request *parked waiting on a downstream service*
+  > no longer counts against `max_inflight_bytes` — the **deferred-work limiter** (above) is what
+  > bounds that phase.
+- **Configuration** (via the C-ABI struct; no environment-variable fallback anywhere anymore).
+  Four groups of fields, each field falling back to a built-in default when `<=0`/empty:
+    1. RESTinio tuning: `io_threads`, `http_worker_threads`, `http_read_timeout`,
+       `http_write_timeout`, `http_request_timeout`, `http_max_url_size`,
+       `http_max_header_name_size`, `http_max_header_value_size`, `http_max_header_count`,
+       `http_max_pipelined_requests`, `http_concurrent_accepts`, `http_buffer_size` -- `remoted`
+       populates these from the `remoted.http_*` internal options in `secure.c` (already
+       range-validated there). `io_threads`/`http_worker_threads` are thread-count fields: a
+       `<=0` value resolves via `cpp_get_nproc()` (`shared_modules/utils/proc.hpp`, cgroup-aware
+       on Linux) in `httpServerConfig.cpp::resolveThreadCount()` -- see *Request lifecycle
+       example* below for the exact multiplier per pool.
+    2. Regular `<remote>` settings not wired yet (built-in defaults apply in practice): `port`,
+       `http_max_body_size`, `certificate_path`, `private_key_path`.
+    3. Memory-management: `max_inflight_bytes` (bytes; default 256 MiB),
+       `max_parallel_connections` (default 512) and `max_deferred_requests` (default 256) --
+       set directly by `remoted` in `secure.c`, deliberately **not** an internal option (they bound
+       in-memory resource usage rather than tune the transport). The transport clamps the budget
+       up to at least one max-size request so a too-small value can't reject everything.
+    4. Downstream client + auth middleware tuning: `downstream_connect_timeout`,
+       `downstream_write_timeout`, `downstream_response_timeout`, `downstream_io_threads`,
+       `downstream_post_process_threads`, `downstream_max_response_body_size`,
+       `auth_max_request_age`, `auth_max_future_skew`, `auth_max_body_size` -- populated from the
+       `remoted.downstream_*`/`remoted.auth_*` internal options in `secure.c` and translated by
+       `remoted::downstream::buildDownstreamConfig()` (`downstream/downstreamConfig.cpp`) and
+       `remoted::auth::buildAuthConfig()` (`auth/authTypes.cpp`) respectively; the facade calls
+       both in `startHttpServer()` instead of default-constructing `DownstreamConfig{}`/
+       `AuthConfig{}`. The first three are seconds in the C-ABI struct, converted to milliseconds
+       internally. `downstream_io_threads`/`downstream_post_process_threads` are thread-count
+       fields (`cpp_get_nproc()` on `<=0`, same as group 1). See *Deferred forwarding* and
+       *Agent<->manager auth middleware* below.
+  See [HTTPS Events API](../../../docs/ref/modules/remoted/https-events-api.md#configuration) for
+  the full reference (defaults, allowed ranges).
 - **Restart-friendly bind:** the RESTinio acceptor sets `SO_REUSEADDR`
   (`acceptor_options_setter`), so a manager restart rebinds the port immediately instead of
   failing with `EADDRINUSE` while the previous socket lingers in `TIME_WAIT`.
@@ -76,38 +145,261 @@ each get a folder here.
 
 ```
 src/endpoints/
-├── endpoint.hpp             # shared contract: type aliases (Method/HttpResponse/IHttpResponder/
-│                            #   AuthenticatedRequest) + the async AuthenticatedHandler typedef
-└── authGateway.hpp/.cpp     # runs the auth middleware, then hands the verified request + responder
-                             #   to the endpoint handler
+├── endpoint.hpp/.cpp        # shared contract: type aliases (Method/HttpResponse/IHttpResponder/
+│                            #   AuthenticatedRequest) + the async AuthenticatedHandler typedef,
+│                            #   plus errorResponseFor(AuthError) (the {"error","code"} response shape)
+├── authGateway.hpp/.cpp     # runs the auth middleware, then hands the verified request + responder
+│                            #   to the endpoint handler
+└── statelessEndpoint.hpp/.cpp # /stateless policy: identity check + downstream target + post-processing
 ```
 
 - **Endpoint handler (async):**
-  `using AuthenticatedHandler = std::function<void(const remoted::auth::AuthenticatedRequest&, std::shared_ptr<IHttpResponder>)>;`
+  `using AuthenticatedHandler = std::function<void(std::shared_ptr<const remoted::auth::AuthenticatedRequest>, std::shared_ptr<IHttpResponder>)>;`
   It runs on the worker pool after auth succeeds and **owns delivering the response** — inline or
-  later (async), by calling `responder->send(...)` exactly once.
+  later (async), by calling `responder->send(...)` exactly once. The verified request is a
+  `shared_ptr<const>` so the handler can retain it across deferred stages; its body is a zero-copy
+  `payload.bytes()` view, and `payload.release()` frees the body + byte budget early (keeping the
+  responder) once it has been forwarded — see *Single-copy payload* above.
 - **`AuthGateway`** owns one `AuthMiddleware` and exposes
   `addAuthenticatedRoute(IHttpServer&, Method, path, AuthenticatedHandler)`. It registers a raw
   async route whose worker-thread body runs the full validation (`beginSession → update → finish`,
   always synchronous — AES-CMAC over CPU, off the I/O threads), maps any `AuthError` through
-  `publicErrorFor()` to the client status/message on failure, and on success calls the handler with
-  the verified `AuthenticatedRequest` and the responder. The facade registers a **dummy
-  `POST /stateless`** this way: it validates the request (auth only) and answers `200` **without**
-  parsing the H/E payload or ingesting anything; `400`/`401`/`413` come straight from the gateway.
+  `errorResponseFor()` (which wraps `publicErrorFor()`) to the client status/message on failure, and
+  on success calls the handler with the verified `AuthenticatedRequest` and the responder. The
+  facade registers **`POST /stateless`** with `stateless::makeHandler(forwarder, socketPath)`: once
+  auth succeeds it cross-checks the payload's identity, then forwards the H/E batch to the engine
+  over UDS (see *Deferred forwarding*) and replies from the downstream result
+  (`202`/`400`/`413`/`503`); `400`/`401`/`413` auth rejections come straight from the gateway.
+- **Per-endpoint policy (`statelessEndpoint.hpp/.cpp`):** each endpoint owns *what* it forwards and
+  *how* it maps the answer, kept out of the generic `downstream/` machinery. `stateless::target(socket)`
+  builds the engine ingest `DownstreamTarget` (`POST /events/enriched`, `application/x-ndjson`) and
+  `stateless::postProcess(err, resp)` is the `PostProcessor` (the mapping above). A new endpoint adds
+  its own `target`/`postProcess` (and, once there are several, its own `endpoints/<name>/` folder).
+  `stateless::validatePayloadIdentity(req)` is a pure, pre-forward check: it parses the body's `H
+  <json>` line with RapidJSON (`rapidjson::Document::Parse(data, length)` — non-in-situ, since the
+  payload is a `string_view` into a shared, non-NUL-terminated buffer — plus `rapidjson::Pointer` for
+  `/wazuh/agent/id`) and compares it, as a number, against the authenticated `agentId` (also parsed
+  as a number, so `"001"` and `"1"` match). Anything that isn't a clean match — missing/malformed
+  header, non-numeric on either side, or a real mismatch — collapses to `AuthError::PayloadAgentMismatch`;
+  there is no partial-validation path an agent could use to skip the check.
+  `stateless::makeHandler(forwarder, socketPath)` wires `validatePayloadIdentity` in front of
+  `forwarder.forward(...)`: on failure it answers via `errorResponseFor()` and never forwards; this is
+  the single `AuthenticatedHandler` the facade registers for `/stateless`.
 - **Handler exceptions → 500:** if an endpoint handler throws, the gateway catches it, logs a
   warning and answers `500` (`{"error":"Internal server error","code":500}`), so an exception never
   escapes onto the worker-pool thread (which would `std::terminate`). The responder's send-once
   guarantee makes the 500 a no-op if the handler had already replied.
 
+## Deferred forwarding (async UDS) — `src/downstream/`
+
+Endpoints process a request, forward it to another service over a Unix-domain HTTP socket, and reply
+to the agent once that service answers. First target: the engine's event ingress —
+`queue/sockets/queue-http.sock`, `POST /events/enriched` (HTTP over UDS; replies `200` accepted /
+`400` bad batch / `500` orchestrator down) — and a `/stateless` body already **is** the H/E batch it
+expects, so the forwarder is near pass-through with auth in front.
+
+```
+src/downstream/
+├── deferredWorkLimiter.hpp   # count-based RAII limiter (parked-request cap; see Memory management)
+├── downstreamConfig.hpp/.cpp # events socket (fixed) + C-ABI-driven connect/write/response timeouts,
+│                            #   io/post threads, max response body (buildDownstreamConfig())
+├── IDownstreamClient.hpp     # async forward interface + DTOs (DownstreamRequest/Response/Error)
+├── asioUdsHttpClient.hpp/.cpp# standalone-Asio impl (UDS connect-per-request) + llhttp response parse
+└── deferredForwarder.hpp/.cpp# limiter + client + per-endpoint post-processing pool orchestration
+```
+
+- **`IDownstreamClient::sendAsync(request, bodyKeepAlive, onComplete)`** — the `AsioUdsHttpClient`
+  holds `bodyKeepAlive` only until the **send** completes, then drops it → the payload + byte budget
+  are freed at send time (not the round-trip). Async on standalone Asio (`asio::local::stream_protocol`,
+  connect-per-request, `Connection: close`), request framed by hand, response parsed with the vendored
+  **llhttp**; sends **zero-copy** from our single buffer and parks **no** thread per in-flight request
+  (one small `io_context` serves many). Each phase has its own deadline **and its own error value** —
+  `DownstreamError::{ConnectTimeout,WriteTimeout,ResponseTimeout}` — so a log line can name the
+  tunable that governs whichever one elapsed. `DownstreamTarget::responseTimeoutMs` (`<=0` → the
+  configured default) lets one endpoint wait minutes for a slow async handler without every other
+  endpoint tolerating the same delay before a hung downstream is noticed; the facade warns at startup
+  if an endpoint's connect+write+response budget exceeds `http_request_timeout`, which caps the whole
+  request and would otherwise cut the wait short.
+- **`DeferredForwarder::forward(req, responder, target, postProcess)`** — acquires a
+  `DeferredWorkLimiter::Slot` (plain `503` when full; the agent retries), sends via the client, and on
+  completion **offloads** the per-endpoint `PostProcessor` onto its own pool (so the client's I/O
+  threads stay free), which builds and delivers the reply, then releases the slot. `DownstreamTarget`
+  carries the `socketPath`, so one forwarder serves **many endpoints and many sockets**.
+- **`PostProcessor`** is the *type*; concrete post-processors are **endpoint policy** and live in
+  `endpoints/`, not here (e.g. `endpoints::stateless::postProcess`: send/connect/timeout → **503**;
+  downstream `2xx` → **202 Accepted**; `400` → **400**; `413` → **413**; `5xx`/other → **503**). A
+  `PostProcessor` may be non-trivial (inspect the downstream body, apply business logic).
+- **Lifecycle**: the client owns its own `io_context` + thread(s) (RESTinio keeps its loop private);
+  the forwarder owns the post-processing pool. The builder-only responder is thread-safe, so the reply
+  is delivered from the post-processing thread. `IHttpServer::stopAccepting()` closes the acceptor and
+  drains the handler worker pool **while deliberately leaving the HTTP transport's I/O runtime
+  alive** -- only then does the facade stop the downstream client and drain the forwarder (so any
+  reply already in flight can still be delivered safely), and only after *that* does it fully
+  `stop()` the transport (releasing the I/O runtime). Getting this order backwards is a real
+  use-after-free: a `RestinioResponder` handed to an in-flight forward keeps the agent's connection
+  alive independently of the server object, but calling `send()` on it after the transport's I/O
+  runtime is gone touches freed memory. See `RemotedModuleFacade::stop()` for the exact 4-phase
+  sequence, and `test/unit/shutdownRace_test.cpp` for the end-to-end regression test (run it under
+  ASan -- `-DFSANITIZE=ON` -- for it to be a meaningful check).
+
+## Request lifecycle example — a `POST /stateless`, end to end
+
+How a payload flows, which threads/queues it crosses, and how `IDownstreamClient`, `AsioUdsHttpClient`
+and `DeferredForwarder` interact. A `/stateless` request crosses **four execution contexts**; each hop
+between them is an `asio::post(...)` — i.e. a queue.
+
+| # | Context | Threads (config) | `<=0` default |
+|---|---|---|---|
+| **A** | RESTinio I/O threads | `io_threads` | `cpp_get_nproc()` |
+| **B** | Transport worker pool (`asio::thread_pool`) | `http_worker_threads` | `2 * cpp_get_nproc()` (oversubscribed: work here can block) |
+| **C** | Downstream client `io_context` (`AsioUdsHttpClient`) | `downstream_io_threads` | `cpp_get_nproc()` |
+| **D** | Post-processing pool (`DeferredForwarder`) | `downstream_post_process_threads` | `cpp_get_nproc()` |
+
+All four are thread-count fields: a caller value `<=0` resolves via `cpp_get_nproc()`
+(`shared_modules/utils/proc.hpp`, cgroup-aware on Linux) instead of a fixed built-in constant, so
+the pool sizes track the host/cgroup's available CPUs (`httpServerConfig.cpp::resolveThreadCount()`
+for **A**/**B**, `downstreamConfig.cpp`'s local `resolveThreadCount()` for **C**/**D**). **B** uses
+a `2x` multiplier because its own doc comment ("blocking work offload") means threads there can
+block (CMAC verification, `client.keys` file I/O), unlike the purely async I/O reactors **A**/**C**.
+
+### End-to-end flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Ag as Agent
+    participant A as RESTinio IO threads A
+    participant B as Worker pool B
+    participant F as DeferredForwarder
+    participant C as UDS client io_context C
+    participant D as Post-proc pool D
+    participant E as Engine
+
+    Ag->>A: TLS + POST /stateless (H/E batch)
+    Note over A: tryReserve(byte budget) — plain 503 if full<br/>makeHttpRequest() = SINGLE copy into RequestContext<br/>create_response() builder; drop RESTinio's buffer
+    A->>B: asio::post (worker queue)
+    Note over A: return request_accepted() — I/O thread free
+    Note over B: AES-CMAC verify (beginSession→update→finish)<br/>build AuthenticatedRequest (payload = view + keep-alive)
+    B->>F: forward(authReq, responder, target, mapper)
+    Note over F: limiter.tryAcquire() — plain 503 if full
+    F->>C: client.sendAsync(req, keepAlive = authReq, onComplete)
+    Note over B: forward() returns — worker thread free
+    Note over C: async_connect → async_write(head + body view)
+    Note over C: write done → drop keep-alive<br/>⇒ payload buffer + byte budget FREED (at send)
+    C->>E: POST /events/enriched (zero-copy body)
+    E-->>C: 200 / 400 / 500
+    Note over C: async_read → llhttp parse → finish() (once)
+    C->>D: asio::post (post-proc queue)
+    Note over D: stateless::postProcess → 202 / 400 / 413 / 503<br/>responder->send(); Slot released
+    D->>A: builder.done() schedules the write on the connection strand
+    A-->>Ag: HTTP response
+```
+
+### Step by step
+
+1. **[A] Ingress.** RESTinio accepts the TLS connection and reads the full request into its own buffer
+   (bounded by `max_body_size` and `max_parallel_connections`). The route handler runs on the I/O
+   thread: it reserves the payload against the **byte budget** (plain `503` if exhausted), copies the
+   body **once** into a shared `RequestContext` (with its `Reservation`), builds a `RestinioResponder`
+   (`create_response()` moves the connection into a builder), and **drops the RESTinio handle** — freeing
+   RESTinio's original buffer here. Then it `asio::post`s to the worker pool and returns immediately.
+2. **[B] Auth + handler.** A worker thread runs the `AuthGateway` wrapper: full AES-CMAC verification
+   (synchronous — CPU, off the I/O threads). On failure it replies `400`/`401`/`413`. On success it
+   builds an `AuthenticatedRequest` whose `payload` is a **zero-copy view** into the single buffer plus
+   a keep-alive to the context, and calls the `/stateless` handler (`stateless::makeHandler`'s
+   closure), which first runs `validatePayloadIdentity()` (parses the `H` line, cross-checks
+   `wazuh.agent.id` against the authenticated agent id — `400` on a mismatch/malformed header,
+   without ever calling `forward()`), then calls `DeferredForwarder::forward(...)`.
+3. **[B] forward().** Acquires a `DeferredWorkLimiter` slot (plain `503` if full), then
+   `client->sendAsync(dreq, keepAlive = std::move(authReq), completion)`. `forward()` returns and the
+   **worker thread is free** — the request is now in flight holding only the byte reservation (via the
+   keep-alive), the deferred slot, and the responder builder.
+4. **[C] Async UDS.** `AsioUdsHttpClient` runs a per-request `Session` (its own strand) on the client
+   `io_context`: connect → `async_write(head + body view)` (zero-copy). **On write-complete it drops
+   the keep-alive** → the context (single body copy) and its `Reservation` are destroyed → the
+   **byte budget is freed at send time**. Then it reads and parses the response with llhttp and calls
+   the completion (once).
+5. **[C]→[D] Completion.** The completion does **not** post-process on the I/O thread; it `asio::post`s
+   to the **post-processing pool**, keeping the client's I/O threads free for other in-flight requests.
+6. **[D] Reply.** A post-pool thread runs `stateless::postProcess` (maps the downstream result to
+   `202`/`400`/`413`/`503`) and calls `responder->send(...)`; the builder's `done()` marshals the write
+   back onto the RESTinio connection strand ([A]), which writes the reply to the agent. Destroying the
+   task **releases the deferred slot**.
+
+### Who does what
+
+```mermaid
+flowchart TD
+    facade["RemotedModuleFacade<br/>(owns everything; lifecycle)"]
+    gw["AuthGateway<br/>(AES-CMAC)"]
+    fwd["DeferredForwarder<br/>(owns post-proc pool)"]
+    lim["DeferredWorkLimiter<br/>(slot cap → 503)"]
+    cli["AsioUdsHttpClient : IDownstreamClient<br/>(owns io_context + threads)"]
+
+    facade -->|owns| gw
+    facade -->|owns| fwd
+    facade -->|owns| lim
+    facade -->|owns| cli
+    gw -->|"/stateless handler calls"| fwd
+    fwd -->|tryAcquire slot| lim
+    fwd -->|sendAsync| cli
+    cli -->|"onComplete → post-proc pool"| fwd
+```
+
+- **`IDownstreamClient`** — the interface / mock seam. Its contract: `sendAsync` drops `bodyKeepAlive`
+  when the **send** completes and invokes `onComplete` **exactly once**. `DeferredForwarder` depends
+  only on this interface.
+- **`AsioUdsHttpClient`** — the async I/O engine (context C). Owns the `io_context` + thread(s); per
+  request drives a `Session` state machine (connect → write → read → llhttp parse → timeouts) on its
+  own strand, holding itself alive via a `shared_ptr` through the callback chain. It is the component
+  that frees the payload at write-complete.
+- **`DeferredForwarder`** — the orchestrator / glue between the endpoint handler and the client. Gates
+  the limiter (503 when full), calls the client, and offloads the per-endpoint `PostProcessor` to its
+  own pool (context D) to build the reply and release the slot. Owns the post-processing pool.
+
+### What each resource costs and for how long
+
+| Resource | Acquired at | Released at | Held during |
+|---|---|---|---|
+| **Single payload copy** (`RequestContext` body) | [A] `makeHttpRequest` | [C] **write-complete** | worker queue + auth + forward + connect + write |
+| **Byte-budget reservation** | [A] `tryReserve` | with the buffer (same context) | same as above |
+| **Deferred-work slot** | [B] `forward()` | [D] after the reply (post-task destroyed) | connect + write + **downstream wait** + post-process |
+| **Responder** (builder) | [A] | after `send()` in [D] | the whole trip (thread-safe, send-once) |
+
+Two complementary backpressure phases: the **byte budget** bounds *receive→send* (released at send),
+the **deferred limiter** bounds *the wait for the downstream*.
+
+### Notes
+
+- **RESTinio's buffer is freed early** (step 1, on the I/O thread), before queueing to the worker pool
+  — so while the request waits in the worker queue only **our** single copy exists.
+- **`forward()` never blocks**: it returns as soon as it hands off to the client; no worker/`io_context`
+  thread is parked waiting for the downstream (the client's `io_context` multiplexes many in-flight
+  requests without a thread each).
+- **The `AuthenticatedRequest` metadata (`agentId`, …) is freed at send too** (it *is* the keep-alive).
+  `stateless::postProcess` doesn't need it; a future post-processor that does must copy it out **before**
+  `forward()` (capture it in the `PostProcessor` closure).
+- **`send()` is cross-thread safe**: it is called from a post-pool thread [D]; the builder marshals the
+  actual socket write onto the RESTinio connection strand [A].
+
 ## Agent<->manager auth middleware (`src/auth/`)
 
 Framework-agnostic implementation of the agent<->manager request authentication protocol:
 canonical request construction, incremental AES-CMAC, timestamp window and constant-time
-comparison. `authTypes.hpp` holds the shared contract (`AuthenticatedRequest`/`AuthError`/
+comparison. `authTypes.hpp` holds the shared contract (`AuthenticatedRequest`/`Payload`/`AuthError`/
 `publicErrorFor`/`AuthConfig`) and `iAgentKeystore.hpp` the key-lookup interface; `authMiddleware`,
 `cmac`, `keystore` are the implementation. It knows nothing about RESTinio or sockets
 -- the `AuthGateway` (in `endpoints/`) is the only adapter between it and our transport. Depends on
-OpenSSL (linked into `remoted_module`).
+OpenSSL (linked into `remoted_module`). The middleware **streams** the AES-CMAC and never buffers the
+body: the verified body is exposed as a zero-copy `Payload` view that the `AuthGateway` attaches from
+the transport's single request buffer.
+
+`AuthConfig`'s tunables (`maxRequestAgeSeconds`, `maxFutureSkewSeconds`, `maxBodySize`) are
+populated from the matching C-ABI fields (`auth_max_request_age`, `auth_max_future_skew`,
+`auth_max_body_size`, in turn read from the `remoted.auth_*` internal options in `secure.c`) via
+`remoted::auth::buildAuthConfig()` (`auth/authTypes.cpp`), which the facade calls instead of
+default-constructing `AuthConfig{}`. `supportedProtocolVersion` stays fixed (`"1"`) -- it's a
+protocol constant, not an ops tuning knob. See *Configuration* above.
 
 Unit tests under `test/unit/` (`cmac_test.cpp`, `authMiddleware_test.cpp`,
 `keystore_test.cpp`); `authMiddleware_test.cpp` exercises `AuthMiddleware` against a
@@ -125,6 +417,34 @@ work as an AES-CMAC key. client.keys has no "disabled but present" state -- a re
 absent -- so `AuthError` has no separate inactive-agent case; an unknown and a removed agent are
 indistinguishable and both resolve to `AuthError::UnknownAgent`.
 
+**Hot-reload:** `Keystore` runs a background watcher thread (RAII -- started at the end of the
+constructor, stopped and joined in the destructor) so an agent enrolled or removed after startup is
+picked up without restarting `remoted`. Two triggers feed the same check: an `inotify` subscription
+on the file (`IN_MODIFY`/`IN_CLOSE_WRITE`/`IN_MOVE_SELF`/`IN_DELETE_SELF`, re-armed on the same path
+if an atomic rename-replace invalidates the watch descriptor) reacts immediately, and a periodic
+fallback poll (`poll()`'s own timeout doubles as the interval) catches anything the subscription
+ever missed -- both converge on the same `fileLooksChanged()` gate. Change detection compares the
+file's **content hash** (`Utils::hashFile()`, `shared_modules/utils/hashHelper.h`), not mtime: mtime
+is only second-granularity, so two rewrites landing in the same wall-clock second would otherwise
+look identical. `reload()` itself is guarded against adopting a line caught mid-write: it hashes the
+file before and after parsing and discards+retries (a few times, briefly) if they don't match, so a
+concurrent rewrite can only ever flip the in-memory table between two complete, consistent states,
+never a torn mix of both -- see `test/unit/keystore_test.cpp`'s `ReloadNeverAdoptsATornMixOfTwoValidContents`
+for the regression test. The poll/fallback interval is `remoted_module_config_t::keystore_refresh_interval`,
+which `secure.c` populates from the classic pipeline's own `remoted.keyupdate_interval` (its
+`rem_keyupdate_main` thread, `secure.c`) rather than a second, redundant internal option.
+
+**Agent ids are numeric (`AgentId = std::uint32_t`, `authTypes.hpp`):** an agent id is always numeric
+by design, so `Keystore`'s id→key table is keyed by `AgentId`, not by string. A `client.keys` line
+whose id column doesn't parse as a non-negative integer (fully consuming the field, via
+`std::from_chars`) is skipped like any other malformed line -- it can never match a real lookup, and
+the rest of the file still loads normally. The `Authorization` header's `<agent-id>` segment is
+likewise restricted to digits at parse time (`parseAuthorization()`); anything else fails immediately
+as `AuthError::MalformedAuthorization`, before it ever reaches the Keystore. The **string** form of
+the agent id (as it appeared on the wire) still flows through unchanged where it matters --
+`AuthenticatedRequest::agentId` and the AES-CMAC canonical bytes are untouched by this -- only the
+Keystore's key type and the lookup argument are numeric.
+
 ## Contract
 
 ```c
@@ -135,9 +455,60 @@ void remoted_module_stop(void);
 - `start()` launches the worker thread and returns immediately; the module owns the thread.
 - `stop()` signals the worker (atomic flag + condition_variable) and joins it. Safe to call
   when never started.
-- All exceptions are caught at the `extern "C"` boundary — nothing throws into C.
-- Logging is routed back into remoted's `ossec.log` via the `full_log_fnc_t` callback
+- All exceptions are caught at the `extern "C"` boundary — nothing throws into C. Both wrappers
+  catch `std::exception` **and** `(...)`: a non-`std::exception` crossing into remoted's C code
+  would hit no handler at all and `std::terminate` the daemon.
+- Logging is routed back into remoted's `wazuh-manager.log ` via the `full_log_fnc_t` callback
   (remoted passes `mtLoggingFunctionsWrapper`) and the `LOGFN_*` macros.
+
+## Diagnostics — `src/common/logThrottle.hpp`
+
+Every condition where an operator may need to change a setting is logged, and named with the setting
+to change (`"…Consider increasing the value of 'max_deferred_requests'."`). The rules:
+
+- **Operator-actionable → `LOGFN_WARN`, throttled.** Byte budget exhausted (`max_inflight_bytes`),
+  deferred slots exhausted (`max_deferred_requests`), each downstream failure kind
+  (`downstream_connect_timeout` / `_write_timeout` / `_response_timeout` /
+  `_max_response_body_size`), clock skew (`auth_max_request_age` / `auth_max_future_skew`), body cap
+  (`auth_max_body_size`), an unusable `client.keys` key, and an authenticated agent claiming a
+  different agent id.
+- **Client-fault 4xx → `LOGFN_DEBUG2`, unthrottled.** Malformed/unauthenticated requests. An
+  unauthenticated peer controls how many of these it triggers, so logging them at WARN would be a
+  log-amplification vector against `wazuh-manager.log ` — and a bad MAC from an internet scanner is noise.
+  Visible with `remoted.debug=2` when someone is actually diagnosing a client.
+- **`LogThrottle`** (`src/common/logThrottle.hpp`) enforces one line per 90 s per condition —
+  matching remoted's own C throttles — and folds the suppressed count into the emitted line, so
+  nothing is silently lost. One instance **per condition**, never shared: a permanently-failing
+  condition must not mask a newly-appearing one. It deliberately does **not** log (it only decides),
+  which is what keeps `loggerHelper.h` out of headers the test binary includes, and makes the
+  decision unit-testable on its own.
+
+`endpoints/endpoint.cpp`'s `errorResponseFor()` is the single funnel for all auth rejections: it logs
+the reason **before** `publicErrorFor()` collapses seven distinct credential failures into one
+generic 401. Downstream failures are logged in `deferredForwarder.cpp`'s completion callback, where
+the raw `DownstreamError` is still available — `stateless::postProcess` turns them all into one 503,
+so by the time the agent is answered the cause is gone.
+
+RESTinio's own diagnostics reach `ossec.log` too, via `WazuhRestinioLogger`
+(`http_server/RestinioHttpServer.cpp`), which replaces `restinio::null_logger_t` — whose methods are
+`constexpr void {}`, i.e. every transport diagnostic was previously discarded *at compile time*. This
+covers TLS handshake failures, malformed HTTP, `EADDRINUSE`, and every `http_max_*` breach — but
+**none of it appears by default**: both `warn()` and `error()` are logged at `LOGFN_DEBUG1`,
+throttled (visible with `remoted.debug>=1`). RESTinio's own notion of "error" is a per-connection
+protocol/socket event (a truncated read, a malformed parse, a header/URL over its limit) driven
+overwhelmingly by client behavior — a portscanner, or deliberately-malformed negative-test traffic
+like `tools/send_stateless.py --all` — not "the manager is broken" in the sense this module reserves
+`LOGFN_ERROR` for. The one genuinely rare, operator-facing case (the acceptor failing to bind) is
+already surfaced distinctly by our own cert/key pre-check and `reportFailedStart()` escalation, so
+demoting RESTinio's own duplicate report of it costs nothing. The throttle matters even at DEBUG1:
+`Log::isDebugEnabled()` filters nothing today (`Log::GLOBAL_LOG_LEVEL` is `0` fixed), so the message
+builder — an allocation — runs unconditionally per call unless bounded; the real `dbg_flag` filter
+is further downstream. `trace`/`info` are left as `constexpr {}` no-ops for a different reason: with
+a real logger type RESTinio selects a generic logging overload that materializes a closure and a
+try/catch frame at ~30 per-request call sites, measurable even when the body does nothing.
+**The message is always passed as an argument to `"%s"`, never as the format string** — `LogFn`
+forwards its format to `_log()`'s `vfprintf`, and RESTinio's builders embed client-controlled data
+(request target, header values), so using it as a format would be a remote format-string bug.
 
 ## Integration in remoted
 
@@ -150,9 +521,22 @@ void remoted_module_stop(void);
 ## Tests
 
 Unit tests (built when `UNIT_TEST` is enabled) live in `test/unit/`: `remotedModule_test.cpp`
-(C-ABI black-box), `httpServer_test.cpp` (transport config + responder contract),
-`authGateway_test.cpp` (gateway: 400/401 paths, valid-auth success, handler-exception → 500), plus
-the auth core `cmac_test.cpp`, `authMiddleware_test.cpp`, `keystore_test.cpp`.
+(C-ABI black-box), `httpServer_test.cpp` (transport config incl. in-flight-budget/max-connections
+resolution + responder contract incl. a shared request surviving a deferred handler),
+`inFlightBudget_test.cpp` (reserve/release accounting, exhaustion, RAII move-once, disabled mode,
+concurrency), `deferredWorkLimiter_test.cpp` (count-based limiter: acquire-to-capacity, RAII/move
+release, disabled mode, concurrency), `deferredForwarder_test.cpp` (mock client: slot-full→503,
+target/body forwarded, post-processor result delivered + slot released, keep-alive release),
+`statelessEndpoint_test.cpp` (endpoint policy: `target()` + `postProcess()` mapping 202/400/413/503;
+`validatePayloadIdentity()` mismatch/malformed-header/non-numeric/leading-zero-normalization cases;
+`makeHandler()` short-circuits before `forward()` on a validation failure and still forwards +
+post-processes on success), `asioUdsHttpClient_test.cpp` (in-process UDS stub: response parse,
+connect/timeout errors, keep-alive), `payload_test.cpp` (zero-copy `Payload`: view validity,
+keep-alive pinning, explicit `release()` + RAII), `authGateway_test.cpp` (gateway: 400/401 paths, valid-auth success + payload
+view, payload outliving dispatch + release keeping metadata, handler-exception → 500), plus the auth
+core `cmac_test.cpp`, `authMiddleware_test.cpp` (incl. a non-numeric `Authorization` agent-id →
+`MalformedAuthorization`), `keystore_test.cpp` (incl. a non-numeric `client.keys` id line being
+skipped without blocking the rest of the file).
 
 ```bash
 ctest --test-dir <build> -R remoted_module_utest -V
@@ -167,6 +551,7 @@ canonical byte sequence, agent key read straight from `client.keys`). Requires
 ```bash
 python3 tools/send_stateless.py            # one valid signed request -> 200
 python3 tools/send_stateless.py --tamper   # modified body -> 401 (InvalidMac)
-python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes
+python3 tools/send_stateless.py --all      # every success/failure scenario with expected codes,
+                                            # incl. payload_agent_mismatch -> 400 (PayloadAgentMismatch)
 # options: --url (default https://127.0.0.1:9443), --agent-id, --body, --client-keys
 ```

@@ -11,11 +11,35 @@
 
 #include "authMiddleware.hpp"
 
+#include "common/logThrottle.hpp"
+#include "loggerHelper.h"
+
 #include <algorithm>
 #include <charconv>
 
 namespace remoted::auth
 {
+    namespace
+    {
+        constexpr auto AUTH_MIDDLEWARE_LOGTAG {"wazuh-manager-remoted:auth"};
+
+        // Function-local statics rather than members: loggerHelper.h must stay out of
+        // authMiddleware.hpp (the tests include it, and Log::GLOBAL_LOG_FUNCTION is DSO-hidden),
+        // and both of these are process-wide conditions anyway.
+        const LogFn& logFn()
+        {
+            static const LogFn instance {AUTH_MIDDLEWARE_LOGTAG};
+            return instance;
+        }
+
+        // A broken crypto provider fails EVERY request, so this would otherwise emit one ERROR per
+        // request for as long as the condition lasts.
+        remoted::common::LogThrottle& cmacUnavailableThrottle()
+        {
+            static remoted::common::LogThrottle instance;
+            return instance;
+        }
+    } // namespace
 
     const char* toString(AuthError err)
     {
@@ -55,12 +79,6 @@ namespace remoted::auth
 
     namespace
     {
-
-        bool isValidAgentIdChar(char c)
-        {
-            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '.' || c == '_' ||
-                   c == '-';
-        }
 
         bool isAllDigits(std::string_view s)
         {
@@ -113,7 +131,9 @@ namespace remoted::auth
             const std::string_view timestamp = rest.substr(0, secondColon);
             const std::string_view mac = rest.substr(secondColon + 1);
 
-            if (agentId.empty() || !std::all_of(agentId.begin(), agentId.end(), isValidAgentIdChar))
+            // An agent id is always numeric by design -- reject anything else here, rather than
+            // letting it reach the (numeric) Keystore lookup.
+            if (!isAllDigits(agentId))
             {
                 return std::nullopt;
             }
@@ -195,9 +215,19 @@ namespace remoted::auth
             return AuthError::FutureRequest;
         }
 
-        // Step 4: look up the agent key.
+        // Step 4: look up the agent key. parseAuthorization() already guarantees parsed->agentId is
+        // all-digits and non-empty (isAllDigits()), so from_chars can only fail here on overflow
+        // (more digits than AgentId holds) -- no real agent has an id that large, so treat it the
+        // same as unknown.
         const std::string agentId(parsed->agentId);
-        const auto agentKey = m_keystore->keyFor(agentId);
+        AgentId numericAgentId = 0;
+        const auto [agentIdEnd, agentIdEc] =
+            std::from_chars(parsed->agentId.data(), parsed->agentId.data() + parsed->agentId.size(), numericAgentId);
+        if (agentIdEc != std::errc {} || agentIdEnd != parsed->agentId.data() + parsed->agentId.size())
+        {
+            return AuthError::UnknownAgent;
+        }
+        const auto agentKey = m_keystore->keyFor(numericAgentId);
         if (!agentKey)
         {
             return AuthError::UnknownAgent;
@@ -227,8 +257,33 @@ namespace remoted::auth
         {
             session.m_cmac = std::make_unique<Cmac>(*agentKey);
         }
-        catch (const std::exception&)
+        catch (const CmacKeyError&)
         {
+            // This one agent's key is the wrong length. Expected in normal operation (a corrupted
+            // key column), reported to the operator -- throttled -- from errorResponseFor()'s
+            // MissingKey branch, so nothing extra is logged here.
+            return AuthError::MissingKey;
+        }
+        catch (const std::exception& e)
+        {
+            // CmacProviderError and anything else unexpected: AES-CMAC itself is unavailable, so
+            // EVERY agent will fail to authenticate until this is fixed. Previously this was
+            // swallowed and reported as an ordinary bad key, which made a total, permanent
+            // authentication outage completely invisible.
+            //
+            // The agent still receives the generic 401 (see publicErrorFor), which is wrong-ish --
+            // it tells the agent its credentials are bad when the manager is what is broken, so an
+            // agent may re-enroll instead of retrying. Fixing that needs a new AuthError mapped to
+            // 503 and is deliberately left as a follow-up; surfacing it in the log is the urgent half.
+            if (const auto d = cmacUnavailableThrottle().record())
+            {
+                LOGFN_ERROR(logFn(),
+                            "AES-CMAC is unavailable, so every agent request will fail authentication (%llu "
+                            "occurrence(s) in the last %d s): %s",
+                            static_cast<unsigned long long>(d.total),
+                            remoted::common::LogThrottle::kDefaultWindowSeconds,
+                            e.what());
+            }
             return AuthError::MissingKey;
         }
 
@@ -255,7 +310,6 @@ namespace remoted::auth
             return AuthError::BodyTooLarge;
         }
         m_cmac->update(data, len);
-        m_body.insert(m_body.end(), data, data + len);
         return AuthError::None;
     }
 
@@ -267,12 +321,14 @@ namespace remoted::auth
             return AuthError::InvalidMac;
         }
 
+        // Identity only. The verified body is attached by the transport/gateway as a
+        // zero-copy Payload view into its single request buffer -- the middleware never
+        // buffers the body (the AES-CMAC above consumed it incrementally).
         AuthenticatedRequest req;
         req.agentId = std::move(m_agentId);
         req.protocolVersion = std::move(m_protocolVersion);
         req.method = std::move(m_method);
         req.requestTarget = std::move(m_requestTarget);
-        req.body = std::move(m_body);
         return req;
     }
 

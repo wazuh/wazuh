@@ -14,7 +14,6 @@
 - Added manager watermarks. ([#35579](https://github.com/wazuh/wazuh/issues/35579))
 - Added byte-based capacity limits to wazuh-manager-remoted. ([#37052](https://github.com/wazuh/wazuh/issues/37052))
 - Added default API role mappings for the indexer users wazuh-admin, wazuh-readonly and wazuh-demo. ([#37706](https://github.com/wazuh/wazuh/issues/37706))
-- Added a C++ worker-module bridge in `wazuh-manager-remoted`, letting the daemon launch a configurable C++ thread through a direct-linked `extern "C"` boundary.
 
 #### Changed
 
@@ -102,4 +101,3 @@
 - Lowered the `wazuh-agentd` connection socket error log to debug level to avoid duplicating the "Lost connection with manager" error on transient disconnections. ([#37653](https://github.com/wazuh/wazuh/issues/37653))
 - Fixed a race condition when saving the Logcollector file status on shutdown. ([#37626](https://github.com/wazuh/wazuh/issues/37626))
 - Fixed an unbounded memory leak in `wazuh-modulesd` caused by a missing RPM macro context cleanup on every package scan cycle. ([#37656](https://github.com/wazuh/wazuh/issues/37656))
-

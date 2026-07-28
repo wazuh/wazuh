@@ -14,7 +14,11 @@
 // end-to-end over the wire.
 #include <cstdio>
 #include <fstream>
+#include <set>
+#include <string>
+#include <type_traits>
 #include <unistd.h>
+#include <vector>
 
 #include <gtest/gtest.h>
 
@@ -180,6 +184,18 @@ namespace
         EXPECT_EQ(std::get<AuthError>(result), AuthError::UnknownAgent);
     }
 
+    TEST(Middleware, NonNumericAgentIdInAuthorizationIsRejected)
+    {
+        // An agent id is always numeric by design -- a non-digit agent-id segment must fail at
+        // header-parsing time (MalformedAuthorization), before it ever reaches the Keystore lookup.
+        Fixture f;
+        const std::string body = "body";
+        const auto result = f.run(
+            "1", "Wazuh abc:" + std::to_string(kNow) + ":deadbeefdeadbeefdeadbeefdeadbeef", "POST", "/stateless", body);
+        ASSERT_TRUE(std::holds_alternative<AuthError>(result));
+        EXPECT_EQ(std::get<AuthError>(result), AuthError::MalformedAuthorization);
+    }
+
     TEST(Middleware, MalformedAuthorizationIsRejected)
     {
         Fixture f;
@@ -216,6 +232,63 @@ namespace
         const auto mac = f.sign("POST", "/stateless", body); // signer already uppercases
         const auto result = f.run("1", "Wazuh 001:" + std::to_string(kNow) + ":" + mac, "post", "/stateless", body);
         ASSERT_TRUE(std::holds_alternative<AuthenticatedRequest>(result));
+    }
+
+    // toString() is what puts a human-readable reason in ossec.log for every rejected request
+    // (endpoint.cpp's errorResponseFor()). A new AuthError enumerator added without extending the
+    // switch would silently log "unknown", so pin every value here.
+    TEST(AuthErrorToString, CoversEveryEnumerator)
+    {
+        const AuthError all[] = {AuthError::None,
+                                 AuthError::MissingProtocolVersion,
+                                 AuthError::UnsupportedProtocolVersion,
+                                 AuthError::MissingAuthorization,
+                                 AuthError::MalformedAuthorization,
+                                 AuthError::UnknownAgent,
+                                 AuthError::MissingKey,
+                                 AuthError::ExpiredRequest,
+                                 AuthError::FutureRequest,
+                                 AuthError::InvalidMac,
+                                 AuthError::PayloadAgentMismatch,
+                                 AuthError::BodyTooLarge};
+
+        std::set<std::string> seen;
+        for (const auto err : all)
+        {
+            const char* tag = toString(err);
+            ASSERT_NE(tag, nullptr);
+            EXPECT_STRNE(tag, "unknown") << "missing switch case for " << static_cast<int>(err);
+            EXPECT_TRUE(seen.insert(tag).second) << "duplicate tag '" << tag << "'";
+        }
+        EXPECT_EQ(seen.size(), std::size(all));
+    }
+
+    // A key of the wrong length is one agent's problem; a provider failure is everyone's. The two must
+    // be distinguishable by type so the middleware can stay quiet about the former and raise an ERROR
+    // for the latter (see AuthMiddleware::beginSession).
+    TEST(CmacExceptions, KeyErrorAndProviderErrorAreDistinctTypes)
+    {
+        EXPECT_THROW(Cmac(std::vector<std::uint8_t>(7, 0xAB)), CmacKeyError);
+
+        // CmacKeyError must NOT be catchable as CmacProviderError (and vice versa), otherwise the
+        // discrimination in beginSession() collapses back to the old behaviour.
+        try
+        {
+            Cmac bad {std::vector<std::uint8_t>(7, 0xAB)};
+            FAIL() << "expected CmacKeyError";
+        }
+        catch (const CmacProviderError&)
+        {
+            FAIL() << "a bad key length must not be reported as a provider failure";
+        }
+        catch (const CmacKeyError&)
+        {
+            SUCCEED();
+        }
+
+        // Both remain std::exception, so existing generic handlers keep working.
+        EXPECT_TRUE((std::is_base_of_v<std::exception, CmacKeyError>));
+        EXPECT_TRUE((std::is_base_of_v<std::exception, CmacProviderError>));
     }
 
 } // namespace
