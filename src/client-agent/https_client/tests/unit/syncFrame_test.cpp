@@ -14,6 +14,8 @@
 
 #include "syncFrame.hpp"
 
+#include "sessionId.hpp"
+
 #include <gtest/gtest.h>
 
 #include <cstdio>
@@ -181,4 +183,39 @@ TEST(SyncFrameTest, ZeroLengthIdIsMalformed)
     std::FILE* out = std::tmpfile();
     EXPECT_EQ(SyncFrameResult::Malformed, readSyncSessionFrame(pipe.reader(), out, id, size));
     std::fclose(out);
+}
+
+TEST(SyncFrameTest, AnIdWithControlBytesIsMalformed)
+{
+    // A producer is free to put anything in the id field; the reader must
+    // reject it before a body byte is spooled, because the id later becomes
+    // the X-Session-Id header.
+    SyncFrameResult result {};
+    uint64_t size {0};
+    std::string idOut;
+
+    roundTrip("sess\r\nX-Injected: 1", "body", result, size, idOut);
+    EXPECT_EQ(SyncFrameResult::Malformed, result);
+    EXPECT_TRUE(idOut.empty());
+
+    roundTrip("sess with spaces", "body", result, size, idOut);
+    EXPECT_EQ(SyncFrameResult::Malformed, result);
+
+    roundTrip(std::string(SESSION_ID_MAX_LENGTH + 1, 'a'), "body", result, size, idOut);
+    EXPECT_EQ(SyncFrameResult::Malformed, result);
+}
+
+TEST(SyncFrameTest, TheIdShapesProducersUseRoundTrip)
+{
+    SyncFrameResult result {};
+    uint64_t size {0};
+    std::string idOut;
+
+    EXPECT_EQ("body", roundTrip("3f2504e0-4f89-11d3-9a0c-0305e82c3301", "body", result, size, idOut));
+    EXPECT_EQ(SyncFrameResult::Ok, result);
+    EXPECT_EQ("3f2504e0-4f89-11d3-9a0c-0305e82c3301", idOut);
+
+    EXPECT_EQ("body", roundTrip("fim.full_sync-42", "body", result, size, idOut));
+    EXPECT_EQ(SyncFrameResult::Ok, result);
+    EXPECT_EQ("fim.full_sync-42", idOut);
 }
