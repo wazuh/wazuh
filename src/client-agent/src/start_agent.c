@@ -437,6 +437,7 @@ void start_agent(int is_startup)
         w_agentd_keys_init();
     }
 
+    /* legacy tcp connection removed
     int current_server_id = agt->rip_id;
     while (1) {
         // (max_retries - 1) attempts
@@ -467,10 +468,10 @@ void start_agent(int is_startup)
 
         sleep(agt->server[current_server_id].retry_interval);
 
-        /* Wait for server reply */
+        // Wait for server reply
         mwarn(AG_WAIT_SERVER, agt->server[current_server_id].rip, __wazuh_version);
 
-        /* If there is a next server, try it */
+        // If there is a next server, try it
         if (agt->server[current_server_id + 1].rip) {
             current_server_id++;
             mdebug1("Trying next server ip in the line: '%s'.", agt->server[current_server_id].rip);
@@ -479,6 +480,8 @@ void start_agent(int is_startup)
             mwarn("Unable to connect to any server.");
         }
     }
+    */
+   return;
 }
 
 /**

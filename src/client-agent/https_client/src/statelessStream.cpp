@@ -142,8 +142,21 @@ bool StatelessStream::flushOnce(Waiter& waiter, uint32_t timeoutMs, uint32_t max
     spec.bodyLength = body.size();
     spec.timeoutMs = timeoutMs;
 
+    // Operational visibility (send-time debug log, mirroring controlStream.cpp's
+    // sendStartup()/sendNotify()/sendShutdown() and configFetcher.cpp's fetch()):
+    // confirms the flush was actually attempted, with the batch size that made
+    // it observable without source-level reasoning.
+    LOGFN_DEBUG2(m_logFn, "Sending /stateless batch (%llu events, %zu bytes).",
+                 static_cast<unsigned long long>(snapshot.eventCount), body.size());
+
     const auto result = m_sender.send(spec, waiter, maxAttempts);
     m_lastFlush = m_clock.steadyNow();
+
+    if (result.outcome == OutcomeClass::Ok)
+    {
+        LOGFN_DEBUG2(m_logFn, "Stateless batch delivered to the manager.");
+    }
+
     handleOutcome(result.outcome, snapshot);
     return result.outcome == OutcomeClass::Ok;
 }

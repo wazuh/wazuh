@@ -67,6 +67,14 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
     spec.maxResponseBytes = CONFIG_MAX_DOWNLOAD_BYTES;
     spec.timeoutMs = m_config.statefulTimeoutMs; // The large-transfer class.
 
+    // Operational visibility (send-time debug log, mirroring controlStream.cpp's
+    // sendStartup()/sendNotify()/sendShutdown()): confirms the download was
+    // actually attempted and for which resource, so a log reader can tell
+    // "never attempted" from "attempted and failed" without source-level
+    // reasoning.
+    LOGFN_DEBUG2(m_logFn, "Sending /download (resource_type=config, resource_id='%s').",
+                 group.c_str());
+
     const auto result = m_sender.send(spec, waiter, DOWNLOAD_MAX_ATTEMPTS);
 
     if (result.outcome != OutcomeClass::Ok)
@@ -76,6 +84,9 @@ std::shared_ptr<SpoolFile> ConfigFetcher::fetch(const std::string& expectedHash,
                    static_cast<int>(result.outcome));
         return nullptr;
     }
+
+    LOGFN_DEBUG2(m_logFn, "Config download (resource_id='%s') delivered by the manager.",
+                 group.c_str());
 
     const auto actualHash = sha256FileHex(spool->path());
 
