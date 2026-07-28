@@ -11,6 +11,8 @@
 
 #include "syncFrame.hpp"
 
+#include "sessionId.hpp"
+
 #include <algorithm>
 #include <array>
 #include <vector>
@@ -182,7 +184,7 @@ SyncFrameResult readSyncSessionFrame(const SyncReadFn& read, std::FILE* out, std
 
     const uint32_t idLen = getU32(idLenBytes.data());
 
-    if (idLen == 0 || idLen > SYNC_FRAME_MAX_ID)
+    if (idLen == 0 || idLen > SESSION_ID_MAX_LENGTH)
     {
         return SyncFrameResult::Malformed;
     }
@@ -192,6 +194,13 @@ SyncFrameResult readSyncSessionFrame(const SyncReadFn& read, std::FILE* out, std
     if (const auto result = readAll(read, id.data(), idLen); result != SyncFrameResult::Ok)
     {
         return result;
+    }
+
+    // The id ends up in the X-Session-Id header, so reject anything that could
+    // break out of it before a single body byte is spooled.
+    if (!isValidSessionId(id))
+    {
+        return SyncFrameResult::Malformed;
     }
 
     std::array<uint8_t, 8> bodyLenBytes {};

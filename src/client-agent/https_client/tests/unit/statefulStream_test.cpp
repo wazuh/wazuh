@@ -13,6 +13,7 @@
 #include "mockCallbackSink.hpp"
 #include "mockHttpPerformer.hpp"
 #include "mockSpoolFactory.hpp"
+#include "sessionId.hpp"
 #include "statefulStream.hpp"
 
 #include <gmock/gmock.h>
@@ -276,4 +277,39 @@ TEST_F(StatefulStreamTest, BoundedQueueRejectsOverflow)
     }
 
     EXPECT_TRUE(rejected);
+}
+
+TEST_F(StatefulStreamTest, SessionIdsThatCouldSplitTheHeaderAreRejected)
+{
+    // The id crosses a process boundary and then becomes X-Session-Id, so
+    // anything that could break out of that header must never be queued.
+    expectNoSend();
+    EXPECT_CALL(m_spoolFactory, spool(_, _)).Times(0); // Rejected before spooling.
+
+    EXPECT_FALSE(submit("sess\r\nX-Injected: 1", "body"));
+    EXPECT_FALSE(submit("sess\ninjected", "body"));
+    EXPECT_FALSE(submit("sess\rinjected", "body"));
+    EXPECT_FALSE(submit(std::string {"sess\0hidden", 11}, "body"));
+    EXPECT_FALSE(submit("sess with spaces", "body"));
+    EXPECT_FALSE(submit("", "body"));
+    EXPECT_FALSE(submit(std::string(SESSION_ID_MAX_LENGTH + 1, 'a'), "body"));
+    EXPECT_FALSE(m_stream.hasPending());
+}
+
+TEST_F(StatefulStreamTest, TheSessionIdShapesProducersUseAreAccepted)
+{
+    // The guard must not be so tight that it rejects real ids: UUIDs and
+    // "<module>.<phase>-<counter>" both pass.
+    EXPECT_TRUE(submit("3f2504e0-4f89-11d3-9a0c-0305e82c3301", "body"));
+    EXPECT_TRUE(submit("fim.full_sync-42", "body"));
+    EXPECT_TRUE(m_stream.hasPending());
+}
+
+TEST_F(StatefulStreamTest, AdoptedSessionFilesAreIdCheckedToo)
+{
+    // submitFile() takes the same gate: the ABI can hand over a spooled file
+    // with any id at all.
+    EXPECT_FALSE(m_stream.submitFile("sess\r\nX-Injected: 1", "/tmp/hc_never_read", 4));
+    EXPECT_FALSE(m_stream.hasPending());
+    EXPECT_TRUE(m_stream.submitFile("adopted-1", "/tmp/hc_never_read", 4));
 }
