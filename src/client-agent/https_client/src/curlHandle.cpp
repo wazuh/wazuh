@@ -54,7 +54,8 @@ namespace
             {CurlOption::SslKey, CURLOPT_SSLKEY},
             {CurlOption::SslCiphers, CURLOPT_SSL_CIPHER_LIST},
             {CurlOption::FollowLocation, CURLOPT_FOLLOWLOCATION},
-            {CurlOption::NoSignal, CURLOPT_NOSIGNAL}};
+            {CurlOption::NoSignal, CURLOPT_NOSIGNAL}
+        };
         return *map;
     }
 
