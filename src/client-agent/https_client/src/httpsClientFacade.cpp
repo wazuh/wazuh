@@ -267,6 +267,8 @@ bool HttpsClientFacade::submitEvent(const uint8_t* frame, size_t length)
 
 bool HttpsClientFacade::submitSyncSession(const char* sessionId, const uint8_t* buffer, size_t length)
 {
+    std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+
     if (!m_started || sessionId == nullptr || buffer == nullptr || length == 0)
     {
         return false;
@@ -280,6 +282,8 @@ bool HttpsClientFacade::submitSyncSession(const char* sessionId, const uint8_t* 
 bool HttpsClientFacade::submitSyncSessionFile(const char* sessionId, const char* filePath,
                                               uint64_t size)
 {
+    std::lock_guard<std::mutex> lock(m_lifecycleMutex);
+
     if (!m_started || sessionId == nullptr || filePath == nullptr)
     {
         return false;
