@@ -192,6 +192,12 @@ typedef struct hc_callbacks_t
     /// hc_set_config_hash() with the hash actually on disk.
     void (*on_config_downloaded)(const char* config_hash, const char* file_path,
                                  void* user_data);
+    /// The config hash the manager reported on the last accepted Notify,
+    /// whether or not it differed from ours. Fired on every Notify so a
+    /// consumer holding a gate on the manager-validated configuration (the
+    /// agent's startup hash gate) can reconcile it even when nothing needs
+    /// downloading. Empty when the manager reported none.
+    void (*on_manager_config_hash)(const char* config_hash, void* user_data);
     void (*on_state_change)(int state, void* user_data);  ///< hc_conn_state_t
     void (*on_buffer_level)(int level, void* user_data);  ///< hc_buffer_level_t
     void* user_data;
