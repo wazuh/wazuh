@@ -52,6 +52,18 @@ STATIC int w_remoted_parse_legacy(XML_NODE node, remoted * logr);
  */
 STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr);
 
+/**
+ * @brief rejects a <remote><https> string option that would overflow the fixed-size
+ *        C-ABI buffer it's later copied into by secure.c's HandleSecure(), instead of
+ *        letting it be silently truncated by snprintf
+ *
+ * @param element XML element name, for the error message
+ * @param content configuration string to check
+ * @param max_len maximum accepted length (buffer size minus 1, for the NUL terminator)
+ * @return OS_SUCCESS if content fits, OS_INVALID (with a merror already logged) otherwise
+ */
+STATIC int w_remoted_https_check_max_len(const char * element, const char * content, size_t max_len);
+
 /* Reads remote config */
 int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
 {
@@ -112,6 +124,12 @@ int Read_Remote(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     if (logr->proto == 0) {
         logr->proto = REMOTED_NET_PROTOCOL_DEFAULT;
     }
+
+    /* Set local ip in here */
+    if (logr->lip == NULL && !logr->ipv6) {
+        os_strdup(REMOTED_LEGACY_LOCAL_IP_DEFAULT, logr->lip);
+    }
+
     return (0);
 }
 
@@ -250,6 +268,10 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
                 return (OS_INVALID);
             }
         } else if (strcasecmp(node[i]->element, xml_https_bind_addr) == 0) {
+            if (w_remoted_https_check_max_len(xml_https_bind_addr, node[i]->content, REMOTED_HTTPS_BIND_ADDR_MAX_LEN) == OS_INVALID) {
+                return (OS_INVALID);
+            }
+
             os_free(logr->https.bind_addr);
             os_strdup(node[i]->content, logr->https.bind_addr);
 
@@ -258,12 +280,24 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
                 return (OS_INVALID);
             }
         } else if (strcasecmp(node[i]->element, xml_https_certificate) == 0) {
+            if (w_remoted_https_check_max_len(xml_https_certificate, node[i]->content, REMOTED_HTTPS_CERTIFICATE_MAX_LEN) == OS_INVALID) {
+                return (OS_INVALID);
+            }
+
             os_free(logr->https.certificate);
             os_strdup(node[i]->content, logr->https.certificate);
         } else if (strcasecmp(node[i]->element, xml_https_key) == 0) {
+            if (w_remoted_https_check_max_len(xml_https_key, node[i]->content, REMOTED_HTTPS_KEY_MAX_LEN) == OS_INVALID) {
+                return (OS_INVALID);
+            }
+
             os_free(logr->https.key);
             os_strdup(node[i]->content, logr->https.key);
         } else if (strcasecmp(node[i]->element, xml_https_ca) == 0) {
+            if (w_remoted_https_check_max_len(xml_https_ca, node[i]->content, REMOTED_HTTPS_CA_MAX_LEN) == OS_INVALID) {
+                return (OS_INVALID);
+            }
+
             os_free(logr->https.ca);
             os_strdup(node[i]->content, logr->https.ca);
         } else if (strcasecmp(node[i]->element, xml_https_verification_mode) == 0) {
@@ -277,6 +311,10 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
                 mwarn(REMOTED_INV_VALUE_IGNORE, node[i]->content, xml_https_verification_mode);
             }
         } else if (strcasecmp(node[i]->element, xml_https_ciphers) == 0) {
+            if (w_remoted_https_check_max_len(xml_https_ciphers, node[i]->content, REMOTED_HTTPS_CIPHERS_MAX_LEN) == OS_INVALID) {
+                return (OS_INVALID);
+            }
+
             os_free(logr->https.ciphers);
             os_strdup(node[i]->content, logr->https.ciphers);
         } else if (strcasecmp(node[i]->element, xml_https_max_body_size) == 0) {
@@ -303,9 +341,15 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
         i++;
     }
 
-    if (logr->https.verification_mode != REMOTED_HTTPS_VERIFY_NONE && logr->https.ca == NULL) {
-        merror("The '<remote><https><verification_mode>' option requires '<ca>' to be configured.");
-        return (OS_INVALID);
+    // The operator explicitly configured <ca> in XML but never said what to do with it
+    // (<verification_mode> was left untouched): infer they want certificate-chain
+    // verification rather than silently leaving client-certificate verification
+    // disabled. An explicit <verification_mode> (even "none") always wins over this
+    // inference -- this only fires when verification_mode is still REMOTED_HTTPS_VERIFY_UNSET.
+    if (logr->https.ca != NULL && logr->https.verification_mode == REMOTED_HTTPS_VERIFY_UNSET) {
+        mwarn("The '<remote><https><ca>' option is configured but '<verification_mode>' is not; "
+              "defaulting '<verification_mode>' to 'certificate'.");
+        logr->https.verification_mode = REMOTED_HTTPS_VERIFY_CERTIFICATE;
     }
 
     // dual_stack only affects the IPV6_V6ONLY socket option, which only applies to an
@@ -314,6 +358,15 @@ STATIC int w_remoted_parse_https(XML_NODE node, remoted * logr) {
     if (logr->https.dual_stack != REMOTED_HTTPS_DUAL_STACK_UNSET &&
         (logr->https.bind_addr == NULL || strchr(logr->https.bind_addr, ':') == NULL)) {
         mwarn("The '<remote><https><dual_stack>' option only applies to an IPv6 'bind_addr'; ignoring it.");
+    }
+
+    return OS_SUCCESS;
+}
+
+STATIC int w_remoted_https_check_max_len(const char * element, const char * content, size_t max_len) {
+    if (strlen(content) > max_len) {
+        merror("Value for '<remote><https><%s>' exceeds the maximum length of %zu characters.", element, max_len);
+        return (OS_INVALID);
     }
 
     return OS_SUCCESS;

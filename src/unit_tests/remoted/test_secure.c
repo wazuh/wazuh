@@ -3280,6 +3280,115 @@ void test_remoted_module_https_config_custom_values(void** state)
     assert_int_equal(rm_config.auth_max_body_size, 31457280);
 }
 
+/* Tests w_remoted_build_module_config */
+//
+// w_remoted_build_module_config() calls remoted_module_https_config() internally, so
+// each test below must queue the same 21 __wrap_getDefine_Int_default return values
+// (in the same fixed order) as the remoted_module_https_config tests above, even
+// though these tests assert on the <https>-driven fields instead.
+
+void test_w_remoted_build_module_config_all_fields_populated(void** state)
+{
+    (void) state;
+    remoted test_logr;
+    memset(&test_logr, 0, sizeof(test_logr));
+    test_logr.worker_node = true;
+    test_logr.https.port = 9443;
+    test_logr.https.bind_addr = "0.0.0.0";
+    test_logr.https.certificate = "/etc/remoted-https/server.crt";
+    test_logr.https.key = "/etc/remoted-https/server.key";
+    test_logr.https.ca = "/etc/remoted-https/ca.crt";
+    test_logr.https.ciphers = "HIGH:!ADH";
+    test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_FULL;
+    test_logr.https.max_body_size = 12345;
+    test_logr.https.dual_stack = REMOTED_HTTPS_DUAL_STACK_YES;
+
+    // http_*
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 30);
+    will_return(__wrap_getDefine_Int_default, 2048);
+    will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 8192);
+    will_return(__wrap_getDefine_Int_default, 64);
+    will_return(__wrap_getDefine_Int_default, 4);
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 8192);
+    // downstream_*
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 5);
+    will_return(__wrap_getDefine_Int_default, 5);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 10485760);
+    // auth_*
+    will_return(__wrap_getDefine_Int_default, 300);
+    will_return(__wrap_getDefine_Int_default, 30);
+    will_return(__wrap_getDefine_Int_default, 10485760);
+
+    remoted_module_config_t rm_config;
+    w_remoted_build_module_config(&test_logr, &rm_config);
+
+    assert_int_equal(rm_config.port, 9443);
+    assert_true(rm_config.worker_node);
+    assert_int_equal(rm_config.verification_mode, REMOTED_HTTPS_VERIFY_FULL);
+    assert_int_equal(rm_config.max_body_size, 12345);
+    assert_int_equal(rm_config.dual_stack, REMOTED_HTTPS_DUAL_STACK_YES);
+    assert_string_equal(rm_config.bind_address, "0.0.0.0");
+    assert_string_equal(rm_config.certificate_path, "/etc/remoted-https/server.crt");
+    assert_string_equal(rm_config.private_key_path, "/etc/remoted-https/server.key");
+    assert_string_equal(rm_config.ca_path, "/etc/remoted-https/ca.crt");
+    assert_string_equal(rm_config.ciphers, "HIGH:!ADH");
+    // cluster_name/node_name are populated by HandleSecure() itself, not this helper.
+    assert_string_equal(rm_config.cluster_name, "");
+    assert_string_equal(rm_config.node_name, "");
+}
+
+void test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty(void** state)
+{
+    (void) state;
+    remoted test_logr;
+    memset(&test_logr, 0, sizeof(test_logr));
+    test_logr.https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
+    // bind_addr/certificate/key/ca/ciphers left NULL, as when <https> is entirely absent.
+
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 10);
+    will_return(__wrap_getDefine_Int_default, 30);
+    will_return(__wrap_getDefine_Int_default, 2048);
+    will_return(__wrap_getDefine_Int_default, 256);
+    will_return(__wrap_getDefine_Int_default, 8192);
+    will_return(__wrap_getDefine_Int_default, 64);
+    will_return(__wrap_getDefine_Int_default, 4);
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 8192);
+    will_return(__wrap_getDefine_Int_default, 2);
+    will_return(__wrap_getDefine_Int_default, 5);
+    will_return(__wrap_getDefine_Int_default, 5);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 0);
+    will_return(__wrap_getDefine_Int_default, 10485760);
+    will_return(__wrap_getDefine_Int_default, 300);
+    will_return(__wrap_getDefine_Int_default, 30);
+    will_return(__wrap_getDefine_Int_default, 10485760);
+
+    remoted_module_config_t rm_config;
+    w_remoted_build_module_config(&test_logr, &rm_config);
+
+    assert_int_equal(rm_config.port, 0);
+    assert_int_equal(rm_config.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
+    assert_int_equal(rm_config.dual_stack, REMOTED_HTTPS_DUAL_STACK_UNSET);
+    assert_string_equal(rm_config.bind_address, "");
+    assert_string_equal(rm_config.certificate_path, "");
+    assert_string_equal(rm_config.private_key_path, "");
+    assert_string_equal(rm_config.ca_path, "");
+    assert_string_equal(rm_config.ciphers, "");
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -3342,6 +3451,9 @@ int main(void)
         cmocka_unit_test(test_handle_outgoing_data_to_tcp_socket_success),
         // Tests remoted_module_https_config
         cmocka_unit_test(test_remoted_module_https_config_defaults),
-        cmocka_unit_test(test_remoted_module_https_config_custom_values)};
+        cmocka_unit_test(test_remoted_module_https_config_custom_values),
+        // Tests w_remoted_build_module_config
+        cmocka_unit_test(test_w_remoted_build_module_config_all_fields_populated),
+        cmocka_unit_test(test_w_remoted_build_module_config_null_https_strings_leave_buffers_empty)};
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

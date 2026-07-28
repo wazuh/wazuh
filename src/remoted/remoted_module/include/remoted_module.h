@@ -49,6 +49,7 @@ extern "C"
      */
     enum
     {
+        REMOTED_MODULE_HTTPS_VERIFY_UNSET = -1,
         REMOTED_MODULE_HTTPS_VERIFY_NONE = 0,
         REMOTED_MODULE_HTTPS_VERIFY_CERTIFICATE = 1,
         REMOTED_MODULE_HTTPS_VERIFY_FULL = 2
@@ -64,7 +65,10 @@ extern "C"
      */
     enum
     {
-        REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET = 0, ///< Not configured -> OS default.
+        REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET = 0, ///< Not configured -> module defaults to IPv6-only. Kept distinct
+                                                    ///< from _NO so the "dual_stack only applies to an IPv6
+                                                    ///< bind_addr" warning doesn't fire when unconfigured
+                                                    ///< (see resolveDualStackMode()/RestinioHttpServer.cpp).
         REMOTED_MODULE_HTTPS_DUAL_STACK_YES = 1,   ///< Force dual-stack on (also accept IPv4).
         REMOTED_MODULE_HTTPS_DUAL_STACK_NO = 2     ///< Force IPv6-only.
     };
@@ -140,7 +144,8 @@ extern "C"
                                        ///< <=0 -> module default (10 s)
         char bind_address[256];     ///< HTTPS listen address (empty -> module default/env).
         char ca_path[512];          ///< CA bundle (PEM) for client-certificate verification (empty -> disabled).
-        char ciphers[256];          ///< OpenSSL cipher list override (empty -> library default).
+        char ciphers[256];          ///< TLS 1.3 ciphersuite override (SSL_CTX_set_ciphersuites() naming scheme;
+                                    ///< empty -> library default).
         int verification_mode;      ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
         long max_body_size;         ///< Request body cap in bytes (<=0 -> module default/env).
         int dual_stack;             ///< REMOTED_MODULE_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind address.
