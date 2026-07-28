@@ -123,6 +123,34 @@ namespace
         return false;
     }
 
+    /// Destroys the handle however the test body leaves. A bare ASSERT_ between
+    /// hc_start() and hc_destroy() returns from the body with the client's
+    /// threads, curl handles and OpenSSL state still up, which valgrind then
+    /// reports as definitely lost - one failed assertion turns into a wall of
+    /// leaks that hides it.
+    class HandleGuard final
+    {
+        public:
+            explicit HandleGuard(hc_handle* handle)
+                : m_handle(handle)
+            {
+            }
+
+            ~HandleGuard()
+            {
+                if (m_handle != nullptr)
+                {
+                    hc_destroy(m_handle);
+                }
+            }
+
+            HandleGuard(const HandleGuard&) = delete;
+            HandleGuard& operator=(const HandleGuard&) = delete;
+
+        private:
+            hc_handle* m_handle;
+    };
+
     /// The manager runs in a forked process, so everything the test wants to
     /// know about what it received comes back through a /peek endpoint.
     int peekCount(httplib::Client& peek, const char* target)
@@ -359,6 +387,7 @@ TEST_F(FacadeE2eTest, AHeldStatefulRequestDoesNotStallStatelessOrControl)
 
     hc_handle* handle = hc_create(&config, &callbacks);
     ASSERT_NE(nullptr, handle);
+    const HandleGuard guard {handle}; // Torn down even if an assertion below returns early.
     ASSERT_TRUE(hc_start(handle));
     ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
 
@@ -387,7 +416,6 @@ TEST_F(FacadeE2eTest, AHeldStatefulRequestDoesNotStallStatelessOrControl)
 
     std::remove(gate.c_str()); // Release the manager.
     EXPECT_TRUE(waitFor(recorder.syncCount, 1, 10000));
-    hc_destroy(handle);
 }
 
 namespace
