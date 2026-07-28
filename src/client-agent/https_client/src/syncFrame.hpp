@@ -30,6 +30,10 @@
  *   body_len   8 bytes  session body length
  *   body       body_len session bytes (streamed)
  *
+ * The receiver then answers with one status byte, so the producer learns
+ * whether the session was actually taken and can hold on to it if it was not.
+ * Without it a full queue would look like a successful send.
+ *
  * The transport is abstracted as read/write callbacks so the framing is unit
  * tested without any socket; the socket component supplies fd-backed ones.
  */
@@ -50,6 +54,9 @@ enum class SyncFrameResult
 
 constexpr uint64_t SYNC_FRAME_MAX_BODY = 512ULL * 1024 * 1024;    ///< 512 MB body cap.
 
+constexpr uint8_t SYNC_FRAME_ACCEPTED = 1;  ///< Queued for /stateful; the producer may forget it.
+constexpr uint8_t SYNC_FRAME_REFUSED = 0;   ///< Not taken; the session is still the producer's.
+
 /// Frames and writes a whole session through the write callback. Returns false
 /// on a transport write error.
 bool writeSyncSessionFrame(const SyncWriteFn& write, const std::string& sessionId,
@@ -60,5 +67,12 @@ bool writeSyncSessionFrame(const SyncWriteFn& write, const std::string& sessionI
 SyncFrameResult readSyncSessionFrame(const SyncReadFn& read, std::FILE* out,
                                      std::string& sessionId, uint64_t& size,
                                      uint64_t maxBody = SYNC_FRAME_MAX_BODY);
+
+/// Answers the producer with the one-byte outcome of its session.
+bool writeSyncSessionAck(const SyncWriteFn& write, bool accepted);
+
+/// Reads that byte back. Returns false when the session was refused, or when
+/// no answer arrived at all (a refusal is the safe reading of silence).
+bool readSyncSessionAck(const SyncReadFn& read);
 
 #endif // _HC_SYNC_FRAME_HPP

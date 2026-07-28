@@ -219,3 +219,25 @@ TEST(SyncFrameTest, TheIdShapesProducersUseRoundTrip)
     EXPECT_EQ(SyncFrameResult::Ok, result);
     EXPECT_EQ("fim.full_sync-42", idOut);
 }
+
+TEST(SyncFrameTest, TheStatusByteRoundTripsBothWays)
+{
+    MemPipe accepted;
+    EXPECT_TRUE(writeSyncSessionAck(accepted.writer(), true));
+    EXPECT_TRUE(readSyncSessionAck(accepted.reader()));
+
+    MemPipe refused;
+    EXPECT_TRUE(writeSyncSessionAck(refused.writer(), false));
+    EXPECT_FALSE(readSyncSessionAck(refused.reader()));
+}
+
+TEST(SyncFrameTest, AMissingStatusByteReadsAsARefusal)
+{
+    // The producer still owns a session it never got an answer for, so silence
+    // and an unreadable socket both have to mean "not taken".
+    MemPipe empty;
+    EXPECT_FALSE(readSyncSessionAck(empty.reader())); // EOF.
+
+    const auto failingRead = [](void*, size_t) -> long { return -1; };
+    EXPECT_FALSE(readSyncSessionAck(failingRead));
+}
