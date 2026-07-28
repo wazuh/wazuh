@@ -133,9 +133,15 @@ list(APPEND client-agent_names "test_https_client_bridge")
 list(APPEND client-agent_flags "-Wl,--wrap,wurl_free_response -Wl,--wrap,wurl_http_request \
                                 -Wl,--wrap,hc_create -Wl,--wrap,hc_start -Wl,--wrap,hc_destroy \
                                 -Wl,--wrap,hc_set_agent_key -Wl,--wrap,hc_submit_event \
+                                -Wl,--wrap,hc_set_config_hash \
                                 -Wl,--wrap,try_enroll_to_server \
                                 -Wl,--wrap,CreateThread -Wl,--wrap,sleep -Wl,--wrap,getpid \
                                 -Wl,--wrap,w_agentd_state_update -Wl,--wrap,getDefine_Int \
+                                -Wl,--wrap,w_copy_file -Wl,--wrap,UnmergeFiles -Wl,--wrap,cldir_ex_ignore \
+                                -Wl,--wrap,wfopen \
+                                -Wl,--wrap,verifyRemoteConf -Wl,--wrap,reloadAgent -Wl,--wrap,send_msg \
+                                -Wl,--wrap,startup_gate_release_from_https_apply -Wl,--wrap,os_delwait \
+                                -Wl,--wrap,OS_SHA256_File \
                                 ${DEBUG_OP_WRAPPERS}")
 endif()
 
