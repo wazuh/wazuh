@@ -723,6 +723,14 @@ void Syscollector::releaseResources()
     m_spSyncProtocol.reset();
     m_spSyncProtocolVD.reset();
     m_spInfo.reset();
+
+#if defined(__linux__)
+    if (m_containerReconciler != nullptr)
+    {
+        cbaseline_reconciler_destroy(static_cast<cbaseline_reconciler_t*>(m_containerReconciler));
+        m_containerReconciler = nullptr;
+    }
+#endif
 }
 
 void Syscollector::destroy()
@@ -1829,22 +1837,45 @@ void Syscollector::ContainerBaselineSink(const char* id, int operation, const ch
 void Syscollector::scanContainerBaseline()
 {
 #if defined(__linux__)
-    m_logFunction(LOG_DEBUG_VERBOSE, "Starting container baseline scan");
+    m_logFunction(LOG_DEBUG_VERBOSE, "Starting container inventory reconcile");
 
-    // No DBSync/notifyChange here: this row's JSON shape is a draft (see the
-    // header comment on this method) and is pushed straight to the sync
-    // protocol instead of going through the normal insertData/checksum-diff
-    // pipeline the other scan* methods use.
-    const int baselined =
-        cbaseline_run_syscollector(CB_DEFAULT_CONNECTOR_SOCKET_PATH, &Syscollector::ContainerBaselineSink, this);
+    // Reconciled state, not a one-shot baseline: each pass re-scans every live
+    // container and emits CREATE/MODIFY/DELETE by diffing against durable prior
+    // state (see container_baseline.h). The handle outlives individual scans (it
+    // owns the prior-state DB and the first-scan-after-reload guard), so it is
+    // created once and reused. Rows still bypass the DBSync/checksum-diff pipeline
+    // the host scan* methods use — the draft JSON shape is pushed straight to the
+    // sync protocol via ContainerBaselineSink (pending #37203-4's schema).
+    if (m_containerReconciler == nullptr)
+    {
+        m_containerReconciler = cbaseline_reconciler_create(
+            CB_DEFAULT_CONNECTOR_SOCKET_PATH, CB_DEFAULT_PRIOR_STATE_DB_PATH, &Syscollector::ContainerBaselineSink, this);
 
-    m_logFunction(LOG_DEBUG_VERBOSE,
-                 "Container baseline scan finished (" + std::to_string(baselined) + " container(s)).");
+        if (m_containerReconciler == nullptr)
+        {
+            m_logFunction(LOG_WARNING,
+                          "Container inventory reconciler initialization failed; skipping container scan.");
+            return;
+        }
+    }
+
+    const int reconciled =
+        cbaseline_reconciler_run(static_cast<cbaseline_reconciler_t*>(m_containerReconciler));
+
+    if (reconciled < 0)
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE,
+                     "Container inventory reconcile skipped (Container Instances module unavailable).");
+    }
+    else
+    {
+        m_logFunction(LOG_DEBUG_VERBOSE,
+                     "Container inventory reconcile finished (" + std::to_string(reconciled) + " container(s)).");
+    }
 #else
-    // Container baseline acquisition (#37532) only runs on Linux - the same
-    // Linux-only constraint as container_instances and the eBPF module it
-    // depends on.
-    m_logFunction(LOG_DEBUG_VERBOSE, "Container baseline scan skipped (Linux-only feature).");
+    // Container inventory (#37532/#37534) only runs on Linux - the same Linux-only
+    // constraint as container_instances and the eBPF module it depends on.
+    m_logFunction(LOG_DEBUG_VERBOSE, "Container inventory reconcile skipped (Linux-only feature).");
 #endif
 }
 
@@ -1897,15 +1928,12 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
 
-    // Container baseline (#37532) is a one-time seed, not a recurring scan: it
-    // exists to backfill state for containers that were already running when
-    // the agent started, which is only meaningful once. Re-baselining specific
-    // containers as they appear/restart (spike Angle 6) is a scheduling
-    // problem deferred to a follow-up — this call only covers agent-startup.
-    if (isFirstScan)
-    {
-        TRY_CATCH_TASK(scanContainerBaseline);
-    }
+    // Container inventory (#37534) is a reconciled state source, so it runs every
+    // scan (not just the first): processes/packages/etc. that appear, change, or
+    // vanish inside a container — and containers that exit — surface as
+    // CREATE/MODIFY/DELETE. The reconciler suppresses deletes on its first pass
+    // after (re)start (reload guard) and reconciles fully thereafter.
+    TRY_CATCH_TASK(scanContainerBaseline);
 
     // Update sync=1 flag for all items that passed document limit check (unlimited items)
     // This must be done BEFORE processVDDataContext so that DataContext queries

@@ -2,6 +2,15 @@ cmake_minimum_required(VERSION 3.12.4)
 
 project(container_baseline_unit_test)
 
+if(NOT DEFINED WAZUH_MAIN_PROJECT)
+  get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
+endif()
+
+include_directories(${SRC_FOLDER}/external/googletest/googletest/include/
+                    ${SRC_FOLDER}/external/googletest/googlemock/include/)
+
+link_directories(${SRC_FOLDER}/external/googletest/lib/)
+
 file(GLOB CONTAINER_BASELINE_UNIT_TEST_SRC "*.cpp")
 
 add_executable(container_baseline_unit_test ${CONTAINER_BASELINE_UNIT_TEST_SRC})

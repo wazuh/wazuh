@@ -28,7 +28,9 @@ include_directories(
 
 link_directories(${SRC_FOLDER}/external/openssl/)
 
-file(GLOB CONTAINER_BASELINE_IMPL_SRC "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+file(GLOB CONTAINER_BASELINE_IMPL_SRC
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/reconcile/*.cpp")
 
 add_library(CONTAINER_BASELINE_IMPL STATIC ${CONTAINER_BASELINE_IMPL_SRC})
 

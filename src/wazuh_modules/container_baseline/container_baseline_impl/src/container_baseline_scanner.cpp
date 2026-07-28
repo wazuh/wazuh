@@ -10,20 +10,20 @@
 #include "pid_resolver.hpp"
 #include "process_scanner.hpp"
 #include "protocol_scanner.hpp"
+#include "reconcile/collect_container.hpp"
+#include "reconcile/resolve_identity.hpp"
 #include "rootfs_file_walker.hpp"
 #include "service_scanner.hpp"
 #include "user_scanner.hpp"
 
-#include <json.hpp>
-
 #include <chrono>
+#include <optional>
 #include <thread>
+#include <utility>
 
 namespace wazuh::container_baseline {
 
 namespace {
-
-constexpr int kOperationCreate = 0;
 
 // The container_instances IPC socket binds before its connectors finish their
 // first snapshot (list is a pure store read with no cold-cache refresh), so a
@@ -32,103 +32,6 @@ constexpr int kOperationCreate = 0;
 // only pays this once, at startup.
 constexpr int kListRetryAttempts = 10;
 constexpr auto kListRetryDelay = std::chrono::milliseconds{500};
-
-/// Parses container_instances' "resolve" reply "data" object (see
-/// wire_protocol.hpp's recordToJson()) into the shared runtime context. Pod/
-/// namespace/node/annotations/owner_refs are only ever present when the
-/// module reports runtime == "kubernetes"; a Docker-origin container leaves
-/// `kubernetes` unset entirely (event_schema.md's two-block rule).
-ContainerContextPtr ContextFromResolveData(const nlohmann::json& data)
-{
-    auto ctx = std::make_shared<ContainerContext>();
-    ctx->runtime       = data.value("runtime", "");
-    ctx->name          = data.value("container_name", "");
-    ctx->image         = data.value("image", "");
-    ctx->image_digest  = data.value("image_digest", "");
-    ctx->restart_count = data.value("restart_count", 0);
-
-    if (const auto it = data.find("labels"); it != data.end() && it->is_object())
-    {
-        for (const auto& [key, value] : it->items())
-        {
-            if (value.is_string()) ctx->labels.emplace(key, value.get<std::string>());
-        }
-    }
-    if (const auto it = data.find("network"); it != data.end() && it->is_array())
-    {
-        for (const auto& iface : *it)
-        {
-            NetworkEndpoint entry;
-            entry.name = iface.value("name", "");
-            entry.ip   = iface.value("ip", "");
-            ctx->network.push_back(std::move(entry));
-        }
-    }
-    if (const auto it = data.find("oci_mounts"); it != data.end() && it->is_array())
-    {
-        for (const auto& mount : *it)
-        {
-            OciMountEntry entry;
-            entry.source      = mount.value("source", "");
-            entry.destination = mount.value("destination", "");
-            entry.read_only   = mount.value("ro", false);
-            ctx->oci_mounts.push_back(std::move(entry));
-        }
-    }
-
-    if (ctx->runtime == "kubernetes")
-    {
-        KubernetesContext k8s;
-        k8s.pod_uid       = data.value("pod_uid", "");
-        k8s.pod_name      = data.value("pod_name", "");
-        k8s.k8s_namespace = data.value("namespace", "");
-        k8s.node_name     = data.value("node_name", "");
-
-        if (const auto it = data.find("annotations"); it != data.end() && it->is_object())
-        {
-            for (const auto& [key, value] : it->items())
-            {
-                if (value.is_string()) k8s.annotations.emplace(key, value.get<std::string>());
-            }
-        }
-        if (const auto it = data.find("owner_refs"); it != data.end() && it->is_array())
-        {
-            for (const auto& owner : *it)
-            {
-                OwnerReference ref;
-                ref.kind = owner.value("kind", "");
-                ref.name = owner.value("name", "");
-                ref.uid  = owner.value("uid", "");
-                k8s.owner_refs.push_back(std::move(ref));
-            }
-        }
-
-        ctx->kubernetes = std::move(k8s);
-    }
-
-    return ctx;
-}
-
-ContainerIdentity IdentityFromResolveJson(const std::string& container_id, const std::string& reply_json)
-{
-    ContainerIdentity id;
-    id.container_id = container_id;
-
-    const auto j = nlohmann::json::parse(reply_json, nullptr, false);
-    if (j.is_discarded() || !j.is_object() || j.value("status", "") != "resolved")
-    {
-        return id;
-    }
-
-    const auto dataIt = j.find("data");
-    if (dataIt == j.end() || !dataIt->is_object())
-    {
-        return id;
-    }
-
-    id.context = ContextFromResolveData(*dataIt);
-    return id;
-}
 
 // Every container currently tracked by the container_instances store, paired
 // with its resolved identity. One IPC round trip to list, then one lookup per
@@ -163,7 +66,71 @@ std::vector<ContainerIdentity> DiscoverContainers(const std::string& socket_path
     return out;
 }
 
+// Scan one dimension: stamp the shared container identity onto each row and wrap
+// it as an EmittedRow addressed at `index`. The operation is nominal here
+// (CREATE) — the reconciler's diff reassigns CREATE/MODIFY per row.
+template <class Row, class Build>
+CollectorResult CollectDim(const std::string& index, std::vector<Row> rows, const ContainerIdentity& identity,
+                           Build build)
+{
+    CollectorResult result;
+    result.index  = index;
+    result.status = CollectStatus::Ok;
+    result.rows.reserve(rows.size());
+    for (auto& row : rows)
+    {
+        ApplyIdentity(row, identity);
+        auto [id, json] = build(row);
+        result.rows.push_back(EmittedRow{std::move(id), kOperationCreate, index, std::move(json), 1});
+    }
+    return result;
+}
+
 } // namespace
+
+std::optional<std::vector<CollectorResult>> CollectContainer(const ContainerIdentity& identity)
+{
+    const auto pids = ResolvePidsForContainer(identity.container_id);
+    if (pids.empty())
+    {
+        // Not addressable: no live PID to reach the rootfs/namespaces. Return
+        // nullopt so the reconciler skips this container rather than diffing it to
+        // empty and deleting a live container's rows.
+        return std::nullopt;
+    }
+    const auto pid = pids.front();
+
+    std::vector<CollectorResult> dims;
+    dims.reserve(11);
+
+    // cgroup-scoped dimensions (read by container id).
+    dims.push_back(CollectDim("wazuh-states-inventory-processes", ScanContainerProcesses(identity.container_id),
+                              identity, BuildProcessJson));
+    dims.push_back(CollectDim("wazuh-states-inventory-ports", ScanContainerNetwork(identity.container_id), identity,
+                              BuildPortJson));
+
+    // rootfs / namespace-scoped dimensions (read via /proc/<pid>/root and setns).
+    dims.push_back(CollectDim("wazuh-states-inventory-users", ScanContainerUsers(pid), identity, BuildUserJson));
+    dims.push_back(CollectDim("wazuh-states-inventory-groups", ScanContainerGroups(pid), identity, BuildGroupJson));
+    dims.push_back(
+        CollectDim("wazuh-states-inventory-packages", ScanContainerPackages(pid), identity, BuildPackageJson));
+    dims.push_back(CollectDim("wazuh-states-inventory-system", ScanContainerOs(pid), identity, BuildOsJson));
+
+    auto ifscan = ScanContainerInterfaces(pid);
+    dims.push_back(CollectDim("wazuh-states-inventory-interfaces", std::move(ifscan.interfaces), identity,
+                              BuildInterfaceJson));
+    dims.push_back(CollectDim("wazuh-states-inventory-networks", std::move(ifscan.addresses), identity,
+                              BuildNetworkAddressJson));
+
+    dims.push_back(
+        CollectDim("wazuh-states-inventory-protocols", ScanContainerProtocols(pid), identity, BuildProtocolJson));
+    dims.push_back(
+        CollectDim("wazuh-states-inventory-services", ScanContainerServices(pid), identity, BuildServiceJson));
+    dims.push_back(
+        CollectDim("wazuh-states-inventory-hardware", ScanContainerHardware(pid), identity, BuildHardwareJson));
+
+    return dims;
+}
 
 int RunFimBaseline(const std::string&                connector_socket_path,
                     const std::vector<MonitoredPath>& paths,
@@ -196,89 +163,21 @@ int RunSyscollectorBaseline(const std::string& connector_socket_path, const RowS
 {
     int baselined = 0;
 
-    for (const auto& identity : DiscoverContainers(connector_socket_path)) {
-        const auto pids = ResolvePidsForContainer(identity.container_id);
-        if (pids.empty()) continue;
+    for (const auto& identity : DiscoverContainers(connector_socket_path))
+    {
+        const auto dims = CollectContainer(identity);
+        if (!dims)
+        {
+            continue;  // not addressable (no live PID) — nothing to baseline.
+        }
 
         ++baselined;
-
-        for (auto row : ScanContainerProcesses(identity.container_id)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildProcessJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-processes", json, 1});
-        }
-
-        for (auto row : ScanContainerNetwork(identity.container_id)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildPortJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-ports", json, 1});
-        }
-
-        // M4 data classes (users/groups + packages) address the rootfs through
-        // /proc/<pid>/root, so they need the live PID rather than the cgroup.
-        const auto pid = pids.front();
-
-        for (auto row : ScanContainerUsers(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildUserJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-users", json, 1});
-        }
-
-        for (auto row : ScanContainerGroups(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildGroupJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-groups", json, 1});
-        }
-
-        for (auto row : ScanContainerPackages(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildPackageJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-packages", json, 1});
-        }
-
-        // Image OS identity (rootfs os-release via the /proc/<pid>/root family).
-        for (auto row : ScanContainerOs(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildOsJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-system", json, 1});
-        }
-
-        // Container netns interfaces/addresses (setns hop — see interface_scanner.hpp).
-        auto ifscan = ScanContainerInterfaces(pid);
-        for (auto row : ifscan.interfaces) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildInterfaceJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-interfaces", json, 1});
-        }
-        for (auto row : ifscan.addresses) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildNetworkAddressJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-networks", json, 1});
-        }
-
-        // Default routes (protocols) from the container netns' /proc/<pid>/net/route.
-        for (auto row : ScanContainerProtocols(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildProtocolJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-protocols", json, 1});
-        }
-
-        // systemd services from the rootfs unit files (static view; runtime state
-        // needs the container's own systemd over D-Bus — see service_scanner.hpp).
-        for (auto row : ScanContainerServices(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildServiceJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-services", json, 1});
-        }
-
-        // Virtual hardware: the container's cgroup resource envelope (memory.max /
-        // cpu.max) mapped onto the hardware schema; cpu name/speed are the shared
-        // host silicon. Hotfixes (Windows-only) and browser-extensions (no browser
-        // in a server container) are the only host collectors left uncovered.
-        for (auto row : ScanContainerHardware(pid)) {
-            ApplyIdentity(row, identity);
-            auto [id, json] = BuildHardwareJson(row);
-            sink(EmittedRow{id, kOperationCreate, "wazuh-states-inventory-hardware", json, 1});
+        for (const auto& dim : *dims)
+        {
+            for (const auto& row : dim.rows)
+            {
+                sink(row);  // rows already carry OPERATION_CREATE (one-shot baseline).
+            }
         }
     }
 

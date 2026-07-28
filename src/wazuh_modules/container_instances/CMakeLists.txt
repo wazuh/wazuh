@@ -69,5 +69,9 @@ set_target_properties(
 
 if(UNIT_TEST)
   enable_testing()
-  add_subdirectory(ci_impl/tests)
+  # ci_impl/tests is not in the tree yet; without this guard every TEST=1 build on
+  # this branch dies at configure time, including other modules' tests.
+  if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/ci_impl/tests/CMakeLists.txt")
+    add_subdirectory(ci_impl/tests)
+  endif()
 endif()

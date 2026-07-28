@@ -92,6 +92,11 @@ else()
     dl
     agent_sync_protocol
     schema_validator)
+  if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # scanContainerBaseline() calls the container_baseline C API directly, so the
+    # test binary needs the same library wazuh_modulesd_lib links on Linux.
+    target_link_libraries(syscollectorimp_unit_test container_baseline)
+  endif()
 endif(CMAKE_SYSTEM_NAME STREQUAL "Windows")
 
 add_test(NAME syscollectorimp_unit_test COMMAND syscollectorimp_unit_test)
