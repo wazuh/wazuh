@@ -18,11 +18,17 @@
 #include "responseDispatcher.hpp"
 #include "rocksDBWrapper.hpp"
 #include "threadDispatcher.h"
+#include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <cstdint>
 #include <functional>
+#include <limits>
 #include <memory>
+#include <optional>
 #include <ranges>
 #include <string>
+#include <string_view>
 #include <utility>
 
 enum class ResponseStatus : std::uint8_t
@@ -88,6 +94,32 @@ class AgentSessionImpl final
     bool m_endEnqueued = false;         ///< Whether the END message has been enqueued
     uint64_t m_declaredSize {0};        ///< DataValue count declared in the Start message (for quota accounting)
     const LogFn& m_logFn;               ///< Log function for this session
+
+    struct SyncStats
+    {
+        std::chrono::steady_clock::time_point startTime {};
+        std::optional<std::chrono::steady_clock::time_point> processingTime;
+        std::uint64_t declaredSize {0};
+        std::uint64_t receivedCount {0};
+        std::uint64_t retransmissionRequests {0};
+        std::uint64_t totalRawBytes {0};
+        std::uint64_t totalInnerBytes {0};
+        std::uint64_t maxRawBytes {0};
+        std::uint64_t maxInnerBytes {0};
+        std::uint64_t minRawBytesNonzero {std::numeric_limits<std::uint64_t>::max()};
+        std::uint64_t minInnerBytesNonzero {std::numeric_limits<std::uint64_t>::max()};
+        std::string terminationReason {"abandoned"};
+    };
+
+    SyncStats m_stats;
+
+    void markProcessing()
+    {
+        if (!m_stats.processingTime)
+        {
+            m_stats.processingTime = std::chrono::steady_clock::now();
+        }
+    }
 
 public:
     explicit AgentSessionImpl(const uint64_t sessionId,
@@ -219,6 +251,9 @@ public:
 
         responseDispatcher.sendStartAck(
             Wazuh::SyncSchema::Status_Ok, m_context->agentId, m_context->sessionId, m_context->moduleName);
+
+        m_stats.startTime = std::chrono::steady_clock::now();
+        m_stats.declaredSize = data->size();
     }
 
     /// Deleted copy constructor and assignment operator (C.12 compliant).
@@ -229,7 +264,57 @@ public:
     AgentSessionImpl(AgentSessionImpl&&) = delete;
     AgentSessionImpl& operator=(AgentSessionImpl&&) = delete;
 
-    ~AgentSessionImpl() = default;
+    ~AgentSessionImpl()
+    {
+        if (!m_context)
+        {
+            return;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        const auto elapsedMs = [this](const std::chrono::steady_clock::time_point end)
+        {
+            return std::chrono::duration_cast<std::chrono::milliseconds>(end - m_stats.startTime).count();
+        };
+        constexpr auto UNSET_MIN = std::numeric_limits<std::uint64_t>::max();
+        const auto avgRaw = m_stats.receivedCount ? m_stats.totalRawBytes / m_stats.receivedCount : 0;
+        const auto avgInner = m_stats.receivedCount ? m_stats.totalInnerBytes / m_stats.receivedCount : 0;
+        const auto minRaw = m_stats.minRawBytesNonzero == UNSET_MIN ? 0 : m_stats.minRawBytesNonzero;
+        const auto minInner = m_stats.minInnerBytesNonzero == UNSET_MIN ? 0 : m_stats.minInnerBytesNonzero;
+        const auto startToProcessing =
+            m_stats.processingTime ? static_cast<long long>(elapsedMs(*m_stats.processingTime)) : -1LL;
+
+        LOG_INFO(m_logFn,
+                 "InventorySync session stats: agent=%s(%s) module=%s sessionId=%llu "
+                 "reason=%s declared_size=%llu received=%llu retransmissions=%llu "
+                 "raw_bytes={total=%llu avg=%llu max=%llu min_nonzero=%llu} "
+                 "inner_bytes={total=%llu avg=%llu max=%llu min_nonzero=%llu} "
+                 "timing_ms={start_to_processing=%lld start_to_end=%lld}",
+                 m_context->agentName.c_str(),
+                 m_context->agentId.c_str(),
+                 m_context->moduleName.c_str(),
+                 static_cast<unsigned long long>(m_context->sessionId),
+                 m_stats.terminationReason.c_str(),
+                 static_cast<unsigned long long>(m_stats.declaredSize),
+                 static_cast<unsigned long long>(m_stats.receivedCount),
+                 static_cast<unsigned long long>(m_stats.retransmissionRequests),
+                 static_cast<unsigned long long>(m_stats.totalRawBytes),
+                 static_cast<unsigned long long>(avgRaw),
+                 static_cast<unsigned long long>(m_stats.maxRawBytes),
+                 static_cast<unsigned long long>(minRaw),
+                 static_cast<unsigned long long>(m_stats.totalInnerBytes),
+                 static_cast<unsigned long long>(avgInner),
+                 static_cast<unsigned long long>(m_stats.maxInnerBytes),
+                 static_cast<unsigned long long>(minInner),
+                 startToProcessing,
+                 static_cast<long long>(elapsedMs(now)));
+    }
+
+    void markTerminating(const std::string_view reason)
+    {
+        std::lock_guard lock(m_mutex);
+        m_stats.terminationReason.assign(reason);
+    }
 
     /**
      * @brief Handles an incoming data chunk.
@@ -278,6 +363,22 @@ public:
         // the observation should not throw, though if it does the data chunk is already stored.
         m_gapSet->observe(data->seq());
 
+        const auto rawSize = static_cast<std::uint64_t>(dataSize);
+        const std::uint64_t innerSize = data->data() ? static_cast<std::uint64_t>(data->data()->size()) : 0;
+        ++m_stats.receivedCount;
+        m_stats.totalRawBytes += rawSize;
+        m_stats.totalInnerBytes += innerSize;
+        m_stats.maxRawBytes = std::max(m_stats.maxRawBytes, rawSize);
+        m_stats.maxInnerBytes = std::max(m_stats.maxInnerBytes, innerSize);
+        if (rawSize > 0)
+        {
+            m_stats.minRawBytesNonzero = std::min(m_stats.minRawBytesNonzero, rawSize);
+        }
+        if (innerSize > 0)
+        {
+            m_stats.minInnerBytesNonzero = std::min(m_stats.minInnerBytesNonzero, innerSize);
+        }
+
         LOG_DEBUG2(m_logFn,
                    "Data received: %s %llu %llu %s",
                    std::format("{}_{}", session, seq).c_str(),
@@ -291,6 +392,7 @@ public:
             {
                 m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
                 m_endEnqueued = true;
+                markProcessing();
             }
         }
     }
@@ -413,6 +515,7 @@ public:
             {
                 m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
                 m_endEnqueued = true;
+                markProcessing();
             }
         }
     }
@@ -490,6 +593,7 @@ public:
             {
                 m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
                 m_endEnqueued = true;
+                markProcessing();
             }
         }
     }
@@ -519,11 +623,13 @@ public:
             LOG_DEBUG2(m_logFn, "All sequences received for session %llu", m_context->sessionId);
             m_indexerQueue.push(Response({.status = ResponseStatus::Ok, .context = m_context}));
             m_endEnqueued = true;
+            markProcessing();
             responseDispatcher.sendEndAck(
                 Wazuh::SyncSchema::Status_Processing, m_context->agentId, m_context->sessionId, m_context->moduleName);
         }
         else
         {
+            ++m_stats.retransmissionRequests;
             responseDispatcher.sendEndMissingSeq(
                 m_context->agentId, m_context->sessionId, m_context->moduleName, m_gapSet->ranges());
         }

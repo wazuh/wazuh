@@ -27,6 +27,7 @@
 #include <asyncValueDispatcher.hpp>
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <filesystem>
 #include <format>
 #include <functional>
@@ -38,6 +39,7 @@
 #include <rocksdb/slice.h>
 #include <shared_mutex>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -45,6 +47,8 @@
 
 constexpr int SINGLE_THREAD_COUNT = 1;
 constexpr int DEFAULT_TIME {60 * 10}; // 10 minutes
+constexpr auto QUEUE_STATS_INTERVAL {std::chrono::seconds(1)};
+constexpr auto ROCKSDB_STATS_INTERVAL {std::chrono::seconds(5)};
 constexpr auto INVENTORY_SYNC_PATH {"queue/inventory_sync"};
 constexpr auto INVENTORY_SYNC_TOPIC {"inventory-states"};
 constexpr auto INVENTORY_SYNC_SUBSCRIBER_ID {"inventory-sync-module"};
@@ -337,6 +341,7 @@ class InventorySyncFacadeImpl final
                     }
                     if (!admitted)
                     {
+                        m_dataValueQuotaRejectedSessions.fetch_add(1, std::memory_order_relaxed);
                         LOG_WARN(m_logFn,
                                  "InventorySyncFacade::start: DataValue quota exhausted "
                                  "(requested=%llu, remaining=%llu); rejecting session for agent %s",
@@ -648,9 +653,11 @@ public:
         }
         if (configuration.contains("dataValueQuota"))
         {
-            m_dataValueQuotaRemaining.store(configuration.at("dataValueQuota").get<uint64_t>(),
-                                            std::memory_order_relaxed);
+            const auto dataValueQuota = configuration.at("dataValueQuota").get<uint64_t>();
+            m_dataValueQuotaTotal.store(dataValueQuota, std::memory_order_relaxed);
+            m_dataValueQuotaRemaining.store(dataValueQuota, std::memory_order_relaxed);
         }
+        m_dataValueQuotaRejectedSessions.store(0, std::memory_order_relaxed);
         LOG_DEBUG1(m_logFn,
                    "InventorySync queue size: %zu, DataValue quota: %llu",
                    m_workersQueueSize,
@@ -795,6 +802,7 @@ public:
                                 // Send ACK to agent.
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                markSession(ctx->sessionId, "completed");
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -838,6 +846,7 @@ public:
                                 // Send ACK to agent.
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                markSession(ctx->sessionId, "completed");
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -872,6 +881,7 @@ public:
                                 // Send ACK to agent.
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                markSession(ctx->sessionId, "completed");
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -920,6 +930,7 @@ public:
                                 // Send ACK to agent.
                                 m_responseDispatcher->sendEndAck(
                                     Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
+                                markSession(ctx->sessionId, "completed");
                                 // Delete Session.
                                 if (eraseSession(ctx->sessionId) == 0)
                                 {
@@ -1014,6 +1025,7 @@ public:
                                                                      res.context->agentId,
                                                                      res.context->sessionId,
                                                                      res.context->moduleName);
+                                    markSession(res.context->sessionId, "completed");
                                 }
                                 else
                                 {
@@ -1026,6 +1038,7 @@ public:
                                                                      res.context->agentId,
                                                                      res.context->sessionId,
                                                                      res.context->moduleName);
+                                    markSession(res.context->sessionId, "modulecheck-mismatch");
                                 }
                             }
                         }
@@ -1037,6 +1050,7 @@ public:
                                                              res.context->agentId,
                                                              res.context->sessionId,
                                                              res.context->moduleName);
+                            markSession(res.context->sessionId, "modulecheck-error");
                         }
 
                         if (eraseSession(res.context->sessionId) == 0)
@@ -1472,6 +1486,7 @@ public:
                                                                                  res.context->sessionId,
                                                                                  res.context->moduleName);
                                                 m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                                                markSession(res.context->sessionId, "error-vd-scanner");
                                                 eraseSession(res.context->sessionId);
                                                 m_sessionCompletedCV.notify_all();
                                             }
@@ -1513,6 +1528,7 @@ public:
                                         Wazuh::SyncSchema::Status_Ok, ctx->agentId, ctx->sessionId, ctx->moduleName);
                                     // Delete data from database.
                                     m_dataStore->deleteByPrefix(std::to_string(ctx->sessionId));
+                                    markSession(ctx->sessionId, "completed");
                                     // Delete Session.
                                     if (eraseSession(ctx->sessionId) == 0)
                                     {
@@ -1541,6 +1557,7 @@ public:
                                                              res.context->sessionId,
                                                              res.context->moduleName);
                             m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                            markSession(res.context->sessionId, "completed");
                             if (eraseSession(res.context->sessionId) == 0)
                             {
                                 LOG_DEBUG2(m_logFn,
@@ -1574,6 +1591,7 @@ public:
                                                      res.context->moduleName);
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                    markSession(res.context->sessionId, "error-inventory-exception");
                     // Delete Session.
                     if (eraseSession(res.context->sessionId) == 0)
                     {
@@ -1603,6 +1621,7 @@ public:
                                                      res.context->moduleName);
                     // Delete data from database.
                     m_dataStore->deleteByPrefix(std::to_string(res.context->sessionId));
+                    markSession(res.context->sessionId, "error-std-exception");
                     // Delete Session.
                     if (eraseSession(res.context->sessionId) == 0)
                     {
@@ -1657,6 +1676,7 @@ public:
 
                             // Delete data from database.
                             m_dataStore->deleteByPrefix(std::to_string(it->first));
+                            it->second.markTerminating("timeout");
                             it = eraseSessionLocked(it);
                         }
                         else
@@ -1670,6 +1690,8 @@ public:
 
         // Init the socket server to attend keystore requests
         initializeKeystoreSocket();
+
+        m_queueStatsThread = std::thread([this]() { queueStatsLoop(); });
 
         LOG_DEBUG1(m_logFn, "InventorySyncFacade started.");
     }
@@ -1986,6 +2008,15 @@ public:
         return 1;
     }
 
+    void markSession(const uint64_t sessionId, const std::string_view reason)
+    {
+        std::shared_lock lock(m_agentSessionsMutex);
+        if (const auto it = m_agentSessions.find(sessionId); it != m_agentSessions.end())
+        {
+            it->second.markTerminating(reason);
+        }
+    }
+
     /**
      * @brief Clean up zombie sessions for an agent
      * @param agentId Agent ID to clean up sessions for
@@ -2031,6 +2062,7 @@ public:
                 // Delete data from database
                 m_dataStore->deleteByPrefix(std::to_string(sessionId));
 
+                it->second.markTerminating("zombie");
                 // Remove session (restores DataValue quota)
                 eraseSessionLocked(it);
                 cleanedCount++;
@@ -2128,6 +2160,12 @@ public:
             m_sessionTimeoutThread.join();
         }
 
+        m_queueStatsCv.notify_all();
+        if (m_queueStatsThread.joinable())
+        {
+            m_queueStatsThread.join();
+        }
+
         // Clear VDFirst scan tracking
         {
             std::unique_lock lock(m_activeVDFirstScansMutex);
@@ -2144,6 +2182,128 @@ public:
 
 private:
     InventorySyncFacadeImpl() = default;
+
+    static std::uintmax_t recursiveDirSize(const std::filesystem::path& root)
+    {
+        std::error_code error;
+        if (!std::filesystem::exists(root, error))
+        {
+            return 0;
+        }
+
+        std::uintmax_t total = 0;
+        for (auto it = std::filesystem::recursive_directory_iterator(
+                 root, std::filesystem::directory_options::skip_permission_denied, error);
+             it != std::filesystem::recursive_directory_iterator();
+             it.increment(error))
+        {
+            if (error)
+            {
+                error.clear();
+                continue;
+            }
+
+            std::error_code fileError;
+            if (it->is_regular_file(fileError) && !fileError)
+            {
+                const auto size = it->file_size(fileError);
+                if (!fileError)
+                {
+                    total += size;
+                }
+            }
+        }
+        return total;
+    }
+
+    void queueStatsLoop()
+    {
+        std::unique_lock lock(m_queueStatsMutex);
+        std::uintmax_t rocksBytes = 0;
+        auto nextRocksSample = std::chrono::steady_clock::now();
+
+        while (!m_stopping.load(std::memory_order_relaxed))
+        {
+            m_queueStatsCv.wait_for(
+                lock, QUEUE_STATS_INTERVAL, [this]() { return m_stopping.load(std::memory_order_relaxed); });
+            if (m_stopping.load(std::memory_order_relaxed))
+            {
+                break;
+            }
+            lock.unlock();
+
+            const auto now = std::chrono::steady_clock::now();
+            if (now >= nextRocksSample)
+            {
+                rocksBytes = recursiveDirSize(INVENTORY_SYNC_PATH);
+                nextRocksSample = now + ROCKSDB_STATS_INTERVAL;
+            }
+
+            const auto workersQueue = m_workersQueue ? m_workersQueue->size() : 0;
+            const auto indexerQueue = m_indexerQueue ? m_indexerQueue->size() : 0;
+            const auto bulkBytes = m_indexerConnector ? m_indexerConnector->getBulkDataSize() : 0;
+            const auto pendingNotify = m_indexerConnector ? m_indexerConnector->getPendingNotifyCount() : 0;
+            const auto pendingDeleteByQuery = m_indexerConnector ? m_indexerConnector->getDeleteByQueryCount() : 0;
+
+            std::size_t sessions = 0;
+            {
+                std::shared_lock sessionsLock(m_agentSessionsMutex);
+                sessions = m_agentSessions.size();
+            }
+
+            std::size_t blockedAgents = 0;
+            {
+                std::shared_lock blockedLock(m_blockedAgentsMutex);
+                blockedAgents = m_blockedAgents.size();
+            }
+
+            std::size_t activeVDFirst = 0;
+            {
+                std::lock_guard vdFirstLock(m_activeVDFirstScansMutex);
+                activeVDFirst = m_activeVDFirstScans.size();
+            }
+
+            const auto quotaTotal = m_dataValueQuotaTotal.load(std::memory_order_relaxed);
+            const auto quotaRemaining = m_dataValueQuotaRemaining.load(std::memory_order_relaxed);
+            const auto quotaReserved = quotaTotal > quotaRemaining ? quotaTotal - quotaRemaining : 0;
+            const auto quotaRejections = m_dataValueQuotaRejectedSessions.load(std::memory_order_relaxed);
+            const auto workersQueueUsed =
+                m_workersQueueSize ? 100.0 * static_cast<double>(workersQueue) / m_workersQueueSize : 0.0;
+            const auto sessionUsed = m_maxSessions > 0 ? 100.0 * static_cast<double>(sessions) / m_maxSessions : 0.0;
+            const auto quotaUsed = quotaTotal ? 100.0 * static_cast<double>(quotaReserved) / quotaTotal : 0.0;
+
+            LOG_INFO(m_logFn,
+                     "InventorySync queue stats: workers_q=%zu indexer_q=%zu "
+                     "sessions=%zu blocked_agents=%zu active_vdfirst=%zu "
+                     "indexer_bulk_bytes=%zu indexer_notify=%zu indexer_delbyq=%zu "
+                     "rocksdb_dir_bytes=%llu "
+                     "workers_q_limit=%zu workers_q_used_pct=%.2f "
+                     "session_limit=%d session_used_pct=%.2f "
+                     "data_value_quota_total=%llu data_value_quota_remaining=%llu "
+                     "data_value_quota_reserved=%llu data_value_quota_used_pct=%.2f "
+                     "data_value_quota_rejections=%llu",
+                     workersQueue,
+                     indexerQueue,
+                     sessions,
+                     blockedAgents,
+                     activeVDFirst,
+                     bulkBytes,
+                     pendingNotify,
+                     pendingDeleteByQuery,
+                     static_cast<unsigned long long>(rocksBytes),
+                     m_workersQueueSize,
+                     workersQueueUsed,
+                     m_maxSessions,
+                     sessionUsed,
+                     static_cast<unsigned long long>(quotaTotal),
+                     static_cast<unsigned long long>(quotaRemaining),
+                     static_cast<unsigned long long>(quotaReserved),
+                     quotaUsed,
+                     static_cast<unsigned long long>(quotaRejections));
+
+            lock.lock();
+        }
+    }
 
     void deleteAgent(const std::string& agentId)
     {
@@ -2242,6 +2402,7 @@ private:
                 // Delete data from database
                 m_dataStore->deleteByPrefix(std::to_string(staleSessionId));
 
+                it->second.markTerminating("stale");
                 // Remove session from map (restores DataValue quota)
                 eraseSessionLocked(it);
                 m_sessionCompletedCV.notify_all();
@@ -2253,8 +2414,9 @@ private:
     std::string m_clusterName;
     int m_maxSessions {1000};          // Maximum concurrent sessions (configured from internal_options)
     size_t m_workersQueueSize {10000}; // Input queue cap (configured from internal_options)
-    std::atomic<uint64_t> m_dataValueQuotaRemaining {
-        500000};                                   // Global DataValue quota (configured from internal_options)
+    std::atomic<uint64_t> m_dataValueQuotaTotal {500000};
+    std::atomic<uint64_t> m_dataValueQuotaRemaining {500000}; // Global DataValue quota from internal_options
+    std::atomic<uint64_t> m_dataValueQuotaRejectedSessions {0};
     std::atomic<int64_t> m_lastQueueDropLogNs {0}; // steady_clock ns of last queue-drop warning
     static constexpr int64_t WARN_THROTTLE_NS = 90LL * 1000LL * 1000LL * 1000LL; // 90 s
     mutable std::shared_mutex m_agentSessionsMutex;
@@ -2270,6 +2432,9 @@ private:
     std::unique_ptr<TRouterSubscriber> m_inventorySubscription;
     std::map<uint64_t, TAgentSession, std::less<>> m_agentSessions;
     std::thread m_sessionTimeoutThread;
+    std::thread m_queueStatsThread;
+    std::mutex m_queueStatsMutex;
+    std::condition_variable m_queueStatsCv;
 
     // Agent locking mechanism for metadata/groups updates
     std::unordered_set<std::string> m_blockedAgents; ///< Set of locked agent IDs

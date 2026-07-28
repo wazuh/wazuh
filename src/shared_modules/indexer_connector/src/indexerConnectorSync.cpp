@@ -140,6 +140,21 @@ public:
     {
         return m_impl.isAvailable();
     }
+
+    size_t getBulkDataSize() const
+    {
+        return m_impl.getBulkDataSize();
+    }
+
+    size_t getPendingNotifyCount() const
+    {
+        return m_impl.getPendingNotifyCount();
+    }
+
+    size_t getDeleteByQueryCount() const
+    {
+        return m_impl.getDeleteByQueryCount();
+    }
 };
 
 IndexerConnectorSync::IndexerConnectorSync(const nlohmann::json& config, LoggingContext logging)
@@ -268,6 +283,21 @@ void IndexerConnectorSync::refresh(std::string_view indexPattern)
 bool IndexerConnectorSync::isAvailable() const
 {
     return m_impl->isAvailable();
+}
+
+size_t IndexerConnectorSync::getBulkDataSize() const
+{
+    return m_impl->getBulkDataSize();
+}
+
+size_t IndexerConnectorSync::getPendingNotifyCount() const
+{
+    return m_impl->getPendingNotifyCount();
+}
+
+size_t IndexerConnectorSync::getDeleteByQueryCount() const
+{
+    return m_impl->getDeleteByQueryCount();
 }
 
 // LCOV_EXCL_STOP

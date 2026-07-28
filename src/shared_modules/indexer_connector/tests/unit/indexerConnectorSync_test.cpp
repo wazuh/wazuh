@@ -152,6 +152,27 @@ TEST_F(IndexerConnectorSyncTest, BulkCreateAndConditionalIndexGenerateConcurrenc
         HasSubstr(R"({"index":{"_index":"test-index","_id":"existing-id","if_seq_no":7,"if_primary_term":3}})"));
 }
 
+TEST_F(IndexerConnectorSyncTest, QueueMetricsTrackConditionalBulkLifecycle)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    connector.registerNotify([]() {});
+    connector.deleteByQuery("test-index", "001");
+    connector.bulkIndexWithConcurrencyControl("existing-id", "test-index", R"({"field":"updated"})", 7, 3);
+
+    EXPECT_GT(connector.getBulkDataSize(), 0U);
+    EXPECT_EQ(connector.getPendingNotifyCount(), 1U);
+    EXPECT_EQ(connector.getDeleteByQueryCount(), 1U);
+
+    connector.flush();
+
+    EXPECT_EQ(connector.getBulkDataSize(), 0U);
+    EXPECT_EQ(connector.getPendingNotifyCount(), 0U);
+    EXPECT_EQ(connector.getDeleteByQueryCount(), 0U);
+}
+
 TEST_F(IndexerConnectorSyncTest, OptimisticConcurrencyConflictIsNotAccepted)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();

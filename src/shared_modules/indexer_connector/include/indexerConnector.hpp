@@ -343,6 +343,21 @@ public:
      * @return true if have a server available, false otherwise.
      */
     bool isAvailable() const;
+
+    /**
+     * @brief Bytes currently buffered in the bulk payload.
+     */
+    size_t getBulkDataSize() const;
+
+    /**
+     * @brief Callbacks waiting for the next successful bulk flush.
+     */
+    size_t getPendingNotifyCount() const;
+
+    /**
+     * @brief Delete-by-query operations waiting for the next bulk flush.
+     */
+    size_t getDeleteByQueryCount() const;
 };
 
 /**

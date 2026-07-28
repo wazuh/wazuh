@@ -289,6 +289,9 @@ class IndexerConnectorSyncImpl final
     std::chrono::steady_clock::time_point m_lastBulkTime;
     std::condition_variable m_cv;
     std::mutex m_mutex;
+    std::atomic<size_t> m_bulkDataSizeMetric {0};
+    std::atomic<size_t> m_pendingNotifyCountMetric {0};
+    std::atomic<size_t> m_deleteByQueryCountMetric {0};
     std::thread m_bulkThread;
     std::atomic<bool> m_stopping {false};
     std::vector<size_t> m_boundaries;
@@ -296,6 +299,13 @@ class IndexerConnectorSyncImpl final
     bool m_shouldNotifyAfterBulk {false};
     size_t m_maxBulkSize {MaxBulkSize};
     size_t m_flushInterval {FlushInterval};
+
+    void publishQueueMetrics() noexcept
+    {
+        m_bulkDataSizeMetric.store(m_bulkData.size(), std::memory_order_relaxed);
+        m_pendingNotifyCountMetric.store(m_notify.size(), std::memory_order_relaxed);
+        m_deleteByQueryCountMetric.store(m_deleteByQuery.size(), std::memory_order_relaxed);
+    }
 
     void processBulk()
     {
@@ -336,6 +346,7 @@ class IndexerConnectorSyncImpl final
             {
                 LOG_ERROR(m_logFn, "deleteByQuery error: %s, status code: %ld.", error.c_str(), statusCode);
                 m_bulkData.clear();
+                publishQueueMetrics();
                 m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException(error);
             }
@@ -370,6 +381,7 @@ class IndexerConnectorSyncImpl final
                 m_bulkData.clear();
                 m_boundaries.clear();
                 m_strictVersionConflicts.clear();
+                publishQueueMetrics();
                 m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException("Bulk operation had indexing failures");
             }
@@ -396,6 +408,7 @@ class IndexerConnectorSyncImpl final
                     m_bulkData.clear();
                     m_boundaries.clear();
                     m_strictVersionConflicts.clear();
+                    publishQueueMetrics();
                     throw IndexerConnectorException("Single operation exceeds server payload limits");
                 }
                 splitAndProcessBulk();
@@ -408,6 +421,7 @@ class IndexerConnectorSyncImpl final
                 m_bulkData.clear();
                 m_boundaries.clear();
                 m_strictVersionConflicts.clear();
+                publishQueueMetrics();
                 m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException("Bulk version conflict at request level");
             }
@@ -422,6 +436,7 @@ class IndexerConnectorSyncImpl final
                 m_bulkData.clear();
                 m_boundaries.clear();
                 m_strictVersionConflicts.clear();
+                publishQueueMetrics();
                 m_lastBulkTime = std::chrono::steady_clock::now();
                 throw IndexerConnectorException(error);
             }
@@ -465,6 +480,7 @@ class IndexerConnectorSyncImpl final
         m_boundaries.clear();
         m_strictVersionConflicts.clear();
         m_deleteByQuery.clear();
+        publishQueueMetrics();
         m_lastBulkTime = std::chrono::steady_clock::now();
     }
 
@@ -525,6 +541,7 @@ class IndexerConnectorSyncImpl final
         m_bulkData.clear();
         m_boundaries.clear();
         m_strictVersionConflicts.clear();
+        publishQueueMetrics();
         m_lastBulkTime = std::chrono::steady_clock::now();
     }
 
@@ -741,6 +758,7 @@ public:
                             {
                                 std::vector<std::function<void()>> callbacksCopy = std::move(m_notify);
                                 m_notify.clear();
+                                publishQueueMetrics();
                                 m_shouldNotifyAfterBulk = false;
 
                                 timeoutLock.unlock();
@@ -788,6 +806,7 @@ public:
         {
             // No cluster name: filter by agent.id only.
             boolQuery["filter"]["terms"]["wazuh.agent.id"].push_back(agentId);
+            publishQueueMetrics();
             return;
         }
 
@@ -801,6 +820,7 @@ public:
             boolQuery["filter"] = nlohmann::json::array({agentClause, clusterClause});
         }
         boolQuery["filter"][0]["terms"]["wazuh.agent.id"].push_back(agentId);
+        publishQueueMetrics();
     }
 
     void executeUpdateByQuery(const std::vector<std::string>& indices, const nlohmann::json& updateQuery)
@@ -906,6 +926,7 @@ public:
                          "Update by query returned 409 version conflict. This indicates documents were modified by "
                          "another process.");
                 m_notify.clear();
+                publishQueueMetrics();
                 throw IndexerConnectorException("Update by query version conflict");
             }
             else if (statusCode == HTTP_TOO_MANY_REQUESTS)
@@ -917,6 +938,7 @@ public:
             {
                 LOG_ERROR(m_logFn, "Update by query failed: %s, status code: %ld.", error.c_str(), statusCode);
                 m_notify.clear();
+                publishQueueMetrics();
                 throw IndexerConnectorException(error);
             }
         };
@@ -927,6 +949,7 @@ public:
             {
                 LOG_DEBUG2(m_logFn, "Stopping requested, aborting update by query");
                 m_notify.clear();
+                publishQueueMetrics();
                 return;
             }
 
@@ -1328,6 +1351,7 @@ public:
         m_bulkData.append("\n");
         m_boundaries.push_back(m_bulkData.size());
         m_strictVersionConflicts.push_back(0);
+        publishQueueMetrics();
     }
 
     void bulkIndex(std::string_view id, std::string_view index, std::string_view data)
@@ -1415,6 +1439,7 @@ public:
         m_bulkData.append("\n");
         m_boundaries.push_back(m_bulkData.size());
         m_strictVersionConflicts.push_back(0);
+        publishQueueMetrics();
     }
 
     void bulkCreate(std::string_view id, std::string_view index, std::string_view data)
@@ -1440,6 +1465,7 @@ public:
         m_bulkData.append("\n");
         m_boundaries.push_back(m_bulkData.size());
         m_strictVersionConflicts.push_back(1);
+        publishQueueMetrics();
     }
 
     void bulkIndexWithConcurrencyControl(std::string_view id,
@@ -1476,6 +1502,7 @@ public:
         m_bulkData.append("\n");
         m_boundaries.push_back(m_bulkData.size());
         m_strictVersionConflicts.push_back(1);
+        publishQueueMetrics();
     }
 
     void flush()
@@ -1495,6 +1522,7 @@ public:
             {
                 callbacksCopy = std::move(m_notify);
                 m_notify.clear();
+                publishQueueMetrics();
                 m_shouldNotifyAfterBulk = false;
             }
         }
@@ -1518,6 +1546,7 @@ public:
         catch (...)
         {
             m_notify.clear();
+            publishQueueMetrics();
             m_shouldNotifyAfterBulk = false;
             throw;
         }
@@ -1538,6 +1567,7 @@ public:
             {
                 callbacksCopy = std::move(m_notify);
                 m_notify.clear();
+                publishQueueMetrics();
                 m_shouldNotifyAfterBulk = false;
             }
         }
@@ -1551,6 +1581,22 @@ public:
     void registerNotify(std::function<void()> callback)
     {
         m_notify.push_back(std::move(callback));
+        publishQueueMetrics();
+    }
+
+    size_t getBulkDataSize() const
+    {
+        return m_bulkDataSizeMetric.load(std::memory_order_relaxed);
+    }
+
+    size_t getPendingNotifyCount() const
+    {
+        return m_pendingNotifyCountMetric.load(std::memory_order_relaxed);
+    }
+
+    size_t getDeleteByQueryCount() const
+    {
+        return m_deleteByQueryCountMetric.load(std::memory_order_relaxed);
     }
 
     void refresh(std::string_view indexPattern)
