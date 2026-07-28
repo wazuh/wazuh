@@ -226,3 +226,21 @@ SyncFrameResult readSyncSessionFrame(const SyncReadFn& read, std::FILE* out, std
     size = bodyLen;
     return SyncFrameResult::Ok;
 }
+
+bool writeSyncSessionAck(const SyncWriteFn& write, bool accepted)
+{
+    const uint8_t status = accepted ? SYNC_FRAME_ACCEPTED : SYNC_FRAME_REFUSED;
+    return writeAll(write, &status, sizeof(status));
+}
+
+bool readSyncSessionAck(const SyncReadFn& read)
+{
+    uint8_t status = SYNC_FRAME_REFUSED;
+
+    if (readAll(read, &status, sizeof(status)) != SyncFrameResult::Ok)
+    {
+        return false; // No answer: assume the session was not taken.
+    }
+
+    return status == SYNC_FRAME_ACCEPTED;
+}
