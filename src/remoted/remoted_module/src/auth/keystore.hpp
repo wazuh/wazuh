@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "common/logThrottle.hpp" // Safe in a header: LogThrottle deliberately does not log.
 #include "iAgentKeystore.hpp"
 
 namespace remoted::auth
@@ -97,6 +98,12 @@ namespace remoted::auth
          */
         int reload();
 
+        /// reload() failure reasons. Distinguished because they need different operator messages:
+        /// an unreadable file is an install/permissions problem the caller must report, while an
+        /// unstable one is transient and already reported by reload() itself.
+        static constexpr int kReloadUnreadable {-1}; ///< Missing, unreadable, or permission-denied.
+        static constexpr int kReloadUnstable {-2};   ///< Kept changing across every read attempt.
+
         /**
          * @brief Look up an agent's key in the in-memory copy of client.keys.
          *
@@ -108,8 +115,17 @@ namespace remoted::auth
         std::optional<std::vector<std::uint8_t>> keyFor(AgentId agentId) const override;
 
     private:
-        /// Watcher thread entry point: inotify + poll() loop, see keystore.cpp for the full design.
+        /// Watcher thread entry point: an exception barrier around watcherLoopBody(). A throw
+        /// escaping a bare std::thread would terminate the whole remoted daemon.
         void watcherLoop();
+
+        /// The actual inotify + poll() loop, see keystore.cpp for the full design.
+        void watcherLoopBody();
+
+        /// Closes the inotify/eventfd descriptors and resets them to -1. Idempotent; used both by
+        /// the destructor and by the constructor's rollback path (a constructor that throws never
+        /// runs the destructor, so the descriptors would otherwise leak).
+        void closeWatchFds() noexcept;
 
         /// Drains every pending inotify event on m_inotifyFd (it's non-blocking) and, if any of
         /// them invalidated the watch (IN_IGNORED/IN_MOVE_SELF/IN_DELETE_SELF -- typical of an
@@ -141,6 +157,10 @@ namespace remoted::auth
         std::mutex m_reloadMutex;
         bool m_hasBaseline {false};
         std::vector<std::uint8_t> m_lastHash;
+
+        /// Throttles the "client.keys is unreadable" warning: the watcher retries every
+        /// m_refreshIntervalSeconds, so an unreadable file would otherwise flood wazuh-manager.log .
+        remoted::common::LogThrottle m_unreadableThrottle;
     };
 
 } // namespace remoted::auth

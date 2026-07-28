@@ -29,7 +29,7 @@ namespace remoted::auth
                 case 16: return "AES-128-CBC";
                 case 24: return "AES-192-CBC";
                 case 32: return "AES-256-CBC";
-                default: throw std::invalid_argument("AES-CMAC key must be 16, 24 or 32 bytes");
+                default: throw CmacKeyError("AES-CMAC key must be 16, 24 or 32 bytes");
             }
         }
     } // namespace
@@ -42,15 +42,19 @@ namespace remoted::auth
     };
 
     Cmac::Cmac(const std::vector<std::uint8_t>& key)
-        : m_impl(new Impl())
     {
+        // Validate BEFORE allocating m_impl. cipherNameFor() throws CmacKeyError for a bad key
+        // length; if that happened after `m_impl = new Impl()` (as it used to, via a member
+        // initializer), construction would abort without ever running ~Cmac() -- m_impl leaks,
+        // since nothing else owns it. Caught by LeakSanitizer via the CmacKeyError unit test.
         const char* cipherName = cipherNameFor(key.size());
 
+        m_impl = new Impl();
         m_impl->mac = EVP_MAC_fetch(nullptr, "CMAC", nullptr);
         if (!m_impl->mac)
         {
             delete m_impl;
-            throw std::runtime_error("EVP_MAC_fetch(CMAC) failed");
+            throw CmacProviderError("EVP_MAC_fetch(CMAC) failed");
         }
 
         m_impl->ctx = EVP_MAC_CTX_new(m_impl->mac);
@@ -58,7 +62,7 @@ namespace remoted::auth
         {
             EVP_MAC_free(m_impl->mac);
             delete m_impl;
-            throw std::runtime_error("EVP_MAC_CTX_new failed");
+            throw CmacProviderError("EVP_MAC_CTX_new failed");
         }
 
         OSSL_PARAM params[2];
@@ -70,7 +74,7 @@ namespace remoted::auth
             EVP_MAC_CTX_free(m_impl->ctx);
             EVP_MAC_free(m_impl->mac);
             delete m_impl;
-            throw std::runtime_error("EVP_MAC_init failed");
+            throw CmacProviderError("EVP_MAC_init failed");
         }
     }
 

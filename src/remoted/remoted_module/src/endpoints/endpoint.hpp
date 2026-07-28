@@ -17,6 +17,7 @@
 
 #include <functional>
 #include <memory>
+#include <string_view>
 
 namespace remoted::endpoints
 {
@@ -51,8 +52,18 @@ namespace remoted::endpoints
      * Single source of truth for that response shape, shared by AuthGateway (auth-protocol
      * failures) and any endpoint that raises an AuthError of its own after authentication
      * succeeds (e.g. stateless::validatePayloadIdentity()'s PayloadAgentMismatch).
+     *
+     * Also the single place every client-visible rejection is logged, with the reason BEFORE
+     * publicErrorFor() collapses it (see endpoint.cpp): operator-actionable causes -- clock skew,
+     * body-cap, unusable key, agent-id mismatch -- become throttled warnings naming the relevant
+     * setting, while client-fault rejections stay at debug so an unauthenticated peer cannot flood
+     * ossec.log.
+     *
+     * @param err          The rejection reason.
+     * @param agentContext Optional authenticated agent id, included in the agent-id-mismatch
+     *                     warning. Only endpoints that reject AFTER authentication have one.
      */
-    remoted::http::HttpResponse errorResponseFor(remoted::auth::AuthError err);
+    remoted::http::HttpResponse errorResponseFor(remoted::auth::AuthError err, std::string_view agentContext = {});
 
 } // namespace remoted::endpoints
 
