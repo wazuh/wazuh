@@ -132,6 +132,52 @@ namespace
     FakeManager* FacadeE2eTest::s_manager = nullptr;
 } // namespace
 
+TEST_F(FacadeE2eTest, GracefulStopSendsControlShutdown)
+{
+    // Finding 3 (#37831 QA round): the manager was observed never receiving
+    // {"type":"shutdown"} on a graceful stop, with HttpsClientFacade::drain()'s
+    // guard (paused-or-not-registered) suspected as the likely (but, per that
+    // round's own report, unconfirmed) cause. This is the direct, live
+    // repro the report asked for: register for real over TLS, destroy the
+    // client the same way the real agent's atexit(w_https_client_stop) does,
+    // and check the manager's own record of what it received.
+    const uint16_t port = TLS_PORT + 6;
+    FakeManager manager {port, KEY_HEX, /*tls=*/true};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000)); // Registered.
+
+    hc_destroy(handle); // The same call the real agent's atexit hook makes.
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    std::string seenTypes;
+
+    if (auto result = peek.Get("/peek/control"))
+    {
+        seenTypes = result->body;
+    }
+
+    // If this fails, finding 3 is confirmed live (not just suspected from
+    // reading the source) and HttpsClientFacade::drain()'s guard (or
+    // something upstream of it) needs an actual behavior fix, not just the
+    // logging this same change adds. If it passes, the guard is NOT the
+    // problem in this exact lifecycle (start -> register -> destroy), and
+    // whatever the QA round observed must come from a path this test does
+    // not cover (e.g. the real daemon's signal-handler-driven shutdown).
+    EXPECT_NE(std::string::npos, seenTypes.find("shutdown"))
+            << "manager's /control record was: " << seenTypes;
+}
+
 TEST_F(FacadeE2eTest, RegistersOverTlsAndStopsCleanly)
 {
     // The full lifecycle against a real TLS listener: STARTING -> REGISTERED
