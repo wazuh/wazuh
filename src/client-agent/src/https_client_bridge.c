@@ -673,10 +673,30 @@ static void bridge_on_sync_response(const char *session_id, int result, const ch
             (int)module_len, module);
 }
 
+/* Names the module's connection states for the log The numeric
+ * value is kept alongside the name by the caller. */
+static const char *bridge_str_conn_state(int hc_state)
+{
+    switch (hc_state) {
+    case HC_STATE_STOPPED:
+        return "stopped";
+    case HC_STATE_STARTING:
+        return "starting";
+    case HC_STATE_REGISTERED:
+        return "registered";
+    case HC_STATE_REJECTED:
+        return "rejected";
+    case HC_STATE_AUTH_ERROR:
+        return "auth_error";
+    default:
+        return "unknown";
+    }
+}
+
 static void bridge_on_state_change(int state, void *user_data)
 {
     (void)user_data;
-    mdebug1("https_client connection state -> %d", state);
+    mdebug1("https_client connection state -> %s (%d)", bridge_str_conn_state(state), state);
     w_agentd_state_update(UPDATE_STATUS, (void *)bridge_map_agent_status(state));
 
     /* Interim fix for the WAIT_FILE/os_setwait() producer lock (armed

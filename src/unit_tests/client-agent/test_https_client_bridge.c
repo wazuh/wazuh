@@ -686,7 +686,7 @@ static void test_registered_state_maps_to_active(void **state)
     (void)state;
     start_client_successfully();
 
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 2");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> registered (2)");
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
     expect_function_call(__wrap_os_delwait);
@@ -725,7 +725,7 @@ static void test_starting_state_maps_to_pending(void **state)
     (void)state;
     start_client_successfully();
 
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 1");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> starting (1)");
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_PENDING);
 
@@ -740,7 +740,7 @@ static void test_stopped_state_maps_to_nactive(void **state)
     (void)state;
     start_client_successfully();
 
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 0");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> stopped (0)");
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
 
@@ -755,7 +755,7 @@ static void test_rejected_state_maps_to_nactive(void **state)
     (void)state;
     start_client_successfully();
 
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 3");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> rejected (3)");
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
 
@@ -843,7 +843,7 @@ static void test_auth_error_state_maps_to_nactive(void **state)
     (void)state;
     start_client_successfully();
 
-    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 4");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> auth_error (4)");
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_NACTIVE);
 
