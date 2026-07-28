@@ -28,7 +28,9 @@
  * body is streamed straight into a temp spool file (never held in memory), and
  * the session is handed to the injected sink as (id, spool_path, size). The
  * sink owns the spool file thereafter (the stateful stream deletes it once
- * sent).
+ * sent, or immediately if it cannot take it). Whatever the sink answers is
+ * relayed to the producer as the frame's status byte, so a session that could
+ * not be queued is not mistaken for a delivered one.
  *
  * Unix-only: the Windows agent runs its modules in-process, so it has no local
  * socket intake. On Windows start() is a no-op that returns false.
@@ -36,8 +38,10 @@
 class SyncIntake final
 {
     public:
+        /// Returns true when the session was taken; false makes the intake
+        /// refuse it to the producer, which then still owns the session.
         using SessionSink =
-            std::function<void(const std::string& sessionId, const std::string& spoolPath, uint64_t size)>;
+            std::function<bool(const std::string& sessionId, const std::string& spoolPath, uint64_t size)>;
 
         SyncIntake(std::string socketPath, std::string spoolDir, SessionSink sink);
         ~SyncIntake();
