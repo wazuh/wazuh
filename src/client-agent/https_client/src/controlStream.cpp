@@ -308,7 +308,12 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
 
     if (agent != parsed.end() && agent->is_object())
     {
-        maybeDownloadConfig(jsonField(*agent, "config_hash"), firstGroup(*agent), waiter);
+        const std::string managerHash = jsonField(*agent, "config_hash");
+        // Reported on every notify, matching or not: the agent's startup hash
+        // gate waits on the manager-validated configuration and, when the
+        // hashes already agree, no download fires to tell it so (#37854).
+        m_sink.onManagerConfigHash(managerHash);
+        maybeDownloadConfig(managerHash, firstGroup(*agent), waiter);
     }
 }
 

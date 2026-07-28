@@ -147,6 +147,19 @@ void CallbackDispatcher::onConfigDownloaded(const std::string& configHash,
     });
 }
 
+void CallbackDispatcher::onManagerConfigHash(const std::string& configHash)
+{
+    if (m_callbacks.on_manager_config_hash == nullptr)
+    {
+        return;
+    }
+
+    enqueue([this, configHash]
+    {
+        m_callbacks.on_manager_config_hash(configHash.c_str(), m_callbacks.user_data);
+    });
+}
+
 void CallbackDispatcher::onStateChange(hc_conn_state_t state)
 {
     if (m_callbacks.on_state_change == nullptr)
