@@ -140,6 +140,25 @@ class AgentSyncProtocol : public IAgentSyncProtocol
         /// A stop-induced abort leaves the streak untouched: it reports nothing about the manager.
         unsigned int trackSyncOutcome(bool success, bool stopped);
 
+        /// @brief Builds the Start table into an existing FlatBuffer builder, waiting
+        ///        for agent metadata to become available first. Owns the metadata
+        ///        lifetime end to end.
+        /// @param builder Builder to emit the table into.
+        /// @param mode Sync mode
+        /// @param dataSize Size of data to send
+        /// @param uniqueIndices Vector of unique indices to be synchronized
+        /// @param option Synchronization option.
+        /// @param globalVersion Optional global version to include in the Start message
+        /// @return The Start offset, or a null offset when metadata or groups are
+        ///         unavailable, or a stop was requested.
+        flatbuffers::Offset<Wazuh::SyncSchema::Start> buildStartOffset(
+            flatbuffers::FlatBufferBuilder& builder,
+            Mode mode,
+            size_t dataSize,
+            const std::vector<std::string>& uniqueIndices,
+            Option option = Option::SYNC,
+            std::optional<uint64_t> globalVersion = std::nullopt);
+
         /// @brief Sends a start message to the server
         /// @param mode Sync mode
         /// @param dataSize Size of data to send
