@@ -87,9 +87,21 @@ void HttpsClientFacade::startSyncIntake()
                        [this](const std::string & sessionId, const std::string & path, uint64_t size)
     {
         // The intake streamed the session to `path`; hand it to the stateful
-        // stream, which adopts and deletes it after sending.
-        m_stateful.submitFile(sessionId, path, size);
+        // stream, which adopts and deletes it after sending — or right away if
+        // it cannot take it.
+        if (!m_stateful.submitFile(sessionId, path, size))
+        {
+            // Say so on both channels: the producer is another process and only
+            // sees the intake's answer, while the outcome of every other session
+            // reaches this agent through on_sync_response.
+            LOGFN_WARN(m_logFn, "Refused sync session %s: the /stateful queue is full.",
+                       sessionId.c_str());
+            m_dispatcher.onSyncResponse(sessionId, HC_RESULT_BACKPRESSURE, "");
+            return false;
+        }
+
         m_statefulWaiter.notify();
+        return true;
     });
 
     if (m_syncIntake->start())
