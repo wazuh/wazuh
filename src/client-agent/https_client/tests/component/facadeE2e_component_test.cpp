@@ -123,6 +123,50 @@ namespace
         return false;
     }
 
+    /// The manager runs in a forked process, so everything the test wants to
+    /// know about what it received comes back through a /peek endpoint.
+    int peekCount(httplib::Client& peek, const char* target)
+    {
+        const auto result = peek.Get(target);
+        return result && !result->body.empty() ? std::stoi(result->body) : -1;
+    }
+
+    bool waitForCount(httplib::Client& peek, const char* target, int atLeast, int timeoutMs)
+    {
+        const int deadline = scaledTimeout(timeoutMs);
+
+        for (int elapsed = 0; elapsed < deadline; elapsed += 20)
+        {
+            if (peekCount(peek, target) >= atLeast)
+            {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
+        }
+
+        return false;
+    }
+
+    bool waitForBody(httplib::Client& peek, const char* target, const std::string& needle,
+                     int timeoutMs)
+    {
+        const int deadline = scaledTimeout(timeoutMs);
+
+        for (int elapsed = 0; elapsed < deadline; elapsed += 20)
+        {
+            if (const auto result = peek.Get(target);
+                    result && result->body.find(needle) != std::string::npos)
+            {
+                return true;
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
+        }
+
+        return false;
+    }
+
     class FacadeE2eTest : public ::testing::Test
     {
         protected:
@@ -288,6 +332,61 @@ TEST_F(FacadeE2eTest, LargeSyncSessionFromTheIntakeSocketReachesTheManager)
 
     // The session crossed the socket, was spooled, and was POSTed to the mock.
     EXPECT_TRUE(waitFor(recorder.syncCount, 1, 5000));
+    hc_destroy(handle);
+}
+
+TEST_F(FacadeE2eTest, AHeldStatefulRequestDoesNotStallStatelessOrControl)
+{
+    // #37836 wants this proven, not assumed: a sync session is one long POST,
+    // so while the manager sits on it the stateless and control planes must
+    // keep flowing on their own threads. The manager holds /stateful until the
+    // gate file goes away, which makes the window a fact rather than a race
+    // against a sleep.
+    const uint16_t port = TLS_PORT + 9;
+    const std::string gate = "/tmp/hc_hold_stateful_" + std::to_string(getpid());
+    { std::ofstream open {gate}; } // Held from here until we remove it.
+
+    FakeManager manager {port, KEY_HEX, /*tls=*/true, 0, {}, 0, 0, {}, gate};
+
+    Recorder recorder;
+    hc_config_t config = tlsConfig();
+    config.server_port = port;
+    hc_callbacks_t callbacks {};
+    callbacks.on_startup_result = onStartup;
+    callbacks.on_sync_response = onSync;
+    callbacks.on_state_change = onState;
+    callbacks.user_data = &recorder;
+
+    hc_handle* handle = hc_create(&config, &callbacks);
+    ASSERT_NE(nullptr, handle);
+    ASSERT_TRUE(hc_start(handle));
+    ASSERT_TRUE(waitFor(recorder.startupCount, 1, 3000));
+
+    httplib::Client peek {std::string {"https://127.0.0.1:"} + std::to_string(port)};
+    peek.enable_server_certificate_verification(false);
+    const int notifiesBefore = peekCount(peek, "/peek/notifies");
+
+    const std::string session(256 * 1024, 'H');
+    ASSERT_TRUE(hc_submit_sync_session(handle, "held-session-1",
+                                       reinterpret_cast<const uint8_t*>(session.data()),
+                                       session.size()));
+    std::this_thread::sleep_for(std::chrono::milliseconds {scaledTimeout(300)}); // Get inside the POST.
+
+    // Stateless keeps going while the session is stuck mid-flight.
+    const std::string event = "1:/var/log/syslog:while-stateful-is-held";
+    ASSERT_TRUE(hc_submit_event(handle, reinterpret_cast<const uint8_t*>(event.data()),
+                                event.size()));
+    EXPECT_TRUE(waitForBody(peek, "/peek/stateless", "while-stateful-is-held", 4000));
+
+    // ...and so does control, on its own cadence.
+    EXPECT_TRUE(waitForCount(peek, "/peek/notifies", notifiesBefore + 1, 4000));
+
+    // Both of those happened with the session still unanswered, which is the
+    // whole point: nothing above was waiting on it.
+    EXPECT_EQ(0, recorder.syncCount.load());
+
+    std::remove(gate.c_str()); // Release the manager.
+    EXPECT_TRUE(waitFor(recorder.syncCount, 1, 10000));
     hc_destroy(handle);
 }
 
