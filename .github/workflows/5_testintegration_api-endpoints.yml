@@ -170,9 +170,11 @@ jobs:
 
       - name: Build and save Docker images
         if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          WAZUH_BRANCH: ${{ github.head_ref || github.ref_name }}
         run: |
           cd api/test/integration/env
-          docker compose build --build-arg WAZUH_BRANCH=${{ github.head_ref || github.ref_name }} --no-cache
+          docker compose build --build-arg WAZUH_BRANCH="$WAZUH_BRANCH" --no-cache
           mkdir -p /tmp/docker-images
           readarray -t images < <(docker images | awk '/integration/ {print $1}')
           for image in "${images[@]}"; do
