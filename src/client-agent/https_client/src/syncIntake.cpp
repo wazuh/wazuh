@@ -125,9 +125,12 @@ namespace
             return readWatchingStop(peerFd, stopFd, buffer, n);
         };
         const SyncFrameResult result = readSyncSessionFrame(read, out, sessionId, size);
-        fclose(out);
+        // The last buffered bytes are only written at close, so a full disk can
+        // still fail here after every fwrite() reported success. Promoting the
+        // spool without checking would ship a truncated session.
+        const bool flushed = fclose(out) == 0;
 
-        if (result != SyncFrameResult::Ok)
+        if (result != SyncFrameResult::Ok || !flushed)
         {
             unlink(tmpl.c_str());
             return {};

@@ -23,12 +23,14 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <csignal>
 #include <cstring>
 #include <fstream>
 #include <mutex>
 #include <string>
 #include <thread>
 
+#include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -102,6 +104,41 @@ namespace
 
         return fd;
     }
+
+    /// Caps how much any file this process writes may hold, so a spool that is
+    /// small enough to sit in the stdio buffer only fails when it is flushed at
+    /// close. Restores the previous limit (and SIGXFSZ disposition) on scope
+    /// exit, since both are process-wide.
+    class FileSizeCap final
+    {
+        public:
+            explicit FileSizeCap(rlim_t bytes)
+            {
+                getrlimit(RLIMIT_FSIZE, &m_previous);
+                m_previousHandler = signal(SIGXFSZ, SIG_IGN); // Else the write kills the process.
+                rlimit capped {bytes, m_previous.rlim_max};
+                m_applied = setrlimit(RLIMIT_FSIZE, &capped) == 0;
+            }
+
+            ~FileSizeCap()
+            {
+                setrlimit(RLIMIT_FSIZE, &m_previous);
+                signal(SIGXFSZ, m_previousHandler);
+            }
+
+            FileSizeCap(const FileSizeCap&) = delete;
+            FileSizeCap& operator=(const FileSizeCap&) = delete;
+
+            bool applied() const
+            {
+                return m_applied;
+            }
+
+        private:
+            rlimit m_previous {};
+            void (*m_previousHandler)(int) {SIG_DFL};
+            bool m_applied {false};
+    };
 } // namespace
 
 class SyncIntakeComponentTest : public ::testing::Test
@@ -213,6 +250,25 @@ TEST_F(SyncIntakeComponentTest, AStalledProducerDoesNotBlockTheNextSession)
     ASSERT_TRUE(waitForCount(m_received, 1));
     EXPECT_EQ("after-stall", m_received.id);
     std::remove(m_received.path.c_str());
+}
+
+TEST_F(SyncIntakeComponentTest, ASpoolThatFailsToFlushAtCloseIsNotPromoted)
+{
+    // 2 KB fits the stdio buffer, so every fwrite() reports success and the
+    // write only fails when close() flushes it past the 1 KB cap - the disk-
+    // full shape. The half-written spool must be dropped, not handed on as a
+    // complete session.
+    ASSERT_TRUE(m_intake.start());
+
+    const FileSizeCap cap {1024};
+    ASSERT_TRUE(cap.applied());
+
+    // The producer's send succeeds: the bytes crossed the socket fine.
+    EXPECT_TRUE(sendBody(socketPath(), "unflushable", std::string(2048, 'Z')));
+    std::this_thread::sleep_for(std::chrono::milliseconds {300});
+
+    std::lock_guard<std::mutex> lock(m_received.mutex);
+    EXPECT_EQ(0, m_received.count) << "a spool that never reached disk was promoted";
 }
 
 TEST_F(SyncIntakeComponentTest, StartTwiceIsSafeAndStopIsIdempotent)
