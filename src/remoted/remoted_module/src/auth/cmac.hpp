@@ -14,12 +14,37 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace remoted::auth
 {
+
+    /**
+     * @brief One agent's key is unusable (wrong length for AES-128/192/256).
+     *
+     * Per-agent and expected in normal operation (a corrupted key column in client.keys), so the
+     * caller answers that one agent 401 and does not raise an alarm.
+     */
+    struct CmacKeyError : std::invalid_argument
+    {
+        using std::invalid_argument::invalid_argument;
+    };
+
+    /**
+     * @brief AES-CMAC itself is unavailable (OpenSSL provider failure).
+     *
+     * Distinct from CmacKeyError on purpose: this is global and permanent -- EVERY agent will fail
+     * to authenticate until it is fixed (a missing/misconfigured OpenSSL provider, FIPS mode, etc.).
+     * Without the distinction it was indistinguishable from an ordinary bad key, so a
+     * manager-wide outage looked like routine per-agent noise and was logged nowhere.
+     */
+    struct CmacProviderError : std::runtime_error
+    {
+        using std::runtime_error::runtime_error;
+    };
 
     /**
      * @brief Incremental AES-CMAC.
@@ -36,8 +61,8 @@ namespace remoted::auth
          * @brief Initialize AES-CMAC with a pre-shared key.
          *
          * @param key Must be 16, 24 or 32 bytes (AES-128/192/256).
-         * @throws std::invalid_argument if key's size is not 16, 24 or 32.
-         * @throws std::runtime_error if the underlying cryptographic calls fail.
+         * @throws CmacKeyError if key's size is not 16, 24 or 32 (per-agent, expected).
+         * @throws CmacProviderError if the underlying cryptographic calls fail (global, alarming).
          */
         explicit Cmac(const std::vector<std::uint8_t>& key);
         ~Cmac();
@@ -65,7 +90,10 @@ namespace remoted::auth
 
     private:
         struct Impl;
-        Impl* m_impl;
+        // Defaulted to nullptr: if the constructor's cipherNameFor() validation throws before
+        // m_impl is ever allocated, this is never read (construction aborts, ~Cmac() never runs) --
+        // the default is defensive hygiene, not load-bearing.
+        Impl* m_impl {nullptr};
     };
 
     /// Render bytes as lowercase hex, two characters per byte.

@@ -234,6 +234,52 @@ Change detection hashes the file's content (not mtime, which is only second-gran
 `reload()` re-checks the hash before and after parsing, discarding and retrying a parse caught
 mid-write rather than adopting a torn read.
 
+## Diagnosing rejections and capacity problems
+
+Every condition where a setting may need changing is logged to `wazuh-manager.log ` and names the setting.
+Because these are per-request conditions, repeated occurrences are collapsed to **one line per 90
+seconds per condition**, with the suppressed count folded into the message, so a burst or an outage
+produces a readable summary instead of thousands of identical lines:
+
+```
+wazuh-manager-remoted:forwarder: WARNING: Deferred-work slots exhausted (capacity 256): shed 4812
+request(s) with 503 in the last 90 s. Consider increasing the value of 'max_deferred_requests', or
+investigate why the downstream service is not keeping up.
+```
+
+| Symptom in `wazuh-manager.log ` | Setting to review |
+|---|---|
+| In-flight request memory budget exhausted | `max_inflight_bytes` |
+| Deferred-work slots exhausted | `max_deferred_requests` |
+| Timed out connecting to / sending to / waiting for the downstream service | `remoted.downstream_connect_timeout`, `_write_timeout`, `_response_timeout` |
+| Downstream response exceeded the configured cap | `remoted.downstream_max_response_body_size` |
+| Timestamps outside the accepted window (agent clock drift) | `remoted.auth_max_request_age`, `remoted.auth_max_future_skew` |
+| Body exceeded the authenticated-body cap (413) | `remoted.auth_max_body_size` |
+| Downstream timeouts add up past `http_request_timeout` | `remoted.http_request_timeout` |
+
+Three more that are not about tuning:
+
+- **`Loaded N agent key(s) from '<path>'`** at startup and after every hot-reload. `N` counts keys
+  that can actually authenticate — a key that fails to decode is reported separately and is **not**
+  counted, so this number can be trusted. If `client.keys` is unreadable, that is logged explicitly:
+  otherwise it presents only as every agent being rejected as unknown, with nothing explaining why.
+- **`AES-CMAC is unavailable…`** (ERROR) means the OpenSSL provider is broken and *every* agent will
+  fail to authenticate. Previously indistinguishable from one agent having a corrupt key.
+- **The HTTPS server failing to start** is an ERROR on the first attempt, naming the offending file
+  (e.g. a missing `certificate_path`), then quiet while it retries, escalating to a WARN roughly
+  hourly if it never succeeds. On a fresh install the certificate is genuinely not in place yet, so
+  the retry loop is expected; a permanent misconfiguration is what the escalation catches.
+
+Client-side rejections (malformed or unauthenticated requests) are logged at debug level only —
+visible with `remoted.debug=2` — because an unauthenticated peer controls how many it can trigger.
+Transport-level diagnostics reported by the HTTP library itself (TLS handshake errors, malformed
+HTTP, socket resets, and breaches of the `remoted.http_max_*` limits) are logged at
+`remoted.debug=1`, not surfaced by default: these are per-connection events driven overwhelmingly by
+client behavior — a portscanner, or negative-test traffic like `tools/send_stateless.py --all` — not
+a manager-side problem, so they are not logged unthrottled at warning/error level the way
+`max_inflight_bytes`/`max_deferred_requests` exhaustion or a genuine startup failure are. The one
+exception, the HTTPS server failing to bind, is already covered above.
+
 ## Testing
 
 `src/remoted/remoted_module/tools/send_stateless.py` signs and sends `POST /stateless` requests the
