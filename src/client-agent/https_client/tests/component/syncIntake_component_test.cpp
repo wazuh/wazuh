@@ -138,7 +138,10 @@ namespace
 
         private:
             rlimit m_previous {};
-            void (*m_previousHandler)(int) {SIG_DFL};
+            void (*m_previousHandler)(int)
+            {
+                SIG_DFL
+            };
             bool m_applied {false};
     };
 } // namespace
@@ -343,7 +346,10 @@ TEST(SyncIntakePathTest, APathTooLongForSunPathIsRefusedOnBothSides)
     // break the next start with EADDRINUSE. Both sides refuse instead.
     const std::string tooLong = "/tmp/" + std::string(120, 'p') + ".sock";
     SyncIntake intake {tooLong, ::testing::TempDir(),
-                       [](const std::string&, const std::string&, uint64_t) { return true; }};
+                       [](const std::string&, const std::string&, uint64_t)
+    {
+        return true;
+    }};
     EXPECT_FALSE(intake.start());
 
     const std::string body = "x";
