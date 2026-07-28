@@ -18,6 +18,8 @@
 
 #include "syncIntake.hpp"
 
+#include "syncFrame.hpp"
+
 #include <gtest/gtest.h>
 
 #include <atomic>
@@ -154,9 +156,12 @@ class SyncIntakeComponentTest : public ::testing::Test
             m_received.size = size;
             m_received.count++;
             m_received.cv.notify_all();
+            return m_accept.load(); // Flipped by the back-pressure test.
         })
         {
         }
+
+        std::atomic<bool> m_accept {true};
 
         Received m_received;
         SyncIntake m_intake;
@@ -252,6 +257,42 @@ TEST_F(SyncIntakeComponentTest, AStalledProducerDoesNotBlockTheNextSession)
     std::remove(m_received.path.c_str());
 }
 
+TEST_F(SyncIntakeComponentTest, ARefusedSessionIsReportedBackToTheProducer)
+{
+    // The producer is another process: the send() returning true is all it has
+    // to go on. A session the sink could not take must therefore come back as
+    // a failed send, not a successful one.
+    ASSERT_TRUE(m_intake.start());
+
+    m_accept = false;
+    EXPECT_FALSE(sendBody(socketPath(), "refused-1", "body-bytes"));
+    ASSERT_TRUE(waitForCount(m_received, 1)); // It did reach the sink, and was declined.
+
+    m_accept = true;
+    EXPECT_TRUE(sendBody(socketPath(), "accepted-1", "body-bytes"));
+    ASSERT_TRUE(waitForCount(m_received, 2));
+    std::remove(m_received.path.c_str());
+}
+
+TEST_F(SyncIntakeComponentTest, AMalformedFrameIsReportedBackToTheProducer)
+{
+    // Nothing reached the sink at all, so the answer must still be a refusal.
+    ASSERT_TRUE(m_intake.start());
+
+    const int producer = connectAndStall(socketPath(), "NOTWZSY-garbage");
+    ASSERT_GE(producer, 0);
+
+    timeval timeout {};
+    timeout.tv_sec = 5; // Never block the run if the answer stops coming.
+    setsockopt(producer, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
+    uint8_t status = SYNC_FRAME_ACCEPTED;
+    EXPECT_EQ(1, read(producer, &status, 1));
+    EXPECT_EQ(SYNC_FRAME_REFUSED, status);
+    close(producer);
+    EXPECT_EQ(0, m_received.count);
+}
+
 TEST_F(SyncIntakeComponentTest, ASpoolThatFailsToFlushAtCloseIsNotPromoted)
 {
     // 2 KB fits the stdio buffer, so every fwrite() reports success and the
@@ -263,8 +304,9 @@ TEST_F(SyncIntakeComponentTest, ASpoolThatFailsToFlushAtCloseIsNotPromoted)
     const FileSizeCap cap {1024};
     ASSERT_TRUE(cap.applied());
 
-    // The producer's send succeeds: the bytes crossed the socket fine.
-    EXPECT_TRUE(sendBody(socketPath(), "unflushable", std::string(2048, 'Z')));
+    // The bytes crossed the socket fine, but the spool never reached disk, so
+    // the producer is told the session was not taken.
+    EXPECT_FALSE(sendBody(socketPath(), "unflushable", std::string(2048, 'Z')));
     std::this_thread::sleep_for(std::chrono::milliseconds {300});
 
     std::lock_guard<std::mutex> lock(m_received.mutex);
@@ -293,7 +335,7 @@ TEST(SyncIntakePathTest, APathTooLongForSunPathIsRefusedOnBothSides)
     // break the next start with EADDRINUSE. Both sides refuse instead.
     const std::string tooLong = "/tmp/" + std::string(120, 'p') + ".sock";
     SyncIntake intake {tooLong, ::testing::TempDir(),
-                       [](const std::string&, const std::string&, uint64_t) {}};
+                       [](const std::string&, const std::string&, uint64_t) { return true; }};
     EXPECT_FALSE(intake.start());
 
     const std::string body = "x";
