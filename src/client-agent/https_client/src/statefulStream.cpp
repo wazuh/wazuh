@@ -54,13 +54,16 @@ bool StatefulStream::submit(const std::string& sessionId, const uint8_t* buffer,
 bool StatefulStream::submitFile(const std::string& sessionId, const std::string& filePath,
                                 uint64_t size)
 {
+    // Adopt the file first: it is ours from here on, so every rejection below
+    // still deletes it instead of stranding it in the spool directory.
+    Session session {sessionId, std::make_shared<SpoolFile>(filePath), size};
+
     if (!acceptableId(sessionId))
     {
         return false;
     }
 
-    // Adopt an already-spooled session file (deleted after it is sent).
-    return enqueue(Session {sessionId, std::make_shared<SpoolFile>(filePath), size});
+    return enqueue(std::move(session));
 }
 
 bool StatefulStream::acceptableId(const std::string& sessionId) const

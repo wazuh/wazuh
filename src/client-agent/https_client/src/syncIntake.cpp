@@ -246,11 +246,15 @@ void SyncIntake::handleConnection(int peerFd)
     std::string sessionId;
     uint64_t size = 0;
     const std::string path = spoolConnection(peerFd, m_stopPipe[0], m_spoolDir, sessionId, size);
+    const bool accepted = !path.empty() && m_sink && m_sink(sessionId, path, size);
 
-    if (!path.empty() && m_sink)
+    // Tell the producer what happened to it. A refused session is still theirs,
+    // so silence here would read as a successful hand-off.
+    const auto write = [peerFd](const void* buffer, size_t n) -> long
     {
-        m_sink(sessionId, path, size);
-    }
+        return static_cast<long>(send(peerFd, buffer, n, MSG_NOSIGNAL));
+    };
+    (void)writeSyncSessionAck(write, accepted);
 }
 
 bool sendSyncSession(const std::string& socketPath, const std::string& sessionId,
@@ -278,11 +282,24 @@ bool sendSyncSession(const std::string& socketPath, const std::string& sessionId
         return false;
     }
 
+    // Bound the wait for the status byte: the intake is single-threaded, so it
+    // may still be streaming another producer's session, but it must never pin
+    // this one indefinitely.
+    timeval timeout {};
+    timeout.tv_sec = PEER_IDLE_TIMEOUT_MS / 1000;
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+
     const auto write = [fd](const void* buffer, size_t n) -> long
     {
         return static_cast<long>(send(fd, buffer, n, MSG_NOSIGNAL));
     };
-    const bool ok = writeSyncSessionFrame(write, sessionId, body, length);
+    const auto read = [fd](void* buffer, size_t n) -> long
+    {
+        return static_cast<long>(recv(fd, buffer, n, 0));
+    };
+    // Only report success once the agent says it took the session.
+    const bool ok = writeSyncSessionFrame(write, sessionId, body, length) &&
+                    readSyncSessionAck(read);
     close(fd);
     return ok;
 }
