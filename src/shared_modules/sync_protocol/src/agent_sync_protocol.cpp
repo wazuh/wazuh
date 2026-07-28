@@ -550,11 +550,13 @@ bool AgentSyncProtocol::notifyDataClean(const std::vector<std::string>& indices,
     return success;
 }
 
-bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
-                                            size_t dataSize,
-                                            const std::vector<std::string>& uniqueIndices,
-                                            Option option,
-                                            std::optional<uint64_t> globalVersion)
+flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::buildStartOffset(
+    flatbuffers::FlatBufferBuilder& builder,
+    Mode mode,
+    size_t dataSize,
+    const std::vector<std::string>& uniqueIndices,
+    Option option,
+    std::optional<uint64_t> globalVersion)
 {
     // Declare metadata variables outside try block for proper cleanup in catch
     agent_metadata_t metadata{};
@@ -562,8 +564,6 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
     try
     {
-        flatbuffers::FlatBufferBuilder builder;
-
         // Create module name string
         auto module = builder.CreateString(m_moduleName);
 
@@ -579,7 +579,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
             {
                 if (m_stopRequested.load(std::memory_order_acquire))
                 {
-                    return false;
+                    return 0;
                 }
 
                 if (!logged)
@@ -613,7 +613,7 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 metadata_provider_free_metadata(&metadata);
             }
 
-            return false;
+            return 0;
         }
 
         m_logger(LOG_DEBUG, "Metadata available. Proceed with synchronization.");
@@ -673,6 +673,44 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
 
         auto startOffset = startBuilder.Finish();
 
+        if (has_metadata)
+        {
+            metadata_provider_free_metadata(&metadata);
+        }
+
+        return startOffset;
+    }
+    catch (const std::exception& e)
+    {
+        // Clean up metadata on exception
+        if (has_metadata)
+        {
+            metadata_provider_free_metadata(&metadata);
+        }
+
+        m_logger(LOG_ERROR, std::string("Exception when building the Start message: ") + e.what());
+    }
+
+    return 0;
+}
+
+bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
+                                            size_t dataSize,
+                                            const std::vector<std::string>& uniqueIndices,
+                                            Option option,
+                                            std::optional<uint64_t> globalVersion)
+{
+    try
+    {
+        flatbuffers::FlatBufferBuilder builder;
+        const auto startOffset =
+            buildStartOffset(builder, mode, dataSize, uniqueIndices, option, globalVersion);
+
+        if (startOffset.IsNull())
+        {
+            return false;
+        }
+
         auto message = Wazuh::SyncSchema::CreateMessage(builder, Wazuh::SyncSchema::MessageType::Start, startOffset.Union());
         builder.Finish(message);
 
@@ -702,34 +740,14 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                 if (m_syncState.syncFailed)
                 {
                     m_logger(LOG_DEBUG, "Synchronization failed due to manager error.");
-
-                    // Clean up metadata before returning
-                    if (has_metadata)
-                    {
-                        metadata_provider_free_metadata(&metadata);
-                    }
-
                     return false;
                 }
 
                 m_logger(LOG_DEBUG, "StartAck received. Session: " + std::to_string(m_syncState.session));
-
-                // Clean up metadata before returning success
-                if (has_metadata)
-                {
-                    metadata_provider_free_metadata(&metadata);
-                }
-
                 return true;
             }
 
             m_logger(LOG_DEBUG, "Timed out waiting for StartAck. Retrying...");
-        }
-
-        // Clean up metadata if we successfully retrieved it
-        if (has_metadata)
-        {
-            metadata_provider_free_metadata(&metadata);
         }
 
         if (shouldStop())
@@ -750,12 +768,6 @@ bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
     }
     catch (const std::exception& e)
     {
-        // Clean up metadata on exception
-        if (has_metadata)
-        {
-            metadata_provider_free_metadata(&metadata);
-        }
-
         m_logger(LOG_ERROR, std::string("Exception when sending Start message: ") + e.what());
     }
 
