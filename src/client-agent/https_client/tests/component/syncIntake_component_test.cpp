@@ -229,3 +229,20 @@ TEST(SyncIntakeSenderTest, SendToAMissingSocketFails)
     EXPECT_FALSE(sendSyncSession("/tmp/hc_si_nonexistent.sock", "s",
                                  reinterpret_cast<const uint8_t*>(body.data()), body.size()));
 }
+
+TEST(SyncIntakePathTest, APathTooLongForSunPathIsRefusedOnBothSides)
+{
+    // sun_path is 108 bytes and cannot signal truncation: binding the short
+    // form while unlink() targets the long one would strand a stale socket and
+    // break the next start with EADDRINUSE. Both sides refuse instead.
+    const std::string tooLong = "/tmp/" + std::string(120, 'p') + ".sock";
+    SyncIntake intake {tooLong, ::testing::TempDir(),
+                       [](const std::string&, const std::string&, uint64_t) {}};
+    EXPECT_FALSE(intake.start());
+
+    const std::string body = "x";
+    EXPECT_FALSE(sendSyncSession(tooLong, "s", reinterpret_cast<const uint8_t*>(body.data()),
+                                 body.size()));
+    EXPECT_FALSE(sendSyncSession("", "s", reinterpret_cast<const uint8_t*>(body.data()),
+                                 body.size()));
+}
