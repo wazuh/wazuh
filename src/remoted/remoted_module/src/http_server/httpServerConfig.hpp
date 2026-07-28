@@ -31,13 +31,18 @@ namespace remoted::http
      * use the built-in default". Bind address, port, max body size, the
      * certificate/private key paths, the mTLS settings (ca, ciphers,
      * verification_mode), and dual_stack are regular `<remote><https>` settings that
-     * remoted copies straight from the parsed config (see HandleSecure() in secure.c);
-     * an unset/empty value here means the operator did not configure that `<https>`
-     * option, and it resolves to its built-in default (verification_mode defaults to
-     * disabled; dual_stack defaults to the OS's own default, and only applies to an
-     * IPv6 bind address). The in-flight byte budget and max parallel connections are
-     * set directly by remoted in secure.c (deliberately not an internal option),
-     * independent of `remoted_module_https_config()`.
+     * remoted copies straight from the parsed config (see w_remoted_build_module_config()
+     * in secure.c):
+     *   - certificate/private key/ca default to `etc/remoted-https/{server.crt,server.key,ca.crt}`.
+     *   - ciphers defaults to `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`.
+     *   - verification_mode's C-ABI UNSET sentinel (-1, "operator never configured it") resolves
+     *     to disabled, distinct from an explicit `none` (0) -- both end up as
+     *     ClientVerificationMode::None here, since this struct has no separate "unset" state.
+     *   - dual_stack defaults to Unset (its C-ABI default already matches), and only applies to
+     *     an IPv6 bind address.
+     * The in-flight byte budget and max parallel connections are set directly by remoted in
+     * secure.c (deliberately not an internal option), independent of
+     * `remoted_module_https_config()`.
      *
      * @param config Configuration handed by remoted.
      * @return Resolved HttpServerConfig.

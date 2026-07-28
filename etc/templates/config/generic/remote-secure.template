@@ -1,5 +1,19 @@
   <remote>
-    <port>1514</port>
-    <protocol>tcp</protocol>
-    <queue_size>131072</queue_size>
+    <https>
+      <port>9443</port>
+      <bind_addr>127.0.0.1</bind_addr>
+      <certificate>etc/remoted-https/server.crt</certificate>
+      <key>etc/remoted-https/server.key</key>
+    </https>
+
+    <legacy>
+      <port>1514</port>
+      <protocol>tcp</protocol>
+      <local_ip>127.0.0.1</local_ip>
+      <queue_size>131072</queue_size>
+    </legacy>
+
+    <agents>
+      <allow_higher_versions>no</allow_higher_versions>
+    </agents>
   </remote>

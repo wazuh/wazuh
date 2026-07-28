@@ -135,7 +135,10 @@ namespace remoted::http
      */
     enum class DualStackMode
     {
-        Unset,   ///< Not configured -> leave the OS default (dual-stack on Linux).
+        Unset,   ///< Not configured anywhere (XML/env). Kept distinct from Disabled so the
+                 ///< "dual_stack only applies to IPv6" warning doesn't fire for an IPv4
+                 ///< bind_addr; RestinioHttpServer.cpp treats it the same as Disabled
+                 ///< (IPv6-only) when actually setting the socket option.
         Enabled, ///< Force dual-stack on (IPV6_V6ONLY=0): also accept IPv4.
         Disabled ///< Force IPv6-only (IPV6_V6ONLY=1): reject IPv4 on this socket.
     };
@@ -150,7 +153,7 @@ namespace remoted::http
         std::string certificatePath;           ///< TLS certificate chain (PEM) path.
         std::string privateKeyPath;            ///< TLS private key (PEM) path.
         std::string caPath;                    ///< CA bundle (PEM) used to verify client certificates.
-        std::string ciphers;                   ///< OpenSSL cipher list override (empty -> library default).
+        std::string ciphers;                   ///< TLS 1.3 ciphersuite override
         ClientVerificationMode verificationMode {ClientVerificationMode::None}; ///< Client-certificate strictness.
         DualStackMode dualStackMode {DualStackMode::Unset}; ///< IPV6_V6ONLY override (IPv6 bind only).
         std::size_t ioThreads {2};                          ///< RESTinio/asio I/O threads (accept + read/write).
