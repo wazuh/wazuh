@@ -39,6 +39,17 @@ namespace remoted::auth
         // deferredForwarder.cpp/authGateway.cpp.
         constexpr auto KEYSTORE_LOGTAG {"wazuh-manager-remoted:keystore"};
 
+        // One shared instance instead of a `LogFn {TAG}` temporary per log call: LogFn holds a
+        // std::string and this tag is well past the SSO threshold, so the temporary form
+        // heap-allocates on every single line. A function-local static also avoids the
+        // static-initialization-order trap a namespace-scope object would have, and cannot throw
+        // from ~Keystore() (which is implicitly noexcept).
+        const LogFn& logFn()
+        {
+            static const LogFn instance {KEYSTORE_LOGTAG};
+            return instance;
+        }
+
         bool isCommentOrBlank(const std::string& line)
         {
             return line.empty() || line[0] == '#' || line[0] == ' ';
@@ -109,12 +120,27 @@ namespace remoted::auth
         : m_path(std::move(path))
         , m_refreshIntervalSeconds(refreshIntervalSeconds > 0 ? refreshIntervalSeconds : kDefaultRefreshIntervalSeconds)
     {
-        reload();
+        // Report the initial load unconditionally: an unreadable client.keys at startup means every
+        // agent request will be rejected as "unknown agent", which without this line was completely
+        // invisible -- the operator saw universal 401s and nothing explaining them.
+        const int loaded = reload();
+        if (loaded < 0)
+        {
+            LOGFN_WARN(logFn(),
+                       "Could not read '%s' at startup (errno=%d); every agent request will be rejected as unknown "
+                       "until the file becomes readable.",
+                       m_path.c_str(),
+                       errno);
+        }
+        else
+        {
+            LOGFN_INFO(logFn(), "Loaded %d agent key(s) from '%s'.", loaded, m_path.c_str());
+        }
 
         m_inotifyFd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
         if (m_inotifyFd < 0)
         {
-            LOGFN_WARN(LogFn {KEYSTORE_LOGTAG},
+            LOGFN_WARN(logFn(),
                        "inotify_init1 failed (errno=%d); client.keys hot-reload falls back to the %d s poll only.",
                        errno,
                        m_refreshIntervalSeconds);
@@ -124,7 +150,7 @@ namespace remoted::auth
             m_watchDescriptor = inotify_add_watch(m_inotifyFd, m_path.c_str(), kWatchMask);
             if (m_watchDescriptor < 0)
             {
-                LOGFN_WARN(LogFn {KEYSTORE_LOGTAG},
+                LOGFN_WARN(logFn(),
                            "Could not watch '%s' for changes (errno=%d); hot-reload falls back to the %d s poll only.",
                            m_path.c_str(),
                            errno,
@@ -135,53 +161,103 @@ namespace remoted::auth
         m_stopEventFd = eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
         if (m_stopEventFd < 0)
         {
-            LOGFN_WARN(LogFn {KEYSTORE_LOGTAG},
+            LOGFN_WARN(logFn(),
                        "eventfd failed (errno=%d); destruction may block up to %d s.",
                        errno,
                        m_refreshIntervalSeconds);
         }
 
-        m_watcherThread = std::thread(&Keystore::watcherLoop, this);
+        try
+        {
+            m_watcherThread = std::thread(&Keystore::watcherLoop, this);
+        }
+        catch (...)
+        {
+            // A constructor that throws never runs the destructor, so the fds opened above would
+            // leak. Close them, then let the failure propagate (the facade catches it and retries
+            // on the next heartbeat).
+            closeWatchFds();
+            throw;
+        }
     }
 
-    Keystore::~Keystore()
+    void Keystore::closeWatchFds() noexcept
     {
-        if (m_stopEventFd >= 0)
-        {
-            const std::uint64_t one {1};
-            // Best-effort wake-up; if this somehow fails the watcher still exits within
-            // m_refreshIntervalSeconds via the poll() timeout below.
-            if (write(m_stopEventFd, &one, sizeof(one)) < 0)
-            {
-                LOGFN_DEBUG1(
-                    LogFn {KEYSTORE_LOGTAG}, "Could not signal the client.keys watcher to stop (errno=%d).", errno);
-            }
-        }
-
-        if (m_watcherThread.joinable())
-        {
-            m_watcherThread.join();
-        }
-
         if (m_watchDescriptor >= 0 && m_inotifyFd >= 0)
         {
             inotify_rm_watch(m_inotifyFd, m_watchDescriptor);
+            m_watchDescriptor = -1;
         }
         if (m_inotifyFd >= 0)
         {
             close(m_inotifyFd);
+            m_inotifyFd = -1;
         }
         if (m_stopEventFd >= 0)
         {
             close(m_stopEventFd);
+            m_stopEventFd = -1;
         }
+    }
+
+    Keystore::~Keystore()
+    {
+        // A destructor is implicitly noexcept: anything escaping here terminates the process. The
+        // join() below can throw std::system_error, and the logging call allocates.
+        try
+        {
+            if (m_stopEventFd >= 0)
+            {
+                const std::uint64_t one {1};
+                // Best-effort wake-up; if this somehow fails the watcher still exits within
+                // m_refreshIntervalSeconds via the poll() timeout below.
+                if (write(m_stopEventFd, &one, sizeof(one)) < 0)
+                {
+                    LOGFN_DEBUG1(logFn(), "Could not signal the client.keys watcher to stop (errno=%d).", errno);
+                }
+            }
+
+            if (m_watcherThread.joinable())
+            {
+                m_watcherThread.join();
+            }
+        }
+        catch (...) // NOLINT(bugprone-empty-catch) -- see above; nothing useful is left to do here
+        {
+        }
+
+        closeWatchFds();
     }
 
     void Keystore::watcherLoop()
     {
-        LOGFN_DEBUG1(LogFn {KEYSTORE_LOGTAG},
-                     "client.keys watcher thread started (refresh interval %d s).",
-                     m_refreshIntervalSeconds);
+        // Exception barrier for the thread body. Same rationale as the downstream UDS client's I/O
+        // threads (see downstream/asioUdsHttpClient.cpp): nothing below is expected to throw, but
+        // reload() allocates freely (ifstream, std::string, istringstream, unordered_map, vector,
+        // plus the file hash), and an exception escaping a bare std::thread terminates the whole
+        // remoted daemon rather than just this thread.
+        try
+        {
+            watcherLoopBody();
+        }
+        catch (const std::exception& e)
+        {
+            LOGFN_ERROR(logFn(),
+                        "The client.keys watcher thread stopped on an unexpected exception: %s. Agent keys will "
+                        "not be hot-reloaded until wazuh-remoted is restarted.",
+                        e.what());
+        }
+        catch (...)
+        {
+            LOGFN_ERROR(logFn(),
+                        "The client.keys watcher thread stopped on a non-standard exception. Agent keys will not "
+                        "be hot-reloaded until wazuh-remoted is restarted.");
+        }
+    }
+
+    void Keystore::watcherLoopBody()
+    {
+        LOGFN_DEBUG1(logFn(), "client.keys watcher thread started (refresh interval %d s).", m_refreshIntervalSeconds);
 
         while (true)
         {
@@ -216,7 +292,7 @@ namespace remoted::auth
                 {
                     continue;
                 }
-                LOGFN_WARN(LogFn {KEYSTORE_LOGTAG}, "poll() on the client.keys watcher failed (errno=%d).", errno);
+                LOGFN_WARN(logFn(), "poll() on the client.keys watcher failed (errno=%d).", errno);
                 std::this_thread::sleep_for(std::chrono::seconds(m_refreshIntervalSeconds));
                 continue;
             }
@@ -233,11 +309,34 @@ namespace remoted::auth
 
             if (fileLooksChanged())
             {
-                reload();
+                const int loaded = reload();
+                if (loaded >= 0)
+                {
+                    // Unthrottled on purpose: reload() only runs here when the content hash actually
+                    // changed, i.e. an operator enrolled or removed an agent. That is a real event
+                    // and worth one line -- it is not driven by request traffic.
+                    LOGFN_INFO(logFn(), "Reloaded %d agent key(s) from '%s'.", loaded, m_path.c_str());
+                }
+                else if (loaded == kReloadUnreadable)
+                {
+                    // Throttled: the watcher retries on every tick (10 s by default), so an
+                    // unreadable file would otherwise print thousands of identical lines a day.
+                    if (const auto d = m_unreadableThrottle.record())
+                    {
+                        LOGFN_WARN(logFn(),
+                                   "'%s' is not readable (errno=%d); keeping the previously loaded keys. %llu failed "
+                                   "attempt(s) in the last %d s.",
+                                   m_path.c_str(),
+                                   errno,
+                                   static_cast<unsigned long long>(d.total),
+                                   remoted::common::LogThrottle::kDefaultWindowSeconds);
+                    }
+                }
+                // kReloadUnstable already logged its own warning inside reload().
             }
         }
 
-        LOGFN_DEBUG1(LogFn {KEYSTORE_LOGTAG}, "client.keys watcher thread stopped.");
+        LOGFN_DEBUG1(logFn(), "client.keys watcher thread stopped.");
     }
 
     void Keystore::drainInotifyEvents()
@@ -285,7 +384,7 @@ namespace remoted::auth
         m_watchDescriptor = inotify_add_watch(m_inotifyFd, m_path.c_str(), kWatchMask);
         if (m_watchDescriptor < 0)
         {
-            LOGFN_WARN(LogFn {KEYSTORE_LOGTAG},
+            LOGFN_WARN(logFn(),
                        "Could not re-arm the client.keys watch after it was invalidated (errno=%d); "
                        "falling back to the %d s poll only.",
                        errno,
@@ -293,7 +392,7 @@ namespace remoted::auth
         }
         else
         {
-            LOGFN_DEBUG1(LogFn {KEYSTORE_LOGTAG}, "client.keys watch re-armed after the file was replaced.");
+            LOGFN_DEBUG1(logFn(), "client.keys watch re-armed after the file was replaced.");
         }
     }
 
@@ -318,21 +417,27 @@ namespace remoted::auth
             const auto preHash = hashFileOrNullopt(m_path);
             if (!preHash)
             {
-                return -1; // missing/unreadable -- not a torn-read case, nothing to retry
+                // Missing/unreadable, not a torn read -- nothing to retry. Deliberately NOT logged
+                // here: reload() is called both once at startup and repeatedly by the watcher, which
+                // need different messages and different throttling. Both call sites report it.
+                return kReloadUnreadable;
             }
 
             std::ifstream file(m_path);
             if (!file.is_open())
             {
-                return -1;
+                return kReloadUnreadable;
             }
 
             std::unordered_map<AgentId, std::vector<std::uint8_t>> loaded;
             std::string line;
             int count = 0;
+            int lineNumber = 0;
 
             while (std::getline(file, line))
             {
+                ++lineNumber;
+
                 if (isCommentOrBlank(line))
                 {
                     continue;
@@ -342,6 +447,7 @@ namespace remoted::auth
                 std::string id, name, ip, key;
                 if (!(tokens >> id >> name >> ip >> key))
                 {
+                    LOGFN_DEBUG1(logFn(), "client.keys line %d has fewer than 4 fields; skipping.", lineNumber);
                     continue; // malformed line: fewer than 4 fields
                 }
 
@@ -353,11 +459,30 @@ namespace remoted::auth
                 const auto agentId = parseAgentId(id);
                 if (!agentId)
                 {
-                    // TODO: Log warning: "client.keys line %d: agent id '%s' is not a non-negative integer, skipping"
+                    LOGFN_DEBUG1(logFn(),
+                                 "client.keys line %d: agent id '%s' is not a non-negative integer; skipping.",
+                                 lineNumber,
+                                 id.c_str());
                     continue; // id column isn't numeric -- can never match a real lookup
                 }
 
-                loaded[*agentId] = decodeKey(key);
+                auto decoded = decodeKey(key);
+                if (decoded.empty())
+                {
+                    // Store the empty key anyway: keyFor() returning an empty vector (rather than
+                    // nullopt) is what lets the auth middleware answer the more precise MissingKey
+                    // instead of UnknownAgent. But do NOT count it as loaded -- it cannot
+                    // authenticate anything, and counting it made a broken entry look healthy.
+                    LOGFN_WARN(logFn(),
+                               "client.keys line %d: the key for agent %u does not decode to a valid AES key; that "
+                               "agent's requests will be rejected. Re-enroll it.",
+                               lineNumber,
+                               *agentId);
+                    loaded[*agentId] = std::move(decoded);
+                    continue;
+                }
+
+                loaded[*agentId] = std::move(decoded);
                 ++count;
             }
             file.close();
@@ -378,7 +503,7 @@ namespace remoted::auth
                 return count;
             }
 
-            LOGFN_DEBUG1(LogFn {KEYSTORE_LOGTAG},
+            LOGFN_DEBUG1(logFn(),
                          "client.keys changed while reloading (attempt %d/%d), retrying.",
                          attempt + 1,
                          kMaxReadAttempts);
@@ -388,10 +513,9 @@ namespace remoted::auth
             }
         }
 
-        LOGFN_WARN(LogFn {KEYSTORE_LOGTAG},
-                   "client.keys kept changing across %d attempts; keeping the previous table.",
-                   kMaxReadAttempts);
-        return -1;
+        LOGFN_WARN(
+            logFn(), "client.keys kept changing across %d attempts; keeping the previous table.", kMaxReadAttempts);
+        return kReloadUnstable;
     }
 
     std::optional<std::vector<std::uint8_t>> Keystore::keyFor(AgentId agentId) const

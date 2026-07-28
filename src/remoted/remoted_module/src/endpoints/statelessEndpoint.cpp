@@ -161,7 +161,10 @@ namespace remoted::endpoints::stateless
             const auto err = validatePayloadIdentity(*authReq);
             if (err != remoted::auth::AuthError::None)
             {
-                responder->send(remoted::endpoints::errorResponseFor(err));
+                // Pass the authenticated agent id: this rejection happens AFTER the MAC verified, so
+                // naming the agent that signed the request is what makes the resulting warning
+                // actionable (see errorResponseFor()).
+                responder->send(remoted::endpoints::errorResponseFor(err, authReq->agentId));
                 return;
             }
             forwarder.forward(std::move(authReq), std::move(responder), target(socketPath), postProcess);

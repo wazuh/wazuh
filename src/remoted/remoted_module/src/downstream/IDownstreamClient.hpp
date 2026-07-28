@@ -22,16 +22,30 @@
 namespace remoted::downstream
 {
 
-    /// @brief Why a downstream call did not yield a response (None == got an HTTP response).
+    /**
+     * @brief Why a downstream call did not yield a response (None == got an HTTP response).
+     *
+     * The three timeouts are distinct on purpose: they map to three different tunables
+     * (downstream_connect_timeout / _write_timeout / _response_timeout) and to three genuinely
+     * different diagnoses -- "the service isn't listening", "the service isn't draining its
+     * socket", "the service is too slow to answer". Collapsing them into one value made a log line
+     * unable to tell the operator which knob to touch. This is manager-internal detail: the status
+     * an agent sees stays the same for all of them (see endpoints::stateless::postProcess).
+     */
     enum class DownstreamError
     {
         None,
-        Connect,         ///< Could not connect to the socket.
-        Timeout,         ///< Connect, write, or response deadline elapsed.
-        Transport,       ///< Socket read/write error or unexpected close.
-        Protocol,        ///< The response was not valid HTTP.
-        ResponseTooLarge ///< The response body exceeded DownstreamConfig::maxResponseBodySize.
+        Connect,          ///< Could not connect to the socket (nothing listening / refused).
+        ConnectTimeout,   ///< The connect deadline elapsed.
+        WriteTimeout,     ///< The request-body send deadline elapsed (peer not reading).
+        ResponseTimeout,  ///< The post-send response deadline elapsed.
+        Transport,        ///< Socket read/write error or unexpected close.
+        Protocol,         ///< The response was not valid HTTP.
+        ResponseTooLarge, ///< The response body exceeded DownstreamConfig::maxResponseBodySize.
     };
+
+    /// @brief Stable lowercase tag for logging. Never null; "unknown" for an out-of-range value.
+    const char* toString(DownstreamError error);
 
     /// @brief The downstream service's HTTP response (valid when DownstreamError::None).
     struct DownstreamResponse
@@ -52,6 +66,10 @@ namespace remoted::downstream
         std::string path;
         std::string contentType;
         std::string_view body;
+        /// Per-request response deadline, ms. <=0 -> DownstreamConfig::responseTimeoutMs (the global
+        /// default). Lets one endpoint wait minutes for a slow async handler without forcing every
+        /// other endpoint to tolerate the same delay before a hung downstream is detected.
+        int responseTimeoutMs {0};
     };
 
     /// @brief Delivered exactly once, on an internal I/O thread, when the response arrives or on error.

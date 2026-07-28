@@ -27,8 +27,34 @@ namespace
 {
     constexpr auto AUTH_GATEWAY_LOGTAG {"wazuh-manager-remoted:endpoints"};
 
+    // One shared instance instead of a `LogFn {TAG}` temporary per log call. Beyond avoiding a
+    // heap allocation per line, it matters here specifically because these call sites are inside
+    // catch handlers that may be handling bad_alloc -- allocating there could throw again and
+    // escape onto the worker pool. loggerHelper.h stays out of authGateway.hpp (test-visible).
+    const LogFn& logFn()
+    {
+        static const LogFn instance {AUTH_GATEWAY_LOGTAG};
+        return instance;
+    }
+
     // Client-visible 500 body, matching the {error,code} shape of the auth errors.
     constexpr auto INTERNAL_ERROR_BODY {R"({"error":"Internal server error","code":500})"};
+
+    // Answers 500 from inside a catch handler without ever throwing again. The catch handlers below
+    // may be handling bad_alloc, and building/sending a response allocates -- a second throw there
+    // would escape onto the worker-pool thread and terminate the process, which is exactly what the
+    // surrounding try/catch exists to prevent.
+    void sendInternalErrorNoThrow(const std::shared_ptr<remoted::http::IHttpResponder>& responder) noexcept
+    {
+        try
+        {
+            // send-once: a no-op if a response was already delivered before the throw.
+            responder->send(remoted::http::HttpResponse::json(500, INTERNAL_ERROR_BODY));
+        }
+        catch (...) // NOLINT(bugprone-empty-catch) -- dropping one response beats killing the daemon
+        {
+        }
+    }
 
     // Canonical uppercase HTTP verb for the MAC's canonical request.
     const char* methodToCanonical(remoted::http::Method method)
@@ -162,13 +188,15 @@ namespace remoted::endpoints
                 }
                 catch (const std::exception& e)
                 {
-                    LOGFN_WARN(LogFn {AUTH_GATEWAY_LOGTAG}, "Auth pipeline threw an exception: %s", e.what());
-                    responder->send(remoted::http::HttpResponse::json(500, INTERNAL_ERROR_BODY));
+                    // ERROR, not WARN: reaching here means the AES-CMAC pipeline itself failed
+                    // (an EVP_MAC error, or bad_alloc), which is not routine.
+                    LOGFN_ERROR(logFn(), "Auth pipeline threw an exception: %s", e.what());
+                    sendInternalErrorNoThrow(responder);
                 }
                 catch (...)
                 {
-                    LOGFN_WARN(LogFn {AUTH_GATEWAY_LOGTAG}, "Auth pipeline threw a non-standard exception.");
-                    responder->send(remoted::http::HttpResponse::json(500, INTERNAL_ERROR_BODY));
+                    LOGFN_ERROR(logFn(), "Auth pipeline threw a non-standard exception.");
+                    sendInternalErrorNoThrow(responder);
                 }
             });
     }

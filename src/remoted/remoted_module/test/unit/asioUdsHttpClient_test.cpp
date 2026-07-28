@@ -10,8 +10,9 @@
  */
 
 // Exercises the async UDS HTTP client against an in-process Asio Unix-domain stub server:
-// a canned response is parsed (status + body), a missing socket yields Connect, a silent
-// server yields Timeout, and the body keep-alive is released (not leaked).
+// a canned response is parsed (status + body), a missing socket yields Connect, a silent server
+// yields ResponseTimeout, a server that never reads yields WriteTimeout, and the body keep-alive is
+// released (not leaked).
 #include "downstream/asioUdsHttpClient.hpp"
 
 #include <gtest/gtest.h>
@@ -29,6 +30,7 @@
 #include <cstdio>
 #include <future>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -146,11 +148,13 @@ namespace
         DownstreamResponse response;
     };
 
-    // Fire one request and block for its completion.
+    // Fire one request and block for its completion. responseTimeoutMs == 0 means "use the client's
+    // configured default", matching DownstreamRequest's own sentinel.
     Result sendAndWait(AsioUdsHttpClient& client,
                        const std::string& socketPath,
                        std::string_view body,
-                       std::shared_ptr<const void> keepAlive = std::make_shared<int>(0))
+                       std::shared_ptr<const void> keepAlive = std::make_shared<int>(0),
+                       int responseTimeoutMs = 0)
     {
         std::promise<Result> promise;
         auto future = promise.get_future();
@@ -161,6 +165,7 @@ namespace
         req.path = "/events/enriched";
         req.contentType = "application/x-ndjson";
         req.body = body;
+        req.responseTimeoutMs = responseTimeoutMs;
 
         client.sendAsync(std::move(req),
                          std::move(keepAlive),
@@ -208,7 +213,7 @@ TEST(AsioUdsHttpClientTest, MissingSocketYieldsConnectError)
     EXPECT_EQ(result.error, DownstreamError::Connect);
 }
 
-TEST(AsioUdsHttpClientTest, SilentServerYieldsTimeout)
+TEST(AsioUdsHttpClientTest, SilentServerYieldsResponseTimeout)
 {
     StubUdsServer server {uniqueSocketPath("silent"), "", /*silent=*/true};
 
@@ -218,7 +223,10 @@ TEST(AsioUdsHttpClientTest, SilentServerYieldsTimeout)
     client.start();
 
     const auto result = sendAndWait(client, server.path(), "body");
-    EXPECT_EQ(result.error, DownstreamError::Timeout);
+    // Specifically the RESPONSE phase: the peer accepted the connection and drained the request,
+    // it just never answered. That distinction is what tells an operator to look at
+    // downstream_response_timeout rather than the connect or write ones.
+    EXPECT_EQ(result.error, DownstreamError::ResponseTimeout);
 }
 
 TEST(AsioUdsHttpClientTest, ReleasesBodyKeepAlive)
@@ -239,7 +247,7 @@ TEST(AsioUdsHttpClientTest, ReleasesBodyKeepAlive)
     EXPECT_TRUE(weak.expired());
 }
 
-TEST(AsioUdsHttpClientTest, WriteHangYieldsTimeoutNotIndefiniteHang)
+TEST(AsioUdsHttpClientTest, WriteHangYieldsWriteTimeoutNotIndefiniteHang)
 {
     // The server accepts but never reads -> once the kernel's UDS send buffer fills, async_write
     // blocks. Without a write-phase timer this would hang forever, permanently pinning the
@@ -260,7 +268,9 @@ TEST(AsioUdsHttpClientTest, WriteHangYieldsTimeoutNotIndefiniteHang)
     const auto result = sendAndWait(client, server.path(), bigBody);
     const auto elapsed = std::chrono::steady_clock::now() - start;
 
-    EXPECT_EQ(result.error, DownstreamError::Timeout);
+    // Specifically the WRITE phase: the peer accepted but never read, so the deadline that fired is
+    // the one downstream_write_timeout controls -- not the response one.
+    EXPECT_EQ(result.error, DownstreamError::WriteTimeout);
     EXPECT_LT(elapsed, std::chrono::seconds {5}); // bounded, not an indefinite hang
 }
 
@@ -302,4 +312,66 @@ TEST(AsioUdsHttpClientTest, IoThreadGuardSurvivesUnexpectedException)
         });
     t.join(); // must return, not std::terminate()
     SUCCEED();
+}
+
+// toString() feeds the diagnostic log lines, so a new DownstreamError enumerator added without
+// updating the switch must fail loudly here rather than silently logging "unknown" in production.
+TEST(AsioUdsHttpClientTest, ToStringCoversEveryDownstreamError)
+{
+    const DownstreamError all[] = {DownstreamError::None,
+                                   DownstreamError::Connect,
+                                   DownstreamError::ConnectTimeout,
+                                   DownstreamError::WriteTimeout,
+                                   DownstreamError::ResponseTimeout,
+                                   DownstreamError::Transport,
+                                   DownstreamError::Protocol,
+                                   DownstreamError::ResponseTooLarge};
+
+    std::set<std::string> seen;
+    for (const auto error : all)
+    {
+        const char* tag = toString(error);
+        ASSERT_NE(tag, nullptr);
+        EXPECT_STRNE(tag, "unknown") << "missing switch case for " << static_cast<int>(error);
+        EXPECT_TRUE(seen.insert(tag).second) << "duplicate tag '" << tag << "' -- tags must be distinguishable";
+    }
+    EXPECT_EQ(seen.size(), std::size(all));
+}
+
+TEST(AsioUdsHttpClientTest, PerRequestResponseTimeoutOverridesConfig)
+{
+    StubUdsServer server {uniqueSocketPath("override"), "", /*silent=*/true};
+
+    // The client default is deliberately left at the built-in 5000 ms; the request asks for 200 ms.
+    DownstreamConfig config;
+    ASSERT_EQ(config.responseTimeoutMs, 5000) << "test assumes the built-in default";
+    AsioUdsHttpClient client {config};
+    client.start();
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto result = sendAndWait(client, server.path(), "body", std::make_shared<int>(0), /*responseTimeoutMs=*/200);
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    EXPECT_EQ(result.error, DownstreamError::ResponseTimeout);
+    // The elapsed-time assertion is the one that matters: the error code alone would look identical
+    // if the override were ignored and the 5 s default had been used instead.
+    EXPECT_LT(elapsed, std::chrono::seconds {2}) << "the per-request override did not take effect";
+}
+
+TEST(AsioUdsHttpClientTest, ZeroResponseTimeoutFallsBackToTheConfiguredDefault)
+{
+    StubUdsServer server {uniqueSocketPath("fallback"), "", /*silent=*/true};
+
+    DownstreamConfig config;
+    config.responseTimeoutMs = 200;
+    AsioUdsHttpClient client {config};
+    client.start();
+
+    // responseTimeoutMs left at 0 -> the client's 200 ms default applies (not "no timeout").
+    const auto start = std::chrono::steady_clock::now();
+    const auto result = sendAndWait(client, server.path(), "body");
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    EXPECT_EQ(result.error, DownstreamError::ResponseTimeout);
+    EXPECT_LT(elapsed, std::chrono::seconds {2});
 }
