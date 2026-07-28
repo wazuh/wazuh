@@ -108,6 +108,24 @@ table DataBatch {
     values: [DataValue];
 }
 
+/// A whole synchronization session as ONE message.
+///
+/// The chunked Start -> StartAck -> DataBatch[] -> End -> EndAck exchange exists
+/// because the module->agentd transport was a DGRAM socket bounded by OS_MAXSTR
+/// (65536), which forced sessions to be split into ~60 KB batches. Over the
+/// STREAM sync socket that bound is gone, so the whole session crosses at once
+/// and the manager answers it with a single result.
+///
+/// The session id is chosen by the AGENT here, not handed back by a StartAck,
+/// so a retried session keeps the same id and the manager can dedup it.
+table FullSession {
+    session: ulong;
+    start: Start;
+    batches: [DataBatch];
+    contexts: [DataContext];
+    end: End;
+}
+
 union MessageType {
     DataValue,
     DataClean,
@@ -118,7 +136,8 @@ union MessageType {
     EndAck,
     ReqRet,
     DataContext,
-    DataBatch
+    DataBatch,
+    FullSession
 }
 
 table Message {
