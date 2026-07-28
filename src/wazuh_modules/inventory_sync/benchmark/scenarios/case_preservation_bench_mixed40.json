@@ -1,0 +1,61 @@
+{
+  "name": "case_preservation_bench_mixed40",
+  "description": "40 agents (20 Windows + 20 Linux). Each agent runs FIM/SCA/syscollector/VD lanes: an initial full sync (sync_mode 0) followed by repeated deltas (sync_mode 1). The syscollector lane replays the same Sync dump, so its deltas re-hit the same document _ids (the merge-on-existing-doc path the case-management change touches). Identical scenario is used for every run (feature vs baseline branch) so the comparison base is constant. Enrichment of case.* is done out-of-band via enrich_docs.sh and is independent of this scenario.",
+  "defaults": {
+    "session_type": "delta",
+    "max_eps": 75,
+    "use_databatch": true,
+    "retransmit": true,
+    "offline_retry": 0,
+    "offline_retry_delay": 2.0,
+    "start_ack_timeout": 5,
+    "end_ack_processing_timeout": 5,
+    "end_ack_timeout": 60,
+    "ack_timeout_retry": 5,
+    "ack_timeout_retry_delay": 3
+  },
+  "lanes": {
+    "fim_windows": [
+      { "dump": "sample_payloads/fim/windows11_fim_first_sync.json", "sync_mode": 0 },
+      { "dump": "sample_payloads/fim/windows11_fim_delta_create.json", "sync_mode": 1, "repeat_count": 10, "repeat_delay": 3, "initial_delay": 0 },
+      { "dump": "sample_payloads/fim/windows11_fim_delta_modify.json", "sync_mode": 1, "repeat_count": 10, "repeat_delay": 3, "initial_delay": 0 }
+    ],
+    "sca_windows": [
+      { "dump": "sample_payloads/dump-sca/session_sca_windows.json", "sync_mode": 0 },
+      { "dump": "sample_payloads/dump-sca/session_sca_windows_delta.json", "sync_mode": 1, "repeat_count": 20, "repeat_delay": 5, "initial_delay": 10 }
+    ],
+    "syscollector_windows": [
+      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_windows.json", "sync_mode": 0 },
+      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_windows.json", "sync_mode": 1, "repeat_count": 8, "repeat_delay": 15, "initial_delay": 10 }
+    ],
+    "vd_windows": [
+      { "dump": "sample_payloads/dump-syscollector/session_vd_first_windows.json", "sync_mode": 0 },
+      { "dump": "sample_payloads/dump-syscollector/session_vd_sync_windows.json", "sync_mode": 1, "repeat_count": 20, "repeat_delay": 5, "initial_delay": 10 }
+    ],
+    "fim_linux": [
+      { "dump": "sample_payloads/fim/ubuntu22_fim_first_sync.json", "sync_mode": 0 },
+      { "dump": "sample_payloads/fim/ubuntu22_fim_delta_create.json", "sync_mode": 1, "repeat_count": 10, "repeat_delay": 3, "initial_delay": 0 },
+      { "dump": "sample_payloads/fim/ubuntu22_fim_delta_modify.json", "sync_mode": 1, "repeat_count": 10, "repeat_delay": 3, "initial_delay": 0 }
+    ],
+    "sca_linux": [
+      { "dump": "sample_payloads/dump-sca/session_sca_ubuntu.json", "sync_mode": 0 },
+      { "dump": "sample_payloads/dump-sca/session_sca_ubuntu_delta.json", "sync_mode": 1, "repeat_count": 20, "repeat_delay": 5, "initial_delay": 10 }
+    ],
+    "syscollector_linux": [
+      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json", "sync_mode": 0 },
+      { "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json", "sync_mode": 1, "repeat_count": 8, "repeat_delay": 15, "initial_delay": 10 }
+    ],
+    "vd_linux": [
+      { "dump": "sample_payloads/dump-syscollector/session_vd_first_debian10.json", "sync_mode": 0 },
+      { "dump": "sample_payloads/dump-syscollector/session_vd_sync_debian10.json", "sync_mode": 1, "repeat_count": 20, "repeat_delay": 5, "initial_delay": 10 }
+    ]
+  },
+  "fleets": [
+    { "name": "windows", "agents": 20, "lanes": ["fim_windows", "sca_windows", "syscollector_windows", "vd_windows"] },
+    { "name": "linux",   "agents": 20, "lanes": ["fim_linux", "sca_linux", "syscollector_linux", "vd_linux"] }
+  ],
+  "parallel_agents": 15,
+  "repeat_until": 0,
+  "drain_timeout": 90,
+  "post_run_grace": 30
+}

@@ -143,7 +143,7 @@ GET /wazuh-states-inventory-packages/_search
 
 ## Indexed document shape
 
-Inventory Sync enriches indexed state documents with manager-side metadata before sending them to the indexer. In practice, upserted documents include at least:
+Each document is indexed under the `_id` `{clusterName}_{agentId}_{DataValue.id}`, and the optional `DataValue.version` is forwarded as the indexer's external document version. The manager **overlays** `wazuh.agent.*` and `wazuh.cluster.name` on top of the agent-supplied body (clobbering anything the agent set there), so a document cannot claim another agent or cluster. Upserted documents include at least:
 
 - `wazuh.agent.id`
 - `wazuh.agent.name`

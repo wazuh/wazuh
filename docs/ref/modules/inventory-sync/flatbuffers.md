@@ -103,7 +103,7 @@ table Start {
 
 Important fields:
 
-- `module`: currently `syscollector`, `fim`, or `sca` for indexed module flows.
+- `module`: `syscollector`, `fim`, or `sca` for indexed module flows, or `syscollector_vd` for the vulnerability-detector data stream. The manager uses this value to route responses (framed as `<module>_sync`) and to key stale-session cleanup per `{agent, module}`.
 - `mode`: full, delta, integrity-check, metadata, or group mode.
 - `size`: number of expected sequence-tracked messages.
 - `index`: target indices for the current session.
@@ -145,7 +145,7 @@ table DataBatch {
 }
 ```
 
-`DataBatch` allows multiple `DataValue` items to be sent inside one message. Inventory Sync expands the batch internally and stores each contained item as an individual session record.
+`DataBatch` allows multiple `DataValue` items to be sent inside one message. This is the **normal transport form**: the agent's Agent Sync Protocol packs pending `DataValue`s into size-bounded `DataBatch` messages (flushed around a ~60 KB cap) rather than sending one message per document. Inventory Sync expands the batch internally and stores each contained item as an individual `{session}_{seq}` session record, so the rest of the pipeline is identical to receiving standalone `DataValue`s.
 
 ### `DataContext`
 

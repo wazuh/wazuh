@@ -32,3 +32,14 @@ Inventory Sync writes or updates documents in these index families:
 - `wazuh-states-sca`
 
 Sessions that enable vulnerability processing can also lead to downstream writes to `wazuh-states-vulnerabilities`, but those documents are produced by the Vulnerability Scanner, not directly by Inventory Sync.
+
+## In this section
+
+- [Architecture](architecture.md) — manager-side components, session phases, synchronization modes, reliability and VD integration.
+- [Data Flow and Sequence of Calls](data-flow.md) — agent ⇄ manager ⇄ indexer call sequences (mermaid), plus an abstract→specific walkthrough using the Vulnerability Detector.
+- [FlatBuffers](flatbuffers.md) — the on-the-wire protocol schema.
+- [API Reference](api-reference.md) — module entry points and indexed state indices.
+- [Configuration](configuration.md) — internal options, operational constants, tuning, and troubleshooting.
+- [Test Tools](test-tools.md) — unit tests, QA integration suite, and the session simulator.
+
+The agent-side counterpart is documented under [Agent Sync Protocol](../utils/sync-protocol/README.md).

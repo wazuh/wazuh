@@ -87,6 +87,11 @@ public:
         m_impl.bulkIndex(id, index, data, version);
     }
 
+    void bulkUpsertPreserving(std::string_view id, std::string_view index, std::string_view data)
+    {
+        m_impl.bulkUpsertPreserving(id, index, data);
+    }
+
     void flush()
     {
         m_impl.flush();
@@ -189,6 +194,11 @@ void IndexerConnectorSync::bulkIndex(std::string_view id,
                                      std::string_view version)
 {
     m_impl->bulkIndex(id, index, data, version);
+}
+
+void IndexerConnectorSync::bulkUpsertPreserving(std::string_view id, std::string_view index, std::string_view data)
+{
+    m_impl->bulkUpsertPreserving(id, index, data);
 }
 
 void IndexerConnectorSync::flush()

@@ -29,6 +29,24 @@ import (
 // adding noticeable atomic-load overhead.
 const siblingsPollEvery = 20
 
+// wazuhMaxInnerEvent is the hard ceiling on the decompressed inner_event
+// imposed by OS_MAXSTR in wazuh-remoted (shared/os_crypto/shared/msgs.c).
+// ReadSecMSG decompresses into a static buffer of exactly this many bytes;
+// if the output would exceed it, zlib returns Z_BUF_ERROR, os_zlib_uncompress
+// returns 0, ReadSecMSG returns KS_CORRUPT, and remoted closes the socket.
+const wazuhMaxInnerEvent = 65536
+
+// wazuhInnerEventOverhead is the fixed byte overhead added to a line before
+// it becomes the inner_event that remoted decompresses:
+//
+//	32  MD5 hex digest
+//	21  routing prefix ("55555" + "1234567891" + ":" + "5555" + ":")
+//	 2  queue byte and colon ("1:")
+//	 1  colon between location and line
+//
+// The location string length must be added on top of this constant.
+const wazuhInnerEventOverhead = 56
+
 // Source streams one line per "engine event" frame.
 type Source struct {
 	path     string
@@ -38,9 +56,14 @@ type Source struct {
 
 	// Termination knobs (zero values keep the legacy behavior of running
 	// until ctx is cancelled OR EOF when !loop).
-	duration       time.Duration
-	waitSiblings   bool
-	siblingsCount  *atomic.Int32 // nil unless waitSiblings is true and the runner injected one
+	duration      time.Duration
+	waitSiblings  bool
+	siblingsCount *atomic.Int32 // nil unless waitSiblings is true and the runner injected one
+
+	// maxLineBytes is the largest line (in bytes) that can be sent without
+	// exceeding wazuh-remoted's decompression buffer. Lines longer than this
+	// are skipped and counted in CEngineLinesTooLong.
+	maxLineBytes int
 
 	lim *pacing.Limiter
 }
@@ -58,12 +81,17 @@ func New(step scenario.Step, siblings *atomic.Int32) *Source {
 		base := filepath.Base(step.EnginePath)
 		loc = strings.TrimSuffix(base, filepath.Ext(base))
 	}
+	maxLine := wazuhMaxInnerEvent - wazuhInnerEventOverhead - len(loc)
+	if maxLine < 0 {
+		maxLine = 0
+	}
 	s := &Source{
-		path:     step.EnginePath,
-		location: loc,
-		maxEPS:   step.MaxEPS,
-		loop:     step.EngineLoop,
-		lim:      pacing.New(step.MaxEPS),
+		path:         step.EnginePath,
+		location:     loc,
+		maxEPS:       step.MaxEPS,
+		loop:         step.EngineLoop,
+		maxLineBytes: maxLine,
+		lim:          pacing.New(step.MaxEPS),
 	}
 	if step.EngineDuration > 0 {
 		s.duration = time.Duration(step.EngineDuration * float64(time.Second))
@@ -200,6 +228,16 @@ func (s *Source) runOnce(ctx context.Context, conn *agent.Conn, c *metrics.Count
 			// Strip trailing newline (keep \r if present in the file content).
 			if line[len(line)-1] == '\n' {
 				line = line[:len(line)-1]
+			}
+			// Guard against lines that would cause wazuh-remoted to fail
+			// decryption. The manager decompresses the inner_event into a
+			// fixed OS_MAXSTR-byte buffer; a line that exceeds maxLineBytes
+			// would overflow it, making ReadSecMSG return KS_CORRUPT and
+			// closing the TCP connection.
+			if len(line) > s.maxLineBytes {
+				c.Inc(metrics.CEngineLinesTooLong)
+				sinceSiblingsCheck++
+				continue
 			}
 			if werr := s.lim.Wait(ctx); werr != nil {
 				return werr

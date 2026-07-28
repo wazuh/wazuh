@@ -3,3 +3,6 @@
 
 # Benchmark output directories
 /results_*/
+
+# Orchestrator run logs (run_case_bench.sh)
+/run_*.log
