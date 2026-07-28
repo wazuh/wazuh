@@ -202,11 +202,6 @@ GenerateHttpsManagerCert()
             if [ ! "X${USER_GENERATE_AUTHD_CERT}" = "Xn" ]; then
                     echo "Generating self-signed certificate for the HTTPS agent server..."
                     ${INSTALLDIR}/bin/wazuh-manager-remoted -C 365 -B 2048 -K ${INSTALLDIR}/etc/https-manager.key -X ${INSTALLDIR}/etc/https-manager.cert -S "/C=US/ST=California/CN=wazuh/"
-                    # Unlike sslmanager.{cert,key} (read by authd, which never drops root),
-                    # remoted calls Privsep_SetUser() BEFORE loading this key -- it must be
-                    # group-readable by the user remoted actually runs as, not root:root.
-                    chown root:${WAZUH_GROUP} ${INSTALLDIR}/etc/https-manager.key
-                    chown root:${WAZUH_GROUP} ${INSTALLDIR}/etc/https-manager.cert
                     chmod 640 ${INSTALLDIR}/etc/https-manager.key
                     chmod 640 ${INSTALLDIR}/etc/https-manager.cert
             fi
