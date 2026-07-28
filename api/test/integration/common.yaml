@@ -115,8 +115,10 @@ variables:
       </logging>
 
       <remote>
-        <port>1514</port>
-        <protocol>tcp</protocol>
+        <legacy>
+          <port>1514</port>
+          <protocol>tcp</protocol>
+        </legacy>
       </remote>
 
       <syscheck>
