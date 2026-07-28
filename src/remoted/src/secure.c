@@ -242,8 +242,10 @@ STATIC void remoted_module_https_config(remoted_module_config_t *rm_config) {
     rm_config->auth_max_body_size = getDefine_Int_default("remoted", "auth_max_body_size", 1048576, 67108864, 10485760);
 }
 
-/* Handle secure connections */
-void HandleSecure()
+/* Handle secure connections. https_cert_pem/https_key_pem: PEM-encoded certificate/key
+ * content read by HandleRemote() before dropping root privileges (may be NULL if
+ * unreadable). Ownership passes in -- freed below once copied into rm_config. */
+void HandleSecure(char *https_cert_pem, char *https_key_pem)
 {
     const int protocol = logr.proto;
     int n_events = 0;
@@ -361,6 +363,15 @@ void HandleSecure()
             snprintf(rm_config.node_name, sizeof(rm_config.node_name), "%s", rm_node_name);
             os_free(rm_node_name);
         }
+
+        if (https_cert_pem) {
+            snprintf(rm_config.certificate_pem, sizeof(rm_config.certificate_pem), "%s", https_cert_pem);
+        }
+        if (https_key_pem) {
+            snprintf(rm_config.private_key_pem, sizeof(rm_config.private_key_pem), "%s", https_key_pem);
+        }
+        os_free(https_cert_pem);
+        os_free(https_key_pem);
 
         remoted_module_start(mtLoggingFunctionsWrapper, &rm_config);
         atexit(remoted_module_stop);

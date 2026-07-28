@@ -15,12 +15,18 @@
 #include "shared.h"
 #include "os_net.h"
 #include "remoted.h"
+#include "remoted_module.h" // REMOTED_MODULE_PEM_MAX_SIZE
 
 /* Global variables */
 keystore keys;
 remoted logr;
 char* node_name;
 char* cluster_name;
+
+// Chroot-relative: evaluated once Privsep_Chroot() (in main.c) has already run, so these
+// resolve to /var/wazuh-manager/etc/https-manager.{cert,key} from the host's perspective.
+#define HTTPS_MANAGER_CERT_PATH "etc/https-manager.cert"
+#define HTTPS_MANAGER_KEY_PATH "etc/https-manager.key"
 
 /* Handle remote connections */
 void HandleRemote(int uid)
@@ -67,6 +73,14 @@ void HandleRemote(int uid)
     }
 
 
+    /* Read the HTTPS agent server's certificate/key while still root: this lets the files
+     * stay root:root (like sslmanager.cert/.key) since remoted never opens them again as
+     * an unprivileged user -- only the raw PEM bytes, already in memory, cross the
+     * privilege drop below. NULL (missing/unreadable/oversized) is handled downstream:
+     * the module fails to start and logs why. */
+    char *https_cert_pem = w_get_file_content(HTTPS_MANAGER_CERT_PATH, REMOTED_MODULE_PEM_MAX_SIZE - 1);
+    char *https_key_pem = w_get_file_content(HTTPS_MANAGER_KEY_PATH, REMOTED_MODULE_PEM_MAX_SIZE - 1);
+
     /* Revoke privileges */
     if (Privsep_SetUser(uid) < 0) {
         merror_exit(SETUID_ERROR, USER, errno, strerror(errno));
@@ -77,5 +91,5 @@ void HandleRemote(int uid)
         merror_exit(PID_ERROR);
     }
 
-    HandleSecure();
+    HandleSecure(https_cert_pem, https_key_pem);
 }

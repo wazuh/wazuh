@@ -45,9 +45,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <fstream>
 #include <future>
 #include <memory>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <thread>
 #include <unistd.h>
@@ -220,6 +222,16 @@ namespace
         return cert;
     }
 
+    // remoted.c reads the certificate/key content itself (see IHttpServer.hpp's
+    // certificatePem/privateKeyPem); this test stands in for that read.
+    std::string readFile(const std::string& path)
+    {
+        std::ifstream file(path);
+        std::ostringstream contents;
+        contents << file.rdbuf();
+        return contents.str();
+    }
+
     // Connects over TLS, sends one signed /stateless request, and returns without waiting for a
     // reply -- fire-and-forget, exactly what an agent's connection looks like from the server's
     // perspective at the moment shutdown begins.
@@ -321,8 +333,8 @@ TEST(ShutdownRace, StopSequenceSurvivesAnInFlightForward)
 
     HttpServerConfig config;
     config.port = static_cast<std::uint16_t>(20000 + (::getpid() % 10000));
-    config.certificatePath = cert.certPath;
-    config.privateKeyPath = cert.keyPath;
+    config.certificatePem = readFile(cert.certPath);
+    config.privateKeyPem = readFile(cert.keyPath);
     server->start(config);
 
     const std::vector<std::uint8_t> key(16, 0x0B); // matches FakeKeystore::keyFor(7)
