@@ -36,7 +36,11 @@ namespace
 
     const std::map<CurlOption, CURLoption>& optionMap()
     {
-        static const std::map<CurlOption, CURLoption> map
+        // Never destroyed, like the global curl init above: the shutdown drain reads
+        // this from an atexit handler registered before the lazy init, so LIFO
+        // teardown would free the tree first and the drain would fault.
+        static const std::map<CurlOption, CURLoption>* const map =
+            new const std::map<CurlOption, CURLoption>
         {
             {CurlOption::Url, CURLOPT_URL},
             {CurlOption::Post, CURLOPT_POST},
@@ -51,7 +55,7 @@ namespace
             {CurlOption::SslCiphers, CURLOPT_SSL_CIPHER_LIST},
             {CurlOption::FollowLocation, CURLOPT_FOLLOWLOCATION},
             {CurlOption::NoSignal, CURLOPT_NOSIGNAL}};
-        return map;
+        return *map;
     }
 
     // curl callbacks are C: nothing may throw across them.

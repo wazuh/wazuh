@@ -135,6 +135,10 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
      * independently of the legacy TCP path below until that is retired
      * (later workstream). See client-agent/https_client and the bridge. */
     w_https_client_start();
+
+    /* Note: Whatever the drain touches must outlive this: exit() unwinds atexit LIFO, so
+     * a C++ static lazily initialized on a module thread registers after this line
+     * and dies before the drain runs. */
     atexit(w_https_client_stop);
 
     start_agent(1);
