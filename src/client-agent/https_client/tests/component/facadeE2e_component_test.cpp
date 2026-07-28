@@ -372,7 +372,9 @@ TEST_F(FacadeE2eTest, AHeldStatefulRequestDoesNotStallStatelessOrControl)
     // against a sleep.
     const uint16_t port = TLS_PORT + 9;
     const std::string gate = "/tmp/hc_hold_stateful_" + std::to_string(getpid());
-    { std::ofstream open {gate}; } // Held from here until we remove it.
+    {
+        std::ofstream open {gate};    // Held from here until we remove it.
+    }
 
     FakeManager manager {port, KEY_HEX, /*tls=*/true, 0, {}, 0, 0, {}, gate};
 
