@@ -68,6 +68,10 @@ TEST(StatelessEndpoint, TargetPointsAtEngineEventIngress)
     EXPECT_EQ(target.method, Method::Post);
     EXPECT_EQ(target.path, "/events/enriched");
     EXPECT_EQ(target.contentType, "application/x-ndjson");
+    // /stateless deliberately does NOT override the response deadline: event ingestion is fast, so
+    // it stays on the global remoted.downstream_response_timeout. The 0 sentinel is what expresses
+    // that -- a future slow endpoint is the one that sets a value here.
+    EXPECT_EQ(target.responseTimeoutMs, 0);
 }
 
 TEST(StatelessEndpoint, PostProcessMapsDownstreamResults)
@@ -85,11 +89,16 @@ TEST(StatelessEndpoint, PostProcessMapsDownstreamResults)
         {DownstreamError::None, 413, 413},           // too large passes through
         {DownstreamError::None, 500, 503},           // downstream 5xx -> transient 503
         {DownstreamError::Connect, 0, 503},          // could not connect -> 503
-        {DownstreamError::Timeout, 0, 503},          // no timely answer -> 503
+        {DownstreamError::ConnectTimeout, 0, 503},   // connect deadline -> 503
+        {DownstreamError::WriteTimeout, 0, 503},     // send deadline -> 503
+        {DownstreamError::ResponseTimeout, 0, 503},  // no timely answer -> 503
         {DownstreamError::Transport, 0, 503},        // broken pipe -> 503
         {DownstreamError::Protocol, 0, 503},         // bad HTTP -> 503
         {DownstreamError::ResponseTooLarge, 0, 503}, // oversized response body -> 503
     };
+    // Every timeout phase must still collapse to the SAME agent-visible 503: which deadline
+    // elapsed is manager-internal diagnostics (it picks the log line and names the knob), and must
+    // not leak to the agent.
 
     for (const auto& c : cases)
     {
@@ -112,7 +121,7 @@ TEST(StatelessEndpoint, ErrorResponsesCarryNeutralJson)
     EXPECT_EQ(badBatch.status, 400);
     EXPECT_EQ(badBatch.body, R"({"error":"Invalid event batch","code":400})"); // neutral, not the engine body
 
-    const auto unavailable = stateless::postProcess(DownstreamError::Timeout, DownstreamResponse {0, ""});
+    const auto unavailable = stateless::postProcess(DownstreamError::ResponseTimeout, DownstreamResponse {0, ""});
     EXPECT_EQ(unavailable.status, 503);
     EXPECT_EQ(unavailable.body, R"({"error":"Service unavailable","code":503})");
 }

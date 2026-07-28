@@ -102,6 +102,11 @@ Debug logging level for remoted module.
 - **Default value:** `0`
 - **Allowed values:** `0` (disabled), `1` (basic), `2` (verbose)
 - **Note:** Use `debug2` for troubleshooting; generates significant log volume
+- **Note:** Level `2` is also what reveals the HTTPS agent server's per-request rejection reasons
+  (malformed or unauthenticated requests). Those are kept at debug because an unauthenticated client
+  controls how many it can trigger; conditions an operator can act on are logged as warnings
+  regardless of this setting. See
+  [Diagnosing rejections and capacity problems](https-events-api.md#diagnosing-rejections-and-capacity-problems).
 
 ### remoted.receive_chunk
 
@@ -478,12 +483,22 @@ Socket read buffer size for the HTTPS agent server, in bytes.
 - **Default value:** `8192`
 - **Allowed values:** Integer from `1` to `1048576` (1 MiB)
 
+> **The three timeouts below are sequential phases of one request, and the sum matters.**
+> `remoted.http_request_timeout` bounds the *whole* request and its clock starts before the
+> downstream call, so if `connect + write + response` exceeds it, the HTTP server tears the request
+> down before the downstream deadline is ever reached. `remoted` logs a warning at startup when that
+> is the case. Each phase has its own log message naming its own setting, so the log tells you which
+> one elapsed.
+
 #### remoted.downstream_connect_timeout
 
 Seconds to wait for the downstream UDS connect (to the engine's event ingress) to complete.
 
 - **Default value:** `2`
 - **Allowed values:** Integer from `1` to `60`
+- **Note:** Exceeding it logs *"Timed out connecting to the downstream service"*. A connection
+  *refused* immediately (rather than timing out) means nothing is listening on the socket and is
+  reported differently.
 
 #### remoted.downstream_write_timeout
 
@@ -491,6 +506,8 @@ Seconds to wait for the request body write to the downstream service to complete
 
 - **Default value:** `5`
 - **Allowed values:** Integer from `1` to `300`
+- **Note:** Only reached when the downstream service accepts the connection but does not drain its
+  socket. Without this bound such a peer would pin the request's deferred-work slot indefinitely.
 
 #### remoted.downstream_response_timeout
 
@@ -498,6 +515,9 @@ Seconds to wait for the downstream service's response after the write completes.
 
 - **Default value:** `5`
 - **Allowed values:** Integer from `1` to `300`
+- **Note:** This is the global default. An endpoint whose handler legitimately takes much longer can
+  declare its own deadline instead of forcing this value up for every endpoint (which would delay
+  detection of a genuinely hung downstream on the fast ones).
 
 #### remoted.downstream_io_threads
 

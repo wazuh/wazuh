@@ -68,6 +68,13 @@ extern "C"
         {
             LOGFN_ERROR(LogFn {REMOTED_MODULE_LOGTAG}, "Error starting remoted module: %s", e.what());
         }
+        catch (...)
+        {
+            // remoted_module.h promises this never throws into C. A non-std::exception escaping
+            // here would cross the extern "C" boundary into remoted's C code, where there is no
+            // handler -- std::terminate, taking the whole daemon down.
+            LOGFN_ERROR(LogFn {REMOTED_MODULE_LOGTAG}, "Error starting remoted module: non-standard exception.");
+        }
     }
 
     void remoted_module_stop(void)
@@ -79,6 +86,13 @@ extern "C"
         catch (const std::exception& e)
         {
             LOGFN_ERROR(LogFn {REMOTED_MODULE_LOGTAG}, "Error stopping remoted module: %s", e.what());
+        }
+        catch (...)
+        {
+            // Same reasoning as remoted_module_start(): nothing may cross back into C. This one
+            // also runs from atexit() (see secure.c), where a terminate would turn a clean
+            // shutdown into a crash.
+            LOGFN_ERROR(LogFn {REMOTED_MODULE_LOGTAG}, "Error stopping remoted module: non-standard exception.");
         }
     }
 
