@@ -33,9 +33,10 @@ const (
 
 // postDataDelayFromStep resolves the scenario step's post_data_delay
 // sentinel to a concrete duration:
-//   -1 (or anything < 0) → DefaultPostDataDelay
-//    0                    → no pause
-//   N>0                   → N seconds
+//
+//	-1 (or anything < 0) → DefaultPostDataDelay
+//	 0                    → no pause
+//	N>0                   → N seconds
 func postDataDelayFromStep(step scenario.Step) time.Duration {
 	if step.PostDataDelay < 0 {
 		return DefaultPostDataDelay
@@ -267,6 +268,7 @@ retryLoop:
 	// → just emits another Status_Processing) so retrying End is safe
 	// in both phases.
 	gotProcessing := false
+	var processingAt time.Time
 	deadline := time.NewTimer(endAckProcT)
 	defer deadline.Stop()
 	retransmits := 0
@@ -363,15 +365,22 @@ retryLoop:
 			if in.Type != fb.MessageTypeEndAck {
 				continue
 			}
-			c.RecordLatency(metrics.LEndAck, float64(time.Since(tEnd).Milliseconds()))
-			c.RecordLatency(metrics.LSessionFull, float64(time.Since(tStart).Milliseconds()))
 			switch in.Status {
 			case fb.StatusOk:
+				c.RecordLatency(metrics.LEndAck, float64(time.Since(tEnd).Milliseconds()))
+				c.RecordLatency(metrics.LSessionFull, float64(time.Since(tStart).Milliseconds()))
+				if !processingAt.IsZero() {
+					c.RecordLatency(metrics.LProcessingToOk,
+						float64(time.Since(processingAt).Milliseconds()))
+				}
 				c.Inc(metrics.CEndAckOk)
 				c.Inc(metrics.CSessionsCompleted)
 				return nil
 			case fb.StatusProcessing:
 				c.Inc(metrics.CEndAckProcessing)
+				if processingAt.IsZero() {
+					processingAt = time.Now()
+				}
 				// Phase 1 → Phase 2 transition (or stay in Phase 2 on
 				// subsequent Processing). Either way, the deadline
 				// becomes the long indexer-flush window.
@@ -395,9 +404,11 @@ retryLoop:
 
 // attemptsFromRetry maps the -1/0/N user-facing retry knob to the
 // internal "max attempts" representation used by the retry loops:
-//   user -1 → 1 attempt (no retry)
-//   user  0 → -1 sentinel meaning "unlimited"
-//   user  N → N attempts
+//
+//	user -1 → 1 attempt (no retry)
+//	user  0 → -1 sentinel meaning "unlimited"
+//	user  N → N attempts
+//
 // The internal sentinel value matches the `unlimited` constant in Run().
 func attemptsFromRetry(retry int) int {
 	switch {

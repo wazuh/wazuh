@@ -289,6 +289,11 @@ func TestEndAckTwoPhase_ProcessingThenOk_Completes(t *testing.T) {
 	if cum[metrics.CEndAckOk] != 1 {
 		t.Errorf("end_ack_ok=%d, want 1", cum[metrics.CEndAckOk])
 	}
+	_, endAck, sessionFull, processingToOk := c.LatencySummaries()
+	if endAck.Count != 1 || sessionFull.Count != 1 || processingToOk.Count != 1 {
+		t.Errorf("terminal latency counts end_ack=%d session_full=%d processing_to_ok=%d, want 1 each",
+			endAck.Count, sessionFull.Count, processingToOk.Count)
+	}
 }
 
 // Case 4: Phase 1 timeout triggers retry → second End gets Processing → Ok.
@@ -300,7 +305,7 @@ func TestEndAckTwoPhase_ShortTimeoutTriggersRetry(t *testing.T) {
 	identity := agent.Identity{ID: "001", Name: "bench-test", ManagerKey: "deadbeefdeadbeefdeadbeefdeadbeef"}
 	fr := startEndStager(t, identity, "fim_sync", [][]endAck{
 		{}, // first End: drop silently
-		{   // second End: Processing then Ok
+		{ // second End: Processing then Ok
 			{delay: 10 * time.Millisecond, status: fb.StatusProcessing},
 			{delay: 50 * time.Millisecond, status: fb.StatusOk},
 		},

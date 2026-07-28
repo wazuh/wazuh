@@ -219,6 +219,17 @@ PY
     rc_health=1
   fi
 
+  for required_file in \
+    "${results_dir}/monitor/wazuh-manager-modulesd.csv" \
+    "${results_dir}/monitor/wazuh-indexer.csv" \
+    "${results_dir}/indexer_stats_before.json" \
+    "${results_dir}/indexer_stats_after.json"; do
+    if [[ ! -s "$required_file" ]]; then
+      echo "[health] ERROR: missing monitor artifact ${required_file}"
+      rc_health=1
+    fi
+  done
+
   if [[ "$EXPECT" != "skip" ]]; then
     echo "[verify] checking case.* on enriched docs (expect all ${EXPECT})..."
     if ! IDX="$IDX" INDEXER_HOST="$INDEXER_HOST" INDEXER_PORT="$INDEXER_PORT" \
@@ -255,6 +266,8 @@ echo " Done (${REPEATS} run(s), health=$([[ $OVERALL -eq 0 ]] && echo OK || echo
 echo "   summary.json                    descriptive aggregate"
 echo "   charts/                         PNGs (incl. monitor_cpu_total_with_indexer.png)"
 echo "   monitor/wazuh-indexer.csv       indexer CPU/RSS (captured automatically)"
+echo "   indexer_stats_before.json       raw OpenSearch counters before sender"
+echo "   indexer_stats_after.json        raw OpenSearch counters after sender"
 echo "   run_<label>.log                 full orchestrator/run log"
 if [[ "${#RUN_DIRS[@]}" -gt 1 ]]; then
   echo

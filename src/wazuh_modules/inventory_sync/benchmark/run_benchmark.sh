@@ -87,7 +87,10 @@ GRAPHICS_PY="$SCRIPT_DIR/../../../engine/tools/devContainer/scripts/monitor_grap
 SSH_KEY=""
 SSH_PORT=22
 SSH_PASSWORD=false
-INDEXER_PORT=9200
+INDEXER_HOST="${INDEXER_HOST:-localhost}"
+INDEXER_PORT="${INDEXER_PORT:-9200}"
+INDEXER_USER="${INDEXER_USER:-admin}"
+INDEXER_PASS="${INDEXER_PASS:-admin}"
 INDEXER_TUNNEL=true
 GRACE_TIME=20
 
@@ -395,9 +398,12 @@ MONITOR_PID_FILE="$RESULTS_DIR/monitor.pid"
 SUMMARY_JSON="$RESULTS_DIR/summary.json"
 MONITOR_MODULESD_CSV="$MONITOR_DIR/wazuh-manager-modulesd.csv"
 DISK_CSV="$MONITOR_DIR/disk_usage.csv"
+INDEXER_STATS_BEFORE="$RESULTS_DIR/indexer_stats_before.json"
+INDEXER_STATS_AFTER="$RESULTS_DIR/indexer_stats_after.json"
 
 # Wipe stale outputs from previous runs that reused this label.
-rm -f "$BENCH_CSV" "$SENDER_JSON" "$SUMMARY_JSON" "$MONITOR_PID_FILE"
+rm -f "$BENCH_CSV" "$SENDER_JSON" "$SUMMARY_JSON" "$MONITOR_PID_FILE" \
+    "$INDEXER_STATS_BEFORE" "$INDEXER_STATS_AFTER"
 rm -rf "$RESULTS_DIR/charts" "$MONITOR_DIR"
 
 # Copy scenario into the results directory for reproducibility.
@@ -456,10 +462,33 @@ Cores: $_si_cores
 Memory: $_si_mem
 INFO
 
+# Capture cumulative state-index counters around the sender. The raw snapshots
+# remain in the results directory; result_summary.py computes their delta.
+collect_indexer_stats() {
+    local output="$1"
+    local metrics="docs,indexing,get,search,merge,refresh,flush,translog,store"
+    local url="https://${INDEXER_HOST}:${INDEXER_PORT}/wazuh-states-*/_stats/${metrics}?ignore_unavailable=true&allow_no_indices=true&expand_wildcards=open"
+
+    curl -sSk --fail-with-body -u "${INDEXER_USER}:${INDEXER_PASS}" \
+        "$url" --output "$output"
+    "$PYTHON" - "$output" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1]) as stream:
+    data = json.load(stream)
+if "_all" not in data or "total" not in data["_all"]:
+    raise SystemExit("invalid OpenSearch index stats response")
+PY
+}
+
 # 0. Cleanup old benchmark agents
 echo "Cleaning up old benchmark agents..."
 "$SCRIPT_DIR/cleanup_agents.sh" 2>/dev/null || echo "  (cleanup skipped — API not available)"
 echo ""
+
+echo "Capturing OpenSearch state-index counters (before)..."
+collect_indexer_stats "$INDEXER_STATS_BEFORE"
 
 # 1. Start resource monitor
 mkdir -p "$MONITOR_DIR"
@@ -467,6 +496,7 @@ mkdir -p "$MONITOR_DIR"
 if $REMOTE_MODE; then
     echo "Starting resource monitor on remote ($MANAGER)..."
     REMOTE_OUTPUT_DIR="$REMOTE_MONITOR_DIR/output"
+    printf -v REMOTE_MANAGER_LOG_Q '%q' "$MANAGER_LOG"
     # Use the venv installed by setup_monitor.sh if present, fall back to
     # system python3 (which must have psutil available in that case).
     REMOTE_PYTHON="python3"
@@ -480,7 +510,8 @@ if $REMOTE_MODE; then
             --output-dir $REMOTE_OUTPUT_DIR \
             -s 1.0 \
             --pidfile $REMOTE_MONITOR_DIR/monitor.pid \
-            --timeout 30" &
+            --timeout 30 \
+            --log-path $REMOTE_MANAGER_LOG_Q" &
     MONITOR_BG_PID=$!
     sleep 3
     if ! kill -0 "$MONITOR_BG_PID" 2>/dev/null; then
@@ -496,6 +527,7 @@ else
         -s 1.0
         --pidfile "$MONITOR_PID_FILE"
         --timeout 30
+        --log-path "$MANAGER_LOG"
     )
     LOCAL_MONITOR_PYTHON="$(_find_local_monitor_python)" || exit 1
     "$LOCAL_MONITOR_PYTHON" "$MONITOR_PY" "${MONITOR_ARGS[@]}" &
@@ -593,6 +625,11 @@ if [[ "$POST_RUN_GRACE" -gt 0 ]]; then
     echo "  Post-run grace complete."
 fi
 
+INDEXER_STATS_RC=0
+echo ""
+echo "Capturing OpenSearch state-index counters (after)..."
+collect_indexer_stats "$INDEXER_STATS_AFTER" || INDEXER_STATS_RC=$?
+
 # 3. Stop monitor & retrieve data
 echo ""
 echo "Stopping resource monitor..."
@@ -633,6 +670,13 @@ SUMMARY_EXTRA=()
 [[ -f "$SENDER_JSON" ]] && SUMMARY_EXTRA+=(--sender-json "$SENDER_JSON")
 [[ -f "$MONITOR_DIR/logs.csv" ]] && SUMMARY_EXTRA+=(--logs "$MONITOR_DIR/logs.csv")
 [[ -f "$RESULTS_DIR/params.json" ]] && SUMMARY_EXTRA+=(--params "$RESULTS_DIR/params.json")
+[[ -f "$MONITOR_DIR/wazuh-indexer.csv" ]] && SUMMARY_EXTRA+=(--monitor-indexer "$MONITOR_DIR/wazuh-indexer.csv")
+if [[ -s "$INDEXER_STATS_BEFORE" && -s "$INDEXER_STATS_AFTER" ]]; then
+    SUMMARY_EXTRA+=(
+        --indexer-stats-before "$INDEXER_STATS_BEFORE"
+        --indexer-stats-after "$INDEXER_STATS_AFTER"
+    )
+fi
 
 SUMMARY_RC=0
 "$PYTHON" "$SCRIPT_DIR/result_summary.py" \
@@ -675,10 +719,18 @@ echo "  Bench CSV: $BENCH_CSV"
 echo "  Monitor:   $MONITOR_DIR/"
 [[ -f "$MONITOR_DIR/logs.csv" ]] && echo "  Logs:      $MONITOR_DIR/logs.csv"
 [[ -f "$SUMMARY_JSON" ]] && echo "  Summary:   $SUMMARY_JSON"
+[[ -f "$INDEXER_STATS_BEFORE" ]] && echo "  OS before: $INDEXER_STATS_BEFORE"
+[[ -f "$INDEXER_STATS_AFTER" ]] && echo "  OS after:  $INDEXER_STATS_AFTER"
 echo "  Charts:    $CHART_DIR/"
 echo "  Sender RC: $SENDER_RC"
 echo ""
 echo "  To compare with another run:"
 echo "    $(basename "$0") --compare $RESULTS_DIR <other_results_dir>"
 echo ""
-exit $SUMMARY_RC
+if [[ "$SENDER_RC" -ne 0 ]]; then
+    exit "$SENDER_RC"
+fi
+if [[ "$INDEXER_STATS_RC" -ne 0 ]]; then
+    exit "$INDEXER_STATS_RC"
+fi
+exit "$SUMMARY_RC"

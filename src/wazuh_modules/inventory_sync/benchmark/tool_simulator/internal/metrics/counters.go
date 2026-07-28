@@ -93,6 +93,7 @@ const (
 	LStartAck LatencyKind = iota
 	LEndAck
 	LSessionFull
+	LProcessingToOk
 )
 
 // Counters holds the atomic per-tick counters and the cumulative totals.
@@ -102,17 +103,19 @@ type Counters struct {
 
 	// Latency observations (in milliseconds). Appended under their own
 	// mutex elsewhere; here we keep slices guarded by a Latencies wrapper.
-	latStart   *LatencyHist
-	latEnd     *LatencyHist
-	latSession *LatencyHist
+	latStart          *LatencyHist
+	latEnd            *LatencyHist
+	latSession        *LatencyHist
+	latProcessingToOk *LatencyHist
 }
 
 // New returns a freshly-zeroed Counters.
 func New() *Counters {
 	return &Counters{
-		latStart:   NewLatencyHist(),
-		latEnd:     NewLatencyHist(),
-		latSession: NewLatencyHist(),
+		latStart:          NewLatencyHist(),
+		latEnd:            NewLatencyHist(),
+		latSession:        NewLatencyHist(),
+		latProcessingToOk: NewLatencyHist(),
 	}
 }
 
@@ -160,10 +163,15 @@ func (c *Counters) RecordLatency(k LatencyKind, ms float64) {
 		c.latEnd.Observe(ms)
 	case LSessionFull:
 		c.latSession.Observe(ms)
+	case LProcessingToOk:
+		c.latProcessingToOk.Observe(ms)
 	}
 }
 
-// LatencySummaries returns a snapshot of all three histograms.
-func (c *Counters) LatencySummaries() (start, end, session LatencyStats) {
-	return c.latStart.Snapshot(), c.latEnd.Snapshot(), c.latSession.Snapshot()
+// LatencySummaries returns a snapshot of all latency histograms.
+func (c *Counters) LatencySummaries() (start, end, session, processingToOk LatencyStats) {
+	return c.latStart.Snapshot(),
+		c.latEnd.Snapshot(),
+		c.latSession.Snapshot(),
+		c.latProcessingToOk.Snapshot()
 }

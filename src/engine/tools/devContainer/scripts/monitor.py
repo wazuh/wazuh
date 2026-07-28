@@ -999,6 +999,11 @@ _EVENT_PATTERNS: dict[str, re.Pattern] = {
     "inventory_sync_error":         re.compile(r"InventorySyncFacade::start: (?!(Session not found|DataValue quota exhausted))"),
     "indexer_error":                re.compile(r"(indexer.*error|Indexer.*error|indexer.*offline|indexer.*not available)",
                                         re.IGNORECASE),
+    "version_conflict":             re.compile(
+                                        r"Optimistic concurrency conflict|"
+                                        r"version_conflict_engine_exception|"
+                                        r"409 version conflict",
+                                        re.IGNORECASE),
 }
 
 # Gauge metrics captured from "InventorySync queue stats:" lines.
