@@ -145,6 +145,13 @@ StatefulStream::SendResult StatefulStream::sendSession(const Session& session, W
     spec.timeoutMs = m_config.statefulTimeoutMs;
     spec.headers.push_back("X-Session-Id: " + session.id); // Stable across retries (LRU dedup).
 
+    // Logged before the request so the size is on record even if the POST never
+    // completes, and so it can be lined up against what the manager received.
+    LOGFN_DEBUG2(m_logFn,
+                 "POST /stateful session %s: %llu bytes.",
+                 session.id.c_str(),
+                 static_cast<unsigned long long>(session.size));
+
     const auto result = m_sender.send(spec, waiter, STATEFUL_MAX_ATTEMPTS);
     return {toHcResult(result.outcome), result.response.body};
 }
