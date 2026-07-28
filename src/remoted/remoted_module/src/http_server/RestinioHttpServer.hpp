@@ -14,11 +14,26 @@
 
 #include "IHttpServer.hpp"
 
+#include <openssl/x509.h>
+
 #include <memory>
 #include <string>
 
 namespace remoted::http
 {
+    /**
+     * @brief Checks whether a peer IP address is listed in a certificate's subjectAltName.
+     *
+     * Split out of the TLS verify callback (RestinioHttpServer.cpp's ClientVerificationMode::Full
+     * handling) so the actual IP-vs-certificate comparison is unit-testable without a live
+     * socket or TLS handshake: it takes a plain X509* and a string, with no dependency on
+     * asio/restinio.
+     *
+     * @param certificate Peer (leaf) certificate. Must not be null.
+     * @param peerIp Textual IPv4 or IPv6 address to look up in the certificate's SAN.
+     * @return true if certificate is non-null and peerIp matches an IP entry in its SAN.
+     */
+    bool certificateMatchesPeerIp(X509* certificate, const std::string& peerIp);
 
     /**
      * @brief RESTinio + OpenSSL implementation of IHttpServer.

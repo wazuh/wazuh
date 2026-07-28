@@ -20,12 +20,6 @@ For module overview and architecture, see [Remoted Module](index.html).
 
 The remoted module configuration controls how the manager listens for and processes agent communications.
 
-> **Breaking change (5.0):** `<remote>`'s options are now grouped under three nested
-> blocks: `<legacy>` (classic TCP/UDP listener, all options below unchanged in meaning),
-> `<https>` (new RESTinio-based HTTPS listener), and `<agents>` (unchanged). Options
-> placed directly under `<remote>` (the pre-5.0 flat layout) are rejected and the
-> manager will not start. There is no automatic migration; existing configurations
-> must be updated to nest their options under `<legacy>`.
 
 ### legacy.port
 
@@ -51,14 +45,13 @@ Message queue size for incoming agent messages.
 - **Allowed values:** Positive integer
 - **Note:** Values greater than `262144` will generate a warning; adjust based on agent count and event rate
 
-### allow_higher_versions
+### agents.allow_higher_versions
 
 Accept connections from agents running a Wazuh version higher than the manager.
 
 - **Default value:** `no`
 - **Allowed values:** `yes`, `no`
 - **Note:** Enable when upgrading agents before the manager
-- **XML path:** `<remote><agents><allow_higher_versions>`
 
 ### legacy.ipv6
 
@@ -72,9 +65,13 @@ Enable IPv6 support for agent connections.
 
 Bind remoted to a specific local IP address.
 
-- **Default value:** All interfaces (`0.0.0.0` for IPv4, `::` for IPv6)
+- **Default value:** `127.0.0.1` (loopback-only) when `ipv6` is `no`; all IPv6 interfaces (`::`)
+  when `ipv6` is `yes` (the `127.0.0.1` default only applies in IPv4 mode)
 - **Allowed values:** Valid IPv4 or IPv6 address
-- **Note:** Restricts remoted to listen only on specified interface
+- **Note:** Restricts remoted to listen only on the specified interface. Set to `0.0.0.0` to
+  accept agent connections from any IPv4 interface. The shipped `wazuh-manager.conf` and
+  install-time template ship the loopback-only default as-is; an operator who wants
+  remote agents must add `<local_ip>0.0.0.0</local_ip>` after install.
 
 ### legacy.rids_closing_time
 
@@ -114,8 +111,8 @@ Address the HTTPS listener binds to.
 
 - **Default value:** `127.0.0.1`
 - **Allowed values:** Valid IPv4 or IPv6 address
-- **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 and, on Linux's default dual-stack
-  setting, also accepts IPv4 connections on the same socket -- see
+- **Note:** `0.0.0.0` is IPv4-only. `::` listens on IPv6 only by default -- it does **not** also
+  accept IPv4 connections unless `dual_stack` is explicitly set to `yes` -- see
   [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack)
   for the full explanation.
 
@@ -124,7 +121,7 @@ Address the HTTPS listener binds to.
 Whether an IPv6 `bind_addr` (e.g. `::`) also accepts IPv4 clients on the same socket
 (the `IPV6_V6ONLY` socket option).
 
-- **Default value:** unset (the OS default applies -- dual-stack on Linux)
+- **Default value:** `no` (force IPv6-only)
 - **Allowed values:** `yes` (force dual-stack on), `no` (force IPv6-only)
 - **Note:** Only meaningful when `bind_addr` is IPv6; ignored (with a warning) for an IPv4
   `bind_addr`. See [HTTPS Events API: Bind address](https-events-api.md#bind-address-ipv4-ipv6-and-dual-stack).
@@ -145,8 +142,9 @@ Path to the TLS private key (PEM) matching `certificate`.
 
 Path to a CA bundle (PEM) used to verify client (agent) certificates.
 
-- **Default value:** none (client-certificate verification disabled)
-- **Note:** Required when `verification_mode` is `certificate` or `full`; the manager fails to start if `verification_mode` is set without a `ca`.
+- **Default value:** `etc/remoted-https/ca.crt` (relative to the manager's chroot)
+- **Note:** Only actually read when `verification_mode` is `certificate` or `full`; harmless
+  if left at its default and `verification_mode` stays `none`. See the special case below.
 
 ### https.verification_mode
 
@@ -157,13 +155,16 @@ Client-certificate verification strictness.
   - `none` — the client certificate is not verified.
   - `certificate` — the client certificate chain is validated against `ca`, but the connecting IP is not checked against the certificate.
   - `full` — same as `certificate`, plus the connecting agent's IP address must match an IP entry in the certificate's Subject Alternative Name.
+- **Special case:** if `<ca>` is explicitly configured in XML but `<verification_mode>` is not, the manager defaults `verification_mode` to `certificate` instead of `none`, and logs a warning explaining the override. An explicit `<verification_mode>` (including `none`) always wins over this inference.
 
 ### https.ciphers
 
-OpenSSL cipher list override for the HTTPS listener.
+TLS 1.3 ciphersuite override for the HTTPS listener (`SSL_CTX_set_ciphersuites()` naming
+scheme, e.g. `TLS_AES_256_GCM_SHA384`). The listener requires TLS 1.3 as its minimum
+protocol version.
 
-- **Default value:** none (library default cipher list)
-- **Allowed values:** OpenSSL cipher list string, e.g. `HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH`
+- **Default value:** `TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256`
+- **Allowed values:** colon-separated TLS 1.3 ciphersuite name string
 
 ### https.max_body_size
 
@@ -853,7 +854,7 @@ Require and validate agent client certificates, including a full IP-to-certifica
       <key>etc/remoted-https/server.key</key>
       <ca>etc/remoted-https/ca.crt</ca>
       <verification_mode>full</verification_mode>
-      <ciphers>HIGH:!ADH:!EXP:!MD5:!RC4:!3DES:!CAMELLIA:@STRENGTH</ciphers>
+      <ciphers>TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256</ciphers>
       <max_body_size>50MB</max_body_size>
     </https>
     <legacy>

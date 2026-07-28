@@ -81,6 +81,7 @@ static remoted *create_remoted() {
     logr->rids_closing_time = 0;
     logr->connection_overtake_time = 60;
     logr->lip = NULL;
+    logr->https.verification_mode = REMOTED_HTTPS_VERIFY_UNSET;
     return logr;
 }
 
@@ -363,6 +364,10 @@ static void test_remoted_internal_options_config(void **state) {
     int ret = RemotedConfig("test_ossec.conf", &logr);
     assert_int_equal(ret, 1);
 
+    // verification_mode must start UNSET (not NONE/0), so a later absent
+    // <https><verification_mode> stays distinguishable from an explicit "none".
+    assert_int_equal(logr.https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
+
     // Now validate getRemoteInternalConfig returns the correct values
     cJSON *json = getRemoteInternalConfig();
     assert_non_null(json);
@@ -582,7 +587,10 @@ static void test_w_remoted_parse_https_invalid_verification_mode(void **state) {
     int result = w_remoted_parse_https(nodes, ts->logr);
 
     assert_int_equal(result, OS_SUCCESS);
-    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_DEFAULT);
+    // Invalid input is ignored (mwarn above), leaving verification_mode exactly as it
+    // started -- UNSET, since this test never configures <ca> either (create_remoted()
+    // mirrors RemotedConfig()'s real pre-parse UNSET initialization).
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
 
     free_node_array(nodes);
 }
@@ -590,16 +598,81 @@ static void test_w_remoted_parse_https_invalid_verification_mode(void **state) {
 static void test_w_remoted_parse_https_verification_mode_without_ca(void **state) {
     test_state *ts = *state;
 
+    // <verification_mode> alone, no <ca>: no longer a hard error -- ca resolution
+    // (XML/env var/default) happens later in the C++ module, which the parser can't
+    // see, so the parser must not fail this. See M7 in the review history.
     xml_node **nodes = create_node_array(1,
         create_xml_node("verification_mode", "full")
     );
 
-    expect_string(__wrap__merror, formatted_msg,
-                  "The '<remote><https><verification_mode>' option requires '<ca>' to be configured.");
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_FULL);
+    assert_null(ts->logr->https.ca);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_ca_without_verification_mode_defaults_to_certificate(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("ca", "etc/remoted-https/ca.crt")
+    );
+
+    expect_string(__wrap__mwarn, formatted_msg,
+                  "The '<remote><https><ca>' option is configured but '<verification_mode>' is not; "
+                  "defaulting '<verification_mode>' to 'certificate'.");
 
     int result = w_remoted_parse_https(nodes, ts->logr);
 
-    assert_int_equal(result, OS_INVALID);
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_CERTIFICATE);
+    assert_string_equal(ts->logr->https.ca, "etc/remoted-https/ca.crt");
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_ca_with_explicit_none_verification_mode_not_overridden(void **state) {
+    test_state *ts = *state;
+
+    // <ca> and an EXPLICIT <verification_mode>none</verification_mode> together: the
+    // auto-upgrade special case only fires when verification_mode is still UNSET, so an
+    // explicit choice (even "none", which the operator may want e.g. while staging a CA
+    // file before enabling verification) must never be silently overridden, and no
+    // warning should be logged.
+    xml_node **nodes = create_node_array(2,
+        create_xml_node("ca", "etc/remoted-https/ca.crt"),
+        create_xml_node("verification_mode", "none")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_NONE);
+    assert_string_equal(ts->logr->https.ca, "etc/remoted-https/ca.crt");
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_minimal_block_no_ca_no_verification_mode_succeeds(void **state) {
+    test_state *ts = *state;
+
+    // Regression test: an <https> block that configures something other than
+    // verification_mode/ca must parse successfully with no warning at all -- this is
+    // the "HTTPS with no mTLS configured" scenario documented as the zero-config
+    // default, and previously broke when verification_mode's UNSET sentinel was
+    // introduced without updating this cross-field check.
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("port", "9443")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->https.verification_mode, REMOTED_HTTPS_VERIFY_UNSET);
+    assert_null(ts->logr->https.ca);
 
     free_node_array(nodes);
 }
@@ -617,6 +690,99 @@ static void test_w_remoted_parse_https_invalid_max_body_size(void **state) {
     int result = w_remoted_parse_https(nodes, ts->logr);
 
     assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_zero_max_body_size(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("max_body_size", "0")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'max_body_size': 0.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_negative_max_body_size(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("max_body_size", "-1024")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1235): Invalid value for element 'max_body_size': -1024.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_max_body_size_unit_suffixes(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("max_body_size", "2KB")
+    );
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_SUCCESS);
+    assert_int_equal(ts->logr->https.max_body_size, 2L * 1024);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_ciphers_too_long(void **state) {
+    test_state *ts = *state;
+
+    char long_ciphers[REMOTED_HTTPS_CIPHERS_MAX_LEN + 2];
+    memset(long_ciphers, 'A', sizeof(long_ciphers) - 1);
+    long_ciphers[sizeof(long_ciphers) - 1] = '\0';
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("ciphers", long_ciphers)
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Value for '<remote><https><ciphers>' exceeds the maximum length of 255 characters.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+    assert_null(ts->logr->https.ciphers);
+
+    free_node_array(nodes);
+}
+
+static void test_w_remoted_parse_https_certificate_too_long(void **state) {
+    test_state *ts = *state;
+
+    char long_certificate[REMOTED_HTTPS_CERTIFICATE_MAX_LEN + 2];
+    memset(long_certificate, 'A', sizeof(long_certificate) - 1);
+    long_certificate[sizeof(long_certificate) - 1] = '\0';
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("certificate", long_certificate)
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "Value for '<remote><https><certificate>' exceeds the maximum length of 511 characters.");
+
+    int result = w_remoted_parse_https(nodes, ts->logr);
+
+    assert_int_equal(result, OS_INVALID);
+    assert_null(ts->logr->https.certificate);
 
     free_node_array(nodes);
 }
@@ -639,6 +805,23 @@ static void test_w_remoted_parse_https_invalid_element(void **state) {
 }
 
 // Read_remote tests
+
+static void test_read_remote_flat_legacy_option_rejected(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(1,
+        create_xml_node("port", "1514")
+    );
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "(1230): Invalid element in the configuration: 'port'.");
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, OS_INVALID);
+
+    free_node_array(nodes);
+}
 
 static void test_read_remote_connection_section(void **state) {
     test_state *ts = *state;
@@ -691,6 +874,36 @@ static void test_read_remote_denied_ips_section(void **state) {
     free_node_array(nodes);
 }
 
+static void test_read_remote_local_ip_defaults_to_loopback(void **state) {
+    test_state *ts = *state;
+
+    xml_node **nodes = create_node_array(0);
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, 0);
+    assert_non_null(ts->logr->lip);
+    assert_string_equal(ts->logr->lip, "127.0.0.1");
+    assert_int_equal(ts->logr->port, DEFAULT_REMOTE_PORT);
+    assert_int_equal(ts->logr->proto, REMOTED_NET_PROTOCOL_DEFAULT);
+
+    free_node_array(nodes);
+}
+
+static void test_read_remote_local_ip_not_defaulted_for_ipv6(void **state) {
+    test_state *ts = *state;
+    ts->logr->ipv6 = 1;
+
+    xml_node **nodes = create_node_array(0);
+
+    int result = Read_Remote(&ts->xml, nodes, ts->logr, NULL);
+
+    assert_int_equal(result, 0);
+    assert_null(ts->logr->lip);
+
+    free_node_array(nodes);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -718,11 +931,25 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_bind_addr, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_verification_mode, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_verification_mode_without_ca, setup, teardown),
+        cmocka_unit_test_setup_teardown(
+            test_w_remoted_parse_https_ca_without_verification_mode_defaults_to_certificate, setup, teardown),
+        cmocka_unit_test_setup_teardown(
+            test_w_remoted_parse_https_ca_with_explicit_none_verification_mode_not_overridden, setup, teardown),
+        cmocka_unit_test_setup_teardown(
+            test_w_remoted_parse_https_minimal_block_no_ca_no_verification_mode_succeeds, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_max_body_size, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_zero_max_body_size, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_negative_max_body_size, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_max_body_size_unit_suffixes, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_ciphers_too_long, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_certificate_too_long, setup, teardown),
         cmocka_unit_test_setup_teardown(test_w_remoted_parse_https_invalid_element, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_flat_legacy_option_rejected, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_connection_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_allowed_ips_section, setup, teardown),
         cmocka_unit_test_setup_teardown(test_read_remote_denied_ips_section, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_local_ip_defaults_to_loopback, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_read_remote_local_ip_not_defaulted_for_ipv6, setup, teardown),
 
     };
 
