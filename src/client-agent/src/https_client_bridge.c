@@ -222,6 +222,40 @@ static void bridge_on_task(const char *task_id, const char *task_type, const cha
             task_type ? task_type : "?");
 }
 
+/* The startup hash gate (client-agent/src/startup_gate.c) holds syscheckd and
+ * the other modules until the manager-validated configuration is in place. Its
+ * only feed was the legacy TCP handshake (start_agent.c calls
+ * startup_gate_process_handshake with the merged_sum the manager pushes there),
+ * so an agent whose transport is HTTPS never got an expected hash and the gate
+ * stayed at "waiting_handshake" forever, blocking module startup on Linux and
+ * Windows alike.
+ *
+ * The module reports the manager's hash on every Notify, matching or not, which
+ * covers both cases through the gate's existing logic: an agent already in sync
+ * releases immediately on the hash match, and one that diverges keeps waiting
+ * until /download lands the new configuration and the apply path refreshes it. */
+static void bridge_on_manager_config_hash(const char *config_hash, void *user_data)
+{
+    (void)user_data;
+
+    /* Only an MD5-shaped hash may reach the gate. It validates against
+     * getsharedfiles(), which is OS_MD5_File over merged.mg, and it reacts to
+     * anything else by latching itself blocked on "invalid_handshake_hash",
+     * which its own comment says needs an agentd restart to clear. The module
+     * verifies downloaded configs with sha256 instead, so until the manager
+     * side settles which digest /control reports (no endpoint exists yet), a
+     * mismatched shape must leave the gate exactly as it was rather than
+     * wedge it. */
+    if (config_hash == NULL || strlen(config_hash) != 32) {
+        mdebug2("https_client: manager config hash '%s' is not the MD5 shape the startup "
+                "gate validates; leaving the gate untouched.",
+                config_hash && config_hash[0] ? config_hash : "(none)");
+        return;
+    }
+
+    startup_gate_process_handshake(true, config_hash);
+}
+
 static void bridge_on_config_downloaded(const char *config_hash, const char *file_path,
                                         void *user_data)
 {
@@ -234,6 +268,11 @@ static void bridge_on_config_downloaded(const char *config_hash, const char *fil
     (void)user_data;
     mdebug1("https_client config downloaded (hash=%s, file=%s)",
             config_hash ? config_hash : "?", file_path ? file_path : "?");
+
+    /* Re-check the gate once the configuration has been applied. Harmless
+     * today, when the apply chain above is still a scaffold and the local hash
+     * has not moved: the gate simply stays blocked until it has. */
+    startup_gate_refresh_from_local_hash();
 }
 
 static void bridge_on_state_change(int state, void *user_data)
@@ -433,6 +472,7 @@ void w_https_client_start(void)
     callbacks.on_startup_result = bridge_on_startup_result;
     callbacks.on_reenroll_required = bridge_on_reenroll_required;
     callbacks.on_task = bridge_on_task;
+    callbacks.on_manager_config_hash = bridge_on_manager_config_hash;
     callbacks.on_config_downloaded = bridge_on_config_downloaded;
     callbacks.on_state_change = bridge_on_state_change;
     callbacks.on_buffer_level = bridge_on_buffer_level;
