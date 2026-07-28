@@ -34,7 +34,9 @@ jobs:
           matrix:
               target: [agent, winagent, manager]
     runs-on: codebuild-github-actions-codebuild-runner-server-amd-${{ github.run_id }}-${{ github.run_attempt }}
-    timeout-minutes: 90
+    # Halving the build parallelism to avoid OOM (see legacy_unit_tests.sh) roughly doubles the
+    # engine unit-test compile phase, which alone approaches the old 90-minute cap.
+    timeout-minutes: 130
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v5
