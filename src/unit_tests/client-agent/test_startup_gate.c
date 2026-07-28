@@ -226,6 +226,48 @@ static void test_check_hash_match_false_when_not_blocked(void **state) {
     assert_false(startup_gate_check_hash_match());
 }
 
+/* --- startup_gate_release_from_https_apply (finding 1, #37831) ---------- */
+
+/* Blocked + remote_conf enabled: releases directly, no MD5 comparison at all
+ * (no will_return(__wrap_getsharedfiles, ...) queued -- if the implementation
+ * routed through the legacy hash-matching helpers instead, cmocka would fail
+ * on a missing mock return). */
+static void test_release_from_https_apply_releases_blocked_gate(void **state) {
+    (void)state;
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate released via HTTPS configuration apply (https_config_applied).");
+
+    startup_gate_release_from_https_apply();
+
+    assert_gate_state(true, "https_config_applied");
+}
+
+/* remote_conf disabled: the gate is already released (by initialize()); this
+ * must be a silent no-op, not re-log a release. */
+static void test_release_from_https_apply_is_noop_when_disabled(void **state) {
+    (void)state;
+    /* No expect_any(__wrap__mdebug1, ...): must not log anything. */
+    startup_gate_release_from_https_apply();
+
+    assert_gate_state(true, "disabled");
+}
+
+/* Idempotent: calling it again once already released (e.g. a later config
+ * download after the gate is already open) must not re-log or change state. */
+static void test_release_from_https_apply_is_noop_once_already_released(void **state) {
+    (void)state;
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "Startup hash gate released via HTTPS configuration apply (https_config_applied).");
+    startup_gate_release_from_https_apply();
+    assert_gate_state(true, "https_config_applied");
+
+    /* Second call: already ready, so the enabled-and-not-ready guard skips the
+     * log/reason-update entirely -- no expect_any queued means cmocka fails
+     * this test if it logs again. */
+    startup_gate_release_from_https_apply();
+    assert_gate_state(true, "https_config_applied");
+}
+
 int main(void) {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_initialize_remote_conf_disabled_releases_gate,
@@ -257,6 +299,12 @@ int main(void) {
         cmocka_unit_test_setup_teardown(test_check_hash_match_true_when_blocked_and_matches,
                                         setup_remote_conf_enabled, teardown_gate),
         cmocka_unit_test_setup_teardown(test_check_hash_match_false_when_not_blocked,
+                                        setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_release_from_https_apply_releases_blocked_gate,
+                                        setup_remote_conf_enabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_release_from_https_apply_is_noop_when_disabled,
+                                        setup_remote_conf_disabled, teardown_gate),
+        cmocka_unit_test_setup_teardown(test_release_from_https_apply_is_noop_once_already_released,
                                         setup_remote_conf_enabled, teardown_gate),
     };
 

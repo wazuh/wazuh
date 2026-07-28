@@ -171,6 +171,12 @@ void ControlStream::drainStep(Waiter& waiter)
 void ControlStream::sendShutdown(Waiter& waiter)
 {
     const std::string body = R"({"type":"shutdown"})";
+    // Operational visibility (send-time debug log, mirroring sendStartup()/
+    // sendNotify() below): confirms the send was actually attempted, so a log
+    // reader can tell "never attempted" from "attempted and failed" without
+    // needing source-level reasoning (finding 3, #37831 QA round).
+    LOGFN_DEBUG2(m_logFn, "Sending /control shutdown.");
+
     // Best-effort within the drain window (drain_timeout_ms): a single attempt,
     // NOT the normal 4x retry/backoff, so an unreachable manager cannot stall
     // shutdown for minutes. The manager marks the agent disconnected on the next
@@ -181,6 +187,10 @@ void ControlStream::sendShutdown(Waiter& waiter)
     {
         LOGFN_WARN(m_logFn, "Shutdown notification to the manager failed (outcome %d).",
                    static_cast<int>(result.outcome));
+    }
+    else
+    {
+        LOGFN_DEBUG2(m_logFn, "Shutdown notification delivered to the manager.");
     }
 }
 
@@ -202,6 +212,8 @@ OutcomeClass ControlStream::sendStartup(Waiter& waiter)
     request["type"] = "startup";
     request["version"] = m_config.version;
     const std::string body = request.dump();
+
+    LOGFN_DEBUG2(m_logFn, "Sending /control startup.");
 
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
                                       CONTROL_MAX_ATTEMPTS);
@@ -238,6 +250,8 @@ OutcomeClass ControlStream::sendNotify(Waiter& waiter)
     // 5.1.2 (#37733): the keepalive request is bare; the manager reports the
     // hashes and tasks in the response.
     const std::string body = R"({"type":"notify"})";
+
+    LOGFN_DEBUG2(m_logFn, "Sending /control notify.");
 
     const auto result = m_sender.send(controlSpec(body, m_config.requestTimeoutMs), waiter,
                                       CONTROL_MAX_ATTEMPTS);
