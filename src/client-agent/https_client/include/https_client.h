@@ -148,7 +148,7 @@ typedef struct hc_config_t
     uint32_t task_dedup_ttl_s;
 
     char version[HC_MAX_VERSION];       ///< Product version for Startup.
-    char config_checksum[HC_MAX_CHECKSUM]; ///< Local merged.mg MD5 seed. Compared
+    char config_checksum[HC_MAX_CHECKSUM]; ///< Local merged.mg SHA-256 seed. Compared
     ///< against the manager-reported
     ///< agent.config_hash on every Notify;
     ///< a mismatch triggers /download.
@@ -185,7 +185,7 @@ typedef struct hc_callbacks_t
                     void* user_data);
     /// A Notify reported a merged-config hash differing from the local one;
     /// the module fetched the new configuration via POST /download and
-    /// verified its MD5. file_path is a module-owned temp file valid ONLY
+    /// verified its SHA-256. file_path is a module-owned temp file valid ONLY
     /// until this callback returns (the module deletes it afterwards):
     /// read/copy it inside the callback. Writing merged.mg, unmerging and
     /// reloading is the consumer's job. If applying fails, call

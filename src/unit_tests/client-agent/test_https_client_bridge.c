@@ -18,6 +18,8 @@
 #include "https_client_bridge.h"
 #include "https_client.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
+#include "../wrappers/wazuh/shared/file_op_wrappers.h"
+#include "sha256_op.h"
 
 /* hc_create/hc_start/hc_destroy mocks (no pre-existing wrapper for this ABI):
  * hc_create captures both the config and the callback table it was given, so
@@ -58,6 +60,13 @@ bool __wrap_hc_set_agent_key(hc_handle *handle, const char *key_hex)
     return mock();
 }
 
+bool __wrap_hc_set_config_hash(hc_handle *handle, const char *config_hash)
+{
+    check_expected_ptr(handle);
+    check_expected(config_hash);
+    return mock();
+}
+
 bool __wrap_hc_submit_event(hc_handle *handle, const uint8_t *frame, size_t length)
 {
     check_expected_ptr(handle);
@@ -77,6 +86,60 @@ void __wrap_w_agentd_state_update(w_agentd_state_update_t type, void *data)
 {
     check_expected(type);
     check_expected(data);
+}
+
+/* bridge_on_config_downloaded's apply chain (M1/finding 1): no pre-existing
+ * wrapper for these two ABIs either (unlike w_copy_file/UnmergeFiles/
+ * cldir_ex_ignore below, which reuse the shared wrappers already used by
+ * remoted/test_manager.c and wazuh_modules/agent_upgrade). */
+int __wrap_verifyRemoteConf(void)
+{
+    return mock();
+}
+
+bool __wrap_reloadAgent(void)
+{
+    return mock();
+}
+
+void __wrap_startup_gate_release_from_https_apply(void)
+{
+    function_called();
+}
+
+/* Finding 2 (WAIT_FILE/os_setwait): no pre-existing wrapper for this ABI. */
+void __wrap_os_delwait(void)
+{
+    function_called();
+}
+
+/* Bug 2 fix (real-package validation, 2026-07-28): config_checksum's seed must be a SHA-256 of
+ * SHAREDCFG_FILE (matching the module's own ConfigHashState/manager config_hash comparison
+ * space), not the legacy MD5 getsharedfiles() used to seed it with. No pre-existing wrapper for
+ * this ABI either. */
+int __wrap_OS_SHA256_File(const char *fname, os_sha256 output, int mode)
+{
+    check_expected(fname);
+    check_expected(mode);
+
+    const char *hash = mock_ptr_type(const char *);
+    if (!hash) {
+        return -1;
+    }
+
+    strncpy(output, hash, sizeof(os_sha256) - 1);
+    output[sizeof(os_sha256) - 1] = '\0';
+    return 0;
+}
+
+/* AG_IN_UNMERGE manager-visible report on unmerge failure: no shared wrapper
+ * for this ABI either (test_start_agent.c/test_manager.c each define their
+ * own local one the same way, since send_msg lives in client-agent/src/sendmsg.c). */
+int __wrap_send_msg(const char *msg, ssize_t msg_length)
+{
+    check_expected(msg);
+    (void)msg_length;
+    return 0;
 }
 
 /* bridge_build_config() reads the client-buffer occupancy options exactly as
@@ -161,6 +224,13 @@ static int setup_test(void **state)
      * individual tests override this to exercise the rejection paths. */
     set_agent_key("001", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 
+    /* Process-wide globals bridge_on_startup_result writes into (finding 1b,
+     * config.c): reset every test so none leaks state into the next one. */
+    memset(&agent_module_limits, 0, sizeof(agent_module_limits));
+    agent_cluster_name[0] = '\0';
+    agent_cluster_node[0] = '\0';
+    agent_agent_groups[0] = '\0';
+
     return 0;
 }
 
@@ -210,6 +280,9 @@ static void test_full_verify_mode_and_ca_reach_the_module(void **state)
     agt->ssl.verification_mode = AGENT_VERIFY_FULL;
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -234,6 +307,9 @@ static void test_certificate_verify_mode_maps_to_hc_verify_cert(void **state)
     agt->ssl.verification_mode = AGENT_VERIFY_CERT;
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -253,6 +329,9 @@ static void test_none_verify_mode_maps_to_hc_verify_none(void **state)
     agt->ssl.verification_mode = AGENT_VERIFY_NONE;
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -274,6 +353,9 @@ static void test_client_cert_key_and_ciphers_are_copied(void **state)
     os_strdup("HIGH:!aNULL", agt->ssl.ciphers);
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -285,6 +367,50 @@ static void test_client_cert_key_and_ciphers_are_copied(void **state)
     assert_string_equal(g_captured_config.client_cert, "/etc/wazuh/agent.pem");
     assert_string_equal(g_captured_config.client_key, "/etc/wazuh/agent.key");
     assert_string_equal(g_captured_config.ciphers, "HIGH:!aNULL");
+
+    w_https_client_stop();
+}
+
+static void test_config_checksum_is_sha256_of_local_merged_file(void **state)
+{
+    (void)state;
+    static const char *const SOME_SHA256 =
+        "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08";
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, SOME_SHA256);
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    assert_string_equal(g_captured_config.config_checksum, SOME_SHA256);
+
+    w_https_client_stop();
+}
+
+static void test_config_checksum_is_empty_when_local_file_unreadable(void **state)
+{
+    (void)state;
+
+    expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL); /* Simulates OS_SHA256_File's -1 (unreadable). */
+    expect_any(__wrap_hc_create, callbacks);
+    will_return(__wrap_hc_create, FAKE_HANDLE);
+    expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
+    will_return(__wrap_hc_start, true);
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+
+    w_https_client_start();
+
+    assert_string_equal(g_captured_config.config_checksum, "");
 
     w_https_client_stop();
 }
@@ -343,6 +469,9 @@ static void test_valid_48_char_key_is_accepted(void **state)
     os_strdup("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", keys.keyentries[0]->raw_key); /* 48 hex chars */
 
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -363,6 +492,9 @@ static void test_hc_create_failure_is_logged(void **state)
 {
     (void)state;
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, NULL);
     expect_string(__wrap__merror, formatted_msg, "https_client: failed to create the client instance.");
@@ -375,6 +507,9 @@ static void test_hc_start_failure_destroys_and_logs(void **state)
 {
     (void)state;
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -392,6 +527,9 @@ static void test_hc_start_failure_destroys_and_logs(void **state)
 static void start_client_successfully(void)
 {
     expect_string(__wrap__minfo, formatted_msg, "https_client: starting.");
+    expect_string(__wrap_OS_SHA256_File, fname, SHAREDCFG_FILE);
+    expect_value(__wrap_OS_SHA256_File, mode, OS_BINARY);
+    will_return(__wrap_OS_SHA256_File, NULL);
     expect_any(__wrap_hc_create, callbacks);
     will_return(__wrap_hc_create, FAKE_HANDLE);
     expect_value(__wrap_hc_start, handle, FAKE_HANDLE);
@@ -541,6 +679,8 @@ static void test_reenroll_thread_logs_error_when_new_key_fails_validation(void *
 /* on_state_change -> .state (M7 partial): exercised through the real
  * callback, like the reenroll spawn-decision tests above. */
 
+/* Finding 2: a REGISTERED transition must clear the WAIT_FILE/os_setwait()
+ * producer lock too (the interim fix for it never releasing over HTTPS). */
 static void test_registered_state_maps_to_active(void **state)
 {
     (void)state;
@@ -549,7 +689,31 @@ static void test_registered_state_maps_to_active(void **state)
     expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 2");
     expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
     expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
+    expect_function_call(__wrap_os_delwait);
 
+    g_captured_callbacks.on_state_change(HC_STATE_REGISTERED, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* A REGISTERED transition after a reconnect must clear the lock again:
+ * os_delwait() is idempotent, so this is wired unconditionally, not once. */
+static void test_registered_state_twice_clears_wait_file_each_time(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 2");
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
+    expect_function_call(__wrap_os_delwait);
+    g_captured_callbacks.on_state_change(HC_STATE_REGISTERED, g_captured_callbacks.user_data);
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client connection state -> 2");
+    expect_value(__wrap_w_agentd_state_update, type, UPDATE_STATUS);
+    expect_value(__wrap_w_agentd_state_update, data, GA_STATUS_ACTIVE);
+    expect_function_call(__wrap_os_delwait);
     g_captured_callbacks.on_state_change(HC_STATE_REGISTERED, g_captured_callbacks.user_data);
 
     expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
@@ -689,6 +853,436 @@ static void test_auth_error_state_maps_to_nactive(void **state)
     w_https_client_stop();
 }
 
+/* bridge_on_config_downloaded: the /download apply chain + startup_gate
+ * release (finding 1, #37832's unmet scope). */
+
+static const char *const DOWNLOAD_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85";
+static const char *const DOWNLOAD_FILE = "/tmp/https-client-spool/download-xyz";
+
+static void expect_config_downloaded_log(const char *hash, const char *file)
+{
+    /* expect_string() keeps a reference to this buffer rather than copying
+     * it (confirmed the hard way: a local/automatic buffer here caused a
+     * stack-use-after-return once bridge_on_config_downloaded() actually ran
+     * and check_expected() dereferenced it) -- static so it outlives this
+     * call, matching the lifetime expect_string() actually needs. */
+    static char expected[256];
+    snprintf(expected, sizeof(expected), "https_client config downloaded (hash=%s, file=%s)",
+             hash ? hash : "?", file ? file : "?");
+    expect_string(__wrap__mdebug1, formatted_msg, expected);
+}
+
+static void expect_copy_unmerge_cleanup_ok(void)
+{
+    expect_string(__wrap_w_copy_file, src, DOWNLOAD_FILE);
+    expect_string(__wrap_w_copy_file, dst, SHAREDCFG_FILE);
+    expect_value(__wrap_w_copy_file, mode, 'b');
+    expect_value(__wrap_w_copy_file, silent, 0);
+    will_return(__wrap_w_copy_file, 0);
+
+    expect_string(__wrap_UnmergeFiles, finalpath, SHAREDCFG_FILE);
+    expect_string(__wrap_UnmergeFiles, optdir, SHAREDCFG_DIR);
+    expect_value(__wrap_UnmergeFiles, mode, OS_TEXT);
+    will_return(__wrap_UnmergeFiles, 1); /* UnmergeFiles: 1 = success, 0 = failure. */
+
+    expect_string(__wrap_cldir_ex_ignore, name, SHAREDCFG_DIR);
+    will_return(__wrap_cldir_ex_ignore, 0);
+}
+
+/* Anti-race sequencing (per receiver.c's own "the reload chain ... is the
+ * normal release path" comment): when reloadAgent() actually dispatches, the
+ * gate must NOT be released here -- agentd.c's own SIGUSR1 handling
+ * (needs_config_reload) releases it once the restart that reload triggers
+ * has actually happened, exactly mirroring how it already does this for the
+ * legacy path via startup_gate_refresh_from_local_hash(). Releasing inline
+ * regardless of reloadAgent()'s outcome would let a module still blocked in
+ * startup_gate_wait_for_ready() unblock and start a moment before the reload
+ * chain restarts it anyway. */
+static void test_config_downloaded_happy_path_reload_dispatched_defers_gate_to_sigusr1(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_copy_unmerge_cleanup_ok();
+    will_return(__wrap_verifyRemoteConf, 0); /* valid */
+    expect_string(__wrap__minfo, formatted_msg,
+                  "https_client: applying configuration downloaded over HTTPS (hash="
+                  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85).");
+    will_return(__wrap_reloadAgent, true);
+    /* No expect_function_call(__wrap_startup_gate_release_from_https_apply):
+     * must NOT be reached when the reload chain actually dispatched. */
+
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* Fallback: reloadAgent() could not even dispatch (control socket
+ * unreachable -- concretely, the fresh-install/first-boot case, where
+ * modulesd/monitoring processes are still blocked in their very first
+ * startup_gate_wait_for_ready() call and have no prior instance to restart).
+ * No SIGUSR1 will ever arrive to release the gate later, so this is the only
+ * release path such an agent will ever get -- release inline. */
+static void test_config_downloaded_releases_gate_when_reload_chain_unreachable(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_copy_unmerge_cleanup_ok();
+    will_return(__wrap_verifyRemoteConf, 0);
+    expect_string(__wrap__minfo, formatted_msg,
+                  "https_client: applying configuration downloaded over HTTPS (hash="
+                  "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85).");
+    will_return(__wrap_reloadAgent, false); /* Control socket unreachable (e.g. first boot). */
+    expect_string(__wrap__mdebug1, formatted_msg,
+                  "https_client: could not dispatch the reload chain; releasing "
+                  "the startup gate directly instead (no restart will arrive to do it).");
+    expect_function_call(__wrap_startup_gate_release_from_https_apply);
+
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_config_downloaded_invalid_config_skips_reload_and_gate(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_copy_unmerge_cleanup_ok();
+    will_return(__wrap_verifyRemoteConf, -1); /* invalid */
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: downloaded configuration failed validation; not reloading.");
+    /* No reloadAgent/gate-release expectation: must not be reached. */
+
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_config_downloaded_remote_conf_disabled_stages_files_only(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 0;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+    expect_copy_unmerge_cleanup_ok();
+    /* No verifyRemoteConf/reloadAgent/gate-release expectation: remote_conf is
+     * off, mirrors receiver.c's own guard. */
+
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_config_downloaded_copy_failure_corrects_module_hash(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+
+    expect_string(__wrap_w_copy_file, src, DOWNLOAD_FILE);
+    expect_string(__wrap_w_copy_file, dst, SHAREDCFG_FILE);
+    expect_value(__wrap_w_copy_file, mode, 'b');
+    expect_value(__wrap_w_copy_file, silent, 0);
+    will_return(__wrap_w_copy_file, -1); /* I/O error */
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: could not copy the downloaded configuration into "
+                  "'" SHAREDCFG_FILE "'; keeping the previously applied one.");
+    expect_value(__wrap_hc_set_config_hash, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_config_hash, config_hash, "");
+    will_return(__wrap_hc_set_config_hash, true);
+    /* No UnmergeFiles/verifyRemoteConf/reloadAgent/gate-release expectation:
+     * nothing was actually applied. */
+
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_config_downloaded_unmerge_failure_corrects_module_hash(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, DOWNLOAD_FILE);
+
+    expect_string(__wrap_w_copy_file, src, DOWNLOAD_FILE);
+    expect_string(__wrap_w_copy_file, dst, SHAREDCFG_FILE);
+    expect_value(__wrap_w_copy_file, mode, 'b');
+    expect_value(__wrap_w_copy_file, silent, 0);
+    will_return(__wrap_w_copy_file, 0);
+
+    expect_string(__wrap_UnmergeFiles, finalpath, SHAREDCFG_FILE);
+    expect_string(__wrap_UnmergeFiles, optdir, SHAREDCFG_DIR);
+    expect_value(__wrap_UnmergeFiles, mode, OS_TEXT);
+    will_return(__wrap_UnmergeFiles, 0); /* failure */
+
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: failed to unmerge the downloaded configuration "
+                  "('" SHAREDCFG_FILE "'); keeping the previously applied files.");
+    /* AG_IN_UNMERGE-equivalent manager-visible report (mirrors receiver.c's
+     * own send_msg() on this exact failure). */
+    expect_string(__wrap_send_msg, msg, "1:wazuh-agent:wazuh: Could not unmerge shared file.");
+    expect_value(__wrap_hc_set_config_hash, handle, FAKE_HANDLE);
+    expect_string(__wrap_hc_set_config_hash, config_hash, "");
+    will_return(__wrap_hc_set_config_hash, true);
+    /* No cldir_ex_ignore/verifyRemoteConf/reloadAgent/gate-release expectation. */
+
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, DOWNLOAD_FILE, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_config_downloaded_null_file_path_is_a_noop(void **state)
+{
+    (void)state;
+    agt->flags.remote_conf = 1;
+    start_client_successfully();
+
+    expect_config_downloaded_log(DOWNLOAD_HASH, NULL);
+    expect_string(__wrap__merror, formatted_msg,
+                  "https_client: config downloaded callback fired without a file path; nothing to apply.");
+    /* No w_copy_file expectation: must not be reached. */
+
+    g_captured_callbacks.on_config_downloaded(DOWNLOAD_HASH, NULL, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* bridge_on_startup_result: module limits + cluster-name authority + agent
+ * groups (finding 1b, #37830's unmet "In scope" text). */
+
+#define FULL_LIMITS_JSON_FMT \
+    "{\"limits\":{\"fim\":{\"file\":%d,\"registry_key\":2,\"registry_value\":3}," \
+    "\"syscollector\":{\"hotfixes\":4,\"packages\":5,\"processes\":6,\"ports\":7," \
+    "\"network_iface\":8,\"network_protocol\":9,\"network_address\":10,\"hardware\":11," \
+    "\"os_info\":12,\"users\":13,\"groups\":14,\"services\":15,\"browser_extensions\":16}," \
+    "\"sca\":{\"checks\":17}}," \
+    "\"cluster\":{\"name\":\"demo-cluster\",\"node\":\"node01\"}," \
+    "\"agent\":{\"groups\":[\"default\",\"linux\"]}}"
+
+static void test_startup_result_rejected_does_not_touch_globals(void **state)
+{
+    (void)state;
+    strcpy(agent_cluster_name, "sentinel");
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client startup rejected: (no metadata)");
+
+    g_captured_callbacks.on_startup_result(false, NULL, g_captured_callbacks.user_data);
+
+    assert_string_equal(agent_cluster_name, "sentinel"); /* Untouched: not accepted. */
+    assert_false(agent_module_limits.limits_received);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_startup_result_invalid_json_logs_and_returns(void **state)
+{
+    (void)state;
+    strcpy(agent_cluster_name, "sentinel");
+    start_client_successfully();
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client startup accepted: not-json{");
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "https_client: startup metadata is not valid JSON; module limits and "
+                  "cluster identity are unchanged.");
+
+    g_captured_callbacks.on_startup_result(true, "not-json{", g_captured_callbacks.user_data);
+
+    assert_string_equal(agent_cluster_name, "sentinel");
+    assert_false(agent_module_limits.limits_received);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_startup_result_first_time_applies_without_reload(void **state)
+{
+    (void)state;
+    char body[1024];
+    snprintf(body, sizeof(body), FULL_LIMITS_JSON_FMT, 100);
+    start_client_successfully();
+
+    /* Loosen the first log's exact-match: use expect_any since the raw JSON
+     * body is long and not the point of this test. */
+    expect_any(__wrap__mdebug1, formatted_msg); /* "https_client startup accepted: <json>" */
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
+    /* limits_received was false (fresh global): no changed-check, no reload. */
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
+
+    g_captured_callbacks.on_startup_result(true, body, g_captured_callbacks.user_data);
+
+    assert_true(agent_module_limits.limits_received);
+    assert_int_equal(agent_module_limits.fim.file, 100);
+    assert_string_equal(agent_cluster_name, "demo-cluster");
+    assert_string_equal(agent_cluster_node, "node01");
+    assert_string_equal(agent_agent_groups, "default,linux");
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_startup_result_limits_changed_reloads_under_auto_restart(void **state)
+{
+    (void)state;
+    char body_v1[1024];
+    char body_v2[1024];
+    snprintf(body_v1, sizeof(body_v1), FULL_LIMITS_JSON_FMT, 100);
+    snprintf(body_v2, sizeof(body_v2), FULL_LIMITS_JSON_FMT, 200);
+    agt->flags.auto_restart = 1;
+    start_client_successfully();
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
+    g_captured_callbacks.on_startup_result(true, body_v1, g_captured_callbacks.user_data); /* Establishes previous_limits. */
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
+    expect_string(__wrap__minfo, formatted_msg, "https_client: reloading due to module limits changes.");
+    will_return(__wrap_reloadAgent, true);
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
+
+    g_captured_callbacks.on_startup_result(true, body_v2, g_captured_callbacks.user_data);
+
+    assert_int_equal(agent_module_limits.fim.file, 200);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_startup_result_limits_changed_no_reload_without_auto_restart(void **state)
+{
+    (void)state;
+    char body_v1[1024];
+    char body_v2[1024];
+    snprintf(body_v1, sizeof(body_v1), FULL_LIMITS_JSON_FMT, 100);
+    snprintf(body_v2, sizeof(body_v2), FULL_LIMITS_JSON_FMT, 200);
+    agt->flags.auto_restart = 0;
+    start_client_successfully();
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
+    g_captured_callbacks.on_startup_result(true, body_v1, g_captured_callbacks.user_data);
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits have been updated.");
+    /* No reloadAgent expectation: must not be reached. */
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
+
+    g_captured_callbacks.on_startup_result(true, body_v2, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_startup_result_limits_unchanged_no_reload(void **state)
+{
+    (void)state;
+    char body[1024];
+    snprintf(body, sizeof(body), FULL_LIMITS_JSON_FMT, 100);
+    agt->flags.auto_restart = 1;
+    start_client_successfully();
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
+    g_captured_callbacks.on_startup_result(true, body, g_captured_callbacks.user_data);
+
+    /* Same body again: module_limits_changed() must see no difference. */
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: module limits received from manager.");
+    /* No reload/"updated" log: unchanged skips the whole changed-branch. */
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default,linux.");
+
+    g_captured_callbacks.on_startup_result(true, body, g_captured_callbacks.user_data);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+static void test_startup_result_missing_limits_object_leaves_limits_unchanged(void **state)
+{
+    (void)state;
+    const char *body = "{\"cluster\":{\"name\":\"demo-cluster\",\"node\":\"node01\"},"
+                       "\"agent\":{\"groups\":[\"default\"]}}";
+    start_client_successfully();
+
+    expect_any(__wrap__mdebug1, formatted_msg);
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "https_client: no valid 'limits' object in the startup response; "
+                  "module limits are unchanged.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='demo-cluster', node='node01'.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: agent groups -> default.");
+
+    g_captured_callbacks.on_startup_result(true, body, g_captured_callbacks.user_data);
+
+    assert_false(agent_module_limits.limits_received);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* #37830's own scope: overwrite cluster/groups unconditionally, even to
+ * empty, rather than leaving a stale value when the manager omits them. */
+static void test_startup_result_cluster_and_groups_cleared_when_absent(void **state)
+{
+    (void)state;
+    strcpy(agent_cluster_name, "stale-cluster");
+    strcpy(agent_cluster_node, "stale-node");
+    strcpy(agent_agent_groups, "stale,groups");
+    start_client_successfully();
+
+    const char *body = "{}";
+
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client startup accepted: {}");
+    expect_string(__wrap__mdebug2, formatted_msg,
+                  "https_client: no valid 'limits' object in the startup response; "
+                  "module limits are unchanged.");
+    expect_string(__wrap__mdebug1, formatted_msg, "https_client: cluster identity -> name='', node=''.");
+    /* No "agent groups ->" log: bridge_apply_agent_groups only logs when
+     * the resulting CSV is non-empty. */
+
+    g_captured_callbacks.on_startup_result(true, body, g_captured_callbacks.user_data);
+
+    assert_string_equal(agent_cluster_name, "");
+    assert_string_equal(agent_cluster_node, "");
+    assert_string_equal(agent_agent_groups, "");
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -696,6 +1290,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_certificate_verify_mode_maps_to_hc_verify_cert, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_none_verify_mode_maps_to_hc_verify_none, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_client_cert_key_and_ciphers_are_copied, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_checksum_is_sha256_of_local_merged_file, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_checksum_is_empty_when_local_file_unreadable, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_missing_key_refuses_to_start, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_wrong_length_key_refuses_to_start, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_non_hex_key_refuses_to_start, setup_test, teardown_test),
@@ -710,6 +1306,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_reenroll_thread_aborts_when_stopping_flag_already_set, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_reenroll_thread_logs_error_when_new_key_fails_validation, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_registered_state_maps_to_active, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_registered_state_twice_clears_wait_file_each_time, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_starting_state_maps_to_pending, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_stopped_state_maps_to_nactive, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_rejected_state_maps_to_nactive, setup_test, teardown_test),
@@ -719,6 +1316,21 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_submit_event_rejects_an_empty_frame, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_submit_event_is_a_noop_before_start, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_submit_event_is_a_noop_once_stopping, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_happy_path_reload_dispatched_defers_gate_to_sigusr1, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_releases_gate_when_reload_chain_unreachable, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_invalid_config_skips_reload_and_gate, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_remote_conf_disabled_stages_files_only, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_copy_failure_corrects_module_hash, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_unmerge_failure_corrects_module_hash, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_config_downloaded_null_file_path_is_a_noop, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_startup_result_rejected_does_not_touch_globals, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_startup_result_invalid_json_logs_and_returns, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_startup_result_first_time_applies_without_reload, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_startup_result_limits_changed_reloads_under_auto_restart, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_startup_result_limits_changed_no_reload_without_auto_restart, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_startup_result_limits_unchanged_no_reload, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_startup_result_missing_limits_object_leaves_limits_unchanged, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_startup_result_cluster_and_groups_cleared_when_absent, setup_test, teardown_test),
     };
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

@@ -167,37 +167,27 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
     /* Monitor loop */
     while (1) {
 
-        /* Reconnect if the socket was invalidated (either carried over from
-         * the previous iteration or by a sender/dispatcher thread via SO_SNDTIMEO).
-         * Using continue ensures run_notify() always runs on a valid descriptor. */
-        if (agt->sock < 0) {
-            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
-            merror(LOST_ERROR);
-            os_setwait();
-            start_agent(0);
-            minfo(SERVER_UP);
-            os_delwait();
-            w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_ACTIVE);
-            continue;
-        }
-
         /* Continuously send notifications */
         run_notify();
 
-        /* If run_notify() invalidated the socket, restart the loop to reconnect
-         * before FD_SET(), which requires a valid descriptor. */
+        /* agt->sock is permanently -1: the legacy TCP path has been retired
+         * (start_agent() no longer attempts it, see its own comment), so there
+         * is no descriptor to reconnect. Everything below that used to depend
+         * on a valid sock -- needs_config_reload handling, execdq, the queue
+         * forwarder -- must run every iteration regardless, gated only by the
+         * select() timeout below; sock-specific operations are individually
+         * guarded instead of short-circuiting the whole loop body. */
         const int sock = agt->sock;
-        if (sock < 0) {
-            continue;
-        }
 
-        if (sock > maxfd - 1) {
+        if (sock >= 0 && sock > maxfd - 1) {
             maxfd = sock + 1;
         }
 
         /* Monitor all available sockets from here */
         FD_ZERO(&fdset);
-        FD_SET(sock, &fdset);
+        if (sock >= 0) {
+            FD_SET(sock, &fdset);
+        }
         FD_SET(agt->m_queue, &fdset);
 
         fdtimeout.tv_sec = 1;
@@ -210,8 +200,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
 
         if (rc == -1) {
             /* EBADF can occur if a non-main thread closed agt->sock while we
-             * were inside select(). Treat it as a lost connection and let the
-             * reconnect block at the top of the loop handle recovery. */
+             * were inside select(). Nothing reconnects it (legacy is retired),
+             * so just make sure the next iteration's FD_SET() skips it too. */
             if (errno == EBADF) {
                 agt->sock = -1;
                 continue;
@@ -262,6 +252,20 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             // Release the startup gate now so modules blocked in
             // startup_gate_wait_for_ready() can proceed with the new config.
             startup_gate_refresh_from_local_hash();
+
+            // Same signal, HTTPS-side release (#37831): startup_gate_refresh_from_local_hash()
+            // above is a no-op for a pure-HTTPS agent (it only ever does anything once the
+            // legacy handshake's startup_gate_process_handshake() has populated
+            // startup_gate_expected_sum, which never happens without a legacy handshake).
+            // bridge_on_config_downloaded() (https_client_bridge.c) deliberately does NOT
+            // release the gate inline when reloadAgent() succeeds, to avoid the same
+            // start-then-killed race this file's own reload chain is designed to avoid
+            // (a module blocked in startup_gate_wait_for_ready() unblocking and starting a
+            // moment before this SIGUSR1 restarts it anyway). This is the other half of that
+            // deferral: release once the restart this SIGUSR1 represents has actually
+            // happened. A no-op when already released (own guard) or when nothing was ever
+            // pending via the HTTPS apply chain.
+            startup_gate_release_from_https_apply();
         }
 
         /* Connect to the execd queue */
@@ -272,8 +276,8 @@ void AgentdStart(int uid, int gid, const char *user, const char *group)
             }
         }
 
-        /* For the receiver */
-        if (FD_ISSET(sock, &fdset)) {
+        /* For the receiver (legacy only -- sock is never valid without it) */
+        if (sock >= 0 && FD_ISSET(sock, &fdset)) {
             if (receive_msg() < 0) {
                 w_agentd_state_update(UPDATE_STATUS, (void *) GA_STATUS_NACTIVE);
                 merror(LOST_ERROR);
