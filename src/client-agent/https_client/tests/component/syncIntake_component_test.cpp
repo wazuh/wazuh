@@ -224,26 +224,33 @@ TEST_F(SyncIntakeComponentTest, StopReturnsWhileAProducerIsStalledMidFrame)
     const std::string partial {"WZSY\x02\x00\x00\x00i", 9};
     const int producer = connectAndStall(socketPath(), partial);
     ASSERT_GE(producer, 0);
-    std::this_thread::sleep_for(std::chrono::milliseconds {200}); // Let it block in the read.
+    // Best effort: there is no signal for "the acceptor is now inside the
+    // read". If this were ever too short the test would pass without having
+    // exercised the fix, so it is deliberately longer than the accept path.
+    std::this_thread::sleep_for(std::chrono::milliseconds {500});
 
     std::atomic<bool> returned {false};
     std::thread stopper {[this, &returned] { m_intake.stop(); returned = true; }};
 
-    for (int attempt = 0; attempt < 50 && !returned; attempt++)
+    // Generous: this is a hang detector, not a timing assertion, and a real
+    // hang is unbounded. Valgrind cannot make a correct stop() miss this.
+    for (int attempt = 0; attempt < 150 && !returned; attempt++)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds {100});
     }
 
     EXPECT_TRUE(returned) << "stop() blocked on a stalled producer";
-    stopper.join(); // Would deadlock the run if the expectation above failed.
+    stopper.join(); // Only returns if stop() did; a regression wedges here.
     close(producer);
     EXPECT_EQ(0, m_received.count); // The half-frame was discarded, not promoted.
 }
 
-TEST_F(SyncIntakeComponentTest, AStalledProducerDoesNotBlockTheNextSession)
+TEST_F(SyncIntakeComponentTest, ADeadProducerDoesNotBlockTheNextSession)
 {
     // Head-of-line: the acceptor is single-threaded, so a peer that connects
-    // and never sends must not wedge the sessions queued behind it.
+    // and then dies without sending must not wedge the sessions behind it. A
+    // peer that stays connected and silent is bounded by the idle timeout
+    // instead, which is too long to assert on here.
     ASSERT_TRUE(m_intake.start());
 
     const int idle = connectAndStall(socketPath(), {}); // Connected, zero bytes.
@@ -305,9 +312,10 @@ TEST_F(SyncIntakeComponentTest, ASpoolThatFailsToFlushAtCloseIsNotPromoted)
     ASSERT_TRUE(cap.applied());
 
     // The bytes crossed the socket fine, but the spool never reached disk, so
-    // the producer is told the session was not taken.
+    // the producer is told the session was not taken. The send only returns
+    // once that answer arrives, which is also when the sink has been decided -
+    // no sleep needed, and nothing to drift under valgrind.
     EXPECT_FALSE(sendBody(socketPath(), "unflushable", std::string(2048, 'Z')));
-    std::this_thread::sleep_for(std::chrono::milliseconds {300});
 
     std::lock_guard<std::mutex> lock(m_received.mutex);
     EXPECT_EQ(0, m_received.count) << "a spool that never reached disk was promoted";
