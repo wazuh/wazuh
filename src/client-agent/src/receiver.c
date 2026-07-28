@@ -263,15 +263,30 @@ int receive_msg()
                                                 minfo("Agent is reloading due to shared configuration changes.");
                                             }
                                             // The reload chain (modulesd CONTROL_SOCK -> wazuh-control
-                                            // reload -> SIGUSR1) is the normal release path; doing it
-                                            // there ensures modules don't briefly start with the new
-                                            // config and then get killed when the chain restarts them.
-                                            // Only release the gate inline if reloadAgent() reports the
-                                            // control socket is unreachable, in which case the chain
-                                            // will never fire and the gate would otherwise stay stuck.
+                                            // reload -> SIGUSR1) restarts the modules to apply the new
+                                            // config and is the normal gate-release path.
+#ifdef Darwin
+                                            // On macOS that chain runs out-of-process via the Wazuh-launcher
+                                            // (launchd anchor polling a request flag), so reloadAgent() only
+                                            // confirms the request reached modulesd, not that the reload ran
+                                            // nor that agentd was signalled to release the gate. Relying on
+                                            // it alone left blocked modules (logcollector, syscheck, ...)
+                                            // stuck in startup_gate_wait_for_ready() forever when it did not
+                                            // complete (#37565). The gate precondition (local hash ==
+                                            // manager's expected hash) already holds here, so release the
+                                            // gate directly, then request the reload to restart the modules
+                                            // best-effort (one harmless extra restart).
+                                            if (gate_would_release) {
+                                                startup_gate_refresh_from_local_hash();
+                                            }
+                                            reloadAgent();
+#else
+                                            // On Linux/Windows the chain is in-process and observable;
+                                            // release inline only if the request could not be delivered.
                                             if (!reloadAgent() && gate_would_release) {
                                                 startup_gate_refresh_from_local_hash();
                                             }
+#endif
                                         } else {
                                             startup_gate_refresh_from_local_hash();
                                             if (!config_changed) {
