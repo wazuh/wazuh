@@ -17,6 +17,7 @@ target_link_libraries(api_event
     dumper::iface
     rawevtindexer::irawindexer
     fastmetrics::fastmetrics
+    agentcache::agentcache
 )
 add_library(api::event ALIAS api_event)
 

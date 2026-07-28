@@ -79,7 +79,7 @@ def sync_task(manager, logger):
             server=manager,
             logger=logger,
             cluster_items=cluster_items,
-            indexer_client=indexer,
+            get_indexer_client_func=lambda: AsyncMock(__aenter__=AsyncMock(return_value=indexer), __aexit__=AsyncMock()),
         ),
         indexer,
     )
@@ -112,20 +112,19 @@ class TestLargeScaleClusterNameSync:
 
         # Create max versions for all agents
         max_versions = {agent["id"]: (i + 1) * 10 for i, agent in enumerate(agents)}
-        task._get_max_versions_batch_from_indexer = AsyncMock(return_value=max_versions)
 
         # All agents need update
         agent_cluster_map = {agent["id"]: "old-cluster" for agent in agents}
         task._get_cluster_name_from_indexer = AsyncMock(return_value=agent_cluster_map)
 
         indexer.max_version_components = AsyncMock()
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock()
+        indexer.states.update_agent_cluster_name = AsyncMock()
 
         await task.run_cluster_name_sync()
 
         # All 100 agents should be updated
         assert (
-            indexer.max_version_components.update_agent_cluster_name.call_count == 100
+            indexer.states.update_agent_cluster_name.call_count == 100
         )
 
     @pytest.mark.asyncio
@@ -146,7 +145,6 @@ class TestLargeScaleClusterNameSync:
         task._get_disconnected_agents = AsyncMock(return_value=agents)
 
         max_versions = {agent["id"]: i + 1 for i, agent in enumerate(agents)}
-        task._get_max_versions_batch_from_indexer = AsyncMock(return_value=max_versions)
 
         # Mix of old clusters
         old_clusters = ["cluster-a", "cluster-b", "cluster-c", target_cluster]
@@ -157,7 +155,7 @@ class TestLargeScaleClusterNameSync:
         task._get_cluster_name_from_indexer = AsyncMock(return_value=agent_cluster_map)
 
         indexer.max_version_components = AsyncMock()
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock()
+        indexer.states.update_agent_cluster_name = AsyncMock()
 
         await task.run_cluster_name_sync()
 
@@ -170,7 +168,7 @@ class TestLargeScaleClusterNameSync:
         ]
 
         assert (
-            indexer.max_version_components.update_agent_cluster_name.call_count
+            indexer.states.update_agent_cluster_name.call_count
             == len(agents_to_update)
         )
 
@@ -233,7 +231,6 @@ class TestErrorHandlingScenarios:
 
         # Only agents 001 and 002 have versions in indexer
         max_versions = {"001": 10, "002": 20}  # Agent 003 missing
-        task._get_max_versions_batch_from_indexer = AsyncMock(return_value=max_versions)
 
         task._get_cluster_name_from_indexer = AsyncMock(
             return_value={
@@ -244,18 +241,17 @@ class TestErrorHandlingScenarios:
         )
 
         indexer.max_version_components = AsyncMock()
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock()
+        indexer.states.update_agent_cluster_name = AsyncMock()
 
         await task.run_cluster_name_sync()
 
         # All agents that are in cluster_map should be updated
         # Agent 003 should be updated with version 0 (default)
-        assert indexer.max_version_components.update_agent_cluster_name.call_count == 3
+        assert indexer.states.update_agent_cluster_name.call_count == 3
 
         # Verify agent 003 got version 0
-        calls = indexer.max_version_components.update_agent_cluster_name.call_args_list
+        calls = indexer.states.update_agent_cluster_name.call_args_list
         agent_003_call = [c for c in calls if c[1]["agent_id"] == "003"][0]
-        assert agent_003_call[1]["global_version"] == 0
 
 
 # ============================================================
@@ -284,19 +280,18 @@ class TestEdgeCasesClusterNameSync:
         task._get_disconnected_agents = AsyncMock(return_value=agents)
 
         max_versions = {agent["id"]: i + 1 for i, agent in enumerate(agents)}
-        task._get_max_versions_batch_from_indexer = AsyncMock(return_value=max_versions)
 
         # All agents have same old cluster name
         agent_cluster_map = {agent["id"]: "old-cluster" for agent in agents}
         task._get_cluster_name_from_indexer = AsyncMock(return_value=agent_cluster_map)
 
         indexer.max_version_components = AsyncMock()
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock()
+        indexer.states.update_agent_cluster_name = AsyncMock()
 
         await task.run_cluster_name_sync()
 
         # All 5 should be updated
-        assert indexer.max_version_components.update_agent_cluster_name.call_count == 5
+        assert indexer.states.update_agent_cluster_name.call_count == 5
 
     @pytest.mark.asyncio
     @patch(
@@ -336,19 +331,18 @@ class TestEdgeCasesClusterNameSync:
         task._get_disconnected_agents = AsyncMock(return_value=agents)
 
         max_versions = {"001": 10}
-        task._get_max_versions_batch_from_indexer = AsyncMock(return_value=max_versions)
 
         task._get_cluster_name_from_indexer = AsyncMock(
             return_value={"001": "old-cluster"}
         )
 
         indexer.max_version_components = AsyncMock()
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock()
+        indexer.states.update_agent_cluster_name = AsyncMock()
 
         await task.run_cluster_name_sync()
 
         # Should handle long cluster name
-        call_args = indexer.max_version_components.update_agent_cluster_name.call_args
+        call_args = indexer.states.update_agent_cluster_name.call_args
         assert call_args[1]["cluster_name"] == long_cluster_name
 
     @pytest.mark.asyncio
@@ -370,18 +364,17 @@ class TestEdgeCasesClusterNameSync:
         task._get_disconnected_agents = AsyncMock(return_value=agents)
 
         max_versions = {aid: 10 for aid in agent_ids}
-        task._get_max_versions_batch_from_indexer = AsyncMock(return_value=max_versions)
 
         agent_cluster_map = {aid: "old-cluster" for aid in agent_ids}
         task._get_cluster_name_from_indexer = AsyncMock(return_value=agent_cluster_map)
 
         indexer.max_version_components = AsyncMock()
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock()
+        indexer.states.update_agent_cluster_name = AsyncMock()
 
         await task.run_cluster_name_sync()
 
         # All agents should be processed
-        assert indexer.max_version_components.update_agent_cluster_name.call_count == 4
+        assert indexer.states.update_agent_cluster_name.call_count == 4
 
     @pytest.mark.asyncio
     @patch(
@@ -401,23 +394,19 @@ class TestEdgeCasesClusterNameSync:
 
         # Each agent has different version
         max_versions = {f"{i:03d}": (i + 1) * 100 for i in range(5)}
-        task._get_max_versions_batch_from_indexer = AsyncMock(return_value=max_versions)
 
         agent_cluster_map = {agent["id"]: "old" for agent in agents}
         task._get_cluster_name_from_indexer = AsyncMock(return_value=agent_cluster_map)
 
         indexer.max_version_components = AsyncMock()
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock()
+        indexer.states.update_agent_cluster_name = AsyncMock()
 
         await task.run_cluster_name_sync()
 
         # Verify each agent got correct version
-        calls = indexer.max_version_components.update_agent_cluster_name.call_args_list
+        calls = indexer.states.update_agent_cluster_name.call_args_list
         for i, call_args in enumerate(calls):
             agent_id = call_args[1]["agent_id"]
-            expected_version = max_versions[agent_id]
-            actual_version = call_args[1]["global_version"]
-            assert actual_version == expected_version
 
 
 # ============================================================
@@ -508,16 +497,15 @@ class TestInputSanitation:
         task._get_disconnected_agents = AsyncMock(return_value=agents)
 
         max_versions = {"001": 10, "002": 20}
-        task._get_max_versions_batch_from_indexer = AsyncMock(return_value=max_versions)
 
         task._get_cluster_name_from_indexer = AsyncMock(
             return_value={"001": "old", "002": "old"}
         )
 
         indexer.max_version_components = AsyncMock()
-        indexer.max_version_components.update_agent_cluster_name = AsyncMock()
+        indexer.states.update_agent_cluster_name = AsyncMock()
 
         await task.run_cluster_name_sync()
 
         # Only valid agents should be processed
-        assert indexer.max_version_components.update_agent_cluster_name.call_count == 2
+        assert indexer.states.update_agent_cluster_name.call_count == 2

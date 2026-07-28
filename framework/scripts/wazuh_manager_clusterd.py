@@ -6,6 +6,7 @@
 
 import argparse
 import asyncio
+import contextlib
 import logging
 import os
 import signal
@@ -99,7 +100,30 @@ async def master_main(args: argparse.Namespace, cluster_config: dict, cluster_it
     tasks = [my_server, my_local_server]
     if not cluster_config.get(cluster_utils.HAPROXY_HELPER, {}).get(cluster_utils.HAPROXY_DISABLED, True):
         tasks.append(HAPHelper)
-    await asyncio.gather(*[task.start() for task in tasks])
+
+    # Handle SIGTERM within the loop so cluster connections can be closed gracefully before the process exits.
+    # This replaces the process-wide handler installed in `signal.signal(signal.SIGTERM, exit_handler)` for the
+    # remainder of the master's lifetime, letting the workers see a clean EOF instead of a connection reset.
+    loop = asyncio.get_running_loop()
+    shutdown_event = asyncio.Event()
+    loop.add_signal_handler(signal.SIGTERM, shutdown_event.set)
+
+    server_task = asyncio.ensure_future(asyncio.gather(*[task.start() for task in tasks]))
+    shutdown_task = asyncio.ensure_future(shutdown_event.wait())
+    done, _ = await asyncio.wait([server_task, shutdown_task], return_when=asyncio.FIRST_COMPLETED)
+
+    if shutdown_task in done:
+        logger.info("SIGNAL [(15)-(SIGTERM)] received. Closing cluster connections gracefully. Exit...")
+        for client in list(my_server.clients.values()) + list(my_local_server.clients.values()):
+            client.transport.close()
+        server_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await server_task
+    else:
+        shutdown_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await shutdown_task
+        await server_task
 
 
 #

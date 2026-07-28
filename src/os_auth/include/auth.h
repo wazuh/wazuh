@@ -152,11 +152,13 @@ w_err_t w_auth_validate_data(char *response,
  * @param hash_key Hash of the key on the agent
  * @param force_options Force configuration structure to define how the agent replacement must be handled.
  * @param str_result A message related to the result of the agent replacement. Must be freed by the caller.
+ * @param warn Set to true when the rejection reflects a live identity conflict (the existing agent is still connected and does not self-heal); false for transient or expected rejections. May be NULL.
  * */
 w_err_t w_auth_replace_agent(keyentry *key,
                              const char *key_hash,
                              authd_force_options_t *force_options,
-                             char** str_result);
+                             char** str_result,
+                             bool *warn);
 
 /**
  * @brief Adds new agent with provided enrollment data.

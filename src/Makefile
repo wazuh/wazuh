@@ -401,7 +401,16 @@ ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
 	TZDATA_CURL_FLAGS += --retry-all-errors
 endif
 TZDATA_CURL := curl $(TZDATA_CURL_FLAGS) -o
-DEPS_VERSION = 99-29734
+# Curl flags for indexer templates and WCS flat files with retry logic
+INDEXER_CURL_FLAGS := -fsS --retry 5 --retry-delay 2 --connect-timeout 20 --max-time 300
+ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-connrefused'))
+	INDEXER_CURL_FLAGS += --retry-connrefused
+endif
+ifneq (,$(shell curl --help all 2>/dev/null | grep -F -- '--retry-all-errors'))
+	INDEXER_CURL_FLAGS += --retry-all-errors
+endif
+INDEXER_CURL := curl $(INDEXER_CURL_FLAGS) -o
+DEPS_VERSION = 99-37361
 RESOURCES_URL_BASE := https://packages.wazuh.com/deps/
 RESOURCES_URL := $(RESOURCES_URL_BASE)$(DEPS_VERSION)
 CPYTHON := cpython
@@ -537,7 +546,8 @@ INDEXER_TEMPLATES_SERVER_STATES := \
 
 INDEXER_TEMPLATES_SERVER_STREAMS := \
 	metrics-agents.json \
-	metrics-comms.json
+	metrics-comms.json \
+	metrics-normalization.json
 
 # WCS flat files
 WCS_FLAT_DIR := external/wcs-flat-files
@@ -669,8 +679,8 @@ $(INDEXER_TEMPLATES_SERVER_STREAMS:%=$(INDEXER_PLUGINS_DIR)/%): | $(INDEXER_PLUG
 	@success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STREAMS_PATH)/$(notdir $@)"; \
-		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
+		echo "$(INDEXER_CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(INDEXER_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
 			success=1; \
 			break; \
 		fi; \
@@ -686,8 +696,8 @@ $(INDEXER_PLUGINS_DIR)/%.json: | $(INDEXER_PLUGINS_DIR)
 	 @success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(INDEXER_PLUGINS_STATES_PATH)/$(notdir $@)"; \
-		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
+		echo "$(INDEXER_CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(INDEXER_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
 			success=1; \
 			break; \
 		fi; \
@@ -708,8 +718,8 @@ $(WCS_FLAT_DIR)/wcs_flat.yml: | $(WCS_FLAT_DIR)
 	 @success=0; \
 	for ref in $(INDEXER_PLUGIN_REFS_LIST); do \
 		url="$(INDEXER_PLUGINS_BASE_URL)/$$ref/$(WCS_FLAT_STATELESS_PATH)/$(notdir $@)"; \
-		echo "$(CURL) $@ $(CACERT_OPT) -f $$url"; \
-		if $(CURL) $@ $(CACERT_OPT) -f "$$url" 2>/dev/null; then \
+		echo "$(INDEXER_CURL) $@ $(CACERT_OPT) -f $$url"; \
+		if $(INDEXER_CURL) $@ $(CACERT_OPT) -f "$$url"; then \
 			success=1; \
 			break; \
 		fi; \
@@ -853,7 +863,16 @@ ifneq ($(wildcard external/cpython/*),)
 endif
 
 clean-deps:
-	rm -rf $(EXTERNAL_DIR) $(EXTERNAL_TAR) shared_modules/http-request/* shared_modules/http-request/.??* $(INDEXER_PLUGINS_DIR) $(WCS_FLAT_DIR)
+# EXTERNAL_RES/EXTERNAL_DIR are filtered by TARGET, so removing only those
+# paths leaves other targets' fetched deps behind. Wipe everything under
+# external/ instead, except the two files tracked by git (CMakeLists.txt
+# and .gitignore), regardless of which TARGET this is invoked with.
+# external/ may not exist (e.g. a clean checkout that never ran make deps),
+# so skip the find instead of letting it fail the build.
+	if [ -d external ]; then \
+		find external -mindepth 1 -maxdepth 1 ! -name 'CMakeLists.txt' ! -name '.gitignore' -exec rm -rf {} + ; \
+	fi
+	rm -rf shared_modules/http-request/* shared_modules/http-request/.??* $(WCS_FLAT_DIR)
 
 clean-internals:
 # Wazuh binaries and libraries

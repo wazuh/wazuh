@@ -10135,9 +10135,9 @@ checks:
           - "Credentials In Files"
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shells- -> r:0 root 0 root && r:644|640|604|600|400|500'
+      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/shells -> r:0 root 0 root && r:644|640|604|600|400|500'
 
-  # 6.1.10 Ensure permissions on /etc/opasswd are configured. (Automated)
+  # 6.1.10 Ensure permissions on /etc/security/opasswd are configured. (Automated)
   - id: 2712
     name: "Ensure permissions on /etc/opasswd are configured."
     description: "/etc/security/opasswd and it's backup /etc/security/opasswd.old hold user's previous passwords if pam_unix or pam_pwhistory is in use on the system."
@@ -10184,7 +10184,8 @@ checks:
           - "Credentials In Files"
     condition: all
     rules:
-      - 'c:stat -Lc "%n %a %u %U %g %G" /etc/security/opasswds -> r:0 root 0 root && r:644|640|604|600|400|500'
+      - 'c:stat -c "%a %U %G" /etc/security/opasswd -> r:^600\s+root\s+root$'
+      - 'c:stat -c "%a %U %G" /etc/security/opasswd.old -> r:^600\s+root\s+root$'
 
   # 6.1.11 Ensure world writable files and directories are secured. (Automated) - Not Implemented
   # 6.1.12 Ensure no unowned or ungrouped files or directories exist. (Automated) - Not Implemented

@@ -575,8 +575,10 @@ cJSON* rem_create_state_json() {
     cJSON *_received_q = cJSON_CreateObject();
     cJSON_AddItemToObject(_queues, "received", _received_q);
 
-    cJSON_AddNumberToObject(_received_q, "size", rem_get_tsize());
-    cJSON_AddNumberToObject(_received_q, "usage", rem_get_qsize());
+    // cJSON_AddNumberToObject(_received_q, "size", rem_get_tsize());
+    // cJSON_AddNumberToObject(_received_q, "usage", rem_get_qsize());
+    cJSON_AddNumberToObject(_received_q, "size", rem_get_input_max_bytes());
+    cJSON_AddNumberToObject(_received_q, "usage", rem_get_input_bytes_used());
 
     cJSON_AddNumberToObject(_metrics, "tcp_sessions", state_cpy.tcp_sessions);
 

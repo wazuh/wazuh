@@ -44,6 +44,13 @@ static HANDLE sca_sync_worker_thread = NULL;
 #endif
 static bool sca_sync_worker_thread_initialized = false;
 
+// Clean stop mechanism variables
+static pthread_cond_t sca_stop_condition = PTHREAD_COND_INITIALIZER;
+static pthread_mutex_t sca_stop_mutex = PTHREAD_MUTEX_INITIALIZER;
+static bool sca_need_shutdown_wait = false;
+static pthread_t sca_main_thread;
+static bool sca_main_thread_initialized = false;
+
 // SCA message queue variables
 static int g_shutting_down = 0;
 static int g_sca_queue = 0;
@@ -91,6 +98,7 @@ static void * wm_sca_sync_module(__attribute__((unused)) void * args);
 static void wm_sca_destroy(wm_sca_t * data);  // Destroy data
 static int wm_sca_start(wm_sca_t * data);  // Start
 static void wm_sca_stop(wm_sca_t* data);   // Stop
+static void wm_sca_release_and_signal(void);  // Release resources and wake wm_sca_stop()
 
 cJSON *wm_sca_dump(const wm_sca_t * data);     // Read config
 
@@ -316,7 +324,11 @@ static int wm_sca_startmq(const char* key, short type, short attempts) {
 }
 
 static int wm_sca_send_binary_msg(int queue, const void* message, size_t message_len, const char* locmsg, char loc) {
-    return SendBinaryMSG(queue, message, message_len, locmsg, loc);
+    // Predicated so a synchronization parked in the manager-disconnected wait (os_wait)
+    // returns on shutdown: the protocol's stop() cannot interrupt this wait, and a parked
+    // send would stall the sync worker join in wm_sca_start() — and, if it arrived through
+    // a wcom query holding m_resourcesMutex shared, the releaseResources() teardown too.
+    return SendBinaryMSGPredicated(queue, message, message_len, locmsg, loc, wm_sca_is_shutting_down);
 }
 
 static bool wm_sca_parse_query_int(const char* output, const char* field, int* value)
@@ -514,6 +526,11 @@ DWORD WINAPI wm_sca_main(void *arg) {
 #else
 void * wm_sca_main(wm_sca_t * data) {
 #endif
+    w_mutex_lock(&sca_stop_mutex);
+    sca_main_thread = pthread_self();
+    sca_main_thread_initialized = true;
+    w_mutex_unlock(&sca_stop_mutex);
+
     // If module is disabled, exit
     if (data->enabled) {
         mdebug1("Module enabled.");
@@ -591,6 +608,13 @@ void * wm_sca_main(wm_sca_t * data) {
     data->commands_timeout = getDefine_Int_default("sca", "commands_timeout", 1, 300, 30);
     data->remote_commands = getDefine_Int_default("sca", "remote_commands", 0, 1, 0);
 
+    // Arm the shutdown wait before sca_init() opens the databases, so that a
+    // concurrent wm_sca_stop() blocks until they are released on every exit path
+    // below (not only the normal wm_sca_start() teardown).
+    w_mutex_lock(&sca_stop_mutex);
+    sca_need_shutdown_wait = true;
+    w_mutex_unlock(&sca_stop_mutex);
+
     if (sca_init_ptr) {
         sca_init_ptr();
     }
@@ -610,6 +634,10 @@ void * wm_sca_main(wm_sca_t * data) {
 
         if (wm_sca_is_shutting_down())
         {
+            // sca_init() already opened the databases; release them and wake any
+            // waiting wm_sca_stop() before returning, so the next process does not
+            // find them locked.
+            wm_sca_release_and_signal();
 #ifdef WIN32
             return 0;
 #else
@@ -621,7 +649,6 @@ void * wm_sca_main(wm_sca_t * data) {
     }
 
     mdebug1("Starting module.");
-
     wm_sca_start(data);
 
 #ifdef WIN32
@@ -631,11 +658,32 @@ void * wm_sca_main(wm_sca_t * data) {
 #endif
 }
 
+// Release SCA resources and wake any wm_sca_stop() blocked on the shutdown
+// condition.
+static void wm_sca_release_and_signal(void)
+{
+    w_mutex_lock(&sca_stop_mutex);
+    sca_need_shutdown_wait = false;
+    sca_main_thread_initialized = false;
+    if (sca_release_resources_ptr)
+    {
+        sca_release_resources_ptr();
+        sca_release_resources_ptr = NULL;
+    }
+    w_cond_signal(&sca_stop_condition);
+    w_mutex_unlock(&sca_stop_mutex);
+}
+
 static int wm_sca_start(wm_sca_t *sca) {
     // Initialize message queue
     g_sca_queue = StartMQPredicated(DEFAULTQUEUE, WRITE, INFINITE_OPENQ_ATTEMPTS, wm_sca_is_shutting_down);
     if (g_sca_queue < 0) {
         merror("Cannot initialize SCA message queue.");
+        // sca_init() already opened the databases, and StartMQPredicated only
+        // gives up when shutdown started mid-startup (a wm_sca_stop() is already
+        // waiting). Release the connections and signal, instead of leaking them
+        // and blocking the waiter for the full timeout.
+        wm_sca_release_and_signal();
         return -1;
     }
 
@@ -704,11 +752,7 @@ static int wm_sca_start(wm_sca_t *sca) {
 
     // Safe to release resources now that both the sync worker and the main SCA
     // run loop have exited.  m_dBSync is no longer referenced by any thread.
-    if (sca_release_resources_ptr)
-    {
-        sca_release_resources_ptr();
-        sca_release_resources_ptr = NULL;
-    }
+    wm_sca_release_and_signal();
 
     return 0;
 }
@@ -726,13 +770,42 @@ void wm_sca_stop(__attribute__((unused)) wm_sca_t* data)
     g_shutting_down = 1;
     sca_sync_module_running = 0;
 
-    // Quiesce the sync protocol and the main SCA loop.  Resource teardown
-    // (join + releaseResources) is deferred to wm_sca_start() after
-    // sca_start_ptr() returns, so that we do not free m_dBSync while the
-    // SCA run loop is still using it.
+    // Quiesce the sync protocol and the main SCA loop, then block until
+    // wm_sca_start()'s teardown (join + releaseResources(), deferred until
+    // after sca_start_ptr() returns so we don't free m_dBSync while the SCA
+    // run loop is still using it) has actually finished, so the caller can't
+    // observe "stopped" before the sync-protocol SQLite connection is closed.
+
     if (sca_stop_ptr) {
         sca_stop_ptr();
     }
+
+    w_mutex_lock(&sca_stop_mutex);
+    const bool called_from_sca_main_thread = sca_main_thread_initialized && pthread_equal(pthread_self(), sca_main_thread);
+
+    if (called_from_sca_main_thread)
+    {
+        mdebug1("Stop called from SCA worker thread. Skipping synchronous shutdown wait.");
+    }
+
+    if (sca_need_shutdown_wait && !called_from_sca_main_thread)
+    {
+        const time_t SHUTDOWN_WAIT_SECONDS = 10;  // max wait for the run loop to finish teardown
+        struct timespec ts;
+        clock_gettime(CLOCK_REALTIME, &ts);
+        ts.tv_sec += SHUTDOWN_WAIT_SECONDS;
+
+        while (sca_need_shutdown_wait)
+        {
+            if (pthread_cond_timedwait(&sca_stop_condition, &sca_stop_mutex, &ts) == ETIMEDOUT)
+            {
+                mwarn("Timeout waiting for SCA to complete shutdown.");
+                break;
+            }
+        }
+    }
+
+    w_mutex_unlock(&sca_stop_mutex);
 }
 
 cJSON *wm_sca_dump(const wm_sca_t * data) {
@@ -959,6 +1032,15 @@ static size_t wm_sca_query_handler(void *data, char *query, char **output) {
 
     if (!query || !output) {
         return 0;
+    }
+
+    // Mirrors #36762 (FIM): when synchronization is disabled the sync worker never runs, so the SCA
+    // first-sync marker is never set. Report it as completed so agent-info coordination is not blocked
+    // deferring on a first sync that will never happen. The startup priming path calls sca_query_ptr
+    // directly and is unaffected by this handler-level short-circuit.
+    if (!sca_enable_synchronization && strstr(query, "get_first_sync_completed")) {
+        os_strdup("{\"error\":0,\"data\":{\"action\":\"get_first_sync_completed\",\"module\":\"sca\",\"first_sync_completed\":1}}", *output);
+        return strlen(*output);
     }
 
     // Call the C++ query function if available

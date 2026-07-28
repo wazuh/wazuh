@@ -2269,7 +2269,7 @@ async def test_sync_files_sync_ko(send_request_mock):
         with patch("wazuh.core.cluster.cluster.compress_files", return_value=(compressed_data, {})):
             send_request_mock.side_effect = None
             logger = logging.getLogger('wazuh')
-            with patch.object(logger, "error") as logger_mock:
+            with patch.object(logger, "warning") as logger_mock:
                 await sync_files.sync(files_to_sync, files_metadata, 1, task_pool=None)
                 logger_mock.assert_called_with(f"File {compressed_data} could not be removed/not found. "
                                                f"May be due to a lost connection.")

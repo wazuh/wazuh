@@ -5,6 +5,7 @@
 #include <idbsync.hpp>
 #include <ifilesystem_wrapper.hpp>
 #include <sca_utils.hpp>
+#include "agent_sync_protocol_types.hpp"
 #include "asyncFlushController.hpp"
 #include "iagent_sync_protocol.hpp"
 
@@ -16,6 +17,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <vector>
 
@@ -102,7 +104,7 @@ class SecurityConfigurationAssessment
 
         /// @brief Synchronize the module
         /// @param mode Synchronization mode
-        /// @return true if synchronization was successful, false otherwise
+        /// @return true on success, false on failure (a WARNING with the reason is logged internally).
         bool syncModule(Mode mode);
 
         /// @brief Persist a difference
@@ -181,6 +183,12 @@ class SecurityConfigurationAssessment
         /// @brief Mutex for pause/resume coordination
         std::mutex m_pauseMutex;
 
+        /// @brief Execute the blocking flush work for the module.
+        /// @return 0 on success, -1 on error.
+        /// @note Protected (rather than private) so test subclasses can drive the flush path
+        ///       deterministically without spinning the asynchronous flush controller.
+        int executeFlushSync();
+
     private:
         /// @brief Get the create statement for the database
         std::string GetCreateStatement() const;
@@ -222,11 +230,11 @@ class SecurityConfigurationAssessment
         /// @brief Synchronize the current DB snapshot using FULL mode.
         /// @param increaseVersions Whether to bump versions before building the snapshot.
         /// @param syncReason Reason used in logs.
-        /// @return true on success.
-        bool synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
+        /// @return SyncModuleResult with success flag and an optional failure reason string.
+        SyncModuleResult synchronizeDatabaseSnapshot(bool increaseVersions, const std::string& syncReason);
 
         /// @brief Perform full recovery: load all checks and resync
-        /// @return true on success
+        /// @return true on success, false on failure.
         bool performRecovery();
 
         /// @brief Check with manager if full sync required via checksum
@@ -238,10 +246,6 @@ class SecurityConfigurationAssessment
         /// @return true if DB contains any policies or checks
         bool hasDataInDatabase();
 
-        /// @brief Execute the blocking flush work for the module.
-        /// @return 0 on success, -1 on error.
-        int executeFlushSync();
-
         /// @brief Handle the case when no policies are available (either at startup or runtime).
         /// If the database has existing data, triggers DataClean to notify the manager and clears DB.
         /// @return true if no cleanup was needed (DB was already empty), false if cleanup was performed or failed
@@ -251,6 +255,11 @@ class SecurityConfigurationAssessment
         /// Sends DataClean, clears DB, syncs, and signals exit
         /// @return true if DataClean was sent and handled successfully
         bool handleAllPoliciesRemoved();
+
+        /// @brief Handle report events when internal limit changed
+        /// @param demotedIds Check ids demoted by the limit change
+        /// @param promotedIds Check ids promoted by the limit change
+        void handleLimitEvents(const std::vector<std::string>& demotedIds, const std::vector<std::string>& promotedIds);
 
         /// @brief SCA module name
         std::string m_name = "SCA";
@@ -296,6 +305,16 @@ class SecurityConfigurationAssessment
 
         /// @brief Controller for asynchronous flush requests.
         std::unique_ptr<Utils::AsyncFlushController> m_asyncFlushController;
+
+        /// @brief Serializes releaseResources() against the entry points that other threads
+        /// keep driving while the module tears down: wcom's dispatcher (query() and
+        /// parseResponseBuffer()) is detached and never joined, and agent-info's coordination
+        /// queries call query() in-process from its own module thread. Those entry points take
+        /// it shared around each access; releaseResources() resets the members under the
+        /// exclusive lock. The sync worker and the flush worker do not take it: the former is
+        /// joined before releaseResources() runs and the latter is joined by the flush
+        /// controller destruction before m_spSyncProtocol/m_dBSync are reset.
+        mutable std::shared_mutex m_resourcesMutex;
 
         /// @brief Commands timeout for policy execution
         int m_commandsTimeout = 0;

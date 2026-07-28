@@ -8,6 +8,7 @@
 #include <thread>
 #include <vector>
 
+#include <agentcache/agentMetadataCache.hpp>
 #include <api/handlers.hpp>
 #include <api/status/handlers.hpp>
 #include <base/eventParser.hpp>
@@ -49,6 +50,7 @@
 #include <schemf/schema.hpp>
 #include <store/drivers/fileDriver.hpp>
 #include <store/store.hpp>
+#include <store/utils.hpp>
 #include <streamlog/logger.hpp>
 #include <wiconnector/windexerconnector.hpp>
 
@@ -256,6 +258,8 @@ int main(int argc, char* argv[])
     std::shared_ptr<cm::crud::ICrudService> cmCrudService;
     std::shared_ptr<cm::sync::CMSync> cmSyncService;
     std::shared_ptr<ioc::sync::IocSync> iocSyncService;
+    std::shared_ptr<agentcache::AgentMetadataCache> agentMetadataCache;
+    bool firstStart {false};
 
     try
     {
@@ -305,6 +309,7 @@ int main(int argc, char* argv[])
             auto fileDriver = std::make_shared<store::drivers::FileDriver>(fileStorage);
             store = std::make_shared<store::Store>(fileDriver);
             LOG_INFO("Store initialized");
+            firstStart = store::utils::updateStartStatus(store, engineUptimeISO);
         }
 
         // Content Manager
@@ -419,21 +424,23 @@ int main(int argc, char* argv[])
                                              ? standAloneConfig()
                                              : base::libwazuhshared::getJsonIndexerCnf();
 
-                // Parse JSON and add max_queue_size from engine configuration
+                // Parse JSON and add max_queue_bytes from engine configuration
                 json::Json jsonCnf(baseJsonCnf);
-                const auto maxQueueSize = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_EVENTS);
-                jsonCnf.setUint64(maxQueueSize, "/max_queue_size");
+                const auto maxQueueBytes = confManager.get<size_t>(conf::key::INDEXER_QUEUE_MAX_BYTES);
+                jsonCnf.setUint64(maxQueueBytes, "/max_queue_bytes");
 
-                constexpr size_t INDEXER_ELEMENTS_PER_BULK_MAX = 1000000;
-                const auto elementsPerBulk = confManager.get<size_t>(conf::key::INDEXER_ELEMENTS_PER_BULK);
-                if (elementsPerBulk == 0 || elementsPerBulk > INDEXER_ELEMENTS_PER_BULK_MAX)
+                constexpr size_t INDEXER_BULK_MAX_BYTES_MIN = size_t {0x1} << 16; // 64 KB
+                constexpr size_t INDEXER_BULK_MAX_BYTES_MAX = size_t {100} << 20; // 100 MB
+                const auto bulkMaxBytes = confManager.get<size_t>(conf::key::INDEXER_BULK_MAX_BYTES);
+                if (bulkMaxBytes < INDEXER_BULK_MAX_BYTES_MIN || bulkMaxBytes > INDEXER_BULK_MAX_BYTES_MAX)
                 {
                     throw std::runtime_error(
-                        fmt::format("analysisd.indexer_bulk_size_events must be between 1 and {} (got {})",
-                                    INDEXER_ELEMENTS_PER_BULK_MAX,
-                                    elementsPerBulk));
+                        fmt::format("analysisd.indexer_bulk_max_bytes must be between {} and {} (got {})",
+                                    INDEXER_BULK_MAX_BYTES_MIN,
+                                    INDEXER_BULK_MAX_BYTES_MAX,
+                                    bulkMaxBytes));
                 }
-                jsonCnf.setUint64(elementsPerBulk, "/elements_per_bulk");
+                jsonCnf.setUint64(bulkMaxBytes, "/bulk_max_bytes");
 
                 constexpr size_t INDEXER_FLUSH_INTERVAL_MAX = 3600;
                 const auto flushInterval = confManager.get<size_t>(conf::key::INDEXER_FLUSH_INTERVAL);
@@ -445,6 +452,40 @@ int main(int argc, char* argv[])
                                     flushInterval));
                 }
                 jsonCnf.setUint64(flushInterval, "/flush_interval_seconds");
+
+                // Error-logger sizing: bounded queue + thread count (only error responses are queued)
+                constexpr size_t INDEXER_LOGGER_QUEUE_SIZE_MAX = 1024;
+                const auto loggerQueueSize = confManager.get<size_t>(conf::key::INDEXER_LOGGER_QUEUE_SIZE);
+                if (loggerQueueSize == 0 || loggerQueueSize > INDEXER_LOGGER_QUEUE_SIZE_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_logger_queue_size must be between 1 and {} (got {})",
+                                    INDEXER_LOGGER_QUEUE_SIZE_MAX,
+                                    loggerQueueSize));
+                }
+                jsonCnf.setUint64(loggerQueueSize, "/logger_queue_size");
+
+                constexpr size_t INDEXER_LOGGER_THREADS_MAX = 16;
+                const auto loggerThreads = confManager.get<size_t>(conf::key::INDEXER_LOGGER_THREADS);
+                if (loggerThreads == 0 || loggerThreads > INDEXER_LOGGER_THREADS_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_logger_threads must be between 1 and {} (got {})",
+                                    INDEXER_LOGGER_THREADS_MAX,
+                                    loggerThreads));
+                }
+                jsonCnf.setUint64(loggerThreads, "/logger_threads");
+
+                constexpr size_t INDEXER_MAX_RETRY_DELAY_MAX = 3600;
+                const auto maxRetryDelay = confManager.get<size_t>(conf::key::INDEXER_MAX_RETRY_DELAY);
+                if (maxRetryDelay == 0 || maxRetryDelay > INDEXER_MAX_RETRY_DELAY_MAX)
+                {
+                    throw std::runtime_error(
+                        fmt::format("analysisd.indexer_max_retry_delay must be between 1 and {} (got {})",
+                                    INDEXER_MAX_RETRY_DELAY_MAX,
+                                    maxRetryDelay));
+                }
+                jsonCnf.setUint64(maxRetryDelay, "/max_retry_delay_seconds");
 
                 const auto maxHitsPerRequest =
                     confManager.get<std::size_t>(conf::key::CMSYNC_INDEXER_CONNECTOR_SYNC_BATCH_SIZE);
@@ -474,25 +515,15 @@ int main(int argc, char* argv[])
                                      return connector ? connector->getDroppedEvents() : 0;
                                  });
 
-                auto indexerQueueUsageGetter = [wIndexer, maxQueueSize]()
+                auto indexerQueueUsageGetter = [wIndexer, maxQueueBytes]()
                 {
                     auto connector = wIndexer.lock();
                     auto currentSize = connector ? connector->getQueueSize() : 0;
-                    return maxQueueSize > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueSize) : 0.0;
+                    return maxQueueBytes > 0 ? (static_cast<double>(currentSize) * 100.0 / maxQueueBytes) : 0.0;
                 };
                 FASTMETRICS_PULL(double, fastmetrics::names::INDEXER_QUEUE_USAGE_PERCENT, indexerQueueUsageGetter);
 
-                // Log pending events from previous sessions
-                const auto pendingEvents = indexerConnector->getQueueSize();
-                if (pendingEvents > 0)
-                {
-                    LOG_INFO("Indexer Connector initialized with {} pending events from previous session",
-                             pendingEvents);
-                }
-                else
-                {
-                    LOG_INFO("Indexer Connector initialized");
-                }
+                LOG_INFO("Indexer Connector initialized");
             }
             catch (const std::exception& e)
             {
@@ -597,8 +628,10 @@ int main(int argc, char* argv[])
         {
             const auto qSize = confManager.get<size_t>(conf::key::EVENT_QUEUE_SIZE);
             const auto qEps = confManager.get<size_t>(conf::key::EVENT_QUEUE_EPS);
+            const auto qMaxBytes = confManager.get<size_t>(conf::key::EVENT_QUEUE_MAX_BYTES);
 
             const auto eventQueue = std::make_shared<fastqueue::CQueue<router::IngestEvent>>(qSize, qEps);
+            eventQueue->setByteLimit(qMaxBytes, [](const router::IngestEvent& e) { return e.second.size(); });
             const auto testQueue = std::make_shared<fastqueue::StdQueue<router::test::EventTest>>(qSize);
 
             router::Orchestrator::Options config {.m_numThreads = confManager.get<int>(conf::key::ORCHESTRATOR_THREADS),
@@ -615,9 +648,12 @@ int main(int argc, char* argv[])
 
             exitHandler.add([orchestrator]() { orchestrator->requestShutdown(); });
             const auto epsDescription = qEps > 0 ? std::to_string(qEps) : std::string("unlimited");
-            LOG_INFO("Orchestrator initialized and started with event queue size: {}, events per second: {}.",
-                     qSize,
-                     epsDescription);
+            const auto bytesDescription = qMaxBytes > 0 ? std::to_string(qMaxBytes) : std::string("unlimited");
+            LOG_INFO(
+                "Orchestrator initialized and started with event queue size: {}, events per second: {}, max bytes: {}.",
+                qSize,
+                epsDescription,
+                bytesDescription);
         }
 
         // CMsync
@@ -800,50 +836,23 @@ int main(int argc, char* argv[])
 
             // Finally start the API server
             apiServer->start(confManager.get<std::string>(conf::key::SERVER_API_SOCKET));
-
-            // Start metrics stream logging task (on-demand channel creation)
-            // Only enabled via internal_options.conf
-            if (streamLogger && confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
-            {
-                // Prepare metrics channel configuration (lazy creation on first write)
-                const auto metricsChannelConfig = streamlog::RotationConfig {
-                    .basePath = confManager.get<std::string>(conf::key::STREAMLOG_BASE_PATH),
-                    .pattern = confManager.get<std::string>(conf::key::STREAMLOG_METRICS_PATTERN),
-                    .maxSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_MAX_SIZE),
-                    .bufferSize = confManager.get<size_t>(conf::key::STREAMLOG_METRICS_BUFFER_SIZE),
-                    .shouldCompress = confManager.get<bool>(conf::key::STREAMLOG_SHOULD_COMPRESS),
-                    .compressionLevel = confManager.get<size_t>(conf::key::STREAMLOG_COMPRESSION_LEVEL),
-                    .maxFiles = confManager.get<size_t>(conf::key::STREAMLOG_MAX_FILES),
-                    .maxAccumulatedSize = confManager.get<size_t>(conf::key::STREAMLOG_MAX_ACCUMULATED_SIZE)};
-
-                auto metricsWriter = streamLogger->ensureAndGetWriter("engine-metrics", metricsChannelConfig, "json");
-
-                scheduler::TaskConfig metricsConfig {.interval =
-                                                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL),
-                                                     .runImmediately = false,
-                                                     .CPUPriority = 0,
-                                                     .taskFunction = [metricsWriter, metricsManager]()
-                                                     { metricsManager->writeAllMetrics(metricsWriter); }};
-
-                scheduler->scheduleTask("MetricsLogger", std::move(metricsConfig));
-                LOG_INFO("Metrics stream logging enabled (interval: {} seconds, on-demand channel creation).",
-                         confManager.get<size_t>(conf::key::METRICS_LOG_INTERVAL));
-            }
-            else if (!confManager.get<bool>(conf::key::METRICS_LOG_ENABLED))
-            {
-                LOG_DEBUG("Metrics stream logging DISABLED");
-            }
         }
 
         // HTTP enriched events server
         if (enableProcessing)
         {
             engineRemoteServer = std::make_shared<httpsrv::Server>("Event services", 0, false);
+            agentMetadataCache = std::make_shared<agentcache::AgentMetadataCache>(
+                std::chrono::seconds(confManager.get<std::size_t>(conf::key::AGENT_METADATA_CACHE_TTL)));
+
+            // Register the cache's instantaneous "agent.cache.entries" pull metric.
+            agentcache::registerCacheMetrics(agentMetadataCache);
 
             exitHandler.add([engineRemoteServer]() { engineRemoteServer->stop(); });
 
-            engineRemoteServer->addRoute(
-                httpsrv::Method::POST, "/events/enriched", api::event::handlers::pushEvent(orchestrator, dumper));
+            engineRemoteServer->addRoute(httpsrv::Method::POST,
+                                         "/events/enriched",
+                                         api::event::handlers::pushEvent(orchestrator, dumper, agentMetadataCache));
 
             // starting in a new thread
             engineRemoteServer->start(confManager.get<std::string>(conf::key::SERVER_ENRICHED_EVENTS_SOCKET));
@@ -880,7 +889,7 @@ int main(int argc, char* argv[])
             auto lastWarned = std::make_shared<std::optional<bool>>();
 
             // Logs only on state transitions (no routes <-> at least one enabled route).
-            const auto reportRouteStatus = [hasEnabledRoutes, lastWarned]()
+            const auto reportRouteStatus = [hasEnabledRoutes, lastWarned, firstStart]()
             {
                 const bool shouldWarn = !hasEnabledRoutes();
                 if (*lastWarned == shouldWarn)
@@ -890,14 +899,38 @@ int main(int argc, char* argv[])
                 *lastWarned = shouldWarn;
                 if (shouldWarn)
                 {
-                    LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded "
-                                "until content synchronization completes");
+                    if (firstStart)
+                    {
+                        LOG_INFO("[CMSync] No active routes available. Incoming events will be discarded "
+                                 "until content synchronization completes");
+                    }
+                    else
+                    {
+                        LOG_WARNING("[CMSync] No active routes available. Incoming events will be discarded "
+                                    "until content synchronization completes");
+                    }
                 }
                 else
                 {
                     LOG_INFO("[CMSync] Event processing is now active");
                 }
             };
+
+            // Async clean agent cache, safely evicting stale entries to avoid memory bloat. This is a best-effort
+            // operation, so it is not critical if the cache is not cleaned on time. The number of evicted
+            // entries is recorded by the cache itself (agent.cache.evictions).
+            scheduler->scheduleTask("clean-agent-cache",
+                                    scheduler::TaskConfig {.interval = confManager.get<std::size_t>(
+                                                               conf::key::AGENT_METADATA_CACHE_CLEAN_INTERVAL),
+                                                           .runImmediately = false,
+                                                           .CPUPriority = 0,
+                                                           .taskFunction = [agentMetadataCache]()
+                                                           {
+                                                               if (agentMetadataCache)
+                                                               {
+                                                                   agentMetadataCache->evictStale();
+                                                               }
+                                                           }});
 
             // Async Synchronize on startup
             scheduler->scheduleTask(

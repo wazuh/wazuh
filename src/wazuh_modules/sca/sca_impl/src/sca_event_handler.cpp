@@ -186,6 +186,23 @@ void SCAEventHandler::ReportDemotedChecks(const std::vector<std::string>& demote
     }
 }
 
+void SCAEventHandler::ReportPromotedChecks(const std::vector<std::string>& promotedIds) const
+{
+    if (promotedIds.empty() || !m_allowStatefulMessages)
+    {
+        return;
+    }
+
+    std::vector<nlohmann::json> failedChecks;
+
+    ProcessPromotedChecks(promotedIds, &failedChecks);
+
+    if (!failedChecks.empty())
+    {
+        HandleFailedChecks(std::move(failedChecks));
+    }
+}
+
 void SCAEventHandler::ReportCheckResult(const std::string& policyId,
                                         const std::string& checkId,
                                         const std::string& checkResult,
@@ -230,6 +247,8 @@ void SCAEventHandler::ReportCheckResult(const std::string& policyId,
         return;
         // LCOV_EXCL_STOP
     }
+
+    checkData.erase("version");
 
     auto updateResultQuery = SyncRowQuery::builder().table("sca_check").data(checkData).returnOldData().build();
 
@@ -1082,21 +1101,25 @@ void SCAEventHandler::HandleFailedChecks(std::vector<nlohmann::json> failedCheck
     }
 }
 
-void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& promotedIds,
-                                            std::vector<nlohmann::json>* failedChecks) const
+void SCAEventHandler::ProcessSyncedChecks(const std::vector<std::string>& checkIds,
+                                          ReturnTypeCallback result,
+                                          const std::string& actionLabel,
+                                          std::vector<nlohmann::json>* failedChecks) const
 {
-    if (promotedIds.empty() || !m_allowStatefulMessages)
+    if (checkIds.empty() || !m_allowStatefulMessages)
     {
         return;
     }
 
-    for (const auto& checkId : promotedIds)
+    const std::string capitalizedLabel = Utils::toSentenceCase(actionLabel);
+
+    for (const auto& checkId : checkIds)
     {
         const auto checkData = GetPolicyCheckById(checkId);
 
         if (checkData.empty() || !checkData.contains("policy_id"))
         {
-            LoggingHelper::getInstance().log(LOG_WARNING, "Promoted check not found in DB: " + checkId);
+            LoggingHelper::getInstance().log(LOG_WARNING, capitalizedLabel + " check not found in DB: " + checkId);
             continue;
         }
 
@@ -1113,8 +1136,8 @@ void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& prom
 
         if (policyId.empty())
         {
-            LoggingHelper::getInstance().log(LOG_WARNING,
-                                             "Invalid policy_id for promoted check " + checkId + ", skipping");
+            LoggingHelper::getInstance().log(
+                LOG_WARNING, "Invalid policy_id for " + actionLabel + " check " + checkId + ", skipping");
             continue;
         }
 
@@ -1122,8 +1145,8 @@ void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& prom
 
         if (policyData.empty())
         {
-            LoggingHelper::getInstance().log(LOG_WARNING,
-                                             "Policy not found for promoted check " + checkId + ", skipping");
+            LoggingHelper::getInstance().log(
+                LOG_WARNING, "Policy not found for " + actionLabel + " check " + checkId + ", skipping");
             continue;
         }
 
@@ -1131,7 +1154,7 @@ void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& prom
         {
             {"policy", policyData},
             {"check", checkData},
-            {"result", INSERTED},
+            {"result", result},
             {"collector", "sync"}
         };
 
@@ -1139,7 +1162,7 @@ void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& prom
 
         const bool validationPassed = ValidateAndHandleStatefulMessage(
                                           stateful,
-                                          "sync promotion checkId: " + checkId,
+                                          "sync " + actionLabel + " checkId: " + checkId,
                                           checkData,
                                           failedChecks
                                       );
@@ -1151,71 +1174,14 @@ void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& prom
     }
 }
 
+void SCAEventHandler::ProcessPromotedChecks(const std::vector<std::string>& promotedIds,
+                                            std::vector<nlohmann::json>* failedChecks) const
+{
+    ProcessSyncedChecks(promotedIds, INSERTED, "promoted", failedChecks);
+}
+
 void SCAEventHandler::ProcessDemotedChecks(const std::vector<std::string>& demotedIds,
                                            std::vector<nlohmann::json>* failedChecks) const
 {
-    if (demotedIds.empty() || !m_allowStatefulMessages)
-    {
-        return;
-    }
-
-    for (const auto& checkId : demotedIds)
-    {
-        const auto checkData = GetPolicyCheckById(checkId);
-
-        if (checkData.empty() || !checkData.contains("policy_id"))
-        {
-            LoggingHelper::getInstance().log(LOG_WARNING, "Demoted check not found in DB: " + checkId);
-            continue;
-        }
-
-        std::string policyId;
-
-        if (checkData["policy_id"].is_string())
-        {
-            policyId = checkData["policy_id"].get<std::string>();
-        }
-        else if (checkData["policy_id"].is_number_integer())
-        {
-            policyId = std::to_string(checkData["policy_id"].get<int>());
-        }
-
-        if (policyId.empty())
-        {
-            LoggingHelper::getInstance().log(LOG_WARNING,
-                                             "Invalid policy_id for demoted check " + checkId + ", skipping");
-            continue;
-        }
-
-        const auto policyData = GetPolicyById(policyId);
-
-        if (policyData.empty())
-        {
-            LoggingHelper::getInstance().log(LOG_WARNING,
-                                             "Policy not found for demoted check " + checkId + ", skipping");
-            continue;
-        }
-
-        const nlohmann::json event =
-        {
-            {"policy", policyData},
-            {"check", checkData},
-            {"result", DELETED},
-            {"collector", "sync"}
-        };
-
-        const auto [stateful, operation, version] = ProcessStateful(event);
-
-        const bool validationPassed = ValidateAndHandleStatefulMessage(
-                                          stateful,
-                                          "sync demotion checkId: " + checkId,
-                                          checkData,
-                                          failedChecks
-                                      );
-
-        if (validationPassed)
-        {
-            PushStateful(stateful, operation, version);
-        }
-    }
+    ProcessSyncedChecks(demotedIds, DELETED, "demoted", failedChecks);
 }

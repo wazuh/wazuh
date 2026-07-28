@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ------------------------------------------------------------------------------
 # pr-clang.sh — Format all .cpp/.hpp files changed in the current PR
-#               (or vs main if no PR is associated) under src/.
+#               (or vs inferred base branch if no PR is associated) under src/.
 #
 # Usage:
 #   ./pr-clang.sh [--check]   # --check: only verify, don't modify (exit 1 if diff)
@@ -31,19 +31,69 @@ done
 command -v "$CLANG_FORMAT" >/dev/null 2>&1 || { echo "ERROR: $CLANG_FORMAT not found in PATH" >&2; exit 1; }
 command -v gh >/dev/null 2>&1 || { echo "ERROR: gh (GitHub CLI) not found in PATH" >&2; exit 1; }
 
+DEFAULT_BASE_BRANCH="$(git -C "$WAZUH_REPO" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@' || true)"
+DEFAULT_BASE_BRANCH="${DEFAULT_BASE_BRANCH:-main}"
+
+detect_base_branch() {
+  local repo="$1"
+  local current_branch upstream_branch candidate ref best_ref
+  local mb best_distance distance candidate_divergence best_divergence
+
+  current_branch="$(git -C "$repo" branch --show-current 2>/dev/null || true)"
+  upstream_branch="$(git -C "$repo" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null || true)"
+
+  # If upstream is not the same feature branch, it is usually the intended diff base.
+  if [[ -n "$upstream_branch" && -n "$current_branch" && "$upstream_branch" != "origin/${current_branch}" ]]; then
+    echo "${upstream_branch#origin/}"
+    return 0
+  fi
+
+  best_ref=""
+  best_distance=""
+  best_divergence=""
+
+  while IFS= read -r ref; do
+    [[ -z "$ref" ]] && continue
+    [[ "$ref" == "origin/HEAD" ]] && continue
+    [[ -n "$current_branch" && "$ref" == "origin/${current_branch}" ]] && continue
+
+    candidate="${ref#origin/}"
+    mb="$(git -C "$repo" merge-base HEAD "refs/remotes/origin/${candidate}" 2>/dev/null || true)"
+    [[ -z "$mb" ]] && continue
+
+    distance="$(git -C "$repo" rev-list --count "${mb}..HEAD" 2>/dev/null || true)"
+    candidate_divergence="$(git -C "$repo" rev-list --count "${mb}..refs/remotes/origin/${candidate}" 2>/dev/null || true)"
+    [[ -z "$distance" || -z "$candidate_divergence" ]] && continue
+
+    if [[ -z "$best_ref" ]] || [[ "$distance" -lt "$best_distance" ]] || { [[ "$distance" -eq "$best_distance" ]] && [[ "$candidate_divergence" -lt "$best_divergence" ]]; }; then
+      best_ref="$candidate"
+      best_distance="$distance"
+      best_divergence="$candidate_divergence"
+    fi
+  done < <(git -C "$repo" for-each-ref --format='%(refname:short)' refs/remotes/origin)
+
+  if [[ -n "$best_ref" ]]; then
+    echo "$best_ref"
+  else
+    echo "$DEFAULT_BASE_BRANCH"
+  fi
+}
+
 # ------------------------------------------------------------------------------
 # Collect changed files: PR/branch commits + staged + untracked
 # ------------------------------------------------------------------------------
 echo "==> Resolving changed files..."
 
-PR_NUMBER="$(gh pr view --json number -q '.number' 2>/dev/null || true)"
+PR_NUMBER="$(cd "$WAZUH_REPO" && gh pr view --json number -q '.number' 2>/dev/null || true)"
+PR_BASE_REF="$(cd "$WAZUH_REPO" && gh pr view --json baseRefName -q '.baseRefName' 2>/dev/null || true)"
 
 if [[ -n "$PR_NUMBER" ]]; then
-  echo "    PR #${PR_NUMBER} detected."
-  COMMITTED_FILES="$(gh pr diff "$PR_NUMBER" --name-only)"
+  echo "    PR #${PR_NUMBER} detected (base: ${PR_BASE_REF:-unknown})."
+  COMMITTED_FILES="$(cd "$WAZUH_REPO" && gh pr diff "$PR_NUMBER" --name-only)"
 else
-  echo "    No PR associated, diffing against main..."
-  COMMITTED_FILES="$(git -C "$WAZUH_REPO" diff --name-only --diff-filter=AM main...HEAD)"
+  BASE_BRANCH="$(detect_base_branch "$WAZUH_REPO")"
+  echo "    No PR associated, diffing against ${BASE_BRANCH}..."
+  COMMITTED_FILES="$(git -C "$WAZUH_REPO" diff --name-only --diff-filter=AM "origin/${BASE_BRANCH}...HEAD")"
 fi
 
 # Staged (index) files — added or modified

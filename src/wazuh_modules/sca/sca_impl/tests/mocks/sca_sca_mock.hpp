@@ -52,4 +52,11 @@ class SCAMock : public SecurityConfigurationAssessment
         {
             m_pauseMutex.unlock();
         }
+
+        /// @brief Testing helper to drive the flush path synchronously (bypasses the async controller).
+        /// @return 0 on success, -1 on error.
+        int callExecuteFlushSync()
+        {
+            return executeFlushSync();
+        }
 };

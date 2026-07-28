@@ -26,6 +26,7 @@ option(ENGINE_BUILD_TEST "Generate tests" OFF)
 option(ENGINE_BUILD_BENCHMARK "Generate benchmarks" OFF)
 option(ENGINE_ENABLE_ASAN "Enable AddressSanitizer for all targets" OFF)
 option(ENGINE_ENABLE_TSAN "Enable ThreadSanitizer for all targets" OFF)
+option(ENGINE_ENABLE_UBSAN "Enable UndefinedBehaviorSanitizer for all targets" OFF)
 option(ENGINE_BUILD_DOCUMENTATION "Generate doxygen documentation" OFF)
 option(ENGINE_ASSERT_WITH_SYMBOLS "Exports exe symbols to have asserts with full symbolicated functions" ON)
 option(ENGINE_GENERATE_PROTO "Generate protobuf code" OFF)
@@ -60,14 +61,29 @@ if(ENGINE_BUILD_BENCHMARK AND
     message(WARNING "Building and running benchmarks in '${CMAKE_BUILD_TYPE}' will skew the results; use Release or RelWithDebInfo.")
 endif()
 
+if(ENGINE_ENABLE_ASAN AND ENGINE_ENABLE_TSAN)
+  message(FATAL_ERROR "ENGINE_ENABLE_ASAN and ENGINE_ENABLE_TSAN cannot be enabled at the same time")
+endif()
+
+set(ENGINE_SANITIZER_OPTIONS "")
+
 if(ENGINE_ENABLE_ASAN)
   message(STATUS "Building engine with AddressSanitizer")
-  add_compile_options(-fsanitize=address -fno-omit-frame-pointer)
-  add_link_options(-fsanitize=address -fno-omit-frame-pointer)
+  list(APPEND ENGINE_SANITIZER_OPTIONS -fsanitize=address)
 elseif(ENGINE_ENABLE_TSAN)
   message(STATUS "Building engine with ThreadSanitizer")
-  add_compile_options(-fsanitize=thread -fno-omit-frame-pointer)
-  add_link_options(-fsanitize=thread -fno-omit-frame-pointer)
+  list(APPEND ENGINE_SANITIZER_OPTIONS -fsanitize=thread)
+endif()
+
+if(ENGINE_ENABLE_UBSAN)
+  message(STATUS "Building engine with UndefinedBehaviorSanitizer")
+  list(APPEND ENGINE_SANITIZER_OPTIONS -fsanitize=undefined)
+endif()
+
+if(ENGINE_SANITIZER_OPTIONS)
+  list(APPEND ENGINE_SANITIZER_OPTIONS -fno-omit-frame-pointer)
+  add_compile_options(${ENGINE_SANITIZER_OPTIONS})
+  add_link_options(${ENGINE_SANITIZER_OPTIONS})
 endif()
 
 # Ensures that we do an out of source build
@@ -222,6 +238,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR FSANITIZE)
     ${CMAKE_SOURCE_DIR}/build/lib
     ${ROCKSDB_LIB_BUILD_DIR}
     ${INDEXERCONNECTOR_LIB_BUILD_DIR}
+    ${CMAKE_SOURCE_DIR}/external/jemalloc/lib
   )
 endif()
 
@@ -280,6 +297,7 @@ register_external_library(re2::re2               "${CMAKE_SOURCE_DIR}/external/r
 set_target_properties(re2_re2 PROPERTIES INTERFACE_LINK_LIBRARIES "absl_absl")
 
 add_subdirectory(${ENGINE_SOURCE_DIR}/base)
+add_subdirectory(${ENGINE_SOURCE_DIR}/agentcache)
 add_subdirectory(${ENGINE_SOURCE_DIR}/bk)
 add_subdirectory(${ENGINE_SOURCE_DIR}/api)
 add_subdirectory(${ENGINE_SOURCE_DIR}/defs)
@@ -313,6 +331,7 @@ add_subdirectory(${ENGINE_SOURCE_DIR}/fastmetrics)
 
 target_link_libraries(wazuh-engine
     base
+    agentcache::agentcache
     conf
     yml
     defs
@@ -346,9 +365,12 @@ target_link_libraries(wazuh-engine
 )
 
 # If ASAN, UBSAN or any other sanitizers are enabled do not link with static libraries
-if(NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
+if(NOT ENGINE_SANITIZER_OPTIONS AND NOT CMAKE_CXX_FLAGS MATCHES "-fsanitize=.*")
     target_link_libraries(wazuh-engine -static-libgcc -static-libstdc++)
 endif()
+
+# Link jemalloc for reduced memory fragmentation (unless explicitly disabled)
+wazuh_link_jemalloc(wazuh-engine PLAIN)
 
 # Print LD anc CXX flags
 message(STATUS "engine CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")

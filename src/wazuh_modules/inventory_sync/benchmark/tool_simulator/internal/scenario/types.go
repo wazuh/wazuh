@@ -231,6 +231,7 @@ type Behavior struct {
 type Scenario struct {
 	Name        string
 	Description string
+	ClusterName string
 	Lanes       map[string][]Step
 	Fleets      []Fleet
 	Behavior    Behavior

@@ -376,14 +376,28 @@ void fim_db_update_last_sync_time(const char* table_name)
 
 TXN_HANDLE fim_db_transaction_start(const char* table, result_callback_t row_callback, void* user_data)
 {
-    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput {cJSON_Parse(table)};
+    try
+    {
+        const std::unique_ptr<cJSON, CJsonSmartDeleter> jsInput {cJSON_Parse(table)};
 
-    callback_data_t cb_data = {.callback = row_callback, .user_data = user_data};
+        callback_data_t cb_data = {.callback = row_callback, .user_data = user_data};
 
-    TXN_HANDLE dbsyncTxnHandle =
-        dbsync_create_txn(DB::instance().DBSyncHandle(), jsInput.get(), 0, QUEUE_SIZE, cb_data);
+        TXN_HANDLE dbsyncTxnHandle =
+            dbsync_create_txn(DB::instance().DBSyncHandle(), jsInput.get(), 0, QUEUE_SIZE, cb_data);
 
-    return dbsyncTxnHandle;
+        return dbsyncTxnHandle;
+    }
+    // LCOV_EXCL_START
+    catch (const std::exception& ex)
+    {
+        // DBSyncHandle() throws once the handler has been torn down; this is the only
+        // extern "C" entry in this file that let the exception escape into C callers
+        // (std::terminate). Callers already handle a NULL transaction handle.
+        FIMDB::instance().logFunction(LOG_ERROR, ex.what());
+        return nullptr;
+    }
+
+    // LCOV_EXCL_STOP
 }
 
 FIMDBErrorCode fim_db_transaction_sync_row(TXN_HANDLE txn_handler, const fim_entry* entry)

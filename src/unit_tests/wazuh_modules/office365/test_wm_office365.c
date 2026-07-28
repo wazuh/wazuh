@@ -71,8 +71,6 @@ static int setup_conf(void **state) {
 static int teardown_conf(void **state) {
     test_struct_t *data  = (test_struct_t *)*state;
     test_mode = 0;
-    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:office365");
-    expect_string(__wrap__mtinfo, formatted_msg, "Module Office365 finished.");
 
     wm_office365_destroy(data->office365_config);
     os_free(data->root_c);
@@ -1258,6 +1256,9 @@ void test_wm_office365_main_enable(void **state) {
     expect_any(__wrap__mtdebug1, formatted_msg);
     expect_string(__wrap__mtdebug1, tag, "wazuh-modulesd:office365");
     expect_string(__wrap__mtdebug1, formatted_msg, "Unknown error while getting access token.");
+
+    expect_string(__wrap__mtinfo, tag, "wazuh-modulesd:office365");
+    expect_string(__wrap__mtinfo, formatted_msg, "Module Office365 finished.");
 
     wm_office365_main(data->office365_config);
 }

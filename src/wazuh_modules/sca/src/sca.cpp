@@ -451,6 +451,8 @@ std::string SCA::query(const std::string& jsonQuery)
 bool sca_sync_module(Mode_t mode)
 {
     Mode syncMode = (mode == MODE_FULL) ? Mode::FULL : Mode::DELTA;
+    // The C++ syncModule() already logs a WARNING with the failure reason before returning.
+    // The C caller only needs the bool to track sync state (e.g. first_sync_completed).
     return SCA::instance().syncModule(syncMode);
 }
 

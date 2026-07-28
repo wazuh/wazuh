@@ -129,7 +129,14 @@ BuiltAssets buildAssets(const cm::store::dataType::Policy& policy,
         stageData.assets.emplace(asset.name(), std::move(asset));
     };
 
-    const base::Name rootDecoderName {std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoderUUID()))};
+    const auto rootDecoderName = [&]() -> base::Name
+    {
+        if (policy.getRootDecoderUUID().empty())
+        {
+            throw std::runtime_error("Missing root decoder");
+        }
+        return std::get<0>(cmStoreNsReader->resolveNameFromUUID(policy.getRootDecoderUUID()));
+    }();
 
     // NOTE: The order of integrations and their decoders defines the final evaluation order for
     // sibling decoders in the expression. We preserve insertion order via orderedAssets.

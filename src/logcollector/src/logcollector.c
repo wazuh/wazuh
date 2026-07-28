@@ -2607,10 +2607,16 @@ STATIC void w_initialize_file_status() {
 }
 
 STATIC void w_save_file_status() {
+    static pthread_mutex_t save_status_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+    if (pthread_mutex_trylock(&save_status_mutex) != 0) {
+        return;
+    }
 
     char * str = w_save_files_status_to_cJSON();
 
     if (str == NULL) {
+        w_mutex_unlock(&save_status_mutex);
         return;
     }
 
@@ -2641,8 +2647,11 @@ STATIC void w_save_file_status() {
 #endif
         }
     } else {
+        w_mutex_unlock(&save_status_mutex);
         merror_exit(FOPEN_ERROR, tmp_path, errno, strerror(errno));
     }
+
+    w_mutex_unlock(&save_status_mutex);
 
     os_free(str);
 }

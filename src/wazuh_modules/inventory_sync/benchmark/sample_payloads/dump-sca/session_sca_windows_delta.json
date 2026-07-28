@@ -107,22 +107,44 @@
           "description": "This policy setting defines how long a user can use their password before it expires. Values for this policy setting range from 0 to 999 days. If you set the value to 0, the password will never expire. Because attackers can crack passwords, the more frequently you change the password the less opportunity an attacker has to use a cracked password. However, the lower this value is set, the higher the potential for an increase in calls to help desk support due to users having to change their password or forgetting which password is current. The recommended state for this setting is 365 or fewer days, but not 0. Note: Password Policy settings (section 1.1) and Account Lockout Policy settings (section 1.2) must be applied via the Default Domain Policy GPO in order to be globally in effect on domain user accounts as their default behavior. If these settings are configured in another GPO, they will only affect local user accounts on the computers that receive the GPO. However, custom exceptions to the default password policy and account lockout policy rules for specific domain users and/or groups can be defined using Password Settings Objects (PSOs), which are completely separate from Group Policy and most easily configured using Active Directory Administrative Center.",
           "id": "27001",
           "mitre": {
-            "subtechnique": [
-              "T1556.001",
-              "T1550.001",
-              "T1550.002"
-            ],
-            "tactic": [
-              "TA0006",
-              "TA0003"
-            ],
-            "technique": [
-              "T1078",
-              "T1098",
-              "T1110",
-              "T1136",
-              "T1556"
-            ]
+            "tactic": {
+              "id": [
+                "TA0006",
+                "TA0003"
+              ],
+              "name": [
+                "Credential Access",
+                "Persistence"
+              ]
+            },
+            "technique": {
+              "id": [
+                "T1078",
+                "T1098",
+                "T1110",
+                "T1136",
+                "T1556"
+              ],
+              "name": [
+                "Valid Accounts",
+                "Account Manipulation",
+                "Brute Force",
+                "Create Account",
+                "Modify Authentication Process"
+              ]
+            },
+            "subtechnique": {
+              "id": [
+                "T1556.001",
+                "T1550.001",
+                "T1550.002"
+              ],
+              "name": [
+                "Domain Controller Authentication",
+                "Application Access Token",
+                "Pass the Hash"
+              ]
+            }
           },
           "name": "Ensure 'Maximum password age' is set to '365 or fewer days, but not 0'.",
           "rationale": "The longer a password exists the higher the likelihood that it will be compromised by a brute force attack, by an attacker gaining general knowledge about the user, or by the user sharing the password. Configuring the Maximum password age setting to 0 so that users are never required to change their passwords is a major security risk because that allows a compromised password to be used by the malicious user for as long as the valid user has authorized access.",

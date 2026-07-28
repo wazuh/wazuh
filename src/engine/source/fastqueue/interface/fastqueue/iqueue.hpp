@@ -3,6 +3,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 
 namespace fastqueue
 {
@@ -93,6 +94,32 @@ public:
      * @note This is more efficient than calling tryPop multiple times.
      */
     virtual std::size_t tryPopBulk(T* elements, std::size_t max) = 0;
+
+    /**
+     * @brief Get the approximate number of bytes currently held in the queue.
+     *
+     * @return Bytes used, or 0 if byte tracking is not configured.
+     */
+    virtual std::size_t bytesUsed() const noexcept { return 0; }
+
+    /**
+     * @brief Get the maximum byte capacity of the queue.
+     *
+     * @return Byte capacity, or 0 if byte limiting is not configured.
+     */
+    virtual std::size_t maxBytes() const noexcept { return 0; }
+
+    /**
+     * @brief Configure a byte-based capacity limit after construction.
+     *
+     * Once set, push() rejects any element that would cause the accumulated
+     * byte total to exceed @p maxBytes, and any single element larger than
+     * @p maxBytes is immediately rejected.
+     *
+     * @param maxBytes  Maximum total bytes of enqueued elements (0 = unlimited).
+     * @param sizeOf    Function that returns the byte size of a given element.
+     */
+    virtual void setByteLimit(std::size_t maxBytes, std::function<std::size_t(const T&)> sizeOf) = 0;
 };
 
 } // namespace fastqueue

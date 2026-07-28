@@ -4,7 +4,7 @@ description: >
   internal CI S3 bucket (passed via the CI_INTERNAL_S3_BUCKET secret) instead of GitHub artifact storage
   (see https://github.com/wazuh/wazuh-automation/issues/3502).
   The artifact is archived with 7-Zip and uploaded to:
-    <bucket>/<repository>/<workflow>/<name>/artifacts_<run_id>.zip
+    <bucket>/<repository>/<workflow>/<run_id>/<name>.zip
   AWS credentials are configured by the action itself via OIDC, so the calling
   job only needs `permissions: id-token: write`. Pass the region via the
   `aws_region` input (set it to the CI_AWS_REGION secret at the call site).
@@ -34,7 +34,14 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: "Skip empty artifact upload"
+      if: ${{ inputs.name == '' || inputs.path == '' }}
+      shell: bash
+      run: |
+        echo "::warning::Skipping S3 artifact upload because name or path is empty."
+
     - name: "Resolve S3 key for ${{ inputs.name }}"
+      if: ${{ inputs.name != '' && inputs.path != '' }}
       id: key
       shell: bash
       env:
@@ -51,16 +58,17 @@ runs:
         wf="${wf_file%.*}"
         # Make the artifact name safe for use as a single S3 key segment
         safe_name="$(printf '%s' "$ARTIFACT_NAME" | tr ' /\\:' '____')"
-        echo "s3_uri=${BUCKET}/${REPO_NAME}/${wf}/${safe_name}/artifacts_${RUN_ID}.zip" >> "$GITHUB_OUTPUT"
+        echo "s3_uri=${BUCKET}/${REPO_NAME}/${wf}/${RUN_ID}/${safe_name}.zip" >> "$GITHUB_OUTPUT"
 
     - name: Configure AWS credentials
+      if: ${{ inputs.name != '' && inputs.path != '' }}
       uses: aws-actions/configure-aws-credentials@v6
       with:
         role-to-assume: ${{ inputs.aws_role }}
         aws-region: ${{ inputs.aws_region }}
 
     - name: "Upload ${{ inputs.name }} to S3 (Unix)"
-      if: runner.os != 'Windows'
+      if: ${{ inputs.name != '' && inputs.path != '' && runner.os != 'Windows' }}
       shell: bash
       env:
         ARTIFACT_NAME: ${{ inputs.name }}
@@ -126,7 +134,7 @@ runs:
         echo "Uploaded artifact '${ARTIFACT_NAME}' to ${S3_URI}"
 
     - name: "Upload ${{ inputs.name }} to S3 (Windows)"
-      if: runner.os == 'Windows'
+      if: ${{ inputs.name != '' && inputs.path != '' && runner.os == 'Windows' }}
       shell: pwsh
       env:
         ARTIFACT_NAME: ${{ inputs.name }}

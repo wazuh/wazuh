@@ -128,6 +128,22 @@ void splitStrFromCharDelimiter(const char * output_buf, const char delimiter, ch
 */
 int isEnabledFromPattern(const char * output_buf, const char * str_pattern_1, const char * str_pattern_2);
 
+/**
+ * Validate that a string is a bare numeric IP address and return its version.
+ *
+ * Unlike get_ip_version(), this performs a strict character-whitelist check and does NOT
+ * rely on getaddrinfo/DNS, so it is available on every platform (get_ip_version is compiled
+ * out on Windows). Besides classifying the family it rejects any value that is not a plain
+ * numeric IP - no CIDR prefix, whitespace or shell metacharacters - which is required before
+ * a source IP is placed on a command line (e.g. the Windows netsh/route invocations, where
+ * arguments are not quoted).
+ * @param srcip IP string to validate
+ * @retval 4 If srcip is a bare IPv4 address
+ * @retval 6 If srcip is a bare IPv6 address
+ * @retval OS_INVALID If srcip is NULL, empty, out of range or contains any other character
+ * */
+int validate_srcip(const char *srcip);
+
 #ifndef WIN32
 
 /**

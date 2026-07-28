@@ -53,7 +53,7 @@ int Read_Remote(const OS_XML *xml,XML_NODE node, void *d1, void *d2);
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
 int Read_ClientBuffer(XML_NODE node, void *d1, void *d2);
 int Read_WModule(const OS_XML *xml, xml_node *node, void *d1, void *d2);
-int Read_SCA(const OS_XML *xml, xml_node *node, void *d1);
+int Read_SCA(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 int Read_AGENT_INFO(const OS_XML* xml, xml_node* node, void* d1);
 
 /**
@@ -68,16 +68,18 @@ int Read_Client_Shared(XML_NODE node, void *d1);
  * @param xml XML object
  * @param node XML node to analyze
  * @param d1 Pub/Sub configuration structure
+ * @param d2 Agent configuration validation flag
  */
-int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1);
+int Read_GCP_pubsub(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 
 /**
  * @brief Read the configuration for a Google Cloud bucket
  * @param xml XML object
  * @param node XML node to analyze
  * @param d1 Bucket configuration structure
+ * @param d2 Agent configuration validation flag
  */
-int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1);
+int Read_GCP_bucket(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 
 #ifndef WIN32
 int Read_Authd(const OS_XML *xml, XML_NODE node, void *d1, void *d2);
@@ -94,24 +96,27 @@ int Read_TaskManager(const OS_XML *xml, xml_node *node, void *d1);
  * @param xml XML object
  * @param node XML node to analyze
  * @param d1 github configuration structure
+ * @param d2 Agent configuration validation flag
  */
-int Read_Github(const OS_XML *xml, xml_node *node, void *d1);
+int Read_Github(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 
 /**
  * @brief Read the configuration for Office365 module
  * @param xml XML object
  * @param node XML node to analyze
  * @param d1 office365 configuration structure
+ * @param d2 Agent configuration validation flag
  */
-int Read_Office365(const OS_XML *xml, xml_node *node, void *d1);
+int Read_Office365(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 
 /**
  * @brief Read the configuration for MS Graph module
  * @param xml XML object
  * @param node XML node to analyze
  * @param d1 ms_graph configuration structure
+ * @param d2 Agent configuration validation flag
  */
-int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1);
+int Read_MS_Graph(const OS_XML *xml, xml_node *node, void *d1, void *d2);
 #endif
 
 /* Verifies that the configuration for Syscheck is correct. Return 0 on success or -1 on error.  */

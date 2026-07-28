@@ -1,0 +1,59 @@
+{
+  "_comment": "category: section in the dashboard (events, bytes, or any custom label). unit: y-axis label (count, items, percent, bytes, eps).",
+  "server.bytes.received": {
+    "category": "bytes",
+    "unit": "bytes"
+  },
+  "server.events.received": {
+    "category": "events",
+    "unit": "count"
+  },
+  "router.queue.size": {
+    "category": "events",
+    "unit": "items"
+  },
+  "router.queue.usage.percent": {
+    "category": "events",
+    "unit": "percent"
+  },
+  "router.queue.bytes.used": {
+    "category": "bytes",
+    "unit": "bytes"
+  },
+  "router.queue.bytes.usage.percent": {
+    "category": "bytes",
+    "unit": "percent"
+  },
+  "router.events.processed": {
+    "category": "events",
+    "unit": "count"
+  },
+  "router.events.dropped": {
+    "category": "events",
+    "unit": "count"
+  },
+  "router.eps.1m": {
+    "category": "events",
+    "unit": "eps"
+  },
+  "router.eps.5m": {
+    "category": "events",
+    "unit": "eps"
+  },
+  "router.eps.30m": {
+    "category": "events",
+    "unit": "eps"
+  },
+  "indexer.queue.size": {
+    "category": "bytes",
+    "unit": "bytes"
+  },
+  "indexer.queue.usage.percent": {
+    "category": "bytes",
+    "unit": "percent"
+  },
+  "indexer.events.dropped": {
+    "category": "events",
+    "unit": "count"
+  }
+}
