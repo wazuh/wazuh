@@ -22,6 +22,8 @@ PATH="$SCRIPT_DIR/../../../external/flatbuffers/build:$PATH"
 # so defer that check until we know the manager is running locally.
 if [[ -n "${VIRTUAL_ENV:-}" && -x "$VIRTUAL_ENV/bin/python3" ]]; then
     PYTHON="$VIRTUAL_ENV/bin/python3"
+elif [[ -x "$SCRIPT_DIR/../../../../../venv/bin/python3" ]]; then
+    PYTHON="$SCRIPT_DIR/../../../../../venv/bin/python3"
 elif command -v python3 >/dev/null 2>&1; then
     PYTHON="$(command -v python3)"
 else
@@ -42,6 +44,7 @@ _find_local_monitor_python() {
     for candidate in \
         "${VIRTUAL_ENV:-}/bin/python3" \
         "$PYTHON" \
+        "$SCRIPT_DIR/../../../../../venv/bin/python3" \
         /opt/wazuh-monitor-venv/bin/python3 \
         /usr/local/python/current/bin/python3 \
         /usr/bin/python3; do
@@ -421,6 +424,9 @@ cat > "$RESULTS_DIR/params.json" <<PARAMS
     "port": $PORT,
     "cluster_name": "$SC_CLUSTER_NAME",
     "process": "wazuh-manager-modulesd",
+    "git_commit": "${BENCH_GIT_COMMIT:-unknown}",
+    "library_path": "${BENCH_LIBRARY_PATH:-unknown}",
+    "library_sha256": "${BENCH_LIBRARY_SHA256:-unknown}",
     "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 }
 PARAMS
@@ -545,6 +551,7 @@ elif [[ -n "$(find "$TS_DIR" -name '*.go' -newer "$GO_BIN" -print -quit 2>/dev/n
 fi
 
 ran_with_go_run=false
+SENDER_RC=0
 if $need_build; then
     if ! command -v go >/dev/null 2>&1; then
         echo "Error: Go toolchain not found and $GO_BIN does not exist."
@@ -556,12 +563,12 @@ if $need_build; then
         echo "Built OK."
     else
         echo "Build failed; falling back to 'go run' (slower, recompiles each time)."
-        (cd "$TS_DIR" && go run ./cmd/benchmark_sender "${GO_ARGS[@]}") || true
+        (cd "$TS_DIR" && go run ./cmd/benchmark_sender "${GO_ARGS[@]}") || SENDER_RC=$?
         ran_with_go_run=true
     fi
 fi
 if ! $ran_with_go_run; then
-    "$GO_BIN" "${GO_ARGS[@]}" || true
+    "$GO_BIN" "${GO_ARGS[@]}" || SENDER_RC=$?
 fi
 
 # Post-run grace: keep monitor.py sampling for N more seconds so the
@@ -669,6 +676,7 @@ echo "  Monitor:   $MONITOR_DIR/"
 [[ -f "$MONITOR_DIR/logs.csv" ]] && echo "  Logs:      $MONITOR_DIR/logs.csv"
 [[ -f "$SUMMARY_JSON" ]] && echo "  Summary:   $SUMMARY_JSON"
 echo "  Charts:    $CHART_DIR/"
+echo "  Sender RC: $SENDER_RC"
 echo ""
 echo "  To compare with another run:"
 echo "    $(basename "$0") --compare $RESULTS_DIR <other_results_dir>"

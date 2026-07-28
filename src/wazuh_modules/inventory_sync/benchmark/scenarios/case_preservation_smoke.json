@@ -1,0 +1,44 @@
+{
+  "name": "case_preservation_smoke",
+  "description": "One Linux agent performs an initial syscollector sync followed by two updates of the same documents. The delayed updates give enrich_docs.sh time to add case.* fields and exercise the existing-document fetch-merge-reindex path.",
+  "defaults": {
+    "session_type": "delta",
+    "max_eps": 5,
+    "use_databatch": true,
+    "retransmit": true,
+    "offline_retry": 3,
+    "offline_retry_delay": 2.0,
+    "start_ack_timeout": 5,
+    "end_ack_processing_timeout": 5,
+    "end_ack_timeout": 60,
+    "ack_timeout_retry": 3,
+    "ack_timeout_retry_delay": 3,
+    "post_data_delay": 1
+  },
+  "lanes": {
+    "syscollector_linux": [
+      {
+        "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json",
+        "sync_mode": 0
+      },
+      {
+        "dump": "sample_payloads/dump-syscollector/session_syscollector_sync_debian10.json",
+        "sync_mode": 1,
+        "repeat_count": 2,
+        "repeat_delay": 5,
+        "initial_delay": 60
+      }
+    ]
+  },
+  "fleets": [
+    {
+      "name": "linux",
+      "agents": 1,
+      "lanes": ["syscollector_linux"]
+    }
+  ],
+  "parallel_agents": 1,
+  "repeat_until": 0,
+  "drain_timeout": 60,
+  "post_run_grace": 15
+}

@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -306,7 +307,12 @@ func (c *Conn) readLoop() {
 		}
 		payload, err := wire.DecodeFrame(c.aesKey, frame)
 		if err != nil {
-			// drop; manager garbage shouldn't kill the reader
+			prefix := frame
+			if len(prefix) > 24 {
+				prefix = prefix[:24]
+			}
+			log.Printf("agent %s: manager frame decode failed: %v (length=%d prefix=%x)",
+				c.identity.ID, err, len(frame), prefix)
 			continue
 		}
 		// Shared-file push from the manager:
@@ -325,6 +331,7 @@ func (c *Conn) readLoop() {
 		}
 		in, err := fbbuild.ParseInbound(fbBytes)
 		if err != nil {
+			log.Printf("agent %s: manager FlatBuffer parse failed for %s: %v", c.identity.ID, tag, err)
 			continue
 		}
 		c.dispatch(tag, in)

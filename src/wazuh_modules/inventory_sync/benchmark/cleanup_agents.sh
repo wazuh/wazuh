@@ -21,7 +21,7 @@ if [[ "${1:-}" == "--all" ]]; then
 fi
 
 # Get auth token
-TOKEN=$(curl -s -k -X POST "${API_URL}/security/user/authenticate" \
+TOKEN=$(curl -sSk --fail-with-body -X POST "${API_URL}/security/user/authenticate" \
     -u "${API_USER}:${API_PASS}" | python3 -c 'import sys,json; print(json.load(sys.stdin)["data"]["token"])')
 
 if [[ -z "$TOKEN" ]]; then
@@ -32,11 +32,11 @@ fi
 # Get list of bench agents
 if $REMOVE_ALL; then
     echo "Fetching all agents..."
-    AGENTS_JSON=$(curl -s -k "${API_URL}/agents?limit=500&select=id,name&offset=0" \
+    AGENTS_JSON=$(curl -sSk --fail-with-body "${API_URL}/agents?limit=500&select=id,name&offset=0" \
         -H "Authorization: Bearer ${TOKEN}")
 else
     echo "Fetching benchmark agents (name starts with 'bench-')..."
-    AGENTS_JSON=$(curl -s -k "${API_URL}/agents?limit=500&select=id,name&q=name~bench-&offset=0" \
+    AGENTS_JSON=$(curl -sSk --fail-with-body "${API_URL}/agents?limit=500&select=id,name&q=name~bench-&offset=0" \
         -H "Authorization: Bearer ${TOKEN}")
 fi
 
@@ -59,16 +59,20 @@ NUM_AGENTS=$(echo "$AGENT_IDS" | tr ',' '\n' | wc -l)
 echo "Found $NUM_AGENTS agent(s) to remove."
 
 # Delete agents
-RESULT=$(curl -s -k -X DELETE "${API_URL}/agents?agents_list=${AGENT_IDS}&status=all&older_than=0s" \
+RESULT=$(curl -sSk --fail-with-body -X DELETE "${API_URL}/agents?agents_list=${AGENT_IDS}&status=all&older_than=0s" \
     -H "Authorization: Bearer ${TOKEN}")
 
-DELETED=$(echo "$RESULT" | python3 -c '
+read -r DELETED FAILED < <(echo "$RESULT" | python3 -c '
 import sys, json
 data = json.load(sys.stdin)
 total = data.get("data", {}).get("total_affected_items", 0)
 errors = data.get("data", {}).get("total_failed_items", 0)
-print(f"Deleted: {total}, Failed: {errors}")
+print(total, errors)
 ')
 
-echo "$DELETED"
+echo "Deleted: $DELETED, Failed: $FAILED"
+if [[ "$FAILED" -ne 0 ]]; then
+    echo "Error: one or more benchmark agents could not be deleted"
+    exit 1
+fi
 echo "Done."

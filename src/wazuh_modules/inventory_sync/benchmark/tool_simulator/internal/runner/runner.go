@@ -51,6 +51,38 @@ func Run(ctx context.Context, scn *scenario.Scenario, cfg Config, c *metrics.Cou
 	assignments := buildAssignments(scn)
 	totalAgents := len(assignments)
 
+	// Register the complete fleet before opening any remoted connection.
+	// Every authd registration reloads client.keys; if sessions are already
+	// running, that reload can reset an agent's reply cipher to Blowfish
+	// between End and its asynchronous terminal ACK.
+	type registeredAgent struct {
+		idx      int
+		identity agent.Identity
+		task     assignment
+	}
+	agents := make([]registeredAgent, 0, totalAgents)
+	for i, task := range assignments {
+		if err := ctx.Err(); err != nil {
+			break
+		}
+		identity, err := agent.Register(cfg.Manager, cfg.RegPort, agentName(i, task), 15*time.Second)
+		if err != nil {
+			log.Printf("agent %d: register failed: %v", i, err)
+			continue
+		}
+		agents = append(agents, registeredAgent{idx: i, identity: identity, task: task})
+	}
+
+	// Wait once, after the final registration, for remoted to load the
+	// complete and stable key set.
+	if len(agents) > 0 && cfg.KeyWait > 0 {
+		select {
+		case <-time.After(cfg.KeyWait):
+		case <-ctx.Done():
+			return len(agents), nil
+		}
+	}
+
 	// Concurrency cap (semaphore).
 	parallel := scn.Behavior.ParallelAgents
 	var sem chan struct{}
@@ -65,12 +97,9 @@ func Run(ctx context.Context, scn *scenario.Scenario, cfg Config, c *metrics.Cou
 	}
 
 	var wg sync.WaitGroup
-	var registered int
-	var regMu sync.Mutex
 
-	for i := 0; i < totalAgents; i++ {
-		i := i
-		a := assignments[i]
+	for _, registered := range agents {
+		registered := registered
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -82,11 +111,11 @@ func Run(ctx context.Context, scn *scenario.Scenario, cfg Config, c *metrics.Cou
 				}
 				defer func() { <-sem }()
 			}
-			runAgent(ctx, i, a, scn, cfg, c, cache, deadline, &registered, &regMu)
+			runAgent(ctx, registered.idx, registered.identity, registered.task, scn, cfg, c, cache, deadline)
 		}()
 	}
 	wg.Wait()
-	return registered, nil
+	return len(agents), nil
 }
 
 // assignment groups the fleet name and lane list for one agent slot.
@@ -108,6 +137,13 @@ func buildAssignments(scn *scenario.Scenario) []assignment {
 		}
 	}
 	return out
+}
+
+func agentName(idx int, a assignment) string {
+	if a.fleetName != "" {
+		return fmt.Sprintf("bench-%s-%04d-%s", a.fleetName, a.fleetIdx, randHex12())
+	}
+	return fmt.Sprintf("bench-%04d-%s", idx, randHex12())
 }
 
 // payloadKey identifies one resolved step uniquely.
@@ -136,38 +172,8 @@ func buildPayloadCache(scn *scenario.Scenario, benchDir string) (payloadCache, e
 	return cache, nil
 }
 
-func runAgent(ctx context.Context, idx int, a assignment, scn *scenario.Scenario,
-	cfg Config, c *metrics.Counters, cache payloadCache, deadline time.Time,
-	registered *int, regMu *sync.Mutex) {
-
-	// Agent name: include fleet name when fleets are used so agents are
-	// easier to identify in the manager and indexer.
-	//   with fleets:    bench-<fleet>-<idx_within_fleet>-<hex6>
-	//   without fleets: bench-<global_idx>-<hex6>
-	var name string
-	if a.fleetName != "" {
-		name = fmt.Sprintf("bench-%s-%04d-%s", a.fleetName, a.fleetIdx, randHex12())
-	} else {
-		name = fmt.Sprintf("bench-%04d-%s", idx, randHex12())
-	}
-	id, err := agent.Register(cfg.Manager, cfg.RegPort, name, 15*time.Second)
-	if err != nil {
-		log.Printf("agent %d: register failed: %v", idx, err)
-		return
-	}
-	regMu.Lock()
-	*registered++
-	regMu.Unlock()
-
-	// --key-wait
-	if cfg.KeyWait > 0 {
-		select {
-		case <-time.After(cfg.KeyWait):
-		case <-ctx.Done():
-			return
-		}
-	}
-
+func runAgent(ctx context.Context, idx int, id agent.Identity, a assignment, scn *scenario.Scenario,
+	cfg Config, c *metrics.Counters, cache payloadCache, deadline time.Time) {
 	for {
 		conn := agent.New(id, cfg.Manager, cfg.Port)
 		if err := conn.Dial(15 * time.Second); err != nil {
@@ -312,7 +318,8 @@ func runStep(ctx context.Context, conn *agent.Conn, laneName string, step scenar
 			if ctx.Err() != nil {
 				return err
 			}
-			// Log + continue; per-iter failures don't kill the lane.
+			log.Printf("agent %s lane %s step %d repeat %d/%d: %v",
+				conn.Identity().ID, laneName, step.StepIdx, i+1, step.RepeatCount, err)
 		}
 		if i < step.RepeatCount-1 && step.RepeatDelay > 0 {
 			select {
