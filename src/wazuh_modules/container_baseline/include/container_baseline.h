@@ -46,6 +46,12 @@
  * this branch) can use this literal directly instead of duplicating it. */
 #define CB_DEFAULT_CONNECTOR_SOCKET_PATH "queue/sockets/container_instances"
 
+/* Default on-disk prior-state database for the reconciler (see the reconciler
+ * API below). Durable across agent restarts so container-exit deletes still fire
+ * for containers that exited while the agent was down. The parent directory is
+ * created on demand. */
+#define CB_DEFAULT_PRIOR_STATE_DB_PATH "queue/container_baseline/prior_state.db"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -143,6 +149,34 @@ EXPORTED int cbaseline_run_fim_dbsync(const char*                connector_socke
                                       int                        path_count,
                                       cb_dbsync_row_sink_t       sink,
                                       void*                      user_data);
+/* Stateful container-inventory reconciler (#37534). Unlike the one-shot
+ * cbaseline_run_syscollector() above, this drives a *reconciled state* source:
+ * each run re-scans every live container and emits CREATE/MODIFY/DELETE rows by
+ * diffing against durable prior state, including deletes for containers that have
+ * exited. The handle must outlive individual runs (it holds the prior-state DB
+ * and the first-scan-after-reload guard), so the caller creates it once and runs
+ * it every scan interval.
+ *
+ * `sink`/`user_data` are captured at creation and used by every run. */
+typedef struct cbaseline_reconciler cbaseline_reconciler_t;
+
+/* Create a reconciler over the containers known at `connector_socket_path`,
+ * persisting prior state at `prior_state_db_path` (parent dir created on demand;
+ * pass CB_DEFAULT_PRIOR_STATE_DB_PATH for the default). Returns NULL on failure
+ * (e.g. the prior-state DB could not be opened) — the caller should then skip
+ * container inventory rather than crash. */
+EXPORTED cbaseline_reconciler_t* cbaseline_reconciler_create(const char*   connector_socket_path,
+                                                             const char*   prior_state_db_path,
+                                                             cb_row_sink_t sink,
+                                                             void*         user_data);
+
+/* Run one reconcile pass over every live container. Returns the number of
+ * containers reconciled, or -1 when the pass was skipped because the Container
+ * Instances module was unreachable (never a partial delete). */
+EXPORTED int cbaseline_reconciler_run(cbaseline_reconciler_t* handle);
+
+/* Destroy a reconciler and close its prior-state DB. Safe on NULL. */
+EXPORTED void cbaseline_reconciler_destroy(cbaseline_reconciler_t* handle);
 
 #ifdef __cplusplus
 }

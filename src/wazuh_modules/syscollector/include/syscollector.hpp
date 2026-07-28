@@ -462,6 +462,10 @@ class EXPORTED Syscollector final
         std::condition_variable                                                  m_pauseCv;
         std::mutex                                                               m_pauseMutex;
         std::unique_ptr<SysNormalizer>                                           m_spNormalizer;
+        // cbaseline_reconciler_t* handle for container-inventory reconcile (#37534,
+        // Linux-only). Held as void* so container_baseline.h stays out of this
+        // header; created lazily on the first container scan, destroyed in destroy().
+        void*                                                                    m_containerReconciler {nullptr};
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocol;
         std::vector<std::string>                                                 m_disabledCollectorsIndicesWithData;
         std::unique_ptr<IAgentSyncProtocol>                                      m_spSyncProtocolVD;

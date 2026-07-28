@@ -756,6 +756,14 @@ void Syscollector::releaseResources()
     m_spSyncProtocol.reset();
     m_spSyncProtocolVD.reset();
     m_spInfo.reset();
+
+#if defined(__linux__)
+    if (m_containerReconciler != nullptr)
+    {
+        cbaseline_reconciler_destroy(static_cast<cbaseline_reconciler_t*>(m_containerReconciler));
+        m_containerReconciler = nullptr;
+    }
+#endif
 }
 
 void Syscollector::destroy()
@@ -1898,135 +1906,45 @@ namespace
 void Syscollector::scanContainerBaseline()
 {
 #if defined(__linux__)
-    m_logFunction(LOG_DEBUG_VERBOSE, "Starting container baseline scan");
+    m_logFunction(LOG_DEBUG_VERBOSE, "Starting container inventory reconcile");
 
-    // container_id -> table -> array of dbsync-format rows.
-    using BaselineRows = std::map<std::string, std::map<std::string, nlohmann::json>>;
-    BaselineRows baseline;
-
-    const auto sink = [](const char* containerId, const char* table, const char* rowJson, void* userData)
+    // Reconciled state, not a one-shot baseline: each pass re-scans every live
+    // container and emits CREATE/MODIFY/DELETE by diffing against durable prior
+    // state (see container_baseline.h). The handle outlives individual scans (it
+    // owns the prior-state DB and the first-scan-after-reload guard), so it is
+    // created once and reused. Rows still bypass the DBSync/checksum-diff pipeline
+    // the host scan* methods use — the draft JSON shape is pushed straight to the
+    // sync protocol via ContainerBaselineSink (pending #37203-4's schema).
+    if (m_containerReconciler == nullptr)
     {
-        auto* acc = static_cast<BaselineRows*>(userData);
+        m_containerReconciler = cbaseline_reconciler_create(
+            CB_DEFAULT_CONNECTOR_SOCKET_PATH, CB_DEFAULT_PRIOR_STATE_DB_PATH, &Syscollector::ContainerBaselineSink, this);
 
-        if (!acc || !containerId || !table || !rowJson)
+        if (m_containerReconciler == nullptr)
         {
+            m_logFunction(LOG_WARNING,
+                          "Container inventory reconciler initialization failed; skipping container scan.");
             return;
         }
-
-        auto row = nlohmann::json::parse(rowJson, nullptr, false);
-
-        if (row.is_discarded() || !row.is_object())
-        {
-            return;
-        }
-
-        auto& rows = (*acc)[containerId][table];
-
-        if (!rows.is_array())
-        {
-            rows = nlohmann::json::array();
-        }
-
-        rows.push_back(std::move(row));
-    };
-
-    const int baselined = cbaseline_run_syscollector_dbsync(CB_DEFAULT_CONNECTOR_SOCKET_PATH, sink, &baseline);
-
-    // Every container currently known to container_instances, independent of
-    // whether it has a resolvable live PID right now. A container that's
-    // merely stopped is still reported here even though it produced no rows
-    // above (absent from `baseline`) — this is what lets the stale sweep
-    // below tell "stopped" apart from "gone" instead of conflating them.
-    std::set<std::string> discoveredIds;
-    const auto idSink = [](const char* containerId, void* userData)
-    {
-        auto* ids = static_cast<std::set<std::string>*>(userData);
-
-        if (ids && containerId)
-        {
-            ids->insert(containerId);
-        }
-    };
-    cbaseline_list_containers(CB_DEFAULT_CONNECTOR_SOCKET_PATH, idSink, &discoveredIds);
-
-    // Per-container scoped transactions: the same updateChanges/notifyChange/
-    // processEvent path host scans use computes the deltas (Option A). Every
-    // baseline table is synced even when a container produced no rows for it,
-    // so rows from a previous run age out as DELETED. A container's very
-    // first sync is forced quiet (no stateless alert) regardless of m_notify,
-    // matching the one-shot baseline's original seed behavior; every sync
-    // after that follows m_notify normally, same as host rows.
-    for (auto& [containerId, tables] : baseline)
-    {
-        const bool isFirstSyncForContainer = m_knownContainerIds.insert(containerId).second;
-        const std::optional<bool> notifyOverride =
-            isFirstSyncForContainer ? std::optional<bool> {false} : std::nullopt;
-
-        for (const auto& table : CONTAINER_BASELINE_TABLES)
-        {
-            auto it = tables.find(table);
-            nlohmann::json rows = (it != tables.end()) ? std::move(it->second) : nlohmann::json::array();
-
-            for (auto& row : rows)
-            {
-                sanitizeJsonValue(row);
-                row["checksum"] = getItemChecksum(row);
-            }
-
-            updateChanges(table, rows, containerId, notifyOverride);
-        }
     }
 
-    // Containers still in the DB but no longer known to container_instances
-    // at all (genuinely removed, not merely stopped): an empty scoped sync
-    // per stale id emits their DELETED events — each row's container_json
-    // column keeps those self-contained. A container that's still known but
-    // just has no live PID right now (stopped) is in `discoveredIds` and is
-    // therefore left untouched here, so a later restart resumes diffing
-    // against its retained rows instead of re-seeding from empty.
-    std::set<std::string> staleIds;
+    const int reconciled =
+        cbaseline_reconciler_run(static_cast<cbaseline_reconciler_t*>(m_containerReconciler));
 
-    for (const auto& table : CONTAINER_BASELINE_TABLES)
+    if (reconciled < 0)
     {
-        const auto selectCallback = [&staleIds, &discoveredIds](ReturnTypeCallback result, const nlohmann::json & data)
-        {
-            if (result == SELECTED && data.contains(CONTAINER_ID_COLUMN) && data.at(CONTAINER_ID_COLUMN).is_string())
-            {
-                const auto& id = data.at(CONTAINER_ID_COLUMN).get_ref<const std::string&>();
-
-                if (!id.empty() && discoveredIds.find(id) == discoveredIds.end())
-                {
-                    staleIds.insert(id);
-                }
-            }
-        };
-
-        auto selectQuery = SelectQuery::builder()
-                           .table(table)
-                           .columnList({CONTAINER_ID_COLUMN})
-                           .rowFilter("WHERE container_id != ''")
-                           .build();
-        m_spDBSync->selectRows(selectQuery.query(), selectCallback);
+        m_logFunction(LOG_DEBUG_VERBOSE,
+                     "Container inventory reconcile skipped (Container Instances module unavailable).");
     }
-
-    for (const auto& staleId : staleIds)
+    else
     {
-        for (const auto& table : CONTAINER_BASELINE_TABLES)
-        {
-            updateChanges(table, nlohmann::json::array(), staleId);
-        }
-
-        m_knownContainerIds.erase(staleId);
+        m_logFunction(LOG_DEBUG_VERBOSE,
+                     "Container inventory reconcile finished (" + std::to_string(reconciled) + " container(s)).");
     }
-
-    m_logFunction(LOG_DEBUG_VERBOSE,
-                  "Container baseline scan finished (" + std::to_string(baselined) + " container(s), " +
-                  std::to_string(staleIds.size()) + " stale container(s) cleaned).");
 #else
-    // Container baseline acquisition (#37532) only runs on Linux - the same
-    // Linux-only constraint as container_instances and the eBPF module it
-    // depends on.
-    m_logFunction(LOG_DEBUG_VERBOSE, "Container baseline scan skipped (Linux-only feature).");
+    // Container inventory (#37532/#37534) only runs on Linux - the same Linux-only
+    // constraint as container_instances and the eBPF module it depends on.
+    m_logFunction(LOG_DEBUG_VERBOSE, "Container inventory reconcile skipped (Linux-only feature).");
 #endif
 }
 
@@ -2079,12 +1997,11 @@ void Syscollector::scan()
     TRY_CATCH_TASK(scanServices);
     TRY_CATCH_TASK(scanBrowserExtensions);
 
-    // Container baseline (#37532) now runs every scan interval, same as the
-    // host scans above: it seeds a container's state the first time it's
-    // seen (kept quiet — see scanContainerBaseline()'s per-container
-    // notifyOverride) and computes real deltas against that seed on every
-    // scan after, via the same per-container scoped DBSync transactions host
-    // rows already use. No separate interval/config — it rides scan()'s own.
+    // Container inventory (#37534) is a reconciled state source, so it runs every
+    // scan (not just the first): processes/packages/etc. that appear, change, or
+    // vanish inside a container — and containers that exit — surface as
+    // CREATE/MODIFY/DELETE. The reconciler suppresses deletes on its first pass
+    // after (re)start (reload guard) and reconciles fully thereafter.
     TRY_CATCH_TASK(scanContainerBaseline);
 
     // Update sync=1 flag for all items that passed document limit check (unlimited items)
