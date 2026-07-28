@@ -232,8 +232,10 @@ class FakeManager final
                 }
 
                 // Sit on the response until the test removes the file, with a
-                // hard stop so a broken test cannot wedge the run.
-                for (int waited = 0; !holdFile.empty() && waited < 30000 &&
+                // hard stop so a broken test cannot wedge the run. The cap sits
+                // well above the test's own deadlines even when valgrind
+                // stretches them tenfold, so it only fires on a real hang.
+                for (int waited = 0; !holdFile.empty() && waited < 120000 &&
                         access(holdFile.c_str(), F_OK) == 0; waited += 20)
                 {
                     usleep(20 * 1000);
