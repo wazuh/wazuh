@@ -11,6 +11,8 @@
 
 #include "statefulStream.hpp"
 
+#include "sessionId.hpp"
+
 namespace
 {
     constexpr uint32_t STATEFUL_MAX_ATTEMPTS = 5;
@@ -33,6 +35,11 @@ StatefulStream::StatefulStream(const ModuleConfig& config, IHttpPerformer& perfo
 
 bool StatefulStream::submit(const std::string& sessionId, const uint8_t* buffer, size_t length)
 {
+    if (!acceptableId(sessionId))
+    {
+        return false;
+    }
+
     // Spool the buffer to a temp file now, so the queue never holds the bytes.
     auto spool = m_spoolFactory.spool(buffer, length);
 
@@ -47,8 +54,27 @@ bool StatefulStream::submit(const std::string& sessionId, const uint8_t* buffer,
 bool StatefulStream::submitFile(const std::string& sessionId, const std::string& filePath,
                                 uint64_t size)
 {
+    if (!acceptableId(sessionId))
+    {
+        return false;
+    }
+
     // Adopt an already-spooled session file (deleted after it is sent).
     return enqueue(Session {sessionId, std::make_shared<SpoolFile>(filePath), size});
+}
+
+bool StatefulStream::acceptableId(const std::string& sessionId) const
+{
+    // Last gate before the id becomes an X-Session-Id header. The intake already
+    // rejects illegal ids at the frame, but sessions also arrive straight from
+    // the C ABI, so the check that protects the header lives next to it.
+    if (isValidSessionId(sessionId))
+    {
+        return true;
+    }
+
+    LOGFN_WARN(m_logFn, "Rejecting a /stateful session: its id is not a valid session id.");
+    return false;
 }
 
 bool StatefulStream::enqueue(Session session)

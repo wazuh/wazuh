@@ -14,6 +14,7 @@
 
 #include "callbackSink.hpp"
 #include "moduleConfig.hpp"
+#include "moduleLog.hpp"
 #include "retrySender.hpp"
 #include "spoolFile.hpp"
 #include "stopToken.hpp"
@@ -71,6 +72,7 @@ class StatefulStream final
             std::string body;
         };
 
+        bool acceptableId(const std::string& sessionId) const;
         bool enqueue(Session session);
         bool popNext(Session& out);
         SendResult sendSession(const Session& session, Waiter& waiter);
@@ -85,6 +87,7 @@ class StatefulStream final
         mutable std::mutex m_mutex;
         std::deque<Session> m_queue;
         size_t m_maxQueue;
+        const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 };
 
 #endif // _HC_STATEFUL_STREAM_HPP
