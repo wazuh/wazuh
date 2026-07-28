@@ -40,6 +40,15 @@ namespace
 {
     constexpr auto DOWNSTREAM_LOGTAG {"wazuh-manager-remoted:downstream"};
 
+    // File-local rather than an Impl member: LogFn has hidden ELF visibility (loggerHelper.h wraps
+    // everything in a visibility pragma), so holding one as a field of a default-visibility class
+    // trips -Wattributes. Also avoids a heap allocation per log call.
+    const LogFn& logFn()
+    {
+        static const LogFn instance {DOWNSTREAM_LOGTAG};
+        return instance;
+    }
+
     using stream_protocol = asio::local::stream_protocol;
 
     const char* methodToString(remoted::http::Method method)
@@ -156,14 +165,37 @@ namespace remoted::downstream
             void start()
             {
                 auto self = shared_from_this();
-                armTimer(m_connectTimeout);
+                armTimer(Phase::Connect, m_connectTimeout);
                 m_socket.async_connect(stream_protocol::endpoint {m_request.socketPath},
                                        [self](const std::error_code& ec) { self->onConnect(ec); });
             }
 
         private:
-            void armTimer(Millis timeout)
+            // Which deadline the timer is currently enforcing. Tracked explicitly rather than
+            // inferred from which handler observed operation_aborted: that inference happens to be
+            // correct today (onRead is only reachable after the response timer is armed), but it is
+            // exactly the kind of implicit invariant a later refactor breaks silently.
+            enum class Phase
             {
+                Connect,
+                Write,
+                Response
+            };
+
+            static DownstreamError timeoutErrorFor(Phase phase)
+            {
+                switch (phase)
+                {
+                    case Phase::Connect: return DownstreamError::ConnectTimeout;
+                    case Phase::Write: return DownstreamError::WriteTimeout;
+                    case Phase::Response: return DownstreamError::ResponseTimeout;
+                }
+                return DownstreamError::ResponseTimeout;
+            }
+
+            void armTimer(Phase phase, Millis timeout)
+            {
+                m_phase = phase;
                 auto self = shared_from_this();
                 m_timer.expires_after(timeout);
                 m_timer.async_wait(
@@ -188,7 +220,7 @@ namespace remoted::downstream
                 m_timer.cancel();
                 if (ec)
                 {
-                    finish(m_timedOut ? DownstreamError::Timeout : DownstreamError::Connect, {});
+                    finish(m_timedOut ? timeoutErrorFor(m_phase) : DownstreamError::Connect, {});
                     return;
                 }
                 // Cover the write phase too: without an active timer here, a downstream peer that
@@ -196,7 +228,7 @@ namespace remoted::downstream
                 // hang async_write indefinitely, pinning this request's deferred-work slot and byte
                 // reservation forever. doWrite()'s completion re-arms the timer for the response
                 // phase, so this timer stays live end-to-end across every phase.
-                armTimer(m_writeTimeout);
+                armTimer(Phase::Write, m_writeTimeout);
                 doWrite();
             }
 
@@ -204,26 +236,27 @@ namespace remoted::downstream
             {
                 auto self = shared_from_this();
                 m_writeBuffers = {asio::buffer(m_head), asio::buffer(m_request.body.data(), m_request.body.size())};
-                asio::async_write(
-                    m_socket,
-                    m_writeBuffers,
-                    [self](const std::error_code& ec, std::size_t)
-                    {
-                        // Send complete (or failed): the body has left our hands, so
-                        // release the payload keep-alive NOW (frees buffer + budget).
-                        self->m_bodyKeepAlive.reset();
-                        if (self->m_finished)
-                        {
-                            return;
-                        }
-                        if (ec)
-                        {
-                            self->finish(self->m_timedOut ? DownstreamError::Timeout : DownstreamError::Transport, {});
-                            return;
-                        }
-                        self->armTimer(self->m_responseTimeout);
-                        self->doRead();
-                    });
+                asio::async_write(m_socket,
+                                  m_writeBuffers,
+                                  [self](const std::error_code& ec, std::size_t)
+                                  {
+                                      // Send complete (or failed): the body has left our hands, so
+                                      // release the payload keep-alive NOW (frees buffer + budget).
+                                      self->m_bodyKeepAlive.reset();
+                                      if (self->m_finished)
+                                      {
+                                          return;
+                                      }
+                                      if (ec)
+                                      {
+                                          self->finish(self->m_timedOut ? timeoutErrorFor(self->m_phase)
+                                                                        : DownstreamError::Transport,
+                                                       {});
+                                          return;
+                                      }
+                                      self->armTimer(Phase::Response, self->m_responseTimeout);
+                                      self->doRead();
+                                  });
             }
 
             void doRead()
@@ -272,7 +305,7 @@ namespace remoted::downstream
                 {
                     if (m_timedOut)
                     {
-                        finish(DownstreamError::Timeout, {});
+                        finish(timeoutErrorFor(m_phase), {});
                     }
                     // otherwise aborted by finish()/close -> nothing to do
                 }
@@ -327,6 +360,7 @@ namespace remoted::downstream
             llhttp_t m_parser {};
             SessionParseState m_parseState {};
             bool m_messageComplete {false};
+            Phase m_phase {Phase::Connect}; ///< Which deadline armTimer() last armed.
             bool m_timedOut {false};
             bool m_finished {false};
         };
@@ -344,7 +378,6 @@ namespace remoted::downstream
         asio::io_context ioc;
         asio::executor_work_guard<asio::io_context::executor_type> work;
         std::vector<std::thread> threads;
-        const LogFn logFn {DOWNSTREAM_LOGTAG};
     };
 
     AsioUdsHttpClient::AsioUdsHttpClient(DownstreamConfig config)
@@ -380,19 +413,17 @@ namespace remoted::downstream
                     }
                     catch (const std::exception& e)
                     {
-                        LOGFN_ERROR(m_impl->logFn,
-                                    "Downstream UDS client I/O thread ended on an unexpected exception: %s",
-                                    e.what());
+                        LOGFN_ERROR(
+                            logFn(), "Downstream UDS client I/O thread ended on an unexpected exception: %s", e.what());
                     }
                     catch (...)
                     {
-                        LOGFN_ERROR(m_impl->logFn,
-                                    "Downstream UDS client I/O thread ended on a non-standard exception.");
+                        LOGFN_ERROR(logFn(), "Downstream UDS client I/O thread ended on a non-standard exception.");
                     }
                 });
         }
 
-        LOGFN_INFO(m_impl->logFn, "Downstream UDS client started (%zu I/O thread(s)).", count);
+        LOGFN_INFO(logFn(), "Downstream UDS client started (%zu I/O thread(s)).", count);
     }
 
     void AsioUdsHttpClient::stop() noexcept
@@ -402,15 +433,29 @@ namespace remoted::downstream
             return;
         }
 
-        m_impl->work.reset();
-        m_impl->ioc.stop();
-        for (auto& thread : m_impl->threads)
+        // noexcept, and reached from ~AsioUdsHttpClient() as well as the facade's teardown:
+        // thread::join() can throw std::system_error, which would terminate the daemon mid-shutdown.
+        try
         {
-            if (thread.joinable())
+            m_impl->work.reset();
+            m_impl->ioc.stop();
+            for (auto& thread : m_impl->threads)
             {
-                thread.join();
+                if (thread.joinable())
+                {
+                    thread.join();
+                }
             }
         }
+        catch (const std::exception& e)
+        {
+            LOGFN_ERROR(logFn(), "Failure while stopping the downstream UDS client: %s.", e.what());
+        }
+        catch (...)
+        {
+            LOGFN_ERROR(logFn(), "Non-standard exception while stopping the downstream UDS client.");
+        }
+
         m_impl->threads.clear();
     }
 
@@ -418,13 +463,22 @@ namespace remoted::downstream
                                       std::shared_ptr<const void> bodyKeepAlive,
                                       DownstreamCallback onComplete)
     {
+        // Resolve every per-request override BEFORE `req` is moved into the Session. Reading
+        // req.responseTimeoutMs inside the same argument list as std::move(req) would be a
+        // sequencing bug: function arguments are only indeterminately sequenced (C++17
+        // [expr.call]/8), so the read may be ordered after the move. It would appear to work today
+        // purely because moving a DownstreamRequest leaves its int members intact -- which is
+        // exactly what would make it break silently if this field ever became a non-trivial type.
+        const int responseTimeoutMs =
+            req.responseTimeoutMs > 0 ? req.responseTimeoutMs : m_impl->config.responseTimeoutMs;
+
         auto session = std::make_shared<Session>(m_impl->ioc,
                                                  std::move(req),
                                                  std::move(bodyKeepAlive),
                                                  std::move(onComplete),
                                                  Millis {m_impl->config.connectTimeoutMs},
                                                  Millis {m_impl->config.writeTimeoutMs},
-                                                 Millis {m_impl->config.responseTimeoutMs},
+                                                 Millis {responseTimeoutMs},
                                                  m_impl->config.maxResponseBodySize);
 
         // Run the whole state machine on the session's strand.

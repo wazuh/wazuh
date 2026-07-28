@@ -31,6 +31,15 @@ namespace remoted::downstream
         remoted::http::Method method {remoted::http::Method::Post};
         std::string path;
         std::string contentType;
+        /// How long this endpoint is willing to wait for the downstream answer, ms. <=0 -> the
+        /// client's configured default (remoted.downstream_response_timeout). This is where an
+        /// endpoint whose handler legitimately takes minutes declares that, without relaxing the
+        /// deadline for fast endpoints like /stateless.
+        ///
+        /// @warning A value above `http_request_timeout` cannot take effect: the HTTP server caps
+        /// the whole request and will cut it off first. RemotedModuleFacade warns at startup when
+        /// the downstream deadlines add up past that cap.
+        int responseTimeoutMs {0};
     };
 
     /**

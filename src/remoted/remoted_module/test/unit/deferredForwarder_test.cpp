@@ -220,6 +220,25 @@ TEST(DeferredForwarderTest, PassesTargetAndBodyToClient)
     EXPECT_EQ(req.contentType, "application/x-ndjson");
     EXPECT_EQ(req.method, Method::Post);
     EXPECT_EQ(req.body, "H {\"wazuh\":{}}\nE payload"); // zero-copy view of the payload
+    EXPECT_EQ(req.responseTimeoutMs, 0);                // sampleTarget() sets no override
+}
+
+// The per-endpoint response deadline must survive the DownstreamTarget -> DownstreamRequest
+// translation; otherwise an endpoint declaring a longer deadline would silently get the global one.
+TEST(DeferredForwarderTest, TargetResponseTimeoutReachesClient)
+{
+    auto limiter = std::make_shared<DeferredWorkLimiter>(4);
+    auto client = std::make_shared<FakeDownstreamClient>();
+    DeferredForwarder forwarder {client, limiter, 1};
+
+    auto fixture = makeAuthReq("H {\"wazuh\":{}}\nE payload");
+    auto responder = std::make_shared<CapturingResponder>();
+
+    auto target = sampleTarget();
+    target.responseTimeoutMs = 1234;
+    forwarder.forward(fixture.req, responder, target, sampleMapper);
+
+    EXPECT_EQ(client->request().responseTimeoutMs, 1234);
 }
 
 TEST(DeferredForwarderTest, DeliversPostProcessorResultAndReleasesSlot)

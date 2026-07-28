@@ -213,7 +213,13 @@ src/downstream/
   are freed at send time (not the round-trip). Async on standalone Asio (`asio::local::stream_protocol`,
   connect-per-request, `Connection: close`), request framed by hand, response parsed with the vendored
   **llhttp**; sends **zero-copy** from our single buffer and parks **no** thread per in-flight request
-  (one small `io_context` serves many). Connect/response timeouts → `DownstreamError::Timeout`.
+  (one small `io_context` serves many). Each phase has its own deadline **and its own error value** —
+  `DownstreamError::{ConnectTimeout,WriteTimeout,ResponseTimeout}` — so a log line can name the
+  tunable that governs whichever one elapsed. `DownstreamTarget::responseTimeoutMs` (`<=0` → the
+  configured default) lets one endpoint wait minutes for a slow async handler without every other
+  endpoint tolerating the same delay before a hung downstream is noticed; the facade warns at startup
+  if an endpoint's connect+write+response budget exceeds `http_request_timeout`, which caps the whole
+  request and would otherwise cut the wait short.
 - **`DeferredForwarder::forward(req, responder, target, postProcess)`** — acquires a
   `DeferredWorkLimiter::Slot` (plain `503` when full; the agent retries), sends via the client, and on
   completion **offloads** the per-endpoint `PostProcessor` onto its own pool (so the client's I/O
@@ -449,9 +455,60 @@ void remoted_module_stop(void);
 - `start()` launches the worker thread and returns immediately; the module owns the thread.
 - `stop()` signals the worker (atomic flag + condition_variable) and joins it. Safe to call
   when never started.
-- All exceptions are caught at the `extern "C"` boundary — nothing throws into C.
-- Logging is routed back into remoted's `ossec.log` via the `full_log_fnc_t` callback
+- All exceptions are caught at the `extern "C"` boundary — nothing throws into C. Both wrappers
+  catch `std::exception` **and** `(...)`: a non-`std::exception` crossing into remoted's C code
+  would hit no handler at all and `std::terminate` the daemon.
+- Logging is routed back into remoted's `wazuh-manager.log ` via the `full_log_fnc_t` callback
   (remoted passes `mtLoggingFunctionsWrapper`) and the `LOGFN_*` macros.
+
+## Diagnostics — `src/common/logThrottle.hpp`
+
+Every condition where an operator may need to change a setting is logged, and named with the setting
+to change (`"…Consider increasing the value of 'max_deferred_requests'."`). The rules:
+
+- **Operator-actionable → `LOGFN_WARN`, throttled.** Byte budget exhausted (`max_inflight_bytes`),
+  deferred slots exhausted (`max_deferred_requests`), each downstream failure kind
+  (`downstream_connect_timeout` / `_write_timeout` / `_response_timeout` /
+  `_max_response_body_size`), clock skew (`auth_max_request_age` / `auth_max_future_skew`), body cap
+  (`auth_max_body_size`), an unusable `client.keys` key, and an authenticated agent claiming a
+  different agent id.
+- **Client-fault 4xx → `LOGFN_DEBUG2`, unthrottled.** Malformed/unauthenticated requests. An
+  unauthenticated peer controls how many of these it triggers, so logging them at WARN would be a
+  log-amplification vector against `wazuh-manager.log ` — and a bad MAC from an internet scanner is noise.
+  Visible with `remoted.debug=2` when someone is actually diagnosing a client.
+- **`LogThrottle`** (`src/common/logThrottle.hpp`) enforces one line per 90 s per condition —
+  matching remoted's own C throttles — and folds the suppressed count into the emitted line, so
+  nothing is silently lost. One instance **per condition**, never shared: a permanently-failing
+  condition must not mask a newly-appearing one. It deliberately does **not** log (it only decides),
+  which is what keeps `loggerHelper.h` out of headers the test binary includes, and makes the
+  decision unit-testable on its own.
+
+`endpoints/endpoint.cpp`'s `errorResponseFor()` is the single funnel for all auth rejections: it logs
+the reason **before** `publicErrorFor()` collapses seven distinct credential failures into one
+generic 401. Downstream failures are logged in `deferredForwarder.cpp`'s completion callback, where
+the raw `DownstreamError` is still available — `stateless::postProcess` turns them all into one 503,
+so by the time the agent is answered the cause is gone.
+
+RESTinio's own diagnostics reach `ossec.log` too, via `WazuhRestinioLogger`
+(`http_server/RestinioHttpServer.cpp`), which replaces `restinio::null_logger_t` — whose methods are
+`constexpr void {}`, i.e. every transport diagnostic was previously discarded *at compile time*. This
+covers TLS handshake failures, malformed HTTP, `EADDRINUSE`, and every `http_max_*` breach — but
+**none of it appears by default**: both `warn()` and `error()` are logged at `LOGFN_DEBUG1`,
+throttled (visible with `remoted.debug>=1`). RESTinio's own notion of "error" is a per-connection
+protocol/socket event (a truncated read, a malformed parse, a header/URL over its limit) driven
+overwhelmingly by client behavior — a portscanner, or deliberately-malformed negative-test traffic
+like `tools/send_stateless.py --all` — not "the manager is broken" in the sense this module reserves
+`LOGFN_ERROR` for. The one genuinely rare, operator-facing case (the acceptor failing to bind) is
+already surfaced distinctly by our own cert/key pre-check and `reportFailedStart()` escalation, so
+demoting RESTinio's own duplicate report of it costs nothing. The throttle matters even at DEBUG1:
+`Log::isDebugEnabled()` filters nothing today (`Log::GLOBAL_LOG_LEVEL` is `0` fixed), so the message
+builder — an allocation — runs unconditionally per call unless bounded; the real `dbg_flag` filter
+is further downstream. `trace`/`info` are left as `constexpr {}` no-ops for a different reason: with
+a real logger type RESTinio selects a generic logging overload that materializes a closure and a
+try/catch frame at ~30 per-request call sites, measurable even when the body does nothing.
+**The message is always passed as an argument to `"%s"`, never as the format string** — `LogFn`
+forwards its format to `_log()`'s `vfprintf`, and RESTinio's builders embed client-controlled data
+(request target, header values), so using it as a format would be a remote format-string bug.
 
 ## Integration in remoted
 

@@ -136,15 +136,62 @@ namespace
         writeFile("3824 debian10 any not-hex-at-all\n");
         Keystore keystore(m_path);
 
+        // The entry is still PRESENT (an empty key, not nullopt): that is what lets the auth
+        // middleware answer the precise MissingKey rather than the vaguer UnknownAgent.
         const auto key = keystore.keyFor(3824);
         ASSERT_TRUE(key.has_value());
         EXPECT_TRUE(key->empty());
+    }
+
+    // ...but it must not be COUNTED as loaded. Previously a file containing nothing but corrupted
+    // keys reported "1 key loaded" while rejecting every request from that agent, which read as a
+    // healthy keystore. The count is now what an operator can trust: keys that can authenticate.
+    TEST_F(KeystoreTest, CorruptKeyIsNotCountedAsLoaded)
+    {
+        writeFile("3824 debian10 any not-hex-at-all\n");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.reload(), 0);
+        const auto key = keystore.keyFor(3824);
+        ASSERT_TRUE(key.has_value());
+        EXPECT_TRUE(key->empty());
+    }
+
+    TEST_F(KeystoreTest, ValidAndCorruptKeysAreCountedSeparately)
+    {
+        writeFile("1 agent-a any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n"
+                  "2 agent-b any not-hex-at-all\n");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.reload(), 1); // only the usable one
+        EXPECT_FALSE(keystore.keyFor(1)->empty());
+        EXPECT_TRUE(keystore.keyFor(2)->empty());
     }
 
     TEST_F(KeystoreTest, MissingFileLeavesKeystoreEmpty)
     {
         Keystore keystore(m_path + "-does-not-exist");
         EXPECT_FALSE(keystore.keyFor(3824).has_value());
+    }
+
+    // An unreadable file must be distinguishable from an empty one by the return value, so the
+    // caller can tell the operator "every request will be rejected" instead of staying silent.
+    TEST_F(KeystoreTest, MissingFileReloadReportsUnreadable)
+    {
+        Keystore keystore(m_path + "-does-not-exist");
+        EXPECT_EQ(keystore.reload(), Keystore::kReloadUnreadable);
+    }
+
+    // A line whose id column is not numeric is skipped, and skipping it must not be mistaken for a
+    // load failure: the rest of the file is still usable.
+    TEST_F(KeystoreTest, NonNumericAgentIdIsSkippedWithoutFailingTheReload)
+    {
+        writeFile("not-a-number agent-x any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n"
+                  "7 agent-y any ab3193e717865907fc0d347fe49f854699d497e441dd7f4d4c48052334363751\n");
+        Keystore keystore(m_path);
+
+        EXPECT_EQ(keystore.reload(), 1);
+        EXPECT_TRUE(keystore.keyFor(7).has_value());
     }
 
     TEST_F(KeystoreTest, ReloadPicksUpChanges)
