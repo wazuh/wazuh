@@ -161,6 +161,7 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
 
     auto it { jsInput.find("options") };
     auto returnOldData { false };
+    auto updateOnly { false };
     nlohmann::json ignoredColumns { };
 
     if (jsInput.end() != it)
@@ -177,6 +178,13 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
         if (it->end() != itIgnoredFields)
         {
             ignoredColumns = itIgnoredFields->is_array() ? itIgnoredFields.value() : ignoredColumns;
+        }
+
+        auto itUpdateOnly { it->find("update_only") };
+
+        if (it->end() != itUpdateOnly)
+        {
+            updateOnly = itUpdateOnly->is_boolean() ? itUpdateOnly.value().get<bool>() : updateOnly;
         }
     }
 
@@ -260,7 +268,12 @@ void SQLiteDBEngine::syncTableRowData(const nlohmann::json& jsInput,
                         }
                     }
                 }
-                else
+                // A row that is not in the table yields diffExist == false, which is
+                // indistinguishable from "no changes" here: the upsert would then insert
+                // `entry` as a new row. Callers that only carry a subset of the columns
+                // (a partial update) must not do that, since the missing NOT NULL columns
+                // make the insert fail. update_only turns the absent row into a no-op.
+                else if (!updateOnly)
                 {
                     insertElement(table, m_tableFields[table], entry,
                                   [&]()

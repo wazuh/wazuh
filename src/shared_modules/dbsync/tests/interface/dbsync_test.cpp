@@ -811,6 +811,45 @@ TEST_F(DBSyncTest, syncRowIgnoreFields)
 
 
 
+// A partial row (primary key plus a couple of columns) must never be turned into an
+// INSERT when the row is missing: the columns it does not carry may be NOT NULL. This is
+// what made FIM's sync-flag update fail with
+// "sqlite: NOT NULL constraint failed: file_entry.checksum" (issue #37993) whenever the
+// entry was deleted between the scan and the deferred flush.
+TEST_F(DBSyncTest, syncRowUpdateOnlyDoesNotInsertMissingRow)
+{
+    const auto sql{ "CREATE TABLE file_entry(`path` TEXT, `checksum` TEXT NOT NULL, `sync` INTEGER DEFAULT 0, PRIMARY KEY (`path`)) WITHOUT ROWID;"};
+    const auto handle { dbsync_create(HostType::AGENT, DbEngineType::SQLITE3, DATABASE_TEMP, sql) };
+    ASSERT_NE(nullptr, handle);
+
+    const auto fullRow{ R"({"table":"file_entry","data":[{"path":"/tmp/a","checksum":"abc","sync":0}]})"};
+    const auto partialRow{ R"({"table":"file_entry","data":[{"path":"/tmp/a","sync":1}]})"};
+    const auto partialRowUpdateOnly{ R"({"table":"file_entry","data":[{"path":"/tmp/a","sync":1}],"options":{"update_only":true}})"};
+    const auto deleteRow{ R"({"table":"file_entry","query":{"data":[{"path":"/tmp/a"}],"where_filter_opt":""}})"};
+
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsFullRow{ cJSON_Parse(fullRow) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsPartialRow{ cJSON_Parse(partialRow) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsPartialRowUpdateOnly{ cJSON_Parse(partialRowUpdateOnly) };
+    const std::unique_ptr<cJSON, CJsonSmartDeleter> jsDeleteRow{ cJSON_Parse(deleteRow) };
+
+    CallbackMock wrapper;
+    callback_data_t callbackData { callback, &wrapper };
+
+    EXPECT_CALL(wrapper, callbackMock(INSERTED, nlohmann::json::parse(R"({"path":"/tmp/a","checksum":"abc","sync":0})"))).Times(1);
+    EXPECT_CALL(wrapper, callbackMock(MODIFIED, nlohmann::json::parse(R"({"path":"/tmp/a","sync":1})"))).Times(1);
+
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsFullRow.get(), callbackData));
+    // The row is there: the partial sync updates it, with or without the option.
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsPartialRowUpdateOnly.get(), callbackData));
+
+    EXPECT_EQ(0, dbsync_delete_rows(handle, jsDeleteRow.get()));
+
+    // The row is gone. Without the option the upsert inserts the partial row and trips
+    // the NOT NULL constraint on `checksum`; with it, the operation is a no-op.
+    EXPECT_NE(0, dbsync_sync_row(handle, jsPartialRow.get(), callbackData));
+    EXPECT_EQ(0, dbsync_sync_row(handle, jsPartialRowUpdateOnly.get(), callbackData));
+}
+
 TEST_F(DBSyncTest, syncRowInvalidData)
 {
     const auto sql{ "CREATE TABLE processes(`pid` BIGINT, `name` TEXT, `tid` BIGINT, PRIMARY KEY (`pid`)) WITHOUT ROWID;"};
