@@ -76,7 +76,10 @@ bool StatefulStream::acceptableId(const std::string& sessionId) const
         return true;
     }
 
-    LOGFN_WARN(m_logFn, "Rejecting a /stateful session: its id is not a valid session id.");
+    // The id itself is not logged: it is exactly the untrusted bytes we are
+    // refusing, and control characters in it would break the log line too.
+    LOGFN_WARN(m_logFn, "Refusing a /stateful session: its id (%zu bytes) is not a valid "
+               "session id.", sessionId.size());
     return false;
 }
 
