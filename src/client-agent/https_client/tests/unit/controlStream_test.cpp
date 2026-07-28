@@ -365,6 +365,41 @@ TEST_F(ControlStreamTest, MatchingConfigHashDoesNotDownload)
     m_stream.step(m_waiter); // Still in sync.
 }
 
+TEST_F(ControlStreamTest, ManagerConfigHashIsReportedEvenWhenItMatches)
+{
+    // The agent's startup hash gate waits on the manager-validated config, and
+    // an agent already in sync never downloads, so the hash has to reach the
+    // consumer on the notify itself or the gate never releases (#37854).
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default"],"config_hash":"abc"}})";
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)));
+    EXPECT_CALL(m_sink, onConfigDownloaded(_, _)).Times(0);
+    EXPECT_CALL(m_sink, onManagerConfigHash("abc")).Times(1);
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: in sync, still reported.
+}
+
+TEST_F(ControlStreamTest, ManagerConfigHashIsReportedBeforeADownload)
+{
+    // The diverging case reports too, so the gate can record what it is
+    // waiting for before /download lands it.
+    const std::string blob = "new-config-bytes";
+    const std::string blobHash = sha256Hex(blob.data(), blob.size());
+    const std::string notify =
+        R"({"status":"ok","agent":{"groups":["default"],"config_hash":")" + blobHash + R"("}})";
+    EXPECT_CALL(m_sink, onManagerConfigHash(blobHash)).Times(1);
+    EXPECT_CALL(m_performer, perform(_))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, "{}")))
+    .WillOnce(Return(response(TransportStatus::Ok, 200, notify)))
+    .WillRepeatedly(Return(response(TransportStatus::Ok, 500)));
+
+    m_stream.step(m_waiter); // Startup.
+    m_stream.step(m_waiter); // Notify: reports, then attempts the download.
+}
+
 TEST_F(ControlStreamTest, HashMismatchOnTheDownloadedFileDiscardsIt)
 {
     // The downloaded bytes do not match the advertised MD5: no delivery, no
