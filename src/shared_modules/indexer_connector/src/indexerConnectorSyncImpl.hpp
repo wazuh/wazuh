@@ -991,6 +991,39 @@ public:
         return resultJson;
     }
 
+    nlohmann::json executeMultiGet(const std::string& index, const std::vector<std::string>& documentIds)
+    {
+        if (!isSafeIndexName(index))
+        {
+            throw IndexerConnectorException("executeMultiGet: unsafe index name '" + index +
+                                            "' (empty or contains characters outside [a-zA-Z0-9._*-])");
+        }
+
+        nlohmann::json resultJson;
+        const auto onSuccess = [&resultJson](const std::string& response)
+        {
+            resultJson = nlohmann::json::parse(response);
+        };
+        const auto onError = [](const std::string& error, const long statusCode, const std::string&)
+        {
+            throw IndexerConnectorException("Multi-get request failed with status " + std::to_string(statusCode) +
+                                            ": " + error);
+        };
+
+        std::string url {m_selector->getNext()};
+        url += "/";
+        url += index;
+        url += "/_mget?realtime=true";
+        const nlohmann::json requestBody {{"ids", documentIds}};
+        m_httpRequest->post(RequestParameters {.url = HttpURL(url),
+                                               .data = requestBody.dump(),
+                                               .secureCommunication = m_secureCommunication},
+                            PostRequestParameters {.onSuccess = onSuccess, .onError = onError},
+                            {});
+
+        return resultJson;
+    }
+
     void executeSearchQueryWithPagination(const std::string& index,
                                           const nlohmann::json& query,
                                           std::function<void(const nlohmann::json&)> onResponse)

@@ -2222,6 +2222,32 @@ TEST_F(IndexerConnectorSyncTest, ExecuteSearchQuerySuccess)
     EXPECT_EQ(result["hits"]["hits"].size(), 2);
 }
 
+TEST_F(IndexerConnectorSyncTest, ExecuteMultiGetUsesRealtimeRead)
+{
+    auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();
+    EXPECT_CALL(*mockSelector, getNext()).WillRepeatedly(Return("mockserver:9200"));
+
+    IndexerConnectorSyncImplTest connector(config, nullptr, &mockHttpRequest, std::move(mockSelector));
+    std::string requestData;
+    std::string requestUrl;
+
+    EXPECT_CALL(mockHttpRequest, post(_, _, _))
+        .WillOnce(Invoke(
+            [&requestData, &requestUrl](auto requestParams, const auto& postParams, auto)
+            {
+                std::visit([&requestUrl](const auto& params) { requestUrl = params.url.url(); }, requestParams);
+                std::visit([&requestData](const auto& params) { requestData = params.data; }, requestParams);
+                std::get<TPostRequestParameters<const std::string&>>(postParams)
+                    .onSuccess(R"({"docs":[{"_id":"doc1","found":false}]})");
+            }));
+
+    const auto result = connector.executeMultiGet("wazuh-states-fim-files", {"doc1", "doc2"});
+
+    EXPECT_EQ(requestUrl, "mockserver:9200/wazuh-states-fim-files/_mget?realtime=true");
+    EXPECT_EQ(nlohmann::json::parse(requestData)["ids"], nlohmann::json::array({"doc1", "doc2"}));
+    ASSERT_TRUE(result["docs"].is_array());
+}
+
 TEST_F(IndexerConnectorSyncTest, ExecuteSearchQueryWithSearchAfter)
 {
     auto mockSelector = std::make_unique<NiceMock<MockServerSelector>>();

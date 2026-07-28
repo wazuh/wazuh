@@ -1319,9 +1319,8 @@ public:
 
                                 try
                                 {
-                                    const auto query = InventorySyncQueryBuilder::buildDocumentsByIdQuery(documentIds);
                                     auto batchDocuments = InventorySyncQueryBuilder::parseStoredDocuments(
-                                        m_indexerConnector->executeSearchQuery(index, query));
+                                        m_indexerConnector->executeMultiGet(index, documentIds));
                                     storedDocuments.insert(std::make_move_iterator(batchDocuments.begin()),
                                                            std::make_move_iterator(batchDocuments.end()));
                                 }

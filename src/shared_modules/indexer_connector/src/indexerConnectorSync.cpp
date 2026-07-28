@@ -43,6 +43,11 @@ public:
         return m_impl.executeSearchQuery(index, searchQuery);
     }
 
+    nlohmann::json executeMultiGet(const std::string& index, const std::vector<std::string>& documentIds)
+    {
+        return m_impl.executeMultiGet(index, documentIds);
+    }
+
     void executeSearchQueryWithPagination(const std::string& index,
                                           const nlohmann::json& query,
                                           std::function<void(const nlohmann::json&)> onResponse)
@@ -160,6 +165,12 @@ void IndexerConnectorSync::executeUpdateByQuery(const std::vector<std::string>& 
 nlohmann::json IndexerConnectorSync::executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery)
 {
     return m_impl->executeSearchQuery(index, searchQuery);
+}
+
+nlohmann::json IndexerConnectorSync::executeMultiGet(const std::string& index,
+                                                     const std::vector<std::string>& documentIds)
+{
+    return m_impl->executeMultiGet(index, documentIds);
 }
 
 void IndexerConnectorSync::executeSearchQueryWithPagination(const std::string& index,

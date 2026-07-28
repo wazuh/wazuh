@@ -162,6 +162,15 @@ public:
     nlohmann::json executeSearchQuery(const std::string& index, const nlohmann::json& searchQuery);
 
     /**
+     * @brief Fetch documents by ID using the real-time multi-get API.
+     *
+     * @param index Index containing the documents.
+     * @param documentIds Document IDs to fetch.
+     * @return JSON response from the indexer containing the requested documents.
+     */
+    nlohmann::json executeMultiGet(const std::string& index, const std::vector<std::string>& documentIds);
+
+    /**
      * @brief Execute a search query with automatic pagination.
      *
      * This method performs a search query and automatically handles pagination using

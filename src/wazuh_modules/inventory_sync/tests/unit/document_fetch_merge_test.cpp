@@ -12,30 +12,20 @@
 #include "inventorySyncQueryBuilder.hpp"
 #include <gtest/gtest.h>
 
-TEST(InventorySyncFetchMergeTest, BuildsBatchedDocumentIdQueryWithConcurrencyMetadata)
-{
-    const auto query =
-        InventorySyncQueryBuilder::buildDocumentsByIdQuery({"cluster_001_package", "cluster_001_process"});
-
-    EXPECT_EQ(query["size"], 2);
-    EXPECT_EQ(query["seq_no_primary_term"], true);
-    EXPECT_EQ(query["track_total_hits"], false);
-    ASSERT_TRUE(query["query"]["ids"]["values"].is_array());
-    ASSERT_EQ(query["query"]["ids"]["values"].size(), 2U);
-    EXPECT_EQ(query["query"]["ids"]["values"][0], "cluster_001_package");
-    EXPECT_EQ(query["query"]["ids"]["values"][1], "cluster_001_process");
-}
-
 TEST(InventorySyncFetchMergeTest, ParsesStoredDocumentsAndConcurrencyMetadata)
 {
-    const nlohmann::json response {
-        {"hits",
-         {{"hits",
-           nlohmann::json::array(
-               {{{"_id", "cluster_001_package"},
-                 {"_seq_no", 7},
-                 {"_primary_term", 3},
-                 {"_source", {{"package", {{"name", "openssl"}}}, {"user", {{"notes", "Reviewed"}}}}}}})}}}};
+    const auto response = nlohmann::json::parse(R"({
+        "docs": [{
+            "_id": "cluster_001_package",
+            "found": true,
+            "_seq_no": 7,
+            "_primary_term": 3,
+            "_source": {
+                "package": {"name": "openssl"},
+                "user": {"notes": "Reviewed"}
+            }
+        }]
+    })");
 
     const auto documents = InventorySyncQueryBuilder::parseStoredDocuments(response);
 
@@ -48,12 +38,48 @@ TEST(InventorySyncFetchMergeTest, ParsesStoredDocumentsAndConcurrencyMetadata)
 
 TEST(InventorySyncFetchMergeTest, RejectsStoredDocumentWithoutConcurrencyMetadata)
 {
-    const nlohmann::json response {{"hits",
-                                    {{"hits",
-                                      nlohmann::json::array({{{"_id", "cluster_001_package"},
-                                                              {"_source", {{"package", {{"name", "openssl"}}}}}}})}}}};
+    const auto response = nlohmann::json::parse(R"({
+        "docs": [{
+            "_id": "cluster_001_package",
+            "found": true,
+            "_source": {"package": {"name": "openssl"}}
+        }]
+    })");
 
     EXPECT_THROW(InventorySyncQueryBuilder::parseStoredDocuments(response), nlohmann::json::exception);
+}
+
+TEST(InventorySyncFetchMergeTest, IgnoresMissingDocumentsAndMissingIndex)
+{
+    const auto response = nlohmann::json::parse(R"({
+        "docs": [
+            {"_id": "missing-document", "found": false},
+            {
+                "_id": "missing-index-document",
+                "error": {
+                    "type": "index_not_found_exception",
+                    "reason": "no such index [wazuh-states-missing]"
+                }
+            }
+        ]
+    })");
+
+    EXPECT_TRUE(InventorySyncQueryBuilder::parseStoredDocuments(response).empty());
+}
+
+TEST(InventorySyncFetchMergeTest, RejectsUnexpectedMultiGetErrors)
+{
+    const auto response = nlohmann::json::parse(R"({
+        "docs": [{
+            "_id": "unavailable-document",
+            "error": {
+                "type": "unavailable_shards_exception",
+                "reason": "shard unavailable"
+            }
+        }]
+    })");
+
+    EXPECT_THROW(InventorySyncQueryBuilder::parseStoredDocuments(response), std::runtime_error);
 }
 
 TEST(InventorySyncFetchMergeTest, PreservesStoredTopLevelFieldsMissingFromIncomingDocument)
