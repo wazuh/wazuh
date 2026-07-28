@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <mutex>
@@ -78,9 +79,29 @@ namespace
         return config;
     }
 
+    /// Valgrind runs this binary about six times slower (the RTR stage reports
+    /// ~86 s for what takes ~14 s natively), which is enough to miss the
+    /// deadlines below. A missed deadline costs more than one failed
+    /// assertion: ASSERT_TRUE returns from the test body before its
+    /// hc_destroy(), so the handle's threads, curl handles and OpenSSL state
+    /// are never released and valgrind reports them as definitely lost. Stretch
+    /// the bound when running under valgrind rather than loosening it for
+    /// everyone, so a genuine hang still fails fast in a normal run.
+    int scaledTimeout(int timeoutMs)
+    {
+        static const int factor = []
+        {
+            const char* preload = std::getenv("LD_PRELOAD");
+            return preload != nullptr && std::strstr(preload, "valgrind") != nullptr ? 10 : 1;
+        }();
+        return timeoutMs * factor;
+    }
+
     bool waitFor(const std::atomic<int>& counter, int target, int timeoutMs)
     {
-        for (int elapsed = 0; elapsed < timeoutMs; elapsed += 10)
+        const int deadline = scaledTimeout(timeoutMs);
+
+        for (int elapsed = 0; elapsed < deadline; elapsed += 10)
         {
             if (counter.load() >= target)
             {
