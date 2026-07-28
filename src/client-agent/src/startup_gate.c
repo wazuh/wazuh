@@ -11,6 +11,7 @@
 #include "shared.h"
 #include "agentd.h"
 #include "../os_crypto/md5/md5_op.h"
+#include "sha256_op.h"
 #include <ctype.h>
 
 static pthread_mutex_t startup_gate_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -151,6 +152,69 @@ void startup_gate_refresh_from_local_hash(void) {
         w_mutex_lock(&startup_gate_mutex);
         startup_gate_set_locked(true, "hash_match");
         w_mutex_unlock(&startup_gate_mutex);
+    }
+}
+
+void startup_gate_release_from_https_apply(void) {
+    // The HTTPS /control contract (#37733) has no merged_sum handshake field
+    // to seed startup_gate_expected_sum with (unlike the legacy handshake), so
+    // startup_gate_refresh_from_local_hash()'s MD5-comparison machinery is
+    // structurally unusable here: it only ever does anything once
+    // startup_gate_process_handshake() has already set an expected value, and
+    // that function is legacy-only. Worse, the two sides would compare
+    // different hash algorithms anyway -- the HTTPS config_hash is a SHA-256
+    // ("SHA256 hash of group configuration", #37733 OpenAPI), while
+    // getsharedfiles()/startup_gate_expected_sum are MD5 -- so even seeding
+    // expected_sum with config_hash could never produce a real match.
+    //
+    // The HTTPS /download client (configFetcher.cpp) already verifies the
+    // downloaded bytes' SHA-256 against the manager-advertised config_hash
+    // BEFORE handing the file to the C side at all (see hc_callbacks_t's
+    // on_config_downloaded doc). By the time bridge_on_config_downloaded()
+    // calls this function, it has itself written those exact verified bytes
+    // to SHAREDCFG_FILE and applied them (UnmergeFiles + verifyRemoteConf).
+    // That is the same real-world invariant the legacy MD5 comparison exists
+    // to establish ("the config on disk is the one the manager just gave
+    // us"), just reached via a different, HTTPS-native verification path --
+    // so it is safe to open the gate directly here instead of going through
+    // the (inapplicable) MD5 matching helpers.
+    w_mutex_lock(&startup_gate_mutex);
+
+    if (startup_gate_enabled && !startup_gate_ready) {
+        startup_gate_set_locked(true, "https_config_applied");
+        w_mutex_unlock(&startup_gate_mutex);
+        mdebug1("Startup hash gate released via HTTPS configuration apply (https_config_applied).");
+        return;
+    }
+
+    w_mutex_unlock(&startup_gate_mutex);
+}
+
+void startup_gate_check_manager_config_hash(const char *manager_sha256) {
+    bool should_check = false;
+    os_sha256 local_sha256;
+
+    if (!manager_sha256 || !manager_sha256[0]) {
+        return;
+    }
+
+    w_mutex_lock(&startup_gate_mutex);
+    should_check = startup_gate_enabled && !startup_gate_ready;
+    w_mutex_unlock(&startup_gate_mutex);
+
+    if (!should_check) {
+        return;
+    }
+
+    if (OS_SHA256_File(SHAREDCFG_FILE, local_sha256, OS_BINARY) != 0) {
+        return; // No local merged.mg yet (nothing downloaded so far): nothing to compare.
+    }
+
+    if (strcmp(local_sha256, manager_sha256) == 0) {
+        w_mutex_lock(&startup_gate_mutex);
+        startup_gate_set_locked(true, "https_hash_match");
+        w_mutex_unlock(&startup_gate_mutex);
+        mdebug1("Startup hash gate: manager config hash (SHA-256) matches local, gate released.");
     }
 }
 

@@ -143,11 +143,25 @@ void HttpsClientFacade::statelessLoop()
 
 void HttpsClientFacade::drain()
 {
+    // Finding 3 (#37831 QA round): the manager was observed never receiving
+    // the /control shutdown message, with no failure log either -- pointing
+    // at this guard silently skipping the send. Neither branch had a log
+    // statement at any verbosity before this, so raising debug logging could
+    // not distinguish "guard tripped" from "never reached this code at all".
+    // These two lines make that observable; see controlStream.cpp's
+    // sendShutdown() for the send-attempt/outcome logs on the other side of
+    // the guard.
     if (m_authGate.paused() || m_control.connState() != HC_STATE_REGISTERED)
     {
+        LOGFN_DEBUG2(m_logFn,
+                     "Skipping drain/shutdown notification (auth paused=%d, connState=%d): "
+                     "paused or never registered, nothing to flush.",
+                     static_cast<int>(m_authGate.paused()),
+                     static_cast<int>(m_control.connState()));
         return; // Paused (dead key) or never registered: nothing to flush.
     }
 
+    LOGFN_DEBUG2(m_logFn, "Draining (stateless flush + /control shutdown) before stopping.");
     m_stateless.drain(m_drainWaiter);   // Flush the backlog in bounded batches.
     m_control.drainStep(m_drainWaiter); // Final shutdown message.
 }

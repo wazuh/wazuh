@@ -1,5 +1,5 @@
 /*
- * Wazuh agent HTTPS client bridge (development scaffold)
+ * Wazuh agent HTTPS client bridge
  * Copyright (C) 2015, Wazuh Inc.
  * July 17, 2026.
  *
@@ -23,8 +23,16 @@
  * real verify_mode/CA/cert/key/ciphers instead of a forced HC_VERIFY_NONE.
  * on_reenroll_required is wired to the existing authd flow (try_enroll_to_server,
  * start_agent.c) and hc_set_agent_key(); on_state_change feeds the .state file
- * (client-agent/include/state.h). Still pending (later integration workstreams
- * of #37702): retiring the legacy TCP data path this module runs alongside.
+ * (client-agent/include/state.h) and, since a QA round against #37831 found
+ * WAIT_FILE/os_setwait() had no HTTPS release path either, also clears that
+ * producer lock on REGISTERED. on_startup_result applies module limits and
+ * cluster-name authority (#37830's own scope), and on_config_downloaded
+ * writes/applies merged.mg and releases the startup_gate (#37832's own
+ * scope) -- both were previously dev-scaffold stubs despite their issues
+ * being merged and closed; see startup_gate_release_from_https_apply()'s own
+ * comment for why that release cannot reuse the legacy MD5-based gate
+ * machinery. Still pending (later integration workstreams of #37702):
+ * retiring the legacy TCP data path this module runs alongside.
  */
 
 #include "https_client_bridge.h"
@@ -36,6 +44,8 @@
 
 #include "agentd.h" /* pulls defs.h (__wazuh_version), sec.h (keys), client-config.h (agt) */
 #include "https_client.h"
+#include "sendmsg.h" /* send_msg(): the AG_IN_UNMERGE manager-visible report on unmerge failure */
+#include "sha256_op.h" /* OS_SHA256_File(): config_checksum seed, matching the module's own hash space */
 
 static hc_handle *g_https_client = NULL;
 
@@ -166,11 +176,205 @@ static DWORD WINAPI bridge_reenroll_thread_win(LPVOID arg)
 /* Received-work callbacks. The production hookups still pending (later
  * integration workstreams): execd/module-com routing for on_task-equivalent
  * work. */
+
+/* Startup-response parsing (#37830's own "In scope" text: apply module limits
+ * and cluster-name authority from the handshake). Deliberately separate,
+ * local copies of client-agent/src/start_agent.c's parse_fim_limits()/
+ * parse_syscollector_limits()/parse_sca_limits()/parse_limits() logic rather
+ * than calling those functions directly: they are file-static in start_agent.c
+ * (legacy handshake code, out of this change's scope per finding 4), and
+ * strict-required-field parsing is genuinely what the "limits" sub-object
+ * needs (unlike cluster/groups below). Field names/nesting confirmed against
+ * the current #37733 contract and the https_client module's own demo mock
+ * manager (https_client/demo/mock_manager.py): {"limits":{"fim":{...},
+ * "syscollector":{...},"sca":{...}},"cluster":{"name":...,"node":...},
+ * "agent":{"groups":[...]}}. */
+
+static bool bridge_get_required_int(const cJSON *parent, const char *name, int *value)
+{
+    cJSON *field = cJSON_GetObjectItem(parent, name);
+    if (!field || !cJSON_IsNumber(field)) {
+        return false;
+    }
+    *value = field->valueint;
+    return true;
+}
+
+static bool bridge_parse_fim_limits(const cJSON *limits_obj, fim_limits_t *fim)
+{
+    cJSON *module = cJSON_GetObjectItem(limits_obj, "fim");
+    if (!module || !cJSON_IsObject(module)) {
+        return false;
+    }
+
+    return bridge_get_required_int(module, "file", &fim->file) &&
+           bridge_get_required_int(module, "registry_key", &fim->registry_key) &&
+           bridge_get_required_int(module, "registry_value", &fim->registry_value);
+}
+
+static bool bridge_parse_syscollector_limits(const cJSON *limits_obj, syscollector_limits_t *syscollector)
+{
+    cJSON *module = cJSON_GetObjectItem(limits_obj, "syscollector");
+    if (!module || !cJSON_IsObject(module)) {
+        return false;
+    }
+
+    return bridge_get_required_int(module, "hotfixes", &syscollector->hotfixes) &&
+           bridge_get_required_int(module, "packages", &syscollector->packages) &&
+           bridge_get_required_int(module, "processes", &syscollector->processes) &&
+           bridge_get_required_int(module, "ports", &syscollector->ports) &&
+           bridge_get_required_int(module, "network_iface", &syscollector->network_iface) &&
+           bridge_get_required_int(module, "network_protocol", &syscollector->network_protocol) &&
+           bridge_get_required_int(module, "network_address", &syscollector->network_address) &&
+           bridge_get_required_int(module, "hardware", &syscollector->hardware) &&
+           bridge_get_required_int(module, "os_info", &syscollector->os_info) &&
+           bridge_get_required_int(module, "users", &syscollector->users) &&
+           bridge_get_required_int(module, "groups", &syscollector->groups) &&
+           bridge_get_required_int(module, "services", &syscollector->services) &&
+           bridge_get_required_int(module, "browser_extensions", &syscollector->browser_extensions);
+}
+
+static bool bridge_parse_sca_limits(const cJSON *limits_obj, sca_limits_t *sca)
+{
+    cJSON *module = cJSON_GetObjectItem(limits_obj, "sca");
+    if (!module || !cJSON_IsObject(module)) {
+        return false;
+    }
+
+    return bridge_get_required_int(module, "checks", &sca->checks);
+}
+
+static bool bridge_parse_limits(const cJSON *root, module_limits_t *limits)
+{
+    cJSON *limits_obj = cJSON_GetObjectItem(root, "limits");
+    if (!limits_obj || !cJSON_IsObject(limits_obj)) {
+        return false;
+    }
+
+    if (!bridge_parse_fim_limits(limits_obj, &limits->fim) ||
+        !bridge_parse_syscollector_limits(limits_obj, &limits->syscollector) ||
+        !bridge_parse_sca_limits(limits_obj, &limits->sca)) {
+        return false;
+    }
+
+    limits->limits_received = true;
+    return true;
+}
+
+/* Cluster-name authority (#37830): unlike start_agent.c's parse_cluster_name()/
+ * parse_cluster_node() -- which are flat top-level fields and REFUSE an empty
+ * value -- the HTTPS contract nests them under "cluster":{"name","node"}, and
+ * #37830's own scope explicitly wants an unconditional overwrite, even to
+ * empty/unknown, so a manager that stops reporting identity doesn't leave a
+ * stale value behind. Mirrors ControlStream::applyClusterIdentity() (the
+ * module's own internal, HTTPS-side copy of this same rule) so the C side's
+ * globals (which agent-info/agcom and the shutdown message already read)
+ * agree with what the module itself believes. */
+static void bridge_apply_cluster_identity(const cJSON *root)
+{
+    const cJSON *cluster = cJSON_GetObjectItem(root, "cluster");
+    const char *name = NULL;
+    const char *node = NULL;
+
+    if (cluster && cJSON_IsObject(cluster)) {
+        cJSON *name_field = cJSON_GetObjectItem(cluster, "name");
+        cJSON *node_field = cJSON_GetObjectItem(cluster, "node");
+
+        if (name_field && cJSON_IsString(name_field) && name_field->valuestring) {
+            name = name_field->valuestring;
+        }
+        if (node_field && cJSON_IsString(node_field) && node_field->valuestring) {
+            node = node_field->valuestring;
+        }
+    }
+
+    snprintf(agent_cluster_name, sizeof(agent_cluster_name), "%s", name ? name : "");
+    snprintf(agent_cluster_node, sizeof(agent_cluster_node), "%s", node ? node : "");
+    mdebug1("https_client: cluster identity -> name='%s', node='%s'.", agent_cluster_name, agent_cluster_node);
+}
+
+/* agent_groups: HTTPS nests the array under "agent":{"groups":[...]} (see
+ * ControlStream's firstGroup(), which reads the same object for /download's
+ * group parameter) rather than start_agent.c's flat "agent_groups" array.
+ * Builds the same CSV shape agent_agent_groups already holds for legacy. */
+static void bridge_apply_agent_groups(const cJSON *root)
+{
+    const cJSON *agent = cJSON_GetObjectItem(root, "agent");
+    const cJSON *groups_array = agent ? cJSON_GetObjectItem(agent, "groups") : NULL;
+    cJSON *group_item = NULL;
+    size_t offset = 0;
+
+    agent_agent_groups[0] = '\0';
+
+    if (!groups_array || !cJSON_IsArray(groups_array)) {
+        return;
+    }
+
+    cJSON_ArrayForEach(group_item, groups_array) {
+        if (cJSON_IsString(group_item) && group_item->valuestring && group_item->valuestring[0] != '\0') {
+            size_t group_len = strlen(group_item->valuestring);
+            /* Space check: group + comma + null terminator. */
+            if (offset + group_len + 2 < sizeof(agent_agent_groups)) {
+                if (offset > 0) {
+                    agent_agent_groups[offset++] = ',';
+                }
+                strcpy(agent_agent_groups + offset, group_item->valuestring);
+                offset += group_len;
+            }
+        }
+    }
+    agent_agent_groups[offset] = '\0';
+
+    if (agent_agent_groups[0]) {
+        mdebug1("https_client: agent groups -> %s.", agent_agent_groups);
+    }
+}
+
 static void bridge_on_startup_result(bool accepted, const char *metadata_json, void *user_data)
 {
     (void)user_data;
     mdebug1("https_client startup %s: %s", accepted ? "accepted" : "rejected",
             metadata_json ? metadata_json : "(no metadata)");
+
+    if (!accepted || !metadata_json) {
+        return;
+    }
+
+    cJSON *root = cJSON_Parse(metadata_json);
+    if (!root) {
+        mdebug2("https_client: startup metadata is not valid JSON; module limits and "
+                "cluster identity are unchanged.");
+        return;
+    }
+
+    /* #37830 "In scope": apply module limits into the existing exposure paths
+     * (agent_module_limits, read by FIM/syscollector/SCA the same way the
+     * legacy handshake feeds them) and reload under <auto_restart> only when
+     * the limits actually changed -- mirrors start_agent.c's
+     * agent_handshake_to_server() (previous_limits snapshot + module_limits_changed()),
+     * not an unconditional reload on every accepted startup. */
+    module_limits_t previous_limits = agent_module_limits;
+
+    if (bridge_parse_limits(root, &agent_module_limits)) {
+        mdebug1("https_client: module limits received from manager.");
+
+        if (previous_limits.limits_received && module_limits_changed(&previous_limits, &agent_module_limits)) {
+            if (agt->flags.auto_restart) {
+                minfo("https_client: reloading due to module limits changes.");
+                reloadAgent();
+            } else {
+                mdebug1("https_client: module limits have been updated.");
+            }
+        }
+    } else {
+        mdebug2("https_client: no valid 'limits' object in the startup response; "
+                "module limits are unchanged.");
+    }
+
+    bridge_apply_cluster_identity(root);
+    bridge_apply_agent_groups(root);
+
+    cJSON_Delete(root);
 }
 
 static void bridge_on_reenroll_required(void *user_data)
@@ -223,56 +427,155 @@ static void bridge_on_task(const char *task_id, const char *task_type, const cha
 }
 
 /* The startup hash gate (client-agent/src/startup_gate.c) holds syscheckd and
- * the other modules until the manager-validated configuration is in place. Its
- * only feed was the legacy TCP handshake (start_agent.c calls
- * startup_gate_process_handshake with the merged_sum the manager pushes there),
- * so an agent whose transport is HTTPS never got an expected hash and the gate
- * stayed at "waiting_handshake" forever, blocking module startup on Linux and
- * Windows alike.
- *
- * The module reports the manager's hash on every Notify, matching or not, which
- * covers both cases through the gate's existing logic: an agent already in sync
- * releases immediately on the hash match, and one that diverges keeps waiting
- * until /download lands the new configuration and the apply path refreshes it. */
+ * the other modules until the manager-validated configuration is in place.
+ * Fired on every accepted Notify (whether or not it triggers a download), so
+ * an agent that boots already in sync with the manager -- no download, no
+ * reload, nothing else to hook a release off -- still releases the gate via
+ * a direct SHA-256 comparison against the local merged.mg
+ * (startup_gate_check_manager_config_hash(), which owns the real digest math;
+ * this callback only forwards). */
 static void bridge_on_manager_config_hash(const char *config_hash, void *user_data)
 {
     (void)user_data;
-
-    /* Only an MD5-shaped hash may reach the gate. It validates against
-     * getsharedfiles(), which is OS_MD5_File over merged.mg, and it reacts to
-     * anything else by latching itself blocked on "invalid_handshake_hash",
-     * which its own comment says needs an agentd restart to clear. The module
-     * verifies downloaded configs with sha256 instead, so until the manager
-     * side settles which digest /control reports (no endpoint exists yet), a
-     * mismatched shape must leave the gate exactly as it was rather than
-     * wedge it. */
-    if (config_hash == NULL || strlen(config_hash) != 32) {
-        mdebug2("https_client: manager config hash '%s' is not the MD5 shape the startup "
-                "gate validates; leaving the gate untouched.",
-                config_hash && config_hash[0] ? config_hash : "(none)");
-        return;
-    }
-
-    startup_gate_process_handshake(true, config_hash);
+    startup_gate_check_manager_config_hash(config_hash);
 }
 
+/* Applies a downloaded merged configuration and releases the startup gate.
+ *
+ * file_path is a module-owned temp file valid ONLY until the callback that
+ * received it returns (the module deletes it right after) -- so the very
+ * first thing this does is copy it into SHAREDCFG_FILE.
+ *
+ * Mirrors the legacy apply chain (client-agent/src/receiver.c's FILE_CLOSE_HEADER
+ * handling: UnmergeFiles -> cldir_ex_ignore -> verifyRemoteConf -> reloadAgent),
+ * reusing the exact same shared-code calls, including receiver.c's own
+ * anti-race sequencing between reloadAgent() and the gate release (see its
+ * "the reload chain ... is the normal release path" comment): if
+ * reloadAgent() actually dispatches, the gate is deliberately NOT released
+ * here -- releasing it unconditionally could let a module still blocked in
+ * startup_gate_wait_for_ready() unblock and start a moment before the reload
+ * chain (modulesd CONTROL_SOCK -> wazuh-control reload -> SIGUSR1) restarts
+ * it anyway. client-agent/src/agentd.c's own SIGUSR1 handling
+ * (needs_config_reload) calls startup_gate_release_from_https_apply()
+ * once that restart has actually happened -- this is the transport-agnostic
+ * release path for the common case.
+ *
+ * The one deliberate difference from receiver.c: the HTTPS /control contract
+ * has no merged_sum handshake field (#37733), so there is no later handshake
+ * retry to lean on if reloadAgent() cannot even dispatch (control socket
+ * unreachable). receiver.c's own fallback ("release inline only if
+ * reloadAgent() fails") is mirrored exactly below for that case -- see the
+ * reload/gate block near the end of this function, and
+ * startup_gate_release_from_https_apply()'s own comment for why that inline
+ * release is safe even without the legacy MD5 comparison.
+ */
 static void bridge_on_config_downloaded(const char *config_hash, const char *file_path,
                                         void *user_data)
 {
-    /* Production hookup (later integration workstream): copy the file inside
-     * this callback (the module deletes it right after), then run the legacy
-     * apply chain -- write SHAREDCFG_DIR/merged.mg, UnmergeFiles(), verify
-     * with getsharedfiles(), reloadAgent() under auto_restart (receiver.c /
-     * reload_agent.c) -- and call hc_set_config_hash() if the applied hash
-     * diverges. The dev scaffold only logs the delivery. */
     (void)user_data;
+
+    /* Callback-safe per https_client.h's own doc; read without the lock like
+     * bridge_on_reenroll_required's w_create_thread(..., g_https_client, ...)
+     * already does -- a callback cannot be running concurrently with the
+     * hc_destroy() that would invalidate this pointer. */
+    hc_handle *handle = g_https_client;
+
     mdebug1("https_client config downloaded (hash=%s, file=%s)",
             config_hash ? config_hash : "?", file_path ? file_path : "?");
 
-    /* Re-check the gate once the configuration has been applied. Harmless
-     * today, when the apply chain above is still a scaffold and the local hash
-     * has not moved: the gate simply stays blocked until it has. */
-    startup_gate_refresh_from_local_hash();
+    if (!file_path || !file_path[0]) {
+        merror("https_client: config downloaded callback fired without a file path; nothing to apply.");
+        return;
+    }
+
+    /* Binary mode ('b'): the module already SHA-256-verified these exact
+     * bytes against the manager's config_hash before this callback fired
+     * (configFetcher.cpp). A text-mode copy on Windows would silently
+     * rewrite '\n' as '\r\n', corrupting the file relative to what the hash
+     * was computed over -- the SHA-256 recomputed from SHAREDCFG_FILE on the
+     * next fresh instance (bridge_build_config()) would then never match the
+     * manager's hash, forcing an endless re-download/reload loop (observed
+     * as a real, Windows-only regression during #37831 real-package
+     * validation, 2026-07-28). */
+    if (w_copy_file(file_path, SHAREDCFG_FILE, 'b', NULL, 0) != 0) {
+        merror("https_client: could not copy the downloaded configuration into '%s'; "
+               "keeping the previously applied one.", SHAREDCFG_FILE);
+        if (handle) {
+            /* What's actually on disk is still the old config, not config_hash:
+             * correct the module's optimistic view so the next Notify mismatch
+             * re-triggers the download instead of assuming we are in sync. */
+            hc_set_config_hash(handle, "");
+        }
+        return;
+    }
+
+    char **ignore_list;
+    os_calloc(2, sizeof(char *), ignore_list);
+    os_strdup(SHAREDCFG_FILENAME, *ignore_list);
+
+    if (!UnmergeFiles(SHAREDCFG_FILE, SHAREDCFG_DIR, OS_TEXT, &ignore_list)) {
+        merror("https_client: failed to unmerge the downloaded configuration "
+               "('%s'); keeping the previously applied files.", SHAREDCFG_FILE);
+        /* Manager-visible report, mirroring receiver.c's own AG_IN_UNMERGE event
+         * on the same failure. */
+        char unmerge_fail_msg[OS_MAXSTR];
+        snprintf(unmerge_fail_msg, OS_MAXSTR, "%c:%s:%s", LOCALFILE_MQ, "wazuh-agent", AG_IN_UNMERGE);
+        send_msg(unmerge_fail_msg, -1);
+        free_strarray(ignore_list);
+        if (handle) {
+            hc_set_config_hash(handle, "");
+        }
+        return;
+    }
+
+    if (cldir_ex_ignore(SHAREDCFG_DIR, (const char **)ignore_list)) {
+        mwarn("https_client: could not clean up the shared configuration directory.");
+    }
+    free_strarray(ignore_list);
+
+    if (!agt->flags.remote_conf) {
+        /* Mirrors receiver.c: the files are staged either way, but nothing
+         * reloads or gates on remote configuration when the agent has opted
+         * out of it. */
+        return;
+    }
+
+    if (verifyRemoteConf()) {
+        /* Invalid remote configuration: verifyRemoteConf() already reported it
+         * to the manager (AG_IN_RCON). Do not reload or release the gate with
+         * a configuration known to be broken -- mirrors receiver.c, which
+         * skips its own reload/gate block on the same check. */
+        merror("https_client: downloaded configuration failed validation; not reloading.");
+        return;
+    }
+
+    minfo("https_client: applying configuration downloaded over HTTPS (hash=%s).",
+          config_hash ? config_hash : "?");
+
+    /* Anti-race sequencing, mirroring receiver.c's own FILE_CLOSE_HEADER
+     * handling (see its "the reload chain ... is the normal release path"
+     * comment): if reloadAgent() actually dispatches, do NOT release the gate
+     * here. Doing so unconditionally could let a module still blocked in
+     * startup_gate_wait_for_ready() unblock and start a moment before the
+     * reload chain (modulesd CONTROL_SOCK -> wazuh-control reload -> SIGUSR1)
+     * restarts it anyway -- the exact "briefly start with the new config and
+     * then get killed" race receiver.c was written to avoid. agentd.c's own
+     * SIGUSR1 handling (needs_config_reload) already calls
+     * startup_gate_release_from_https_apply() once that restart has actually
+     * happened.
+     *
+     * Only release inline here as a fallback when reloadAgent() itself could
+     * not even dispatch (control socket unreachable) -- no SIGUSR1 will ever
+     * arrive to do it later in that case, so the gate would otherwise stay
+     * stuck. This is also, concretely, the fresh-install/first-boot case:
+     * modulesd/monitoring processes are still blocked in their very first
+     * startup_gate_wait_for_ready() call and have no prior instance to
+     * restart, so there is nothing to race against. */
+    if (!reloadAgent()) {
+        mdebug1("https_client: could not dispatch the reload chain; releasing "
+                "the startup gate directly instead (no restart will arrive to do it).");
+        startup_gate_release_from_https_apply();
+    }
 }
 
 static void bridge_on_state_change(int state, void *user_data)
@@ -280,6 +583,21 @@ static void bridge_on_state_change(int state, void *user_data)
     (void)user_data;
     mdebug1("https_client connection state -> %d", state);
     w_agentd_state_update(UPDATE_STATUS, (void *)bridge_map_agent_status(state));
+
+    /* Interim fix for the WAIT_FILE/os_setwait() producer lock (armed
+     * unconditionally at agent startup, see agentd.c's AgentdStart()): it is
+     * otherwise only ever cleared by a successful LEGACY plaintext handshake,
+     * which permanently blocks every module's SendMSG/SendBinaryMSG against a
+     * pure-HTTPS manager even though /control is fully connected and healthy.
+     * A successful HTTPS registration is the equivalent "the manager
+     * acknowledged us" signal, so clear the lock here too. os_delwait() is
+     * idempotent (unlink() on an already-absent WAIT_FILE is a harmless
+     * no-op, and __wait_lock is just reset to 0), so it is safe to call
+     * unconditionally on every REGISTERED transition, including a later one
+     * after a reconnect. */
+    if (state == HC_STATE_REGISTERED) {
+        os_delwait();
+    }
 }
 
 /* Occupancy thresholds the module reports against, kept so the log lines can
@@ -295,9 +613,7 @@ static int g_buffer_normal_level = 70;
  *
  * The state event bypasses the accumulator -- send_buffer_status_event() writes
  * straight to send_msg() -- exactly as buffer.c bypassed the ring it reports
- * on. A flood report must not queue behind the flood it is reporting. That
- * keeps it on the legacy socket for now; it moves with every other stateless
- * producer when the TCP path is retired. */
+ * on. A flood report must not queue behind the flood it is reporting. */
 static void bridge_on_buffer_level(int level, void *user_data)
 {
     (void)user_data;
@@ -438,10 +754,39 @@ static bool bridge_build_config(hc_config_t *config)
     config->buffer_normal_level = (uint32_t)g_buffer_normal_level;
     config->buffer_flood_tolerance_s = (uint32_t)getDefine_Int("agent", "tolerance", 0, 600);
 
-    char *checksum = getsharedfiles();
-    if (checksum) {
-        strncpy(config->config_checksum, checksum, sizeof(config->config_checksum) - 1);
-        os_free(checksum);
+    /* Bug found during real-package validation of #37831 (2026-07-28): this used to be
+     * getsharedfiles() (client-agent/src/notify.c), which is an MD5 (OS_MD5_File) -- the legacy
+     * merged_sum format. config->config_checksum seeds ConfigHashState's initial value
+     * (httpsClientFacade.cpp: m_configHash(m_config.configChecksum)), which is compared
+     * byte-for-byte against the manager-reported agent.config_hash on every Notify
+     * (controlStream.cpp's maybeDownloadConfig()) -- and that value is a SHA-256 ("SHA256 hash
+     * of group configuration", #37733 OpenAPI; confirmed against configFetcher.cpp/digest.hpp,
+     * which verify downloads the same way). An MD5 hex string can never equal a SHA-256 hex
+     * string, so seeding this from the MD5 guaranteed a mismatch on literally every comparison
+     * against this seed, not just the first one -- and while the module's own optimistic
+     * ConfigHashState::set() after a successful download corrects this in memory for the
+     * lifetime of one https_client instance, this seed is what a FRESH instance starts from
+     * every time one is created. On a platform where a config-triggered reload actually restarts
+     * the whole agent process (observed as a real, repeated infinite-restart regression on
+     * Windows during validation -- Linux's wazuh-control reload explicitly excludes wazuh-agentd
+     * from the daemons it restarts, but that exclusion is not guaranteed on every platform/path),
+     * every fresh instance reseeds from this same permanently-mismatching MD5 value, so every
+     * Notify after every restart looks like "config changed" again, forever, even though the
+     * on-disk config never actually changed after the first real download.
+     *
+     * Fixed by seeding from a SHA-256 of the same file instead, computed the same way the module
+     * itself verifies a download (raw bytes, no text-mode newline translation -- OS_BINARY, not
+     * OS_TEXT, matching digest.cpp's std::fopen(path, "rb")): once a real download has actually
+     * landed the correct bytes on disk, a freshly (re)computed local hash now compares in the
+     * SAME hash space the manager uses, so it can actually match and stop forcing a redundant
+     * re-download/reload every Notify cycle. A missing/unreadable local merged.mg still seeds an
+     * empty checksum (OS_SHA256_File's own failure path; config_checksum was already
+     * zero-filled by this function's memset above), which still can never equal a real
+     * manager-advertised hash -- preserving the original, correct first-boot behavior (force
+     * exactly one bootstrap download when there is nothing meaningful on disk yet). */
+    os_sha256 config_sha256;
+    if (OS_SHA256_File(SHAREDCFG_FILE, config_sha256, OS_BINARY) == 0) {
+        strncpy(config->config_checksum, config_sha256, sizeof(config->config_checksum) - 1);
     }
 
     return true;

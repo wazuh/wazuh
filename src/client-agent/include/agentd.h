@@ -237,6 +237,20 @@ void startup_gate_process_handshake(bool is_startup, const char *merged_sum);
 // Re-check startup gate state after merged.mg updates.
 void startup_gate_refresh_from_local_hash(void);
 
+// Release the startup gate from the HTTPS /control apply chain
+// (bridge_on_config_downloaded, once a downloaded config has been verified
+// and applied). There is no merged_sum handshake field to key a hash
+// comparison off over HTTPS (#37733), so this opens the gate directly on the
+// strength of the module's own SHA-256 verification, rather than routing
+// through startup_gate_refresh_from_local_hash()'s (legacy-only, MD5-based)
+// comparison machinery.
+void startup_gate_release_from_https_apply(void);
+
+// Release the startup gate from the manager's per-Notify config_hash (SHA-256
+// over merged.mg), independent of any download/reload having happened -- this
+// is what covers an agent that boots already in sync with the manager.
+void startup_gate_check_manager_config_hash(const char *manager_sha256);
+
 // Read current startup gate state.
 void startup_gate_get_status(bool *ready, char *reason, size_t reason_size);
 
