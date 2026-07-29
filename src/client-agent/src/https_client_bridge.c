@@ -1141,6 +1141,23 @@ static void bridge_on_state_change(int state, void *user_data)
     }
 }
 
+/* The reporters call these straight through (not via the task dispatcher): they
+ * return a value, and the module frees the buffer after copying it. Collecting
+ * is a fan-out over the component sockets, so it runs on the reporter's own
+ * thread and cannot stall the other endpoints. */
+
+static char *bridge_collect_config(void *user_data)
+{
+    (void)user_data;
+    return w_agent_collect_config();
+}
+
+static char *bridge_collect_stats(void *user_data)
+{
+    (void)user_data;
+    return w_agent_collect_stats();
+}
+
 /* Occupancy thresholds the module reports against, kept so the log lines can
  * quote them exactly as buffer.c does. Filled by bridge_build_config() from the
  * same internal options buffer_init() reads. */
@@ -1407,6 +1424,8 @@ void w_https_client_start(void)
     callbacks.on_sync_response = bridge_on_sync_response;
     callbacks.on_state_change = bridge_on_state_change;
     callbacks.on_buffer_level = bridge_on_buffer_level;
+    callbacks.collect_stats = bridge_collect_stats;
+    callbacks.collect_config = bridge_collect_config;
 
     g_https_client = hc_create(&config, &callbacks);
     if (!g_https_client) {
