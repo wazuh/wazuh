@@ -51,6 +51,8 @@ class CallbackDispatcher final : public ICallbackSink
                                 std::shared_ptr<SpoolFile> file) override;
         void onUpgradeReady(const std::string& taskId, const std::string& wpkFile,
                             std::shared_ptr<SpoolFile> file, const std::string& installer) override;
+        void onTaskFailed(const std::string& taskId, const std::string& taskType,
+                          const std::string& reason) override;
         void onManagerConfigHash(const std::string& configHash) override;
         void onSyncResponse(const std::string& sessionId, int result, const std::string& body) override;
         void onStateChange(hc_conn_state_t state) override;
