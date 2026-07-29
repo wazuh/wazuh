@@ -691,7 +691,16 @@ bool Syscollector::handleNotifyDataClean()
 
 void Syscollector::quiesce()
 {
-    m_stopping = true;
+    {
+        // m_pauseMutex must be held here: pause() checks m_stopping and waits on m_pauseCv
+        // under this same mutex, so setting the flag and notifying without it would leave a
+        // window where pause() reads m_stopping as false and starts waiting right after this
+        // notify_all() fires, missing it (lost wakeup) until some other, unrelated notify
+        // (e.g. a scan/sync finishing on its own) happens to wake it instead.
+        std::lock_guard<std::mutex> lock(m_pauseMutex);
+        m_stopping = true;
+        m_pauseCv.notify_all();
+    }
     m_cv.notify_all();
 
     if (m_spSyncProtocol)
