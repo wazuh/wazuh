@@ -694,6 +694,132 @@ flatbuffers::Offset<Wazuh::SyncSchema::Start> AgentSyncProtocol::buildStartOffse
     return 0;
 }
 
+uint64_t AgentSyncProtocol::nextSessionId()
+{
+    // The manager used to hand the session id back in the StartAck. With one
+    // message and one response there is no handshake to carry it, so the agent
+    // picks it; a retried session reuses the same value and the manager dedups
+    // on it. Microseconds since the epoch leave room for a counter in the low
+    // bits, so two sessions started in the same microsecond still differ.
+    static std::atomic<uint64_t> counter {0};
+    const auto now = std::chrono::duration_cast<std::chrono::microseconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                     .count();
+    return (static_cast<uint64_t>(now) << 12) | (counter.fetch_add(1) & 0xFFF);
+}
+
+std::vector<uint8_t> AgentSyncProtocol::buildFullSessionMessage(
+    uint64_t session,
+    Mode mode,
+    const std::vector<PersistedData>& dataValueItems,
+    const std::vector<PersistedData>& dataContextItems,
+    const std::vector<std::string>& uniqueIndices,
+    Option option,
+    std::optional<uint64_t> globalVersion)
+{
+    try
+    {
+        flatbuffers::FlatBufferBuilder builder;
+
+        // Every nested table has to be finished before the parent builder opens,
+        // so Start, the batch and the contexts are all built up front.
+        const auto startOffset = buildStartOffset(builder,
+                                                  mode,
+                                                  dataValueItems.size() + dataContextItems.size(),
+                                                  uniqueIndices,
+                                                  option,
+                                                  globalVersion);
+
+        if (startOffset.IsNull())
+        {
+            return {};
+        }
+
+        // One batch holds the lot: the ~60 KB split existed only to fit OS_MAXSTR
+        // on the DGRAM queue, and the STREAM socket has no such bound. The field
+        // stays a vector so a producer may still group if it ever needs to.
+        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataValue>> valueOffsets;
+        valueOffsets.reserve(dataValueItems.size());
+
+        for (const auto& item : dataValueItems)
+        {
+            auto idStr = builder.CreateString(item.id);
+            auto idxStr = builder.CreateString(item.index);
+            auto dataVec = builder.CreateVector(
+                               reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+
+            Wazuh::SyncSchema::DataValueBuilder dataValueBuilder(builder);
+            dataValueBuilder.add_seq(item.seq);
+            dataValueBuilder.add_session(session);
+            dataValueBuilder.add_id(idStr);
+            dataValueBuilder.add_index(idxStr);
+            dataValueBuilder.add_version(item.version);
+            dataValueBuilder.add_operation((item.operation == Operation::DELETE_)
+                                           ? Wazuh::SyncSchema::Operation::Delete
+                                           : Wazuh::SyncSchema::Operation::Upsert);
+            dataValueBuilder.add_data(dataVec);
+            valueOffsets.push_back(dataValueBuilder.Finish());
+        }
+
+        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataBatch>> batchOffsets;
+
+        if (!valueOffsets.empty())
+        {
+            auto valuesVec = builder.CreateVector(valueOffsets);
+            Wazuh::SyncSchema::DataBatchBuilder dataBatchBuilder(builder);
+            dataBatchBuilder.add_values(valuesVec);
+            batchOffsets.push_back(dataBatchBuilder.Finish());
+        }
+
+        std::vector<flatbuffers::Offset<Wazuh::SyncSchema::DataContext>> contextOffsets;
+        contextOffsets.reserve(dataContextItems.size());
+
+        for (const auto& item : dataContextItems)
+        {
+            auto idStr = builder.CreateString(item.id);
+            auto idxStr = builder.CreateString(item.index);
+            auto dataVec = builder.CreateVector(
+                               reinterpret_cast<const int8_t*>(item.data.data()), item.data.size());
+
+            Wazuh::SyncSchema::DataContextBuilder dataContextBuilder(builder);
+            dataContextBuilder.add_seq(item.seq);
+            dataContextBuilder.add_session(session);
+            dataContextBuilder.add_id(idStr);
+            dataContextBuilder.add_index(idxStr);
+            dataContextBuilder.add_data(dataVec);
+            contextOffsets.push_back(dataContextBuilder.Finish());
+        }
+
+        Wazuh::SyncSchema::EndBuilder endBuilder(builder);
+        endBuilder.add_session(session);
+        const auto endOffset = endBuilder.Finish();
+
+        auto batchesVec = builder.CreateVector(batchOffsets);
+        auto contextsVec = builder.CreateVector(contextOffsets);
+
+        Wazuh::SyncSchema::FullSessionBuilder fullSessionBuilder(builder);
+        fullSessionBuilder.add_session(session);
+        fullSessionBuilder.add_start(startOffset);
+        fullSessionBuilder.add_batches(batchesVec);
+        fullSessionBuilder.add_contexts(contextsVec);
+        fullSessionBuilder.add_end(endOffset);
+        const auto fullSessionOffset = fullSessionBuilder.Finish();
+
+        auto message = Wazuh::SyncSchema::CreateMessage(
+                           builder, Wazuh::SyncSchema::MessageType::FullSession, fullSessionOffset.Union());
+        builder.Finish(message);
+
+        const uint8_t* bufferPtr = builder.GetBufferPointer();
+        return {bufferPtr, bufferPtr + builder.GetSize()};
+    }
+    catch (const std::exception& e)
+    {
+        m_logger(LOG_ERROR, std::string("Exception when building the FullSession message: ") + e.what());
+    }
+
+    return {};
+}
+
 bool AgentSyncProtocol::sendStartAndWaitAck(Mode mode,
                                             size_t dataSize,
                                             const std::vector<std::string>& uniqueIndices,
