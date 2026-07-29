@@ -34,6 +34,16 @@ struct rt_filter
      * with its own ring buffer (spike #37396 ADR-001: no shared provider,
      * no cross-consumer stalling). */
     unsigned int type_mask;
+
+    /* Absolute (or CWD-relative, caller's choice) path to the compiled BPF
+     * object. NULL falls back to a bare "rt_file.bpf.o" lookup in the
+     * process's CWD — fine for the standalone test harness, wrong for a
+     * real service (a systemd-managed agent's CWD isn't its install dir).
+     * A production consumer MUST resolve this itself (e.g. FIM already has
+     * an abspath() callback for exactly this) — the engine deliberately
+     * has no opinion on Wazuh's install-path layout, per the
+     * consumer-agnostic constraint. */
+    const char* bpf_obj_path;
 };
 
 #define RT_FILE_OPEN_BIT   (1u << RT_EV_FILE_OPEN)

@@ -4,9 +4,7 @@
 #include <future>
 #include "ebpf_whodata.hpp"
 #include "bpf_helpers.h"
-#include "dynamic_library_wrapper.h"
 
-extern std::unique_ptr<w_bpf_helpers_t> bpf_helpers;
 inline std::shared_ptr<std::promise<void>> g_pop_started_promise;
 inline std::shared_future<void> g_pop_started_future;
 
@@ -127,120 +125,6 @@ void mock_ebpf_pop_events([[maybe_unused]] fim::BoundedQueue<std::unique_ptr<dyn
 {
     return;
 }
-struct bpf_object* mock_bpf_object_open_file_success([[maybe_unused]] const char* filename, [[maybe_unused]] const struct bpf_object_open_opts* opts)
-{
-    return (struct bpf_object*)1;
-}
-struct bpf_object* mock_bpf_object_open_file_failure([[maybe_unused]] const char* filename, [[maybe_unused]] const struct bpf_object_open_opts* opts)
-{
-    return nullptr;
-}
-int mock_bpf_object_load_success([[maybe_unused]] struct bpf_object* obj)
-{
-    return 0;
-}
-int mock_bpf_object_load_failure([[maybe_unused]] struct bpf_object* obj)
-{
-    return 1;
-}
-void mock_bpf_object_close_called([[maybe_unused]] struct bpf_object* obj)
-{
-    return;
-}
-void mock_bpf_object_close([[maybe_unused]] struct bpf_object* obj)
-{
-    return;
-}
-bpf_program* mock_bpf_object_next_program([[maybe_unused]] const struct bpf_object* obj, [[maybe_unused]] struct bpf_program* pos)
-{
-    return nullptr;
-}
-bpf_program* mock_bpf_object_next_program_in([[maybe_unused]] const struct bpf_object* obj, [[maybe_unused]] struct bpf_program* pos)
-{
-    return pos == nullptr ? (bpf_program*)1 : nullptr;
-}
-struct bpf_link* mock_bpf_program_attach_success([[maybe_unused]] struct bpf_program* prog)
-{
-    return (struct bpf_link*)1;
-}
-struct bpf_link* mock_bpf_program_attach_failure([[maybe_unused]] struct bpf_program* prog)
-{
-    return nullptr;
-}
-int mock_bpf_program_set_autoload([[maybe_unused]] struct bpf_program* prog, [[maybe_unused]] bool autoload)
-{
-    return 0;
-}
-bool mock_bpf_program_autoload_true([[maybe_unused]] const struct bpf_program* prog)
-{
-    return true;
-}
-bool mock_bpf_program_autoload_false([[maybe_unused]] const struct bpf_program* prog)
-{
-    return false;
-}
-const char* mock_bpf_program_section_name_kprobe([[maybe_unused]] const struct bpf_program* prog)
-{
-    return "kprobe/security_inode_setattr";
-}
-const char* mock_bpf_program_name_default([[maybe_unused]] const struct bpf_program* prog)
-{
-    return "mock_prog";
-}
-int mock_bpf_object_find_map_fd_by_name_success([[maybe_unused]] struct bpf_object* obj, [[maybe_unused]] const char* name)
-{
-    return 1;
-}
-int mock_bpf_object_find_map_fd_by_name_failure([[maybe_unused]] struct bpf_object* obj, [[maybe_unused]] const char* name)
-{
-    return -1;
-}
-
-ring_buffer* mock_ring_buffer_new_success([[maybe_unused]] int fd, [[maybe_unused]] ring_buffer_sample_fn sample_cb, [[maybe_unused]] void* ctx, [[maybe_unused]] void* consumer_ctx)
-{
-    return (ring_buffer*)1;
-}
-
-ring_buffer* mock_ring_buffer_new_failure([[maybe_unused]] int fd, [[maybe_unused]] ring_buffer_sample_fn sample_cb, [[maybe_unused]] void* ctx, [[maybe_unused]] void* consumer_ctx)
-{
-    return nullptr;
-}
-
-int mock_ring_buffer_poll_success([[maybe_unused]] ring_buffer* rb, [[maybe_unused]] int timeout_ms)
-{
-    return 1;
-}
-int mock_ring_buffer_poll_healthcheck_success([[maybe_unused]] ring_buffer* rb, [[maybe_unused]] int timeout_ms)
-{
-    event_received = true;
-    return 1;
-}
-int mock_ring_buffer_poll_failure([[maybe_unused]] ring_buffer* rb, [[maybe_unused]] int timeout_ms)
-{
-    return -1;
-}
-void mock_ring_buffer_free([[maybe_unused]] ring_buffer* rb) {}
-void mock_w_bpf_deinit([[maybe_unused]] void* helpers) {}
-int mock_init_ring_buffer_success([[maybe_unused]] ring_buffer** rb, [[maybe_unused]] ring_buffer_sample_fn sample_cb)
-{
-    return 0;
-}
-int mock_init_ring_buffer_failure([[maybe_unused]] ring_buffer** rb, [[maybe_unused]] ring_buffer_sample_fn sample_cb)
-{
-    return 1;
-}
-int mock_check_invalid_kernel_version()
-{
-    return 0;
-}
-int mock_init_libbpf([[maybe_unused]] std::unique_ptr<DynamicLibraryWrapper> sym_load)
-{
-    return 0;
-}
-int mock_init_bpfobj()
-{
-    return 0;
-}
 
 void reset_pop_barrier()
 {
@@ -262,24 +146,74 @@ void mock_ebpf_pop_events_barrier([[maybe_unused]] fim::BoundedQueue<std::unique
     return;
 }
 
-int mock_ring_buffer_poll_success_barrier([[maybe_unused]] ring_buffer* rb, [[maybe_unused]] int timeout_ms)
-{
-    if (g_pop_started_future.valid())
-    {
-        g_pop_started_future.wait();
-    }
+/*
+ * #37396/#37533 cutover: mocks for the rt_engine_api seam (rt_open/rt_poll/
+ * rt_close via ebpf_whodata.hpp's `rt_engine_api` global), replacing the
+ * old per-libbpf-call mocks (mock_bpf_object_*, mock_ring_buffer_*, ...)
+ * that used to live here. Tests now only need to fake three functions
+ * instead of a dozen, matching the engine's actual consumer-facing surface.
+ */
 
+rt_handle_t mock_rt_open_success([[maybe_unused]] const struct rt_filter* filter)
+{
+    // Any non-null value works: rt_poll/rt_close mocks below never
+    // dereference it, they just check it's non-null where relevant.
+    return reinterpret_cast<rt_handle_t>(0x1);
+}
+
+rt_handle_t mock_rt_open_failure([[maybe_unused]] const struct rt_filter* filter)
+{
+    return nullptr;
+}
+
+int mock_rt_poll_success([[maybe_unused]] rt_handle_t handle, [[maybe_unused]] rt_sink_fn sink,
+                        [[maybe_unused]] void* user, [[maybe_unused]] int timeout_ms)
+{
     return 1;
 }
 
-int mock_ring_buffer_poll_failure_barrier([[maybe_unused]] ring_buffer* rb, [[maybe_unused]] int timeout_ms)
+int mock_rt_poll_failure([[maybe_unused]] rt_handle_t handle, [[maybe_unused]] rt_sink_fn sink,
+                         [[maybe_unused]] void* user, [[maybe_unused]] int timeout_ms)
+{
+    return -1;
+}
+
+// Fires the healthcheck sink with a synthetic matching event, then reports
+// success — used to drive ebpf_whodata_healthcheck()'s wait-for-event loop
+// without a real kernel.
+int mock_rt_poll_healthcheck_success([[maybe_unused]] rt_handle_t handle, rt_sink_fn sink, void* user,
+                                     [[maybe_unused]] int timeout_ms)
+{
+    struct rt_file_event ev {};
+    ev.event_type = RT_EV_FILE_OPEN;
+    std::strncpy(ev.filename, "tmp/ebpf_hc", sizeof(ev.filename) - 1);
+    if (sink)
+    {
+        sink(&ev, user);
+    }
+    return 1;
+}
+
+int mock_rt_poll_success_barrier([[maybe_unused]] rt_handle_t handle, [[maybe_unused]] rt_sink_fn sink,
+                                 [[maybe_unused]] void* user, [[maybe_unused]] int timeout_ms)
 {
     if (g_pop_started_future.valid())
     {
         g_pop_started_future.wait();
     }
+    return 1;
+}
 
+int mock_rt_poll_failure_barrier([[maybe_unused]] rt_handle_t handle, [[maybe_unused]] rt_sink_fn sink,
+                                 [[maybe_unused]] void* user, [[maybe_unused]] int timeout_ms)
+{
+    if (g_pop_started_future.valid())
+    {
+        g_pop_started_future.wait();
+    }
     return -1;
 }
+
+void mock_rt_close([[maybe_unused]] rt_handle_t handle) {}
 
 #endif // BPF_HELPERS_TEST_H

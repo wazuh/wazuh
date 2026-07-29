@@ -249,6 +249,8 @@ if(IS_AGENT)
   add_subdirectory(shared_modules/agent_metadata)
   add_subdirectory(shared_modules/dbsync)
   add_subdirectory(shared_modules/sync_protocol)
+  # eBPF Module (#37396) — consumer-agnostic engine; FIM (syscheckd) links it.
+  add_subdirectory(shared_modules/ebpf_provider)
   add_subdirectory(syscheckd)
   # Windows agent executables and resources
   if("${TARGET}" STREQUAL "winagent")

@@ -19,13 +19,9 @@ class PopEventsTest : public ::testing::Test
             MockFimebpf::mock_get_user = mock_get_user;
             MockFimebpf::mock_get_group = mock_get_group;
             MockFimebpf::SetMockFunctions();
-            bpf_helpers = std::make_unique<w_bpf_helpers_t>();
         }
 
-        virtual void TearDown()
-        {
-            bpf_helpers.reset();
-        }
+        virtual void TearDown() {}
 };
 
 template <typename T>
@@ -38,7 +34,7 @@ class MockBoundedQueue : public fim::BoundedQueue<T>
         MOCK_METHOD(bool, push, (T&& in_value), (override));
 };
 
-/* TEST: ebpf_pop_events */
+/* TEST: ebpf_pop_events (host files) */
 
 TEST_F(PopEventsTest, LoggingPointerFailed)
 {
@@ -107,6 +103,60 @@ TEST_F(PopEventsTest, EbpfPopWithEvent)
     .Times(::testing::AnyNumber());
 
     ebpf_pop_events(mock_kernel_queue);
+}
+
+/* TEST: ebpf_pop_container_events (#37533) — previously entirely untested.
+ * fim_handle_container_whodata_event() isn't behind a mockable seam yet, so
+ * these are smoke tests (drain logic doesn't crash / respects shutdown),
+ * not assertions about container resolution behavior — that's
+ * container_live_fim.cpp's own concern. */
+
+TEST_F(PopEventsTest, ContainerPopLoggingPointerFailed)
+{
+    MockFimebpf::mock_loggingFunction = nullptr;
+    MockFimebpf::SetMockFunctions();
+    MockBoundedQueue<std::unique_ptr<container_file_event>> mock_container_queue;
+
+    ebpf_pop_container_events(mock_container_queue);
+}
+
+TEST_F(PopEventsTest, ContainerPopShutdownProcessTrue)
+{
+    MockBoundedQueue<std::unique_ptr<container_file_event>> mock_container_queue;
+
+    EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
+    .WillOnce(::testing::Return(true));
+
+    ebpf_pop_container_events(mock_container_queue);
+}
+
+TEST_F(PopEventsTest, ContainerPopWithEventDoesNotCrash)
+{
+    MockBoundedQueue<std::unique_ptr<container_file_event>> mock_container_queue;
+
+    EXPECT_CALL(MockFimebpf::GetInstance(), mock_fim_shutdown_process_on())
+    .WillOnce(::testing::Return(false))
+    .WillOnce(::testing::Return(true));
+
+    EXPECT_CALL(mock_container_queue, pop(::testing::_, ::testing::_))
+    .WillOnce(::testing::DoAll(
+                  ::testing::Invoke(
+                      [&](std::unique_ptr<container_file_event>& event_arg, [[maybe_unused]]int timeout_arg)
+    {
+        event_arg = std::make_unique<container_file_event>(container_file_event
+        {
+            .filename = "/etc/passwd", .cgroup_id = 1, .mnt_ns = 1, .pid = 1, .inode = 1, .dev = 1
+        });
+    }
+                  ),
+    ::testing::Return(true)
+              ));
+
+    // fim_handle_container_whodata_event() will run for real here (not
+    // mocked) — with no container_instances socket present it resolves to
+    // unavailable and returns early, so this only asserts "doesn't crash",
+    // not any container-resolution behavior.
+    ebpf_pop_container_events(mock_container_queue);
 }
 
 void SetUpModule() {}

@@ -87,9 +87,10 @@ static void on_event(const struct rt_file_event* ev, void* user)
     ctx->count++;
     fprintf(stdout,
             "[%s] #%lu abi=%u type=%s pid=%u ppid=%u cgroup_id=%llu mnt_ns=%u dropped=%u "
-            "flags=0x%x comm=%s path=%s\n",
+            "flags=0x%x comm=%s path=%s cwd=%s parent_comm=%s parent_cwd=%s\n",
             ctx->label, ctx->count, ev->abi_major, type_name(ev->event_type), ev->pid, ev->ppid,
-            (unsigned long long)ev->cgroup_id, ev->mnt_ns, ev->dropped, ev->flags, ev->comm, ev->filename);
+            (unsigned long long)ev->cgroup_id, ev->mnt_ns, ev->dropped, ev->flags, ev->comm, ev->filename,
+            ev->cwd, ev->parent_comm, ev->parent_cwd);
     fflush(stdout);
 }
 

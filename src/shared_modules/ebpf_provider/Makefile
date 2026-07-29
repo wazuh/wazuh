@@ -26,7 +26,7 @@ rt_engine.o: src/rt_engine.c include/rt_engine.h include/rt_event_contract.h
 	$(CC) -O2 -Wall -Wextra $(INCLUDES) -c src/rt_engine.c -o $@
 
 rt_engine_harness: rt_engine.o rt_file.bpf.o test/rt_engine_harness.c
-	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_harness.c rt_engine.o -lbpf -lelf -lz
+	$(CC) -O2 -Wall -Wextra $(INCLUDES) -o $@ test/rt_engine_harness.c rt_engine.o -ldl
 
 clean:
 	rm -f rt_engine_harness rt_engine.o rt_file.bpf.o bpf/vmlinux.h

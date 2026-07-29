@@ -31,7 +31,13 @@
  * event also carries abi_major so a consumer that opened the engine before
  * a live reload can still detect a mismatch. */
 #define RT_ABI_MAJOR 1
-#define RT_ABI_MINOR 0
+#define RT_ABI_MINOR 1
+/* MINOR 1: added cwd/parent_cwd/parent_comm. Purely additive (appended
+ * after the existing fields) — found missing when starting the FIM
+ * cutover: host FIM's existing whodata "who" attribution (dynamic_file_
+ * event/whodata_evt) depends on these for its stateless alerts, and the
+ * first cut of this contract dropped them. Consumers built against MINOR 0
+ * still work unmodified; they just never read the new tail fields. */
 
 enum rt_event_type
 {
@@ -85,6 +91,11 @@ struct rt_file_event
 
     char comm[RT_COMM_MAX];
     char filename[RT_PATH_MAX];
+
+    /* MINOR 1 additions — see the RT_ABI_MINOR comment above. */
+    char cwd[RT_PATH_MAX];
+    char parent_cwd[RT_PATH_MAX];
+    char parent_comm[RT_COMM_MAX];
 };
 
 #endif /* RT_EVENT_CONTRACT_H */

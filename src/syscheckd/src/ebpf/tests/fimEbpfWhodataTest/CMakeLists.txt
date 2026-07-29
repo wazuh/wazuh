@@ -9,13 +9,15 @@ include_directories(${SRC_FOLDER}/external/googletest/googlemock/include/)
 include_directories(${SRC_FOLDER}/shared/include/)
 link_directories(${SRC_FOLDER}/external/googletest/lib/)
 
+# init_libbpf_test.cpp / init_bpf_obj_test.cpp / init_ring_buffer_test.cpp /
+# close_libbpf_test.cpp were removed in the #37396/#37533 cutover: they
+# tested libbpf load/attach/ring-buffer internals that moved to
+# src/shared_modules/ebpf_provider/ (rt_engine), which has no unit tests of
+# its own yet (see that directory's CMakeLists.txt comment) — a real gap
+# flagged, not silently dropped.
 set(TEST_FILES
     ebpf_whodata_test.cpp
-    init_libbpf_test.cpp
     healthcheck_event_test.cpp
-    init_ring_buffer_test.cpp
-    init_bpf_obj_test.cpp
-    close_libbpf_test.cpp
     pop_event_test.cpp)
 
 # Create an executable for each test file

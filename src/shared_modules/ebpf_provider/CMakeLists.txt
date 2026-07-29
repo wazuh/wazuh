@@ -7,10 +7,12 @@ project(rt_engine C)
 # bpf_object__open_file(), not a generated skeleton) and the userspace
 # loader library (librt_engine) exposing rt_open()/rt_poll()/rt_close().
 #
-# Not yet linked by src/syscheckd/src/ebpf/ — see that directory's
-# CMakeLists.txt comment for why the cutover is a separate, deliberately
-# staged change (ebpf_whodata.cpp's existing load/attach logic has its own
-# unit test suite that needs to move over with it).
+# Linked by src/syscheckd/src/ebpf/ (FIM) as of the #37396/#37533 cutover.
+
+if(NOT CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  message(STATUS "eBPF Module (rt_engine) is Linux-only; skipping on ${CMAKE_SYSTEM_NAME}.")
+  return()
+endif()
 
 if(NOT DEFINED WAZUH_MAIN_PROJECT)
   get_filename_component(SRC_FOLDER ${CMAKE_SOURCE_DIR}/../../ ABSOLUTE)
@@ -59,7 +61,9 @@ add_custom_target(rt_file_bpf_object ALL DEPENDS ${RT_BPF_OBJ})
 
 add_library(rt_engine STATIC src/rt_engine.c)
 target_include_directories(rt_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(rt_engine PUBLIC bpf elf z)
+# libbpf is dlopen()'d at rt_open() time (see rt_engine.c's top comment) —
+# no -lbpf here on purpose. -ldl for dlopen/dlsym/dlclose/dlerror.
+target_link_libraries(rt_engine PUBLIC dl)
 add_dependencies(rt_engine rt_file_bpf_object)
 
 if(UNIT_TEST)

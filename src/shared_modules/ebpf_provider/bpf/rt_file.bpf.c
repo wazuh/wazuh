@@ -60,6 +60,19 @@ struct
     __uint(max_entries, 1);
 } dpath_map SEC(".maps");
 
+/* Separate scratch buffer for cwd resolution (called from within
+ * submit_event(), after the triggering hook's own path-walk buffer has
+ * already been consumed into evt->filename) — mirrors modern.bpf.c's
+ * cwd_heap, kept distinct from heaps_map out of the same caution rather
+ * than relying on read-before-reuse ordering being safe. */
+struct
+{
+    __uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+    __type(key, __u32);
+    __type(value, struct buffer);
+    __uint(max_entries, 1);
+} cwd_heap SEC(".maps");
+
 /* Single-slot drop counter (#37396 backpressure design): incremented every
  * time bpf_ringbuf_reserve() fails, read-and-reset into the next
  * successfully-submitted event's `dropped`/RT_F_DROPS_BEFORE, so loss is
@@ -189,6 +202,31 @@ statfunc void get_inode_dev(struct inode* inode_ptr, __u64* inode, __u64* dev)
     }
 }
 
+/* Ported from modern.bpf.c's get_task_cwd(). Resolves `task`'s current
+ * working directory into `dest`; returns -1 (dest left untouched by the
+ * caller, which pre-clears it) on any failure in the chain. */
+statfunc int get_task_cwd(char* dest, int size, struct task_struct* task)
+{
+    if (!task)
+        return -1;
+
+    struct fs_struct* fs = BPF_CORE_READ(task, fs);
+    if (!fs)
+        return -1;
+
+    struct path pwd = BPF_CORE_READ(fs, pwd);
+    struct buffer* buf = bpf_map_lookup_elem(&cwd_heap, &(__u32) {0});
+    if (!buf)
+        return -1;
+
+    unsigned char* cwd_path = NULL;
+    if (get_path_str_from_path(&cwd_path, &pwd, buf) < 0)
+        return -1;
+
+    bpf_probe_read_kernel_str(dest, size, (const char*)cwd_path);
+    return 0;
+}
+
 statfunc __u32 get_mnt_ns_inum(struct task_struct* task)
 {
     if (!task)
@@ -239,11 +277,23 @@ statfunc void submit_event(__u16 event_type, const char* filename, __u64 ino, __
     bpf_probe_read_kernel_str(evt->comm, RT_COMM_MAX, (const char*)BPF_CORE_READ(current_task, comm));
     bpf_probe_read_kernel_str(evt->filename, RT_PATH_MAX, filename);
 
+    /* Direct null-byte writes rather than bpf_probe_read_kernel_str(..., "")
+     * — see modern.bpf.c's identical comment: libbpf < 0.6 can't resolve
+     * relocations against the .rodata.str1.1 section an empty-string literal
+     * would otherwise emit here, corrupting the object at load time. */
+    evt->cwd[0] = '\0';
+    evt->parent_cwd[0] = '\0';
+    evt->parent_comm[0] = '\0';
+
+    get_task_cwd(evt->cwd, RT_PATH_MAX, current_task);
+
     evt->ppid = 0;
     struct task_struct* parent_task = BPF_CORE_READ(current_task, real_parent);
     if (parent_task)
     {
         evt->ppid = BPF_CORE_READ(parent_task, tgid);
+        bpf_probe_read_kernel_str(evt->parent_comm, RT_COMM_MAX, (const char*)BPF_CORE_READ(parent_task, comm));
+        get_task_cwd(evt->parent_cwd, RT_PATH_MAX, parent_task);
     }
 
     bpf_ringbuf_submit(evt, 0);

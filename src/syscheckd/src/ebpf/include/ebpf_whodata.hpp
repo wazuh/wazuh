@@ -11,11 +11,27 @@
 #define EBPF_WHODATA_HPP
 
 #include "ebpf_whodata.h"
-#include "dynamic_library_wrapper.h"
+#include "rt_engine.h"
 #include <memory>
 
 extern volatile bool event_received;
 extern volatile bool ebpf_hc_created;
+
+/*
+ * Mockable seam over the eBPF Module engine's API (#37396 cutover). Tests
+ * substitute rt_engine_api's members the same way the old w_bpf_helpers_t
+ * dispatch table let them substitute individual libbpf calls — except now
+ * there are only three functions to mock, matching the engine's actual
+ * consumer-facing surface, instead of a dozen internal libbpf entry points.
+ */
+struct rt_engine_api_t
+{
+    rt_handle_t (*open)(const struct rt_filter*) = rt_open;
+    int (*poll)(rt_handle_t, rt_sink_fn, void*, int) = rt_poll;
+    void (*close)(rt_handle_t) = rt_close;
+};
+
+extern rt_engine_api_t rt_engine_api;
 
 class fimebpf
 {
@@ -75,8 +91,5 @@ class fimebpf
         unsigned int m_queue_size;
         fimShutdownProcessOn_t m_fim_shutdown_process_on;
 };
-
-int init_libbpf(std::unique_ptr<DynamicLibraryWrapper> sym_load);
-
 
 #endif // EBPF_WHODATA_HPP
