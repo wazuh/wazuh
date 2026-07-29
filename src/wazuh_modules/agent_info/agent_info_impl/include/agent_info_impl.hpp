@@ -85,15 +85,12 @@ class AgentInfoImpl
 
         /// @brief Initialize the synchronization protocol with only in-memory synchronization
         /// @param moduleName Name of the module
-        /// @param mqFuncs Message queue functions
-        void initSyncProtocol(const std::string& moduleName, const MQ_Functions& mqFuncs);
+        void initSyncProtocol(const std::string& moduleName);
 
         /// @brief Set synchronization parameters
-        /// @param syncEndDelay Delay for synchronization end message in seconds
         /// @param timeout Response timeout in seconds
         /// @param retries Number of retries
-        /// @param maxEps Maximum events per second
-        void setSyncParameters(uint32_t syncEndDelay, uint32_t timeout, uint32_t retries, long maxEps);
+        void setSyncParameters(uint32_t timeout, uint32_t retries);
 
         /// @brief Set the predicate used to detect that a shutdown is in progress.
         /// It complements the module's own stop flag so that failures caused by the global agent
@@ -316,17 +313,11 @@ class AgentInfoImpl
         /// @brief Sync protocol for agent synchronization
         std::unique_ptr<IAgentSyncProtocol> m_spSyncProtocol;
 
-        /// @brief Sync configuration: delay for synchronization end message in seconds
-        uint32_t m_syncEndDelay = 1;
-
         /// @brief Sync configuration: response timeout in seconds
         uint32_t m_syncResponseTimeout = 30;
 
         /// @brief Sync configuration: number of retries
         uint32_t m_syncRetries = 5;
-
-        /// @brief Sync configuration: maximum events per second
-        long m_syncMaxEps = 10;
 
         /// @brief Flag to track if module has been stopped.
         /// Atomic so the poll loops can read it without holding m_mutex while

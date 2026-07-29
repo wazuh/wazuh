@@ -64,14 +64,6 @@ class SyncProtocolIntegrationTest : public ::testing::Test
             };
 
             // Create MQ functions (mock for now, but could be real)
-            mqFuncs.start = [](const char*, short, short)
-            {
-                return 0;
-            };
-            mqFuncs.send_binary = [](int, const void*, size_t, const char*, char)
-            {
-                return 0;
-            };
         }
 
         void TearDown() override
@@ -88,7 +80,6 @@ class SyncProtocolIntegrationTest : public ::testing::Test
 
         std::string testDbPath;
         LoggerFunc logger;
-        MQ_Functions mqFuncs;
 };
 
 // ========================================
@@ -223,12 +214,9 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_PersistAndFetch)
     AgentSyncProtocol protocol(
         "syscollector_vd",
         testDbPath,
-        mqFuncs,
         logger,
-        std::chrono::seconds(1),
         std::chrono::seconds(3),
         1,
-        100,
         nullptr  // Let protocol create its own PersistentQueue
     );
 
@@ -272,12 +260,9 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_VDWorkflow_ClearAndFetch)
     AgentSyncProtocol protocol(
         "syscollector_vd",
         testDbPath,
-        mqFuncs,
         logger,
-        std::chrono::seconds(1),
         std::chrono::seconds(3),
         1,
-        100,
         nullptr
     );
 
@@ -329,12 +314,9 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_MultipleIndices)
     AgentSyncProtocol protocol(
         "syscollector_vd",
         testDbPath,
-        mqFuncs,
         logger,
-        std::chrono::seconds(1),
         std::chrono::seconds(3),
         1,
-        100,
         nullptr
     );
 
@@ -388,12 +370,9 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_DataPersistenceAcrossInsta
         AgentSyncProtocol protocol1(
             "syscollector_vd",
             testDbPath,
-            mqFuncs,
             logger,
-            std::chrono::seconds(1),
             std::chrono::seconds(3),
             1,
-            100,
             nullptr
         );
 
@@ -408,12 +387,9 @@ TEST_F(SyncProtocolIntegrationTest, AgentSyncProtocol_DataPersistenceAcrossInsta
         AgentSyncProtocol protocol2(
             "syscollector_vd",
             testDbPath,
-            mqFuncs,
             logger,
-            std::chrono::seconds(1),
             std::chrono::seconds(3),
             1,
-            100,
             nullptr
         );
 
