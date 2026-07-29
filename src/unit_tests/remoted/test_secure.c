@@ -3334,7 +3334,7 @@ void test_w_remoted_build_module_config_all_fields_populated(void** state)
     assert_int_equal(rm_config.port, 9443);
     assert_true(rm_config.worker_node);
     assert_int_equal(rm_config.verification_mode, REMOTED_HTTPS_VERIFY_FULL);
-    assert_int_equal(rm_config.max_body_size, 12345);
+    assert_int_equal(rm_config.http_max_body_size, 12345);
     assert_int_equal(rm_config.dual_stack, REMOTED_HTTPS_DUAL_STACK_YES);
     assert_string_equal(rm_config.bind_address, "0.0.0.0");
     assert_string_equal(rm_config.certificate_path, "/etc/remoted-https/server.crt");

@@ -66,9 +66,9 @@ extern "C"
     enum
     {
         REMOTED_MODULE_HTTPS_DUAL_STACK_UNSET = 0, ///< Not configured -> module defaults to IPv6-only. Kept distinct
-                                                    ///< from _NO so the "dual_stack only applies to an IPv6
-                                                    ///< bind_addr" warning doesn't fire when unconfigured
-                                                    ///< (see resolveDualStackMode()/RestinioHttpServer.cpp).
+                                                   ///< from _NO so the "dual_stack only applies to an IPv6
+                                                   ///< bind_addr" warning doesn't fire when unconfigured
+                                                   ///< (see resolveDualStackMode()/RestinioHttpServer.cpp).
         REMOTED_MODULE_HTTPS_DUAL_STACK_YES = 1,   ///< Force dual-stack on (also accept IPv4).
         REMOTED_MODULE_HTTPS_DUAL_STACK_NO = 2     ///< Force IPv6-only.
     };
@@ -97,8 +97,9 @@ extern "C"
         int io_threads;                  ///< HTTPS I/O threads. <=0 -> module default (see remoted.http_io_threads).
         int http_worker_threads;         ///< HTTPS handler worker-pool size. <=0 -> module default
                                          ///< (see remoted.http_worker_threads).
-        int http_max_body_size;          ///< Transport body cap, bytes. Regular <remote> setting
-                                         ///< (wazuh-manager.conf), not an internal option. <=0 -> module default.
+        long http_max_body_size;         ///< Transport body cap, bytes. Regular <remote><https> setting
+                                         ///< (wazuh-manager.conf), not an internal option. <=0 -> module
+                                         ///< default.
         int http_read_timeout;           ///< Seconds to wait for a full request on a connection (also covers
                                          ///< the TLS handshake window). <=0 -> module default
                                          ///< (see remoted.http_read_timeout).
@@ -142,13 +143,12 @@ extern "C"
 
         int keystore_refresh_interval; ///< Seconds between client.keys change checks (hot-reload).
                                        ///< <=0 -> module default (10 s)
-        char bind_address[256];     ///< HTTPS listen address (empty -> module default/env).
-        char ca_path[512];          ///< CA bundle (PEM) for client-certificate verification (empty -> disabled).
-        char ciphers[256];          ///< TLS 1.3 ciphersuite override (SSL_CTX_set_ciphersuites() naming scheme;
-                                    ///< empty -> library default).
-        int verification_mode;      ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
-        long max_body_size;         ///< Request body cap in bytes (<=0 -> module default/env).
-        int dual_stack;             ///< REMOTED_MODULE_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind address.
+        char bind_address[256];        ///< HTTPS listen address (empty -> module default).
+        char ca_path[512];             ///< CA bundle (PEM) for client-certificate verification (empty -> disabled).
+        char ciphers[256];             ///< TLS 1.3 ciphersuite override (SSL_CTX_set_ciphersuites() naming scheme;
+                                       ///< empty -> library default).
+        int verification_mode;         ///< REMOTED_MODULE_HTTPS_VERIFY_* (client-certificate verification).
+        int dual_stack;                ///< REMOTED_MODULE_HTTPS_DUAL_STACK_*; only applies to an IPv6 bind address.
     } remoted_module_config_t;
 
     /**
