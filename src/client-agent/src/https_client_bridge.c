@@ -1301,6 +1301,14 @@ static bool bridge_build_config(hc_config_t *config)
     config->batch_size_bytes = (uint64_t)agt->batch.size;
     config->batch_interval_ms = (uint32_t)(agt->batch.interval * 1000);
 
+    /* <client><stats_report>/<config_report>: the two periodic pushes (#37843),
+     * independent of each other and off unless configured. A zero interval
+     * leaves the module on its own default (60 s / 3600 s). */
+    config->stats_enabled = agt->stats_report.enabled;
+    config->stats_interval_s = (uint32_t)agt->stats_report.interval;
+    config->config_report_enabled = agt->config_report.enabled;
+    config->config_report_interval_s = (uint32_t)agt->config_report.interval;
+
     /* Occupancy ladder: the same internal options buffer_init() reads, so an
      * operator who tuned the legacy client buffer keeps their thresholds now
      * that the accumulator is what fills up. Read here rather than through

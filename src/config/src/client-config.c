@@ -17,6 +17,7 @@
 int Read_Client_Server(XML_NODE node, agent *logr);
 int Read_Client_SSL(XML_NODE node, agent *logr);
 int Read_Client_Batch(XML_NODE node, agent *logr);
+int Read_Client_Report(XML_NODE node, agent_report *report);
 int Read_Client_Enrollment(XML_NODE node, agent *logr);
 
 int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unused)) void *d2)
@@ -31,6 +32,8 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
     const char *xml_client_server = "server";
     const char *xml_client_ssl = "ssl";
     const char *xml_client_batch = "batch";
+    const char *xml_client_stats_report = "stats_report";
+    const char *xml_client_config_report = "config_report";
     const char *xml_local_ip = "local_ip";
     const char *xml_ar_disabled = "disable-active-response";
     const char *xml_notify_time = "notify_time";
@@ -125,6 +128,24 @@ int Read_Client(const OS_XML *xml, XML_NODE node, void *d1, __attribute__((unuse
              * replaces the leaky bucket's pacing (#37835). */
             if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
                 if (Read_Client_Batch(chld_node, logr) < 0) {
+                    OS_ClearNode(chld_node);
+                    return (OS_INVALID);
+                }
+                OS_ClearNode(chld_node);
+            }
+        } else if (strcmp(node[i]->element, xml_client_stats_report) == 0) {
+            /* <stats_report>/<config_report>: the two independent periodic
+             * pushes to /stats and /config (#37843). Both off by default. */
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Client_Report(chld_node, &logr->stats_report) < 0) {
+                    OS_ClearNode(chld_node);
+                    return (OS_INVALID);
+                }
+                OS_ClearNode(chld_node);
+            }
+        } else if (strcmp(node[i]->element, xml_client_config_report) == 0) {
+            if ((chld_node = OS_GetElementsbyNode(xml, node[i]))) {
+                if (Read_Client_Report(chld_node, &logr->config_report) < 0) {
                     OS_ClearNode(chld_node);
                     return (OS_INVALID);
                 }
@@ -391,6 +412,51 @@ int Read_Client_SSL(XML_NODE node, agent * logr)
         } else if (strcmp(node[j]->element, xml_ciphers) == 0) {
             os_free(logr->ssl.ciphers);
             os_strdup(node[j]->content, logr->ssl.ciphers);
+        } else {
+            merror(XML_INVELEM, node[j]->element);
+            return (OS_INVALID);
+        }
+    }
+
+    return (0);
+}
+
+int Read_Client_Report(XML_NODE node, agent_report * report)
+{
+    /* XML definitions - shared by <stats_report> and <config_report> (#37843);
+     * <interval> takes the usual suffixes: <interval>1h</interval>. */
+    const char *xml_enabled = "enabled";
+    const char *xml_interval = "interval";
+
+    /* Same ceiling as <batch>: a day between snapshots is already past useless,
+     * and it keeps the value the module wants inside 32 bits. */
+    const long max_interval = 86400;
+
+    for (int j = 0; node[j]; j++) {
+        if (!node[j]->element) {
+            merror(XML_ELEMNULL);
+            return (OS_INVALID);
+        } else if (!node[j]->content) {
+            merror(XML_VALUENULL, node[j]->element);
+            return (OS_INVALID);
+        } else if (strcmp(node[j]->element, xml_enabled) == 0) {
+            if (strcmp(node[j]->content, "yes") == 0) {
+                report->enabled = 1;
+            } else if (strcmp(node[j]->content, "no") == 0) {
+                report->enabled = 0;
+            } else {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+        } else if (strcmp(node[j]->element, xml_interval) == 0) {
+            const long interval = w_parse_time(node[j]->content);
+
+            if (interval <= 0 || interval > max_interval) {
+                merror(XML_VALUEERR, node[j]->element, node[j]->content);
+                return (OS_INVALID);
+            }
+
+            report->interval = interval;
         } else {
             merror(XML_INVELEM, node[j]->element);
             return (OS_INVALID);
