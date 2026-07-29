@@ -31,7 +31,7 @@ target_include_directories(
 # calls cJSON_Print/cJSON_free to convert the borrowed <indexer> subtree. Taking it from the shared
 # library rather than linking ext_cjson statically avoids a second copy of cJSON inside this .so,
 # which would sit alongside the one modulesd already has loaded.
-target_link_libraries(inventory_sync_server PRIVATE pthread ext_asio ext_llhttp wazuhext)
+target_link_libraries(inventory_sync_server PRIVATE pthread ext_asio ext_llhttp wazuhext indexer_connector)
 
 # Explicit rather than relying on asio's Boost auto-detection: nothing in this tree provides Boost,
 # so leaving it to be inferred just makes the build depend on what happens to be installed.
