@@ -478,7 +478,7 @@ static size_t wm_module_query_json_internal(const char* module_name, const char*
         return strlen(*output);
     }
 
-    // For SCA, Syscollector, and agent-info (#37833's durable task_id registry query,
+    // For SCA, Syscollector, and agent-info (the durable task_id registry query,
     // the only in-process query path available on Windows -- POSIX instead reaches
     // agent-info's query through wmcom_dispatch()'s own generic "query <module> <args>"
     // verb, which has no such allow-list), pass the JSON command directly (it already

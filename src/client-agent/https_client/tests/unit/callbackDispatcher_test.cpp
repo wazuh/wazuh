@@ -65,6 +65,11 @@ namespace
         recordTag(accepted ? "startup:ok" : "startup:no", static_cast<Record*>(userData));
     }
 
+    void recordTaskFailed(const char* taskId, const char*, const char*, void* userData)
+    {
+        recordTag(std::string {"failed:"} + taskId, static_cast<Record*>(userData));
+    }
+
     void recordReenroll(void* userData)
     {
         recordTag("reenroll", static_cast<Record*>(userData));
@@ -85,6 +90,7 @@ namespace
         hc_callbacks_t callbacks {};
         callbacks.on_startup_result = recordStartup;
         callbacks.on_task = recordTask;
+        callbacks.on_task_failed = recordTaskFailed;
         callbacks.on_reenroll_required = recordReenroll;
         callbacks.on_sync_response = recordSync;
         callbacks.on_state_change = recordState;
@@ -164,6 +170,7 @@ TEST(CallbackDispatcherTest, NullCallbacksAreSafe)
     CallbackDispatcher dispatcher {callbacks};
     dispatcher.start();
     dispatcher.onTask("x", "ar", "{}");
+    dispatcher.onTaskFailed("x", "remote_upgrade", "reason");
     dispatcher.onStateChange(HC_STATE_STARTING);
     dispatcher.onSyncResponse("s", 0, "{}");
     dispatcher.onStartupResult(true, "{}");
@@ -178,16 +185,19 @@ TEST(CallbackDispatcherTest, EveryCallbackKindIsForwarded)
     dispatcher.start();
     dispatcher.onStartupResult(true, R"({"limits":{}})");
     dispatcher.onTask("t1", "active_response", "{}");
+    dispatcher.onTaskFailed("t2", "remote_upgrade", "wpk sha1 mismatch");
     dispatcher.onReenrollRequired();
     dispatcher.onSyncResponse("sess-1", 0, R"({"ok":true})");
     dispatcher.onStateChange(HC_STATE_REGISTERED);
     dispatcher.onBufferLevel(HC_BUFFER_WARNING);
-    waitForCount(record, 6);
+    waitForCount(record, 7);
     dispatcher.stop();
 
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "startup:ok"));
     EXPECT_NE(record.order.end(), std::find(record.order.begin(), record.order.end(), "t1"));
+    EXPECT_NE(record.order.end(),
+              std::find(record.order.begin(), record.order.end(), "failed:t2"));
     EXPECT_NE(record.order.end(),
               std::find(record.order.begin(), record.order.end(), "reenroll"));
     EXPECT_NE(record.order.end(),

@@ -191,7 +191,7 @@ if(TARGET test_https_client_bridge)
     target_include_directories(test_https_client_bridge PRIVATE ${SRC_FOLDER}/client-agent/https_client/include)
 endif()
 
-# Component test for the durable dedup + IPC round-trip (#37833): wires the
+# Component test for the durable dedup + IPC round-trip: wires the
 # REAL client (task_registry_client.c, via CLIENT-AGENT, unwrapped) to the
 # REAL server-side dispatch chain (wmcom_dispatch -> wm_module_query ->
 # wm_agent_info_query -> the real TaskIdRegistry) over a REAL AF_UNIX

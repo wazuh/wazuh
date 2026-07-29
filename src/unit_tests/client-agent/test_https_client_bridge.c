@@ -17,6 +17,7 @@
 #include "agentd.h"
 #include "https_client_bridge.h"
 #include "https_client.h"
+#include "task_registry_client.h"
 #include "../wrappers/wazuh/shared/debug_op_wrappers.h"
 #include "../wrappers/wazuh/shared/file_op_wrappers.h"
 #include "sha256_op.h"
@@ -107,13 +108,13 @@ void __wrap_startup_gate_release_from_https_apply(void)
     function_called();
 }
 
-/* Finding 2 (WAIT_FILE/os_setwait): no pre-existing wrapper for this ABI. */
+/* WAIT_FILE/os_setwait release path: no pre-existing wrapper for this ABI. */
 void __wrap_os_delwait(void)
 {
     function_called();
 }
 
-/* Bug 2 fix (real-package validation, 2026-07-28): config_checksum's seed must be a SHA-256 of
+/* Real-package validation fix: config_checksum's seed must be a SHA-256 of
  * SHAREDCFG_FILE (matching the module's own ConfigHashState/manager config_hash comparison
  * space), not the legacy MD5 getsharedfiles() used to seed it with. No pre-existing wrapper for
  * this ABI either. */
@@ -174,7 +175,7 @@ int __wrap_getDefine_Int(const char *high_name, const char *low_name, int min, i
 extern void *bridge_reenroll_thread(void *arg);
 extern bool g_https_client_stopping;
 
-/* bridge_control_task_thread/bridge_upgrade_thread (#37833/#37834) are
+/* bridge_control_task_thread/bridge_upgrade_thread are
  * likewise non-static so tests can call them directly, bypassing
  * w_create_thread (whose shared __wrap_CreateThread mock never runs the
  * function it's given -- see pthreads_op_wrappers.c). Their context structs
@@ -197,13 +198,15 @@ struct bridge_upgrade_ctx_mirror {
 };
 
 /* __wrap_task_registry_check_and_record, __wrap_restartAgent: no shared
- * wrapper exists for these yet (they are new, #37833). check_expected/
+ * wrapper exists for these yet (they are new). check_expected/
  * mock() so each test controls the answer. (__wrap_reloadAgent is defined
- * above, shared with the config-downloaded reload chain tests.) */
-bool __wrap_task_registry_check_and_record(const char *task_id)
+ * above, shared with the config-downloaded reload chain tests.) Returns
+ * task_registry_result_t, not a plain bool, so a genuine duplicate can be
+ * distinguished from a registry error -- see bridge_check_and_record_task(). */
+task_registry_result_t __wrap_task_registry_check_and_record(const char *task_id)
 {
     check_expected(task_id);
-    return mock();
+    return (task_registry_result_t)mock();
 }
 
 bool __wrap_restartAgent(void)
@@ -802,7 +805,7 @@ static void test_rejected_state_maps_to_nactive(void **state)
     w_https_client_stop();
 }
 
-/* w_https_client_submit_event: the stateless intake seam (#37835) */
+/* w_https_client_submit_event: the stateless intake seam */
 
 static void test_submit_event_forwards_the_frame_to_the_module(void **state)
 {
@@ -890,8 +893,7 @@ static void test_auth_error_state_maps_to_nactive(void **state)
     w_https_client_stop();
 }
 
-/* bridge_on_config_downloaded: the /download apply chain + startup_gate
- * release (finding 1, #37832's unmet scope). */
+/* bridge_on_config_downloaded: the /download apply chain + startup_gate release. */
 
 static const char *const DOWNLOAD_HASH = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b85";
 static const char *const DOWNLOAD_FILE = "/tmp/https-client-spool/download-xyz";
@@ -1105,8 +1107,7 @@ static void test_config_downloaded_null_file_path_is_a_noop(void **state)
     w_https_client_stop();
 }
 
-/* bridge_on_startup_result: module limits + cluster-name authority + agent
- * groups (finding 1b, #37830's unmet "In scope" text). */
+/* bridge_on_startup_result: module limits + cluster-name authority + agent groups. */
 
 #define FULL_LIMITS_JSON_FMT \
     "{\"limits\":{\"fim\":{\"file\":%d,\"registry_key\":2,\"registry_value\":3}," \
@@ -1290,7 +1291,7 @@ static void test_startup_result_missing_limits_object_leaves_limits_unchanged(vo
     w_https_client_stop();
 }
 
-/* #37830's own scope: overwrite cluster/groups unconditionally, even to
+/* Overwrite cluster/groups unconditionally, even to
  * empty, rather than leaving a stale value when the manager omits them. */
 static void test_startup_result_cluster_and_groups_cleared_when_absent(void **state)
 {
@@ -1321,7 +1322,7 @@ static void test_startup_result_cluster_and_groups_cleared_when_absent(void **st
 }
 
 
-/* check_and_record_task (#37833): the durable-dedup callback the C++ module
+/* check_and_record_task: the durable-dedup callback the C++ module
  * calls synchronously before dispatch (ITaskIdStore/TaskIdStoreAdapter). */
 
 static void test_check_and_record_task_new_returns_one(void **state)
@@ -1330,7 +1331,7 @@ static void test_check_and_record_task_new_returns_one(void **state)
     start_client_successfully();
 
     expect_string(__wrap_task_registry_check_and_record, task_id, "t1");
-    will_return(__wrap_task_registry_check_and_record, true);
+    will_return(__wrap_task_registry_check_and_record, TASK_REGISTRY_RESULT_NEW);
 
     assert_int_equal(g_captured_callbacks.check_and_record_task("t1", g_captured_callbacks.user_data), 1);
 
@@ -1344,8 +1345,27 @@ static void test_check_and_record_task_duplicate_returns_zero_and_counts_it(void
     start_client_successfully();
 
     expect_string(__wrap_task_registry_check_and_record, task_id, "t1");
-    will_return(__wrap_task_registry_check_and_record, false);
+    will_return(__wrap_task_registry_check_and_record, TASK_REGISTRY_RESULT_DUPLICATE);
     expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_DISCARDED_DUPLICATE);
+    expect_value(__wrap_w_agentd_state_update, data, NULL);
+
+    assert_int_equal(g_captured_callbacks.check_and_record_task("t1", g_captured_callbacks.user_data), 0);
+
+    expect_value(__wrap_hc_destroy, handle, FAKE_HANDLE);
+    w_https_client_stop();
+}
+
+/* A registry ERROR (agent-info unreachable/malformed reply) must be
+ * counted as a real failure, not silently folded into the duplicate-discard metric --
+ * the two are otherwise indistinguishable (both were "false" as a plain bool). */
+static void test_check_and_record_task_error_returns_zero_and_counts_failed_not_duplicate(void **state)
+{
+    (void)state;
+    start_client_successfully();
+
+    expect_string(__wrap_task_registry_check_and_record, task_id, "t1");
+    will_return(__wrap_task_registry_check_and_record, TASK_REGISTRY_RESULT_ERROR);
+    expect_value(__wrap_w_agentd_state_update, type, INCREMENT_TASK_FAILED);
     expect_value(__wrap_w_agentd_state_update, data, NULL);
 
     assert_int_equal(g_captured_callbacks.check_and_record_task("t1", g_captured_callbacks.user_data), 0);
@@ -1366,13 +1386,11 @@ static void test_check_and_record_task_null_id_returns_minus_one(void **state)
     w_https_client_stop();
 }
 
-/* on_task routing (#37833): active_response forwards to execd inline; an
+/* on_task routing: active_response forwards to execd inline; an
  * unknown/unsupported type (including remote_upgrade reaching here by
  * mistake) is rejected. */
 
-/* #37733's manager-side spike (issue #37733, comment
- * https://github.com/wazuh/wazuh/issues/37733#issuecomment-5027414121,
- * "11.1 Active Response") confirmed a payload without a top-level "wazuh"
+/* The manager's own contract confirms a payload without a top-level "wazuh"
  * key is not a valid alternate shape -- it never happens in real traffic,
  * so it's now treated as malformed, same as unparsable JSON. */
 static void test_on_task_active_response_missing_wazuh_key_counts_failed(void **state)
@@ -1415,8 +1433,8 @@ static void test_on_task_active_response_already_wrapped_payload_forwards_as_is(
     w_https_client_stop();
 }
 
-/* Locks in the confirmed contract's full example verbatim (#37733 comment
- * above): a complete AR document with "rule"/"data"/"agent" siblings next
+/* Locks in the confirmed contract's full example verbatim: a complete AR
+ * document with "rule"/"data"/"agent" siblings next
  * to "wazuh" forwards to execd byte-for-byte unchanged, not just the
  * minimal {"wazuh":{"active_response":{...}}} shape tested above. */
 static void test_on_task_active_response_full_confirmed_contract_forwards_unchanged(void **state)
@@ -1539,7 +1557,7 @@ static void test_on_task_missing_id_or_type_counts_failed(void **state)
     w_https_client_stop();
 }
 
-/* agent_restart/agent_reload (#37833): bridge_control_task_thread is called
+/* agent_restart/agent_reload: bridge_control_task_thread is called
  * directly (see the mirrored-struct note above), exercising the actual
  * restartAgent()/reloadAgent() dispatch and metric outcome that
  * w_create_thread's mock would otherwise skip. */
@@ -1576,7 +1594,7 @@ static void test_control_task_thread_reload_failure_counts_failed(void **state)
     bridge_control_task_thread(ctx);
 }
 
-/* remote_upgrade (#37834): bridge_on_remote_upgrade_ready's guard clauses run
+/* remote_upgrade: bridge_on_remote_upgrade_ready's guard clauses run
  * synchronously (they stage the file / validate before ever spawning a
  * thread), so they are reachable via the captured callback directly. The
  * dispatch-to-upgrade-module step itself (bridge_upgrade_thread) is called
@@ -1628,7 +1646,7 @@ static void test_on_remote_upgrade_ready_stage_copy_failure_counts_failed(void *
     will_return(__wrap_w_ref_parent_folder, 0);
     expect_string(__wrap_w_copy_file, src, "/tmp/wpk");
     expect_string(__wrap_w_copy_file, dst, INCOMING_DIR "/agent.wpk");
-    expect_value(__wrap_w_copy_file, mode, 'w');
+    expect_value(__wrap_w_copy_file, mode, 'b');
     expect_value(__wrap_w_copy_file, silent, 0);
     will_return(__wrap_w_copy_file, -1);
     expect_string(__wrap__merror, formatted_msg,
@@ -1644,7 +1662,7 @@ static void test_on_remote_upgrade_ready_stage_copy_failure_counts_failed(void *
     w_https_client_stop();
 }
 
-/* bridge_upgrade_thread now opens COM_LOCAL_SOCK first (lock_restart, #37834) before it ever
+/* bridge_upgrade_thread now opens COM_LOCAL_SOCK first (lock_restart) before it ever
  * touches AGENT_UPGRADE_SOCK; this helper queues a successful lock_restart round trip so tests
  * that are really about the upgrade-dispatch step don't have to restate it every time. */
 static void expect_lock_restart_success(void)
@@ -1721,7 +1739,7 @@ static void test_upgrade_thread_module_accepts_counts_dispatched(void **state)
     bridge_upgrade_thread(ctx);
 }
 
-/* lock_restart (#37834): a failed connect/send to COM_LOCAL_SOCK only logs a warning -- it must
+/* lock_restart: a failed connect/send to COM_LOCAL_SOCK only logs a warning -- it must
  * not stop the upgrade dispatch that follows, since the lock is best-effort (mirroring the old
  * manager-driven protocol's own tolerance for this step). */
 static void test_upgrade_thread_lock_restart_connect_failure_still_dispatches(void **state)
@@ -1856,12 +1874,13 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_startup_result_limits_unchanged_no_reload, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_startup_result_missing_limits_object_leaves_limits_unchanged, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_startup_result_cluster_and_groups_cleared_when_absent, setup_test, teardown_test),
-        // #37833: durable check-and-record callback
+        // Durable check-and-record callback
         cmocka_unit_test_setup_teardown(test_check_and_record_task_new_returns_one, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_check_and_record_task_duplicate_returns_zero_and_counts_it, setup_test, teardown_test),
+        cmocka_unit_test_setup_teardown(test_check_and_record_task_error_returns_zero_and_counts_failed_not_duplicate, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_check_and_record_task_null_id_returns_minus_one, setup_test, teardown_test),
 
-        // #37833: on_task routing
+        // on_task routing
         cmocka_unit_test_setup_teardown(test_on_task_active_response_missing_wazuh_key_counts_failed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_task_active_response_already_wrapped_payload_forwards_as_is, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_task_active_response_full_confirmed_contract_forwards_unchanged, setup_test, teardown_test),
@@ -1871,11 +1890,11 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_on_task_unknown_type_counts_failed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_task_missing_id_or_type_counts_failed, setup_test, teardown_test),
 
-        // #37833: agent_restart/agent_reload worker thread body
+        // agent_restart/agent_reload worker thread body
         cmocka_unit_test(test_control_task_thread_restart_success_counts_dispatched),
         cmocka_unit_test(test_control_task_thread_reload_failure_counts_failed),
 
-        // #37834: remote_upgrade
+        // remote_upgrade
         cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_missing_fields_counts_failed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_unsafe_wpk_file_counts_failed, setup_test, teardown_test),
         cmocka_unit_test_setup_teardown(test_on_remote_upgrade_ready_stage_copy_failure_counts_failed, setup_test, teardown_test),

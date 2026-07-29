@@ -228,7 +228,7 @@ TEST_F(AgentInfoDBSyncIntegrationTest, LoadSyncFlagsCallbackWithData)
     EXPECT_TRUE(callbackExecuted);
 }
 
-// Durable /control task_id dedup guard (#37833), backed by the `tasks` table in this same
+// Durable /control task_id dedup guard, backed by the `tasks` table in this same
 // DBSync-managed agent_info.db. See AgentInfoImpl::checkAndRecordTask/cleanupExpiredTasks.
 
 TEST_F(AgentInfoDBSyncIntegrationTest, CheckAndRecordTaskNewTaskInsertsAndReturnsTrue)

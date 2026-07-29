@@ -48,7 +48,6 @@
 static const char* XML_INTERVAL = "interval";
 static const char* XML_INTEGRITY_INTERVAL = "integrity_interval";
 static const char* XML_SYNC = "synchronization";
-static const char* XML_TASK_REGISTRY = "task_registry";
 
 // Type definitions
 typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
@@ -73,10 +72,11 @@ agent_info_set_cluster_node_func agent_info_set_cluster_node_ptr = NULL;
 agent_info_set_agent_groups_func agent_info_set_agent_groups_ptr = NULL;
 agent_info_set_query_handshake_function_func agent_info_set_query_handshake_function_ptr = NULL;
 
-// Durable task_id registry function pointers (#37833)
+// Durable task_id registry function pointers. Cleanup runs automatically from
+// within AgentInfoImpl::start()'s own loop -- no separate cleanup function
+// pointer/thread needed here anymore.
 agent_info_task_registry_init_func agent_info_task_registry_init_ptr = NULL;
 agent_info_task_check_and_record_func agent_info_task_check_and_record_ptr = NULL;
-agent_info_task_registry_cleanup_func agent_info_task_registry_cleanup_ptr = NULL;
 
 // Sync protocol function pointers
 static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
@@ -191,63 +191,10 @@ static void wm_agent_info_parse_synchronization(wm_agent_info_t* agent_info, xml
     }
 }
 
-// Durable task_id registry config parsing (#37833): max entry count +
-// cleanup TTL + cleanup interval, following the same strtol/range-check/mwarn
-// idiom as wm_agent_info_parse_synchronization above.
-static void wm_agent_info_parse_task_registry(wm_agent_info_t* agent_info, xml_node** node)
-{
-    const char* XML_MAX_ENTRIES = "max_entries";
-    const char* XML_TTL = "ttl";
-    const char* XML_CLEANUP_INTERVAL = "cleanup_interval";
-
-    for (int i = 0; node[i]; ++i)
-    {
-        if (strcmp(node[i]->element, XML_MAX_ENTRIES) == 0)
-        {
-            char* end;
-            const long value = strtol(node[i]->content, &end, 10);
-
-            if (value <= 0 || value > 1000000 || *end)
-            {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else
-            {
-                agent_info->task_registry.max_entries = (uint32_t)value;
-            }
-        }
-        else if (strcmp(node[i]->element, XML_TTL) == 0)
-        {
-            long ttl = w_parse_time(node[i]->content);
-
-            if (ttl <= 0)
-            {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else
-            {
-                agent_info->task_registry.ttl_s = (uint32_t)ttl;
-            }
-        }
-        else if (strcmp(node[i]->element, XML_CLEANUP_INTERVAL) == 0)
-        {
-            long interval = w_parse_time(node[i]->content);
-
-            if (interval <= 0)
-            {
-                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
-            }
-            else
-            {
-                agent_info->task_registry.cleanup_interval_s = (uint32_t)interval;
-            }
-        }
-        else
-        {
-            mwarn(XML_INVELEM, node[i]->element);
-        }
-    }
-}
+// Durable task_id registry bounds are internal_options.conf tunables
+// (agent_info.max_entries/agent_info.ttl), read via getDefine_Int_default() in
+// wm_agent_info_read() -- not part of this module's ossec.conf configuration surface,
+// so there is no XML parsing for them here.
 
 // Logging callback function for agent-info module
 static void
@@ -270,40 +217,6 @@ static bool wm_agent_info_is_shutting_down(void)
 {
     return g_shutting_down || wm_shutdown_requested;
 }
-
-// Durable task_id registry background cleanup (#37833): prunes TTL-expired
-// and over-cap entries on the configured cadence. Runs on its own thread
-// because agent_info_start_ptr() (called from wm_agent_info_main) blocks for
-// the module's whole lifetime once the coordinator loop takes over.
-static uint32_t g_task_registry_cleanup_interval_s = 300;
-
-static void* wm_agent_info_task_registry_cleanup_thread(__attribute__((unused)) void* arg)
-{
-    while (!wm_agent_info_is_shutting_down())
-    {
-        wm_sleep_interruptible((int)g_task_registry_cleanup_interval_s);
-
-        if (wm_agent_info_is_shutting_down())
-        {
-            break;
-        }
-
-        if (agent_info_task_registry_cleanup_ptr)
-        {
-            agent_info_task_registry_cleanup_ptr();
-        }
-    }
-
-    return NULL;
-}
-
-#ifdef WIN32
-static DWORD WINAPI wm_agent_info_task_registry_cleanup_thread_win(LPVOID arg)
-{
-    wm_agent_info_task_registry_cleanup_thread(arg);
-    return 0;
-}
-#endif
 
 // Open the queue. StartMQPredicated re-checks the shutdown predicate during its
 // (now interruptible) backoff, so both finite and infinite attempts honor
@@ -571,14 +484,15 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     agent_info->sync.sync_retries = 3;
     agent_info->sync.sync_max_eps = 50;
 
-    // Durable task_id registry defaults (#37833): 4096 entries, remembered
-    // for 24h (matching remote_upgrade's own TTL, the longest-lived of the
-    // four /control task types, since the registry must outlast whichever
-    // task type needs the longest at-least-once redelivery window), pruned
-    // every 5 minutes.
-    agent_info->task_registry.max_entries = 4096;
-    agent_info->task_registry.ttl_s = 86400;
-    agent_info->task_registry.cleanup_interval_s = 300;
+    // Durable task_id registry bounds: not part of this module's ossec.conf configuration
+    // surface, so these are internal_options.conf tunables (agent_info.max_entries/
+    // agent_info.ttl) rather than an ossec.conf <task_registry> block. Defaults: 4096
+    // entries, remembered for 24h (matching remote_upgrade's own TTL, the longest-lived of
+    // the four /control task types, since the registry must outlast whichever task type
+    // needs the longest at-least-once redelivery window). Cleanup runs on the module's own
+    // <interval> cycle (AgentInfoImpl::start()'s loop) -- no separate cadence to configure.
+    agent_info->task_registry.max_entries = (uint32_t)getDefine_Int_default("agent_info", "max_entries", 1, 1000000, 4096);
+    agent_info->task_registry.ttl_s = (uint32_t)getDefine_Int_default("agent_info", "ttl", 1, 31536000, 86400);
 
     module->context = &WM_AGENT_INFO_CONTEXT;
     module->tag = strdup(module->context->name);
@@ -640,16 +554,6 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
                 OS_ClearNode(children);
             }
         }
-        else if (!strcmp(nodes[i]->element, XML_TASK_REGISTRY))
-        {
-            xml_node** children = OS_GetElementsbyNode(xml, nodes[i]);
-
-            if (children)
-            {
-                wm_agent_info_parse_task_registry(agent_info, children);
-                OS_ClearNode(children);
-            }
-        }
         else
         {
             mwarn(XML_INVELEM, nodes[i]->element);
@@ -672,7 +576,7 @@ static void wm_agent_info_query_error(char** output, int error_code, const char*
     cJSON_Delete(response);
 }
 
-// Query handler (#37833): the same generic per-module request/response path
+// Query handler: the same generic per-module request/response path
 // SCA/Syscollector already use for their own query handlers (wm_find_module +
 // module->context->query(), src/wazuh_modules/src/wmodules.c's
 // wm_module_query()/wm_module_query_json_ex()) -- no new socket. On
@@ -857,12 +761,10 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_query_handshake_function_ptr =
             so_get_function_sym(agent_info_module, "agent_info_set_query_handshake_function");
 
-        // Durable task_id registry function pointers (#37833)
+        // Durable task_id registry function pointers
         agent_info_task_registry_init_ptr = so_get_function_sym(agent_info_module, "agent_info_task_registry_init");
         agent_info_task_check_and_record_ptr =
             so_get_function_sym(agent_info_module, "agent_info_task_check_and_record");
-        agent_info_task_registry_cleanup_ptr =
-            so_get_function_sym(agent_info_module, "agent_info_task_registry_cleanup");
 
         // Get sync protocol function pointers
         agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");
@@ -910,23 +812,14 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME);
     }
 
-    // Durable task_id registry (#37833): initialize before the handshake
-    // wait/coordinator loop below, so it is ready the moment agentd's first
-    // /control dedup query can arrive, and spawn its periodic cleanup on a
-    // dedicated thread (agent_info_start_ptr, further down, blocks this one
-    // for the module's lifetime).
+    // Durable task_id registry: initialize before the handshake wait/coordinator
+    // loop below, so it is ready the moment agentd's first /control dedup query can arrive.
+    // Periodic cleanup runs automatically from within AgentInfoImpl::start()'s own loop
+    // -- no separate thread spawned here anymore.
     if (agent_info_task_registry_init_ptr)
     {
-        g_task_registry_cleanup_interval_s = agent_info->task_registry.cleanup_interval_s
-                                              ? agent_info->task_registry.cleanup_interval_s
-                                              : 300;
         agent_info_task_registry_init_ptr(agent_info->task_registry.max_entries,
                                           agent_info->task_registry.ttl_s);
-#ifdef WIN32
-        w_create_thread(NULL, 0, wm_agent_info_task_registry_cleanup_thread_win, NULL, 0, NULL);
-#else
-        w_create_thread(wm_agent_info_task_registry_cleanup_thread, NULL);
-#endif
     }
     else
     {
@@ -1041,11 +934,12 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
 
         cJSON_AddItemToObject(wm_agent_info, "synchronization", synchronization);
 
-        // Durable task_id registry values (#37833)
+        // Durable task_id registry values -- internal_options.conf tunables
+        // (agent_info.max_entries/agent_info.ttl), not ossec.conf, but still worth
+        // surfacing in the config dump for diagnostics.
         cJSON* task_registry = cJSON_CreateObject();
         cJSON_AddNumberToObject(task_registry, "max_entries", agent_info->task_registry.max_entries);
         cJSON_AddNumberToObject(task_registry, "ttl", agent_info->task_registry.ttl_s);
-        cJSON_AddNumberToObject(task_registry, "cleanup_interval", agent_info->task_registry.cleanup_interval_s);
 
         cJSON_AddItemToObject(wm_agent_info, "task_registry", task_registry);
     }
