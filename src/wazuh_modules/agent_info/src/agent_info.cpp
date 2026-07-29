@@ -43,8 +43,6 @@ static is_shutting_down_callback_t g_is_shutting_down_callback = nullptr;
 
 // Global sync protocol parameters
 static const char* g_module_name = nullptr;
-static MQ_Functions g_mq_functions = {nullptr, nullptr};
-static bool g_mq_functions_set = false;
 
 // Global cluster name storage (set from handshake, used by agent_info_impl)
 static char g_cluster_name[256] = {0};
@@ -289,21 +287,18 @@ void agent_info_start(const struct wm_agent_info_t* agent_info_config)
             g_agent_info_impl->setIsShuttingDownFunction(g_is_shutting_down_wrapper);
 
             // Set sync parameters from configuration
-            g_agent_info_impl->setSyncParameters(agent_info_config->sync.sync_end_delay,
-                                                 agent_info_config->sync.sync_response_timeout,
-                                                 agent_info_config->sync.sync_retries,
-                                                 agent_info_config->sync.sync_max_eps);
+            g_agent_info_impl->setSyncParameters(agent_info_config->sync.sync_response_timeout,
+                                                 agent_info_config->sync.sync_retries);
 
             // Initialize sync protocol immediately after creating instance
-            if (g_module_name && g_mq_functions_set)
+            if (g_module_name)
             {
                 if (g_log_callback)
                 {
                     g_log_callback(LOG_DEBUG, "agent_info_start: Initializing sync protocol", "agent-info");
                 }
 
-                g_agent_info_impl->initSyncProtocol(
-                    std::string(g_module_name), g_mq_functions);
+                g_agent_info_impl->initSyncProtocol(std::string(g_module_name));
             }
             else
             {
@@ -371,15 +366,9 @@ void agent_info_cleanup()
     g_agent_info_impl.reset();
 }
 
-void agent_info_init_sync_protocol(const char* module_name, const MQ_Functions* mq_funcs)
+void agent_info_init_sync_protocol(const char* module_name)
 {
     g_module_name = module_name;
-
-    if (mq_funcs)
-    {
-        g_mq_functions = *mq_funcs;
-        g_mq_functions_set = true;
-    }
 }
 
 bool agent_info_parse_response(const uint8_t* data, size_t data_len)

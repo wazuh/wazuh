@@ -12,6 +12,7 @@
 #include "inventorySync_generated.h"
 #include "sync_socket_transport.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
@@ -83,8 +84,9 @@ class MockSyncTransport : public ISyncSessionTransport
         uint64_t m_session {0};
         std::vector<uint8_t> m_lastMessage;
         int m_sendCount {0};
-        bool m_accept {true};
-        bool m_available {true};
+        // Atomic: the test thread flips these while the protocol's worker reads them.
+        std::atomic<bool> m_accept {true};
+        std::atomic<bool> m_available {true};
 };
 
 /// @brief Answers the session the protocol is waiting on, the way the manager
