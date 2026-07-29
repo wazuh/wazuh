@@ -19,6 +19,7 @@
 
 #include "agent_sync_protocol_c_interface_types.h"
 #include "logging_helper.h"
+#include "module_query_errors.h"
 #include "mq_op.h"
 #include "rc.h"
 #include "sym_load.h"
@@ -47,6 +48,7 @@
 static const char* XML_INTERVAL = "interval";
 static const char* XML_INTEGRITY_INTERVAL = "integrity_interval";
 static const char* XML_SYNC = "synchronization";
+static const char* XML_TASK_REGISTRY = "task_registry";
 
 // Type definitions
 typedef bool (*agent_info_parse_response_func)(const uint8_t* data, size_t data_len);
@@ -70,6 +72,11 @@ agent_info_set_cluster_name_func agent_info_set_cluster_name_ptr = NULL;
 agent_info_set_cluster_node_func agent_info_set_cluster_node_ptr = NULL;
 agent_info_set_agent_groups_func agent_info_set_agent_groups_ptr = NULL;
 
+// Durable task_id registry function pointers (#37833)
+agent_info_task_registry_init_func agent_info_task_registry_init_ptr = NULL;
+agent_info_task_check_and_record_func agent_info_task_check_and_record_ptr = NULL;
+agent_info_task_registry_cleanup_func agent_info_task_registry_cleanup_ptr = NULL;
+
 // Sync protocol function pointers
 static agent_info_parse_response_func agent_info_parse_response_ptr = NULL;
 
@@ -83,6 +90,7 @@ void wm_agent_info_destroy(wm_agent_info_t* agent_info);
 cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info);
 int wm_agent_info_sync_message(const char* command, size_t command_len);
 void wm_agent_info_stop(void);
+size_t wm_agent_info_query(void* data, char* args, char** output);
 
 // Module context
 const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
@@ -91,7 +99,7 @@ const wm_context WM_AGENT_INFO_CONTEXT = {.name = AGENT_INFO_WM_NAME,
                                           .dump = (cJSON * (*)(const void*)) wm_agent_info_dump,
                                           .sync = (int (*)(const char*, size_t))wm_agent_info_sync_message,
                                           .stop = (void (*)(void*))wm_agent_info_stop,
-                                          .query = NULL};
+                                          .query = wm_agent_info_query};
 
 // ==============================================================================
 // Static Helper Functions
@@ -182,6 +190,64 @@ static void wm_agent_info_parse_synchronization(wm_agent_info_t* agent_info, xml
     }
 }
 
+// Durable task_id registry config parsing (#37833): max entry count +
+// cleanup TTL + cleanup interval, following the same strtol/range-check/mwarn
+// idiom as wm_agent_info_parse_synchronization above.
+static void wm_agent_info_parse_task_registry(wm_agent_info_t* agent_info, xml_node** node)
+{
+    const char* XML_MAX_ENTRIES = "max_entries";
+    const char* XML_TTL = "ttl";
+    const char* XML_CLEANUP_INTERVAL = "cleanup_interval";
+
+    for (int i = 0; node[i]; ++i)
+    {
+        if (strcmp(node[i]->element, XML_MAX_ENTRIES) == 0)
+        {
+            char* end;
+            const long value = strtol(node[i]->content, &end, 10);
+
+            if (value <= 0 || value > 1000000 || *end)
+            {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            }
+            else
+            {
+                agent_info->task_registry.max_entries = (uint32_t)value;
+            }
+        }
+        else if (strcmp(node[i]->element, XML_TTL) == 0)
+        {
+            long ttl = w_parse_time(node[i]->content);
+
+            if (ttl <= 0)
+            {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            }
+            else
+            {
+                agent_info->task_registry.ttl_s = (uint32_t)ttl;
+            }
+        }
+        else if (strcmp(node[i]->element, XML_CLEANUP_INTERVAL) == 0)
+        {
+            long interval = w_parse_time(node[i]->content);
+
+            if (interval <= 0)
+            {
+                mwarn(XML_VALUEERR, node[i]->element, node[i]->content);
+            }
+            else
+            {
+                agent_info->task_registry.cleanup_interval_s = (uint32_t)interval;
+            }
+        }
+        else
+        {
+            mwarn(XML_INVELEM, node[i]->element);
+        }
+    }
+}
+
 // Logging callback function for agent-info module
 static void
 agent_info_log_callback(const modules_log_level_t level, const char* log, __attribute__((unused)) const char* tag)
@@ -203,6 +269,40 @@ static bool wm_agent_info_is_shutting_down(void)
 {
     return g_shutting_down || wm_shutdown_requested;
 }
+
+// Durable task_id registry background cleanup (#37833): prunes TTL-expired
+// and over-cap entries on the configured cadence. Runs on its own thread
+// because agent_info_start_ptr() (called from wm_agent_info_main) blocks for
+// the module's whole lifetime once the coordinator loop takes over.
+static uint32_t g_task_registry_cleanup_interval_s = 300;
+
+static void* wm_agent_info_task_registry_cleanup_thread(__attribute__((unused)) void* arg)
+{
+    while (!wm_agent_info_is_shutting_down())
+    {
+        wm_sleep_interruptible((int)g_task_registry_cleanup_interval_s);
+
+        if (wm_agent_info_is_shutting_down())
+        {
+            break;
+        }
+
+        if (agent_info_task_registry_cleanup_ptr)
+        {
+            agent_info_task_registry_cleanup_ptr();
+        }
+    }
+
+    return NULL;
+}
+
+#ifdef WIN32
+static DWORD WINAPI wm_agent_info_task_registry_cleanup_thread_win(LPVOID arg)
+{
+    wm_agent_info_task_registry_cleanup_thread(arg);
+    return 0;
+}
+#endif
 
 // Open the queue. StartMQPredicated re-checks the shutdown predicate during its
 // (now interruptible) backoff, so both finite and infinite attempts honor
@@ -470,6 +570,15 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     agent_info->sync.sync_retries = 3;
     agent_info->sync.sync_max_eps = 50;
 
+    // Durable task_id registry defaults (#37833): 4096 entries, remembered
+    // for 24h (matching remote_upgrade's own TTL, the longest-lived of the
+    // four /control task types, since the registry must outlast whichever
+    // task type needs the longest at-least-once redelivery window), pruned
+    // every 5 minutes.
+    agent_info->task_registry.max_entries = 4096;
+    agent_info->task_registry.ttl_s = 86400;
+    agent_info->task_registry.cleanup_interval_s = 300;
+
     module->context = &WM_AGENT_INFO_CONTEXT;
     module->tag = strdup(module->context->name);
     module->data = agent_info;
@@ -530,6 +639,16 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
                 OS_ClearNode(children);
             }
         }
+        else if (!strcmp(nodes[i]->element, XML_TASK_REGISTRY))
+        {
+            xml_node** children = OS_GetElementsbyNode(xml, nodes[i]);
+
+            if (children)
+            {
+                wm_agent_info_parse_task_registry(agent_info, children);
+                OS_ClearNode(children);
+            }
+        }
         else
         {
             mwarn(XML_INVELEM, nodes[i]->element);
@@ -537,6 +656,110 @@ int wm_agent_info_read(__attribute__((unused)) const OS_XML* xml, xml_node** nod
     }
 
     return 0;
+}
+
+// Builds a {"error":<code>,"message":"..."} response, the same envelope
+// SCA/Syscollector's own query handlers use (module_query_errors.h) so
+// agent-info's coordination-facing callers (queryModuleWithRetry,
+// task_registry_client.c) parse every module's query response the same way.
+static void wm_agent_info_query_error(char** output, int error_code, const char* message)
+{
+    cJSON* response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", error_code);
+    cJSON_AddStringToObject(response, "message", message);
+    *output = cJSON_PrintUnformatted(response);
+    cJSON_Delete(response);
+}
+
+// Query handler (#37833): the same generic per-module request/response path
+// SCA/Syscollector already use for their own query handlers (wm_find_module +
+// module->context->query(), src/wazuh_modules/src/wmodules.c's
+// wm_module_query()/wm_module_query_json_ex()) -- no new socket. On
+// Linux/macOS it is reached over the existing wmcom request socket
+// (WM_LOCAL_SOCK: "query agent-info {...}" -> wmcom_dispatch() ->
+// wm_module_query(), which strips "agent-info " and calls this with `args`
+// holding exactly the remaining JSON); on Windows, task_registry_client.c
+// calls wm_module_query_json_ex("agent-info", ..., ...) directly in-process,
+// which reaches this the same way. Currently supports one command:
+// {"command":"task_check_and_record","task_id":"..."} ->
+// {"error":0,"data":{"new":true|false}}.
+size_t wm_agent_info_query(__attribute__((unused)) void* data, char* args, char** output)
+{
+    cJSON* request = args ? cJSON_Parse(args) : NULL;
+
+    if (!request)
+    {
+        wm_agent_info_query_error(output, MQ_ERR_INVALID_JSON, MQ_MSG_INVALID_JSON);
+        return strlen(*output);
+    }
+
+    cJSON* command_item = cJSON_GetObjectItem(request, "command");
+
+    if (!command_item || !cJSON_IsString(command_item))
+    {
+        cJSON_Delete(request);
+        wm_agent_info_query_error(output, MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+        return strlen(*output);
+    }
+
+    if (strcmp(command_item->valuestring, "task_check_and_record") == 0)
+    {
+        cJSON* task_id_item = cJSON_GetObjectItem(request, "task_id");
+
+        if (!task_id_item || !cJSON_IsString(task_id_item) || !task_id_item->valuestring ||
+            !*task_id_item->valuestring)
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_INVALID_PARAMS, MQ_MSG_INVALID_PARAMS);
+            return strlen(*output);
+        }
+
+        if (!agent_info_task_check_and_record_ptr)
+        {
+            cJSON_Delete(request);
+            wm_agent_info_query_error(output, MQ_ERR_MODULE_NOT_RUNNING, MQ_MSG_MODULE_NOT_RUNNING);
+            return strlen(*output);
+        }
+
+        int result = agent_info_task_check_and_record_ptr(task_id_item->valuestring);
+        cJSON_Delete(request);
+
+        if (result < 0)
+        {
+            wm_agent_info_query_error(output, MQ_ERR_INTERNAL, MQ_MSG_INTERNAL);
+            return strlen(*output);
+        }
+
+        cJSON* response = cJSON_CreateObject();
+        cJSON_AddNumberToObject(response, "error", MQ_SUCCESS);
+        cJSON* response_data = cJSON_CreateObject();
+        cJSON_AddBoolToObject(response_data, "new", result == 1);
+        cJSON_AddItemToObject(response, "data", response_data);
+        *output = cJSON_PrintUnformatted(response);
+        cJSON_Delete(response);
+        return strlen(*output);
+    }
+
+    /* Echo the unrecognized command back in "data.command", matching
+     * SCA/Syscollector's own query() unknown-command responses
+     * (sca_impl.cpp/syscollectorImp.cpp: response["data"]["command"] =
+     * command) -- wm_agent_info_query_error() alone (used for every other
+     * error path above) never adds a "data" object, so this one path is
+     * built by hand instead. */
+    char unknown_command[128];
+    strncpy(unknown_command, command_item->valuestring, sizeof(unknown_command) - 1);
+    unknown_command[sizeof(unknown_command) - 1] = '\0';
+    cJSON_Delete(request);
+
+    cJSON* response = cJSON_CreateObject();
+    cJSON_AddNumberToObject(response, "error", MQ_ERR_UNKNOWN_COMMAND);
+    cJSON_AddStringToObject(response, "message", MQ_MSG_UNKNOWN_COMMAND);
+    cJSON* response_data = cJSON_CreateObject();
+    cJSON_AddStringToObject(response_data, "command", unknown_command);
+    cJSON_AddItemToObject(response, "data", response_data);
+    *output = cJSON_PrintUnformatted(response);
+    cJSON_Delete(response);
+    return strlen(*output);
 }
 
 // Stop function
@@ -631,6 +854,13 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
         agent_info_set_cluster_node_ptr = so_get_function_sym(agent_info_module, "agent_info_set_cluster_node");
         agent_info_set_agent_groups_ptr = so_get_function_sym(agent_info_module, "agent_info_set_agent_groups");
 
+        // Durable task_id registry function pointers (#37833)
+        agent_info_task_registry_init_ptr = so_get_function_sym(agent_info_module, "agent_info_task_registry_init");
+        agent_info_task_check_and_record_ptr =
+            so_get_function_sym(agent_info_module, "agent_info_task_check_and_record");
+        agent_info_task_registry_cleanup_ptr =
+            so_get_function_sym(agent_info_module, "agent_info_task_registry_cleanup");
+
         // Get sync protocol function pointers
         agent_info_parse_response_ptr = so_get_function_sym(agent_info_module, "agent_info_parse_response");
 
@@ -668,6 +898,30 @@ void* wm_agent_info_main(wm_agent_info_t* agent_info)
     if (agent_info_init_sync_protocol_ptr)
     {
         agent_info_init_sync_protocol_ptr(AGENT_INFO_WM_NAME);
+    }
+
+    // Durable task_id registry (#37833): initialize before the handshake
+    // wait/coordinator loop below, so it is ready the moment agentd's first
+    // /control dedup query can arrive, and spawn its periodic cleanup on a
+    // dedicated thread (agent_info_start_ptr, further down, blocks this one
+    // for the module's lifetime).
+    if (agent_info_task_registry_init_ptr)
+    {
+        g_task_registry_cleanup_interval_s = agent_info->task_registry.cleanup_interval_s
+                                              ? agent_info->task_registry.cleanup_interval_s
+                                              : 300;
+        agent_info_task_registry_init_ptr(agent_info->task_registry.max_entries,
+                                          agent_info->task_registry.ttl_s);
+#ifdef WIN32
+        w_create_thread(NULL, 0, wm_agent_info_task_registry_cleanup_thread_win, NULL, 0, NULL);
+#else
+        w_create_thread(wm_agent_info_task_registry_cleanup_thread, NULL);
+#endif
+    }
+    else
+    {
+        merror("agent_info_task_registry_init function not available; /control task dedup will "
+               "fail closed (every task treated as non-dispatchable) until this is fixed.");
     }
 
     // Query agentd for handshake data (cluster_name, cluster_node, agent_groups) via agcom
@@ -776,6 +1030,14 @@ cJSON* wm_agent_info_dump(const wm_agent_info_t* agent_info)
         cJSON_AddNumberToObject(synchronization, "max_eps", agent_info->sync.sync_max_eps);
 
         cJSON_AddItemToObject(wm_agent_info, "synchronization", synchronization);
+
+        // Durable task_id registry values (#37833)
+        cJSON* task_registry = cJSON_CreateObject();
+        cJSON_AddNumberToObject(task_registry, "max_entries", agent_info->task_registry.max_entries);
+        cJSON_AddNumberToObject(task_registry, "ttl", agent_info->task_registry.ttl_s);
+        cJSON_AddNumberToObject(task_registry, "cleanup_interval", agent_info->task_registry.cleanup_interval_s);
+
+        cJSON_AddItemToObject(wm_agent_info, "task_registry", task_registry);
     }
 
     cJSON_AddItemToObject(root, "agent-info", wm_agent_info);

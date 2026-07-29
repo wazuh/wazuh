@@ -6,9 +6,11 @@
 
 #include <dbsync.hpp>
 
+#include <atomic>
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 
 // Forward declare the direct C function
@@ -34,6 +36,16 @@ extern "C"
 
 // Global instance
 static std::unique_ptr<AgentInfoImpl> g_agent_info_impl;
+
+// Durable task_id registry (#37833) config, applied against the `tasks` table in
+// g_agent_info_impl's own agent_info.db (see AgentInfoImpl::checkAndRecordTask/
+// cleanupExpiredTasks). Set once by agent_info_task_registry_init(), read back by the
+// periodic cleanup call. Task dispatch is intentionally coupled to g_agent_info_impl's own
+// availability: if AgentInfoImpl/DBSync fails to start, /control task dispatch fails closed
+// too (same as every other agent_info.db-backed feature), which is an accepted trade-off for
+// sharing agent-info's single database instead of a private, independent flat file.
+static std::atomic<uint32_t> g_task_max_entries{4096};
+static std::atomic<uint32_t> g_task_ttl_seconds{86400};
 
 // Global callback function pointers
 static report_callback_t g_report_callback = nullptr;
@@ -208,6 +220,41 @@ void agent_info_clear_agent_groups()
     }
 }
 
+void agent_info_ensure_database(void)
+{
+    if (g_agent_info_impl)
+    {
+        return;
+    }
+
+    try
+    {
+        DBSync::initialize(
+            [](const std::string & msg)
+        {
+            if (g_log_callback)
+            {
+                g_log_callback(LOG_DEBUG, msg.c_str(), "agent-info");
+            }
+        });
+
+        g_agent_info_impl =
+            std::make_unique<AgentInfoImpl>(AGENT_INFO_DB_DISK_PATH, g_report_function_wrapper, g_log_function_wrapper, g_query_module_function_wrapper);
+        g_agent_info_impl->setIsShuttingDownFunction(g_is_shutting_down_wrapper);
+    }
+    catch (const std::exception& ex)
+    {
+        if (g_log_callback)
+        {
+            std::string error_msg = "agent_info_ensure_database: Failed to initialize agent_info's database: ";
+            error_msg += ex.what();
+            g_log_callback(LOG_ERROR, error_msg.c_str(), "agent-info");
+        }
+
+        g_agent_info_impl.reset();
+    }
+}
+
 void agent_info_start(const struct wm_agent_info_t* agent_info_config)
 {
     if (!agent_info_config)
@@ -344,6 +391,58 @@ bool agent_info_parse_response(const uint8_t* data, size_t data_len)
     }
 
     return false;
+}
+
+void agent_info_task_registry_init(uint32_t max_entries, uint32_t ttl_seconds)
+{
+    g_task_max_entries = max_entries == 0 ? 1 : max_entries;
+    g_task_ttl_seconds = ttl_seconds;
+
+    // Construct agent_info.db here (as early as wm_agent_info.c's own startup sequence allows
+    // -- well before the blocking agent_info_start_ptr() call), rather than leaving task
+    // dispatch fail-closed until agent_info_start() eventually runs. agent_info_start() will
+    // see this instance already exists and simply reuse it (its own existing idempotent path).
+    agent_info_ensure_database();
+
+    if (g_log_callback)
+    {
+        g_log_callback(LOG_DEBUG, "Durable task_id registry configured (agent_info.db-backed)", "agent-info");
+    }
+}
+
+int agent_info_task_check_and_record(const char* task_id)
+{
+    if (!task_id || !*task_id)
+    {
+        return -1;
+    }
+
+    if (!g_agent_info_impl)
+    {
+        if (g_log_callback)
+        {
+            g_log_callback(LOG_WARNING,
+                           "task_check_and_record called before agent_info's database is available",
+                           "agent-info");
+        }
+
+        return -1;
+    }
+
+    return g_agent_info_impl->checkAndRecordTask(task_id) ? 1 : 0;
+}
+
+void agent_info_task_registry_cleanup()
+{
+    if (g_agent_info_impl)
+    {
+        g_agent_info_impl->cleanupExpiredTasks(g_task_ttl_seconds, g_task_max_entries);
+    }
+}
+
+size_t agent_info_task_registry_count()
+{
+    return g_agent_info_impl ? g_agent_info_impl->countTasks() : 0;
 }
 
 #ifdef __cplusplus

@@ -59,11 +59,12 @@ namespace
     }
 
     /// The Notify batch after dedup: fresh, identifiable tasks only.
-    /// Deliberately deduped BEFORE planning, so a task dropped as redundant is
-    /// still marked seen and an at-least-once redelivery stays dropped (a
-    /// restart landing after its subsuming upgrade would be harmful).
-    std::vector<NotifyTask> collectFreshTasks(const nlohmann::json& parsed, TaskDeduper& deduper,
-                                              std::chrono::steady_clock::time_point now,
+    /// Deliberately deduped BEFORE planning, against the DURABLE registry
+    /// (#37833), so a task dropped as redundant by planTaskBatch is still
+    /// marked seen (recorded before this function returns) and an
+    /// at-least-once redelivery -- even across a restart, notably the one a
+    /// remote_upgrade itself triggers -- stays dropped.
+    std::vector<NotifyTask> collectFreshTasks(const nlohmann::json& parsed, ITaskIdStore& taskStore,
                                               const LogFn& logFn)
     {
         std::vector<NotifyTask> batch;
@@ -93,11 +94,14 @@ namespace
                 continue;
             }
 
-            if (!deduper.markIfNew(taskId, now))
+            if (!taskStore.checkAndRecord(taskId))
             {
                 // Routine: delivery is at-least-once, so a redelivery inside
-                // the dedup TTL is the mechanism working.
-                LOGFN_DEBUG2(logFn, "Dropping /control task %s: already seen.", taskId.c_str());
+                // the durable registry's TTL is the mechanism working (or, on
+                // an IPC hiccup with agent-info, the fail-closed guard: either
+                // way the safe move is to not dispatch again).
+                LOGFN_DEBUG2(logFn, "Dropping /control task %s: already seen (or its durable "
+                             "record could not be confirmed).", taskId.c_str());
                 continue;
             }
 
@@ -112,17 +116,18 @@ ControlStream::ControlStream(const ModuleConfig& config, IHttpPerformer& perform
                              const ISigner& signer, IClock& clock, IRandom& random,
                              ICallbackSink& sink, ISpoolFileFactory& spoolFactory,
                              ConfigHashState& configHash, ClusterIdentity& cluster,
-                             AuthGate& authGate)
+                             AuthGate& authGate, ITaskIdStore& taskStore)
     : m_config(config)
     , m_backoff(config.backoffBaseMs, config.backoffCapMs, random)
     , m_sender(performer, signer, clock, m_backoff, &authGate)
     , m_clock(clock)
     , m_sink(sink)
     , m_fetcher(config, performer, signer, clock, random, spoolFactory, authGate)
+    , m_wpkFetcher(config, performer, signer, clock, random, spoolFactory, authGate)
     , m_configHash(configHash)
     , m_cluster(cluster)
     , m_authGate(authGate)
-    , m_deduper(config.taskDedupMax, std::chrono::seconds {config.taskDedupTtlS})
+    , m_taskStore(taskStore)
 {
 }
 
@@ -315,7 +320,7 @@ void ControlStream::handleNotifyBody(const std::string& body, Waiter& waiter)
 
     // Tasks first, then the hash checks: a slow config download must never
     // delay task delivery.
-    dispatchPlannedTasks(collectFreshTasks(parsed, m_deduper, m_clock.steadyNow(), m_logFn));
+    dispatchPlannedTasks(collectFreshTasks(parsed, m_taskStore, m_logFn), waiter);
     maybeArmSettingsRefresh(jsonField(parsed, "settings_hash"));
 
     const auto agent = parsed.find("agent");
@@ -389,7 +394,7 @@ void ControlStream::maybeArmSettingsRefresh(const std::string& incoming)
     m_machine.onEvent(ControlStateMachine::Event::SettingsChanged);
 }
 
-void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch)
+void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch, Waiter& waiter)
 {
     auto plan = planTaskBatch(std::move(batch));
 
@@ -401,8 +406,52 @@ void ControlStream::dispatchPlannedTasks(std::vector<NotifyTask> batch)
 
     for (const auto& task : plan.ordered)
     {
+        if (task.type == "remote_upgrade")
+        {
+            // #37834: the WPK download/verify needs this module's own HTTP
+            // machinery, so it cannot be handed off through the generic
+            // on_task callback (which must not call back into hc_*
+            // functions). Its task_id is already durably recorded (above,
+            // before planning), so this is safe to run even though a
+            // successful outcome ends in the agent restarting.
+            dispatchUpgradeTask(task, waiter);
+            continue;
+        }
+
         m_sink.onTask(task.id, task.type, task.payloadJson);
     }
+}
+
+void ControlStream::dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter)
+{
+    const auto payload = nlohmann::json::parse(task.payloadJson, nullptr, false);
+
+    if (payload.is_discarded() || !payload.is_object())
+    {
+        LOGFN_WARN(m_logFn, "remote_upgrade task %s has a malformed payload; aborting "
+                   "(no /control response is sent).", task.id.c_str());
+        return;
+    }
+
+    const std::string wpkFile = jsonField(payload, "wpk_file");
+    const std::string wpkSha1 = jsonField(payload, "wpk_sha1");
+    const std::string installer = jsonField(payload, "installer");
+
+    if (wpkFile.empty() || wpkSha1.empty() || installer.empty())
+    {
+        LOGFN_WARN(m_logFn, "remote_upgrade task %s is missing wpk_file/wpk_sha1/installer; "
+                   "aborting.", task.id.c_str());
+        return;
+    }
+
+    auto file = m_wpkFetcher.fetch(wpkFile, wpkSha1, waiter);
+
+    if (!file)
+    {
+        return; // Already logged by the fetcher (download failure or sha1 mismatch).
+    }
+
+    m_sink.onUpgradeReady(task.id, wpkFile, std::move(file), installer);
 }
 
 ControlStateMachine::Event ControlStream::eventFor(OutcomeClass outcome) const
