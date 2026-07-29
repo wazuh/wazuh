@@ -29,11 +29,24 @@ typedef struct wm_agent_info_sync_flags_t
     long sync_max_eps;
 } wm_agent_info_sync_flags_t;
 
+// #37833: the durable, restart-surviving task_id registry (dedup for
+// /control tasks, reached from agentd over the wmcom "query agent-info ..."
+// IPC verb -- see wm_agent_info_query()). Bounded by max_entries (oldest-
+// first eviction) and ttl_seconds; cleanup_interval_s controls how often the
+// background prune runs.
+typedef struct wm_agent_info_task_registry_t
+{
+    uint32_t max_entries;
+    uint32_t ttl_s;
+    uint32_t cleanup_interval_s;
+} wm_agent_info_task_registry_t;
+
 typedef struct wm_agent_info_t
 {
     int interval;        // Update interval in seconds (for delta updates)
     int integrity_interval; // Integrity check interval in seconds (for full metadata/groups verification), default 86400 (24h)
     wm_agent_info_sync_flags_t sync;
+    wm_agent_info_task_registry_t task_registry;
 } wm_agent_info_t;
 
 extern const wm_context WM_AGENT_INFO_CONTEXT;

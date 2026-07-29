@@ -22,9 +22,19 @@
 
 static const char AG_IN_RCON[] = "wazuh: Invalid remote configuration";
 
-bool reloadAgent(void) {
+/* Shared implementation for reloadAgent()/restartAgent(): sends `action`
+ * ("reload" or "restart") to wm_control's dispatcher, the same mechanism
+ * wm_control_dispatch() (src/wazuh_modules/src/wm_control.c) already handles
+ * symmetrically for both verbs (systemctl <action> / bin/wazuh-control
+ * <action> fallback on Linux/macOS; control_run_detached(action, ...) on
+ * Windows). Introduced for #37833's agent_restart task_type: agent_reload
+ * already drove this path (reloadAgent()), agent_restart previously had no
+ * caller at all.
+ */
+static bool controlAgent(const char *action) {
 
-	char req[] = "reload";
+	char req[16];
+	snprintf(req, sizeof(req), "%s", action);
 
 	#ifndef WIN32
 
@@ -49,13 +59,13 @@ bool reloadAgent(void) {
 			mdebug1("Control socket '%s' not yet available (attempt %d/%d), retrying...", sockname, attempt + 1, max_retries);
 			sleep(retry_delay_s);
 		} else {
-			merror("At reloadAgent(): Could not connect to socket '%s': %s (%d).", sockname, strerror(errno), errno);
+			merror("At controlAgent(%s): Could not connect to socket '%s': %s (%d).", action, sockname, strerror(errno), errno);
 			return false;
 		}
 	}
 
 	if (sock < 0) {
-		merror("Could not auto-reload agent. Could not connect to control socket '%s' after %d attempts.", sockname, max_retries);
+		merror("Could not auto-%s agent. Could not connect to control socket '%s' after %d attempts.", action, sockname, max_retries);
 		return false;
 	}
 
@@ -76,6 +86,14 @@ bool reloadAgent(void) {
 	return true;
 
 	#endif
+}
+
+bool reloadAgent(void) {
+	return controlAgent("reload");
+}
+
+bool restartAgent(void) {
+	return controlAgent("restart");
 }
 
 int verifyRemoteConf(){

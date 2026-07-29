@@ -30,6 +30,7 @@
 #include "stopToken.hpp"
 #include "syncIntake.hpp"
 #include "sysSeams.hpp"
+#include "taskIdStoreAdapter.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -91,6 +92,7 @@ class HttpsClientFacade final
         CallbackDispatcher m_dispatcher;
         ConfigHashState m_configHash;
         ClusterIdentity m_cluster;
+        TaskIdStoreAdapter m_taskStore;
         // Wakes the control loop so it publishes AUTH_ERROR / recovers promptly.
         // The wake lambda runs later, so referencing m_controlWaiter (declared
         // below) is safe.

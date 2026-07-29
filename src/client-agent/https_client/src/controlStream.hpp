@@ -24,7 +24,8 @@
 #include "stopToken.hpp"
 #include "sysSeams.hpp"
 #include "taskBatch.hpp"
-#include "taskDeduper.hpp"
+#include "taskIdStore.hpp"
+#include "wpkFetcher.hpp"
 
 #include <string>
 #include <vector>
@@ -45,7 +46,7 @@ class ControlStream final
         ControlStream(const ModuleConfig& config, IHttpPerformer& performer, const ISigner& signer,
                       IClock& clock, IRandom& random, ICallbackSink& sink,
                       ISpoolFileFactory& spoolFactory, ConfigHashState& configHash,
-                      ClusterIdentity& cluster, AuthGate& authGate);
+                      ClusterIdentity& cluster, AuthGate& authGate, ITaskIdStore& taskStore);
 
         /// One control iteration. Returns whether Startup has been accepted (the
         /// producer gate is open) so the facade can gate the data streams.
@@ -71,7 +72,8 @@ class ControlStream final
         void applyEffects(const ControlStateMachine::Effects& effects, const std::string& handshake);
         void applyClusterIdentity(const std::string& startupBody);
         void handleNotifyBody(const std::string& body, Waiter& waiter);
-        void dispatchPlannedTasks(std::vector<NotifyTask> batch);
+        void dispatchPlannedTasks(std::vector<NotifyTask> batch, Waiter& waiter);
+        void dispatchUpgradeTask(const NotifyTask& task, Waiter& waiter);
         void maybeArmSettingsRefresh(const std::string& incoming);
         void maybeDownloadConfig(const std::string& managerHash, const std::string& group,
                                  Waiter& waiter);
@@ -83,11 +85,12 @@ class ControlStream final
         IClock& m_clock;
         ICallbackSink& m_sink;
         ConfigFetcher m_fetcher;
+        WpkFetcher m_wpkFetcher;
         ConfigHashState& m_configHash;
         ClusterIdentity& m_cluster;
         AuthGate& m_authGate;
         ControlStateMachine m_machine;
-        TaskDeduper m_deduper;
+        ITaskIdStore& m_taskStore;
         const LogFn m_logFn {HTTPS_CLIENT_LOGTAG};
 
         /// SHA-256 of the exact startup-response bytes (the local settings
