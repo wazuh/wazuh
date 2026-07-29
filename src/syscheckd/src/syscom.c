@@ -21,6 +21,9 @@
 /* Name this daemon reports itself under in the /config document. */
 #define SYSCOM_MODULE_NAME "fim"
 
+/* The whole-daemon config request (#37843). */
+#define SYSCOM_GETALLCONFIG "getallconfig"
+
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
 extern void mock_assert(const int result, const char* const expression,
@@ -617,8 +620,11 @@ size_t syscom_dispatch(char * command, size_t command_len, char ** output){
         return syscom_handle_json_query(command, output);
     }
 
+    /* HC_GETCONFIG is a prefix match, and "getallconfig" does not start with
+     * it, so it needs naming here or it never reaches the branch below. */
     if (strncmp(command, HC_SK, strlen(HC_SK)) == 0 ||
-               strncmp(command, HC_GETCONFIG, strlen(HC_GETCONFIG)) == 0) {
+               strncmp(command, HC_GETCONFIG, strlen(HC_GETCONFIG)) == 0 ||
+               strcmp(command, SYSCOM_GETALLCONFIG) == 0) {
         char *rcv_comm = NULL;
         char *rcv_args = NULL;
 
@@ -641,7 +647,7 @@ size_t syscom_dispatch(char * command, size_t command_len, char ** output){
                 return strlen(*output);
             }
             return syscom_getconfig(rcv_args, output);
-        } else if (strcmp(rcv_comm, "getallconfig") == 0) {
+        } else if (strcmp(rcv_comm, SYSCOM_GETALLCONFIG) == 0) {
             return syscom_getallconfig(output);
         }
     } else if (strncmp(command, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
