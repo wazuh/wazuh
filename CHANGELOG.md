@@ -102,4 +102,5 @@
 - Fixed a race condition when saving the Logcollector file status on shutdown. ([#37626](https://github.com/wazuh/wazuh/issues/37626))
 - Fixed an unbounded memory leak in `wazuh-modulesd` caused by a missing RPM macro context cleanup on every package scan cycle. ([#37656](https://github.com/wazuh/wazuh/issues/37656))
 - Fixed agent-info module caching cluster_name, cluster_node, and agent_groups from a one-time handshake at startup, causing stale values in `agent_metadata` until the agent process restarted. ([#37543](https://github.com/wazuh/wazuh/issues/37543))
+- Fixed `wazuh-syscheckd` failing the `file_entry.checksum` NOT NULL constraint when the deferred sync-flag update ran for an entry deleted during the scan. ([#37993](https://github.com/wazuh/wazuh/issues/37993))
 

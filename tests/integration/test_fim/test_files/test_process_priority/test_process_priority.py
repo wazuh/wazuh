@@ -66,12 +66,12 @@ from pathlib import Path
 import sys
 import os
 
+import psutil
 import pytest
 from wazuh_testing.utils.configuration import get_test_cases_data, load_configuration_template
 from wazuh_testing.modules.fim.configuration import SYSCHECK_DEBUG
 from wazuh_testing.modules.agentd.configuration import AGENTD_DEBUG
 from wazuh_testing.constants.platforms import MACOS
-from wazuh_testing.utils.services import search_process_by_command
 from wazuh_testing.constants.daemons import SYSCHECK_DAEMON
 
 from . import TEST_CASES_PATH, CONFIGS_PATH
@@ -146,7 +146,13 @@ def test_process_priority(test_configuration, test_metadata, configure_local_int
     '''
 
     priority = int(test_metadata['priority'])
-    syscheckd_process = search_process_by_command(SYSCHECK_DAEMON)
+    # Matched by name, not by search_process_by_command(): that helper matches the whole
+    # cmdline, so a 'sudo ... wazuh-syscheckd' wrapper matches too and, having the lower
+    # PID, can be returned instead of the daemon. sudo does not carry its nice value.
+    syscheckd_process = next(
+        (p for p in psutil.process_iter(['pid', 'name']) if p.info['name'] == SYSCHECK_DAEMON),
+        None
+    )
 
     assert syscheckd_process is not None, f'Process {SYSCHECK_DAEMON} not found'
     assert (os.getpriority(os.PRIO_PROCESS, syscheckd_process.pid)) == priority, \
