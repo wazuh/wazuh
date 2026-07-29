@@ -13,9 +13,13 @@
 #include "rootcheck.h"
 #include "os_net.h"
 #include "wmodules.h"
+#include "module_report.h"
 #include "module_query_errors.h"
 #include "db.h"
 #include "agent_sync_protocol_c_interface.h"
+
+/* Name this daemon reports itself under in the /config document. */
+#define SYSCOM_MODULE_NAME "fim"
 
 #ifdef WAZUH_UNIT_TESTING
 /* Replace assert with mock_assert */
@@ -260,6 +264,22 @@ error:
     mdebug1(FIM_SYSCOM_FAIL_GETCONFIG, section);
     os_strdup("err Could not get requested section", *output);
     return strlen(*output);
+}
+
+size_t syscom_getallconfig(char ** output) {
+    assert(output != NULL);
+
+    cJSON *report = cJSON_CreateArray();
+    cJSON *body = cJSON_CreateObject();
+
+    /* rootcheck ships inside this daemon, so it rides along in fim's body
+     * under its own section key rather than as a separate module entry. */
+    module_report_merge(body, getSyscheckConfig());
+    module_report_merge(body, getRootcheckConfig());
+    module_report_merge(body, getSyscheckInternalOptions());
+
+    module_report_add_config(report, SYSCOM_MODULE_NAME, body);
+    return module_report_reply(report, output);
 }
 
 size_t syscom_handle_agent_info_query(char * json_command, char ** output) {
@@ -621,6 +641,8 @@ size_t syscom_dispatch(char * command, size_t command_len, char ** output){
                 return strlen(*output);
             }
             return syscom_getconfig(rcv_args, output);
+        } else if (strcmp(rcv_comm, "getallconfig") == 0) {
+            return syscom_getallconfig(output);
         }
     } else if (strncmp(command, FIM_SYNC_HEADER, strlen(FIM_SYNC_HEADER)) == 0) {
         if (syscheck.enable_synchronization) {
