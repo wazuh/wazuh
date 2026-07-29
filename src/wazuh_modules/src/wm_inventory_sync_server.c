@@ -40,12 +40,15 @@ static void wm_inventory_sync_server_log_config(const inventory_sync_server_conf
 {
     mtdebug1(WM_INVENTORY_SYNC_SERVER_LOGTAG,
              "socket_path='%s', io_threads=%d, max_body_size=%d, max_parallel_connections=%d, "
-             "max_inflight_bytes=%lld, cluster='%s', node='%s'",
+             "max_inflight_bytes=%lld, indexer_bulk_size_bytes=%d, indexer_flush_interval=%d, "
+             "cluster='%s', node='%s'",
              config->socket_path,
              config->io_threads,
              config->max_body_size,
              config->max_parallel_connections,
              config->max_inflight_bytes,
+             config->indexer_bulk_size_bytes,
+             config->indexer_flush_interval,
              config->cluster_name,
              config->node_name);
 }
@@ -112,6 +115,18 @@ void* wm_inventory_sync_server_main(__attribute__((unused)) wm_inventory_sync_se
             config.max_inflight_bytes = (long long)getDefine_Int_default(
                 "wazuh_modules", "inventory_sync_server_max_inflight_bytes", 0, 2147483647, 0);
             config.socket_mode = getDefine_Int_default("wazuh_modules", "inventory_sync_server_socket_mode", 0, 511, 0);
+
+            /* Same range/default as inventory_sync's own indexerBulkSize/indexerFlushInterval
+             * (wm_inventory_sync.c), just under this module's own option-naming convention. Mapped
+             * onto the <indexer> block's `max_bulk_size`/`flush_interval_seconds` keys inside the
+             * C++ module -- IndexerConnectorSync is the same connector class inventory_sync uses. */
+            config.indexer_bulk_size_bytes = getDefine_Int_default("wazuh_modules",
+                                                                   "inventory_sync_server_indexer_bulk_size_bytes",
+                                                                   4096,
+                                                                   100 * 1024 * 1024,
+                                                                   10 * 1024 * 1024);
+            config.indexer_flush_interval =
+                getDefine_Int_default("wazuh_modules", "inventory_sync_server_indexer_flush_interval", 1, 3600, 20);
 
             /* Borrowed for the call only: the module deep-copies what it needs, and
              * inventory_sync_server.h documents that contract, so this duplicate can be freed as
